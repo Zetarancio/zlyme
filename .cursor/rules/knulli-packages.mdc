@@ -1,0 +1,15 @@
+---
+description: Take emulator recipes and patches from Knulli before writing our own
+alwaysApply: true
+---
+
+# Knulli first for packages
+
+Knulli is Buildroot + Batocera recipes. For **emulators, cores, and libraries**, do not invent a patch or a `.mk` from scratch.
+
+1. Search `~/Downloads/knulli-linux/knulli-linux/package/` (`batocera/emulators/`, `emulators/`, `batocera/libraries/`, `batocera/utils/`).
+2. Copy their recipe and `*.patch` files. Put patches **next to the `.mk`** — Buildroot does not apply `package/foo/patches/`.
+3. Refresh hunks only so `patch -F0` applies. Replace Batocera `/userdata` with NextUI `/mnt/SDCARD/.userdata/shared`. Drop X11/Wayland/Vulkan pieces we do not ship.
+4. Write a new patch only if Knulli has no equivalent, or theirs cannot be refreshed.
+
+Hardware (kernel, DTS, drivers, mixer names) stays ROCKNIX / the device wiki, not Knulli.
