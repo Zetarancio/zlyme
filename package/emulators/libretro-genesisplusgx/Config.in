@@ -1,0 +1,10 @@
+config BR2_PACKAGE_LIBRETRO_GENESISPLUSGX
+	bool "libretro-genesisplusgx"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Mega Drive / Master System / Game Gear.
+	  Non-commercial license.
+
+comment "libretro-genesisplusgx needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

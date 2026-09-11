@@ -1,0 +1,64 @@
+################################################################################
+#
+#
+# libretro-melonds
+################################################################################
+# Version: Commits on Apr 13, 2023
+LIBRETRO_MELONDS_VERSION = c6488c88cb4c7583dbcd61609e0eef441572fae8
+LIBRETRO_MELONDS_SITE = $(call github,libretro,melonds,$(LIBRETRO_MELONDS_VERSION))
+LIBRETRO_MELONDS_LICENSE = GPLv2
+LIBRETRO_MELONDS_DEPENDENCIES = libpcap retroarch
+
+LIBRETRO_MELONDS_PLATFORM = $(LIBRETRO_PLATFORM)
+LIBRETRO_MELONDS_EXTRA_ARGS =
+
+ifeq ($(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = rpi4_64
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = rpi5_64
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = odroidc4
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = odroidgoa
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = RK3399
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = RK3588
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = odroidn2
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = orangepizero2
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = orangepizero2
+
+else ifeq ($(BR2_PACKAGE_FLIP_NEVER)$(BR2_PACKAGE_FLIP_NEVER),y)
+LIBRETRO_MELONDS_PLATFORM = sm8250
+
+else ifeq ($(BR2_aarch64),y)
+# unix uses host uname -m → x86_64 GL + x64 JIT. odroidc4 is A55 + GLESv2.
+LIBRETRO_MELONDS_PLATFORM = odroidc4
+
+else ifeq ($(BR2_x86_64),y)
+LIBRETRO_MELONDS_EXTRA_ARGS += ARCH=x86_64
+endif
+
+define LIBRETRO_MELONDS_BUILD_CMDS
+	$(TARGET_CONFIGURE_OPTS) $(MAKE) LDFLAGS="-lrt" CXX="$(TARGET_CXX)" CC="$(TARGET_CC)" -C $(@D)/ \
+	    -f Makefile platform="$(LIBRETRO_MELONDS_PLATFORM)" $(LIBRETRO_MELONDS_EXTRA_ARGS) \
+        GIT_VERSION="-$(shell echo $(LIBRETRO_MELONDS_VERSION) | cut -c 1-7)"
+endef
+
+define LIBRETRO_MELONDS_INSTALL_TARGET_CMDS
+	$(INSTALL) -D $(@D)/melonds_libretro.so \
+		$(TARGET_DIR)/usr/lib/libretro/melonds_libretro.so
+endef
+
+$(eval $(generic-package))

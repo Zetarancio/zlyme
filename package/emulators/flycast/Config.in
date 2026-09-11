@@ -1,0 +1,14 @@
+config BR2_PACKAGE_FLYCAST
+	bool "flycast"
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_LIBZIP
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_LIBCURL
+	select BR2_PACKAGE_ZLIB
+	help
+	  Flycast standalone (Dreamcast) v2.5, GLES.
+
+comment "flycast needs GLES and C++"
+	depends on !BR2_PACKAGE_HAS_LIBGLES || !BR2_INSTALL_LIBSTDCPP

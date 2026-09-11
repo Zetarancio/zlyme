@@ -1,0 +1,18 @@
+config BR2_PACKAGE_RETROARCH
+	bool "retroarch"
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	depends on BR2_PACKAGE_HAS_LIBEGL
+	select BR2_PACKAGE_ALSA_LIB
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_LIBDRM
+	select BR2_PACKAGE_ZLIB
+	help
+	  RetroArch, built for KMSDRM + GLES + ALSA.
+
+	  The menu is RGUI, which is
+	  built in and does not need retroarch-assets.
+
+	  http://www.libretro.com
+
+comment "retroarch needs GLES+EGL (Mesa/Panfrost)"
+	depends on !BR2_PACKAGE_HAS_LIBGLES || !BR2_PACKAGE_HAS_LIBEGL

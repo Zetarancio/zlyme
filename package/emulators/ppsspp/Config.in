@@ -1,0 +1,13 @@
+config BR2_PACKAGE_PPSSPP
+	bool "ppsspp"
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_LIBZIP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_LIBPNG
+	help
+	  PPSSPP standalone 1.19.3. GLES, no Qt.
+
+comment "ppsspp needs GLES and C++"
+	depends on !BR2_PACKAGE_HAS_LIBGLES || !BR2_INSTALL_LIBSTDCPP

@@ -1,0 +1,9 @@
+config BR2_PACKAGE_LIBRETRO_OPERA
+	bool "libretro-opera"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Libretro core
+
+comment "libretro-opera needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

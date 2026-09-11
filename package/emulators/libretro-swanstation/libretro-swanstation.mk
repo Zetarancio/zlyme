@@ -1,0 +1,46 @@
+################################################################################
+#
+#
+# libretro-swanstation
+################################################################################
+# Version: Commits on Jan 25, 2024
+LIBRETRO_SWANSTATION_VERSION = 77aeeea58a45cccae7a8be37645f8f5a27ff101b
+LIBRETRO_SWANSTATION_SITE = $(call github,libretro,swanstation,$(LIBRETRO_SWANSTATION_VERSION))
+LIBRETRO_SWANSTATION_LICENSE = GPLv2
+LIBRETRO_SWANSTATION_DEPENDENCIES = fmt boost ffmpeg retroarch
+LIBRETRO_SWANSTATION_SUPPORTS_IN_SOURCE_BUILD = NO
+
+LIBRETRO_SWANSTATION_CONF_OPTS  = -DCMAKE_BUILD_TYPE=Release
+LIBRETRO_SWANSTATION_CONF_OPTS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+LIBRETRO_SWANSTATION_CONF_OPTS += -DBUILD_SHARED_LIBS=FALSE
+
+LIBRETRO_SWANSTATION_CONF_ENV += LDFLAGS=-lpthread
+
+ifeq ($(BR2_PACKAGE_WAYLAND),y)
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_WAYLAND=ON
+else
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_WAYLAND=OFF
+endif
+
+ifeq ($(BR2_PACKAGE_XORG7),y)
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_X11=ON
+else
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_X11=OFF
+endif
+
+ifeq ($(BR2_PACKAGE_FLIP_NEVER),y)
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_GLX=ON
+endif
+
+ifeq ($(BR2_PACKAGE_HAS_LIBEGL),y)
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_EGL=ON
+else
+  LIBRETRO_SWANSTATION_CONF_OPTS += -DUSE_EGL=OFF
+endif
+
+define LIBRETRO_SWANSTATION_INSTALL_TARGET_CMDS
+    $(INSTALL) -D $(@D)/buildroot-build/swanstation_libretro.so \
+	    $(TARGET_DIR)/usr/lib/libretro/swanstation_libretro.so
+endef
+
+$(eval $(cmake-package))

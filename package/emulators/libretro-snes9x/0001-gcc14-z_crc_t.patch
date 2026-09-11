@@ -1,0 +1,51 @@
+From: Zlyme
+Subject: minizip CRC table type matches zlib on GCC 14
+
+GCC 14 treats incompatible pointer types as an error. zlib's
+get_crc_table() returns const z_crc_t * (32-bit), while this 2009
+minizip stores it as const unsigned long *. On aarch64 those are
+different widths, so a cast to unsigned long * would also be wrong:
+the table would be read as 64-bit entries.
+
+Use z_crc_t throughout, which is what the table actually is.
+
+--- a/unzip/crypt.h
++++ b/unzip/crypt.h
+@@ -32,7 +32,7 @@
+ /***********************************************************************
+  * Return the next byte in the pseudo-random sequence
+  */
+-static int decrypt_byte(unsigned long* pkeys, const unsigned long* pcrc_32_tab)
++static int decrypt_byte(unsigned long* pkeys, const z_crc_t* pcrc_32_tab)
+ {
+     unsigned temp;  /* POTENTIAL BUG:  temp*(temp^1) may overflow in an
+                      * unpredictable manner on 16-bit systems; not a problem
+@@ -45,7 +45,7 @@
+ /***********************************************************************
+  * Update the encryption keys with the next byte of plain text
+  */
+-static int update_keys(unsigned long* pkeys,const unsigned long* pcrc_32_tab,int c)
++static int update_keys(unsigned long* pkeys,const z_crc_t* pcrc_32_tab,int c)
+ {
+     (*(pkeys+0)) = CRC32((*(pkeys+0)), c);
+     (*(pkeys+1)) += (*(pkeys+0)) & 0xff;
+@@ -62,7 +62,7 @@
+  * Initialize the encryption keys and the random header according to
+  * the given password.
+  */
+-static void init_keys(const char* passwd,unsigned long* pkeys,const unsigned long* pcrc_32_tab)
++static void init_keys(const char* passwd,unsigned long* pkeys,const z_crc_t* pcrc_32_tab)
+ {
+     *(pkeys+0) = 305419896L;
+     *(pkeys+1) = 591751049L;
+--- a/unzip/unzip.c
++++ b/unzip/unzip.c
+@@ -150,7 +150,7 @@
+     int encrypted;
+ #    ifndef NOUNCRYPT
+     unsigned long keys[3];     /* keys defining the pseudo-random sequence */
+-    const unsigned long* pcrc_32_tab;
++    const z_crc_t* pcrc_32_tab;
+ #    endif
+ } unz_s;
+ 

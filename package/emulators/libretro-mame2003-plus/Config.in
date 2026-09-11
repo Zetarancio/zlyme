@@ -1,0 +1,9 @@
+config BR2_PACKAGE_LIBRETRO_MAME2003_PLUS
+	bool "libretro-mame2003-plus"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Libretro core
+
+comment "libretro-mame2003-plus needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP
