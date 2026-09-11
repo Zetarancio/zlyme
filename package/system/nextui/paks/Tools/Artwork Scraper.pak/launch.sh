@@ -17,6 +17,15 @@ if uname -m | grep -q '64'; then
     architecture=arm64
 fi
 
+: "${PLATFORM:=my355}"
+: "${DEVICE:=my355}"
+: "${SDCARD_PATH:=/storage}"
+
+# exFAT has no +x. command -v fails until these are chmod'd.
+chmod +x "$PAK_DIR/bin/$architecture/jq" 2>/dev/null || true
+chmod +x "$PAK_DIR/bin/$PLATFORM/minui-list" 2>/dev/null || true
+chmod +x "$PAK_DIR/bin/$PLATFORM/minui-presenter" 2>/dev/null || true
+
 export PATH="$PAK_DIR/bin/$architecture:$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin:$PATH"
 export LD_LIBRARY_PATH="$PAK_DIR/lib/$architecture:$PAK_DIR/lib/$PLATFORM:$PAK_DIR/lib:$LD_LIBRARY_PATH"
 export IMAGE_MATCHER_URL="https://matching-images-is.bittersweet.rip"
@@ -27,11 +36,14 @@ populate_emus_list() {
 
     touch /tmp/emus.list
     while read -r folder; do
+        case "$folder" in
+            .*|_*) continue ;;
+        esac
         if [ -n "$(ls -A "$SDCARD_PATH/Roms/$folder" 2>/dev/null | grep -v '^\.' | grep -v '\.txt$')" ]; then
             basename "$folder" >>/tmp/emus.list
         fi
     done </tmp/emus
-    sed -i '/^[.]/d; /^APPS/d; /^PORTS/d' /tmp/emus.list
+    sed -i '/^[.]/d; /^_/d; /^APPS/d; /^PORTS/d' /tmp/emus.list
 
     # Add Cache Management option at the top
     echo "Cache Management" >/tmp/emus.list.tmp
@@ -443,10 +455,6 @@ main() {
         show_message "minui-presenter not found" 2
         return 1
     fi
-
-    chmod +x "$PAK_DIR/bin/$architecture/jq"
-    chmod +x "$PAK_DIR/bin/$PLATFORM/minui-list"
-    chmod +x "$PAK_DIR/bin/$PLATFORM/minui-presenter"
 
     while true; do
         main_screen

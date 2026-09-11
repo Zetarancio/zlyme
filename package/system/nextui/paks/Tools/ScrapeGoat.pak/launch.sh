@@ -8,6 +8,14 @@ PAK_NAME=${PAK_NAME%.pak}
 
 cd "$PAK_DIR"
 
+# Bundled binary still opens /mnt/SDCARD (stock MinUI). Zlyme is /storage.
+export SDCARD_PATH="${SDCARD_PATH:-/storage}"
+export PLATFORM="${PLATFORM:-my355}"
+mkdir -p /mnt
+if [ ! -e /mnt/SDCARD ]; then
+    ln -sfn "$SDCARD_PATH" /mnt/SDCARD
+fi
+
 # Bundled git binary
 export PATH="$PAK_DIR/resources/bin:$PATH"
 export GIT_EXEC_PATH="$PAK_DIR/resources/bin"
