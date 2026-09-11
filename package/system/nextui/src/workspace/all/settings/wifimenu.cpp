@@ -180,6 +180,8 @@ void Menu::updater()
                                                 });
                         else if (hasCredentials)
                             options = new MenuList(MenuItemType::List, "Options", { new ConnectKnownItem(r, selectionDirty), new ForgetItem(r, selectionDirty) });
+                        else if (r.security == SECURITY_NONE)
+                            options = new MenuList(MenuItemType::List, "Options", { new ConnectKnownItem(r, selectionDirty) });
                         else
                             options = new MenuList(MenuItemType::List, "Options", { new ConnectNewItem(r, selectionDirty) });
 

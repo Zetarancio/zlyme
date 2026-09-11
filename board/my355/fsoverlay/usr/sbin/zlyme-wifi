@@ -145,12 +145,21 @@ do_connect() {
 		epsk=$(escape_wpa "$psk")
 		cli set_network "$id" ssid "\"$essid\"" >/dev/null
 		cli set_network "$id" psk "\"$epsk\"" >/dev/null
+		cli set_network "$id" key_mgmt WPA-PSK >/dev/null
+	elif [ -n "$id" ] && psk_ready "$id"; then
+		# Known WPA profile.
+		:
 	else
-		# Known network, same as ROCKNIX reconnect with saved profile.
-		if [ -z "$id" ] || ! psk_ready "$id"; then
-			echo "zlyme-wifi: no saved passphrase for that SSID" >&2
-			return 1
+		# Open network (no PSK).
+		if [ -z "$id" ]; then
+			id=$(cli add_network | tail -n 1)
+			case "$id" in
+				''|FAIL*) echo "zlyme-wifi: add_network failed" >&2; return 1 ;;
+			esac
 		fi
+		essid=$(escape_wpa "$ssid")
+		cli set_network "$id" ssid "\"$essid\"" >/dev/null
+		cli set_network "$id" key_mgmt NONE >/dev/null
 	fi
 
 	cli select_network "$id" >/dev/null

@@ -166,15 +166,18 @@ fi
 # panel on until PWR resume is fixed. Defaults are 60/30 if the
 # file is missing, so always write the keys before nextui.elf.
 cfg=$SHARED_USERDATA_PATH/minuisettings.txt
-mkdir -p "$SHARED_USERDATA_PATH"
-if [ -f "$cfg" ]; then
-	sed -i 's/^screentimeout=.*/screentimeout=0/' "$cfg"
-	sed -i 's/^suspendTimeout=.*/suspendTimeout=0/' "$cfg"
-	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=0' >> "$cfg"
-	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=0' >> "$cfg"
-else
-	printf '%s\n' 'screentimeout=0' 'suspendTimeout=0' > "$cfg"
-fi
+keep_awake() {
+	mkdir -p "$SHARED_USERDATA_PATH"
+	if [ -f "$cfg" ]; then
+		sed -i 's/^screentimeout=.*/screentimeout=0/' "$cfg"
+		sed -i 's/^suspendTimeout=.*/suspendTimeout=0/' "$cfg"
+		grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=0' >> "$cfg"
+		grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=0' >> "$cfg"
+	else
+		printf '%s\n' 'screentimeout=0' 'suspendTimeout=0' > "$cfg"
+	fi
+}
+keep_awake
 rm -f /tmp/poweroff /tmp/reboot
 
 EXEC_PATH=/tmp/nextui_exec
@@ -183,6 +186,7 @@ touch "$EXEC_PATH"
 cd /storage
 
 while [ -f "$EXEC_PATH" ]; do
+	keep_awake
 	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh
 	# and has crashed NextUI after Settings. Stay on the card root.
 	# getFile() used to keep a trailing newline; loadLast() then walked
