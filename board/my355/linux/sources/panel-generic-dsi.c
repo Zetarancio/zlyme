@@ -9,6 +9,7 @@
  * Copyright (C) Purism SPC 2019
  */
 
+#include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hex.h>
@@ -530,7 +531,8 @@ static int generic_panel_get_modes(struct drm_panel *panel,
                 drm_mode_vrefresh(mode));
             return -ENOMEM;
         }
-        drm_mode_set_name(mode);
+        snprintf(mode->name, DRM_DISPLAY_MODE_LEN, "%dx%d@%u",
+                 mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode));
 
         mode->type = DRM_MODE_TYPE_DRIVER;
         if (genmode->is_default) { mode->type |= DRM_MODE_TYPE_PREFERRED; };

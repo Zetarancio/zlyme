@@ -1,4 +1,4 @@
-# Kernel config deltas on top of linux.config.
+# DSI mode names include @Hz so Settings can pick 60/50/40 from sysfs.
 
 # LibreELEC placeholders. We do not link an initramfs into the image.
 CONFIG_INITRAMFS_SOURCE=""

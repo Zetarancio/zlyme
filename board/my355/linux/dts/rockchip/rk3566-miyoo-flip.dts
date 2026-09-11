@@ -54,7 +54,7 @@
 #define RETRO_DEVICE_ID_JOYPAD_R3      15
 */
 
-	/* Gamepad: rocknix-singleadc-joypad. Analog stick via UART1. */
+	/* Gamepad: rocknix-singleadc-joypad. Analog stick via UART1.
 	 * rocknix,use-miyoo-serial-joypad: analog stick via UART1 (Miyoo serial protocol), not ADC. */
 	joypad: rocknix-singleadc-joypad {
 		compatible = "rocknix-singleadc-joypad";

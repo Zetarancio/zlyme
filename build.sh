@@ -104,6 +104,8 @@ build_container() {
     docker build -t "${IMAGE}" - < "${REPO}/Dockerfile"
 }
 
+# Host gcc is still --prefix=/flip/output/host, so the same output tree is
+# also mounted at /flip/output. Do not byte-replace those paths in ELFs.
 in_container() {
     docker run --rm -i ${TTY_FLAG} \
         --user "$(id -u):$(id -g)" \
@@ -113,6 +115,7 @@ in_container() {
         -v "${REPO}:/zlyme/src:ro" \
         -v "${ZLYME_BUILDROOT}:/zlyme/buildroot" \
         -v "${ZLYME_OUTPUT}:/zlyme/output" \
+        -v "${ZLYME_OUTPUT}:/flip/output" \
         -v "${ZLYME_DL}:/zlyme/dl" \
         -v "${ZLYME_CCACHE}:/zlyme/ccache" \
         -w /zlyme/buildroot \

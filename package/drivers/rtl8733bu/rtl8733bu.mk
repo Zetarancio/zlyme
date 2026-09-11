@@ -15,7 +15,8 @@ RTL8733BU_LICENSE = GPL-2.0
 # Static Kbuild: CONFIG_RTL8733BU must be set or no module is produced.
 RTL8733BU_MODULE_MAKE_OPTS = CONFIG_RTL8733BU=m
 
-# Patches live next to this .mk. Assert 005 landed (drops CONFIG_CONCURRENT_MODE).define RTL8733BU_ASSERT_PATCHED
+# Patches live next to this .mk. Assert 005 landed (drops CONFIG_CONCURRENT_MODE).
+define RTL8733BU_ASSERT_PATCHED
 	$(Q)if grep -q 'DCONFIG_CONCURRENT_MODE' $(@D)/Makefile; then \
 		echo "rtl8733bu: patches were not applied" >&2; \
 		exit 1; \
