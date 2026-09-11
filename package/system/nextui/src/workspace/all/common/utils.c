@@ -34,7 +34,7 @@ int containsString(char* haystack, char* needle) {
 	return strcasestr(haystack, needle) != NULL;
 }
 int hide(char* file_name) {
-	return file_name[0]=='.' || suffixMatch(".disabled", file_name) || exactMatch("map.txt", file_name);
+	return file_name[0]=='.' || file_name[0]=='_' || suffixMatch(".disabled", file_name) || exactMatch("map.txt", file_name);
 }
 char *splitString(char *str, const char *delim)
 {

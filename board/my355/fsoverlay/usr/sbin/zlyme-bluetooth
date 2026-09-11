@@ -1,0 +1,80 @@
+#!/bin/sh
+#
+# Same verbs EmulationStation uses (ROCKNIX rocknix-bluetooth / Knulli
+# knulli-bluetooth). Pairings live on the card; see S35btusb.
+
+. /etc/zlyme.conf 2>/dev/null || true
+
+CACHE="${ZLYME_CFG:-/storage/.config}/bluetooth"
+BACKUP="${ZLYME_STORAGE:-/storage}/zlyme-bluetooth.tar"
+
+usage() {
+	echo "usage: $0 list|enable|disable|connect|disconnect|remove|save|restore" >&2
+	exit 1
+}
+
+do_enable() {
+	zlyme-ctl set bluetooth on >/dev/null 2>&1 || true
+	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
+	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
+	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
+}
+
+do_disable() {
+	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
+	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop
+	zlyme-ctl set bluetooth off >/dev/null 2>&1 || true
+}
+
+do_list() {
+	find "$CACHE" /var/lib/bluetooth /run/bluetooth -type f -name info 2>/dev/null |
+	while read -r FILE; do
+		grep -qE '^Trusted=true$' "$FILE" || continue
+		DEVNAME=$(grep -E '^Name=' "$FILE" | sed -e 's/^Name=//')
+		DEVADDR=$(basename "$(dirname "$FILE")")
+		if bluetoothctl -- info "$DEVADDR" 2>/dev/null | grep -q "Connected: yes"; then
+			CONNECTED=yes
+		else
+			CONNECTED=no
+		fi
+		echo "<device id=\"${DEVADDR}\" name=\"${DEVNAME}\" connected=\"${CONNECTED}\" />"
+	done
+}
+
+do_connect() {
+	bluetoothctl -- connect "$1"
+}
+
+do_disconnect() {
+	bluetoothctl -- disconnect "$1"
+}
+
+do_remove() {
+	(echo "untrust $1"; echo "remove $1") | bluetoothctl >/dev/null 2>&1
+}
+
+do_save() {
+	[ -d "$CACHE" ] || return 0
+	tar cf "$BACKUP" -C "$(dirname "$CACHE")" "$(basename "$CACHE")"
+}
+
+do_restore() {
+	[ -f "$BACKUP" ] || return 1
+	mkdir -p "$(dirname "$CACHE")"
+	tar xf "$BACKUP" -C "$(dirname "$CACHE")"
+}
+
+[ $# -ge 1 ] || usage
+ACTION=$1
+shift
+case "$ACTION" in
+	enable) do_enable ;;
+	disable) do_disable ;;
+	list) do_list ;;
+	connect) [ $# -ge 1 ] || usage; do_connect "$1" ;;
+	disconnect) [ $# -ge 1 ] || usage; do_disconnect "$1" ;;
+	remove) [ $# -ge 1 ] || usage; do_remove "$1" ;;
+	save) do_save ;;
+	restore) do_restore ;;
+	*) usage ;;
+esac

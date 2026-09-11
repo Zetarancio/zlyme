@@ -1583,10 +1583,7 @@ void CFG_sync(void)
     char settingsPath[MAX_PATH];
     const char *shared_userdata = getenv("SHARED_USERDATA_PATH");
     if (!shared_userdata || !shared_userdata[0])
-    {
-        printf("[CFG] SHARED_USERDATA_PATH is not set!\n");
-        return;
-    }
+        shared_userdata = SHARED_USERDATA_PATH;
 
     snprintf(settingsPath, sizeof(settingsPath), "%s/minuisettings.txt", shared_userdata);
     FILE *file = fopen(settingsPath, "w");
@@ -1667,6 +1664,8 @@ void CFG_sync(void)
     fprintf(file, "gameSwitcherCurtain=%i\n", settings.gameSwitcherCurtain);
     fprintf(file, "inputPromptStyle=%i\n", settings.inputPromptStyle);
 
+    fflush(file);
+    fsync(fileno(file));
     fclose(file);
 }
 

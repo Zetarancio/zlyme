@@ -14,6 +14,7 @@ extern "C"
 #include <cstdlib>
 #include <dirent.h>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <regex>
@@ -569,7 +570,8 @@ int main(int argc, char *argv[])
                 [defaultDisplayCal]() { SetDisplayCalBlueGain(defaultDisplayCal.blue_gain); }});
         }
         displayItems.push_back(
-            new MenuItem{ListItemType::Button, "HDMI mode", "Cycle an attached HDMI connector. The DSI panel is 640x480@60.", Zlyme_cycleHdmi});
+            new MenuItem{ListItemType::Button, "HDMI mode", "Cycle an attached HDMI connector.", Zlyme_cycleHdmi});
+        Zlyme_appendDisplayItems(displayItems);
         displayItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
 
@@ -615,7 +617,7 @@ int main(int argc, char *argv[])
             { TIME_setNetworkTimeSync(std::any_cast<bool>(value)); },
             []() { TIME_setNetworkTimeSync(false);}}, // default from stock
             new MenuItem{ListItemType::Generic, "Time zone", "Your time zone", tz_values, tz_labels, []() -> std::any
-            { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value) {
+            { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value)
             { TIME_setCurrentTimezone(std::any_cast<std::string>(value).c_str()); },
             []() { TIME_setCurrentTimezone("Asia/Shanghai");}}, // default from Stock
             new MenuItem{ListItemType::Generic, "Save format", "The save format to use.\nMinUI: Game.gba.sav, Retroarch: Game.srm, Generic: Game.sav",
@@ -664,6 +666,8 @@ int main(int argc, char *argv[])
             );
         }
 
+        Zlyme_appendSystemItems(systemItems);
+        Zlyme_appendBackupItem(systemItems);
         systemItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
 
@@ -1043,24 +1047,38 @@ int main(int argc, char *argv[])
 
         auto aboutMenu = new MenuList(MenuItemType::Fixed, "About",
         {
-            new StaticMenuItem{ListItemType::Generic, "NextUI version", "",
+            new StaticMenuItem{ListItemType::Generic, "NextUI", "Frontend pin from the image.",
             []() -> std::any {
                 std::ifstream t(ROOT_SYSTEM_PATH "/version.txt");
-                std::stringstream buffer;
-                buffer << t.rdbuf();
-                return buffer.str();
+                std::string s((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+                while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+                    s.pop_back();
+                if (s.empty())
+                    s = "unknown";
+                return s;
             }},
-            new StaticMenuItem{ListItemType::Generic, "Platform", "",
+            new StaticMenuItem{ListItemType::Generic, "Hardware", "Board name from the platform layer.",
             []() -> std::any {
                 return std::string(PLAT_getModel()); }
             },
-            new StaticMenuItem{ListItemType::Generic, "Stock OS version", "",
+            new StaticMenuItem{ListItemType::Generic, "OS", "Pretty name from /etc/os-release.",
             []() -> std::any {
-                char osver[128];
-                PLAT_getOsVersionInfo(osver, 128);
-                return std::string(osver); }
-            },
-            new StaticMenuItem{ListItemType::Generic, "Busybox version", "",
+                std::ifstream in("/etc/os-release");
+                std::string line, pretty = "Zlyme";
+                while (std::getline(in, line)) {
+                    if (line.rfind("PRETTY_NAME=", 0) == 0) {
+                        pretty = line.substr(12);
+                        if (!pretty.empty() && pretty.front() == '"') {
+                            pretty.erase(0, 1);
+                            if (!pretty.empty() && pretty.back() == '"')
+                                pretty.pop_back();
+                        }
+                        break;
+                    }
+                }
+                return pretty;
+            }},
+            new StaticMenuItem{ListItemType::Generic, "BusyBox", "Init and core utilities.",
             [&]() -> std::any { return bbver; }
             },
         });
@@ -1069,9 +1087,8 @@ int main(int argc, char *argv[])
 
         std::vector<AbstractMenuItem*> mainItems = {
             new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu},
-            new MenuItem{ListItemType::Generic, "Display", "", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
-            new MenuItem{ListItemType::Generic, "System", "", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
-            new MenuItem{ListItemType::Generic, "Zlyme", "SSH, Samba, Syncthing, GPU, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, Zlyme_makeMenu()},
+            new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
+            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
         };
 
         if(deviceInfo.hasMuteToggle())
@@ -1084,12 +1101,12 @@ int main(int argc, char *argv[])
         mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "In-game settings for MinArch", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
 
         if(deviceInfo.hasWifi())
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
 
         if(deviceInfo.hasBluetooth())
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "Pair and connect HID", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
 
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "Build and hardware info", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});
 
         ctx.menu = new MenuList(MenuItemType::List, "Main", mainItems);
 

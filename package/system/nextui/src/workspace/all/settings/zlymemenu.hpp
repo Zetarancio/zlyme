@@ -2,7 +2,9 @@
 
 #include "menu.hpp"
 
-// Zlyme pages compiled into settings.elf so SSH/Samba/Syncthing/GPU/Backup
-// (and HDMI under Display) are not Tools paks.
+// Compiled into settings.elf so these are not Tools paks.
 InputReactionHint Zlyme_cycleHdmi(AbstractMenuItem &item);
-MenuList *Zlyme_makeMenu();
+void Zlyme_appendDisplayItems(std::vector<AbstractMenuItem *> &items);
+void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items);
+void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items);
+void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items);

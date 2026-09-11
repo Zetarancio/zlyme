@@ -72,6 +72,7 @@ public:
     void drawCustom(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &dstTitle) override;
 
     InputReactionHint handleInput(int &dirty, int &quit) override;
+    void onShow() override;
 
     // Set the initial text to display in the keyboard input field
     void setInitialText(const std::string &text) {

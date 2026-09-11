@@ -19,13 +19,55 @@
 #include "api.h"
 #include "utils.h"
 
+#include <sys/wait.h>
+#include <unistd.h>
+
 bool PLAT_hasWifi() { return true; }
+
+static int wifi_run_cmd(const char *cmd, char *output, size_t output_len);
+static int wifi_find_network_id(const char *ssid);
+static bool wifi_network_ready(int network_id, WifiSecurityType sec);
+static bool wifi_cmd_ok(const char *output);
 
 #define WIFI_INTERFACE "wlan0"
 #define WPA_CLI_CMD "wpa_cli -p " WIFI_SOCK_DIR " -i " WIFI_INTERFACE
 
 #define wifilog(fmt, ...) \
     LOG_note(PLAT_wifiDiagnosticsEnabled() ? LOG_INFO : LOG_DEBUG, fmt, ##__VA_ARGS__)
+
+// Same verbs as ROCKNIX wifictl / Knulli knulli-wifi. fork+exec so an SSID
+// with spaces or a passphrase with $ is not eaten by a shell.
+static int zlyme_wifi_argv(char *const argv[])
+{
+    const char *bins[] = {
+        "/usr/sbin/zlyme-wifi",
+        SYSTEM_PATH "/bin/zlyme-wifi",
+        NULL
+    };
+    const char *bin = NULL;
+    for (int i = 0; bins[i]; i++) {
+        if (access(bins[i], X_OK) == 0) {
+            bin = bins[i];
+            break;
+        }
+    }
+    if (!bin)
+        return -127;
+
+    pid_t pid = fork();
+    if (pid < 0)
+        return -1;
+    if (pid == 0) {
+        execv(bin, argv);
+        _exit(127);
+    }
+    int st = 0;
+    if (waitpid(pid, &st, 0) < 0)
+        return -1;
+    if (WIFEXITED(st))
+        return WEXITSTATUS(st);
+    return -1;
+}
 
 // Helper function to run a command and capture output
 static int wifi_run_cmd(const char *cmd, char *output, size_t output_len) {
@@ -77,40 +119,12 @@ static bool wifi_get_ip(char *ip, size_t len) {
     return false;
 }
 
-// Helper to escape a string for wpa_cli (double quotes/backslashes) and shell (single quotes)
-static void wifi_escape(char *dest, const char *src, size_t dest_len) {
-    size_t j = 0;
-    for (size_t i = 0; src[i] != '\0' && j < dest_len - 1; i++) {
-        // Double quotes and backslashes need to be escaped for wpa_cli (inside its own quotes)
-        if (src[i] == '"' || src[i] == '\\') {
-            if (j < dest_len - 2) {
-                dest[j++] = '\\';
-            }
-        } 
-        // Single quotes need to be escaped for the shell (outside wpa_cli's quotes but inside shell's)
-        else if (src[i] == '\'') {
-            if (j < dest_len - 5) {
-                dest[j++] = '\''; // close single quote
-                dest[j++] = '\\'; // escape
-                dest[j++] = '\''; // the actual quote
-                dest[j++] = '\''; // open single quote again
-            }
-            continue;
-        }
-        
-        if (j < dest_len - 1) {
-            dest[j++] = src[i];
-        }
-    }
-    dest[j] = '\0';
-}
-
 void PLAT_wifiInit() {
-    // We should never have to do this manually, as wifi_init.sh should be
-    // started/stopped by the platform init scripts.
-	//PLAT_wifiEnable(CFG_getWifi());
-
     PLAT_wifiDiagnosticsEnable(CFG_getWifiDiagnostics());
+    // Boot starts wpa from zlyme-ctl (default on). Settings used to
+    // default wifi=off, so the toggle showed Off and scan never ran.
+    if (wifi_supplicant_running())
+        CFG_setWifi(true);
     wifilog("Wifi init\n");
 }
 
@@ -121,15 +135,17 @@ bool PLAT_wifiEnabled() {
 void PLAT_wifiEnable(bool on) {
 	if (on) {
 		wifilog("turning wifi on...\n");
-		system(SYSTEM_PATH "/etc/wifi/wifi_init.sh start > /dev/null 2>&1");
-		// Keep config in sync
+		char *argv[] = { "zlyme-wifi", "enable", NULL };
+		if (zlyme_wifi_argv(argv) == -127)
+			system(SYSTEM_PATH "/etc/wifi/wifi_init.sh start > /dev/null 2>&1");
 		CFG_setWifi(on);
 	}
 	else {
 		wifilog("turning wifi off...\n");
-		// Keep config in sync
 		CFG_setWifi(on);
-		system(SYSTEM_PATH "/etc/wifi/wifi_init.sh stop > /dev/null 2>&1");
+		char *argv[] = { "zlyme-wifi", "disable", NULL };
+		if (zlyme_wifi_argv(argv) == -127)
+			system(SYSTEM_PATH "/etc/wifi/wifi_init.sh stop > /dev/null 2>&1");
 	}
 }
 
@@ -196,7 +212,7 @@ int PLAT_wifiScan(struct WIFI_network *networks, int max)
         network->rssi = -1;
         network->security = SECURITY_NONE;
 
-        int parsed = sscanf(line, "%17[0-9a-fA-F:]\t%d\t%d\t%127[^\t]\t%127[^\n]",
+        int parsed = sscanf(line, "%17[0-9a-fA-F:]\t%d\t%d\t%127[^\t]\t%63[^\n]",
                             network->bssid, &network->freq, &network->rssi,
                             features, network->ssid);
 
@@ -345,7 +361,6 @@ int PLAT_wifiConnection(struct WIFI_connection *connection_info)
 
 bool PLAT_wifiHasCredentials(char *ssid, WifiSecurityType sec)
 {
-    // Validate input SSID (reject tabs/newlines)
     for (int i = 0; ssid[i]; ++i) {
         if (ssid[i] == '\t' || ssid[i] == '\n') {
             LOG_warn("PLAT_wifiHasCredentials: SSID contains invalid control characters.\n");
@@ -358,65 +373,10 @@ bool PLAT_wifiHasCredentials(char *ssid, WifiSecurityType sec)
         return false;
     }
 
-    // Get list of configured networks from wpa_cli
-    char list_results[4096];
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "%s list_networks 2>/dev/null", WPA_CLI_CMD);
-    if (wifi_run_cmd(cmd, list_results, sizeof(list_results)) != 0) {
-        wifilog("PLAT_wifiHasCredentials: failed to get network list.\n");
+    int id = wifi_find_network_id(ssid);
+    if (id < 0)
         return false;
-    }
-
-    wifilog("LIST:\n%s\n", list_results);
-
-    // wpa_cli list_networks format:
-    // network id / ssid / bssid / flags
-    // 0	MyNetwork	any	[CURRENT]
-
-    const char *current = list_results;
-
-    // Skip header line
-    const char *next = strchr(current, '\n');
-    if (!next) {
-        LOG_warn("PLAT_wifiHasCredentials: network list has no data lines.\n");
-        return false;
-    }
-    current = next + 1;
-
-    char line[256];
-
-    while (current && *current) {
-        next = strchr(current, '\n');
-        size_t len = next ? (size_t)(next - current) : strlen(current);
-        if (len >= sizeof(line)) {
-            LOG_warn("PLAT_wifiHasCredentials: line too long, truncating.\n");
-            len = sizeof(line) - 1;
-        }
-
-        strncpy(line, current, len);
-        line[len] = '\0';
-
-        wifilog("Parsing line: '%s'\n", line);
-
-        // Tokenize line by tabs
-        char *saveptr = NULL;
-        char *token_id    = strtok_r(line, "\t", &saveptr);
-        char *token_ssid  = strtok_r(NULL, "\t", &saveptr);
-
-        if (!(token_id && token_ssid)) {
-            LOG_warn("PLAT_wifiHasCredentials: Malformed line skipped: '%s'\n", line);
-            current = next ? next + 1 : NULL;
-            continue;
-        }
-
-        if (strcmp(token_ssid, ssid) == 0) {
-            return true;
-        }
-
-        current = next ? next + 1 : NULL;
-    }
-
-    return false;
+    return wifi_network_ready(id, sec);
 }
 
 // Helper to find network ID by SSID
@@ -460,12 +420,53 @@ static int wifi_find_network_id(const char *ssid) {
     return -1;
 }
 
+static bool wifi_cmd_ok(const char *output)
+{
+    if (!output || output[0] == '\0')
+        return false;
+    if (!strncmp(output, "FAIL", 4))
+        return false;
+    return true;
+}
+
+// True if this network id can associate (PSK set, or open).
+static bool wifi_network_ready(int network_id, WifiSecurityType sec)
+{
+    char cmd[192];
+    char output[256];
+
+    if (network_id < 0)
+        return false;
+
+    snprintf(cmd, sizeof(cmd), "%s get_network %d psk 2>/dev/null", WPA_CLI_CMD, network_id);
+    if (wifi_run_cmd(cmd, output, sizeof(output)) == 0) {
+        trimTrailingNewlines(output);
+        if (wifi_cmd_ok(output))
+            return true;
+    }
+
+    if (sec == SECURITY_NONE) {
+        snprintf(cmd, sizeof(cmd), "%s get_network %d key_mgmt 2>/dev/null", WPA_CLI_CMD, network_id);
+        if (wifi_run_cmd(cmd, output, sizeof(output)) == 0) {
+            if (strstr(output, "NONE"))
+                return true;
+        }
+        return true;
+    }
+    return false;
+}
+
 void PLAT_wifiForget(char *ssid, WifiSecurityType sec)
 {
+	(void)sec;
 	if (!CFG_getWifi()) {
 		LOG_error("PLAT_wifiForget: wifi is currently disabled.\n");
 		return;
 	}
+
+	char *argv[] = { "zlyme-wifi", "forget", ssid, NULL };
+	if (zlyme_wifi_argv(argv) != -127)
+		return;
 
 	int network_id = wifi_find_network_id(ssid);
 	if (network_id >= 0) {
@@ -492,97 +493,36 @@ void PLAT_wifiConnectPass(const char *ssid, WifiSecurityType sec, const char* pa
 	}
 
 	if (ssid == NULL) {
-		// Disconnect request
-		wifilog("PLAT_wifiConnectPass: Disconnecting from WiFi...\n");
+		char *argv[] = { "zlyme-wifi", "disconnect", NULL };
+		if (zlyme_wifi_argv(argv) != -127)
+			return;
 		system(WPA_CLI_CMD " disconnect 2>/dev/null");
-		wifilog("PLAT_wifiConnectPass: disconnected\n");
 		return;
 	}
 
-	// Validation
 	for (int i = 0; ssid[i]; i++) {
 		if (ssid[i] == '\t' || ssid[i] == '\n' || ssid[i] == '\r') {
 			LOG_error("PLAT_wifiConnectPass: SSID contains invalid characters\n");
 			return;
 		}
 	}
-	if (pass) {
-		for (int i = 0; pass[i]; i++) {
-			if (pass[i] == '\n' || pass[i] == '\r') {
-				LOG_error("PLAT_wifiConnectPass: Password contains invalid characters\n");
-				return;
-			}
-		}
+
+	wifilog("PLAT_wifiConnectPass: connecting to '%s' via zlyme-wifi\n", ssid);
+	char *argv_pass[] = { "zlyme-wifi", "connect", (char *)ssid, (char *)(pass ? pass : ""), NULL };
+	char *argv_known[] = { "zlyme-wifi", "connect", (char *)ssid, NULL };
+	int rc;
+	if (pass && pass[0])
+		rc = zlyme_wifi_argv(argv_pass);
+	else
+		rc = zlyme_wifi_argv(argv_known);
+	if (rc != -127) {
+		if (rc != 0)
+			LOG_error("PLAT_wifiConnectPass: zlyme-wifi connect failed (%d)\n", rc);
+		return;
 	}
 
-	wifilog("PLAT_wifiConnectPass: Attempting to connect to SSID '%s' (security=%d)\n", ssid, sec);
-
-	char escaped_ssid[SSID_MAX * 5];
-	char escaped_pass[SSID_MAX * 5];
-	wifi_escape(escaped_ssid, ssid, sizeof(escaped_ssid));
-	if (pass) wifi_escape(escaped_pass, pass, sizeof(escaped_pass));
-
-	// Check if network already exists
-	int network_id = wifi_find_network_id(ssid);
-	char cmd[1024];
-	char output[128];
-	
-	if (network_id < 0) {
-		// Add new network
-		snprintf(cmd, sizeof(cmd), "%s add_network 2>/dev/null", WPA_CLI_CMD);
-		if (wifi_run_cmd(cmd, output, sizeof(output)) != 0) {
-			LOG_error("PLAT_wifiConnectPass: failed to add network\n");
-			return;
-		}
-		network_id = atoi(output);
-		wifilog("Added new network with id %d\n", network_id);
-		
-		// Set SSID (needs quotes for wpa_cli)
-		wifilog("Setting network SSID...\n");
-		snprintf(cmd, sizeof(cmd), "%s set_network %d ssid '\"%s\"' 2>/dev/null", WPA_CLI_CMD, network_id, escaped_ssid);
-		system(cmd);
-		
-		// Set password or open network
-		if (pass && pass[0] != '\0') {
-			wifilog("Setting network password...\n");
-			snprintf(cmd, sizeof(cmd), "%s set_network %d psk '\"%s\"' 2>/dev/null", WPA_CLI_CMD, network_id, escaped_pass);
-			system(cmd);
-		} else if (sec == SECURITY_NONE) {
-			wifilog("Configuring as open network...\n");
-			snprintf(cmd, sizeof(cmd), "%s set_network %d key_mgmt NONE 2>/dev/null", WPA_CLI_CMD, network_id);
-			system(cmd);
-		}
-	} else if (pass && pass[0] != '\0') {
-		// Update password for existing network
-		wifilog("Updating password for existing network...\n");
-		snprintf(cmd, sizeof(cmd), "%s set_network %d psk '\"%s\"' 2>/dev/null", WPA_CLI_CMD, network_id, escaped_pass);
-		system(cmd);
-	} else {
-		wifilog("Using existing network configuration...\n");
-	}
-	
-	// Enable network
-	wifilog("Enabling network %d...\n", network_id);
-	snprintf(cmd, sizeof(cmd), "%s enable_network %d 2>/dev/null", WPA_CLI_CMD, network_id);
-	system(cmd);
-	snprintf(cmd, sizeof(cmd), "%s reassociate 2>/dev/null", WPA_CLI_CMD);
-	system(cmd);
-	
-	// Save configuration
-	wifilog("Saving network configuration...\n");
-	system(WPA_CLI_CMD " save_config 2>/dev/null");
-	
-	// Wait for connection
-	wifilog("Waiting for connection (up to 5 seconds)...\n");
-	for (int i = 0; i < 10; i++) {
-		usleep(500000);
-		if (PLAT_wifiConnected()) {
-			wifilog("PLAT_wifiConnectPass: connected successfully after %d attempts\n", i + 1);
-			return;
-		}
-	}
-	
-	LOG_error("PLAT_wifiConnectPass: connection timeout after 5 seconds\n");
+	(void)sec;
+	LOG_error("PLAT_wifiConnectPass: zlyme-wifi missing, not saving a half network\n");
 }
 
 void PLAT_wifiDisconnect()

@@ -170,7 +170,8 @@ public:
         : type(type), name(name), desc(desc), on_get(on_get), on_set(on_set), 
         on_reset(on_reset), on_confirm(on_confirm), submenu(submenu) {}
     ~AbstractMenuItem() {
-         // delete submenu;
+         delete submenu;
+         submenu = nullptr;
     }
 
     virtual const std::any getValue() const = 0;
@@ -189,7 +190,7 @@ public:
     virtual const std::vector<std::string> getLabels() const { return {getLabel()}; };
 
     bool isDeferred() const { return deferred; }
-    void defer(bool on) { deferred = on; }
+    void defer(bool on);
     MenuList *getSubMenu() { return submenu; }
 };
 
@@ -353,6 +354,8 @@ public:
     void drawMain(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &dstTitle);
     void drawMainItem(SDL_Surface *surface, const SDL_Rect &dst, const AbstractMenuItem &item, bool selected);
     virtual void drawCustom(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &dstTitle) {};
+    // Called when a parent item defers into this list (keyboard re-entry, etc).
+    virtual void onShow() {}
 };
 
 // Moved here to ensure MenuList is fully defined

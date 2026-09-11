@@ -24,6 +24,13 @@ static void drawOverlayLocal(SDL_Surface* screen);
 
 ///////////////////////////////////////////////////////////
 
+void AbstractMenuItem::defer(bool on)
+{
+    deferred = on;
+    if (on && submenu)
+        submenu->onShow();
+}
+
 MenuItem::MenuItem(ListItemType type, const std::string &name, const std::string &desc,
                    const std::vector<std::any> &values, const std::vector<std::string> &labels,
                    ValueGetCallback on_get, ValueSetCallback on_set, ValueResetCallback on_reset, 
@@ -199,6 +206,9 @@ InputReactionHint MenuItem::handleInput(int &dirty)
         if (subMenuJustClosed) {
             defer(false);
             dirty = 1;
+            // Cancel returns NoOp (stay on Options). Confirm returns Exit
+            // so the SSID options list closes back to the scan.
+            return hint == Exit ? Exit : NoOp;
         }
         return hint;
     }

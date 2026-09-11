@@ -105,6 +105,29 @@ InputReactionHint Zlyme_cycleHdmi(AbstractMenuItem &item)
 	return NoOp;
 }
 
+void Zlyme_appendDisplayItems(std::vector<AbstractMenuItem *> &items)
+{
+	const std::vector<std::any> hz_v = {std::string("60"), std::string("50"), std::string("40")};
+	const std::vector<std::string> hz_l = {"60 Hz", "50 Hz (PAL)", "40 Hz"};
+	items.push_back(new MenuItem{ListItemType::Generic, "Panel refresh",
+		"DSI modes from the ROCKNIX panel timings (60 / 50 / 40).",
+		hz_v, hz_l,
+		[]() -> std::any {
+			std::string r = ctl_get("refresh");
+			if (r != "50" && r != "40")
+				r = "60";
+			return r;
+		},
+		[](const std::any &v) {
+			ctl_set("refresh", std::any_cast<std::string>(v).c_str());
+			system("zlyme-ctl apply-refresh");
+		},
+		[]() {
+			ctl_set("refresh", "60");
+			system("zlyme-ctl apply-refresh");
+		}});
+}
+
 static InputReactionHint Zlyme_backup(AbstractMenuItem &item)
 {
 	(void)item;
@@ -114,38 +137,69 @@ static InputReactionHint Zlyme_backup(AbstractMenuItem &item)
 	return NoOp;
 }
 
-MenuList *Zlyme_makeMenu()
+void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items)
 {
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
-	const std::vector<std::any> gpu_v = {std::string("panfrost"), std::string("libmali")};
-	const std::vector<std::string> gpu_l = {"Panfrost", "mali_kbase (next boot)"};
+	items.push_back(new MenuItem{ListItemType::Generic, "SSH",
+		"Dropbear. Applies immediately. Empty-password login is on.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("ssh"); },
+		[](const std::any &v) { service_apply("ssh", "/etc/init.d/S50dropbear", std::any_cast<bool>(v)); },
+		[]() { service_apply("ssh", "/etc/init.d/S50dropbear", true); }});
+	items.push_back(new MenuItem{ListItemType::Generic, "Samba",
+		"File share of /storage. Applies immediately.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("samba"); },
+		[](const std::any &v) { service_apply("samba", "/etc/init.d/S70samba", std::any_cast<bool>(v)); },
+		[]() { service_apply("samba", "/etc/init.d/S70samba", false); }});
+	items.push_back(new MenuItem{ListItemType::Generic, "Syncthing",
+		"Web UI on :8384. Applies immediately.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("syncthing"); },
+		[](const std::any &v) { service_apply("syncthing", "/etc/init.d/S75syncthing", std::any_cast<bool>(v)); },
+		[]() { service_apply("syncthing", "/etc/init.d/S75syncthing", false); }});
+}
 
-	return new MenuList(MenuItemType::Fixed, "Zlyme", {
-		new MenuItem{ListItemType::Generic, "SSH", "Dropbear. Empty-password login is on.",
-			on_off_v, on_off,
-			[]() -> std::any { return ctl_on("ssh"); },
-			[](const std::any &v) { service_apply("ssh", "/etc/init.d/S50dropbear", std::any_cast<bool>(v)); },
-			[]() { service_apply("ssh", "/etc/init.d/S50dropbear", true); }},
-		new MenuItem{ListItemType::Generic, "Samba", "File share of /storage.",
-			on_off_v, on_off,
-			[]() -> std::any { return ctl_on("samba"); },
-			[](const std::any &v) { service_apply("samba", "/etc/init.d/S70samba", std::any_cast<bool>(v)); },
-			[]() { service_apply("samba", "/etc/init.d/S70samba", false); }},
-		new MenuItem{ListItemType::Generic, "Syncthing", "Web UI on :8384 when on.",
-			on_off_v, on_off,
-			[]() -> std::any { return ctl_on("syncthing"); },
-			[](const std::any &v) { service_apply("syncthing", "/etc/init.d/S75syncthing", std::any_cast<bool>(v)); },
-			[]() { service_apply("syncthing", "/etc/init.d/S75syncthing", false); }},
-		new MenuItem{ListItemType::Generic, "GPU", "Panfrost and mali_kbase cannot share the GPU. Applies on next boot.",
-			gpu_v, gpu_l,
-			[]() -> std::any {
-				std::string g = ctl_get("gpu");
-				return g.empty() ? std::string("panfrost") : g;
-			},
-			[](const std::any &v) { ctl_set("gpu", std::any_cast<std::string>(v).c_str()); },
-			[]() { ctl_set("gpu", "panfrost"); }},
-		new MenuItem{ListItemType::Button, "Backup now", "Save .config and .userdata to /storage/zlyme-backup.tar.gz",
-			Zlyme_backup},
-	});
+void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
+{
+	const std::vector<std::any> gpu_v = {std::string("panfrost"), std::string("libmali")};
+	const std::vector<std::string> gpu_l = {"Panfrost", "mali_kbase"};
+	const std::vector<std::any> uv_v = {
+		std::string("off"), std::string("l1"), std::string("l2"), std::string("l3")};
+	const std::vector<std::string> uv_l = {"Off", "L1", "L2", "L3"};
+
+	items.push_back(new MenuItem{ListItemType::Generic, "GPU",
+		"Panfrost and mali_kbase cannot share the GPU. Takes effect on next boot.",
+		gpu_v, gpu_l,
+		[]() -> std::any {
+			std::string g = ctl_get("gpu");
+			return g.empty() ? std::string("panfrost") : g;
+		},
+		[](const std::any &v) { ctl_set("gpu", std::any_cast<std::string>(v).c_str()); },
+		[]() { ctl_set("gpu", "panfrost"); }});
+	items.push_back(new MenuItem{ListItemType::Generic, "CPU undervolt",
+		"ROCKNIX opp-table overlays. Takes effect on next boot.",
+		uv_v, uv_l,
+		[]() -> std::any {
+			std::string u = ctl_get("undervolt");
+			if (u != "l1" && u != "l2" && u != "l3")
+				u = "off";
+			return u;
+		},
+		[](const std::any &v) {
+			ctl_set("undervolt", std::any_cast<std::string>(v).c_str());
+			system("zlyme-ctl apply-undervolt");
+		},
+		[]() {
+			ctl_set("undervolt", "off");
+			system("zlyme-ctl apply-undervolt");
+		}});
+}
+
+void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
+{
+	items.push_back(new MenuItem{ListItemType::Button, "Backup now",
+		"Save .config and .userdata to /storage/zlyme-backup.tar.gz",
+		Zlyme_backup});
 }

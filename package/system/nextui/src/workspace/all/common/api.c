@@ -3773,6 +3773,7 @@ FALLBACK_IMPLEMENTATION int PLAT_shouldWake(void)
 	return 0;
 }
 FALLBACK_IMPLEMENTATION int PLAT_supportsDeepSleep(void) { return 0; }
+FALLBACK_IMPLEMENTATION int PLAT_isUSBConnected(void) { return 0; }
 FALLBACK_IMPLEMENTATION int PLAT_deepSleep(void)
 {
 	const char *state_path = "/sys/power/state";

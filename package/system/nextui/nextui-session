@@ -27,6 +27,10 @@ export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib
 export IS_NEXT=yes
 
+# Stock MinUI tools still open /mnt/SDCARD. Keep one path for scrapers.
+mkdir -p /mnt
+[ -e /mnt/SDCARD ] || ln -sfn /storage /mnt/SDCARD
+
 mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
 	"$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH" \
 	/storage/Roms /storage/Tools/my355
@@ -39,11 +43,45 @@ if [ -r "$seed/rom-dirs.txt" ]; then
 	done < "$seed/rom-dirs.txt"
 fi
 
-# Always refresh stock NextUI assets from the image. User-added fonts
-# that are not in the seed stay. Built-in names (font1/font2, atlas,
-# quick-menu icons) are overwritten so a bad alias cannot linger.
+# Library card in the second slot: NextUI only lists /storage/Roms.
+# Bind each Pretty Name (TAG) folder from SD2 over the empty seed dirs.
+bind_sd2_roms() {
+	src=""
+	if [ -d /mnt/sd2/roms ]; then
+		src=/mnt/sd2/roms
+	elif [ -d /mnt/sd2/Roms ]; then
+		src=/mnt/sd2/Roms
+	else
+		return 0
+	fi
+	for d in "$src"/*; do
+		[ -d "$d" ] || continue
+		name=$(basename "$d")
+		case "$name" in
+			.*|_*) continue ;;
+			bios|bezels|savestates|screenshots|themes|backup|backups) continue ;;
+		esac
+		dest="/storage/Roms/$name"
+		mkdir -p "$dest"
+		if mountpoint -q "$dest" 2>/dev/null; then
+			continue
+		fi
+		mount --bind "$d" "$dest" 2>/dev/null || true
+	done
+}
+bind_sd2_roms
+
+# Refresh stock assets when the image version changes. Copying every
+# boot filled the old 64MB seed and made startup slow.
+img_ver=""
+card_ver=""
+[ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
+[ -r /storage/.system/version.txt ] && card_ver=$(cat /storage/.system/version.txt)
+refresh=1
+[ -n "$img_ver" ] && [ "$img_ver" = "$card_ver" ] && refresh=0
+
 mkdir -p /storage/.system/res
-if [ -d "$seed/res" ]; then
+if [ "$refresh" = 1 ] && [ -d "$seed/res" ]; then
 	cp -a "$seed/res/." /storage/.system/res/
 fi
 
@@ -80,13 +118,17 @@ if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
 	cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
 	chmod 0755 "$SYSTEM_PATH/bin/show.elf"
 fi
-if [ -r "$seed/version.txt" ]; then
-	cp "$seed/version.txt" /storage/.system/version.txt
-fi
-
 # Refresh shipped paks so a stale launch.sh cannot keep calling minarch.
 # SSH/Samba/Syncthing/GPU/Display/Backup/Wi-Fi/Bluetooth live in Settings.
-if [ -d "$seed/paks" ]; then
+if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-wifi ]; then
+	cp /usr/sbin/zlyme-wifi "$SYSTEM_PATH/bin/zlyme-wifi"
+	chmod 0755 "$SYSTEM_PATH/bin/zlyme-wifi"
+fi
+if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-bluetooth ]; then
+	cp /usr/sbin/zlyme-bluetooth "$SYSTEM_PATH/bin/zlyme-bluetooth"
+	chmod 0755 "$SYSTEM_PATH/bin/zlyme-bluetooth"
+fi
+if [ "$refresh" = 1 ] && [ -d "$seed/paks" ]; then
 	mkdir -p "$SYSTEM_PATH/paks" /storage/Tools/my355
 	for src in "$seed/paks/Emus"/*.pak "$seed/paks/MinUI.pak"; do
 		[ -d "$src" ] || continue
@@ -114,6 +156,7 @@ if [ -d "$seed/paks" ]; then
 		mkdir -p "$dest"
 		cp -a "$src/." "$dest/"
 	done
+	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > /storage/.system/version.txt
 fi
 if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
 	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"

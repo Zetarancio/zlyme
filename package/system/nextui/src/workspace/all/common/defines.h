@@ -141,6 +141,19 @@ enum
 #define JOY_MENU_ALT2 JOY_NA
 #endif
 
+#ifndef BUTTON_L4
+#define BUTTON_L4 BUTTON_NA
+#define BUTTON_R4 BUTTON_NA
+#endif
+#ifndef CODE_L4
+#define CODE_L4 CODE_NA
+#define CODE_R4 CODE_NA
+#endif
+#ifndef JOY_L4
+#define JOY_L4 JOY_NA
+#define JOY_R4 JOY_NA
+#endif
+
 #ifndef AXIS_L2
 #define AXIS_L2	AXIS_NA
 #define AXIS_R2	AXIS_NA

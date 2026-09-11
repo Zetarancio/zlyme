@@ -1,0 +1,185 @@
+#!/bin/sh
+#
+# WiFi helper with the same verbs EmulationStation uses:
+#   ROCKNIX  wifictl  scanlist|list|connect|disconnect|enable|disable
+#   Knulli   knulli-wifi  scanlist|list|enable|disable
+#
+# We do not ship NetworkManager or connman. This talks to wpa_supplicant
+# the same way S30wifi started it.
+#
+#   zlyme-wifi scanlist
+#   zlyme-wifi list
+#   zlyme-wifi enable
+#   zlyme-wifi disable
+#   zlyme-wifi connect <ssid> [psk]
+#   zlyme-wifi disconnect
+#   zlyme-wifi forget <ssid>
+#   zlyme-wifi status
+
+. /etc/zlyme.conf 2>/dev/null || true
+
+IFACE="${IFACE:-wlan0}"
+SOCK="${WPA_CLI_SOCK:-/var/run/wpa_supplicant}"
+WPA_CLI="wpa_cli -p ${SOCK} -i ${IFACE}"
+
+usage() {
+	echo "usage: $0 scanlist|list|enable|disable|connect|disconnect|forget|status" >&2
+	exit 1
+}
+
+cli() {
+	$WPA_CLI "$@" 2>/dev/null
+}
+
+escape_wpa() {
+	# wpa_cli quoted strings: backslash and double-quote
+	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+wait_iface() {
+	i=0
+	while [ ! -d "/sys/class/net/$IFACE" ] && [ "$i" -lt 50 ]; do
+		sleep 0.1
+		i=$((i + 1))
+	done
+	[ -d "/sys/class/net/$IFACE" ]
+}
+
+find_id() {
+	ssid=$1
+	cli list_networks | awk -F '\t' -v s="$ssid" 'NR > 1 && $2 == s { print $1; exit }'
+}
+
+psk_ready() {
+	id=$1
+	out=$(cli get_network "$id" psk)
+	case "$out" in
+		''|FAIL*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+wait_connected() {
+	n=0
+	while [ "$n" -lt 30 ]; do
+		st=$(cli status | sed -n 's/^wpa_state=//p')
+		if [ "$st" = "COMPLETED" ]; then
+			return 0
+		fi
+		sleep 0.5
+		n=$((n + 1))
+	done
+	return 1
+}
+
+do_list() {
+	cli list_networks | awk -F '\t' 'NR > 1 && $2 != "" { print $2 }' | sort -u
+}
+
+do_scanlist() {
+	cli scan >/dev/null
+	sleep 2
+	cli scan_results | awk -F '\t' 'NR > 1 && $5 != "" { print $5 }' | sort -u
+}
+
+do_enable() {
+	if command -v zlyme-ctl >/dev/null; then
+		zlyme-ctl set wifi on >/dev/null 2>&1 || true
+	fi
+	if [ -x /etc/init.d/S30wifi ]; then
+		/etc/init.d/S30wifi start
+	elif [ -x "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
+		"$SYSTEM_PATH/etc/wifi/wifi_init.sh" start
+	fi
+	wait_iface || return 0
+}
+
+do_disable() {
+	if [ -x /etc/init.d/S30wifi ]; then
+		/etc/init.d/S30wifi stop
+	elif [ -x "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
+		"$SYSTEM_PATH/etc/wifi/wifi_init.sh" stop
+	fi
+	if command -v zlyme-ctl >/dev/null; then
+		zlyme-ctl set wifi off >/dev/null 2>&1 || true
+	fi
+}
+
+do_forget() {
+	ssid=$1
+	[ -n "$ssid" ] || return 1
+	id=$(find_id "$ssid")
+	[ -n "$id" ] || return 0
+	cli remove_network "$id" >/dev/null
+	cli save_config >/dev/null
+}
+
+do_disconnect() {
+	cli disconnect >/dev/null
+}
+
+do_connect() {
+	ssid=$1
+	psk=$2
+	[ -n "$ssid" ] || return 1
+
+	wait_iface || {
+		echo "zlyme-wifi: no $IFACE" >&2
+		return 1
+	}
+
+	id=$(find_id "$ssid")
+
+	if [ -n "$psk" ]; then
+		if [ "${#psk}" -lt 8 ]; then
+			echo "zlyme-wifi: passphrase must be 8+ characters" >&2
+			return 1
+		fi
+		if [ -z "$id" ]; then
+			id=$(cli add_network | tail -n 1)
+			case "$id" in
+				''|FAIL*) echo "zlyme-wifi: add_network failed" >&2; return 1 ;;
+			esac
+		fi
+		essid=$(escape_wpa "$ssid")
+		epsk=$(escape_wpa "$psk")
+		cli set_network "$id" ssid "\"$essid\"" >/dev/null
+		cli set_network "$id" psk "\"$epsk\"" >/dev/null
+	else
+		# Known network, same as ROCKNIX reconnect with saved profile.
+		if [ -z "$id" ] || ! psk_ready "$id"; then
+			echo "zlyme-wifi: no saved passphrase for that SSID" >&2
+			return 1
+		fi
+	fi
+
+	cli select_network "$id" >/dev/null
+	cli save_config >/dev/null
+	wait_connected
+}
+
+do_status() {
+	cli status
+}
+
+[ $# -ge 1 ] || usage
+ACTION=$1
+shift
+
+case "$ACTION" in
+	scanlist) do_scanlist ;;
+	list) do_list ;;
+	enable) do_enable ;;
+	disable) do_disable ;;
+	connect)
+		[ $# -ge 1 ] || usage
+		do_connect "$1" "${2:-}"
+		;;
+	disconnect) do_disconnect ;;
+	forget)
+		[ $# -ge 1 ] || usage
+		do_forget "$1"
+		;;
+	status) do_status ;;
+	*) usage ;;
+esac
