@@ -122,8 +122,11 @@ BR2_PACKAGE_BLUEZ5_UTILS_MONITOR=y
 BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HID=y
 BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HOG=y
 
-# exFAT tools (resize is format; kernel already mounts).
+# exFAT tools. First boot formats the grown partition (Knulli S02resize).
 BR2_PACKAGE_EXFATPROGS=y
+BR2_PACKAGE_PARTED=y
+BR2_PACKAGE_GPTFDISK=y
+BR2_PACKAGE_GPTFDISK_SGDISK=y
 
 # GPU: Mesa Panfrost, KMSDRM + GBM + EGL, no X11/Wayland.
 # MESA3D_LLVM is required by Buildroot's panfrost option (else it is dropped).

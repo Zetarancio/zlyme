@@ -1,0 +1,121 @@
+#!/bin/sh
+# Grow the 512MB ZLYME exFAT seed to fill the card, then format it.
+# Knulli S02resize: sgdisk -e, parted resizepart 100%, mkfs.exfat.
+# Runs after /boot is mounted and before S15 mounts /storage.
+# Never fail the boot.
+
+. /etc/zlyme.conf
+
+BOOTCONF="/boot/zlyme-boot.conf"
+LOG="/tmp/resize.log"
+
+disk_of() {
+	# /dev/mmcblk0p4 -> /dev/mmcblk0 ; /dev/sda1 -> /dev/sda
+	if echo "$1" | grep -qE 'p[0-9]+$'; then
+		echo "$1" | sed -e 's/p[0-9][0-9]*$//'
+		return 0
+	fi
+	echo "$1" | sed -e 's/[0-9][0-9]*$//'
+}
+
+part_num_of() {
+	echo "$1" | sed -e 's/.*[^0-9]//'
+}
+
+remove_trigger() {
+	[ -f "$BOOTCONF" ] || return 0
+	sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF"
+}
+
+start() {
+	if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' "$BOOTCONF" 2>/dev/null; then
+		return 0
+	fi
+
+	printf "Resizing storage: "
+	: > "$LOG"
+
+	PART=$(blkid | sed -n 's|^\([^:]*\):.*LABEL="ZLYME".*|\1|p' | head -n 1)
+	if [ -z "$PART" ]; then
+		echo "no ZLYME partition" | tee -a "$LOG"
+		return 0
+	fi
+
+	DISK=$(disk_of "$PART")
+	PARTNUM=$(part_num_of "$PART")
+	if [ -z "$DISK" ] || [ -z "$PARTNUM" ]; then
+		echo "cannot parse $PART" | tee -a "$LOG"
+		return 0
+	fi
+
+	if [ ! -x /usr/sbin/sgdisk ] || [ ! -x /usr/sbin/parted ] || [ ! -x /usr/sbin/mkfs.exfat ]; then
+		echo "sgdisk/parted/mkfs.exfat missing" | tee -a "$LOG"
+		return 0
+	fi
+
+	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
+		umount "$ZLYME_STORAGE" >>"$LOG" 2>&1 || {
+			echo "busy" | tee -a "$LOG"
+			return 0
+		}
+	fi
+
+	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM" >>"$LOG"
+
+	# Knulli FORMAT_ALLOWED: only mkfs the factory seed (256/512M, we
+	# use 512). A larger partition already has user data; do not wipe.
+	PARTSIZE=$(blockdev --getsize64 "$PART" 2>/dev/null || true)
+	if [ -z "$PARTSIZE" ] || [ "$PARTSIZE" = 0 ]; then
+		b=$(basename "$PART")
+		sec=$(cat "/sys/class/block/$b/size" 2>/dev/null || echo 0)
+		PARTSIZE=$((sec * 512))
+	fi
+	PARTSIZE=$((PARTSIZE / 1024 / 1024))
+	echo "Initial partition size: ${PARTSIZE} MB" >>"$LOG"
+	FORMAT_SEED=0
+	if [ "$PARTSIZE" -gt 0 ] && [ "$PARTSIZE" -le 600 ]; then
+		FORMAT_SEED=1
+	fi
+
+	if ! sgdisk -e "$DISK" >>"$LOG" 2>&1; then
+		echo "sgdisk -e failed" | tee -a "$LOG"
+		return 0
+	fi
+
+	if ! parted -s -m -f "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
+		if ! parted -s -m "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
+			echo "parted resizepart failed" | tee -a "$LOG"
+			return 0
+		fi
+	fi
+
+	partprobe "$DISK" >>"$LOG" 2>&1 || true
+	sleep 2
+
+	# exfatprogs 1.2.9 has no resize.exfat, so format fills the grown
+	# seed. Skip if this is not the factory size.
+	if [ "$FORMAT_SEED" = 1 ]; then
+		if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
+			echo "mkfs.exfat failed" | tee -a "$LOG"
+			return 0
+		fi
+	else
+		echo "skipping mkfs.exfat (not a seed partition)" >>"$LOG"
+	fi
+
+	# Microsoft basic data so Windows/macOS see the exFAT volume.
+	sgdisk -t "${PARTNUM}:0700" "$DISK" >>"$LOG" 2>&1 || true
+	partprobe "$DISK" >>"$LOG" 2>&1 || true
+	sync
+
+	remove_trigger
+	echo "OK"
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) ;;
+	restart|reload) start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

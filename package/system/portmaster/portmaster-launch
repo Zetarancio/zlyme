@@ -1,18 +1,26 @@
 #!/bin/sh
 # First run copies the release onto /storage so PortMaster can update
-# itself. Later runs exec the copy.
+# itself. Later runs exec the copy. If the card still has under 100MB
+# free, run from the image instead of filling the partition.
 . /etc/zlyme.conf
 DEST="${ZLYME_STORAGE}/PortMaster"
 if [ ! -x "$DEST/PortMaster.sh" ] && [ ! -x "$DEST/PortMaster.txt" ]; then
-	mkdir -p "$DEST"
-	cp -a /usr/share/portmaster/. "$DEST/"
+	avail=$(df -k "$ZLYME_STORAGE" 2>/dev/null | awk 'NR==2 { print $4 }')
+	if [ "${avail:-0}" -ge 102400 ]; then
+		mkdir -p "$DEST"
+		cp -a /usr/share/portmaster/. "$DEST/"
+	fi
 fi
-cd "$DEST" || exit 1
+if [ -x "$DEST/PortMaster.sh" ] || [ -f "$DEST/PortMaster.txt" ]; then
+	cd "$DEST" || exit 1
+else
+	cd /usr/share/portmaster || exit 1
+fi
 if [ -x ./PortMaster.sh ]; then
 	exec ./PortMaster.sh "$@"
 fi
 if [ -f ./PortMaster.txt ]; then
 	exec /usr/bin/python3 ./PortMaster.txt "$@"
 fi
-echo "PortMaster files missing in $DEST" >&2
+echo "PortMaster files missing" >&2
 exit 1
