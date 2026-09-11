@@ -1,9 +1,0 @@
-config BR2_PACKAGE_LIBRETRO_CAP32
-	bool "libretro-cap32"
-	depends on BR2_PACKAGE_RETROARCH
-	depends on BR2_INSTALL_LIBSTDCPP
-	help
-	  Libretro core
-
-comment "libretro-cap32 needs a toolchain w/ C++"
-	depends on !BR2_INSTALL_LIBSTDCPP
