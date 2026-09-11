@@ -1,0 +1,8 @@
+config BR2_PACKAGE_PICO8
+	bool "pico8"
+	select BR2_PACKAGE_SDL2
+	help
+	  PICO-8 launcher only. The fantasy-console binary is
+	  proprietary; drop pico8_64 in /mnt/SDCARD/Roms/PICO-8/.
+
+	  https://www.lexaloffle.com/pico-8.php

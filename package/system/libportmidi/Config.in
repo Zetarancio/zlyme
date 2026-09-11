@@ -1,0 +1,7 @@
+config BR2_PACKAGE_LIBPORTMIDI
+	bool "libportmidi"
+	select BR2_PACKAGE_ALSA_LIB
+	help
+	  PortMidi MIDI I/O. Needed by Amiberry.
+
+	  https://github.com/PortMidi/portmidi

@@ -1,0 +1,35 @@
+From: Zlyme <zlyme@local>
+Date: Fri, 11 Sep 2026 00:00:00 +0000
+Subject: [PATCH] mkcert: drop OpenSSL 1.0 init/cleanup (OpenSSL 3 / GCC 14)
+
+Knulli pins moonlight-embedded at a6bf7154 and has no equivalent patch.
+ERR_load_crypto_strings is not a real function under OpenSSL 3, so GCC 14
+fails on implicit declaration. Same cleanup as moonlight-embedded 040e389,
+without bumping the pin.
+
+---
+ libgamestream/mkcert.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/libgamestream/mkcert.c b/libgamestream/mkcert.c
+--- a/libgamestream/mkcert.c
++++ b/libgamestream/mkcert.c
+@@ -41,18 +41,10 @@
+ 
+     bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
+ 
+-    OpenSSL_add_all_algorithms();
+-    ERR_load_crypto_strings();
+-
+     mkcert(&x509, &pkey, NUM_BITS, SERIAL, NUM_YEARS);
+ 
+     p12 = PKCS12_create("limelight", "GameStream", pkey, x509, NULL, 0, 0, 0, 0, 0);
+ 
+-#ifndef OPENSSL_NO_ENGINE
+-    ENGINE_cleanup();
+-#endif
+-    CRYPTO_cleanup_all_ex_data();
+-
+     BIO_free(bio_err);
+ 
+     return (CERT_KEY_PAIR) {x509, pkey, p12};

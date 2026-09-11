@@ -1,0 +1,24 @@
+config BR2_PACKAGE_AMIBERRY
+	bool "amiberry"
+	depends on BR2_aarch64
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_IMAGE
+	select BR2_PACKAGE_SDL2_TTF
+	select BR2_PACKAGE_MPG123
+	select BR2_PACKAGE_LIBXML2
+	select BR2_PACKAGE_LIBMPEG2
+	select BR2_PACKAGE_FLAC
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_LIBSERIALPORT
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_ENET
+	select BR2_PACKAGE_LIBPCAP
+	select BR2_PACKAGE_LIBPORTMIDI
+	help
+	  Amiga emulator for ARM boards. SDL2, no OpenGL.
+
+	  https://github.com/BlitterStudio/amiberry
+
+comment "amiberry needs aarch64 and C++"
+	depends on !BR2_aarch64 || !BR2_INSTALL_LIBSTDCPP

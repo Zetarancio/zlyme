@@ -1,0 +1,12 @@
+config BR2_PACKAGE_WINE_AMD64
+	bool "wine-amd64"
+	depends on BR2_aarch64
+	select BR2_PACKAGE_BOX64
+	help
+	  Kron4ek Wine 11.0 amd64 build, launched through box64.
+	  Not Buildroot's native wine (that symbol is BR2_PACKAGE_WINE).
+
+	  https://github.com/Kron4ek/Wine-Builds
+
+comment "wine-amd64 needs aarch64 (box64)"
+	depends on !BR2_aarch64

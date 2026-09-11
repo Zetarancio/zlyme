@@ -1,0 +1,16 @@
+config BR2_PACKAGE_OPENBOR
+	bool "openbor"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_LIBVPX
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_GFX
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_LIBOGG
+	select BR2_PACKAGE_LIBVORBIS
+	help
+	  OpenBOR 4 beat-em-up engine.
+
+	  https://github.com/DCurrent/openbor
+
+comment "openbor needs C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

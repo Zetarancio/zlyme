@@ -1,0 +1,11 @@
+config BR2_PACKAGE_LIBUDEV_ZERO
+	bool "libudev-zero"
+	depends on !BR2_STATIC_LIBS
+	help
+	  Daemonless replacement for libudev. Used so moonlight can
+	  link without switching /dev management to eudev.
+
+	  https://github.com/illiliti/libudev-zero
+
+comment "libudev-zero needs a toolchain w/ dynamic library"
+	depends on BR2_STATIC_LIBS

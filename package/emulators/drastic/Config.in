@@ -1,0 +1,12 @@
+config BR2_PACKAGE_DRASTIC
+	bool "drastic"
+	depends on BR2_aarch64
+	select BR2_PACKAGE_SDL2
+	help
+	  DraStic Nintendo DS. Proprietary binary from ROCKNIX
+	  packages plus a GLES touch hook.
+
+	  https://www.drastic-ds.com/
+
+comment "drastic needs aarch64"
+	depends on !BR2_aarch64

@@ -1,0 +1,9 @@
+config BR2_PACKAGE_LIBRETRO_BEETLE_SUPAFAUST
+	bool "libretro-beetle-supafaust"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	help
+	  Super Nintendo (Super Famicom) emulator
+
+comment "libretro-beetle-supafaust needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

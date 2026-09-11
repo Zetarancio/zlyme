@@ -1,0 +1,20 @@
+config BR2_PACKAGE_HYPSEUS_SINGE
+	bool "hypseus-singe"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_IMAGE
+	select BR2_PACKAGE_SDL2_TTF
+	select BR2_PACKAGE_SDL2_MIXER
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_LIBOGG
+	select BR2_PACKAGE_LIBVORBIS
+	select BR2_PACKAGE_LIBMPEG2
+	select BR2_PACKAGE_LIBZIP
+	help
+	  Laserdisc arcade (Dragon's Lair, Space Ace, Singe).
+	  SDL2 + GLES. Replaces libretro-daphne.
+
+	  https://github.com/DirtBagXon/hypseus-singe
+
+comment "hypseus-singe needs C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

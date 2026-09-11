@@ -1,8 +1,7 @@
 #!/bin/sh
-EMU_EXE=melonds
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
 cd "$HOME"
-exec retroarch -L "$CORES_PATH/${EMU_EXE}_libretro.so" "$ROM"
+exec start_drastic "$ROM"

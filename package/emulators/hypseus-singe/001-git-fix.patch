@@ -1,0 +1,56 @@
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -49,40 +49,22 @@
+ 
+ include(BuildSupport)
+ include(GNUInstallDirs)
+-include(GetGitRevisionDescription)
+ include(InstallRequiredSystemLibraries)
+ include(FindPkgConfig)
+-include(ExternalProject)
+-include(BuildLibMPEG2)
+ 
+ use_cxx11( )
+ 
+ PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
+ PKG_SEARCH_MODULE(SDL2_TTF REQUIRED SDL2_ttf)
+ PKG_SEARCH_MODULE(SDL2_MIXER REQUIRED SDL2_mixer)
+-build_libmpeg2( )
++PKG_SEARCH_MODULE(MPEG2 REQUIRED libmpeg2)
+ 
+ message(STATUS "Target: ${CMAKE_SYSTEM_NAME} ${CMAKE_TARGET_ARCHITECTURES}")
+ 
+-git_describe(VER_TAG --tags --abbrev=0)
+-if("${VER_TAG}" MATCHES "-NOTFOUND")
+-    set(VER_TAG  ${PKG_VERSION})
+-    set(VER_GIT_COUNT "0")
+-else()
+-    git_revlist(VER_GIT_COUNT --count ${VER_TAG}..HEAD)
+-endif()
+-string(REGEX REPLACE "^v" "" RESULT ${VER_TAG})
+-string(REGEX REPLACE "[-\\.]" ";" RESULT ${RESULT})
+-list(GET RESULT 0 VER_MAJOR)
+-list(GET RESULT 1 VER_MINOR)
+-list(GET RESULT 2 VER_PATCH)
+-if(NOT "${VER_GIT_COUNT}" EQUAL "0")
+-    set(VER_TAG "${VER_TAG}-${VER_GIT_COUNT}")
+-endif()
+-git_describe(VER_GIT_DIRTY --always --dirty)
+-if("${VER_GIT_DIRTY}" MATCHES "-dirty")
+-    set(VER_TAG "${VER_TAG}-dirty")
+-endif()
++set (VER_TAG "zlyme")
++set (VER_MAJOR 2)
++set (VER_MINOR 11)
++set (VER_PATCH 5)
+ message(STATUS "Version: ${VER_TAG}")
+ 
+ include_directories(
+@@ -114,7 +96,6 @@
+ add_subdirectory(video)
+ add_subdirectory(vldp)
+ 
+-add_dependencies( vldp libmpeg2 )
+ add_dependencies( ldp-out vldp )
+ add_dependencies( game vldp )
+ add_dependencies( sound vldp )
