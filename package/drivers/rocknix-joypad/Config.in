@@ -1,0 +1,13 @@
+config BR2_PACKAGE_ROCKNIX_JOYPAD
+	bool "rocknix-joypad"
+	depends on BR2_LINUX_KERNEL
+	help
+	  rocknix-singleadc-joypad. The DTS node is already in
+	  board/my355/linux/dts (compatible "rocknix-singleadc-joypad",
+	  rocknix,use-miyoo-serial-joypad). Without this module the
+	  buttons and stick do not exist as an input device.
+
+	  https://github.com/ROCKNIX/rocknix-joypad
+
+comment "rocknix-joypad needs a kernel to build against"
+	depends on !BR2_LINUX_KERNEL

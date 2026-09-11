@@ -1,0 +1,9 @@
+config BR2_PACKAGE_RTL8723FU_FIRMWARE
+	bool "rtl8723fu-firmware"
+	help
+	  Bluetooth firmware for the RTL8733BU combo chip, 50 KB.
+
+	  Not in linux-firmware and never will be -- upstream has 8723a/b/bs/cs/d
+	  and no "fu" variant -- so without this there is no hci0 no matter which
+	  firmware package is installed. The kernel loads it directly from
+	  /lib/firmware/rtl_bt/, so no userspace helper is needed.

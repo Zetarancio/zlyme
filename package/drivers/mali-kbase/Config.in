@@ -1,0 +1,9 @@
+config BR2_PACKAGE_MALI_KBASE
+	bool "mali-kbase"
+	depends on BR2_LINUX_KERNEL
+	help
+	  ARM Mali Bifrost kernel driver (mali_kbase.ko) from
+	  https://github.com/rocknix/mali_kbase, platform=devicetree.
+	  Cannot bind at the same time as panfrost; gpudriver picks one.
+
+	  https://github.com/rocknix/mali_kbase

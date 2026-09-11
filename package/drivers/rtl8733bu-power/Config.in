@@ -1,0 +1,13 @@
+config BR2_PACKAGE_RTL8733BU_POWER
+	bool "rtl8733bu-power"
+	depends on BR2_LINUX_KERNEL
+	help
+	  Power and rfkill control for the RTL8733BU combo chip.
+
+	  Owns the chip's enable GPIO and registers one WLAN and one Bluetooth
+	  rfkill against it, cutting power only when both are blocked. Needs the
+	  "rockchip,rtl8733bu-power" node in the device tree, which
+	  board/my355/linux/dts already carries.
+
+comment "rtl8733bu-power needs a kernel to build against"
+	depends on !BR2_LINUX_KERNEL
