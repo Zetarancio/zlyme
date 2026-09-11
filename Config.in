@@ -1,0 +1,12 @@
+menu "Zlyme"
+
+comment "Drivers"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/drivers/Config.in"
+
+comment "System"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/Config.in"
+
+comment "Emulation"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/emulators/Config.in"
+
+endmenu

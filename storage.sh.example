@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Copy to storage.sh, edit the paths, run that instead of build.sh.
+
+set -euo pipefail
+
+export ZLYME_BUILDROOT=/mnt/nvme/zlyme/buildroot
+export ZLYME_OUTPUT=/mnt/nvme/zlyme/output
+export ZLYME_DL=/mnt/nvme/zlyme/dl
+export ZLYME_CCACHE=/mnt/nvme/zlyme/ccache
+export ZLYME_DEFCONFIG=zlyme_defconfig
+
+exec "$(dirname "${BASH_SOURCE[0]}")/build.sh" "$@"

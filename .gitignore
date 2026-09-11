@@ -1,0 +1,16 @@
+# Local notes. Never committed.
+/NOTES/
+
+# Build instructions (unpublished for now).
+/README.md
+
+# Machine-local paths. See storage.sh.example.
+storage.sh
+
+/buildroot/
+/output/
+/dl/
+/.ccache/
+
+*.log
+*.code-workspace
