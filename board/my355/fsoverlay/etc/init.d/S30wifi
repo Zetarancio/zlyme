@@ -25,7 +25,7 @@ start() {
 		return 0
 	fi
 
-	if [ ! -r "$CONF" ]; then
+	if [ ! -s "$CONF" ] || ! grep -q ctrl_interface "$CONF" 2>/dev/null; then
 		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
 		if [ -r "$example" ]; then
 			cp "$example" "$CONF"
@@ -55,6 +55,12 @@ start() {
 		echo "OK"
 	else
 		echo "FAIL"
+	fi
+
+	# Dropbear may have failed before wlan existed; key-on-exFAT also
+	# made it exit. Restart now that the interface is up.
+	if command -v zlyme-ctl >/dev/null && zlyme-ctl want ssh; then
+		[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear restart >/dev/null 2>&1 || true
 	fi
 
 	return 0

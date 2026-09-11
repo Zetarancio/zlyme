@@ -14,11 +14,12 @@ start() {
 	fi
 	mkdir -p /var/log/samba /var/lib/samba /var/run/samba 2>/dev/null
 	printf "Starting smbd: "
-	start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D
-	echo "OK"
-	if command -v nmbd >/dev/null; then
-		start-stop-daemon -S -q --exec /usr/sbin/nmbd -- -D
+	if start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D; then
+		echo "OK"
+	else
+		echo "FAIL"
 	fi
+	# smb.conf sets disable netbios = yes; nmbd then always FAILs.
 }
 
 stop() {

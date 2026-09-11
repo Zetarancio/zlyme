@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# Overlay of BlueZ's bluetoothd so it stays down when Bluetooth is off.
+# S35btusb already skipped the adapter in that case; starting bluetoothd
+# anyway prints FAIL.
+
+NAME=bluetoothd
+PIDFILE=/var/run/$NAME.pid
+
+daemon() {
+	for d in /usr/libexec/bluetooth/bluetoothd /usr/lib/bluetooth/bluetoothd /usr/sbin/bluetoothd; do
+		if [ -x "$d" ]; then
+			echo "$d"
+			return 0
+		fi
+	done
+	return 1
+}
+
+start() {
+	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want bluetooth; then
+		echo "bluetoothd: disabled by zlyme-ctl"
+		return 0
+	fi
+	DAEMON=$(daemon) || return 0
+	printf "Starting %s: " "$NAME"
+	if start-stop-daemon -S -q -p "$PIDFILE" --exec "$DAEMON"; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+}
+
+stop() {
+	printf "Stopping %s: " "$NAME"
+	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null
+	echo "OK"
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

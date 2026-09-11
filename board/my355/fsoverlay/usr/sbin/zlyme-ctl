@@ -13,14 +13,21 @@ default_of() {
 		samba|syncthing) echo off ;;
 		gpu) echo panfrost ;;
 		display_mode) echo "" ;;
+		refresh) echo 60 ;;
+		undervolt) echo off ;;
 		*) echo off ;;
 	esac
 }
 
 get() {
 	name=$1
+	val=""
 	if [ -r "$DIR/$name" ]; then
-		tr -d ' \t\r\n' < "$DIR/$name"
+		val=$(tr -d ' \t\r\n' < "$DIR/$name")
+	fi
+	# Empty is not "off". A full disk truncates the flag to 0 bytes.
+	if [ -n "$val" ]; then
+		printf '%s' "$val"
 	else
 		default_of "$name"
 	fi
@@ -49,6 +56,40 @@ toggle() {
 	fi
 }
 
+apply_refresh() {
+	hz=$(get refresh)
+	case "$hz" in
+		50|40|60) ;;
+		*) hz=60 ;;
+	esac
+	for c in /sys/class/drm/card*-DSI-*; do
+		[ -e "$c/mode" ] || continue
+		printf '%s\n' "640x480@${hz}" > "$c/mode" 2>/dev/null && return 0
+	done
+	return 0
+}
+
+apply_undervolt() {
+	val=$(get undervolt)
+	conf=/boot/extlinux/extlinux.conf
+	[ -f "$conf" ] || return 0
+	ovl=""
+	case "$val" in
+		l1|l2|l3) ovl="/overlays/rk3566-undervolt-cpu-${val}.dtbo" ;;
+	esac
+	tmp=$(mktemp) || return 0
+	grep -v FDTOVERLAYS "$conf" > "$tmp"
+	if [ -n "$ovl" ]; then
+		awk -v ovl="$ovl" '
+			/FDT / { print; print "    FDTOVERLAYS " ovl; next }
+			{ print }
+		' "$tmp" > "$conf"
+	else
+		cat "$tmp" > "$conf"
+	fi
+	rm -f "$tmp"
+}
+
 cmd=$1
 shift
 case "$cmd" in
@@ -56,13 +97,15 @@ case "$cmd" in
 	want) want "$1" ;;
 	set) setv "$1" "$2" ;;
 	toggle) toggle "$1" ;;
+	apply-refresh) apply_refresh ;;
+	apply-undervolt) apply_undervolt ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

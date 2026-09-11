@@ -4,10 +4,6 @@
 # Touch /storage/.minui-disable or /storage/.nextui-disable
 # to keep a shell-only boot.
 
-bind_if() {
-	[ -e "$1" ] && [ -e "$2" ] && mount --bind "$1" "$2" 2>/dev/null || true
-}
-
 start() {
 	if [ -e /storage/.minui-disable ] || [ -e /storage/.nextui-disable ]; then
 		echo "NextUI: disabled"
@@ -17,18 +13,9 @@ start() {
 		echo "NextUI: missing"
 		return 0
 	fi
-	# Card copies survive a reboot; squashfs does not.
-	bind_if /storage/.system/nextui-session /usr/sbin/nextui-session
-	bind_if /storage/.system/minui-session /usr/sbin/minui-session
-	bind_if /storage/.system/my355/bin/nextui.elf /usr/bin/nextui.elf
-	bind_if /storage/.system/my355/bin/settings.elf /usr/bin/settings.elf
-	bind_if /storage/.system/my355/bin/show.elf /usr/bin/show.elf
-	bind_if /storage/.system/my355/bin/minarch.elf /usr/bin/minarch.elf
-	bind_if /storage/.system/my355/lib/libmsettings.so /usr/lib/libmsettings.so
-	bind_if /storage/.system/nextui-paks /usr/share/nextui/paks
-	bind_if /storage/.system/minui-paks /usr/share/minui/paks
-	bind_if /storage/.system/S30wifi /etc/init.d/S30wifi
-	bind_if /storage/.system/zoneinfo /usr/share/zoneinfo
+	# Do not bind card copies over squashfs. A stale settings.elf on
+	# the card hid WiFi/keyboard fixes after a rebuild. Paks still
+	# refresh from the image when version.txt changes.
 	printf "Starting NextUI: "
 	# Background: busybox init waits for S## start to return.
 	if [ -x /usr/sbin/nextui-session ]; then

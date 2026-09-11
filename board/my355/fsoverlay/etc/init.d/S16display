@@ -1,0 +1,19 @@
+#!/bin/sh
+# Apply the saved DSI refresh once DRM is up.
+
+start() {
+	[ -x /usr/sbin/zlyme-ctl ] || return 0
+	/usr/sbin/zlyme-ctl apply-refresh
+	return 0
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

@@ -1,0 +1,38 @@
+#!/bin/sh
+# Mount the boot vfat (label ZLYMEBOOT) at /boot so Settings can edit
+# extlinux.conf. Never fail the boot.
+
+start() {
+	printf "Mounting boot: "
+	if grep -q " /boot " /proc/mounts; then
+		echo "already mounted"
+		return 0
+	fi
+	mkdir -p /boot
+	dev=$(blkid | sed -n 's|^\([^:]*\):.*LABEL="ZLYMEBOOT".*|\1|p' | head -n 1)
+	if [ -z "$dev" ]; then
+		echo "no ZLYMEBOOT"
+		return 0
+	fi
+	if mount -t vfat -o rw,noatime,utf8 "$dev" /boot 2>/dev/null; then
+		echo "OK ($dev)"
+	else
+		echo "FAIL ($dev)"
+	fi
+	return 0
+}
+
+stop() {
+	if grep -q " /boot " /proc/mounts; then
+		printf "Unmounting boot: "
+		umount /boot 2>/dev/null && echo "OK" || echo "FAIL"
+	fi
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

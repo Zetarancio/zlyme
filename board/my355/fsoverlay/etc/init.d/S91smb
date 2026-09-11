@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# samba4 installs S91smb, which starts smbd/nmbd even when Samba is off
+# and nmbd always FAILs with `disable netbios = yes`. The real share is
+# S70samba (zlyme-ctl).
+
+start() { return 0; }
+stop() { return 0; }
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
