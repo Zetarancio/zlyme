@@ -1,0 +1,22 @@
+config BR2_PACKAGE_NEXTUI
+	bool "nextui"
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_IMAGE
+	select BR2_PACKAGE_SDL2_TTF
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_FREETYPE
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_LIBSAMPLERATE
+	select BR2_PACKAGE_OPENSSL
+	help
+	  NextUI launcher (nextui.elf) and Settings, vendored from
+	  LoveRetro/NextUI and edited in-tree for Zlyme. PLATFORM is
+	  my355; SDCARD_PATH is /storage. Stock CFW skeleton is not used.
+
+	  NextUI: https://github.com/LoveRetro/NextUI
+	  Originally MinUI by Shaun Inman: https://github.com/shauninman/MinUI
+	  License: PolyForm Noncommercial 1.0.0
+
+comment "nextui needs GLES"
+	depends on !BR2_PACKAGE_HAS_LIBGLES

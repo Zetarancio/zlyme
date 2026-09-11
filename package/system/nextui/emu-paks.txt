@@ -1,0 +1,38 @@
+# tag	core_or_bin	kind
+# kind=lr → minarch + ${core}_libretro.so
+# kind=bin → exec the named binary
+GB	gambatte	lr
+GBC	gambatte	lr
+GBA	mgba	lr
+FC	fceumm	lr
+SFC	snes9x	lr
+MD	genesis_plus_gx	lr
+MS	picodrive	lr
+GG	genesis_plus_gx	lr
+32X	picodrive	lr
+PS	pcsx_rearmed	lr
+PSP	PPSSPPSDL	bin
+DC	flycast	bin
+N64	mupen64plus_next	lr
+NDS	melonds	lr
+PCE	mednafen_pce_fast	lr
+NGP	mednafen_ngp	lr
+WS	mednafen_wswan	lr
+VB	mednafen_vb	lr
+LYNX	handy	lr
+A26	stella	lr
+A78	prosystem	lr
+PKM	pokemini	lr
+FBNEO	fbneo	lr
+MAME	mame2003_plus	lr
+DOS	dosbox_pure	lr
+C64	vice_x64	lr
+ZX	fuse	lr
+GW	gw	lr
+VBAM	mgba	lr
+3DO	opera	lr
+NEOCD	neocd	lr
+SATURN	yabasanshiro	lr
+AMIGA	puae	lr
+DOOM	prboom	lr
+TIC	tic80	lr

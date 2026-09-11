@@ -1,0 +1,28 @@
+NextUI (LoveRetro)
+  https://github.com/LoveRetro/NextUI
+  Commit: see src/UPSTREAM
+  License: PolyForm Noncommercial 1.0.0 (src/LICENSE)
+
+Originally MinUI by Shaun Inman
+  https://github.com/shauninman/MinUI
+  See src/NOTICE
+
+Zlyme vendors a working copy of NextUI until this fork is proven
+and becomes its own repository. LoveRetro has no my355 tree; the
+Miyoo Flip platform files under src/workspace/my355 started from
+apommel/NextUI my355-latest (hardware map only) and are edited here.
+SDCARD_PATH is /storage in platform.h — there is no path-rewriting
+wrapper.
+
+SSH, Samba, Syncthing, GPU, HDMI, and Backup live in Settings
+(workspace/all/settings/zlymemenu.cpp), not as Tools paks.
+
+Artwork Scraper (Tools)
+  Jose Diaz-Gonzalez, MIT
+  https://github.com/josegonzalez/minui-artwork-scraper-pak
+  Release 0.8.0
+
+ScrapeGoat (Tools)
+  Kevin Vranken (Helaas), MIT
+  https://github.com/Helaas/nextui-scrapegoat-pak
+  Release v2.3.0

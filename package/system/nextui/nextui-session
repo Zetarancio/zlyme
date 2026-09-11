@@ -1,0 +1,175 @@
+#!/bin/sh
+#
+# Start NextUI against Zlyme. Stock launch.sh exports /mnt/SDCARD,
+# starts miyoo_inputd and writes Playback Path. None of that exists
+# here. Cores are /usr/lib/libretro. nextui.elf exits when it wants a
+# pak: the command is in /tmp/next.
+#
+# Directories come from NextUI's platform.h (SDCARD_PATH /storage).
+# This script only sets the environment NextUI still reads at runtime.
+
+export PLATFORM=my355
+export DEVICE=my355
+export SDCARD_PATH=/storage
+export BIOS_PATH=/storage/Bios
+export SAVES_PATH=/storage/Saves
+export CHEATS_PATH=/storage/Cheats
+export SYSTEM_PATH=/storage/.system/$PLATFORM
+export CORES_PATH=/usr/lib/libretro
+export USERDATA_PATH=/storage/.userdata/$PLATFORM
+export SHARED_USERDATA_PATH=/storage/.userdata/shared
+export LOGS_PATH=$USERDATA_PATH/logs
+export HOOKS_PATH=$USERDATA_PATH/.hooks
+export SDL_VIDEODRIVER=kmsdrm
+export HOME=$USERDATA_PATH
+export XDG_CONFIG_HOME=/storage/.config
+export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib
+export IS_NEXT=yes
+
+mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
+	"$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH" \
+	/storage/Roms /storage/Tools/my355
+
+seed=/usr/share/nextui
+if [ -r "$seed/rom-dirs.txt" ]; then
+	while IFS= read -r d; do
+		[ -n "$d" ] || continue
+		mkdir -p "/storage/Roms/$d"
+	done < "$seed/rom-dirs.txt"
+fi
+
+# Always refresh stock NextUI assets from the image. User-added fonts
+# that are not in the seed stay. Built-in names (font1/font2, atlas,
+# quick-menu icons) are overwritten so a bad alias cannot linger.
+mkdir -p /storage/.system/res
+if [ -d "$seed/res" ]; then
+	cp -a "$seed/res/." /storage/.system/res/
+fi
+
+mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" "$SYSTEM_PATH/bin" \
+	"$SYSTEM_PATH/lib" /storage/.system/zoneinfo
+if [ ! -e /storage/.system/zoneinfo/zone.tab ] && [ -r "$seed/zone.tab" ]; then
+	cp "$seed/zone.tab" /storage/.system/zoneinfo/zone.tab
+fi
+# Current NextUI reads /usr/share/zoneinfo. Squashfs often has none;
+# empty tz list makes settings.elf abort (timezone index 320).
+if grep -qw overlay /proc/filesystems && [ -d /storage/.system/zoneinfo ]; then
+	if ! grep -q ' /usr/share ' /proc/mounts; then
+		mkdir -p /tmp/usrshare-ow /tmp/usrshare-work
+		mount -t overlay overlay \
+			-o lowerdir=/usr/share,upperdir=/tmp/usrshare-ow,workdir=/tmp/usrshare-work \
+			/usr/share 2>/dev/null || true
+	fi
+	mkdir -p /usr/share/zoneinfo
+	cp -a /storage/.system/zoneinfo/. /usr/share/zoneinfo/
+fi
+if [ ! -e "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
+	cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+	chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+fi
+if [ ! -e "$SYSTEM_PATH/etc/bluetooth/bt_init.sh" ]; then
+	cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
+	chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
+fi
+if [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
+	cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
+	chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
+fi
+if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
+	cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
+	chmod 0755 "$SYSTEM_PATH/bin/show.elf"
+fi
+if [ -r "$seed/version.txt" ]; then
+	cp "$seed/version.txt" /storage/.system/version.txt
+fi
+
+# Refresh shipped paks so a stale launch.sh cannot keep calling minarch.
+# SSH/Samba/Syncthing/GPU/Display/Backup/Wi-Fi/Bluetooth live in Settings.
+if [ -d "$seed/paks" ]; then
+	mkdir -p "$SYSTEM_PATH/paks" /storage/Tools/my355
+	for src in "$seed/paks/Emus"/*.pak "$seed/paks/MinUI.pak"; do
+		[ -d "$src" ] || continue
+		base=$(basename "$src")
+		dest=$SYSTEM_PATH/paks/$base
+		mkdir -p "$dest"
+		cp -a "$src/." "$dest/"
+	done
+	rm -rf \
+		/storage/Tools/my355/Wi-Fi.pak \
+		/storage/Tools/my355/Bluetooth.pak \
+		/storage/Tools/my355/SSH.pak \
+		/storage/Tools/my355/Samba.pak \
+		/storage/Tools/my355/Syncthing.pak \
+		/storage/Tools/my355/GPU.pak \
+		/storage/Tools/my355/Display.pak \
+		/storage/Tools/my355/Backup.pak
+	for src in "$seed/paks/Tools"/*.pak; do
+		[ -d "$src" ] || continue
+		base=$(basename "$src")
+		case "$base" in
+			Wi-Fi.pak|Bluetooth.pak|SSH.pak|Samba.pak|Syncthing.pak|GPU.pak|Display.pak|Backup.pak) continue ;;
+		esac
+		dest=/storage/Tools/my355/$base
+		mkdir -p "$dest"
+		cp -a "$src/." "$dest/"
+	done
+fi
+if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
+	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
+fi
+
+# Screen-off then mem suspend does not wake from keys. Keep the
+# panel on until PWR resume is fixed. Defaults are 60/30 if the
+# file is missing, so always write the keys before nextui.elf.
+cfg=$SHARED_USERDATA_PATH/minuisettings.txt
+mkdir -p "$SHARED_USERDATA_PATH"
+if [ -f "$cfg" ]; then
+	sed -i 's/^screentimeout=.*/screentimeout=0/' "$cfg"
+	sed -i 's/^suspendTimeout=.*/suspendTimeout=0/' "$cfg"
+	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=0' >> "$cfg"
+	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=0' >> "$cfg"
+else
+	printf '%s\n' 'screentimeout=0' 'suspendTimeout=0' > "$cfg"
+fi
+rm -f /tmp/poweroff /tmp/reboot
+
+EXEC_PATH=/tmp/nextui_exec
+NEXT_PATH=/tmp/next
+touch "$EXEC_PATH"
+cd /storage
+
+while [ -f "$EXEC_PATH" ]; do
+	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh
+	# and has crashed NextUI after Settings. Stay on the card root.
+	# getFile() used to keep a trailing newline; loadLast() then walked
+	# "/storage\n" until strrchr was NULL. nextui.c now strips it, and
+	# we still never write one.
+	if [ -f /tmp/last.txt ]; then
+		last=$(cat /tmp/last.txt)
+		case "$last" in
+			*/Tools/*|*.pak) last=/storage ;;
+		esac
+		printf '%s' "$last" > /tmp/last.txt
+	fi
+	nextui.elf >> "$LOGS_PATH/nextui.txt" 2>&1
+	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
+	# on SIGTERM; if /tmp/next is set, run that instead.
+	if [ -f "$NEXT_PATH" ]; then
+		rm -f /tmp/poweroff /tmp/reboot
+		cmd=$(cat "$NEXT_PATH")
+		rm -f "$NEXT_PATH"
+		eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
+		continue
+	fi
+	if [ -f /tmp/poweroff ]; then
+		rm -f /tmp/poweroff
+		poweroff
+		break
+	fi
+	if [ -f /tmp/reboot ]; then
+		rm -f /tmp/reboot
+		reboot
+		break
+	fi
+done

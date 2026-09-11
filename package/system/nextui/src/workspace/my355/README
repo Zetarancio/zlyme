@@ -1,0 +1,12 @@
+Miyoo Flip (PLATFORM=my355)
+
+LoveRetro/NextUI does not ship this handheld. Hardware mapping
+started from apommel/NextUI my355-latest, then Zlyme edited the
+files in this directory:
+
+  SDCARD_PATH /storage
+  CODE_POWER / BTN_SLEEP off until wake works
+  lid unused (gpio-keys-hall polarity unproven)
+  libmsettings is FlipVolume on rk817ext, not stock BSP mixer names
+
+See package/system/nextui/CREDITS.
