@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Fail the build if required pieces are missing from the target.
+
+set -euo pipefail
+
+TARGET_DIR="${1:?post-build.sh: expected TARGET_DIR as the first argument}"
+
+fail=0
+note() { echo "post-build: $*" >&2; fail=1; }
+info() { echo "post-build: $*" >&2; }
+
+shopt -s nullglob
+moddirs=("${TARGET_DIR}"/lib/modules/*/)
+shopt -u nullglob
+
+if [ ${#moddirs[@]} -ne 1 ]; then
+	note "expected exactly one /lib/modules/<release>, found ${#moddirs[@]}"
+else
+	moddir="${moddirs[0]}"
+	for m in 8733bu rtl8733bu_power rocknix-singleadc-joypad; do
+		found=$(find "${moddir}" -name "${m}.ko" -print -quit)
+		[ -n "${found}" ] || note "kernel module ${m}.ko is missing"
+	done
+	sd="${moddir}modules.softdep"
+	if [ -r "${sd}" ]; then
+		grep -q '^softdep rtl8733bu_power post: 8733bu$' "${sd}" ||
+			note "modules.softdep does not order 8733bu after rtl8733bu_power"
+	else
+		note "${sd} is missing"
+	fi
+fi
+
+if [ -e "${TARGET_DIR}/usr/bin/nextui.elf" ]; then
+	for b in usr/bin/minui.elf usr/bin/minarch.elf usr/lib/libmsettings.so \
+		usr/sbin/nextui-session usr/share/nextui/res/assets@2x.png \
+		usr/share/nextui/res/font1.ttf; do
+		[ -e "${TARGET_DIR}/${b}" ] || note "${b} is missing"
+	done
+fi
+
+for f in lib/firmware/rtl_bt/rtl8723fu_fw.bin \
+	 lib/firmware/rtl_bt/rtl8723fu_config.bin \
+	 lib/firmware/regulatory.db; do
+	[ -s "${TARGET_DIR}/${f}" ] || note "${f} is missing or empty"
+done
+
+for f in etc/init.d/S00vardirs; do
+	if [ -e "${TARGET_DIR}/${f}" ]; then
+		info "removing retired /${f}"
+		rm -f "${TARGET_DIR}/${f}"
+	fi
+done
+
+shopt -s nullglob
+for f in "${TARGET_DIR}"/lib/modules/*/updates/rocknix-joypad.ko; do
+	info "removing leftover ${f#"${TARGET_DIR}"/}"
+	rm -f "${f}"
+done
+shopt -u nullglob
+
+rm -rf "${TARGET_DIR}/var/lib/bluetooth"
+ln -sfn /run/bluetooth "${TARGET_DIR}/var/lib/bluetooth"
+
+for l in var/cache var/log var/spool var/tmp var/run var/lock var/lib/dbus \
+	 var/lib/bluetooth; do
+	[ -L "${TARGET_DIR}/${l}" ] || note "/${l} is not a symlink"
+done
+if grep -qE '^[^#]*[[:space:]]/var[[:space:]]' "${TARGET_DIR}/etc/fstab"; then
+	note "/etc/fstab mounts /var"
+fi
+
+if [ -e "${TARGET_DIR}/sbin/modprobe" ]; then
+	case "$(readlink -f "${TARGET_DIR}/sbin/modprobe")" in
+		*/kmod) ;;
+		*/busybox) note "modprobe is busybox, which ignores blacklist and softdep" ;;
+		*) note "modprobe resolves to something unexpected" ;;
+	esac
+else
+	note "no modprobe on the target"
+fi
+
+exit "${fail}"

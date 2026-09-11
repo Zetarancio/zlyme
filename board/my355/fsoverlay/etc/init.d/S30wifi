@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Bring up WiFi. Do not load btusb here (combo chip, shared firmware).
+
+. /etc/zlyme.conf
+
+CONF="${ZLYME_CFG}/wpa_supplicant.conf"
+IFACE=wlan0
+
+start() {
+	printf "Waiting for %s: " "$IFACE"
+	i=0
+	while [ ! -d "/sys/class/net/$IFACE" ] && [ $i -lt 50 ]; do
+		sleep 0.1
+		i=$((i + 1))
+	done
+	if [ ! -d "/sys/class/net/$IFACE" ]; then
+		echo "absent -- check that rtl8733bu_power and 8733bu loaded"
+		return 0
+	fi
+	echo "OK"
+
+	if ! zlyme-ctl want wifi; then
+		echo "WiFi: disabled by zlyme-ctl"
+		return 0
+	fi
+
+	if [ ! -r "$CONF" ]; then
+		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
+		if [ -r "$example" ]; then
+			cp "$example" "$CONF"
+		else
+			printf '%s\n' \
+				'ctrl_interface=/var/run/wpa_supplicant' \
+				'update_config=1' \
+				'ap_scan=1' > "$CONF"
+		fi
+		echo "Seeded $CONF (no networks yet)"
+	fi
+
+	printf "Starting wpa_supplicant: "
+	# Not -B: start-stop-daemon would see the parent exit and print FAIL.
+	if start-stop-daemon -S -b -q -m -p /var/run/wpa_supplicant.pid \
+		--exec /usr/sbin/wpa_supplicant -- \
+		-P /var/run/wpa_supplicant.pid -i "$IFACE" -c "$CONF"
+	then
+		echo "OK"
+	else
+		echo "FAIL"
+		return 0
+	fi
+
+	printf "Starting udhcpc on %s: " "$IFACE"
+	if udhcpc -b -i "$IFACE" -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+
+	return 0
+}
+
+stop() {
+	printf "Stopping WiFi: "
+	start-stop-daemon -K -q -p /var/run/udhcpc.$IFACE.pid 2>/dev/null
+	start-stop-daemon -K -q -p /var/run/wpa_supplicant.pid 2>/dev/null
+	echo "OK"
+	return 0
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		stop
+		start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

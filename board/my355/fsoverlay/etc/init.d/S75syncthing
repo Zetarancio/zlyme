@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Syncthing. Off until zlyme-ctl set syncthing on. Home is
+# /storage/.config/syncthing so the index survives a reboot.
+
+. /etc/zlyme.conf
+
+HOME_DIR="${ZLYME_CFG}/syncthing"
+USER=root
+
+start() {
+	if [ ! -x /usr/bin/syncthing ]; then
+		return 0
+	fi
+	if ! zlyme-ctl want syncthing; then
+		echo "Syncthing: disabled"
+		return 0
+	fi
+	mkdir -p "$HOME_DIR" 2>/dev/null
+	printf "Starting syncthing: "
+	start-stop-daemon -S -q -b -m -p /var/run/syncthing.pid \
+		--exec /usr/bin/syncthing -- \
+		serve --no-upgrade --home="$HOME_DIR" \
+		--gui-address=0.0.0.0:8384
+	echo "OK"
+}
+
+stop() {
+	start-stop-daemon -K -q -p /var/run/syncthing.pid 2>/dev/null
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

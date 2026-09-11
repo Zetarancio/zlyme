@@ -1,0 +1,14 @@
+# Kernel config deltas on top of linux.config.
+
+# LibreELEC placeholders. We do not link an initramfs into the image.
+CONFIG_INITRAMFS_SOURCE=""
+CONFIG_DEFAULT_HOSTNAME="zlyme"
+
+# gzip/zstd initrd support. The base config turns decompressors off.
+CONFIG_RD_GZIP=y
+CONFIG_RD_ZSTD=y
+
+# cfg80211 as a module so it can load regulatory.db from rootfs.
+# Built-in cfg80211 asks for it before squashfs is mounted.
+CONFIG_CFG80211=m
+CONFIG_MAC80211=m

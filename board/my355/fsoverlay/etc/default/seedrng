@@ -1,0 +1,21 @@
+# Keep the random seed on the writable partition.
+#
+# seedrng defaults to /var/lib/seedrng, which is on the read-only root, so it has
+# nowhere to write. Pointing it at a tmpfs would make the error go away without
+# making the seed persist -- which is what an earlier revision of this board did by
+# mounting a tmpfs on /var, and the giveaway was in the boot log every time:
+# "Saving 256 bits of non-creditable seed for next boot". Non-creditable, because
+# the directory was empty again on each boot. The seed only earns entropy credit if
+# it is still there next time.
+#
+# S01seedrng runs long before S15bootpart has mounted anything, so on that first
+# call this directory does not exist and seedrng fails -- harmlessly, the init
+# script ends in `|| true`. S15bootpart reloads it once the partition is up, which
+# is the refresh the script's own header describes, and that is the call that
+# counts.
+#
+# See /etc/zlyme.conf for where this is and why.
+
+. /etc/zlyme.conf
+
+SEEDRNG_ARGS="--seed-dir=${ZLYME_CFG}/seedrng"

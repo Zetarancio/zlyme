@@ -1,0 +1,41 @@
+# WiFi credentials for Zlyme.
+#
+# Rename this file to wpa_supplicant.conf, in this same directory, and fill in
+# your network. This is the exFAT storage partition, so Windows, macOS and Linux
+# can all edit it with the card in a reader -- which is the only way in before the
+# device is on the network, unless you use the serial console.
+#
+# On boot, S30wifi uses this file if it exists and does nothing at all if it
+# does not. There is no failure mode where a missing or wrong network stops the
+# device from coming up on the serial console.
+#
+# For WPA2 and WPA3 both, this is enough:
+
+#network={
+#	ssid="your network name"
+#	psk="your password"
+#}
+
+# The chip does WPA3/SAE, and the driver carries a patch specifically to make it
+# work, so a WPA3-only network should just associate with the block above. If it
+# stalls after the key exchange, force the older protocol to confirm that is
+# what you are looking at:
+#
+#	key_mgmt=WPA-PSK
+#
+# An open network needs key_mgmt=NONE and no psk.
+#
+# For a hidden SSID add:
+#
+#	scan_ssid=1
+#
+# To avoid storing the plaintext password, run wpa_passphrase on the device and
+# paste the psk= hash it prints in place of the quoted password.
+#
+# ctrl_interface is set here so wpa_cli works on the device without a restart.
+# Everything wpa_cli changes is lost on reboot unless you also
+# `wpa_cli save_config`, which needs update_config=1 below.
+
+ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+ap_scan=1

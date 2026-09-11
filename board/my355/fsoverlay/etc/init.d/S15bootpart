@@ -1,0 +1,69 @@
+#!/bin/sh
+# Mount the exFAT partition (label ZLYME) and seed .config. Never fail the boot.
+
+. /etc/zlyme.conf
+
+STORAGE_LABEL="ZLYME"
+
+start() {
+	printf "Mounting %s: " "$ZLYME_STORAGE"
+
+	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
+		echo "already mounted"
+	else
+		dev=$(blkid | sed -n "s|^\([^:]*\):.*LABEL=\"${STORAGE_LABEL}\".*|\1|p" | head -n 1)
+
+		if [ -z "$dev" ]; then
+			echo "no filesystem labelled ${STORAGE_LABEL}"
+			return 0
+		fi
+
+		if mount -t exfat -o rw,noatime "$dev" "$ZLYME_STORAGE" 2>/dev/null; then
+			echo "OK ($dev)"
+		else
+			echo "FAIL ($dev)"
+			return 0
+		fi
+	fi
+
+	seed
+	return 0
+}
+
+seed() {
+	for d in "$ZLYME_CFG" "$ZLYME_CFG/dropbear" "$ZLYME_CFG/seedrng" \
+		"$ZLYME_CFG/retroarch" "$ZLYME_CFG/zlyme" \
+		"$ZLYME_CFG/samba" "$ZLYME_CFG/syncthing"; do
+		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null
+	done
+
+	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=panfrost; do
+		n=${kv%%=*}
+		v=${kv#*=}
+		[ -e "$ZLYME_CFG/zlyme/$n" ] && continue
+		printf '%s\n' "$v" > "$ZLYME_CFG/zlyme/$n" 2>/dev/null
+	done
+
+	for f in wpa_supplicant.conf.example retroarch/retroarch.cfg; do
+		[ -e "$ZLYME_CFG/$f" ] && continue
+		[ -r "$ZLYME_DEFAULTS/$f" ] || continue
+		cp "$ZLYME_DEFAULTS/$f" "$ZLYME_CFG/$f" 2>/dev/null
+	done
+
+	[ -x /etc/init.d/S01seedrng ] && /etc/init.d/S01seedrng reload >/dev/null 2>&1
+}
+
+stop() {
+	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
+		printf "Unmounting %s: " "$ZLYME_STORAGE"
+		umount "$ZLYME_STORAGE" 2>/dev/null && echo "OK" || echo "FAIL"
+	fi
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

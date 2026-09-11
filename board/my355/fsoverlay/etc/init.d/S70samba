@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Samba file share of /storage. Off until zlyme-ctl set samba on.
+
+. /etc/zlyme.conf
+
+start() {
+	if ! command -v smbd >/dev/null; then
+		return 0
+	fi
+	if ! zlyme-ctl want samba; then
+		echo "Samba: disabled"
+		return 0
+	fi
+	mkdir -p /var/log/samba /var/lib/samba /var/run/samba 2>/dev/null
+	printf "Starting smbd: "
+	start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D
+	echo "OK"
+	if command -v nmbd >/dev/null; then
+		start-stop-daemon -S -q --exec /usr/sbin/nmbd -- -D
+	fi
+}
+
+stop() {
+	start-stop-daemon -K -q --exec /usr/sbin/smbd 2>/dev/null
+	start-stop-daemon -K -q --exec /usr/sbin/nmbd 2>/dev/null
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# After WiFi is up, persist pairings and load btusb.
+# btusb is blacklisted until then so the combo chip does not reset.
+
+
+. /etc/zlyme.conf
+
+start() {
+	# Pairings live on the card. /var/lib/bluetooth -> /run/bluetooth.
+	if [ -d "$ZLYME_CFG" ]; then
+		mkdir -p "$ZLYME_CFG/bluetooth" 2>/dev/null
+		ln -sfn "$ZLYME_CFG/bluetooth" /run/bluetooth 2>/dev/null
+	else
+		mkdir -p /run/bluetooth 2>/dev/null
+	fi
+
+	if ! zlyme-ctl want bluetooth; then
+		echo "Bluetooth: disabled by zlyme-ctl"
+		return 0
+	fi
+
+	printf "Loading btusb: "
+	if modprobe btusb 2>/dev/null; then
+		echo "OK"
+	else
+		echo "FAIL"
+		return 0
+	fi
+
+	printf "Waiting for hci0: "
+	i=0
+	while [ ! -d /sys/class/bluetooth/hci0 ] && [ $i -lt 50 ]; do
+		sleep 0.1
+		i=$((i + 1))
+	done
+	if [ -d /sys/class/bluetooth/hci0 ]; then
+		echo "OK"
+	else
+		echo "absent -- check rtl_bt firmware loaded"
+	fi
+
+	return 0
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

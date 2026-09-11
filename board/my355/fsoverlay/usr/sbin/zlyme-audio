@@ -1,0 +1,202 @@
+#!/bin/sh
+#
+# Choose the audio sink and set FlipVolume.
+# Verbs match a typical handheld frontend. `auto` is the codec;
+# the jack watcher owns speaker vs headphones.
+
+. /etc/zlyme.conf
+
+STATE="${ZLYME_CFG}/audio.conf"
+CARD=rk817ext
+VOLCTL=FlipVolume
+
+do_usage() {
+	cat <<EOF
+usage: $(basename "$0") <command>
+
+  list                 available sinks, one per line, as id<TAB>description
+  get                  the selected sink id
+  set {auto|codec|hdmi|bt}
+  status               selected sink, whether it can be opened, and the volume
+  getSystemVolume      volume as a number, 0-100
+  setSystemVolume {mute|unmute|mute-toggle|[+-]<0-100>}
+  test                 play a tone through the current sink
+  export               print a shell assignment: eval \$($(basename "$0") export)
+
+Speaker versus headphones is not selectable: flip-jackd follows the jack.
+A sink change applies to audio started afterwards, not to anything already playing.
+EOF
+}
+
+current() {
+	[ -r "$STATE" ] && . "$STATE" 2>/dev/null
+	echo "${ZLYME_SINK:-codec}"
+}
+
+# Read a key from the state file without disturbing the environment.
+saved() {
+	[ -r "$STATE" ] || return 1
+	sed -n "s/^$1=//p" "$STATE" | tail -n 1
+}
+
+# Rewrite one key in the state file, leaving the others alone.
+save() {
+	if [ ! -d "$ZLYME_CFG" ]; then
+		echo "$(basename "$0"): ${ZLYME_CFG} is not there -- is the card mounted?" >&2
+		return 1
+	fi
+
+	tmp="${STATE}.new"
+	[ -r "$STATE" ] && grep -v "^$1=" "$STATE" > "$tmp" 2>/dev/null
+	printf '%s=%s\n' "$1" "$2" >> "$tmp" || return 1
+	mv "$tmp" "$STATE"
+}
+
+# Can the sink be opened right now? This is the difference between a selection and
+# working audio, and it is the first thing worth knowing when there is no sound:
+# HDMI with no cable and Bluetooth with nothing connected both fail here while
+# looking perfectly configured.
+why_unavailable() {
+	case "$1" in
+		codec)
+			[ -d "/proc/asound/${CARD}" ] || { echo "codec card absent"; return 1; }
+			;;
+		hdmi)
+			[ -d /proc/asound/HDMI ] || { echo "HDMI card absent"; return 1; }
+			;;
+		bt)
+			pidof bluealsad >/dev/null 2>&1 || pidof bluealsa >/dev/null 2>&1 ||
+				{ echo "bluealsad not running"; return 1; }
+			;;
+	esac
+	return 0
+}
+
+describe() {
+	case "$1" in
+		codec)	echo "Speaker or headphones" ;;
+		hdmi)	echo "HDMI" ;;
+		bt)	echo "Bluetooth" ;;
+	esac
+}
+
+volume() {
+	amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
+		sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1
+}
+
+set_volume() {
+	amixer -q -c "$CARD" sset "$VOLCTL" "$1%" 2>/dev/null
+}
+
+case "${1:-status}" in
+	list)
+		for s in codec hdmi bt; do
+			if reason=$(why_unavailable "$s"); then
+				printf '%s\t%s\n' "$s" "$(describe "$s")"
+			else
+				printf '%s\t%s (unavailable: %s)\n' "$s" "$(describe "$s")" "$reason"
+			fi
+		done
+		;;
+
+	get)
+		current
+		;;
+
+	set)
+		sink="$2"
+		[ "$sink" = auto ] && sink=codec
+		case "$sink" in
+			codec|hdmi|bt)
+				save ZLYME_SINK "$sink" || exit 1
+				echo "sink: ${sink} (applies to audio started from now on)"
+				reason=$(why_unavailable "$sink") ||
+					echo "warning: ${reason}" >&2
+				;;
+			*)
+				echo "$(basename "$0"): unknown sink '${sink}'" >&2
+				exit 1
+				;;
+		esac
+		;;
+
+	status)
+		sink=$(current)
+		printf 'sink: %s\n' "$sink"
+		if reason=$(why_unavailable "$sink"); then
+			echo "state: available"
+		else
+			printf 'state: unavailable -- %s\n' "$reason"
+		fi
+		printf 'volume: %s\n' "$(volume)"
+		;;
+
+	getSystemVolume)
+		volume
+		;;
+
+	setSystemVolume)
+		v="$2"
+		now=$(volume)
+		: "${now:=0}"
+		case "$v" in
+			# softvol has a volume but no mute switch, so mute is "remember
+			# where it was and go to zero". Without saving it, unmute would
+			# have to invent a level.
+			mute)
+				[ "$now" -gt 0 ] && save ZLYME_PREMUTE "$now"
+				set_volume 0
+				;;
+			unmute)
+				restore=$(saved ZLYME_PREMUTE) || restore=""
+				set_volume "${restore:-50}"
+				;;
+			mute-toggle)
+				if [ "$now" -gt 0 ]; then
+					save ZLYME_PREMUTE "$now"
+					set_volume 0
+				else
+					restore=$(saved ZLYME_PREMUTE) || restore=""
+					set_volume "${restore:-50}"
+				fi
+				;;
+			[+-]*)
+				delta=${v#[+-]}
+				case "$v" in
+					+*) new=$((now + delta)) ;;
+					-*) new=$((now - delta)) ;;
+				esac
+				[ "$new" -lt 0 ] && new=0
+				[ "$new" -gt 100 ] && new=100
+				set_volume "$new"
+				;;
+			*)
+				if echo "$v" | grep -qE '^[0-9]+$' && [ "$v" -le 100 ]; then
+					set_volume "$v"
+				else
+					echo "$(basename "$0"): invalid volume '${v}'" >&2
+					exit 1
+				fi
+				;;
+		esac
+		;;
+
+	test)
+		speaker-test -D default -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 ||
+			echo "$(basename "$0"): could not open the current sink" >&2
+		;;
+
+	export)
+		printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(current)"
+		;;
+
+	-h|--help|help)
+		do_usage
+		;;
+
+	*)
+		do_usage >&2
+		exit 1
+		;;
+esac

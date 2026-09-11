@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Route audio from the headphone jack. After S20alsa so the live jack wins
+# over a saved Playback Mux.
+
+
+DAEMON=/usr/sbin/flip-jackd
+PIDFILE=/var/run/flip-jackd.pid
+
+case "$1" in
+	start)
+		[ -x "$DAEMON" ] || exit 0
+		printf "Starting jack watcher: "
+		start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON" \
+			&& echo "OK" || echo "FAIL"
+		;;
+	stop)
+		printf "Stopping jack watcher: "
+		start-stop-daemon -K -q -p "$PIDFILE"
+		echo "OK"
+		;;
+	restart|reload)
+		"$0" stop
+		sleep 1
+		"$0" start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+
+exit 0

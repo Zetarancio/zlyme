@@ -1,0 +1,66 @@
+#!/bin/sh
+#
+# Restore mixer state from /storage. Never fail the boot.
+
+. /etc/zlyme.conf
+
+CARD=rk817ext
+STATE="${ZLYME_CFG}/asound.state"
+
+# Open the PCM once so the FlipVolume softvol control exists.
+prime_softvol() {
+	dd if=/dev/zero bs=4096 count=1 2>/dev/null |
+		aplay -q -t raw -f S16_LE -c 2 -r 48000 -D default >/dev/null 2>&1 || true
+}
+
+start() {
+	if [ ! -d "/proc/asound/${CARD}" ]; then
+		echo "ALSA: no card ${CARD} -- skipping"
+		return 0
+	fi
+
+	prime_softvol
+
+	printf "Restoring mixer state: "
+	if [ -r "$STATE" ]; then
+		if alsactl -f "$STATE" -F restore "$CARD" >/dev/null 2>&1; then
+			echo "OK"
+		else
+			echo "partial"
+		fi
+	else
+		echo "no saved state -- storing current"
+		store
+	fi
+
+	return 0
+}
+
+store() {
+	[ -d "$(dirname "$STATE")" ] || return 0
+	alsactl -f "$STATE" store "$CARD" >/dev/null 2>&1 || true
+}
+
+stop() {
+	printf "Saving mixer state: "
+	store
+	echo "OK"
+	return 0
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		stop
+		start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

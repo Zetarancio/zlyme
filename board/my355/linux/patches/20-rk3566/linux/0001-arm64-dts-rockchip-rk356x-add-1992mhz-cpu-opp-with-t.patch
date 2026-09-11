@@ -1,0 +1,26 @@
+From 40703929c8e9453575b075fb4ab8c5d5762269fb Mon Sep 17 00:00:00 2001
+From: sydarn <sydarn@proton.me>
+Date: Fri, 19 Apr 2024 15:04:32 +0200
+Subject: [PATCH] arm64: dts: rockchip: rk356x: add 1992mhz cpu opp with
+ turbo-mode flag
+
+---
+ arch/arm64/boot/dts/rockchip/rk3566.dtsi | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3566.dtsi b/arch/arm64/boot/dts/rockchip/rk3566.dtsi
+index 3fcca79..60f5902 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3566.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3566.dtsi
+@@ -105,3 +105,11 @@ &cpu3 {
+ &gpu {
+ 	operating-points-v2 = <&gpu_opp_table>;
+ };
++
++&cpu0_opp_table {
++	opp-1992000000 {
++		opp-hz = /bits/ 64 <1992000000>;
++		opp-microvolt = <1150000 1150000 1150000>;
++		turbo-mode;
++	};
++};

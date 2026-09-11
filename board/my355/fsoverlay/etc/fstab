@@ -1,0 +1,32 @@
+# <file system>	<mount pt>	<type>	<options>	<dump>	<pass>
+/dev/root	/		squashfs ro,noauto			0	0
+proc		/proc		proc	defaults			0	0
+devpts		/dev/pts	devpts	defaults,gid=5,mode=620,ptmxmode=0666	0	0
+sysfs		/sys		sysfs	defaults			0	0
+tmpfs		/dev/shm	tmpfs	mode=1777			0	0
+tmpfs		/tmp		tmpfs	mode=1777			0	0
+tmpfs		/run		tmpfs	mode=0755,nosuid,nodev		0	0
+
+# Buildroot's own skeleton fstab, with one change.
+#
+# The root line says squashfs rather than ext2, and the root filesystem is never
+# remounted read-write -- that is BR2_TARGET_GENERIC_REMOUNT_ROOTFS_RW=n in the
+# defconfig, which comments the remount out of /etc/inittab. The line is noauto
+# and therefore inert either way; it is here so it does not describe something
+# untrue.
+#
+# There is deliberately no tmpfs on /var. Buildroot has already solved writable
+# /var on a read-only root, in the skeleton and in the packages themselves:
+# /var/cache, /var/log, /var/spool and /var/tmp are symlinks into /tmp, /var/run
+# and /var/lock point at /run, and the dbus package replaces /var/lib/dbus with a
+# symlink to /tmp/dbus that its own init script then creates. Mounting a tmpfs
+# over /var hides every one of those, and the replacement has to be maintained by
+# hand -- which is exactly how the first attempt shipped without /var/lib/dbus and
+# left dbus unable to write a machine-id.
+#
+# Nothing here mounts the boot or games partitions, and the boot partition is
+# now mounted anyway -- by S15bootpart rather than from this file, because it is
+# found by filesystem label and busybox mount is built without
+# FEATURE_MOUNT_LABEL. A script can also decline to mount and carry on, which is
+# the part that matters: on a handheld a partition failing to mount can never be
+# allowed to wedge the device, because there is no console to rescue it from.

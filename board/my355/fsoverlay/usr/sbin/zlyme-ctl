@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Persist flags under /storage/.config/zlyme/. Init scripts call
+# `want`; Settings calls get/set.
+
+. /etc/zlyme.conf
+
+DIR="${ZLYME_CFG}/zlyme"
+# Defaults when the file is absent. Keep in sync with S15bootpart seed.
+default_of() {
+	case "$1" in
+		wifi|bluetooth|ssh) echo on ;;
+		samba|syncthing) echo off ;;
+		gpu) echo panfrost ;;
+		display_mode) echo "" ;;
+		*) echo off ;;
+	esac
+}
+
+get() {
+	name=$1
+	if [ -r "$DIR/$name" ]; then
+		tr -d ' \t\r\n' < "$DIR/$name"
+	else
+		default_of "$name"
+	fi
+}
+
+want() {
+	val=$(get "$1")
+	[ "$val" = "on" ] || [ "$val" = "1" ] || [ "$val" = "yes" ]
+}
+
+setv() {
+	name=$1
+	val=$2
+	mkdir -p "$DIR" 2>/dev/null
+	printf '%s\n' "$val" > "$DIR/$name"
+}
+
+toggle() {
+	name=$1
+	if want "$name"; then
+		setv "$name" off
+		echo off
+	else
+		setv "$name" on
+		echo on
+	fi
+}
+
+cmd=$1
+shift
+case "$cmd" in
+	get) get "$1"; echo ;;
+	want) want "$1" ;;
+	set) setv "$1" "$2" ;;
+	toggle) toggle "$1" ;;
+	status)
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode; do
+			printf '%s=%s\n' "$n" "$(get "$n")"
+		done
+		;;
+	*)
+		echo "usage: zlyme-ctl {get|want|set|toggle|status} [name] [value]" >&2
+		exit 1
+		;;
+esac

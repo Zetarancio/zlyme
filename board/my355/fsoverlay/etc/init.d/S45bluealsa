@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# Bluetooth audio (a2dp-source). After bluetoothd. Try both binary names.
+
+
+DAEMON=""
+for d in /usr/bin/bluealsad /usr/bin/bluealsa; do
+	[ -x "$d" ] && DAEMON="$d" && break
+done
+
+PIDFILE=/var/run/bluealsad.pid
+
+start() {
+	[ -n "$DAEMON" ] || return 0
+
+	# No adapter: skip rather than spin.
+	if [ ! -d /sys/class/bluetooth/hci0 ]; then
+		echo "Bluetooth audio: no hci0 -- skipping"
+		return 0
+	fi
+
+	printf "Starting bluealsad: "
+	if start-stop-daemon -S -q -b -m -p "$PIDFILE" \
+		--exec "$DAEMON" -- -p a2dp-source
+	then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return 0
+}
+
+stop() {
+	[ -n "$DAEMON" ] || return 0
+	printf "Stopping bluealsad: "
+	start-stop-daemon -K -q -p "$PIDFILE"
+	echo "OK"
+	return 0
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart|reload)
+		stop
+		start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

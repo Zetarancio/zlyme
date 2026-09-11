@@ -1,0 +1,34 @@
+# Keep the SSH host key across reboots.
+#
+# /etc/dropbear is a symlink to /var/run/dropbear, which is a tmpfs, so by
+# default dropbear generates a fresh host key on every boot. Every reboot then
+# looks like a man-in-the-middle attack to ssh, and the development loop this
+# whole stage exists to enable turns into editing known_hosts each time.
+#
+# So put it in the configuration directory with everything else that has to
+# survive a reboot -- see /etc/zlyme.conf, which is also where the caveats about
+# the current filesystem live. The -R that S50dropbear already passes means
+# dropbear generates the key if the file is absent, so the first boot after
+# flashing creates it and every boot after reuses it.
+#
+# If the writable filesystem did not mount, S15bootpart could not create the
+# directory and dropbear falls back to a per-boot key rather than refusing to
+# start.
+#
+# Every boot will still print "No persistent location to store SSH host keys",
+# and it is wrong. S50dropbear prints that whenever /etc/dropbear is a symlink it
+# cannot remove, without ever looking at DROPBEAR_ARGS, so it cannot know about the
+# -r below. Verified on the device: dropbear runs with this argument and the key
+# lands where it says. The other half of the confusion is -R, which defers key
+# generation to the first connection -- so the directory stays empty until someone
+# actually connects, and an empty directory is not evidence of a problem.
+#
+# This key is currently on a filesystem with no permission bits, so it is
+# readable by anyone holding the card. Do not reuse it anywhere that matters, and
+# note that the real fix is a root password rather than a better filesystem.
+
+. /etc/zlyme.conf
+
+# -B: root has an empty password. Without this, sshd rejects the
+# development login that serial already allows.
+DROPBEAR_ARGS="-B -r ${ZLYME_CFG}/dropbear/dropbear_ed25519_host_key"

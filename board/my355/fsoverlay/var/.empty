@@ -1,0 +1,6 @@
+This file exists so that git tracks the directory and Buildroot creates it.
+
+/var has to be present in the read-only squashfs as a mount point, because
+/etc/fstab mounts a tmpfs over it. Buildroot's overlay rsync excludes files
+named .empty but still creates the directory holding them, which is the same
+trick its own skeleton uses for /dev/pts and /dev/shm.
