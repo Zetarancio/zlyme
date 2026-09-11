@@ -1,0 +1,41 @@
+#!/bin/sh
+# Load panfrost or mali_kbase. Bind-mount libmali GLES over Mesa when
+# that stack is selected and /usr/lib/mali exists.
+
+. /etc/zlyme.conf 2>/dev/null
+
+want=${1:-}
+if [ -z "$want" ]; then
+	want=$(zlyme-ctl get gpu 2>/dev/null | tr -d '\n')
+fi
+[ -n "$want" ] || want=panfrost
+
+unbind_mali_libs() {
+	if mount | grep -q "on /usr/lib/libEGL.so"; then
+		umount /usr/lib/libEGL.so /usr/lib/libGLESv1_CM.so \
+			/usr/lib/libGLESv2.so /usr/lib/libgbm.so 2>/dev/null
+	fi
+}
+
+bind_mali_libs() {
+	[ -d /usr/lib/mali ] || return 0
+	for lib in libEGL.so libGLESv1_CM.so libGLESv2.so libgbm.so; do
+		[ -e /usr/lib/mali/$lib ] || continue
+		mount --bind /usr/lib/mali/$lib /usr/lib/$lib 2>/dev/null
+	done
+}
+
+case "$want" in
+	libmali|mali|mali_kbase)
+		modprobe -r panfrost 2>/dev/null
+		modprobe mali_kbase 2>/dev/null
+		bind_mali_libs
+		echo libmali
+		;;
+	panfrost|*)
+		modprobe -r mali_kbase 2>/dev/null
+		modprobe panfrost 2>/dev/null
+		unbind_mali_libs
+		echo panfrost
+		;;
+esac

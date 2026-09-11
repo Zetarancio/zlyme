@@ -1,0 +1,8 @@
+config BR2_PACKAGE_SYNCTHING
+	bool "syncthing"
+	depends on BR2_aarch64
+	help
+	  Syncthing 2.0.13. Off at boot until zlyme-ctl set syncthing on.
+	  GUI on :8384.
+
+	  https://syncthing.net/

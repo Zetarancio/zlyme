@@ -1,0 +1,10 @@
+config BR2_PACKAGE_LIBMALI
+	bool "libmali"
+	depends on BR2_PACKAGE_MALI_KBASE
+	select BR2_PACKAGE_LIBDRM
+	help
+	  ARM Mali Bifrost G52 user-space GLES (JeffyCN g29p1),
+	  installed under /usr/lib/mali so it never replaces Mesa
+	  filenames. gpudriver bind-mounts it when gpu=libmali.
+
+	  https://github.com/JeffyCN/mirrors

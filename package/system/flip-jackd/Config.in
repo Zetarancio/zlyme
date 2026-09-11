@@ -1,0 +1,13 @@
+config BR2_PACKAGE_FLIP_JACKD
+	bool "flip-jackd"
+	select BR2_PACKAGE_ALSA_LIB
+	help
+	  Sends audio to the headphones or the speaker, following the jack.
+
+	  Both are outputs of the rk817, selected by one mixer control that
+	  nothing changes on its own, so without this the output stays wherever
+	  the driver left it and plugging in headphones does nothing.
+
+	  Watches the evdev switch that simple-audio-card's hp-det publishes,
+	  and writes Playback Mux (HP / SPK). The card also has a Headphones
+	  Jack kcontrol; that reports insertion and does not change the mux.

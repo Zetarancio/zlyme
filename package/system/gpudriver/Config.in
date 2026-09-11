@@ -1,0 +1,7 @@
+config BR2_PACKAGE_GPUDRIVER
+	bool "gpudriver"
+	depends on BR2_PACKAGE_MALI_KBASE
+	help
+	  Boot-time switch between panfrost and mali_kbase. The
+	  choice is /storage/.config/zlyme/gpu. A change needs a
+	  reboot: both modules bind the same GPU.

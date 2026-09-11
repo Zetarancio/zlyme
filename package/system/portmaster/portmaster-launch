@@ -1,0 +1,18 @@
+#!/bin/sh
+# First run copies the release onto /storage so PortMaster can update
+# itself. Later runs exec the copy.
+. /etc/zlyme.conf
+DEST="${ZLYME_STORAGE}/PortMaster"
+if [ ! -x "$DEST/PortMaster.sh" ] && [ ! -x "$DEST/PortMaster.txt" ]; then
+	mkdir -p "$DEST"
+	cp -a /usr/share/portmaster/. "$DEST/"
+fi
+cd "$DEST" || exit 1
+if [ -x ./PortMaster.sh ]; then
+	exec ./PortMaster.sh "$@"
+fi
+if [ -f ./PortMaster.txt ]; then
+	exec /usr/bin/python3 ./PortMaster.txt "$@"
+fi
+echo "PortMaster files missing in $DEST" >&2
+exit 1

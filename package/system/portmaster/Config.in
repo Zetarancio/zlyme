@@ -1,0 +1,9 @@
+config BR2_PACKAGE_PORTMASTER
+	bool "portmaster"
+	select BR2_PACKAGE_BOX64
+	select BR2_PACKAGE_PYTHON3
+	help
+	  PortMaster-GUI 2026.05.04-1202. Unpacks to /storage/PortMaster
+	  on first launch. Needs Python3 and box64.
+
+	  https://github.com/PortsMaster/PortMaster-GUI

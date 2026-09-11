@@ -1,0 +1,15 @@
+#!/bin/sh
+# After S11modules (which loads panfrost). Switch if the user asked
+# for mali_kbase.
+
+start() {
+	[ -x /usr/sbin/gpudriver ] || return 0
+	printf "GPU stack: "
+	gpudriver
+}
+
+case "$1" in
+	start) start ;;
+	stop) ;;
+	*) echo "usage: $0 {start|stop}"; exit 1 ;;
+esac

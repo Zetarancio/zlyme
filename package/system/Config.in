@@ -1,0 +1,9 @@
+# Recipes.
+
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/flip-jackd/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/nextui/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/gpudriver/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/libmali/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/syncthing/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/box64/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/portmaster/Config.in"
