@@ -40,8 +40,20 @@ else
 	exit 1
 fi
 
-support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
-# OTA-shaped tar next to zlyme.img. Applying it is not wired yet.
+# GPT rootfs must be larger than this squashfs so a later OTA can grow
+# without shrinking the games partition. Existing cards keep their GPT;
+# those OTAs still have to fit the live p3 (see zlyme-update size check).
+sq_bytes=$(wc -c < "${BINARIES_DIR}/rootfs.squashfs")
+slack=$((32 * 1024 * 1024))
+mib=1048576
+rounded=$(( (sq_bytes + mib - 1) / mib * mib ))
+part_k=$(( (rounded + slack) / 1024 ))
+cfg="${BINARIES_DIR}/genimage-my355.cfg"
+sed "s/@ROOTFS_PART_SIZE@/${part_k}K/" "${BOARD_DIR}/genimage.cfg" >"$cfg"
+echo "post-image: rootfs partition ${part_k}K (squashfs ${sq_bytes} + 32MiB slack)"
+support/scripts/genimage.sh -c "$cfg"
+# OTA tar next to zlyme.img. Copy to /storage/.update/zlyme-my355-update.tar
+# and reboot; do not dd the live squashfs.
 if [ -x "${BOARD_DIR}/make-update-tar.sh" ]; then
 	"${BOARD_DIR}/make-update-tar.sh" "${BINARIES_DIR}" || \
 		echo "post-image: update tar skipped" >&2

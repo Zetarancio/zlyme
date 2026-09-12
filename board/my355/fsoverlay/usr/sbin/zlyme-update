@@ -1,0 +1,591 @@
+#!/bin/sh
+# OS update for a squashfs-on-partition root.
+#
+# Batocera/Knulli extract a new squashfs *file* onto FAT /boot and reboot.
+# Our root *is* PARTLABEL=rootfs, so dd while that partition is mounted as /
+# unmaps the running OS (SQUASHFS I/O errors, reboot: Input/output error).
+#
+# Contract (pak / GitHub download):
+#   1. Copy the tar to /storage/.update/zlyme-my355-update.tar
+#   2. reboot
+#   S18 runs this script *before* NextUI, pivots into a tmpfs, unmounts the
+#   squashfs, writes the new image, then resets. Config stays on exFAT.
+#
+# Never dd a mounted rootfs. commit() refuses unless / is tmpfs.
+
+set -eu
+
+. /etc/zlyme.conf 2>/dev/null || true
+STORAGE="${ZLYME_STORAGE:-/storage}"
+BOOT="${ZLYME_BOOT:-/boot}"
+STAGEDIR="$STORAGE/.update"
+PENDING="$STAGEDIR/pending"
+BACKUP="$STAGEDIR/config-backup.tar.gz"
+QUEUED_TAR="$STAGEDIR/zlyme-my355-update.tar"
+WANT="$STAGEDIR/WANT"
+REAPPLY="$STAGEDIR/reapply"
+FAILED="$STAGEDIR/FAILED"
+LOG="$STAGEDIR/apply.log"
+NEWROOT="/tmp/zlyme-newroot"
+
+trap '' HUP PIPE
+
+mkdir -p "$STAGEDIR" 2>/dev/null || true
+
+log() {
+	msg="zlyme-update: $*"
+	echo "$msg"
+	[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
+	[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
+	if [ -d "$STAGEDIR" ]; then
+		echo "$msg" >>"$LOG" 2>/dev/null || true
+	fi
+}
+
+fail() {
+	log "ERROR: $*"
+	echo "$*" >"$FAILED" 2>/dev/null || true
+	# After pivot we cannot return to the old OS. Reset rather than hang.
+	if root_is_tmpfs; then
+		sysrq_reboot
+	fi
+	return 1
+}
+
+need_cmd() {
+	command -v "$1" >/dev/null 2>&1 || fail "missing $1"
+}
+
+rootdev() {
+	dev=""
+	if [ -e /dev/disk/by-partlabel/rootfs ]; then
+		dev=$(readlink -f /dev/disk/by-partlabel/rootfs 2>/dev/null || true)
+	fi
+	if [ -z "$dev" ]; then
+		dev=$(blkid | sed -n 's|^\([^:]*\):.*PARTLABEL="rootfs".*|\1|p' | head -n 1)
+	fi
+	[ -n "$dev" ] || fail "no PARTLABEL=rootfs"
+	printf '%s' "$dev"
+}
+
+part_bytes() {
+	dev=$1
+	base=${dev##*/}
+	sec=""
+	if [ -r "/sys/class/block/${base}/size" ]; then
+		sec=$(tr -d ' \t\r\n' <"/sys/class/block/${base}/size")
+	fi
+	[ -n "$sec" ] && [ "$sec" -gt 0 ] || fail "cannot size $dev"
+	echo $((sec * 512))
+}
+
+# / is the squashfs we would overwrite.
+root_is_squashfs() {
+	awk '$2=="/" && $3=="squashfs" { found=1 } END { exit !found }' /proc/mounts
+}
+
+root_is_tmpfs() {
+	awk '$2=="/" && ($3=="tmpfs" || $3=="rootfs" || $3=="ramfs") { found=1 } END { exit !found }' /proc/mounts
+}
+
+dst_is_mounted() {
+	dst=$1
+	base=${dst##*/}
+	awk -v d="$dst" -v b="$base" '
+		$1==d || $1==("/dev/" b) || index($1, b) { found=1 }
+		END { exit !found }
+	' /proc/mounts
+}
+
+queued_tar() {
+	if [ -s "$QUEUED_TAR" ]; then
+		printf '%s\n' "$QUEUED_TAR"
+		return 0
+	fi
+	if [ -s "$WANT" ]; then
+		t=$(tr -d '\t\r\n' <"$WANT")
+		if [ -s "$t" ]; then
+			printf '%s\n' "$t"
+			return 0
+		fi
+		if [ -s "$STAGEDIR/$t" ]; then
+			printf '%s\n' "$STAGEDIR/$t"
+			return 0
+		fi
+	fi
+	return 1
+}
+
+is_queued() {
+	[ -s "$PENDING/VERSION" ] && [ -s "$PENDING/rootfs.squashfs" ] && return 0
+	queued_tar >/dev/null 2>&1
+}
+
+verify_tar() {
+	tarf=$1
+	[ -s "$tarf" ] || fail "empty tar"
+	need_cmd tar
+	tar -tf "$tarf" | grep -qx Image || fail "tar has no Image"
+	tar -tf "$tarf" | grep -qx rk3566-miyoo-flip.dtb || fail "tar has no dtb"
+	tar -tf "$tarf" | grep -qx rootfs.squashfs || fail "tar has no squashfs"
+	log "tar ok ($tarf)"
+	tar -xOf "$tarf" VERSION 2>/dev/null | head -n 2 || true
+}
+
+verify_dir() {
+	dir=$1
+	for f in Image rk3566-miyoo-flip.dtb rootfs.squashfs VERSION; do
+		[ -s "$dir/$f" ] || fail "missing $dir/$f"
+	done
+}
+
+squashfs_fits() {
+	sq=$1
+	dst=$(rootdev) || return 1
+	sz=$(wc -c <"$sq")
+	psz=$(part_bytes "$dst") || return 1
+	if [ "$sz" -gt "$psz" ]; then
+		fail "squashfs ($sz) larger than $dst ($psz)"
+		return 1
+	fi
+	log "squashfs $sz bytes, $dst is $psz"
+}
+
+stage_tar() {
+	tarf=$1
+	verify_tar "$tarf"
+	rm -rf "$PENDING"
+	mkdir -p "$PENDING"
+	log "extracting $(basename "$tarf") to pending"
+	tar -xf "$tarf" -C "$PENDING"
+	verify_dir "$PENDING"
+	squashfs_fits "$PENDING/rootfs.squashfs"
+}
+
+ensure_pending() {
+	if [ -s "$PENDING/VERSION" ] && [ -s "$PENDING/rootfs.squashfs" ]; then
+		verify_dir "$PENDING"
+		squashfs_fits "$PENDING/rootfs.squashfs"
+		return 0
+	fi
+	tarf=$(queued_tar) || fail "nothing queued (drop $QUEUED_TAR and reboot)"
+	stage_tar "$tarf"
+}
+
+queue_tar() {
+	tarf=$1
+	[ -s "$tarf" ] || fail "no tar: $tarf"
+	verify_tar "$tarf"
+	mkdir -p "$STAGEDIR"
+	abs=$(readlink -f "$tarf" 2>/dev/null || echo "$tarf")
+	destabs=$(readlink -f "$QUEUED_TAR" 2>/dev/null || echo "$QUEUED_TAR")
+	if [ "$abs" != "$destabs" ]; then
+		log "copying to $QUEUED_TAR"
+		cp -f "$tarf" "$QUEUED_TAR"
+		sync
+	fi
+	printf '%s\n' "$QUEUED_TAR" >"$WANT"
+	rm -f "$FAILED"
+	log "queued. reboot to apply (or: zlyme-update apply)"
+	tar -xOf "$QUEUED_TAR" VERSION 2>/dev/null | head -n 2 || true
+}
+
+backup_config() {
+	need_cmd tar
+	log "backing up .config and .userdata"
+	tar -acf "$BACKUP" -C "$STORAGE" .config .userdata
+	sync
+	log "config snapshot $BACKUP"
+}
+
+restore_config() {
+	[ -s "$BACKUP" ] || {
+		log "no config snapshot, skip restore"
+		return 0
+	}
+	log "restoring .config and .userdata"
+	tar -axf "$BACKUP" -C "$STORAGE"
+	sync
+}
+
+install_boot() {
+	dir=$1
+	mkdir -p "$BOOT"
+	if ! grep -q " $BOOT " /proc/mounts; then
+		fail "$BOOT not mounted"
+		return 1
+	fi
+	log "installing kernel/dtb/overlays to $BOOT"
+	cp -f "$dir/Image" "$BOOT/Image"
+	cp -f "$dir/rk3566-miyoo-flip.dtb" "$BOOT/rk3566-miyoo-flip.dtb"
+	if [ -d "$dir/extlinux" ]; then
+		mkdir -p "$BOOT/extlinux"
+		cp -a "$dir/extlinux/." "$BOOT/extlinux/"
+	fi
+	if [ -d "$dir/overlays" ]; then
+		mkdir -p "$BOOT/overlays"
+		cp -a "$dir/overlays/." "$BOOT/overlays/"
+	fi
+	sync
+}
+
+install_rootfs() {
+	dir=$1
+	sq="$dir/rootfs.squashfs"
+	dst=$(rootdev) || return 1
+	if root_is_squashfs; then
+		fail "refusing to dd: / is still squashfs"
+		return 1
+	fi
+	if dst_is_mounted "$dst"; then
+		fail "refusing to dd: $dst is mounted"
+		return 1
+	fi
+	sz=$(wc -c <"$sq")
+	psz=$(part_bytes "$dst") || return 1
+	[ "$sz" -le "$psz" ] || fail "squashfs ($sz) larger than $dst ($psz)"
+	log "writing squashfs ($sz bytes) to $dst"
+	dd if="$sq" of="$dst" bs=1048576
+	sync
+}
+
+apply_overlays_now() {
+	if [ -x /usr/sbin/zlyme-ctl ]; then
+		log "writing FDTOVERLAYS from flags"
+		zlyme-ctl apply-overlays || true
+	fi
+	touch "$REAPPLY"
+}
+
+sysrq_reboot() {
+	log "resetting"
+	sync
+	if [ -w /proc/sys/kernel/sysrq ]; then
+		echo 1 >/proc/sys/kernel/sysrq 2>/dev/null || true
+	fi
+	if [ -w /proc/sysrq-trigger ]; then
+		echo s >/proc/sysrq-trigger 2>/dev/null || true
+		sleep 1
+		echo u >/proc/sysrq-trigger 2>/dev/null || true
+		sleep 1
+		echo b >/proc/sysrq-trigger 2>/dev/null || true
+	fi
+	reboot -f 2>/dev/null || true
+	while true; do
+		[ -w /proc/sysrq-trigger ] && echo b >/proc/sysrq-trigger 2>/dev/null || true
+		sleep 1
+	done
+}
+
+copy_one() {
+	src=$1
+	root=$2
+	[ -e "$src" ] || return 0
+	dest="$root$src"
+	mkdir -p "${dest%/*}"
+	cp -a "$src" "$dest"
+}
+
+copy_libs_for() {
+	root=$1
+	shift
+	for p in \
+		/lib/ld-linux-aarch64.so.1 \
+		/lib64/ld-linux-aarch64.so.1 \
+		/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1 \
+		/lib/libc.so.6 \
+		/lib/aarch64-linux-gnu/libc.so.6 \
+		/lib/libresolv.so.2 \
+		/lib/aarch64-linux-gnu/libresolv.so.2; do
+		copy_one "$p" "$root"
+	done
+	command -v python3 >/dev/null 2>&1 || return 0
+	python3 - "$root" "$@" <<'PY' || true
+import os, shutil, subprocess, sys
+root = sys.argv[1]
+copied = set()
+
+def copy(p):
+    if not p or p in copied or not os.path.exists(p):
+        return
+    copied.add(p)
+    dest = root + p
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.path.islink(p):
+        tgt = os.readlink(p)
+        if not os.path.exists(dest):
+            os.symlink(tgt, dest)
+        copy(os.path.realpath(p))
+        return
+    shutil.copy2(p, dest)
+
+for b in sys.argv[2:]:
+    copy(os.path.abspath(b))
+    try:
+        out = subprocess.check_output(["ldd", b], text=True, stderr=subprocess.DEVNULL)
+    except Exception:
+        continue
+    for line in out.splitlines():
+        line = line.strip()
+        if " => " in line:
+            path = line.split(" => ", 1)[1].split()[0]
+            if path.startswith("/"):
+                copy(path)
+        elif line.startswith("/") and " (" in line:
+            copy(line.split()[0])
+PY
+}
+
+prepare_ramfs() {
+	need_cmd busybox
+	rm -rf "$NEWROOT"
+	mkdir -p "$NEWROOT"
+	mount -t tmpfs -o mode=0755,size=64M tmpfs "$NEWROOT"
+	mkdir -p \
+		"$NEWROOT/bin" "$NEWROOT/usr/sbin" "$NEWROOT/usr/bin" \
+		"$NEWROOT/etc" "$NEWROOT/tmp" "$NEWROOT/run" \
+		"$NEWROOT/proc" "$NEWROOT/sys" "$NEWROOT/dev" \
+		"$NEWROOT/boot" "$NEWROOT/storage" "$NEWROOT/oldroot" \
+		"$NEWROOT/lib" "$NEWROOT/lib64"
+
+	bb=$(command -v busybox)
+	cp "$bb" "$NEWROOT/bin/busybox"
+	self=$(command -v zlyme-update 2>/dev/null || true)
+	[ -x "$self" ] || self=/usr/sbin/zlyme-update
+	cp "$self" "$NEWROOT/usr/sbin/zlyme-update"
+	cp "$self" "$NEWROOT/bin/zlyme-update"
+	chmod 0755 "$NEWROOT/usr/sbin/zlyme-update" "$NEWROOT/bin/zlyme-update" "$NEWROOT/bin/busybox"
+
+	copy_one /usr/sbin/zlyme-ctl "$NEWROOT"
+	copy_one /etc/zlyme.conf "$NEWROOT"
+
+	copy_libs_for "$NEWROOT" "$bb" "$self" /usr/sbin/zlyme-ctl
+
+	for a in sh ash mount umount mkdir rmdir cp mv rm ls cat echo sync \
+		dd tar grep sed awk wc reboot sleep ln chmod tee head tr \
+		mktemp blkid kill killall pivot_root switch_root; do
+		ln -sf busybox "$NEWROOT/bin/$a"
+	done
+
+	# Make the tmpfs a distinct mount point for pivot_root.
+	if ! awk -v p="$NEWROOT" '$2==p { found=1 } END { exit !found }' /proc/mounts; then
+		mount --bind "$NEWROOT" "$NEWROOT"
+	fi
+}
+
+bind_into() {
+	src=$1
+	dst=$2
+	mkdir -p "$dst"
+	if grep -q " $src " /proc/mounts; then
+		mount --bind "$src" "$dst"
+	fi
+}
+
+do_pivot() {
+	log "pivoting to tmpfs"
+	# Bind, do not move: moving /dev before pivot breaks the running shell.
+	bind_into /proc "$NEWROOT/proc"
+	bind_into /sys "$NEWROOT/sys"
+	bind_into /dev "$NEWROOT/dev"
+	bind_into "$BOOT" "$NEWROOT/boot"
+	bind_into "$STORAGE" "$NEWROOT/storage"
+
+	cd "$NEWROOT"
+	if ./bin/busybox pivot_root . oldroot 2>/dev/null; then
+		:
+	elif command -v pivot_root >/dev/null 2>&1; then
+		pivot_root . oldroot
+	elif [ -x /usr/bin/python3 ]; then
+		/usr/bin/python3 - <<'PY'
+import ctypes, os, sys
+libc = ctypes.CDLL(None, use_errno=True)
+# aarch64: __NR_pivot_root = 41
+r = libc.syscall(41, b".", b"oldroot")
+if r != 0:
+    sys.exit("pivot_root syscall: " + os.strerror(ctypes.get_errno()))
+PY
+	else
+		fail "no pivot_root (busybox applet or python3)"
+		return 1
+	fi
+	cd /
+	export PATH=/bin:/usr/sbin:/usr/bin
+	hash -r 2>/dev/null || true
+}
+
+kill_holders() {
+	log "stopping users of the squashfs"
+	killall -9 nextui-session nextui.elf minui-session minui.elf \
+		settings.elf retroarch 2>/dev/null || true
+	# Do not kill PID 1 or this shell. SIGHUP is ignored.
+	for pid in /proc/[0-9]*; do
+		p=${pid##*/}
+		[ "$p" = "1" ] && continue
+		[ "$p" = "$$" ] && continue
+		kill -9 "$p" 2>/dev/null || true
+	done
+	sleep 1
+}
+
+umount_oldroot() {
+	if [ -d /oldroot ]; then
+		# Lazy: leftover processes must not keep the squashfs busy.
+		umount -l /oldroot/storage 2>/dev/null || true
+		umount -l /oldroot/boot 2>/dev/null || true
+		umount -l /oldroot/dev 2>/dev/null || true
+		umount -l /oldroot/sys 2>/dev/null || true
+		umount -l /oldroot/proc 2>/dev/null || true
+		umount -l /oldroot 2>/dev/null || true
+	fi
+}
+
+# Running from squashfs: extract, copy tools to tmpfs, pivot, exec commit.
+enter_ramfs() {
+	if root_is_tmpfs; then
+		log "already on tmpfs, committing"
+		commit
+		return $?
+	fi
+	root_is_squashfs || fail "unexpected root fs, refusing to pivot"
+	ensure_pending
+	backup_config
+	prepare_ramfs
+	do_pivot
+	# This process still has the squashfs script mapped until exec.
+	exec /bin/zlyme-update commit
+}
+
+# Only after pivot. / is tmpfs. Source files on /storage, dest is unmounted p3.
+commit() {
+	root_is_tmpfs || fail "commit requires tmpfs root (got a live squashfs?)"
+	kill_holders
+	umount_oldroot
+	if root_is_squashfs; then
+		log "squashfs still mounted as / after pivot"
+		sysrq_reboot
+		return 1
+	fi
+	verify_dir "$PENDING" || sysrq_reboot
+	install_boot "$PENDING" || sysrq_reboot
+	apply_overlays_now
+	install_rootfs "$PENDING" || sysrq_reboot
+	restore_config
+	rm -rf "$PENDING"
+	rm -f "$WANT" "$FAILED"
+	if [ -f "$QUEUED_TAR" ]; then
+		rm -f "$QUEUED_TAR"
+	fi
+	sync
+	log "done"
+	sysrq_reboot
+}
+
+boot_apply() {
+	log "boot-apply"
+	rm -f "$FAILED"
+	enter_ramfs
+}
+
+dry_run() {
+	tarf=$1
+	verify_tar "$tarf"
+	dst=$(rootdev 2>/dev/null || true)
+	echo "zlyme-update: would queue $tarf as $QUEUED_TAR"
+	echo "zlyme-update: reboot (or apply) pivots to tmpfs, unmounts squashfs,"
+	echo "zlyme-update: copies Image/dtb/overlays/extlinux to $BOOT,"
+	echo "zlyme-update: dd's rootfs.squashfs to ${dst:-PARTLABEL=rootfs}, then resets"
+	if [ -n "$dst" ]; then
+		psz=$(part_bytes "$dst") || psz=0
+		echo "zlyme-update: $dst is $psz bytes"
+	fi
+}
+
+status() {
+	echo "storage=$STORAGE"
+	if is_queued; then
+		echo "queued=yes"
+		queued_tar 2>/dev/null || true
+		[ -s "$PENDING/VERSION" ] && echo "pending=$(cat "$PENDING/VERSION" | head -n 1)"
+	else
+		echo "queued=no"
+	fi
+	[ -f "$FAILED" ] && echo "failed=$(cat "$FAILED")"
+	[ -f "$REAPPLY" ] && echo "reapply=yes"
+	if root_is_squashfs; then
+		echo "root=squashfs"
+	elif root_is_tmpfs; then
+		echo "root=tmpfs"
+	else
+		echo "root=other"
+	fi
+}
+
+reapply_once() {
+	[ -f "$REAPPLY" ] || return 0
+	log "applying settings after OS swap"
+	if [ -x /usr/sbin/zlyme-ctl ]; then
+		zlyme-ctl apply-settings || true
+	fi
+	rm -f "$REAPPLY"
+}
+
+cmd=${1:-}
+if [ "$#" -gt 0 ]; then
+	shift
+fi
+
+case "$cmd" in
+	verify)
+		verify_tar "${1:?tar}"
+		;;
+	queue)
+		queue_tar "${1:?tar}"
+		;;
+	stage)
+		# Unpack only. Still must reboot/apply so dd runs from tmpfs.
+		stage_tar "${1:?tar}"
+		printf '%s\n' "$1" >"$WANT"
+		log "staged at $PENDING — reboot to write (do not dd from here)"
+		;;
+	apply)
+		if [ -n "${1:-}" ]; then
+			queue_tar "$1"
+		fi
+		enter_ramfs
+		;;
+	boot-apply | apply-pending)
+		boot_apply
+		;;
+	commit)
+		commit
+		;;
+	queued)
+		is_queued
+		;;
+	status)
+		status
+		;;
+	backup)
+		backup_config
+		;;
+	restore)
+		restore_config
+		;;
+	reapply)
+		reapply_once
+		;;
+	cancel)
+		rm -rf "$PENDING"
+		rm -f "$WANT" "$FAILED"
+		log "cancelled queue (tar left in place if present)"
+		;;
+	dry-run)
+		dry_run "${1:?tar}"
+		;;
+	*)
+		echo "usage: zlyme-update {queue|apply|boot-apply|verify|status|cancel|dry-run|stage|commit} [tar]" >&2
+		echo "  pak: copy tar to $QUEUED_TAR && reboot" >&2
+		exit 1
+		;;
+esac

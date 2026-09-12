@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Pack KERNEL + DTB + overlays + squashfs for a future OTA path.
-# Applying the tar is not wired yet (see NOTES/NOTES.md). Same idea as
-# ROCKNIX ~/.update/*.tar: replace boot files without rewriting GPT.
+# Pack KERNEL + DTB + overlays + squashfs for OTA.
+# On the device: copy to /storage/.update/zlyme-my355-update.tar and reboot.
+# zlyme-update pivots to tmpfs before writing PARTLABEL=rootfs.
 
 set -euo pipefail
 
