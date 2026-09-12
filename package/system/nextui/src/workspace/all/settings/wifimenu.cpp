@@ -1,6 +1,7 @@
 #include "wifimenu.hpp"
 #include "keyboardprompt.hpp"
 #include "zlymemenu.hpp"
+#include "btmenu.hpp"
 
 #include <unordered_set>
 #include <map>
@@ -25,8 +26,10 @@ Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fix
                               std::bind(&Menu::setWifiDiagnosticsState, this, std::placeholders::_1),
                               std::bind(&Menu::resetWifiDiagnosticsState, this));
     Zlyme_appendNetworkItems(serviceItems);
+    btItem = new MenuItem{ListItemType::Generic, "Bluetooth", "Pair HID controllers and headsets.", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(globalQuit, globalDirty)};
     items.push_back(toggleItem);
     items.push_back(diagItem);
+    items.push_back(btItem);
     items.insert(items.end(), serviceItems.begin(), serviceItems.end());
 
     // best effort layout based on the platform defines, user should really call performLayout manually
@@ -146,7 +149,7 @@ void Menu::updater()
                     selectedName = getSelectedItemName();
                     for (auto *i : items)
                     {
-                        bool keep = (i == toggleItem || i == diagItem);
+                        bool keep = (i == toggleItem || i == diagItem || i == btItem);
                         for (auto *s : serviceItems)
                         {
                             if (i == s)
@@ -158,6 +161,7 @@ void Menu::updater()
                     items.clear();
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
+                    items.push_back(btItem);
                     items.insert(items.end(), serviceItems.begin(), serviceItems.end());
                     layout_called = false;
 
@@ -222,7 +226,7 @@ void Menu::updater()
                     WriteLock w(itemLock);
                     for (auto *i : items)
                     {
-                        bool keep = (i == toggleItem || i == diagItem);
+                        bool keep = (i == toggleItem || i == diagItem || i == btItem);
                         for (auto *s : serviceItems)
                         {
                             if (i == s)
@@ -234,6 +238,7 @@ void Menu::updater()
                     items.clear();
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
+                    items.push_back(btItem);
                     items.insert(items.end(), serviceItems.begin(), serviceItems.end());
                     layout_called = false;
                     selectionDirty = true;

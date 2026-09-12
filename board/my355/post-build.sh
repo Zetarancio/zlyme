@@ -96,6 +96,33 @@ if grep -qE '^[^#]*[[:space:]]/var[[:space:]]' "${TARGET_DIR}/etc/fstab"; then
 	note "/etc/fstab mounts /var"
 fi
 
+# linux-reconfigure can rebuild vmlinux without rebuilding BR2 kernel-module
+# packages. sizeof(struct module) then disagrees and every OOT .ko fails
+# insmod (no joypad, no WiFi). Compare .gnu.linkonce.this_module to panfrost.
+this_module_size() {
+	readelf -W -S "$1" 2>/dev/null | awk '/gnu.linkonce.this_module/ { print $6; exit }'
+}
+ref_ko=""
+shopt -s nullglob
+for f in "${TARGET_DIR}"/lib/modules/*/kernel/drivers/gpu/drm/panfrost/panfrost.ko; do
+	[ -f "$f" ] && ref_ko=$f && break
+done
+shopt -u nullglob
+if [ -n "$ref_ko" ] && command -v readelf >/dev/null 2>&1; then
+	ref_sz=$(this_module_size "$ref_ko")
+	if [ -n "$ref_sz" ]; then
+		shopt -s nullglob
+		for ko in "${TARGET_DIR}"/lib/modules/*/updates/*.ko; do
+			[ -f "$ko" ] || continue
+			sz=$(this_module_size "$ko")
+			if [ -z "$sz" ] || [ "$sz" != "$ref_sz" ]; then
+				note "module ABI mismatch: ${ko#"${TARGET_DIR}"/} this_module=${sz:-missing} panfrost=${ref_sz} (dirclean the driver package after linux-reconfigure)"
+			fi
+		done
+		shopt -u nullglob
+	fi
+fi
+
 if [ -e "${TARGET_DIR}/sbin/modprobe" ]; then
 	case "$(readlink -f "${TARGET_DIR}/sbin/modprobe")" in
 		*/kmod) ;;

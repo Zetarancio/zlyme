@@ -2,8 +2,13 @@
 # Apply the saved DSI refresh once DRM is up.
 
 start() {
-	[ -x /usr/sbin/zlyme-ctl ] || return 0
-	/usr/sbin/zlyme-ctl apply-refresh
+	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
+	# Coldplug while ALSA/jackd run so wlan0 exists before S30, without
+	# delaying NextUI (S28). S29 still fires after the list is up.
+	if command -v udevadm >/dev/null 2>&1; then
+		(udevadm trigger --type=subsystems --action=add
+		 udevadm trigger --type=devices --action=add) >/dev/null 2>&1 &
+	fi
 	return 0
 }
 

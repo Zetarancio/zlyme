@@ -9,13 +9,15 @@ DIR="${ZLYME_CFG}/zlyme"
 # Defaults when the file is absent. Keep in sync with S15bootpart seed.
 default_of() {
 	case "$1" in
-		wifi|bluetooth|ssh) echo on ;;
+		wifi|bluetooth|ssh|otg|hdmi|sd2) echo on ;;
 		samba|syncthing) echo off ;;
 		gpu) echo panfrost ;;
 		display_mode) echo "" ;;
 		refresh) echo 60 ;;
 		undervolt) echo off ;;
 		led) echo battery ;;
+		cpu_gov) echo schedutil ;;
+		gpu_gov) echo simple_ondemand ;;
 		*) echo off ;;
 	esac
 }
@@ -74,25 +76,59 @@ apply_led() {
 	[ -x /usr/sbin/zlyme-led ] && /usr/sbin/zlyme-led apply
 }
 
-apply_undervolt() {
-	val=$(get undervolt)
+# Compose every dtbo into one FDTOVERLAYS line. Replacing the line with
+# only undervolt used to wipe HDMI/OTG/SD2 overlays.
+apply_overlays() {
 	conf=/boot/extlinux/extlinux.conf
 	[ -f "$conf" ] || return 0
 	ovl=""
+	val=$(get undervolt)
 	case "$val" in
-		l1|l2|l3) ovl="/overlays/rk3566-undervolt-cpu-${val}.dtbo" ;;
+		l1|l2|l3) ovl="$ovl /overlays/rk3566-undervolt-cpu-${val}.dtbo" ;;
 	esac
+	want otg || ovl="$ovl /overlays/rk3566-disable-otg.dtbo"
+	want hdmi || ovl="$ovl /overlays/rk3566-disable-hdmi.dtbo"
+	want sd2 || ovl="$ovl /overlays/rk3566-disable-sd2.dtbo"
+	ovl=$(printf '%s' "$ovl" | sed 's/^ //')
 	tmp=$(mktemp) || return 0
+	out=$(mktemp) || { rm -f "$tmp"; return 0; }
 	grep -v FDTOVERLAYS "$conf" > "$tmp"
 	if [ -n "$ovl" ]; then
 		awk -v ovl="$ovl" '
-			/FDT / { print; print "    FDTOVERLAYS " ovl; next }
+			/^[ \t]*FDT / { print; print "    FDTOVERLAYS " ovl; next }
 			{ print }
-		' "$tmp" > "$conf"
+		' "$tmp" > "$out"
 	else
-		cat "$tmp" > "$conf"
+		cat "$tmp" > "$out"
 	fi
-	rm -f "$tmp"
+	cat "$out" > "$conf"
+	rm -f "$tmp" "$out"
+}
+
+apply_undervolt() {
+	apply_overlays
+}
+
+# ROCKNIX-style CPU (cpufreq) + GPU (panfrost devfreq) governors.
+apply_gov() {
+	cpu=$(get cpu_gov)
+	gpu=$(get gpu_gov)
+	case "$cpu" in
+		performance|powersave|schedutil|ondemand) ;;
+		*) cpu=schedutil ;;
+	esac
+	case "$gpu" in
+		performance|powersave|simple_ondemand) ;;
+		*) gpu=simple_ondemand ;;
+	esac
+	for c in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do
+		[ -w "$c" ] || continue
+		printf '%s\n' "$cpu" > "$c" 2>/dev/null || printf 'schedutil\n' > "$c" 2>/dev/null || true
+	done
+	for g in /sys/class/devfreq/*.gpu/governor /sys/class/devfreq/*gpu*/governor; do
+		[ -w "$g" ] || continue
+		printf '%s\n' "$gpu" > "$g" 2>/dev/null || printf 'simple_ondemand\n' > "$g" 2>/dev/null || true
+	done
 }
 
 cmd=$1
@@ -104,14 +140,16 @@ case "$cmd" in
 	toggle) toggle "$1" ;;
 	apply-refresh) apply_refresh ;;
 	apply-undervolt) apply_undervolt ;;
+	apply-overlays) apply_overlays ;;
 	apply-led) apply_led ;;
+	apply-gov) apply_gov ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 cpu_gov gpu_gov; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-led|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

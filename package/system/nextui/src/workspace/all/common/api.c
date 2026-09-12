@@ -4299,6 +4299,11 @@ static void PWR_exitSleep(void)
 	LOG_info("Reinitialize audio after sleep\n");
 	SND_resetAudio(snd.sample_rate_in, snd.frame_rate);
 
+	/* USB wifi (8733bu) is re-probed after mem. udhcpc/wpa do not
+	 * come back unless we start them again. Background: S30 waits
+	 * up to ~15s for association and would freeze the UI thread. */
+	system("/etc/init.d/S30wifi start >/dev/null 2>&1 &");
+
 	sync();
 }
 

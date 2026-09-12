@@ -22,6 +22,7 @@ start() {
 	/usr/sbin/zlyme-led apply >>/tmp/zlyme-led.log 2>&1 || true
 	/usr/sbin/zlyme-led watch >>/tmp/zlyme-led.log 2>&1 &
 	echo $! >"$PIDFILE"
+	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-gov >/dev/null 2>&1 || true
 	echo "OK"
 }
 

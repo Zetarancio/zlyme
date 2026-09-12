@@ -40,4 +40,9 @@ else
 	exit 1
 fi
 
-exec support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
+support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
+# OTA-shaped tar next to zlyme.img. Applying it is not wired yet.
+if [ -x "${BOARD_DIR}/make-update-tar.sh" ]; then
+	"${BOARD_DIR}/make-update-tar.sh" "${BINARIES_DIR}" || \
+		echo "post-image: update tar skipped" >&2
+fi

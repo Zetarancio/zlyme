@@ -1,0 +1,20 @@
+/dts-v1/;
+/plugin/;
+
+/* Lower USB-C gadget/OTG (usb_host0_xhci + usb2phy0 otg-port).
+ * Upper USB-C host and the RTL8733BU stay on. */
+
+/ {
+	fragment@0 {
+		target-path = "/usb@fd000000";
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+	fragment@1 {
+		target-path = "/usb2phy@fe8a0000/otg-port";
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+};

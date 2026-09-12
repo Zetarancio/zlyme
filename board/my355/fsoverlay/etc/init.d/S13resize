@@ -109,7 +109,11 @@ start() {
 	sync
 
 	remove_trigger
-	echo "OK"
+	sync
+	echo "OK, rebooting"
+	# Partition table + mkfs.exfat are not live until reboot.
+	# Same as Knulli/Batocera after autoresize.
+	reboot -f
 	return 0
 }
 

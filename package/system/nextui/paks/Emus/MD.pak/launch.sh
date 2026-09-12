@@ -1,5 +1,5 @@
 #!/bin/sh
-EMU_EXE=genesis_plus_gx
+EMU_EXE=picodrive
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"

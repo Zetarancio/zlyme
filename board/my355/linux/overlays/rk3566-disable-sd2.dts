@@ -1,0 +1,13 @@
+/dts-v1/;
+/plugin/;
+
+/* Secondary SD slot (sdmmc1 / mmc1). Boot slot is mmc@fe2b0000. */
+
+/ {
+	fragment@0 {
+		target-path = "/mmc@fe2c0000";
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+};

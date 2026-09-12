@@ -1,0 +1,5 @@
+supafaust_cx4_clock_rate = "100"
+supafaust_pixel_format = "rgb565"
+supafaust_renderer = "mt"
+supafaust_run_ahead = "disabled"
+supafaust_superfx_clock_rate = "100"

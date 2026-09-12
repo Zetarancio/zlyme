@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme14
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme16
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

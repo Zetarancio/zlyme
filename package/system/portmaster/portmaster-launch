@@ -53,9 +53,21 @@ export controlfolder="$root"
 export PYSDL2_DLL_PATH=/usr/lib
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
-export LD_LIBRARY_PATH="/usr/lib:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${SYSTEM_PATH:-/storage/.system/my355}/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
+# pugwash calls pgrep/pkill; busybox here has neither. Overlay stubs live
+# on the card so they survive a RO /usr.
+export PATH="${SYSTEM_PATH:-/storage/.system/my355}/bin:/usr/bin:/usr/sbin:/bin:/sbin${PATH:+:$PATH}"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
+export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
+# harbourmaster defaults to /roms/ports (RO squashfs). Zlyme ROMs live here.
+mkdir -p /storage/Roms/PORTS /storage/Roms/.portmaster/PortMaster
+export HM_PORTS_DIR=/storage/Roms/PORTS
+export HM_SCRIPTS_DIR=/storage/Roms/PORTS
+export HM_TOOLS_DIR=/storage/Roms/.portmaster
+# Saying yes to a GUI self-update (or a timed-out one) leaves this
+# flag; pugwash then skips the main loop and exits 0.
+rm -f "$HM_TOOLS_DIR/PortMaster/.pugwash-reboot"
 if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
 	export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 	export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
@@ -75,11 +87,13 @@ fi
 
 st=1
 if [ -f ./pugwash ]; then
+	# Self-update downloads a GitHub zip and freezes the GUI on this
+	# link; the image copy is the one we patched (pgrep, paths, jpeg).
 	if command -v python3 >/dev/null 2>&1; then
-		python3 ./pugwash "$@" >"$log" 2>&1
+		python3 ./pugwash --no-check "$@" >"$log" 2>&1
 		st=$?
 	else
-		/usr/bin/python3 ./pugwash "$@" >"$log" 2>&1
+		/usr/bin/python3 ./pugwash --no-check "$@" >"$log" 2>&1
 		st=$?
 	fi
 elif [ -f ./PortMaster.sh ]; then

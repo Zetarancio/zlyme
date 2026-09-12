@@ -178,6 +178,9 @@ BR2_PACKAGE_ROCKNIX_JOYPAD=y
 
 BR2_PACKAGE_LIBPNG=y
 BR2_PACKAGE_FREETYPE=y
+# PortMaster themes are JPEG. sdl2_image only enables jpg when this is y
+# at configure time; a later scummvm select does not rebuild it.
+BR2_PACKAGE_JPEG=y
 BR2_PACKAGE_SDL2_IMAGE=y
 BR2_PACKAGE_SDL2_TTF=y
 BR2_PACKAGE_NEXTUI=y

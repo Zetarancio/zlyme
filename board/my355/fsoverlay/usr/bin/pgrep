@@ -1,0 +1,36 @@
+#!/bin/sh
+# PortMaster pugwash calls `pgrep -f love.aarch64`. This image has no
+# busybox pgrep; FileNotFoundError aborted the GUI. Skip our own PID so
+# `pgrep -f love.aarch64` does not match this script's cmdline.
+self=$$
+pat=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-f)
+			shift
+			pat=$1
+			;;
+		-*)
+			;;
+		*)
+			pat=$1
+			;;
+	esac
+	shift
+done
+[ -n "$pat" ] || exit 1
+found=1
+for c in /proc/[0-9]*/cmdline; do
+	[ -r "$c" ] || continue
+	pid=${c#/proc/}
+	pid=${pid%/cmdline}
+	[ "$pid" = "$self" ] && continue
+	cmd=$(tr '\0' ' ' < "$c" 2>/dev/null)
+	case "$cmd" in
+		*"$pat"*)
+			echo "$pid"
+			found=0
+			;;
+	esac
+done
+exit $found

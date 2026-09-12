@@ -1,0 +1,6 @@
+picodrive_drc = "enabled"
+picodrive_frameskip = "disabled"
+picodrive_frameskip_threshold = "33"
+picodrive_overclk68k = "disabled"
+picodrive_renderer = "accurate"
+picodrive_sound_rate = "44100"

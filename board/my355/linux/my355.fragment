@@ -12,3 +12,49 @@ CONFIG_RD_ZSTD=y
 # Built-in cfg80211 asks for it before squashfs is mounted.
 CONFIG_CFG80211=m
 CONFIG_MAC80211=m
+
+# --- RK3566 handheld / gaming (ROCKNIX RK3566 linux.aarch64.conf, Mesa Panfrost)
+#
+# Already in linux.config, keep:
+#   CONFIG_PREEMPT=y          low input latency (not PREEMPT_RT, not HZ=1000)
+#   CONFIG_HZ=250             ROCKNIX RK3566; 1000 Hz costs idle power for little FPS
+#   CONFIG_CMA=y + 128MB      Panfrost / KMS scanout
+#   CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y
+#     ROCKNIX boots performance then governor.sh -> schedutil in the menu
+#   CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
+#   CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND / PERFORMANCE / POWERSAVE
+#   CONFIG_DRM_PANFROST=m     Mali-G52 1-Core-2EE (G52L / 0x7402)
+#   CONFIG_ENERGY_MODEL=y     EAS on 4x Cortex-A55
+#   CONFIG_MQ_IOSCHED_DEADLINE=y   right for SD/eMMC (none is an NVMe trick)
+#
+# Do not set CONFIG_HZ_1000 or CONFIG_PREEMPT_RT on this SoC.
+
+# Board WiFi is out-of-tree 8733bu. Drop in-tree vendors we never probe.
+# CONFIG_WLAN_VENDOR_ADMTEK is not set
+# CONFIG_WLAN_VENDOR_ATH is not set
+# CONFIG_WLAN_VENDOR_ATMEL is not set
+# CONFIG_WLAN_VENDOR_MEDIATEK is not set
+# CONFIG_WLAN_VENDOR_RALINK is not set
+# CONFIG_WLAN_VENDOR_ZYDAS is not set
+CONFIG_WLAN_VENDOR_REALTEK=y
+
+# Combo BT is btusb + RTL firmware. Keep HIDP for controllers.
+# CONFIG_BT_INTEL is not set
+# CONFIG_BT_BCM is not set
+# CONFIG_BT_MRVL is not set
+# CONFIG_BT_HCIBFUSB is not set
+# CONFIG_BT_HCIVHCI is not set
+# CONFIG_BT_HCIUART_ATH3K is not set
+CONFIG_BT_RTL=m
+CONFIG_BT_HCIBTUSB=m
+CONFIG_BT_HIDP=m
+
+# Debug spinlocks / devres cost cycles on every lock. ROCKNIX's copied
+# aarch64.conf still has them on; a 4xA55 gaming image should not.
+# Changing DEBUG_SPINLOCK changes sizeof(struct module). Out-of-tree
+# .ko files (joypad, 8733bu, mali_kbase) must be rebuilt after this
+# or insmod fails with "this_module section size must match".
+# CONFIG_DEBUG_SPINLOCK is not set
+# CONFIG_DEBUG_DEVRES is not set
+# CONFIG_KALLSYMS_ALL is not set
+CONFIG_KALLSYMS=y

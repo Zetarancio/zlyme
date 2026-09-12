@@ -1089,7 +1089,7 @@ int main(int argc, char *argv[])
         std::vector<AbstractMenuItem*> mainItems = {
             new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu},
             new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
-            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
+            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, governors, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
         };
 
         if(deviceInfo.hasMuteToggle())
@@ -1099,12 +1099,11 @@ int main(int argc, char *argv[])
         if(buttonMenu)
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
 
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "In-game settings for MinArch", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Notifications and RetroAchievements. Applied to RetroArch on launch; Select opens the RA menu.", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
 
         if(deviceInfo.hasWifi())
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
-
-        if(deviceInfo.hasBluetooth())
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, Bluetooth, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
+        else if(deviceInfo.hasBluetooth())
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "Pair and connect HID", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
 
         mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "Build and hardware info", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});

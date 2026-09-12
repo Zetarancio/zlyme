@@ -1,0 +1,25 @@
+#!/bin/sh
+# PortMaster pugwash calls `pkill -f love.aarch64` after pgrep. Same gap.
+sig="-TERM"
+pat=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-f)
+			shift
+			pat=$1
+			;;
+		-*)
+			sig=$1
+			;;
+		*)
+			pat=$1
+			;;
+	esac
+	shift
+done
+[ -n "$pat" ] || exit 1
+found=1
+for pid in $(pgrep -f "$pat"); do
+	kill "$sig" "$pid" 2>/dev/null && found=0
+done
+exit $found

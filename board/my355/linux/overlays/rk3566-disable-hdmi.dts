@@ -1,0 +1,17 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	fragment@0 {
+		target-path = "/hdmi@fe0a0000";
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+	fragment@1 {
+		target-path = "/hdmi-sound";
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+};

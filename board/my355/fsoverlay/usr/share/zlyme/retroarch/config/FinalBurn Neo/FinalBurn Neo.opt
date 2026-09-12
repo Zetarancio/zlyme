@@ -1,0 +1,3 @@
+fbneo-fixed-frameskip = "1"
+fbneo-frameskip-manual-threshold = "33"
+fbneo-frameskip-type = "Fixed"

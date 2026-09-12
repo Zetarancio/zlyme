@@ -1,0 +1,5 @@
+yabasanshiro_frameskip = "enabled"
+yabasanshiro_rbg_resolution_mode = "original"
+yabasanshiro_rbg_use_compute_shader = "disabled"
+yabasanshiro_resolution_mode = "original"
+yabasanshiro_sh2coretype = "dynarec"

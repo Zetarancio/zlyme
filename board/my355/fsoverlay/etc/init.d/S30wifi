@@ -7,6 +7,32 @@
 CONF="${ZLYME_CFG}/wpa_supplicant.conf"
 IFACE=wlan0
 
+# DHCP before association gets 169.254. Wait for COMPLETED, then udhcpc.
+dhcp_after_assoc() {
+	n=0
+	while [ "$n" -lt 30 ]; do
+		st=$(wpa_cli -p /var/run/wpa_supplicant -i "$IFACE" status 2>/dev/null | sed -n 's/^wpa_state=//p')
+		[ "$st" = "COMPLETED" ] && break
+		sleep 0.5
+		n=$((n + 1))
+	done
+	if [ -f /var/run/udhcpc.$IFACE.pid ] && kill -0 "$(cat /var/run/udhcpc.$IFACE.pid 2>/dev/null)" 2>/dev/null; then
+		return 0
+	fi
+	printf "Starting udhcpc on %s: " "$IFACE"
+	if udhcpc -b -i "$IFACE" -t 8 -T 2 -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+}
+
+maybe_restart_ssh() {
+	if command -v zlyme-ctl >/dev/null && zlyme-ctl want ssh; then
+		[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear restart >/dev/null 2>&1 || true
+	fi
+}
+
 start() {
 	printf "Waiting for %s: " "$IFACE"
 	i=0
@@ -20,10 +46,23 @@ start() {
 	fi
 	echo "OK"
 
+	if [ -f /var/run/wpa_supplicant.pid ] && kill -0 "$(cat /var/run/wpa_supplicant.pid)" 2>/dev/null; then
+		echo "WiFi: already running"
+		ip link set "$IFACE" up 2>/dev/null || true
+		dhcp_after_assoc
+		maybe_restart_ssh
+		return 0
+	fi
+
 	if ! zlyme-ctl want wifi; then
 		echo "WiFi: disabled by zlyme-ctl"
 		return 0
 	fi
+
+	# After mem suspend the USB netdev exists but is DOWN. wpa then
+	# exits and start-stop-daemon prints FAIL.
+	ip link set "$IFACE" up 2>/dev/null || true
+	rm -f /var/run/wpa_supplicant.pid
 
 	if [ ! -s "$CONF" ] || ! grep -q ctrl_interface "$CONF" 2>/dev/null; then
 		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
@@ -50,19 +89,8 @@ start() {
 		return 0
 	fi
 
-	printf "Starting udhcpc on %s: " "$IFACE"
-	if udhcpc -b -i "$IFACE" -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1; then
-		echo "OK"
-	else
-		echo "FAIL"
-	fi
-
-	# Dropbear may have failed before wlan existed; key-on-exFAT also
-	# made it exit. Restart now that the interface is up.
-	if command -v zlyme-ctl >/dev/null && zlyme-ctl want ssh; then
-		[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear restart >/dev/null 2>&1 || true
-	fi
-
+	dhcp_after_assoc
+	maybe_restart_ssh
 	return 0
 }
 

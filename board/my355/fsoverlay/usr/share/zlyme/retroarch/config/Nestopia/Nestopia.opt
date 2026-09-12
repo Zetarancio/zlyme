@@ -1,0 +1,3 @@
+nestopia_blargg_ntsc_filter = "disabled"
+nestopia_nospritelimit = "disabled"
+nestopia_overclock = "1x"

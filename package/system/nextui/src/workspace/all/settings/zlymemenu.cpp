@@ -131,8 +131,21 @@ void Zlyme_appendDisplayItems(std::vector<AbstractMenuItem *> &items)
 static InputReactionHint Zlyme_backup(AbstractMenuItem &item)
 {
 	(void)item;
-	int r = system("tar czf /storage/zlyme-backup.tar.gz -C /storage .config .userdata");
+	int r = system("sync; tar -acf /storage/zlyme-backup.tar.gz -C /storage .config .userdata");
 	MenuList::showOverlay(r == 0 ? "Saved /storage/zlyme-backup.tar.gz" : "Backup failed",
+		OverlayDismissMode::DismissOnA);
+	return NoOp;
+}
+
+static InputReactionHint Zlyme_restoreBackup(AbstractMenuItem &item)
+{
+	(void)item;
+	if (!std::ifstream("/storage/zlyme-backup.tar.gz")) {
+		MenuList::showOverlay("No /storage/zlyme-backup.tar.gz", OverlayDismissMode::DismissOnA);
+		return NoOp;
+	}
+	int r = system("tar -axf /storage/zlyme-backup.tar.gz -C /storage && sync");
+	MenuList::showOverlay(r == 0 ? "Restored. Reboot to apply." : "Restore failed",
 		OverlayDismissMode::DismissOnA);
 	return NoOp;
 }
@@ -189,11 +202,92 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 		},
 		[](const std::any &v) {
 			ctl_set("undervolt", std::any_cast<std::string>(v).c_str());
-			system("zlyme-ctl apply-undervolt");
+			system("zlyme-ctl apply-overlays");
 		},
 		[]() {
 			ctl_set("undervolt", "off");
-			system("zlyme-ctl apply-undervolt");
+			system("zlyme-ctl apply-overlays");
+		}});
+
+	const std::vector<std::any> cpu_v = {
+		std::string("schedutil"), std::string("performance"), std::string("powersave")};
+	const std::vector<std::string> cpu_l = {"schedutil", "Performance", "Powersave"};
+	items.push_back(new MenuItem{ListItemType::Generic, "CPU governor",
+		"Applies now. In-game auto still uses this when NextUI asks for auto.",
+		cpu_v, cpu_l,
+		[]() -> std::any {
+			std::string c = ctl_get("cpu_gov");
+			if (c != "performance" && c != "powersave")
+				c = "schedutil";
+			return c;
+		},
+		[](const std::any &v) {
+			ctl_set("cpu_gov", std::any_cast<std::string>(v).c_str());
+			system("zlyme-ctl apply-gov");
+		},
+		[]() {
+			ctl_set("cpu_gov", "schedutil");
+			system("zlyme-ctl apply-gov");
+		}});
+
+	const std::vector<std::any> gpu_gov_v = {
+		std::string("simple_ondemand"), std::string("performance"), std::string("powersave")};
+	const std::vector<std::string> gpu_gov_l = {"simple_ondemand", "Performance", "Powersave"};
+	items.push_back(new MenuItem{ListItemType::Generic, "GPU governor",
+		"Panfrost devfreq. Applies now.",
+		gpu_gov_v, gpu_gov_l,
+		[]() -> std::any {
+			std::string g = ctl_get("gpu_gov");
+			if (g != "performance" && g != "powersave")
+				g = "simple_ondemand";
+			return g;
+		},
+		[](const std::any &v) {
+			ctl_set("gpu_gov", std::any_cast<std::string>(v).c_str());
+			system("zlyme-ctl apply-gov");
+		},
+		[]() {
+			ctl_set("gpu_gov", "simple_ondemand");
+			system("zlyme-ctl apply-gov");
+		}});
+
+	const std::vector<std::any> on_off_v = {false, true};
+	const std::vector<std::string> on_off = {"Off", "On"};
+	items.push_back(new MenuItem{ListItemType::Generic, "USB OTG",
+		"Lower USB-C gadget port. Off saves power. Takes effect on next boot.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("otg"); },
+		[](const std::any &v) {
+			ctl_set("otg", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-overlays");
+		},
+		[]() {
+			ctl_set("otg", "on");
+			system("zlyme-ctl apply-overlays");
+		}});
+	items.push_back(new MenuItem{ListItemType::Generic, "HDMI port",
+		"Disable the HDMI controller. Off saves power. Takes effect on next boot.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("hdmi"); },
+		[](const std::any &v) {
+			ctl_set("hdmi", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-overlays");
+		},
+		[]() {
+			ctl_set("hdmi", "on");
+			system("zlyme-ctl apply-overlays");
+		}});
+	items.push_back(new MenuItem{ListItemType::Generic, "Second SD slot",
+		"Disable sdmmc1. Off saves power. Takes effect on next boot.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("sd2"); },
+		[](const std::any &v) {
+			ctl_set("sd2", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-overlays");
+		},
+		[]() {
+			ctl_set("sd2", "on");
+			system("zlyme-ctl apply-overlays");
 		}});
 
 	const std::vector<std::any> led_v = {
@@ -227,6 +321,9 @@ void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
 	items.push_back(new MenuItem{ListItemType::Button, "Backup now",
 		"Save .config and .userdata to /storage/zlyme-backup.tar.gz",
 		Zlyme_backup});
+	items.push_back(new MenuItem{ListItemType::Button, "Restore backup",
+		"Extract /storage/zlyme-backup.tar.gz over .config and .userdata. Reboot after.",
+		Zlyme_restoreBackup});
 }
 
 static std::string sd2_status_line()

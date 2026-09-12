@@ -35,6 +35,17 @@ export SDL_GAMECONTROLLERCONFIG_FILE="${SDL_GAMECONTROLLERCONFIG_FILE:-/usr/lib/
 export IMAGE_MATCHER_URL="https://matching-images-is.bittersweet.rip"
 export MINUI_IMAGE_WIDTH=300
 
+text_list_to_json() {
+    key=$1
+    src=$2
+    dest=$3
+    if command -v jq >/dev/null 2>&1; then
+        jq -R -s --arg key "$key" 'split("\n") | map(select(. != "")) | {($key): map({name: .})}' <"$src" >"$dest"
+    else
+        cp "$src" "$dest"
+    fi
+}
+
 populate_emus_list() {
     echo "Cache Management" >/tmp/emus.list
     for folder in "$SDCARD_PATH/Roms"/*; do
@@ -70,7 +81,8 @@ main_screen() {
     fi
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "folders" --file "/tmp/emus.list" --format text --cancel-text "EXIT" --title "Artwork Scraper" --write-location /tmp/minui-output --write-value state
+    text_list_to_json folders /tmp/emus.list /tmp/emus.json
+    minui-list --disable-auto-sleep --item-key "folders" --file "/tmp/emus.json" --format json --cancel-text "EXIT" --title "Artwork Scraper" --write-location /tmp/minui-output --write-value state
 }
 
 action_menu() {
@@ -83,7 +95,8 @@ action_menu() {
     echo "Delete Artwork" >>/tmp/action.list
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "actions" --file "/tmp/action.list" --format text --cancel-text "BACK" --title "$ROM_FOLDER" --write-location /tmp/action-output --write-value state
+    text_list_to_json actions /tmp/action.list /tmp/action.json
+    minui-list --disable-auto-sleep --item-key "actions" --file "/tmp/action.json" --format json --cancel-text "BACK" --title "$ROM_FOLDER" --write-location /tmp/action-output --write-value state
 
     if [ $? -ne 0 ]; then
         return 1
@@ -105,7 +118,8 @@ delete_menu() {
     echo "Delete Individual Images" >>/tmp/delete.list
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "options" --file "/tmp/delete.list" --format text --cancel-text "BACK" --title "Delete $ROM_FOLDER Artwork" --write-location /tmp/delete-output --write-value state
+    text_list_to_json options /tmp/delete.list /tmp/delete.json
+    minui-list --disable-auto-sleep --item-key "options" --file "/tmp/delete.json" --format json --cancel-text "BACK" --title "Delete $ROM_FOLDER Artwork" --write-location /tmp/delete-output --write-value state
 
     if [ $? -ne 0 ]; then
         return 1
@@ -248,7 +262,8 @@ confirm_action() {
     echo "No" >>/tmp/confirm.list
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "choices" --file "/tmp/confirm.list" --format text --cancel-text "CANCEL" --title "$message" --write-location /tmp/confirm-output --write-value state
+    text_list_to_json choices /tmp/confirm.list /tmp/confirm.json
+    minui-list --disable-auto-sleep --item-key "choices" --file "/tmp/confirm.json" --format json --cancel-text "CANCEL" --title "$message" --write-location /tmp/confirm-output --write-value state
 
     if [ $? -ne 0 ]; then
         return 1
@@ -320,7 +335,8 @@ select_images_to_delete() {
     fi
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "images" --file "/tmp/images.list" --format text --cancel-text "BACK" --title "Select image to delete" --write-location /tmp/images-output --write-value state
+    text_list_to_json images /tmp/images.list /tmp/images.json
+    minui-list --disable-auto-sleep --item-key "images" --file "/tmp/images.json" --format json --cancel-text "BACK" --title "Select image to delete" --write-location /tmp/images-output --write-value state
 
     if [ $? -ne 0 ]; then
         return 1
@@ -395,7 +411,8 @@ Clear all cache
 EOF
 
     killall minui-presenter >/dev/null 2>&1 || true
-    minui-list --disable-auto-sleep --item-key "cache_options" --file "/tmp/cache_menu.list" --format text --cancel-text "BACK" --title "Cache Management" --write-location /tmp/cache-output --write-value state
+    text_list_to_json cache_options /tmp/cache_menu.list /tmp/cache_menu.json
+    minui-list --disable-auto-sleep --item-key "cache_options" --file "/tmp/cache_menu.json" --format json --cancel-text "BACK" --title "Cache Management" --write-location /tmp/cache-output --write-value state
 
     exit_code=$?
     if [ "$exit_code" -ne 0 ]; then
@@ -465,7 +482,7 @@ main() {
     fi
 
     # nextui.elf still holds DRM for a moment after exit.
-    sleep 0.8
+    sleep 1.2
     retries=0
     while true; do
         main_screen

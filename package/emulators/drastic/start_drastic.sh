@@ -1,6 +1,12 @@
 #!/bin/sh
 export LD_PRELOAD="/usr/lib/libdrastouch.so"
 export SDL_TOUCH_MOUSE_EVENTS="${SDL_TOUCH_MOUSE_EVENTS:-0}"
+SEED=/usr/share/drastic/config/drastic.cfg
+CFGDIR="${XDG_CONFIG_HOME:-${HOME:-/storage/.userdata/my355}/.config}/drastic"
+mkdir -p "$CFGDIR"
+if [ -f "$SEED" ] && [ ! -e "$CFGDIR/drastic.cfg" ]; then
+	cp "$SEED" "$CFGDIR/drastic.cfg"
+fi
 if [ -x /usr/bin/drastic ]; then
 	exec /usr/bin/drastic "$@"
 fi

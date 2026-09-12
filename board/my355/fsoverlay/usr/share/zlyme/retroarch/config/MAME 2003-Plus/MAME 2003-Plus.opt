@@ -1,0 +1,3 @@
+mame2003-plus_cpu_clock_scale = "default"
+mame2003-plus_frameskip = "disabled"
+mame2003-plus_sample_rate = "48000"

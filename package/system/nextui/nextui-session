@@ -96,7 +96,7 @@ if [ ! -e "$SYSTEM_PATH/etc/bluetooth/bt_init.sh" ]; then
 	cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
 	chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
 fi
-if [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
+if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
 	cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
 	chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
 fi
@@ -157,21 +157,33 @@ fi
 cfg=$SHARED_USERDATA_PATH/minuisettings.txt
 mkdir -p "$SHARED_USERDATA_PATH"
 if [ ! -f "$cfg" ]; then
-	printf '%s\n' 'screentimeout=60' 'suspendTimeout=30' > "$cfg"
+	printf '%s\n' 'screentimeout=120' 'suspendTimeout=600' > "$cfg"
 else
-	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=60' >> "$cfg"
-	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=30' >> "$cfg"
+	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=120' >> "$cfg"
+	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=600' >> "$cfg"
 fi
 # Older images wrote 0 on every start so sleep never ran. Restore once.
 flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
 if [ ! -f "$flag" ]; then
 	if [ -f "$cfg" ]; then
 		grep -q '^screentimeout=0$' "$cfg" && \
-			sed -i 's/^screentimeout=0$/screentimeout=60/' "$cfg"
+			sed -i 's/^screentimeout=0$/screentimeout=120/' "$cfg"
 		grep -q '^suspendTimeout=0$' "$cfg" && \
-			sed -i 's/^suspendTimeout=0$/suspendTimeout=30/' "$cfg"
+			sed -i 's/^suspendTimeout=0$/suspendTimeout=600/' "$cfg"
 	fi
 	: > "$flag"
+fi
+# Product defaults moved 60/30 -> 120/600 (2 min screen, 10 min mem).
+# Do not touch Never (0) or any other custom value.
+flag2=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v2
+if [ ! -f "$flag2" ]; then
+	if [ -f "$cfg" ]; then
+		grep -q '^screentimeout=60$' "$cfg" && \
+			sed -i 's/^screentimeout=60$/screentimeout=120/' "$cfg"
+		grep -q '^suspendTimeout=30$' "$cfg" && \
+			sed -i 's/^suspendTimeout=30$/suspendTimeout=600/' "$cfg"
+	fi
+	: > "$flag2"
 fi
 rm -f /tmp/poweroff /tmp/reboot
 
