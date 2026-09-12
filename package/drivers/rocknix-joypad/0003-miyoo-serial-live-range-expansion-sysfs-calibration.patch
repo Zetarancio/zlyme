@@ -1,0 +1,311 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Zetarancio <zetarancio@users.noreply.github.com>
+Date: Tue, 18 Mar 2026 02:00:00 +0100
+Subject: [PATCH] miyoo-serial: live range expansion + sysfs calibration
+
+Live range expansion: while you play, each stick's min/max boundaries
+slowly widen when you repeatedly reach further than the current
+range.  After a few consistent hits at the edge (see expand_hits),
+the driver accepts the new boundary.  Sticks feel usable quickly
+without any save/restore script; optional user-space may still write
+sysfs at boot to restore a previous snapshot.
+
+Independent of ROCKNIX save/restore: persistence scripts only copy
+sysfs to /storage; they do not drive calibration.  Auto-calibration
+runs in the driver on every frame.
+
+Settings (sysfs, all under rocknix-singleadc-joypad):
+  miyoo_cal_left, miyoo_cal_right  (rw)
+    Six integers: x_min x_max x_zero y_min y_max y_zero
+    (plausibility: min < zero < max per axis).
+  miyoo_expand_margin  (rw, 0-50, default 2)
+    Raw ADC steps beyond current min/max before expansion is allowed.
+  miyoo_expand_hits    (rw, 1-100, default 3)
+    Consecutive frames at the same expanded candidate before the
+    boundary moves (filters single-sample noise).
+
+Implementation:
+  miyoo_range_expand() updates per-stick calibration from raw samples
+  using margin + hit counters on each boundary.
+---
+ rocknix-singleadc-joypad.c | NNN +++---
+ 1 file changed, N insertions(+), N deletions(-)
+
+--- a/rocknix-singleadc-joypad.c
++++ b/rocknix-singleadc-joypad.c
+@@ -96,6 +96,13 @@
+ /* We'll gather 100 frames for auto-cal (better zero-point accuracy) */
+ #define MIYOO_CALIBRATION_FRAMES    100
+ 
++/* Live range expansion: only expand min/max when the new raw value
++ * exceeds the current boundary by at least MARGIN ADC steps AND has
++ * been seen at least HITS consecutive times.  Prevents single-sample
++ * noise spikes from permanently inflating the calibrated range. */
++#define MIYOO_RANGE_EXPAND_MARGIN   2
++#define MIYOO_RANGE_EXPAND_HITS     3
++
+ struct miyoo_cal {
+ 	int x_min;
+ 	int x_max;
+@@ -103,6 +110,12 @@
+ 	int y_min;
+ 	int y_max;
+ 	int y_zero;
++
++	/* Candidates for range expansion — only promoted after HITS */
++	int x_min_cand, x_max_cand;
++	int y_min_cand, y_max_cand;
++	int x_min_hits, x_max_hits;
++	int y_min_hits, y_max_hits;
+ };
+ 
+ /*
+@@ -122,6 +135,10 @@
+ 	/* Report threshold: only update when change exceeds this */
+ 	int report_threshold;
+ 
++	/* Live range expansion tuning (configurable via sysfs) */
++	int expand_margin;
++	int expand_hits;
++
+ 	/* Last reported values (for threshold comparison) */
+ 	int last_lx, last_ly;
+ 	int last_rx, last_ry;
+@@ -1209,6 +1226,48 @@
+ 	return 0;
+ }
+ 
++/* Try to expand a single boundary.  The candidate must be seen
++ * req_hits times (within 1 ADC step) before the boundary is
++ * actually moved.  Resets the counter when the raw value moves
++ * away from the candidate. */
++static inline void miyoo_try_expand(int *boundary, int raw, int sign,
++				    int *cand, int *hits,
++				    int margin, int req_hits)
++{
++	int beyond = sign > 0 ? (raw - *boundary) : (*boundary - raw);
++
++	if (beyond <= margin)
++		return;
++
++	if (abs(raw - *cand) <= 1) {
++		(*hits)++;
++	} else {
++		*cand = raw;
++		*hits = 1;
++	}
++
++	if (*hits >= req_hits) {
++		*boundary = raw;
++		*hits = 0;
++	}
++}
++
++static void miyoo_range_expand(struct joypad *joypad,
++			       struct miyoo_cal *cal, int rawX, int rawY)
++{
++	int margin = joypad->miyoo.expand_margin;
++	int hits   = joypad->miyoo.expand_hits;
++
++	miyoo_try_expand(&cal->x_min, rawX, -1,
++			 &cal->x_min_cand, &cal->x_min_hits, margin, hits);
++	miyoo_try_expand(&cal->x_max, rawX,  1,
++			 &cal->x_max_cand, &cal->x_max_hits, margin, hits);
++	miyoo_try_expand(&cal->y_min, rawY, -1,
++			 &cal->y_min_cand, &cal->y_min_hits, margin, hits);
++	miyoo_try_expand(&cal->y_max, rawY,  1,
++			 &cal->y_max_cand, &cal->y_max_hits, margin, hits);
++}
++
+ static void miyoo_parse_frame(struct joypad *joypad, unsigned char *frame)
+ {
+ 	int rawYL, rawXL, rawYR, rawXR;
+@@ -1225,6 +1284,9 @@
+ 	rawYR = frame[3];
+ 	rawXR = frame[4];
+ 
++	miyoo_range_expand(joypad, &joypad->miyoo.left_cal,  rawXL, rawYL);
++	miyoo_range_expand(joypad, &joypad->miyoo.right_cal, rawXR, rawYR);
++
+ 	lx = miyoo_calibrate_axis_x(&joypad->miyoo.left_cal, rawXL);
+ 	ly = miyoo_calibrate_axis_y(&joypad->miyoo.left_cal, rawYL);
+ 	rx = miyoo_calibrate_axis_x(&joypad->miyoo.right_cal, rawXR);
+@@ -1485,6 +1547,9 @@
+ 		joypad->miyoo.last_rx = 0;
+ 		joypad->miyoo.last_ry = 0;
+ 
++		joypad->miyoo.expand_margin = MIYOO_RANGE_EXPAND_MARGIN;
++		joypad->miyoo.expand_hits   = MIYOO_RANGE_EXPAND_HITS;
++
+ 		/* Per-axis tuning from DTS (default 100 = no scaling) */
+ 		if (device_property_read_u32(dev, "miyoo-lx-p-tuning",
+ 					     &joypad->miyoo.lx_tuning_p))
+@@ -1528,6 +1593,152 @@
+ 	return error;
+ }
+ 
++/*----------------------------------------------------------------------------
++ * Sysfs interface for Miyoo serial stick calibration.
++ * Format: "x_min x_max x_zero y_min y_max y_zero"
++ * Lets user-space persist / restore per-stick calibration across reboots.
++ *----------------------------------------------------------------------------*/
++static ssize_t miyoo_cal_show(struct miyoo_cal *cal, char *buf)
++{
++	return sysfs_emit(buf, "%d %d %d %d %d %d\n",
++			  cal->x_min, cal->x_max, cal->x_zero,
++			  cal->y_min, cal->y_max, cal->y_zero);
++}
++
++static ssize_t miyoo_cal_store(struct miyoo_cal *cal, const char *buf,
++			       size_t count)
++{
++	int xmin, xmax, xzero, ymin, ymax, yzero;
++
++	if (sscanf(buf, "%d %d %d %d %d %d",
++		   &xmin, &xmax, &xzero, &ymin, &ymax, &yzero) != 6)
++		return -EINVAL;
++
++	if (xmin >= xzero || xzero >= xmax ||
++	    ymin >= yzero || yzero >= ymax)
++		return -EINVAL;
++
++	cal->x_min  = xmin;
++	cal->x_max  = xmax;
++	cal->x_zero = xzero;
++	cal->y_min  = ymin;
++	cal->y_max  = ymax;
++	cal->y_zero = yzero;
++	return count;
++}
++
++static ssize_t miyoo_cal_left_show(struct device *dev,
++				   struct device_attribute *attr, char *buf)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return miyoo_cal_show(&joypad->miyoo.left_cal, buf);
++}
++
++static ssize_t miyoo_cal_left_store(struct device *dev,
++				    struct device_attribute *attr,
++				    const char *buf, size_t count)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return miyoo_cal_store(&joypad->miyoo.left_cal, buf, count);
++}
++
++static ssize_t miyoo_cal_right_show(struct device *dev,
++				    struct device_attribute *attr, char *buf)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return miyoo_cal_show(&joypad->miyoo.right_cal, buf);
++}
++
++static ssize_t miyoo_cal_right_store(struct device *dev,
++				     struct device_attribute *attr,
++				     const char *buf, size_t count)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return miyoo_cal_store(&joypad->miyoo.right_cal, buf, count);
++}
++
++static ssize_t miyoo_expand_margin_show(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return sysfs_emit(buf, "%d\n", joypad->miyoo.expand_margin);
++}
++
++static ssize_t miyoo_expand_margin_store(struct device *dev,
++					 struct device_attribute *attr,
++					 const char *buf, size_t count)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++	int val;
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	if (kstrtoint(buf, 10, &val) || val < 0 || val > 50)
++		return -EINVAL;
++	joypad->miyoo.expand_margin = val;
++	return count;
++}
++
++static ssize_t miyoo_expand_hits_show(struct device *dev,
++				      struct device_attribute *attr,
++				      char *buf)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	return sysfs_emit(buf, "%d\n", joypad->miyoo.expand_hits);
++}
++
++static ssize_t miyoo_expand_hits_store(struct device *dev,
++				       struct device_attribute *attr,
++				       const char *buf, size_t count)
++{
++	struct joypad *joypad = dev_get_drvdata(dev);
++	int val;
++
++	if (!joypad->use_miyoo_serial)
++		return -ENODEV;
++	if (kstrtoint(buf, 10, &val) || val < 1 || val > 100)
++		return -EINVAL;
++	joypad->miyoo.expand_hits = val;
++	return count;
++}
++
++static DEVICE_ATTR_RW(miyoo_cal_left);
++static DEVICE_ATTR_RW(miyoo_cal_right);
++static DEVICE_ATTR_RW(miyoo_expand_margin);
++static DEVICE_ATTR_RW(miyoo_expand_hits);
++
++static struct attribute *miyoo_cal_attrs[] = {
++	&dev_attr_miyoo_cal_left.attr,
++	&dev_attr_miyoo_cal_right.attr,
++	&dev_attr_miyoo_expand_margin.attr,
++	&dev_attr_miyoo_expand_hits.attr,
++	NULL,
++};
++
++static const struct attribute_group miyoo_cal_attr_group = {
++	.attrs = miyoo_cal_attrs,
++};
++
++/*----------------------------------------------------------------------------*/
+ static int __maybe_unused joypad_suspend(struct device *dev)
+ {
+ 	struct platform_device *pdev  = to_platform_device(dev);
+@@ -1602,10 +1813,11 @@
+ 	}
+ 
+ 	if (joypad->use_miyoo_serial) {
+-		/*
+-		 * Instead of blocking in probe or using a separate boot
+-		 * thread, we schedule a delayed work for 10 seconds.
+-		 */
++		error = sysfs_create_group(&pdev->dev.kobj,
++					   &miyoo_cal_attr_group);
++		if (error)
++			dev_warn(dev, "miyoo cal sysfs failed: %d\n", error);
++
+ 		INIT_DELAYED_WORK(&joypad->miyoo_init_work, miyoo_delayed_init_workfn);
+ 		schedule_delayed_work(&joypad->miyoo_init_work, 10 * HZ);
+ 	}

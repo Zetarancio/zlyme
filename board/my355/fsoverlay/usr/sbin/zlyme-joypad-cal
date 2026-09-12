@@ -1,0 +1,61 @@
+#!/bin/sh
+# Persist / restore Miyoo serial stick calibration (ROCKNIX sysfs).
+# Files: /storage/.config/miyoo-serial-joypad/cal_{left,right}
+
+SYSFS_DIR=/sys/devices/platform/rocknix-singleadc-joypad
+CAL_DIR=/storage/.config/miyoo-serial-joypad
+
+wait_sysfs() {
+	i=0
+	while [ "$i" -lt 30 ]; do
+		[ -f "$SYSFS_DIR/miyoo_cal_left" ] && return 0
+		sleep 1
+		i=$((i + 1))
+	done
+	return 1
+}
+
+save() {
+	wait_sysfs || return 1
+	mkdir -p "$CAL_DIR" || return 1
+	for stick in left right; do
+		[ -f "$SYSFS_DIR/miyoo_cal_$stick" ] || continue
+		cat "$SYSFS_DIR/miyoo_cal_$stick" >"$CAL_DIR/cal_$stick"
+	done
+	for param in expand_margin expand_hits; do
+		[ -f "$SYSFS_DIR/miyoo_$param" ] || continue
+		cat "$SYSFS_DIR/miyoo_$param" >"$CAL_DIR/$param"
+	done
+	return 0
+}
+
+restore() {
+	# Driver autocal runs ~10s after probe. Write saved values after that.
+	wait_sysfs || exit 0
+	sleep 12
+	[ -d "$CAL_DIR" ] || exit 0
+	for stick in left right; do
+		[ -f "$CAL_DIR/cal_$stick" ] && [ -f "$SYSFS_DIR/miyoo_cal_$stick" ] && \
+			cat "$CAL_DIR/cal_$stick" >"$SYSFS_DIR/miyoo_cal_$stick" 2>/dev/null
+	done
+	for param in expand_margin expand_hits; do
+		[ -f "$CAL_DIR/$param" ] && [ -f "$SYSFS_DIR/miyoo_$param" ] && \
+			cat "$CAL_DIR/$param" >"$SYSFS_DIR/miyoo_$param" 2>/dev/null
+	done
+}
+
+show() {
+	if [ ! -f "$SYSFS_DIR/miyoo_cal_left" ]; then
+		echo "no sysfs"
+		return 1
+	fi
+	printf 'L %s R %s\n' "$(tr -d '\n' <"$SYSFS_DIR/miyoo_cal_left")" \
+		"$(tr -d '\n' <"$SYSFS_DIR/miyoo_cal_right")"
+}
+
+case "${1:-save}" in
+	save) save ;;
+	restore) restore ;;
+	show) show ;;
+	*) echo "usage: $0 {save|restore|show}" >&2; exit 1 ;;
+esac

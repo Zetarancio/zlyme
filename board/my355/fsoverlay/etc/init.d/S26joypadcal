@@ -1,0 +1,23 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0
+# Miyoo Flip: restore saved joystick calibration after the driver autocal.
+# Save from Tools → Autocal. ROCKNIX 020-joypad_cal, plus a delay so the
+# 10s delayed autocal does not overwrite the restored values.
+
+SYSFS_DIR=/sys/devices/platform/rocknix-singleadc-joypad
+CAL_DIR=/storage/.config/miyoo-serial-joypad
+
+start() {
+	[ -x /usr/sbin/zlyme-joypad-cal ] && /usr/sbin/zlyme-joypad-cal restore &
+	return 0
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	*) echo "usage: $0 {start|stop}"; exit 1 ;;
+esac
