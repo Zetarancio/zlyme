@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# Flip status LEDs (green:power, red:status). Follows charger/battery
+# unless Settings pins a color or Off.
+# Do not start-stop-daemon --exec /bin/sh: that matches rcS itself and
+# never starts the watcher.
+
+PIDFILE=/var/run/zlyme-led.pid
+
+start() {
+	printf "Starting LEDs: "
+	if [ ! -x /usr/sbin/zlyme-led ]; then
+		echo "missing"
+		return 0
+	fi
+	i=0
+	while [ "$i" -lt 40 ]; do
+		[ -e /sys/class/leds/green:power/brightness ] && break
+		sleep 0.1
+		i=$((i + 1))
+	done
+	/usr/sbin/zlyme-led apply >>/tmp/zlyme-led.log 2>&1 || true
+	/usr/sbin/zlyme-led watch >>/tmp/zlyme-led.log 2>&1 &
+	echo $! >"$PIDFILE"
+	echo "OK"
+}
+
+stop() {
+	printf "Stopping LEDs: "
+	if [ -f "$PIDFILE" ]; then
+		kill "$(cat "$PIDFILE")" 2>/dev/null || true
+		rm -f "$PIDFILE"
+	fi
+	killall zlyme-led 2>/dev/null || true
+	[ -x /usr/sbin/zlyme-led ] && /usr/sbin/zlyme-led poweroff >/dev/null 2>&1 || true
+	echo "OK"
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

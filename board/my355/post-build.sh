@@ -61,6 +61,22 @@ shopt -u nullglob
 rm -rf "${TARGET_DIR}/var/lib/bluetooth"
 ln -sfn /run/bluetooth "${TARGET_DIR}/var/lib/bluetooth"
 
+# Library-card mountpoints must exist on the squashfs; mkdir at runtime
+# cannot create them on a read-only /mnt.
+mkdir -p "${TARGET_DIR}/mnt/sd2" "${TARGET_DIR}/mnt/media"
+ln -sfn /storage "${TARGET_DIR}/mnt/SDCARD"
+
+chmod 0755 \
+	"${TARGET_DIR}/usr/sbin/zlyme-led" \
+	"${TARGET_DIR}/usr/sbin/zlyme-storage" \
+	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
+	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
+	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
+	"${TARGET_DIR}/etc/init.d/S27led" \
+	"${TARGET_DIR}/etc/init.d/S90minui"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
+ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
+
 for l in var/cache var/log var/spool var/tmp var/run var/lock var/lib/dbus \
 	 var/lib/bluetooth; do
 	[ -L "${TARGET_DIR}/${l}" ] || note "/${l} is not a symlink"

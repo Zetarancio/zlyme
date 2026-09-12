@@ -24,7 +24,9 @@ start() {
 	fi
 	DAEMON=$(daemon) || return 0
 	printf "Starting %s: " "$NAME"
-	if start-stop-daemon -S -q -p "$PIDFILE" --exec "$DAEMON"; then
+	# BlueZ 5 stays in the foreground unless we background it. Without -b,
+	# rcS never finishes, getty never starts, and serial has no login.
+	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON"; then
 		echo "OK"
 	else
 		echo "FAIL"

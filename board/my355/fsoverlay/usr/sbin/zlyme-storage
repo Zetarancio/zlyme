@@ -1,0 +1,286 @@
+#!/bin/sh
+#
+# Second SD slot and OTG disks. Called from S17, eudev, and Settings.
+# Library cards (roms/ or Roms/) bind into NextUI's /storage/Roms and
+# /storage/Bios. Other volumes mount at /mnt/media/<label>.
+
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+. /etc/zlyme.conf 2>/dev/null || true
+
+SD2=/mnt/sd2
+MEDIA=/mnt/media
+ROMS=/storage/Roms
+BIOS=/storage/Bios
+
+disk_of() {
+	dev=$1
+	dev=${dev#/dev/}
+	case "$dev" in
+		mmcblk*p*) echo "${dev%%p*}" ;;
+		nvme*n*p*) echo "${dev%%p*}" ;;
+		*) echo "$dev" | sed 's/[0-9]*$//' ;;
+	esac
+}
+
+os_disk() {
+	for m in / /boot /storage; do
+		src=$(awk -v m="$m" '$2 == m { print $1; exit }' /proc/mounts)
+		[ -n "$src" ] || continue
+		disk_of "$src"
+		return 0
+	done
+	return 1
+}
+
+is_os_dev() {
+	cand=$1
+	od=$(os_disk) || return 1
+	[ "$(disk_of "$cand")" = "$od" ]
+}
+
+# DTS aliases mmc0 = sdmmc0 (right slot, boot). Never bind the OS card.
+is_boot_mmc() {
+	case "$(disk_of "$1")" in
+		mmcblk0) return 0 ;;
+	esac
+	return 1
+}
+
+unescape_mp() {
+	printf '%s' "$1" | sed 's/\\040/ /g; s/\\011/\t/g'
+}
+
+unbind_under() {
+	prefix=$1
+	awk -v p="$prefix" '$2 ~ "^" p { print $2 }' /proc/mounts | sort -r |
+		while read -r m; do
+			m=$(unescape_mp "$m")
+			umount "$m" 2>/dev/null || true
+		done
+}
+
+is_library_root() {
+	root=$1
+	[ -d "$root/roms" ] && return 0
+	[ -d "$root/Roms" ] && return 0
+	[ -d "$root/ROMS" ] && return 0
+	for d in "$root"/*; do
+		[ -d "$d" ] || continue
+		case "$(basename "$d")" in
+			*'('*')') return 0 ;;
+		esac
+	done
+	return 1
+}
+
+bind_roms() {
+	src=""
+	if [ -d "$SD2/roms" ]; then
+		src=$SD2/roms
+	elif [ -d "$SD2/Roms" ]; then
+		src=$SD2/Roms
+	elif [ -d "$SD2/ROMS" ]; then
+		src=$SD2/ROMS
+	else
+		src=$SD2
+		found=0
+		for d in "$SD2"/*; do
+			[ -d "$d" ] || continue
+			case "$(basename "$d")" in
+				*'('*')') found=1; break ;;
+			esac
+		done
+		[ "$found" = 1 ] || return 0
+	fi
+	[ -d "$ROMS" ] || return 0
+	find "$src" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
+	while IFS= read -r d; do
+		name=$(basename "$d")
+		case "$name" in
+			.*|_*) continue ;;
+			lost+found|"System Volume Information") continue ;;
+			bios|bezels|savestates|screenshots|themes|backup|backups) continue ;;
+		esac
+		dest="$ROMS/$name"
+		mkdir -p "$dest"
+		mountpoint -q "$dest" 2>/dev/null && continue
+		if mount --bind "$d" "$dest" 2>/dev/null; then
+			echo "bind $name" >> /tmp/zlyme-storage.log
+		else
+			echo "bind fail $name" >> /tmp/zlyme-storage.log
+		fi
+	done
+}
+
+bind_bios() {
+	[ -d "$BIOS" ] || mkdir -p "$BIOS" 2>/dev/null || return 0
+	mountpoint -q "$BIOS" 2>/dev/null && return 0
+	for cand in \
+		"$SD2/roms/_orphans/bios" \
+		"$SD2/Roms/_orphans/bios" \
+		"$SD2/roms/bios" \
+		"$SD2/Roms/bios" \
+		"$SD2/Bios" \
+		"$SD2/bios"
+	do
+		[ -d "$cand" ] || continue
+		# Skip empty dirs so an empty OS Bios stays usable.
+		n=$(ls -A "$cand" 2>/dev/null | wc -l)
+		[ "$n" -gt 0 ] || continue
+		mount --bind "$cand" "$BIOS" 2>/dev/null || true
+		return 0
+	done
+}
+
+mount_fs() {
+	dev=$1
+	mp=$2
+	# Busybox blkid has no `-o value`; TYPE= would become the whole line.
+	raw=$(blkid "$dev" 2>/dev/null || true)
+	typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE="\([^"]*\)".*/\1/p')
+	[ -n "$typ" ] || typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE=\([^ ]*\).*/\1/p' | tr -d '"')
+	mkdir -p "$mp"
+	case "$typ" in
+		exfat|vfat|msdos|ext4|ext3|ext2|ntfs|f2fs)
+			if mount -t "$typ" -o rw,noatime "$dev" "$mp"; then
+				echo "mount $dev $mp type=$typ" >> /tmp/zlyme-storage.log
+				return 0
+			fi
+			;;
+	esac
+	# blkid missing or unknown type: let mount guess (ROCKNIX cards are often ext4).
+	if mount -o rw,noatime "$dev" "$mp"; then
+		echo "mount $dev $mp type=${typ:-guess}" >> /tmp/zlyme-storage.log
+		return 0
+	fi
+	echo "mount fail $dev type=${typ:-empty}" >> /tmp/zlyme-storage.log
+	return 1
+}
+
+add_dev() {
+	name=$1
+	dev=/dev/$name
+	[ -b "$dev" ] || return 0
+	is_boot_mmc "$dev" && return 0
+	is_os_dev "$dev" && return 0
+	# Whole disk: wait for the partition event if one exists.
+	case "$name" in
+		mmcblk[0-9]|mmcblk[0-9][0-9])
+			[ -b "/dev/${name}p1" ] && return 0
+			;;
+		sd[a-z])
+			[ -b "/dev/${name}1" ] && return 0
+			;;
+	esac
+	label=$(blkid "$dev" 2>/dev/null | sed -n 's/.*LABEL="\([^"]*\)".*/\1/p')
+	case "$label" in
+		ZLYME|ZLYMEBOOT) return 0 ;;
+	esac
+	# Already mounted?
+	if awk -v d="$dev" '$1 == d { found=1 } END { exit !found }' /proc/mounts; then
+		bind_roms
+		bind_bios
+		return 0
+	fi
+	tmp=$(mktemp -d /tmp/zlyme-probe.XXXXXX) || return 0
+	if ! mount_fs "$dev" "$tmp"; then
+		rmdir "$tmp" 2>/dev/null || true
+		return 0
+	fi
+	if is_library_root "$tmp"; then
+		if grep -q " $SD2 " /proc/mounts; then
+			umount "$tmp" 2>/dev/null || true
+			rmdir "$tmp" 2>/dev/null || true
+			bind_roms
+			bind_bios
+			return 0
+		fi
+		mkdir -p "$SD2"
+		mount --move "$tmp" "$SD2" 2>/dev/null || {
+			umount "$tmp" 2>/dev/null || true
+			rmdir "$tmp" 2>/dev/null || true
+			mount_fs "$dev" "$SD2" || return 0
+		}
+		rmdir "$tmp" 2>/dev/null || true
+		bind_roms
+		bind_bios
+		return 0
+	fi
+	mp=$MEDIA/${label:-$name}
+	mkdir -p "$mp"
+	mount --move "$tmp" "$mp" 2>/dev/null || {
+		umount "$tmp" 2>/dev/null || true
+		mount_fs "$dev" "$mp" || true
+	}
+	rmdir "$tmp" 2>/dev/null || true
+}
+
+remove_dev() {
+	name=$1
+	dev=/dev/$name
+	mp=$(awk -v d="$dev" '$1 == d { print $2; exit }' /proc/mounts)
+	[ -n "$mp" ] || return 0
+	mp=$(unescape_mp "$mp")
+	case "$mp" in
+		"$SD2"|/mnt/sd2)
+			unbind_under "$ROMS/"
+			unbind_under "$BIOS"
+			umount "$SD2" 2>/dev/null || true
+			;;
+		*)
+			umount "$mp" 2>/dev/null || true
+			;;
+	esac
+}
+
+scan_add() {
+	for dev in /dev/mmcblk1p1 /dev/mmcblk2p1 /dev/mmcblk1 /dev/sda1 /dev/sdb1 /dev/sdc1; do
+		[ -b "$dev" ] || continue
+		add_dev "${dev#/dev/}"
+	done
+}
+
+status() {
+	if grep -q " $SD2 " /proc/mounts; then
+		echo "sd2=mounted"
+		src=$(awk -v m="$SD2" '$2 == m { print $1; exit }' /proc/mounts)
+		echo "sd2_dev=$src"
+	else
+		echo "sd2=empty"
+	fi
+	n=$(awk '$2 ~ "^/storage/Roms/" { c++ } END { print c+0 }' /proc/mounts)
+	echo "roms_bound=$n"
+}
+
+case "${1:-}" in
+	start|scan)
+		scan_add
+		bind_roms
+		bind_bios
+		;;
+	bind)
+		bind_roms
+		bind_bios
+		;;
+	add)
+		[ -n "${2:-}" ] || exit 0
+		add_dev "$2"
+		;;
+	remove)
+		[ -n "${2:-}" ] || exit 0
+		remove_dev "$2"
+		;;
+	stop|eject)
+		unbind_under "$ROMS/"
+		unbind_under "$BIOS"
+		if grep -q " $SD2 " /proc/mounts; then
+			umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
+		fi
+		;;
+	status) status ;;
+	*)
+		echo "usage: $0 {start|bind|add <dev>|remove <dev>|eject|status}" >&2
+		exit 1
+		;;
+esac

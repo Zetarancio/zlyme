@@ -9,7 +9,7 @@ RETROARCH_VERSION = v1.22.2
 RETROARCH_SITE = $(call github,libretro,RetroArch,$(RETROARCH_VERSION))
 RETROARCH_LICENSE = GPL-3.0+
 RETROARCH_LICENSE_FILES = COPYING
-RETROARCH_DEPENDENCIES = host-pkgconf sdl2 alsa-lib libdrm libegl libgles zlib
+RETROARCH_DEPENDENCIES = host-pkgconf sdl2 alsa-lib libdrm libegl libgles zlib udev
 
 # RetroArch's qb configure is not autotools. It honours CROSS_COMPILE and
 # PKG_CONF_PATH; without the latter it looks for ${CROSS_COMPILE}pkg-config,
@@ -40,7 +40,7 @@ RETROARCH_CONF_OPTS = \
 	--disable-xmb \
 	--enable-zlib \
 	--disable-builtinflac \
-	--disable-udev \
+	--enable-udev \
 	--disable-hid
 
 define RETROARCH_CONFIGURE_CMDS

@@ -26,8 +26,12 @@ BR2_TARGET_GENERIC_ISSUE="Zlyme"
 BR2_TARGET_ENABLE_ROOT_LOGIN=y
 BR2_TARGET_GENERIC_ROOT_PASSWD=""
 
-# busybox init (S## scripts). No systemd.
+# busybox init (S## scripts). No systemd. eudev for OTG, disks, BT HID.
 BR2_INIT_BUSYBOX=y
+BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV=y
+BR2_PACKAGE_EUDEV=y
+# HWDB is USB pretty-names; skip the extra udevd startup cost.
+# BR2_PACKAGE_EUDEV_ENABLE_HWDB is not set
 
 # Serial getty on ttyS2. Baud is already 1500000; "keep" leaves it alone.
 BR2_TARGET_GENERIC_GETTY_PORT="ttyS2"
@@ -228,7 +232,6 @@ BR2_PACKAGE_SCUMMVM=y
 BR2_PACKAGE_HYPSEUS_SINGE=y
 BR2_PACKAGE_AMIBERRY=y
 BR2_PACKAGE_OPENBOR=y
-BR2_PACKAGE_LIBUDEV_ZERO=y
 BR2_PACKAGE_MOONLIGHT=y
 BR2_PACKAGE_GZDOOM=y
 BR2_PACKAGE_WINE_AMD64=y

@@ -1,0 +1,3 @@
+# Sourced by Buildroot's S10udevd. Default settle is 30s and would stall
+# the panel. 0 = queue the coldplug and return; udevd keeps working.
+SETTLE_TIMEOUT=0

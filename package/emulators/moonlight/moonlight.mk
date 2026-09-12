@@ -13,7 +13,7 @@ MOONLIGHT_LICENSE_FILES = LICENSE
 MOONLIGHT_SUPPORTS_IN_SOURCE_BUILD = NO
 
 MOONLIGHT_DEPENDENCIES = \
-	opus libevdev libudev-zero avahi alsa-lib libcurl enet ffmpeg sdl2
+	opus libevdev udev avahi alsa-lib libcurl enet ffmpeg sdl2
 
 MOONLIGHT_CONF_OPTS += -DCMAKE_BUILD_TYPE=Release
 MOONLIGHT_CONF_OPTS += -DENABLE_CEC=OFF

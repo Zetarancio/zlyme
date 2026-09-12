@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# Drop squashfs bind/overlay mounts, then force poweroff or reboot.
+# Plain busybox poweroff remounts root ro while NextUI still has image
+# paks bind-mounted from squashfs, which shows as SQUASHFS read errors
+# and a machine that never actually goes down.
+
+mode=${1:-poweroff}
+
+umount_list() {
+	awk '{ print $2 }' /proc/mounts | sed 's/\\040/ /g' | sort -r |
+		while IFS= read -r m; do
+			case "$m" in
+				/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*|/tmp|/tmp/*) continue ;;
+				/) continue ;;
+				/storage) continue ;;
+				/boot) continue ;;
+			esac
+			umount "$m" 2>/dev/null || umount -l "$m" 2>/dev/null || true
+		done
+}
+
+sync
+[ -x /usr/sbin/zlyme-led ] && /usr/sbin/zlyme-led poweroff >/dev/null 2>&1 || true
+
+# Overlay of /usr/share (zoneinfo workaround) and pak binds under /storage.
+if grep -q ' /usr/share ' /proc/mounts; then
+	umount /usr/share 2>/dev/null || umount -l /usr/share 2>/dev/null || true
+fi
+if [ -x /usr/sbin/zlyme-storage ]; then
+	/usr/sbin/zlyme-storage eject >/dev/null 2>&1 || true
+fi
+umount_list
+sync
+sleep 1
+
+case "$mode" in
+	reboot)
+		reboot -f
+		;;
+	*)
+		poweroff -f
+		;;
+esac

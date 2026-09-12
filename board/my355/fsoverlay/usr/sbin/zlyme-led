@@ -1,0 +1,295 @@
+#!/bin/sh
+#
+# Miyoo Flip gpio-leds. Same verbs as ROCKNIX
+# quirks/devices/Miyoo Flip/bin/ledcontrol so charging/sleep/poweroff
+# can call it the same way.
+#
+# Wiki: GPIO0_B4 = power (green:power), GPIO0_C2 = charging (red:status).
+# 010-led_control: on/off only (DEVICE_LED_BRIGHTNESS=false). Charging colour
+# is userspace (DEVICE_BATTERY_LED_STATUS=false), not a DT trigger.
+#
+# ash functions share globals. Every assignment that could clobber a caller
+# (especially val in led_state vs brightness) must be local.
+
+LED_PATH=/sys/class/leds
+DEFAULT=green
+LOG=/tmp/zlyme-led.log
+
+find_led() {
+	local n
+	for n in "$@"; do
+		[ -e "$LED_PATH/$n/brightness" ] || continue
+		printf '%s' "$n"
+		return 0
+	done
+	return 1
+}
+
+wait_sysfs() {
+	local i=0
+	while [ "$i" -lt 50 ]; do
+		if [ -e "$LED_PATH/green:power/brightness" ] || [ -e "$LED_PATH/red:status/brightness" ]; then
+			return 0
+		fi
+		sleep 0.1
+		i=$((i + 1))
+	done
+	return 1
+}
+
+wait_sysfs || true
+LED_GREEN=$(find_led green:power power led-power) || LED_GREEN=green:power
+LED_RED=$(find_led red:status red:charging amber:charging led-status) || LED_RED=red:status
+
+led_color() {
+	local c
+	if command -v zlyme-ctl >/dev/null 2>&1; then
+		c=$(zlyme-ctl get led 2>/dev/null | tr -d ' \t\r\n')
+	else
+		c=""
+	fi
+	case "$c" in
+		green|red|amber|off|battery|default) printf '%s' "$c" ;;
+		*) printf '%s' battery ;;
+	esac
+}
+
+set_led_color() {
+	command -v zlyme-ctl >/dev/null 2>&1 && zlyme-ctl set led "$1"
+}
+
+led_on_val() {
+	local name=$1 v
+	v=$(cat "$LED_PATH/$name/max_brightness" 2>/dev/null | tr -d ' \t\r\n')
+	[ -n "$v" ] && [ "$v" -gt 0 ] 2>/dev/null || v=1
+	printf '%s' "$v"
+}
+
+led_state() {
+	local name=$1 val=$2 path on
+	path="$LED_PATH/$name"
+	[ -e "$path/brightness" ] || {
+		echo "missing $path" >>"$LOG"
+		return 0
+	}
+	printf 'none\n' >"$path/trigger" 2>/dev/null || true
+	[ -n "$val" ] || val=0
+	if ! printf '%s\n' "$val" >"$path/brightness" 2>/dev/null; then
+		on=$(led_on_val "$name")
+		if ! printf '%s\n' "$on" >"$path/brightness" 2>/dev/null; then
+			echo "write fail $name val=$val on=$on" >>"$LOG"
+		fi
+	fi
+}
+
+led_off() {
+	led_state "$LED_GREEN" 0
+	led_state "$LED_RED" 0
+}
+
+brightness() {
+	local color=$1 val=$2
+	led_off
+	case "$color" in
+		green)
+			led_state "$LED_GREEN" "$val"
+			;;
+		red|amber)
+			led_state "$LED_RED" "$val"
+			;;
+		off) ;;
+	esac
+}
+
+user_color() {
+	local c
+	c=$(led_color)
+	case "$c" in
+		off) printf '%s' off ;;
+		red|amber) printf '%s' red ;;
+		green|battery|default|"") printf '%s' "$DEFAULT" ;;
+		*) printf '%s' "$DEFAULT" ;;
+	esac
+}
+
+onval() {
+	led_on_val "$LED_GREEN"
+}
+
+bat_status() {
+	local d t
+	for d in /sys/class/power_supply/*; do
+		[ -f "$d/type" ] || continue
+		t=$(cat "$d/type" 2>/dev/null)
+		case "$t" in
+			Battery|battery)
+				cat "$d/status" 2>/dev/null
+				return 0
+				;;
+		esac
+	done
+	cat /sys/class/power_supply/battery/status 2>/dev/null || true
+}
+
+bat_cap() {
+	local d t
+	for d in /sys/class/power_supply/*; do
+		[ -f "$d/capacity" ] || continue
+		t=$(cat "$d/type" 2>/dev/null)
+		case "$t" in
+			Battery|battery)
+				cat "$d/capacity" 2>/dev/null
+				return 0
+				;;
+		esac
+	done
+	cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 100
+}
+
+charger_online() {
+	local d t on st
+	for d in /sys/class/power_supply/*; do
+		[ -f "$d/online" ] || continue
+		t=$(cat "$d/type" 2>/dev/null)
+		case "$t" in
+			Battery|battery) continue ;;
+		esac
+		on=$(cat "$d/online" 2>/dev/null | tr -d ' \t\r\n')
+		[ "$on" = 1 ] && return 0
+	done
+	st=$(bat_status)
+	case "$st" in
+		Charging|Full) return 0 ;;
+	esac
+	return 1
+}
+
+apply_now() {
+	local c cap st
+	c=$(led_color)
+	if [ "$c" = off ]; then
+		led_off
+		return 0
+	fi
+	if charger_online; then
+		cap=$(bat_cap)
+		st=$(bat_status)
+		if [ "$st" = Full ] || [ "${cap:-0}" -gt 97 ] 2>/dev/null; then
+			brightness "$(user_color)" "$(onval)"
+		else
+			brightness red "$(onval)"
+		fi
+	else
+		brightness "$(user_color)" "$(onval)"
+	fi
+}
+
+flash_low() {
+	local c i
+	c=$(led_color)
+	[ "$c" = off ] && return 0
+	i=0
+	while [ "$i" -lt 3 ]; do
+		brightness red "$(onval)"
+		sleep 0.5
+		led_off
+		sleep 0.5
+		i=$((i + 1))
+	done
+	apply_now
+}
+
+watch() {
+	local last="" lowcnt=0 c want cap st
+	while true; do
+		c=$(led_color)
+		if [ "$c" = off ]; then
+			want=off
+			lowcnt=0
+		elif charger_online; then
+			cap=$(bat_cap)
+			st=$(bat_status)
+			if [ "$st" = Full ] || [ "${cap:-0}" -gt 97 ] 2>/dev/null; then
+				want=full
+			else
+				want=charging
+			fi
+			lowcnt=0
+		else
+			cap=$(bat_cap)
+			if [ "${cap:-100}" -le 10 ] 2>/dev/null; then
+				want=low
+			else
+				want=batt
+				lowcnt=0
+			fi
+		fi
+		if [ "$want" = low ]; then
+			lowcnt=$((lowcnt + 1))
+			if [ "$lowcnt" -ge 20 ]; then
+				flash_low
+				lowcnt=0
+				last=low
+			elif [ "$last" != low ]; then
+				brightness red "$(onval)"
+				last=low
+			fi
+		elif [ "$want" != "$last" ]; then
+			case "$want" in
+				off) led_off ;;
+				charging) brightness red "$(onval)" ;;
+				full|batt) brightness "$(user_color)" "$(onval)" ;;
+			esac
+			last=$want
+		fi
+		sleep 2
+	done
+}
+
+cmd=${1:-}
+[ -z "$cmd" ] && cmd=apply
+
+case "$cmd" in
+	apply)
+		apply_now
+		;;
+	default|battery)
+		set_led_color battery
+		apply_now
+		;;
+	green|red|amber|off)
+		set_led_color "$cmd"
+		if [ "$cmd" = off ]; then
+			led_off
+		else
+			brightness "$cmd" "$(onval)"
+		fi
+		;;
+	discharging)
+		c=$(led_color)
+		[ "$c" = off ] && { led_off; exit 0; }
+		brightness "$(user_color)" "$(onval)"
+		;;
+	charging)
+		c=$(led_color)
+		[ "$c" = off ] && exit 0
+		brightness red "$(onval)"
+		;;
+	poweroff)
+		led_off
+		;;
+	flash|flash-low)
+		flash_low
+		;;
+	watch)
+		apply_now
+		watch
+		;;
+	list)
+		printf '%s\n' battery off green red amber
+		;;
+	*)
+		echo "usage: $0 {apply|battery|green|red|amber|off|charging|discharging|poweroff|watch|list}" >&2
+		exit 1
+		;;
+esac

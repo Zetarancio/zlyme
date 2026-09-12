@@ -1,0 +1,7 @@
+# Extra MMC / USB filesystems. zlyme-storage skips the boot slot (mmcblk0)
+# and labels ZLYME / ZLYMEBOOT. Labels are often missing at this instant,
+# so the script re-reads blkid.
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", RUN+="/usr/sbin/zlyme-storage add %k"
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[0-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage add %k"
+ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", RUN+="/usr/sbin/zlyme-storage remove %k"
+ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[0-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage remove %k"

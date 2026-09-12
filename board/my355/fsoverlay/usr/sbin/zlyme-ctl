@@ -15,6 +15,7 @@ default_of() {
 		display_mode) echo "" ;;
 		refresh) echo 60 ;;
 		undervolt) echo off ;;
+		led) echo battery ;;
 		*) echo off ;;
 	esac
 }
@@ -69,6 +70,10 @@ apply_refresh() {
 	return 0
 }
 
+apply_led() {
+	[ -x /usr/sbin/zlyme-led ] && /usr/sbin/zlyme-led apply
+}
+
 apply_undervolt() {
 	val=$(get undervolt)
 	conf=/boot/extlinux/extlinux.conf
@@ -99,13 +104,14 @@ case "$cmd" in
 	toggle) toggle "$1" ;;
 	apply-refresh) apply_refresh ;;
 	apply-undervolt) apply_undervolt ;;
+	apply-led) apply_led ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-led|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

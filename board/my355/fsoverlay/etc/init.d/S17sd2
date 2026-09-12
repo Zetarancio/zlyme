@@ -1,76 +1,22 @@
 #!/bin/sh
 #
-# Mount the second SD slot (library card) at /mnt/sd2.
-# Slot 0 is the OS card (/, /boot, /storage). NextUI still reads
-# /storage/Roms; nextui-session bind-mounts named folders from here.
-
-SD2=/mnt/sd2
-
-disk_of() {
-	dev=$1
-	dev=${dev#/dev/}
-	case "$dev" in
-		mmcblk*p*) echo "${dev%%p*}" ;;
-		nvme*n*p*) echo "${dev%%p*}" ;;
-		*) echo "$dev" | sed 's/[0-9]*$//' ;;
-	esac
-}
-
-used_disk() {
-	cand=$1
-	d=$(disk_of "$cand")
-	[ -n "$d" ] || return 1
-	for m in / /boot /storage; do
-		src=$(awk -v m="$m" '$2 == m { print $1; exit }' /proc/mounts)
-		[ -n "$src" ] || continue
-		[ "$(disk_of "$src")" = "$d" ] && return 0
-	done
-	return 1
-}
-
-unbind_roms() {
-	awk '$2 ~ /^\/storage\/Roms\// { print $2 }' /proc/mounts | sort -r |
-		while read -r m; do
-			m=$(printf '%s' "$m" | sed 's/\\040/ /g; s/\\011/\t/g')
-			umount "$m" 2>/dev/null || true
-		done
-}
+# Mount a library card (second SD / OTG) into NextUI. Hotplug is eudev;
+# this covers devices that were already present before udevd started.
 
 start() {
-	mkdir -p "$SD2"
-	printf "Mounting SD2: "
-	if grep -q " $SD2 " /proc/mounts; then
-		echo "already mounted"
-		return 0
+	printf "Storage extras: "
+	if [ -x /usr/sbin/zlyme-storage ]; then
+		/usr/sbin/zlyme-storage start >>/tmp/zlyme-storage.log 2>&1
+		/usr/sbin/zlyme-storage status | tr '\n' ' '
+		echo
+	else
+		echo "missing"
 	fi
-
-	for dev in /dev/mmcblk1p1 /dev/mmcblk2p1 /dev/mmcblk1 /dev/sda1 /dev/sdb1; do
-		[ -b "$dev" ] || continue
-		used_disk "$dev" && continue
-		label=$(blkid -o value -s LABEL "$dev" 2>/dev/null || true)
-		case "$label" in
-			ZLYME|ZLYMEBOOT) continue ;;
-		esac
-		typ=$(blkid -o value -s TYPE "$dev" 2>/dev/null || true)
-		case "$typ" in
-			exfat|vfat|msdos|ext4|ext3|ext2|ntfs)
-				if mount -t "$typ" -o rw,noatime "$dev" "$SD2" 2>/dev/null; then
-					echo "OK ($dev)"
-					return 0
-				fi
-				;;
-		esac
-	done
-	echo "none"
 	return 0
 }
 
 stop() {
-	unbind_roms
-	if grep -q " $SD2 " /proc/mounts; then
-		printf "Unmounting SD2: "
-		umount "$SD2" 2>/dev/null && echo "OK" || echo "FAIL"
-	fi
+	[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage eject >/dev/null 2>&1
 	return 0
 }
 

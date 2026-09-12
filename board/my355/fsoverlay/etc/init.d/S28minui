@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Start NextUI as soon as storage, panel, and ALSA exist. WiFi/BT
+# keep their later S## scripts so they do not delay the game list.
+# Shutdown still uses S90minui stop (higher number stops first).
+
+start() {
+	if [ -e /storage/.minui-disable ] || [ -e /storage/.nextui-disable ]; then
+		echo "NextUI: disabled"
+		return 0
+	fi
+	if [ ! -x /usr/sbin/nextui-session ] && [ ! -x /usr/sbin/minui-session ]; then
+		echo "NextUI: missing"
+		return 0
+	fi
+	if pidof nextui-session >/dev/null 2>&1 || pidof minui-session >/dev/null 2>&1; then
+		echo "NextUI: already running"
+		return 0
+	fi
+	printf "Starting NextUI: "
+	if [ -x /usr/sbin/nextui-session ]; then
+		nextui-session > /tmp/nextui.log 2>&1 &
+	else
+		minui-session > /tmp/minui.log 2>&1 &
+	fi
+	echo "OK"
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
