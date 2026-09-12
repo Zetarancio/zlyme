@@ -356,6 +356,8 @@ SDL_Surface *GFX_init(int mode)
 	PLAT_initPlatform();
 
 	gfx.screen = PLAT_initVideo();
+	if (!gfx.screen)
+		return NULL;
 	gfx.vsync = VSYNC_STRICT;
 	gfx.mode = mode;
 

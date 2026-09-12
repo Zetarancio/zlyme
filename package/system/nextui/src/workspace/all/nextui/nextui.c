@@ -2289,6 +2289,10 @@ int main (int argc, char *argv[]) {
 	InitSettings();
 
 	screen = GFX_init(MODE_MAIN);
+	if (!screen) {
+		LOG_error("GFX_init failed\n");
+		return 1;
+	}
 // LOG_info("- graphics init: %lu\n", SDL_GetTicks() - main_begin);
 
 	PAD_init();
