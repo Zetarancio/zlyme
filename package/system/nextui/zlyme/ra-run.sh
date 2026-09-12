@@ -14,6 +14,8 @@ CARD_OPTS=/storage/.config/zlyme/retroarch/config
 MINUI_RA=/tmp/zlyme-minui-ra.cfg
 MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.userdata/shared}/minuisettings.txt"
 
+[ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
+
 mkdir -p "$CFGDIR"
 if [ ! -s "$CFG" ]; then
 	rm -f "$CFG"
@@ -147,5 +149,5 @@ if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	exit 0
 fi
 
-# MENU (button 10) exits, matching NextUI. Select opens the RetroArch menu.
+# MENU opens the RetroArch menu; MENU+Start exits to NextUI.
 exec retroarch --appendconfig "$APPEND" "$@"

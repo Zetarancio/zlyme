@@ -1099,7 +1099,7 @@ int main(int argc, char *argv[])
         if(buttonMenu)
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
 
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Notifications and RetroAchievements. Applied to RetroArch on launch; Select opens the RA menu.", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Notifications and RetroAchievements. Applied to RetroArch on launch; MENU opens the RA menu, MENU+Start exits.", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
 
         if(deviceInfo.hasWifi())
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, Bluetooth, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
