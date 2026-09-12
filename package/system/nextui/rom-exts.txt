@@ -31,3 +31,4 @@ SATURN: cue ccd m3u chd iso
 AMIGA: adf ipf hdf lha cue iso chd m3u zip
 DOOM: wad iwad pwad pk3
 TIC: tic
+PICO: p8 png zip

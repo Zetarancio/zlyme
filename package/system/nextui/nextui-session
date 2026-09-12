@@ -49,6 +49,18 @@ if [ -r "$seed/rom-dirs.txt" ]; then
 	done < "$seed/rom-dirs.txt"
 fi
 
+# Dummy cart so Pico-8 is visible before the user adds .p8 files.
+# Name contains "splore" so start_pico8.sh uses -splore (ROCKNIX / minui-pico-8-pak).
+pico_rom="/storage/Roms/Pico-8 (PICO)"
+pico_art="$seed/paks/Emus/PICO.pak/splore/Splore.p8.png"
+pico_mark="$SHARED_USERDATA_PATH/Pico-8-native/splore-installed"
+if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
+	mkdir -p "$SHARED_USERDATA_PATH/Pico-8-native" "$pico_rom/.media"
+	cp -f "$pico_art" "$pico_rom/Splore.p8"
+	cp -f "$pico_art" "$pico_rom/.media/Splore.png"
+	: >"$pico_mark"
+fi
+
 [ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage bind
 
 # Refresh stock assets when the image version changes. Copying paks

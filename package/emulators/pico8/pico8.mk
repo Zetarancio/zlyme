@@ -3,7 +3,7 @@
 # pico8
 #
 # No upstream tarball. Installs a launcher that runs the user-supplied
-# pico8_64 binary from the PICO-8 roms folder.
+# pico8_64 binary from Bios/PICO or the Pico-8 roms folder.
 #
 ################################################################################
 

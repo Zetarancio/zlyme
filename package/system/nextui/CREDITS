@@ -44,3 +44,10 @@ PortMaster (Tools)
   https://github.com/PortsMaster/PortMaster-GUI
   2026.05.04-1202. ben16w/minui-portmaster is TrimUI-only; not used.
 
+PICO.pak Splore cart
+  Jose Diaz-Gonzalez, MIT
+  https://github.com/josegonzalez/minui-pico-8-pak
+  Splore.p8.png only; launch.sh is original Zlyme. Pico-8 itself is
+  not shipped (user-supplied pico8_64).
+
+
