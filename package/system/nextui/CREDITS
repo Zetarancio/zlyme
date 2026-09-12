@@ -26,3 +26,20 @@ ScrapeGoat (Tools)
   Kevin Vranken (Helaas), MIT
   https://github.com/Helaas/nextui-scrapegoat-pak
   Release v2.3.0
+  my355 binary rebuilt against Apostrophe with Flip joystick mapping.
+
+Apostrophe (ScrapeGoat / Moonlight UI toolkit)
+  https://github.com/Helaas/Apostrophe
+  Copyright (c) 2026 Kevin Vranken, MIT
+  Vendored at package/system/nextui/apostrophe/ (build-time headers).
+
+Moonlight.pak (Tools)
+  Richie Szemeredi, MIT
+  https://github.com/richieszemeredi/nextui-moonlight-pak
+  v0.1.0 UI; streamer is this image's moonlight-embedded.
+
+PortMaster (Tools)
+  PortsMaster-GUI, MIT (Copyright (c) 2023-2025 Jacob)
+  https://github.com/PortsMaster/PortMaster-GUI
+  2026.05.04-1202. ben16w/minui-portmaster is TrimUI-only; not used.
+

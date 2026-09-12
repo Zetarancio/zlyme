@@ -1,0 +1,10 @@
+Apostrophe
+https://github.com/Helaas/Apostrophe
+Copyright (c) 2026 Kevin Vranken
+License: MIT (see LICENSE)
+
+Upstream pin is in UPSTREAM. include/apostrophe.h carries a Zlyme my355
+change: map Flip buttons with NextUI JOY_* joystick indices. Stock
+Apostrophe treats the Flip as keyboard scancodes only; this image's
+rocknix joypad emits joystick BTN_* events, which ScrapeGoat and
+Moonlight need in order to see A/B/D-pad.

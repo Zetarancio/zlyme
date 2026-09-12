@@ -7,3 +7,7 @@ License: MIT (see LICENSE in this pak)
 Shipped from the upstream 0.8.0 release zip
 (Artwork.Scraper.pak.zip). TrimUI-only binaries (tg5040/tg5050)
 and 32-bit jq were removed; this image is aarch64 my355.
+
+minui-list and minui-presenter under bin/my355/ are rebuilt against
+this tree's NextUI my355 platform (joystick JOY_* plus keyboard),
+not the upstream keyboard-only Flip build.

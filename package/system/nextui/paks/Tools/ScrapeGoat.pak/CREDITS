@@ -4,4 +4,12 @@ Author: Kevin Vranken (Helaas)
 https://github.com/Helaas/nextui-scrapegoat-pak
 License: MIT (see LICENSE in this pak)
 
-Shipped from the upstream release zip (ScrapeGoat.pak.zip).
+UI toolkit: Apostrophe
+https://github.com/Helaas/Apostrophe
+Copyright (c) 2026 Kevin Vranken, MIT
+
+The my355 binary is rebuilt here against Apostrophe with Zlyme Flip
+joystick mapping (NextUI JOY_*). Stock Apostrophe treats the Flip as
+keyboard scancodes; this image's joypad emits joystick events.
+ScreenScraper developer credentials are the same ones baked into the
+upstream 2.3.0 release binary.

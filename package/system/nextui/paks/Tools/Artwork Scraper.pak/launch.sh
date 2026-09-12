@@ -1,5 +1,4 @@
 #!/bin/sh
-set -x
 PAK_DIR="$(dirname "$0")"
 PAK_NAME="$(basename "$PAK_DIR")"
 PAK_NAME="${PAK_NAME%.*}"
@@ -25,30 +24,39 @@ fi
 chmod +x "$PAK_DIR/bin/$architecture/jq" 2>/dev/null || true
 chmod +x "$PAK_DIR/bin/$PLATFORM/minui-list" 2>/dev/null || true
 chmod +x "$PAK_DIR/bin/$PLATFORM/minui-presenter" 2>/dev/null || true
+chmod +x "$PAK_DIR/bin/$PLATFORM/gm" 2>/dev/null || true
 
 export PATH="$PAK_DIR/bin/$architecture:$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin:$PATH"
-export LD_LIBRARY_PATH="$PAK_DIR/lib/$architecture:$PAK_DIR/lib/$PLATFORM:$PAK_DIR/lib:$LD_LIBRARY_PATH"
+# System SDL2 / libmsettings first. Bundled libz can break minui-list.
+export LD_LIBRARY_PATH="/usr/lib:${SYSTEM_PATH:-/usr}/lib:$PAK_DIR/lib/$architecture:$PAK_DIR/lib/$PLATFORM:$PAK_DIR/lib:${LD_LIBRARY_PATH:-}"
+export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-opengles2}"
+export SDL_GAMECONTROLLERCONFIG_FILE="${SDL_GAMECONTROLLERCONFIG_FILE:-/usr/lib/gamecontrollerdb.txt}"
 export IMAGE_MATCHER_URL="https://matching-images-is.bittersweet.rip"
 export MINUI_IMAGE_WIDTH=300
 
 populate_emus_list() {
-    ls -A "$SDCARD_PATH/Roms" | sort >/tmp/emus
-
-    touch /tmp/emus.list
-    while read -r folder; do
-        case "$folder" in
+    echo "Cache Management" >/tmp/emus.list
+    for folder in "$SDCARD_PATH/Roms"/*; do
+        [ -d "$folder" ] || continue
+        name=$(basename "$folder")
+        case "$name" in
             .*|_*) continue ;;
+            APPS|PORTS) continue ;;
         esac
-        if [ -n "$(ls -A "$SDCARD_PATH/Roms/$folder" 2>/dev/null | grep -v '^\.' | grep -v '\.txt$')" ]; then
-            basename "$folder" >>/tmp/emus.list
-        fi
-    done </tmp/emus
-    sed -i '/^[.]/d; /^_/d; /^APPS/d; /^PORTS/d' /tmp/emus.list
-
-    # Add Cache Management option at the top
-    echo "Cache Management" >/tmp/emus.list.tmp
-    cat /tmp/emus.list >>/tmp/emus.list.tmp
-    mv /tmp/emus.list.tmp /tmp/emus.list
+        # Stop at the first real file. ls of a library card is tens of thousands.
+        found=0
+        for f in "$folder"/*; do
+            [ -e "$f" ] || break
+            base=$(basename "$f")
+            case "$base" in
+                .*|*.txt|*.srm|*.sav|*.state|*.png|*.jpg|*.jpeg|*.xml|*.nfo) continue ;;
+            esac
+            found=1
+            break
+        done
+        [ "$found" = 1 ] && echo "$name" >>/tmp/emus.list
+    done
 }
 
 main_screen() {
@@ -456,13 +464,27 @@ main() {
         return 1
     fi
 
+    # nextui.elf still holds DRM for a moment after exit.
+    sleep 0.8
+    retries=0
     while true; do
         main_screen
         exit_code=$?
         # exit codes: 2 = back button, 3 = menu button
-        if [ "$exit_code" -ne 0 ]; then
+        if [ "$exit_code" -eq 2 ] || [ "$exit_code" -eq 3 ]; then
             break
         fi
+        if [ "$exit_code" -ne 0 ]; then
+            if [ "$retries" -lt 2 ]; then
+                retries=$((retries + 1))
+                show_message "Retrying list ($exit_code)" 2
+                sleep 0.5
+                continue
+            fi
+            show_message "minui-list crashed ($exit_code). Check logs." 4
+            return "$exit_code"
+        fi
+        retries=0
 
         output="$(cat /tmp/minui-output)"
         selected_index="$(echo "$output" | jq -r '.selected')"

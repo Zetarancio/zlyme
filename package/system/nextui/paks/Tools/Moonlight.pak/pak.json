@@ -1,0 +1,17 @@
+{
+  "name": "Moonlight",
+  "version": "v0.1.0",
+  "type": "TOOL",
+  "description": "Stream games from your PC with native resolution support. Pair, manage multiple servers, and launch streams — all from a native NextUI interface.",
+  "author": "richieszemeredi",
+  "repo_url": "https://github.com/richieszemeredi/nextui-moonlight-pak",
+  "release_filename": "Moonlight.pakz",
+  "changelog": {
+    "v0.1.0": "Initial release. Server management, pairing with PIN display, app selection, and streaming with configurable resolution, FPS, and bitrate."
+  },
+  "platforms": [
+    "tg5040",
+    "tg5050",
+    "my355"
+  ]
+}

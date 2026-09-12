@@ -1,0 +1,13 @@
+Moonlight.pak UI is moonlight-pak from:
+
+  https://github.com/richieszemeredi/nextui-moonlight-pak
+  Richie Szemeredi, Moonlight.pakz v0.1.0 (my355, Apostrophe).
+
+Rebuilt here against Apostrophe
+  https://github.com/Helaas/Apostrophe
+  Copyright (c) 2026 Kevin Vranken, MIT (LICENSE.apostrophe)
+with Zlyme Flip joystick mapping (NextUI JOY_*). Upstream Apostrophe
+treats the Flip as keyboard scancodes; this image's joypad does not.
+
+The streamer on PATH is moonlight-embedded from this image (/usr/bin/moonlight),
+not the pak. See LICENSE in this directory (upstream pak license).
