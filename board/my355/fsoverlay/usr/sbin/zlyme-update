@@ -217,6 +217,10 @@ apply_files() {
 boot_apply() {
 	log "boot-apply"
 	rm -f "$FAILED"
+	if ! is_queued; then
+		log "nothing queued"
+		return 0
+	fi
 	apply_files
 }
 
