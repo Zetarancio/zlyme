@@ -2,6 +2,10 @@
 # Overlays.pak - browse, preview and install community overlays for NextUI
 # Source: https://github.com/LoveRetro/nextui-community-overlays
 # Pak conventions: https://github.com/LoveRetro/NextUI/blob/main/PAKS.md
+#
+# nextui.elf saveLast() points at this pak. Restore to the card root
+# or the next session opens Overlays.pak as a folder (launch.sh).
+printf '%s' /storage > /tmp/last.txt
 
 PAK_DIR="$(dirname "$0")"
 PAK_NAME="$(basename "$PAK_DIR")"

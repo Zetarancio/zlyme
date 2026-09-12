@@ -1,4 +1,8 @@
 #!/bin/sh
+# nextui.elf saveLast() points at this pak. Restore to the card root
+# or the next session opens this pak as a folder (launch.sh).
+printf '%s' /storage > /tmp/last.txt
+
 PAK_DIR="$(dirname "$0")"
 PAK_NAME="$(basename "$PAK_DIR")"
 PAK_NAME="${PAK_NAME%.*}"
@@ -481,8 +485,6 @@ main() {
         return 1
     fi
 
-    # nextui.elf still holds DRM for a moment after exit.
-    sleep 1.2
     retries=0
     while true; do
         main_screen

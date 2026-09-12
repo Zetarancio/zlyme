@@ -237,10 +237,14 @@ while [ -f "$EXEC_PATH" ]; do
 		sleep 0.4
 		eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
 		st=$?
-		if [ "$st" -ne 0 ]; then
-			echo "pak exit $st" >> "$LOGS_PATH/next.txt"
-			command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
-		fi
+		# minui-list B/menu is 2/3, not a crash.
+		case "$st" in
+			0|2|3) ;;
+			*)
+				echo "pak exit $st" >> "$LOGS_PATH/next.txt"
+				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
+				;;
+		esac
 		killall -9 minui-list minui-presenter scrapegoat 2>/dev/null || true
 		sleep 0.2
 		continue
