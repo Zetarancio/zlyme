@@ -3,8 +3,9 @@ config BR2_PACKAGE_LIBMALI
 	depends on BR2_PACKAGE_MALI_KBASE
 	select BR2_PACKAGE_LIBDRM
 	help
-	  ARM Mali Bifrost G52 user-space GLES (JeffyCN g29p1),
+	  ARM Mali Bifrost G52 user-space GLES+Vulkan (JeffyCN g29p1),
 	  installed under /usr/lib/mali so it never replaces Mesa
-	  filenames. gpudriver bind-mounts it when gpu=libmali.
+	  filenames. gpudriver bind-mounts GLES when gpu=libmali.
+	  mali_icd.json is the Vulkan ICD for that blob.
 
 	  https://github.com/JeffyCN/mirrors

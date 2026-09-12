@@ -25,7 +25,12 @@ PPSSPP_CONF_OPTS += -DARM=ON
 PPSSPP_CONF_OPTS += -DARM64=ON
 PPSSPP_CONF_OPTS += -DUSING_GLES2=ON
 PPSSPP_CONF_OPTS += -DUSING_EGL=ON
+ifeq ($(BR2_PACKAGE_VULKAN_HEADERS)$(BR2_PACKAGE_VULKAN_LOADER),yy)
+PPSSPP_CONF_OPTS += -DVULKAN=ON
+PPSSPP_DEPENDENCIES += vulkan-headers vulkan-loader
+else
 PPSSPP_CONF_OPTS += -DVULKAN=OFF
+endif
 PPSSPP_CONF_OPTS += -DUSING_X11_VULKAN=OFF
 # Staging sdl2_ttf-config.cmake sets FOUND but looks for /usr/lib/libSDL2_ttf.so
 # (host path) and never creates SDL2_ttf::SDL2_ttf. Use pkg-config instead.

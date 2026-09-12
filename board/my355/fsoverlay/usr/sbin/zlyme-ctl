@@ -11,7 +11,7 @@ default_of() {
 	case "$1" in
 		wifi|bluetooth|ssh|otg|hdmi|sd2) echo on ;;
 		samba|syncthing) echo off ;;
-		gpu) echo panfrost ;;
+		gpu) echo libmali ;;
 		display_mode) echo "" ;;
 		refresh) echo 60 ;;
 		undervolt) echo off ;;
@@ -131,6 +131,13 @@ apply_gov() {
 	done
 }
 
+apply_settings() {
+	apply_overlays
+	apply_gov
+	apply_refresh
+	apply_led
+}
+
 cmd=$1
 shift
 case "$cmd" in
@@ -143,13 +150,14 @@ case "$cmd" in
 	apply-overlays) apply_overlays ;;
 	apply-led) apply_led ;;
 	apply-gov) apply_gov ;;
+	apply-settings) apply_settings ;;
 	status)
 		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 cpu_gov gpu_gov; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-settings|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

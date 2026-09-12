@@ -183,14 +183,14 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 	const std::vector<std::string> uv_l = {"Off", "L1", "L2", "L3"};
 
 	items.push_back(new MenuItem{ListItemType::Generic, "GPU",
-		"Panfrost and mali_kbase cannot share the GPU. Takes effect on next boot.",
+		"libmali (default, GLES+Vulkan ICD) or Panfrost GLES. They cannot share the GPU. Takes effect on next boot. Pick Vulkan inside the emulator, not here.",
 		gpu_v, gpu_l,
 		[]() -> std::any {
 			std::string g = ctl_get("gpu");
-			return g.empty() ? std::string("panfrost") : g;
+			return g.empty() ? std::string("libmali") : g;
 		},
 		[](const std::any &v) { ctl_set("gpu", std::any_cast<std::string>(v).c_str()); },
-		[]() { ctl_set("gpu", "panfrost"); }});
+		[]() { ctl_set("gpu", "libmali"); }});
 	items.push_back(new MenuItem{ListItemType::Generic, "CPU undervolt",
 		"ROCKNIX opp-table overlays. Takes effect on next boot.",
 		uv_v, uv_l,

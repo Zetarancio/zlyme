@@ -75,6 +75,10 @@ chmod 0755 \
 	"${TARGET_DIR}/etc/init.d/S27led" \
 	"${TARGET_DIR}/etc/init.d/S90minui"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
+[ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
+[ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
+rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver"
 ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
 
 if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then

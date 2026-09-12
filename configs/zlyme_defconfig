@@ -145,6 +145,12 @@ BR2_PACKAGE_MESA3D_GBM=y
 # kmscube: KMSDRM + GBM + GLES smoke test.
 BR2_PACKAGE_KMSCUBE=y
 
+# Vulkan loader + headers. ICD is mali_icd.json (libmali blob) when
+# gpu=libmali. Buildroot 2026.02 mesa3d has no PanVK Kconfig option, so
+# the panfrost stack stays GLES. Emulators pick vulkan vs gl themselves.
+BR2_PACKAGE_VULKAN_HEADERS=y
+BR2_PACKAGE_VULKAN_LOADER=y
+
 # Audio: ALSA only. HDMI is card 0, rk817_ext is card 1.
 BR2_PACKAGE_ALSA_LIB=y
 

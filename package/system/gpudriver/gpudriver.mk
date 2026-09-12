@@ -2,7 +2,7 @@
 #
 # gpudriver
 #
-# Load panfrost or mali_kbase at boot. Default panfrost.
+# Load panfrost or mali_kbase at boot. Default libmali.
 ################################################################################
 
 GPUDRIVER_VERSION = local
@@ -14,8 +14,9 @@ GPUDRIVER_LICENSE_FILES = LICENSE
 define GPUDRIVER_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(GPUDRIVER_PKGDIR)/gpudriver \
 		$(TARGET_DIR)/usr/sbin/gpudriver
-	$(INSTALL) -D -m 0755 $(GPUDRIVER_PKGDIR)/S12gpudriver \
-		$(TARGET_DIR)/etc/init.d/S12gpudriver
+	rm -f $(TARGET_DIR)/etc/init.d/S12gpudriver
+	$(INSTALL) -D -m 0755 $(GPUDRIVER_PKGDIR)/S15gpudriver \
+		$(TARGET_DIR)/etc/init.d/S15gpudriver
 endef
 
 $(eval $(generic-package))

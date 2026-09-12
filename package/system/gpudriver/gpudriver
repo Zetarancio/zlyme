@@ -1,41 +1,94 @@
 #!/bin/sh
-# Load panfrost or mali_kbase. Bind-mount libmali GLES over Mesa when
-# that stack is selected and /usr/lib/mali exists.
+# ROCKNIX RK3566-style GPU stack: one kernel module and one GLES library.
+#
+# Mesa stays in /usr/lib (SONAME libEGL.so.1 → libEGL.so.1.0.0). The Mali
+# blob lives in /usr/lib/mali (SONAME libmali.so.1). Apps dlopen
+# libEGL.so.1, which resolves to the .so.1.0.0 file, so bind-mount the
+# blob onto that real path. /proc/mounts never shows the symlink, so
+# unmount must use readlink -f as well.
+#
+# Runs after S15bootpart so /storage/.config/zlyme/gpu is readable.
+# Blacklist the other module so udev does not load both (Radxa/ROCKNIX).
 
 . /etc/zlyme.conf 2>/dev/null
+
+MALI_SO=/usr/lib/mali/libmali-bifrost-g52-g29p1.so
+[ -e "$MALI_SO" ] || MALI_SO=/usr/lib/mali/libEGL.so
+
+GLES_LINKS="/usr/lib/libEGL.so.1 /usr/lib/libGLESv1_CM.so.1 /usr/lib/libGLESv2.so.2 /usr/lib/libgbm.so.1"
+MODPROBE_CONF=/etc/modprobe.d/zlyme-gpu.conf
+MODPROBE_RUN=/run/zlyme-gpu-modprobe.conf
+
+resolved() {
+	readlink -f "$1" 2>/dev/null || printf '%s' "$1"
+}
+
+mounted_on() {
+	awk -v p="$1" '$2 == p { found = 1 } END { exit !found }' /proc/mounts
+}
+
+unbind_mali_libs() {
+	for link in $GLES_LINKS; do
+		real=$(resolved "$link")
+		[ -n "$real" ] || continue
+		if mounted_on "$real"; then
+			umount "$real" 2>/dev/null || umount -l "$real" 2>/dev/null || true
+		fi
+	done
+}
+
+bind_mali_libs() {
+	[ -e "$MALI_SO" ] || return 0
+	src=$(resolved "$MALI_SO")
+	[ -e "$src" ] || return 0
+	for link in $GLES_LINKS; do
+		[ -e "$link" ] || continue
+		real=$(resolved "$link")
+		[ -n "$real" ] || continue
+		if mounted_on "$real"; then
+			umount "$real" 2>/dev/null || true
+		fi
+		mount --bind "$src" "$real" 2>/dev/null || true
+	done
+}
+
+write_blacklist() {
+	want=$1
+	mkdir -p /run
+	case "$want" in
+		libmali|mali|mali_kbase)
+			printf 'blacklist panfrost\n' > "$MODPROBE_RUN"
+			;;
+		*)
+			printf 'blacklist mali_kbase\nblacklist bifrost_kbase\nblacklist mali\n' > "$MODPROBE_RUN"
+			;;
+	esac
+	[ -f "$MODPROBE_CONF" ] || return 0
+	if mounted_on "$MODPROBE_CONF"; then
+		umount "$MODPROBE_CONF" 2>/dev/null || true
+	fi
+	mount --bind "$MODPROBE_RUN" "$MODPROBE_CONF" 2>/dev/null || true
+}
 
 want=${1:-}
 if [ -z "$want" ]; then
 	want=$(zlyme-ctl get gpu 2>/dev/null | tr -d '\n')
 fi
-[ -n "$want" ] || want=panfrost
+[ -n "$want" ] || want=libmali
 
-unbind_mali_libs() {
-	if mount | grep -q "on /usr/lib/libEGL.so"; then
-		umount /usr/lib/libEGL.so /usr/lib/libGLESv1_CM.so \
-			/usr/lib/libGLESv2.so /usr/lib/libgbm.so 2>/dev/null
-	fi
-}
-
-bind_mali_libs() {
-	[ -d /usr/lib/mali ] || return 0
-	for lib in libEGL.so libGLESv1_CM.so libGLESv2.so libgbm.so; do
-		[ -e /usr/lib/mali/$lib ] || continue
-		mount --bind /usr/lib/mali/$lib /usr/lib/$lib 2>/dev/null
-	done
-}
+write_blacklist "$want"
 
 case "$want" in
 	libmali|mali|mali_kbase)
-		modprobe -r panfrost 2>/dev/null
-		modprobe mali_kbase 2>/dev/null
+		modprobe -r panfrost 2>/dev/null || true
+		modprobe mali_kbase 2>/dev/null || true
 		bind_mali_libs
 		echo libmali
 		;;
 	panfrost|*)
-		modprobe -r mali_kbase 2>/dev/null
-		modprobe panfrost 2>/dev/null
 		unbind_mali_libs
+		modprobe -r mali_kbase 2>/dev/null || true
+		modprobe panfrost 2>/dev/null || true
 		echo panfrost
 		;;
 esac

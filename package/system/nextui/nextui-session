@@ -31,6 +31,7 @@ export XDG_CONFIG_HOME=/storage/.config
 export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib
 export IS_NEXT=yes
+[ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
 # Stock MinUI tools still open /mnt/SDCARD. Keep one path for scrapers.
 mkdir -p /mnt

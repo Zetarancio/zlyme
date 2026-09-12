@@ -1,6 +1,6 @@
 #!/bin/sh
-# After S11modules (which loads panfrost). Switch if the user asked
-# for mali_kbase.
+# After S15bootpart (gpu flag on /storage) and S12bootfs (/boot).
+# One of libmali / panfrost; they cannot share the GPU.
 
 start() {
 	[ -x /usr/sbin/gpudriver ] || return 0
