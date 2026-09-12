@@ -8,3 +8,4 @@ void Zlyme_appendDisplayItems(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items);
+void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items);

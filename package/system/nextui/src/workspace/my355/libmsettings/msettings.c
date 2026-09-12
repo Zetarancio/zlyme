@@ -42,11 +42,25 @@ static Settings DefaultSettings = {
 };
 
 static Settings *settings;
+static Settings FallbackSettings;
 #define SHM_KEY "/SharedSettings"
 static char SettingsPath[256];
 static int shm_fd = -1;
 static int is_host = 0;
 static const int shm_size = sizeof(Settings);
+
+static void settings_fallback(void)
+{
+	FallbackSettings = DefaultSettings;
+	settings = &FallbackSettings;
+	if (shm_fd >= 0) {
+		close(shm_fd);
+		shm_fd = -1;
+	}
+	if (is_host)
+		shm_unlink(SHM_KEY);
+	is_host = 0;
+}
 
 #define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
 #define HDMI_STATE_PATH "/sys/class/drm/card0-HDMI-A-1/status"
@@ -148,22 +162,28 @@ void InitSettings(void)
 		 home && home[0] ? home : "/tmp");
 
 	shm_fd = shm_open(SHM_KEY, O_RDWR | O_CREAT | O_EXCL, 0644);
-	if (shm_fd == -1 && errno == EEXIST) {
+	if (shm_fd == -1 && errno == EEXIST)
 		shm_fd = shm_open(SHM_KEY, O_RDWR, 0644);
-		settings = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-	} else {
+	else if (shm_fd >= 0)
 		is_host = 1;
-		if (ftruncate(shm_fd, shm_size) < 0)
+
+	if (shm_fd < 0) {
+		settings_fallback();
+	} else {
+		if (is_host && ftruncate(shm_fd, shm_size) < 0)
 			/* ignore */;
 		settings = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-		int fd = open(SettingsPath, O_RDONLY);
-		if (fd >= 0) {
-			if (read(fd, settings, shm_size) != shm_size)
+		if (settings == MAP_FAILED || settings == NULL) {
+			settings_fallback();
+		} else if (is_host) {
+			int fd = open(SettingsPath, O_RDONLY);
+			if (fd >= 0) {
+				if (read(fd, settings, shm_size) != shm_size)
+					memcpy(settings, &DefaultSettings, shm_size);
+				close(fd);
+			} else {
 				memcpy(settings, &DefaultSettings, shm_size);
-			close(fd);
-		} else {
-			memcpy(settings, &DefaultSettings, shm_size);
+			}
 		}
 	}
 
@@ -175,7 +195,13 @@ void InitSettings(void)
 
 void QuitSettings(void)
 {
-	munmap(settings, shm_size);
+	if (settings && settings != &FallbackSettings)
+		munmap(settings, shm_size);
+	settings = NULL;
+	if (shm_fd >= 0) {
+		close(shm_fd);
+		shm_fd = -1;
+	}
 	if (is_host)
 		shm_unlink(SHM_KEY);
 }

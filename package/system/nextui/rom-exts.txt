@@ -1,0 +1,33 @@
+# NextUI tag -> ROM extensions (Knulli es_systems.yml, trimmed).
+# Space-separated, no dots. zip/7z only where Knulli lists them.
+GB: gb zip 7z
+GBC: gbc gb zip 7z
+GBA: gba zip 7z
+FC: nes unif unf fds zip 7z
+SFC: smc sfc fig swc bsx zip 7z
+MD: md smd gen bin zip 7z
+MS: sms bin zip 7z
+GG: gg bin zip 7z
+32X: 32x smd md bin zip 7z
+PS: cue chd m3u pbp iso ccd img toc
+PSP: iso cso pbp chd
+DC: cdi gdi cue chd m3u
+N64: z64 n64 v64 zip 7z
+NDS: nds zip 7z
+PCE: pce cue ccd iso img chd sgx zip 7z
+NGP: ngp ngc zip 7z
+WS: ws wsc zip 7z
+VB: vb zip 7z
+LYNX: lnx lyx bll o zip 7z
+A26: a26 bin zip 7z
+A78: a78 bin zip 7z
+PKM: min zip 7z
+FBNEO: zip 7z
+MAME: zip 7z
+DOS: exe com bat dos dosz zip iso cue m3u
+3DO: iso chd cue
+NEOCD: cue iso chd
+SATURN: cue ccd m3u chd iso
+AMIGA: adf ipf hdf lha cue iso chd m3u zip
+DOOM: wad iwad pwad pk3
+TIC: tic

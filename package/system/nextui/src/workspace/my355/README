@@ -5,8 +5,8 @@ started from apommel/NextUI my355-latest, then Zlyme edited the
 files in this directory:
 
   SDCARD_PATH /storage
-  CODE_POWER / BTN_SLEEP off until wake works
-  lid unused (gpio-keys-hall polarity unproven)
+  DTS is the ROCKNIX rk3566-miyoo-flip.dts (RK817 pwrkey, hall SW_LID)
+  CODE_POWER is SDL_SCANCODE_POWER (102) so the PMIC key sleeps/wakes
   libmsettings is FlipVolume on rk817ext, not stock BSP mixer names
 
 See package/system/nextui/CREDITS.

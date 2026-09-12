@@ -190,12 +190,20 @@ void KeyboardPrompt::handleKeyboardInput(AppState &state)
         else if (state.keyboard.col < max_col - 1)
             state.keyboard.col++;
     }
-    else if (PAD_justPressed(BTN_X) || PAD_justPressed(BTN_L1))
+    else if (PAD_justPressed(BTN_L1))
     {
-        // ES uses L1 (leftshoulder) for backspace. X is not confirm.
         if (!state.keyboard.current_text.empty())
             state.keyboard.current_text.pop_back();
         state.redraw = true;
+    }
+    else if (PAD_justPressed(BTN_X))
+    {
+        // Hint shows X = ENTER. Stock NextUI used X to submit.
+        // L1 is backspace (EmulationStation).
+        state.keyboard.final_text = state.keyboard.current_text;
+        state.keyboard.display = !state.keyboard.display;
+        state.quitting = true;
+        state.exit_code = ExitCode::Success;
     }
     else if (PAD_justPressed(BTN_A))
     {
@@ -322,7 +330,7 @@ void KeyboardPrompt::drawKeyboard(SDL_Surface *screen, const AppState &state)
     const auto key = currentLayout->at(state.keyboard.row).at(state.keyboard.col);
 
     // draw the button group on the button-right
-    char *hints[] = {(char *)("Y"), (char *)("EXIT"), (char *)("X"), ((char *)"ENTER"), NULL};
+    char *hints[] = {(char *)("B"), (char *)("BACK"), (char *)("X"), (char *)("ENTER"), NULL};
     GFX_blitButtonGroup(hints, 1, screen, 1);
 
     // draw keyboard title

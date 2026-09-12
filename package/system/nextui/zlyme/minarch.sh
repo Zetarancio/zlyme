@@ -16,8 +16,8 @@ for a in "$@"; do
 done
 if [ -n "$core" ]; then
 	if [ -n "$rom" ]; then
-		exec retroarch -L "$core" "$rom"
+		exec ra-run -L "$core" "$rom"
 	fi
-	exec retroarch -L "$core"
+	exec ra-run -L "$core"
 fi
-exec retroarch "$@"
+exec ra-run "$@"

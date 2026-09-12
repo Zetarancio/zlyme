@@ -23,6 +23,8 @@
 #include <pthread.h>
 
 #include <dirent.h>
+#include <linux/input.h>
+#include <string.h>
 
 ///////////////////////////////
 
@@ -36,15 +38,101 @@ static int HDMI_enabled(void) {
 	return exactMatch(value, "connected\n");
 }
 
-/* gpio-keys-hall / SW_LID exists, but polarity is unproven: a closed
- * reading injects BTN_SLEEP every poll and NextUI never wakes.
- */
-void PLAT_initLid(void) {
+/* Same hall node as ROCKNIX: SW_LID, GPIO_ACTIVE_LOW, wake on open. */
+static int lid_fd = -1;
+
+static int lid_open_from_sw(const unsigned char *sw, size_t n)
+{
+	unsigned bit = SW_LID;
+	if (bit / 8 >= n)
+		return 1;
+	/* Linux: 1 = closed. */
+	return !(sw[bit / 8] & (1u << (bit % 8)));
+}
+
+void PLAT_initLid(void)
+{
+	DIR *dir;
+	struct dirent *de;
+	unsigned char sw[(SW_MAX / 8) + 1];
+
 	lid.has_lid = 0;
 	lid.is_open = 1;
+	lid_fd = -1;
+	dir = opendir("/dev/input");
+	if (!dir)
+		return;
+	while ((de = readdir(dir))) {
+		char path[64];
+		int fd;
+		if (strncmp(de->d_name, "event", 5) != 0)
+			continue;
+		snprintf(path, sizeof(path), "/dev/input/%s", de->d_name);
+		fd = open(path, O_RDONLY | O_NONBLOCK);
+		if (fd < 0)
+			continue;
+		memset(sw, 0, sizeof(sw));
+		if (ioctl(fd, EVIOCGSW(sizeof(sw)), sw) < 0) {
+			close(fd);
+			continue;
+		}
+		/* EVIOCGSW succeeds on any evdev; require a lid bit changing
+		 * capability via EVIOCGBIT. */
+		{
+			unsigned long evbit[EV_MAX / (8 * sizeof(long)) + 1];
+			unsigned long swbit[SW_MAX / (8 * sizeof(long)) + 1];
+			memset(evbit, 0, sizeof(evbit));
+			memset(swbit, 0, sizeof(swbit));
+			if (ioctl(fd, EVIOCGBIT(0, sizeof(evbit)), evbit) < 0 ||
+			    !(evbit[EV_SW / (8 * sizeof(long))] & (1UL << (EV_SW % (8 * sizeof(long)))))) {
+				close(fd);
+				continue;
+			}
+			if (ioctl(fd, EVIOCGBIT(EV_SW, sizeof(swbit)), swbit) < 0 ||
+			    !(swbit[SW_LID / (8 * sizeof(long))] & (1UL << (SW_LID % (8 * sizeof(long)))))) {
+				close(fd);
+				continue;
+			}
+		}
+		lid_fd = fd;
+		lid.has_lid = 1;
+		lid.is_open = lid_open_from_sw(sw, sizeof(sw));
+		break;
+	}
+	closedir(dir);
 }
-int PLAT_lidChanged(int* state) {
-	(void)state;
+
+int PLAT_lidChanged(int *state)
+{
+	struct input_event ev;
+	int changed = 0;
+	if (lid_fd < 0)
+		return 0;
+	while (read(lid_fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
+		if (ev.type == EV_SW && ev.code == SW_LID) {
+			lid.is_open = !ev.value;
+			changed = 1;
+		}
+	}
+	if (state)
+		*state = lid.is_open;
+	return changed;
+}
+
+int PLAT_shouldWake(void)
+{
+	int lid_open = 1;
+	SDL_Event event;
+
+	if (lid.has_lid && PLAT_lidChanged(&lid_open) && lid_open)
+		return 1;
+	if (lid.has_lid && !lid.is_open)
+		return 0;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_KEYUP || event.type == SDL_JOYBUTTONUP)
+			return 1;
+	}
 	return 0;
 }
 
@@ -194,15 +282,53 @@ void PLAT_getNetworkStatus(int* is_online)
 		bluetoothConnected = false;
 }
 
+static void psy_read(const char *dir, const char *name, char *buf, size_t n)
+{
+	char path[192];
+
+	buf[0] = '\0';
+	snprintf(path, sizeof path, "%s/%s", dir, name);
+	getFile(path, buf, n);
+}
+
 void PLAT_getBatteryStatusFine(int* is_charging, int* charge)
 {
-	if(is_charging) {
-		int time_to_full = getInt("/sys/class/power_supply/battery/time_to_full_now");
-		int charger_present = getInt("/sys/class/power_supply/charger/online"); 
-		*is_charging = (charger_present == 1) && (time_to_full > 0);
+	int charging = 0;
+	int cap = -1;
+	DIR *dir = opendir("/sys/class/power_supply");
+
+	/* RK817 often reports time_to_full_now as 0/-1 even while charging,
+	 * and the charger class may be named rk817-charger rather than charger. */
+	if (dir) {
+		struct dirent *de;
+		while ((de = readdir(dir))) {
+			char path[192], type[32], status[32], cap_path[192];
+			if (de->d_name[0] == '.')
+				continue;
+			snprintf(path, sizeof path, "/sys/class/power_supply/%s", de->d_name);
+			psy_read(path, "type", type, sizeof type);
+			psy_read(path, "status", status, sizeof status);
+			if (prefixMatch("Battery", type) || prefixMatch("battery", de->d_name)) {
+				snprintf(cap_path, sizeof cap_path, "%s/capacity", path);
+				if (cap < 0)
+					cap = getInt(cap_path);
+				if (prefixMatch("Charging", status) || prefixMatch("Full", status))
+					charging = 1;
+				continue;
+			}
+			snprintf(cap_path, sizeof cap_path, "%s/online", path);
+			if (getInt(cap_path) == 1)
+				charging = 1;
+		}
+		closedir(dir);
 	}
-	if(charge) {
-		*charge = getInt("/sys/class/power_supply/battery/capacity");
+
+	if (is_charging)
+		*is_charging = charging;
+	if (charge) {
+		if (cap < 0)
+			cap = getInt("/sys/class/power_supply/battery/capacity");
+		*charge = cap < 0 ? 0 : cap;
 	}
 }
 
@@ -226,6 +352,7 @@ void PLAT_powerOff(int reboot) {
 	sleep(2);
 
 	SetRawVolume(MUTE_VOLUME_RAW);
+	system("zlyme-led poweroff >/dev/null 2>&1");
 	PLAT_enableBacklight(0);
 	SND_quit();
 	VIB_quit();

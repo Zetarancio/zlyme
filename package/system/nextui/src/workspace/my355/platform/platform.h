@@ -58,9 +58,8 @@
 #define CODE_R3			229
 
 #define CODE_MENU		41
-/* HAS_POWER_BUTTON is true if this is 102, so nextui never calls
- * PWR_disableSleep(). Hybrid sleep then PWR_powerOff. Off until wake works. */
-#define CODE_POWER		CODE_NA
+/* SDL_SCANCODE_POWER. RK817 pwrkey is KEY_POWER; same DTS as ROCKNIX. */
+#define CODE_POWER		102
 
 #define CODE_PLUS		128
 #define CODE_MINUS		129
@@ -110,7 +109,7 @@
 ///////////////////////////////
 
 #define BTN_RESUME			BTN_X
-#define BTN_SLEEP 			BTN_NONE
+#define BTN_SLEEP 			BTN_POWER
 #define BTN_WAKE 			BTN_POWER
 #define BTN_MOD_VOLUME 		BTN_NONE
 #define BTN_MOD_BRIGHTNESS 	BTN_MENU

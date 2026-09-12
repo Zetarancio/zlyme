@@ -264,7 +264,7 @@ ConnectKnownItem::ConnectKnownItem(WIFI_network n, bool& dirty)
 {}
 
 ConnectNewItem::ConnectNewItem(WIFI_network n, bool& dirty)
-    : MenuItem(ListItemType::Button, "Enter WiFi passcode", "B back. L1 backspace. Highlight enter to confirm.", DeferToSubmenu, new KeyboardPrompt("Enter WiFi passcode", 
+    : MenuItem(ListItemType::Button, "Enter WiFi passcode", "B back. X or on-screen enter confirms. L1 backspace.", DeferToSubmenu, new KeyboardPrompt("Enter WiFi passcode", 
         [&](AbstractMenuItem &item) -> InputReactionHint {
             std::string pass = item.getName();
             if (net.security != SECURITY_NONE && pass.size() < 8) {

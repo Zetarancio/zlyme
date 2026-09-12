@@ -21,7 +21,23 @@ define VTREE_INSTALL_TARGET_CMDS
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/vtree
 	$(INSTALL) -m 0755 $(@D)/vtree      $(TARGET_DIR)/usr/share/vtree/vtree
 	$(INSTALL) -m 0644 $(@D)/config.ini $(TARGET_DIR)/usr/share/vtree/
-	$(INSTALL) -m 0644 $(@D)/theme.ini  $(TARGET_DIR)/usr/share/vtree/
+	sed -i \
+		-e 's|^StartDirectoryLeft=.*|StartDirectoryLeft=/storage|' \
+		-e 's|^StartDirectoryRight=.*|StartDirectoryRight=/storage|' \
+		$(TARGET_DIR)/usr/share/vtree/config.ini
+	if grep -q '^GameControllerDB=' $(TARGET_DIR)/usr/share/vtree/config.ini; then \
+		sed -i 's|^GameControllerDB=.*|GameControllerDB=/usr/lib/gamecontrollerdb.txt|' \
+			$(TARGET_DIR)/usr/share/vtree/config.ini; \
+	else \
+		printf '%s\n' 'GameControllerDB=/usr/lib/gamecontrollerdb.txt' \
+			>> $(TARGET_DIR)/usr/share/vtree/config.ini; \
+	fi
+	if [ -f $(@D)/theme.ini ]; then \
+		$(INSTALL) -m 0644 $(@D)/theme.ini $(TARGET_DIR)/usr/share/vtree/; \
+	fi
+	if [ -d $(@D)/theme ]; then \
+		cp -a $(@D)/theme $(TARGET_DIR)/usr/share/vtree/; \
+	fi
 	cp -r $(@D)/res   $(TARGET_DIR)/usr/share/vtree/
 	cp -r $(@D)/fonts $(TARGET_DIR)/usr/share/vtree/
 	printf '#!/bin/sh\ncd /usr/share/vtree && exec ./vtree "$$@"\n' \

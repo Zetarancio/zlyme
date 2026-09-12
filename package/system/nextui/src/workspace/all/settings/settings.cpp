@@ -667,6 +667,7 @@ int main(int argc, char *argv[])
         }
 
         Zlyme_appendSystemItems(systemItems);
+        Zlyme_appendStorageItems(systemItems);
         Zlyme_appendBackupItem(systemItems);
         systemItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
@@ -1215,9 +1216,9 @@ int main(int argc, char *argv[])
                 GFX_sync();
         }
 
+        // MenuItem owns submenus (appearance/system/…). Deleting those
+        // pointers again aborted with "free(): double free" (pak 134).
         delete ctx.menu;
-        delete appearanceMenu;
-        delete systemMenu;
         ctx.menu = NULL;
 
         // Color pickers are owned by unique_ptrs above; destroyed automatically here.

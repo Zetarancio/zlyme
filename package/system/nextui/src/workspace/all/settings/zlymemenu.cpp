@@ -195,6 +195,31 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			ctl_set("undervolt", "off");
 			system("zlyme-ctl apply-undervolt");
 		}});
+
+	const std::vector<std::any> led_v = {
+		std::string("battery"), std::string("green"), std::string("red"), std::string("off")};
+	const std::vector<std::string> led_l = {"Battery", "Green", "Red", "Off"};
+	items.push_back(new MenuItem{ListItemType::Generic, "Status LED",
+		"Green on battery, red while charging. Low battery flashes red.",
+		led_v, led_l,
+		[]() -> std::any {
+			std::string l = ctl_get("led");
+			if (l != "green" && l != "red" && l != "off" && l != "amber")
+				l = "battery";
+			if (l == "amber")
+				l = "red";
+			return l;
+		},
+		[](const std::any &v) {
+			std::string l = std::any_cast<std::string>(v);
+			ctl_set("led", l.c_str());
+			std::string cmd = std::string("zlyme-led ") + l;
+			system(cmd.c_str());
+		},
+		[]() {
+			ctl_set("led", "battery");
+			system("zlyme-led battery");
+		}});
 }
 
 void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
@@ -202,4 +227,45 @@ void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
 	items.push_back(new MenuItem{ListItemType::Button, "Backup now",
 		"Save .config and .userdata to /storage/zlyme-backup.tar.gz",
 		Zlyme_backup});
+}
+
+static std::string sd2_status_line()
+{
+	FILE *f = popen("zlyme-storage status 2>/dev/null", "r");
+	if (!f)
+		return "sd2=?";
+	char buf[128] = {0};
+	if (!fgets(buf, sizeof(buf), f)) {
+		pclose(f);
+		return "sd2=?";
+	}
+	pclose(f);
+	return trim(buf);
+}
+
+static InputReactionHint Zlyme_mountSd2(AbstractMenuItem &item)
+{
+	(void)item;
+	system("zlyme-storage start");
+	MenuList::showOverlay(std::string("Library card: ") + sd2_status_line(),
+		OverlayDismissMode::DismissOnA);
+	return NoOp;
+}
+
+static InputReactionHint Zlyme_ejectSd2(AbstractMenuItem &item)
+{
+	(void)item;
+	system("zlyme-storage eject");
+	MenuList::showOverlay("Library card ejected", OverlayDismissMode::DismissOnA);
+	return NoOp;
+}
+
+void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items)
+{
+	items.push_back(new MenuItem{ListItemType::Button, "Mount library card",
+		"Second SD or a USB disk with roms/. Games show in the list after this. Also runs at boot via eudev.",
+		Zlyme_mountSd2});
+	items.push_back(new MenuItem{ListItemType::Button, "Eject library card",
+		"Unmount the second SD before pulling it. Do not eject while a game from that card is running.",
+		Zlyme_ejectSd2});
 }

@@ -36,6 +36,122 @@ int containsString(char* haystack, char* needle) {
 int hide(char* file_name) {
 	return file_name[0]=='.' || file_name[0]=='_' || suffixMatch(".disabled", file_name) || exactMatch("map.txt", file_name);
 }
+
+int isJunkDir(const char* name) {
+	if (!name || !name[0]) return 0;
+	return exactMatch(name, "Imgs") || exactMatch(name, "imgs") ||
+		exactMatch(name, "images") || exactMatch(name, "manuals") ||
+		exactMatch(name, "videos") || exactMatch(name, "media") ||
+		exactMatch(name, "boxart") || exactMatch(name, "artwork");
+}
+
+#define ROMEXTS_MAX 48
+#define ROMEXTS_TAG 16
+#define ROMEXTS_LINE 384
+
+typedef struct {
+	char tag[ROMEXTS_TAG];
+	char exts[ROMEXTS_LINE];
+} RomExtRule;
+
+static RomExtRule rom_exts[ROMEXTS_MAX];
+static int rom_exts_n;
+static int rom_exts_loaded;
+
+static int isJunkFile(const char* name) {
+	static const char *junk[] = {
+		".srm", ".sav", ".state", ".auto", ".png", ".jpg", ".jpeg", ".gif",
+		".webp", ".bmp", ".txt", ".nfo", ".xml", ".dat", ".db", ".ini",
+		".cfg", ".json", ".md", ".html", ".url", ".log", ".cht", ".lpl",
+		".bak", ".mp4", ".pdf", ".desktop", NULL
+	};
+	if (!name || hide((char *)name)) return 1;
+	for (int i = 0; junk[i]; i++) {
+		if (suffixMatch((char *)junk[i], (char *)name)) return 1;
+	}
+	return 0;
+}
+
+static void loadRomExtsOnce(void) {
+	if (rom_exts_loaded) return;
+	rom_exts_loaded = 1;
+	const char *paths[] = {
+		"/usr/share/nextui/rom-exts.txt",
+		SYSTEM_PATH "/rom-exts.txt",
+		NULL
+	};
+	FILE *f = NULL;
+	for (int i = 0; paths[i]; i++) {
+		f = fopen(paths[i], "r");
+		if (f) break;
+	}
+	if (!f) return;
+	char line[ROMEXTS_LINE + 32];
+	while (fgets(line, sizeof(line), f) && rom_exts_n < ROMEXTS_MAX) {
+		normalizeNewline(line);
+		trimTrailingNewlines(line);
+		if (!line[0] || line[0] == '#') continue;
+		char *colon = strchr(line, ':');
+		if (!colon) continue;
+		*colon = '\0';
+		char *tag = line;
+		char *exts = colon + 1;
+		while (*tag == ' ' || *tag == '\t') tag++;
+		while (*exts == ' ' || *exts == '\t') exts++;
+		if (!tag[0] || !exts[0]) continue;
+		snprintf(rom_exts[rom_exts_n].tag, sizeof(rom_exts[rom_exts_n].tag), "%s", tag);
+		snprintf(rom_exts[rom_exts_n].exts, sizeof(rom_exts[rom_exts_n].exts), "%s", exts);
+		rom_exts_n++;
+	}
+	fclose(f);
+}
+
+int isAllowedRom(const char* emu_tag, const char* file_name) {
+	if (!file_name || !file_name[0]) return 0;
+	if (isJunkFile(file_name)) return 0;
+	loadRomExtsOnce();
+	if (!emu_tag || !emu_tag[0] || rom_exts_n == 0) return 1;
+	const char *exts = NULL;
+	for (int i = 0; i < rom_exts_n; i++) {
+		if (exactMatch(rom_exts[i].tag, emu_tag)) {
+			exts = rom_exts[i].exts;
+			break;
+		}
+	}
+	if (!exts) return 1;
+	const char *dot = strrchr(file_name, '.');
+	if (!dot || !dot[1] || strchr(dot + 1, '/')) return 0;
+	char ext[32];
+	snprintf(ext, sizeof(ext), "%s", dot + 1);
+	for (char *p = ext; *p; p++)
+		*p = (char)tolower((unsigned char)*p);
+	char buf[ROMEXTS_LINE];
+	snprintf(buf, sizeof(buf), "%s", exts);
+	char *save = NULL;
+	for (char *tok = strtok_r(buf, " \t", &save); tok; tok = strtok_r(NULL, " \t", &save)) {
+		if (strcasecmp(tok, ext) == 0) return 1;
+	}
+	return 0;
+}
+
+int skipCompanionDisc(const char* dir, const char* name) {
+	if (!dir || !name) return 0;
+	if (!(suffixMatch(".bin", (char *)name) || suffixMatch(".img", (char *)name) ||
+	      suffixMatch(".iso", (char *)name) || suffixMatch(".raw", (char *)name)))
+		return 0;
+	char stem[256];
+	snprintf(stem, sizeof(stem), "%s", name);
+	char *dot = strrchr(stem, '.');
+	if (dot) *dot = '\0';
+	char probe[512];
+	snprintf(probe, sizeof(probe), "%s/%s.cue", dir, stem);
+	if (exists(probe)) return 1;
+	snprintf(probe, sizeof(probe), "%s/%s.m3u", dir, stem);
+	if (exists(probe)) return 1;
+	snprintf(probe, sizeof(probe), "%s/%s.ccd", dir, stem);
+	if (exists(probe)) return 1;
+	return 0;
+}
 char *splitString(char *str, const char *delim)
 {
     char *p = strstr(str, delim);
@@ -382,6 +498,9 @@ void getEmuPath(char* emu_name, char* pak_path) {
 	sprintf(pak_path, "%s/Emus/%s/%s.pak/launch.sh", SDCARD_PATH, PLATFORM, emu_name);
 	if (exists(pak_path)) return;
 	sprintf(pak_path, "%s/Emus/%s.pak/launch.sh", PAKS_PATH, emu_name);
+	if (exists(pak_path)) return;
+	/* zlyme10 bound emu paks at paks/*.pak (no Emus/ folder). */
+	sprintf(pak_path, "%s/%s.pak/launch.sh", PAKS_PATH, emu_name);
 }
 
 void normalizeNewline(char* line) {

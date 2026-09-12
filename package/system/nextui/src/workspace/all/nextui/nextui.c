@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>  // For dirname()
+#include <sys/stat.h>
 #include "defines.h"
 #include "api.h"
 #include "utils.h"
@@ -525,6 +526,10 @@ static Entry* entryFromPakName(char* pak_name)
 	if(exists(pak_path))
 		return Entry_newNamed(pak_path, ENTRY_PAK, pak_name);
 
+	sprintf(pak_path, "%s/%s.pak", PAKS_PATH, pak_name);
+	if(exists(pak_path))
+		return Entry_newNamed(pak_path, ENTRY_PAK, pak_name);
+
 	// Check in platform Emus
 	sprintf(pak_path, "%s/Emus/%s/%s.pak", SDCARD_PATH, PLATFORM, pak_name);
 	if(exists(pak_path))
@@ -535,10 +540,7 @@ static Entry* entryFromPakName(char* pak_name)
 
 static int hasEmu(char* emu_name) {
 	char pak_path[256];
-	sprintf(pak_path, "%s/Emus/%s.pak/launch.sh", PAKS_PATH, emu_name);
-	if (exists(pak_path)) return 1;
-
-	sprintf(pak_path, "%s/Emus/%s/%s.pak/launch.sh", SDCARD_PATH, PLATFORM, emu_name);
+	getEmuPath(emu_name, pak_path);
 	return exists(pak_path);
 }
 static int hasCue(char* dir_path, char* cue_path) { // NOTE: dir_path not rom_path
@@ -674,6 +676,15 @@ static int hasCollections(void) {
 	closedir(dh);
 	return has;
 }
+static int entryIsDir(const char *full_path, unsigned char d_type)
+{
+	if (d_type == DT_DIR) return 1;
+	if (d_type == DT_REG) return 0;
+	struct stat st;
+	if (stat(full_path, &st) != 0) return 0;
+	return S_ISDIR(st.st_mode);
+}
+
 static int hasRoms(char* dir_name) {
 	int has = 0;
 	char emu_name[256];
@@ -684,19 +695,29 @@ static int hasRoms(char* dir_name) {
 	// check for emu pak
 	if (!hasEmu(emu_name)) return has;
 
-	// check for at least one non-hidden file (we're going to assume it's a rom)
 	sprintf(rom_path, "%s/%s/", ROMS_PATH, dir_name);
 	DIR *dh = opendir(rom_path);
 	if (dh!=NULL) {
 		struct dirent *dp;
+		char full[512];
 		while((dp = readdir(dh)) != NULL) {
 			if (hide(dp->d_name)) continue;
-			has = 1;
-			break;
+			snprintf(full, sizeof(full), "%s%s", rom_path, dp->d_name);
+			if (entryIsDir(full, dp->d_type)) {
+				if (!isJunkDir(dp->d_name)) {
+					has = 1;
+					break;
+				}
+				continue;
+			}
+			if (isAllowedRom(emu_name, dp->d_name) &&
+			    !skipCompanionDisc(rom_path, dp->d_name)) {
+				has = 1;
+				break;
+			}
 		}
 		closedir(dh);
 	}
-	// if (!has) printf("No roms for %s!\n", dir_name);
 	return has;
 }
 
@@ -1007,15 +1028,17 @@ static void addEntries(Array* entries, char* path) {
 		struct dirent *dp;
 		char* tmp;
 		char full_path[256];
+		char emu_name[256];
+		getEmuName(path, emu_name);
 		sprintf(full_path, "%s/", path);
 		tmp = full_path + strlen(full_path);
 		while((dp = readdir(dh)) != NULL) {
 			if (hide(dp->d_name)) continue;
 			strcpy(tmp, dp->d_name);
-			int is_dir = dp->d_type==DT_DIR;
+			int is_dir = entryIsDir(full_path, dp->d_type);
 			int type;
 			if (is_dir) {
-				// TODO: this should make sure launch.sh exists
+				if (isJunkDir(dp->d_name)) continue;
 				if (suffixMatch(".pak", dp->d_name)) {
 					type = ENTRY_PAK;
 				}
@@ -1028,6 +1051,8 @@ static void addEntries(Array* entries, char* path) {
 					type = ENTRY_DIR; // :shrug:
 				}
 				else {
+					if (!isAllowedRom(emu_name, dp->d_name)) continue;
+					if (skipCompanionDisc(path, dp->d_name)) continue;
 					type = ENTRY_ROM;
 				}
 			}

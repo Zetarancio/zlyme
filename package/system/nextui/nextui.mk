@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme8
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme14
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -94,11 +94,21 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
-	cp -a $(NEXTUI_PKGDIR)/paks/. $(TARGET_DIR)/usr/share/nextui/paks/
+	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
+	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
+	cp -a $(NEXTUI_PKGDIR)/paks/MinUI.pak $(TARGET_DIR)/usr/share/nextui/paks/
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/system.cfg \
 		$(TARGET_DIR)/usr/share/nextui/system.cfg
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-dirs.txt \
 		$(TARGET_DIR)/usr/share/nextui/rom-dirs.txt
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-exts.txt \
+		$(TARGET_DIR)/usr/share/nextui/rom-exts.txt
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/ra-run.sh \
+		$(TARGET_DIR)/usr/bin/ra-run
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
+		$(TARGET_DIR)/usr/lib/gamecontrollerdb.txt
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
+		$(TARGET_DIR)/usr/share/zlyme/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/src/UPSTREAM \
 		$(TARGET_DIR)/usr/share/nextui/UPSTREAM
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt

@@ -21,6 +21,11 @@ export SHARED_USERDATA_PATH=/storage/.userdata/shared
 export LOGS_PATH=$USERDATA_PATH/logs
 export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
+export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
+if [ -r "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
+	# First matching line is enough; SDL reads the env as one mapping.
+	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep 'retrogame_joypad' | head -n 1)"
+fi
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
 export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
@@ -43,36 +48,11 @@ if [ -r "$seed/rom-dirs.txt" ]; then
 	done < "$seed/rom-dirs.txt"
 fi
 
-# Library card in the second slot: NextUI only lists /storage/Roms.
-# Bind each Pretty Name (TAG) folder from SD2 over the empty seed dirs.
-bind_sd2_roms() {
-	src=""
-	if [ -d /mnt/sd2/roms ]; then
-		src=/mnt/sd2/roms
-	elif [ -d /mnt/sd2/Roms ]; then
-		src=/mnt/sd2/Roms
-	else
-		return 0
-	fi
-	for d in "$src"/*; do
-		[ -d "$d" ] || continue
-		name=$(basename "$d")
-		case "$name" in
-			.*|_*) continue ;;
-			bios|bezels|savestates|screenshots|themes|backup|backups) continue ;;
-		esac
-		dest="/storage/Roms/$name"
-		mkdir -p "$dest"
-		if mountpoint -q "$dest" 2>/dev/null; then
-			continue
-		fi
-		mount --bind "$d" "$dest" 2>/dev/null || true
-	done
-}
-bind_sd2_roms
+[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage bind
 
-# Refresh stock assets when the image version changes. Copying every
-# boot filled the old 64MB seed and made startup slow.
+# Refresh stock assets when the image version changes. Copying paks
+# onto exFAT blocked the first frame (Artwork Scraper.pak is large).
+# Bind the squashfs copies instead; that also hides stale card launch.sh.
 img_ver=""
 card_ver=""
 [ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
@@ -80,9 +60,20 @@ card_ver=""
 refresh=1
 [ -n "$img_ver" ] && [ "$img_ver" = "$card_ver" ] && refresh=0
 
+bind_dir() {
+	src=$1
+	dest=$2
+	[ -d "$src" ] || return 0
+	mkdir -p "$dest"
+	mountpoint -q "$dest" && return 0
+	mount --bind "$src" "$dest" 2>/dev/null
+}
+
 mkdir -p /storage/.system/res
-if [ "$refresh" = 1 ] && [ -d "$seed/res" ]; then
-	cp -a "$seed/res/." /storage/.system/res/
+if [ -d "$seed/res" ]; then
+	bind_dir "$seed/res" /storage/.system/res || {
+		[ "$refresh" = 1 ] && cp -a "$seed/res/." /storage/.system/res/
+	}
 fi
 
 mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" "$SYSTEM_PATH/bin" \
@@ -90,17 +81,12 @@ mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" "$SYSTEM_PATH/bin"
 if [ ! -e /storage/.system/zoneinfo/zone.tab ] && [ -r "$seed/zone.tab" ]; then
 	cp "$seed/zone.tab" /storage/.system/zoneinfo/zone.tab
 fi
-# Current NextUI reads /usr/share/zoneinfo. Squashfs often has none;
-# empty tz list makes settings.elf abort (timezone index 320).
-if grep -qw overlay /proc/filesystems && [ -d /storage/.system/zoneinfo ]; then
-	if ! grep -q ' /usr/share ' /proc/mounts; then
-		mkdir -p /tmp/usrshare-ow /tmp/usrshare-work
-		mount -t overlay overlay \
-			-o lowerdir=/usr/share,upperdir=/tmp/usrshare-ow,workdir=/tmp/usrshare-work \
-			/usr/share 2>/dev/null || true
-	fi
-	mkdir -p /usr/share/zoneinfo
-	cp -a /storage/.system/zoneinfo/. /usr/share/zoneinfo/
+# Current NextUI reads /usr/share/zoneinfo. Overlaying all of /usr/share
+# hid PortMaster/vtree and left squashfs busy at shutdown. Bind only
+# zoneinfo if the image copy is missing.
+if [ -d /usr/share/zoneinfo ] && [ ! -e /usr/share/zoneinfo/zone.tab ] && \
+	[ -d /storage/.system/zoneinfo ]; then
+	mount --bind /storage/.system/zoneinfo /usr/share/zoneinfo 2>/dev/null || true
 fi
 if [ ! -e "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
 	cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
@@ -118,6 +104,10 @@ if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
 	cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
 	chmod 0755 "$SYSTEM_PATH/bin/show.elf"
 fi
+if [ ! -e "$SYSTEM_PATH/lib/libmsettings.so" ] && [ -f /usr/lib/libmsettings.so ]; then
+	mkdir -p "$SYSTEM_PATH/lib"
+	cp /usr/lib/libmsettings.so "$SYSTEM_PATH/lib/libmsettings.so"
+fi
 # Refresh shipped paks so a stale launch.sh cannot keep calling minarch.
 # SSH/Samba/Syncthing/GPU/Display/Backup/Wi-Fi/Bluetooth live in Settings.
 if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-wifi ]; then
@@ -128,15 +118,17 @@ if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-bluetooth ]; then
 	cp /usr/sbin/zlyme-bluetooth "$SYSTEM_PATH/bin/zlyme-bluetooth"
 	chmod 0755 "$SYSTEM_PATH/bin/zlyme-bluetooth"
 fi
-if [ "$refresh" = 1 ] && [ -d "$seed/paks" ]; then
+# Bind image paks over the card so a version bump does not copy first.
+if [ -d "$seed/paks" ]; then
 	mkdir -p "$SYSTEM_PATH/paks" /storage/Tools/my355
-	for src in "$seed/paks/Emus"/*.pak "$seed/paks/MinUI.pak"; do
+	mkdir -p "$SYSTEM_PATH/paks/Emus"
+	for src in "$seed/paks/Emus"/*.pak; do
 		[ -d "$src" ] || continue
-		base=$(basename "$src")
-		dest=$SYSTEM_PATH/paks/$base
-		mkdir -p "$dest"
-		cp -a "$src/." "$dest/"
+		bind_dir "$src" "$SYSTEM_PATH/paks/Emus/$(basename "$src")"
 	done
+	if [ -d "$seed/paks/MinUI.pak" ]; then
+		bind_dir "$seed/paks/MinUI.pak" "$SYSTEM_PATH/paks/MinUI.pak"
+	fi
 	rm -rf \
 		/storage/Tools/my355/Wi-Fi.pak \
 		/storage/Tools/my355/Bluetooth.pak \
@@ -152,9 +144,7 @@ if [ "$refresh" = 1 ] && [ -d "$seed/paks" ]; then
 		case "$base" in
 			Wi-Fi.pak|Bluetooth.pak|SSH.pak|Samba.pak|Syncthing.pak|GPU.pak|Display.pak|Backup.pak) continue ;;
 		esac
-		dest=/storage/Tools/my355/$base
-		mkdir -p "$dest"
-		cp -a "$src/." "$dest/"
+		bind_dir "$src" "/storage/Tools/my355/$base"
 	done
 	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > /storage/.system/version.txt
 fi
@@ -162,22 +152,27 @@ if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
 	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
 fi
 
-# Screen-off then mem suspend does not wake from keys. Keep the
-# panel on until PWR resume is fixed. Defaults are 60/30 if the
-# file is missing, so always write the keys before nextui.elf.
+# Screen-off / mem suspend wakes from the RK817 pwrkey, lid, volume,
+# or any key (same DTS as ROCKNIX). Do not overwrite user timeouts.
 cfg=$SHARED_USERDATA_PATH/minuisettings.txt
-keep_awake() {
-	mkdir -p "$SHARED_USERDATA_PATH"
+mkdir -p "$SHARED_USERDATA_PATH"
+if [ ! -f "$cfg" ]; then
+	printf '%s\n' 'screentimeout=60' 'suspendTimeout=30' > "$cfg"
+else
+	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=60' >> "$cfg"
+	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=30' >> "$cfg"
+fi
+# Older images wrote 0 on every start so sleep never ran. Restore once.
+flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
+if [ ! -f "$flag" ]; then
 	if [ -f "$cfg" ]; then
-		sed -i 's/^screentimeout=.*/screentimeout=0/' "$cfg"
-		sed -i 's/^suspendTimeout=.*/suspendTimeout=0/' "$cfg"
-		grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=0' >> "$cfg"
-		grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=0' >> "$cfg"
-	else
-		printf '%s\n' 'screentimeout=0' 'suspendTimeout=0' > "$cfg"
+		grep -q '^screentimeout=0$' "$cfg" && \
+			sed -i 's/^screentimeout=0$/screentimeout=60/' "$cfg"
+		grep -q '^suspendTimeout=0$' "$cfg" && \
+			sed -i 's/^suspendTimeout=0$/suspendTimeout=30/' "$cfg"
 	fi
-}
-keep_awake
+	: > "$flag"
+fi
 rm -f /tmp/poweroff /tmp/reboot
 
 EXEC_PATH=/tmp/nextui_exec
@@ -186,7 +181,6 @@ touch "$EXEC_PATH"
 cd /storage
 
 while [ -f "$EXEC_PATH" ]; do
-	keep_awake
 	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh
 	# and has crashed NextUI after Settings. Stay on the card root.
 	# getFile() used to keep a trailing newline; loadLast() then walked
@@ -206,17 +200,33 @@ while [ -f "$EXEC_PATH" ]; do
 		rm -f /tmp/poweroff /tmp/reboot
 		cmd=$(cat "$NEXT_PATH")
 		rm -f "$NEXT_PATH"
+		echo "RUN $cmd" >> "$LOGS_PATH/next.txt"
+		# DRM master from nextui.elf is not always gone on the next line.
+		sleep 0.4
 		eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
+		st=$?
+		if [ "$st" -ne 0 ]; then
+			echo "pak exit $st" >> "$LOGS_PATH/next.txt"
+			command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
+		fi
+		killall -9 minui-list minui-presenter scrapegoat 2>/dev/null || true
+		sleep 0.2
 		continue
 	fi
 	if [ -f /tmp/poweroff ]; then
 		rm -f /tmp/poweroff
-		poweroff
+		if [ -x /usr/sbin/zlyme-halt ]; then
+			exec /usr/sbin/zlyme-halt poweroff
+		fi
+		poweroff -f
 		break
 	fi
 	if [ -f /tmp/reboot ]; then
 		rm -f /tmp/reboot
-		reboot
+		if [ -x /usr/sbin/zlyme-halt ]; then
+			exec /usr/sbin/zlyme-halt reboot
+		fi
+		reboot -f
 		break
 	fi
 done
