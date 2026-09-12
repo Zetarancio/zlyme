@@ -11,6 +11,7 @@ RTL8733BU_POWER_VERSION = local
 RTL8733BU_POWER_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/drivers/rtl8733bu-power/src
 RTL8733BU_POWER_SITE_METHOD = local
 RTL8733BU_POWER_LICENSE = GPL-2.0
+RTL8733BU_POWER_LICENSE_FILES = LICENSE
 
 # DTS: compatible "rockchip,rtl8733bu-power", enable-gpios GPIO0_A0 active-low.
 

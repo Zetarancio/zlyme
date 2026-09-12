@@ -1,0 +1,14 @@
+drastic
+=======
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: fetched upstream source
+Declared SPDX / license field: Proprietary
+Upstream / origin: https://github.com/ROCKNIX/packages/raw/main
+
+Recipe files (.mk, Config.in) are packaging for Zlyme.
+Patches of GPL/LGPL sources follow those upstream licenses.
+
+This package is proprietary. It is not open source.
+Zlyme does not grant any additional license to this material.
+Redistribute only as the original vendor permits.

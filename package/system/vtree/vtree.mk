@@ -7,6 +7,8 @@
 VTREE_VERSION = 560205b6198ac9e0e28975d42fcaee4c28989015
 VTREE_SITE    = https://github.com/MustardOS/vtree.git
 VTREE_SITE_METHOD = git
+VTREE_LICENSE = GPL-3.0
+VTREE_LICENSE_FILES = LICENSE
 
 VTREE_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image
 
@@ -21,6 +23,7 @@ define VTREE_INSTALL_TARGET_CMDS
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/vtree
 	$(INSTALL) -m 0755 $(@D)/vtree      $(TARGET_DIR)/usr/share/vtree/vtree
 	$(INSTALL) -m 0644 $(@D)/config.ini $(TARGET_DIR)/usr/share/vtree/
+	$(INSTALL) -m 0644 $(@D)/LICENSE    $(TARGET_DIR)/usr/share/vtree/LICENSE
 	sed -i \
 		-e 's|^StartDirectoryLeft=.*|StartDirectoryLeft=/storage|' \
 		-e 's|^StartDirectoryRight=.*|StartDirectoryRight=/storage|' \

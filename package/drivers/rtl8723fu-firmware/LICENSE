@@ -1,0 +1,12 @@
+rtl8723fu-firmware
+==================
+
+Realtek Bluetooth firmware blobs (rtl8723fu_fw.bin, rtl8723fu_config.bin)
+used by the RTL8733BU combo chip. These files are vendor firmware, not
+open source, and not original Zlyme code.
+
+SPDX-License-Identifier: LicenseRef-proprietary
+RTL8723FU_FIRMWARE_REDISTRIBUTE = NO in the recipe.
+
+Zlyme does not grant any additional license to this material.
+Redistribute only as Realtek permits.

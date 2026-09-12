@@ -5,7 +5,8 @@ NextUI (LoveRetro)
 
 Originally MinUI by Shaun Inman
   https://github.com/shauninman/MinUI
-  See src/NOTICE
+  No formal SPDX license — see src/NOTICE and paks/MinUI.pak/NOTICE
+  MinUI.pak ships LICENSE (PolyForm NC) + NOTICE + CREDITS
 
 Zlyme vendors a working copy of NextUI until this fork is proven
 and becomes its own repository. LoveRetro has no my355 tree; the

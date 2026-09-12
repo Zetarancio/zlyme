@@ -16,7 +16,7 @@ NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme14
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
-NEXTUI_LICENSE_FILES = LICENSE
+NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl
 
 NEXTUI_PLATFORM = my355
@@ -111,6 +111,12 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/zlyme/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/src/UPSTREAM \
 		$(TARGET_DIR)/usr/share/nextui/UPSTREAM
+	$(INSTALL) -D -m 0644 $(@D)/LICENSE \
+		$(TARGET_DIR)/usr/share/nextui/LICENSE
+	$(INSTALL) -D -m 0644 $(@D)/NOTICE \
+		$(TARGET_DIR)/usr/share/nextui/NOTICE
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/CREDITS \
+		$(TARGET_DIR)/usr/share/nextui/CREDITS
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/wifi_init.sh \
 		$(TARGET_DIR)/usr/share/nextui/etc/wifi/wifi_init.sh

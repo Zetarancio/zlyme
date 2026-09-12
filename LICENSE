@@ -1,0 +1,60 @@
+Zlyme
+=====
+
+Copyright (c) 2026 Zlyme contributors
+
+Zlyme is a Buildroot OS for the Miyoo Flip. This repository contains
+original Zlyme work and many third-party packages. It is not under one
+license.
+
+Original Zlyme code
+-------------------
+
+Unless a file or directory says otherwise, original Zlyme sources
+(board glue, local drivers and helpers such as flip-jackd and
+rtl8733bu-power, Autocal.pak, Files.pak launch.sh, pico8 launcher)
+are licensed under the MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Kernel modules and other files marked SPDX-License-Identifier: GPL-2.0
+remain GPL-2.0-only.
+
+Third-party software
+--------------------
+
+Each package and each NextUI pak ships its own LICENSE. Those terms
+control that component. In particular:
+
+  NextUI          PolyForm Noncommercial 1.0.0
+                  package/system/nextui/src/LICENSE
+                  /usr/share/nextui/LICENSE on the image
+
+  MinUI (origin)  No formal SPDX license. NextUI's NOTICE records that.
+                  package/system/nextui/src/NOTICE
+                  package/system/nextui/paks/MinUI.pak/NOTICE
+
+  RetroArch, libretro cores, emulators, vtree, PortMaster, Syncthing,
+  and the rest: see the LICENSE next to each package and pak.
+
+  Proprietary blobs (Mali, Drastic, Realtek firmware, user-supplied
+  Pico-8) stay proprietary. This file does not license them.
+
+Do not treat this file as relicensing MinUI, NextUI, or any fetched
+package.

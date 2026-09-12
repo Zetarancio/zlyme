@@ -10,7 +10,9 @@
 PICO8_VERSION = 1
 PICO8_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/emulators/pico8
 PICO8_SITE_METHOD = local
-PICO8_LICENSE = GPL-2.0
+# Launcher only. Pico-8 itself is proprietary Lexaloffle; not shipped.
+PICO8_LICENSE = MIT
+PICO8_LICENSE_FILES = LICENSE
 PICO8_DEPENDENCIES = sdl2
 
 define PICO8_INSTALL_TARGET_CMDS
