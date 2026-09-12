@@ -256,12 +256,14 @@ public:
 
     const std::any getValue() const override
     {
-        assert(valueIdx >= 0);
+        if (valueIdx < 0 || valueIdx >= (int)values.size())
+            return {};
         return values[valueIdx];
     }
     const std::string getLabel() const override
     {
-        assert(valueIdx >= 0);
+        if (valueIdx < 0 || valueIdx >= (int)labels.size())
+            return "";
         return labels[valueIdx];
     }
     const std::vector<std::any> getValues() const override{ return values; }

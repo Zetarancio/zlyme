@@ -26,7 +26,7 @@ Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fix
                               std::bind(&Menu::setWifiDiagnosticsState, this, std::placeholders::_1),
                               std::bind(&Menu::resetWifiDiagnosticsState, this));
     Zlyme_appendNetworkItems(serviceItems);
-    btItem = new MenuItem{ListItemType::Generic, "Bluetooth", "Pair HID controllers and headsets.", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(globalQuit, globalDirty)};
+    btItem = new MenuItem(ListItemType::Button, "Bluetooth", "Pair HID controllers and headsets.", DeferToSubmenu, new Bluetooth::Menu(globalQuit, globalDirty));
     items.push_back(toggleItem);
     items.push_back(diagItem);
     items.push_back(btItem);
@@ -163,7 +163,6 @@ void Menu::updater()
                     items.push_back(diagItem);
                     items.push_back(btItem);
                     items.insert(items.end(), serviceItems.begin(), serviceItems.end());
-                    layout_called = false;
 
                     for (auto &[s, r] : scanSsids)
                     {
@@ -240,7 +239,6 @@ void Menu::updater()
                     items.push_back(diagItem);
                     items.push_back(btItem);
                     items.insert(items.end(), serviceItems.begin(), serviceItems.end());
-                    layout_called = false;
                     selectionDirty = true;
                 }
                 for (auto *i : stale)

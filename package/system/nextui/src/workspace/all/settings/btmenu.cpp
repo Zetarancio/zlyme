@@ -6,6 +6,7 @@
 
 #include <unordered_set>
 #include <map>
+#include <stdexcept>
 
 #include <mutex>
 #include <shared_mutex>
@@ -133,9 +134,8 @@ void Menu::updater()
 
     while (!quit && !globalQuit)
     {
-        // TODO: pause when menu is not rendered
-        // TODO: improve repaint logic in a way that remembers selection
-        // Scan
+        try
+        {
         if (BT_enabled())
         {
             if(!BT_discovering())
@@ -144,50 +144,61 @@ void Menu::updater()
             std::map<std::string, BT_devicePaired> pairedMap;
             std::vector<BT_devicePaired> kl(SCAN_MAX_RESULTS);
             int known = BT_pairedDevices(kl.data(), SCAN_MAX_RESULTS);
+            if (known < 0)
+                known = 0;
+            if (known > SCAN_MAX_RESULTS)
+                known = SCAN_MAX_RESULTS;
             for (int i = 0; i < known; i++)
-                pairedMap.emplace(kl[i].remote_addr, kl[i]);  // Use MAC address as key (unique)
+                pairedMap.emplace(kl[i].remote_addr, kl[i]);
 
-            // grab list and compare it to previous result
-            // only relayout the menu if changes happended
             std::map<std::string, BT_device> scanMap;
             std::vector<BT_device> sr(SCAN_MAX_RESULTS);
             int cnt = BT_availableDevices(sr.data(), SCAN_MAX_RESULTS);
-            for (int i = 0; i < cnt; i++)
-                scanMap.emplace(sr[i].name, sr[i]);
+            if (cnt < 0)
+                cnt = 0;
+            if (cnt > SCAN_MAX_RESULTS)
+                cnt = SCAN_MAX_RESULTS;
+            for (int i = 0; i < cnt; i++) {
+                const char *key = sr[i].addr[0] ? sr[i].addr : sr[i].name;
+                scanMap.emplace(key, sr[i]);
+            }
 
-            // dont repopulate if any submenu is open
             bool menuOpen = false;
-            for (auto i : items)
             {
-                if (i->isDeferred())
+                ReadLock r(itemLock);
+                for (auto i : items)
                 {
-                    menuOpen = true;
-                    break;
+                    if (i && i->isDeferred())
+                    {
+                        menuOpen = true;
+                        break;
+                    }
                 }
             }
 
-            // something changed?
             if (!menuOpen)
             {
-                // remember selection and restore
                 std::string selectedName;
                 bool selectionApplied = false;
+                std::vector<AbstractMenuItem *> stale;
 
                 {
                     WriteLock w(itemLock);
                     selectedName = getSelectedItemName();
+                    for (auto *i : items)
+                    {
+                        if (i != toggleItem && i != diagItem && i != rateItem)
+                            stale.push_back(i);
+                    }
                     items.clear();
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
                     items.push_back(rateItem);
-                    layout_called = false;
 
                     for (auto &[s, r] : scanMap)
                     {
-                        MenuList *options;
-                        options = new MenuList(MenuItemType::List, "Options", {new PairNewItem(r, selectionDirty)});
-                        auto itm = new PairableItem{r, options};
-                        items.push_back(itm);
+                        auto *options = new MenuList(MenuItemType::List, "Options", {new PairNewItem(r, selectionDirty)});
+                        items.push_back(new PairableItem{r, options});
                     }
 
                     for (auto &[s, r] : pairedMap)
@@ -212,33 +223,47 @@ void Menu::updater()
                         items.push_back(itm);
                     }
                 }
+                for (auto *i : stale)
+                    delete i;
                 MenuList::performLayout((SDL_Rect){0, 0, FIXED_WIDTH, FIXED_HEIGHT});
 
-                // Attempt to restore prev selection
                 selectionApplied = selectByName(selectedName);
                 globalDirty |= selectionApplied;
-                // If selection was restored, we already called performLayout internally
                 selectionDirty |= !selectionApplied;
             }
             pollSecs = 2;
         }
         else
         {
-            WriteLock w(itemLock);
-            items.clear();
-            items.push_back(toggleItem);
-            items.push_back(diagItem);
-            items.push_back(rateItem);
-            layout_called = false;
-            selectionDirty = true;
+            std::vector<AbstractMenuItem *> stale;
+            {
+                WriteLock w(itemLock);
+                for (auto *i : items)
+                {
+                    if (i != toggleItem && i != diagItem && i != rateItem)
+                        stale.push_back(i);
+                }
+                items.clear();
+                items.push_back(toggleItem);
+                items.push_back(diagItem);
+                items.push_back(rateItem);
+                selectionDirty = true;
+            }
+            for (auto *i : stale)
+                delete i;
             pollSecs = 15;
         }
 
-        // reset selection scope (locks internally)
         if (selectionDirty)
         {
             MenuList::performLayout((SDL_Rect){0, 0, FIXED_WIDTH, FIXED_HEIGHT});
             selectionDirty = false;
+        }
+        }
+        catch (const std::exception &e)
+        {
+            LOG_error("BT updater: %s\n", e.what());
+            pollSecs = 15;
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(pollSecs));
@@ -290,40 +315,40 @@ PairableItem::PairableItem(BT_device d, MenuList* submenu)
 void PairableItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const AbstractMenuItem &item, bool selected) const
 {
     SDL_Color text_color = uintToColour(THEME_COLOR4_255);
-    SDL_Surface *text = TTF_RenderUTF8_Blended(font.tiny, item.getLabel().c_str(), COLOR_WHITE); // always white
-
-    // hack - this should be correlated to max_width
     int mw = dst.w;
 
     if (selected)
     {
-        // gray pill
         GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
     }
 
-    // device icon
     if(dev.kind != BLUETOOTH_NONE) {
         auto asset = (dev.kind == BLUETOOTH_AUDIO) ? ASSET_AUDIO : ASSET_CONTROLLER;
-        SDL_Rect rect = (dev.kind == BLUETOOTH_AUDIO) ? SDL_Rect{0, 0, 12, 12} : SDL_Rect{0, 0, 12, 12};
+        SDL_Rect rect = {0, 0, 12, 12};
         int ix = dst.x + dst.w - SCALE1(OPTION_PADDING + rect.w);
         int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(asset, NULL, surface, &tgt, THEME_COLOR6);
     }
 
+    const char *nm = item.getName().c_str();
+    if (!nm || !*nm)
+        nm = "(unknown)";
+
     if (selected)
     {
-        // white pill
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.small, nm, &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
         GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
-    SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
-    SDL_FreeSurface(text);
+    SDL_Surface *text = TTF_RenderUTF8_Blended(font.small, nm, text_color);
+    if (text) {
+        SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
+        SDL_FreeSurface(text);
+    }
 }
 
 PairedItem::PairedItem(BT_devicePaired d, MenuList* submenu)
@@ -383,7 +408,14 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
-    SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
-    SDL_FreeSurface(text);
+    const char *nm = item.getName().c_str();
+    if (!nm || !*nm)
+        nm = "(unknown)";
+    SDL_Surface *named = TTF_RenderUTF8_Blended(font.small, nm, text_color);
+    if (named) {
+        SDL_BlitSurfaceCPP(named, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
+        SDL_FreeSurface(named);
+    }
+    if (text)
+        SDL_FreeSurface(text);
 }

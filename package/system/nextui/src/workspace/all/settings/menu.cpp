@@ -190,7 +190,8 @@ void MenuItem::initSelection()
             // else
             //    valueIdx = std::distance(values.cbegin(), it);
         }
-        assert(valueIdx >= 0);
+        if (!values.empty())
+            assert(valueIdx >= 0);
     }
 }
 
@@ -396,11 +397,11 @@ bool MenuList::selectPrev()
 
 std::string MenuList::getSelectedItemName() const
 {
-    if(items.empty())
+    if (items.empty())
         return "";
-
-    int selected_row = scope.selected - scope.start;
-    return items.at(selected_row)->getName();
+    if (scope.selected < 0 || scope.selected >= (int)items.size())
+        return "";
+    return items[scope.selected]->getName();
 }
 
 bool MenuList::selectByName(const std::string &name)
@@ -451,7 +452,9 @@ InputReactionHint MenuList::handleInput(int &dirty, int &quit)
     }
 
     ReadLock r(itemLock);
-    InputReactionHint handled = items.at(scope.selected)->handleInput(dirty);
+    if (items.empty() || scope.selected < 0 || scope.selected >= (int)items.size())
+        return Unhandled;
+    InputReactionHint handled = items[scope.selected]->handleInput(dirty);
     if(handled == ResetAllItems) {
         resetAllItems();
         dirty = 1;
@@ -554,10 +557,16 @@ SDL_Rect MenuList::itemSizeHint(const AbstractMenuItem &item)
 
 void MenuList::draw(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &dstTitle)
 {
-    assert(layout_called);
-    ReadLock r(itemLock);
+    if (!layout_called)
+        performLayout(dst);
 
-    auto cur = !items.empty() ? items.at(scope.selected) : nullptr;
+    ReadLock r(itemLock);
+    if (items.empty())
+        return;
+    if (scope.selected < 0 || scope.selected >= (int)items.size())
+        return;
+
+    auto cur = items[scope.selected];
     if (cur && cur->isDeferred())
     {
         assert(cur->getSubMenu());
