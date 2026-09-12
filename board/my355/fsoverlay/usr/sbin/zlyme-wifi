@@ -164,7 +164,13 @@ do_connect() {
 
 	cli select_network "$id" >/dev/null
 	cli save_config >/dev/null
-	wait_connected
+	wait_connected || return 1
+	# DHCP before association gets 169.254 (same as S30wifi).
+	if [ -f /var/run/udhcpc.$IFACE.pid ]; then
+		kill "$(cat /var/run/udhcpc.$IFACE.pid 2>/dev/null)" 2>/dev/null || true
+		rm -f /var/run/udhcpc.$IFACE.pid
+	fi
+	udhcpc -b -i "$IFACE" -t 8 -T 2 -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1 || true
 }
 
 do_status() {
