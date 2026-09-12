@@ -1,0 +1,11 @@
+PortMaster.pak launches this image's /usr/bin/portmaster.
+
+PortMaster-GUI 2026.05.04-1202
+  https://github.com/PortsMaster/PortMaster-GUI
+  Copyright (c) 2023-2025 Jacob
+  License: MIT (see LICENSE in this pak)
+
+ben16w/minui-portmaster was evaluated for a MinUI frontend
+  https://github.com/ben16w/minui-portmaster
+  Copyright (c) 2025 Ben Wadsworth, MIT
+  It targets TrimUI only (tg5040, /usr/trimui/lib) and is not shipped.

@@ -2,8 +2,15 @@ config BR2_PACKAGE_PORTMASTER
 	bool "portmaster"
 	select BR2_PACKAGE_BOX64
 	select BR2_PACKAGE_PYTHON3
+	select BR2_PACKAGE_PYTHON3_PY_PYC
+	select BR2_PACKAGE_PYTHON3_SSL
+	select BR2_PACKAGE_PYTHON3_SQLITE
+	select BR2_PACKAGE_PYTHON3_PYEXPAT
+	select BR2_PACKAGE_PYTHON3_ZLIB
+	select BR2_PACKAGE_CA_CERTIFICATES
 	help
 	  PortMaster-GUI 2026.05.04-1202. Unpacks to /storage/PortMaster
-	  on first launch. Needs Python3 and box64.
+	  on first launch. Needs Python3 (ssl, sqlite, xml), CA certs,
+	  and box64. Rebuild python3 after changing those flags.
 
 	  https://github.com/PortsMaster/PortMaster-GUI

@@ -61,3 +61,18 @@ HOST_LIBCLC_CONF_OPTS += $(ZLYME_LIBCLC_UNWRAPPED_CLANG)
 LIBCLC_CONF_OPTS += \
 	$(ZLYME_LIBCLC_UNWRAPPED_CLANG) \
 	-DLIBCLC_TARGETS_TO_BUILD=spirv64-mesa3d-
+
+# Host compileall can write a 3.14 sysconfigdata .pyc the target refuses
+# (loguru → ValueError: bad marshal data). Keep the .py and drop that pyc.
+ifeq ($(BR2_PACKAGE_PYTHON3),y)
+define ZLYME_PYTHON3_FIX_SYSCONFIG
+	py="$(PYTHON3_DIR)/build/lib.linux-aarch64-$(PYTHON3_VERSION_MAJOR)/_sysconfigdata__linux_aarch64-linux-gnu.py"; \
+	dst="$(TARGET_DIR)/usr/lib/python$(PYTHON3_VERSION_MAJOR)"; \
+	if [ -f "$$py" ]; then \
+		$(INSTALL) -D -m 0644 "$$py" "$$dst/_sysconfigdata__linux_aarch64-linux-gnu.py"; \
+	fi; \
+	rm -f "$$dst/_sysconfigdata__linux_aarch64-linux-gnu.pyc"; \
+	rm -f "$$dst/__pycache__"/_sysconfigdata*.pyc
+endef
+TARGET_FINALIZE_HOOKS += ZLYME_PYTHON3_FIX_SYSCONFIG
+endif

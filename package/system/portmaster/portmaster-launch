@@ -1,26 +1,100 @@
 #!/bin/sh
 # First run copies the release onto /storage so PortMaster can update
-# itself. Later runs exec the copy. If the card still has under 100MB
-# free, run from the image instead of filling the partition.
+# itself. GUI is pugwash (python3) under PortMaster/, not a top-level
+# PortMaster.sh. exFAT has no +x, so never test -x on the card copy.
+#
+# Run from the squashfs copy when the card copy is incomplete. Python
+# 3.14 pyc-only sysconfigdata was crashing loguru (pak exit 1).
+
 . /etc/zlyme.conf
 DEST="${ZLYME_STORAGE}/PortMaster"
-if [ ! -x "$DEST/PortMaster.sh" ] && [ ! -x "$DEST/PortMaster.txt" ]; then
+IMG=/usr/share/portmaster/PortMaster
+
+msg() {
+	echo "$1"
+	if command -v show.elf >/dev/null 2>&1; then
+		show.elf "$1" 3
+	fi
+}
+
+pm_ok() {
+	[ -f "$1/pugwash" ] && [ -d "$1/pylibs" ]
+}
+
+if [ ! -f "$DEST/PortMaster/pugwash" ] && [ -f "$IMG/pugwash" ]; then
 	avail=$(df -k "$ZLYME_STORAGE" 2>/dev/null | awk 'NR==2 { print $4 }')
 	if [ "${avail:-0}" -ge 102400 ]; then
 		mkdir -p "$DEST"
-		cp -a /usr/share/portmaster/. "$DEST/"
+		cp -a /usr/share/portmaster/. "$DEST/" 2>/dev/null || true
 	fi
 fi
-if [ -x "$DEST/PortMaster.sh" ] || [ -f "$DEST/PortMaster.txt" ]; then
-	cd "$DEST" || exit 1
+
+root=""
+if pm_ok "$DEST/PortMaster"; then
+	root="$DEST/PortMaster"
+elif pm_ok "$DEST"; then
+	root="$DEST"
+elif pm_ok "$IMG"; then
+	root="$IMG"
+fi
+
+if [ -z "$root" ]; then
+	msg "PortMaster files missing"
+	exit 1
+fi
+
+cd "$root" || exit 1
+
+export HOME="${ZLYME_CFG}/portmaster"
+mkdir -p "$HOME" "$HOME/.local/share"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CONFIG_HOME="$HOME"
+export controlfolder="$root"
+export PYSDL2_DLL_PATH=/usr/lib
+export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
+export LD_LIBRARY_PATH="/usr/lib:${LD_LIBRARY_PATH:-}"
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONUNBUFFERED=1
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+	export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+	export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
+	export CURL_CA_BUNDLE="$SSL_CERT_FILE"
+fi
+# device_info.txt falls through to os-release; ROCKNIX gl4es helper is closest.
+export CFW_NAME="${CFW_NAME:-ROCKNIX}"
+export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
+
+sleep 0.4
+
+log=/tmp/portmaster.log
+if [ -n "${LOGS_PATH:-}" ]; then
+	log="$LOGS_PATH/portmaster.txt"
+	mkdir -p "$LOGS_PATH"
+fi
+
+st=1
+if [ -f ./pugwash ]; then
+	if command -v python3 >/dev/null 2>&1; then
+		python3 ./pugwash "$@" >"$log" 2>&1
+		st=$?
+	else
+		/usr/bin/python3 ./pugwash "$@" >"$log" 2>&1
+		st=$?
+	fi
+elif [ -f ./PortMaster.sh ]; then
+	/bin/bash ./PortMaster.sh "$@" >"$log" 2>&1
+	st=$?
 else
-	cd /usr/share/portmaster || exit 1
+	msg "PortMaster has no pugwash"
+	exit 1
 fi
-if [ -x ./PortMaster.sh ]; then
-	exec ./PortMaster.sh "$@"
+
+if [ "$st" -ne 0 ]; then
+	echo "portmaster exit $st" >>"$log"
+	tail -n 8 "$log"
+	err=$(grep -E 'Error|Error:|ModuleNotFound|ValueError|Traceback' "$log" | tail -n 1)
+	[ -n "$err" ] || err="PortMaster failed ($st)"
+	msg "$err"
 fi
-if [ -f ./PortMaster.txt ]; then
-	exec /usr/bin/python3 ./PortMaster.txt "$@"
-fi
-echo "PortMaster files missing" >&2
-exit 1
+exit "$st"

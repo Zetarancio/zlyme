@@ -77,6 +77,17 @@ chmod 0755 \
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
 ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
 
+if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then
+	ssl=$(echo "${TARGET_DIR}"/usr/lib/python3.*/lib-dynload/_ssl*.so)
+	sql=$(echo "${TARGET_DIR}"/usr/lib/python3.*/lib-dynload/_sqlite3*.so)
+	sysc=$(echo "${TARGET_DIR}"/usr/lib/python3.*/_sysconfigdata__linux_aarch64-linux-gnu.py)
+	[ -f "$ssl" ] || note "python _ssl is missing (rebuild python3 after PYTHON3_SSL=y)"
+	[ -f "$sql" ] || note "python _sqlite3 is missing (rebuild python3 after PYTHON3_SQLITE=y)"
+	[ -f "$sysc" ] || note "python sysconfigdata .py is missing (host pyc was unreadable)"
+	[ -s "${TARGET_DIR}/etc/ssl/certs/ca-certificates.crt" ] || \
+		note "ca-certificates.crt is missing (PortMaster HTTPS)"
+fi
+
 for l in var/cache var/log var/spool var/tmp var/run var/lock var/lib/dbus \
 	 var/lib/bluetooth; do
 	[ -L "${TARGET_DIR}/${l}" ] || note "/${l} is not a symlink"

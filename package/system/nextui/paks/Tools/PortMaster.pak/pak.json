@@ -1,0 +1,11 @@
+{
+  "name": "PortMaster",
+  "version": "2026.05.04-1202",
+  "type": "TOOL",
+  "description": "Install and manage PortMaster ports. Uses this image's python3 and /usr/bin/portmaster.",
+  "author": "PortsMaster",
+  "repo_url": "https://github.com/PortsMaster/PortMaster-GUI",
+  "platforms": [
+    "my355"
+  ]
+}
