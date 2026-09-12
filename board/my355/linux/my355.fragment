@@ -1,6 +1,7 @@
 # DSI mode names include @Hz so Settings can pick 60/50/40 from sysfs.
 
-# LibreELEC placeholders. We do not link an initramfs into the image.
+# LibreELEC leftover. olddefconfig must see a real string (not @FOO@).
+# external.mk then points this at images/initramfs before vmlinux links.
 CONFIG_INITRAMFS_SOURCE=""
 CONFIG_DEFAULT_HOSTNAME="zlyme"
 

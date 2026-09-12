@@ -2,10 +2,9 @@
 # Apply a queued OS tar from /storage/.update *before* NextUI.
 #
 # Drop /storage/.update/zlyme-my355-update.tar and reboot. This script
-# asks zlyme-update to pivot into tmpfs so the squashfs is not mounted
-# while it is overwritten. After a successful swap, reapply user flags
-# once (FDTOVERLAYS already written in tmpfs; governors/LED need the
-# new OS).
+# extracts to /storage/.update/pending and copies Image/dtb/overlays
+# onto /boot. Initramfs copies pending/zlyme over the live squashfs
+# file. After the new OS is up, reapply user flags once.
 
 start() {
 	if [ ! -x /usr/sbin/zlyme-update ]; then
@@ -21,8 +20,8 @@ start() {
 	if "$upd" queued >/dev/null 2>&1; then
 		printf "Zlyme update: "
 		"$upd" boot-apply
-		# Success resets the SoC and does not return. Failure
-		# leaves the old squashfs in place so boot can continue.
+		# Success reboots and does not return. Failure leaves
+		# the old squashfs in place so boot can continue.
 		echo "FAIL"
 		return 0
 	fi

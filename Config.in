@@ -1,5 +1,8 @@
 menu "Zlyme"
 
+comment "Boot"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/boot/Config.in"
+
 comment "Drivers"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/drivers/Config.in"
 

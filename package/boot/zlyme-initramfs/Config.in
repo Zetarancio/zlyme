@@ -1,0 +1,13 @@
+config BR2_PACKAGE_ZLYME_INITRAMFS
+	bool "zlyme-initramfs"
+	select BR2_PACKAGE_LIBXCRYPT
+	default n
+	help
+	  Tiny static busybox initramfs. Embedded in the kernel Image.
+	  Mounts LABEL=ZLYMEBOOT and LABEL=ZLYME, copies pending/zlyme
+	  over the live FAT file if present, loop-mounts zlyme, then
+	  switch_root.
+
+	  Harvested from Knulli knulli-initramfs (busybox 1.36.1).
+
+	  http://busybox.net/

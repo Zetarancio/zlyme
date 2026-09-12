@@ -28,6 +28,7 @@ define ZLYME_LINUX_ASSERT_CONFIG
 	$(Q)for opt in CONFIG_RD_GZIP=y CONFIG_RD_ZSTD=y \
 	               CONFIG_ROCKCHIP_THERMAL=y CONFIG_DRM_PANFROST=m \
 	               CONFIG_MODULE_UNLOAD=y CONFIG_SQUASHFS=y \
+	               CONFIG_VFAT_FS=y CONFIG_BLK_DEV_LOOP=y \
 	               CONFIG_EFI_PARTITION=y CONFIG_MMC_SDHCI_OF_DWCMSHC=y \
 	               CONFIG_MMC_DW_ROCKCHIP=y; do \
 		grep -qx "$$opt" $(@D)/.config || { \
@@ -38,6 +39,20 @@ define ZLYME_LINUX_ASSERT_CONFIG
 		exit 1; }
 endef
 LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_ASSERT_CONFIG
+
+ifeq ($(BR2_PACKAGE_ZLYME_INITRAMFS),y)
+LINUX_DEPENDENCIES += zlyme-initramfs
+define ZLYME_LINUX_SET_INITRAMFS
+	$(Q)test -x $(BINARIES_DIR)/initramfs/init || { \
+		echo "zlyme: initramfs is missing (BR2_PACKAGE_ZLYME_INITRAMFS)" >&2; \
+		exit 1; }
+	$(Q)sed -i 's|^CONFIG_INITRAMFS_SOURCE=.*|CONFIG_INITRAMFS_SOURCE="$(BINARIES_DIR)/initramfs"|' \
+		$(@D)/.config
+	$(Q)grep -qF 'CONFIG_INITRAMFS_SOURCE="$(BINARIES_DIR)/initramfs"' $(@D)/.config || { \
+		echo "zlyme: failed to set CONFIG_INITRAMFS_SOURCE" >&2; exit 1; }
+endef
+LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_SET_INITRAMFS
+endif
 
 define ZLYME_LINUX_ASSERT_DTB
 	$(Q)test -s $(LINUX_ARCH_PATH)/boot/dts/rockchip/rk3566-miyoo-flip.dtb || { \

@@ -1,6 +1,7 @@
 #!/bin/sh
 # Mount the boot vfat (label ZLYMEBOOT) at /boot so Settings can edit
-# extlinux.conf. Never fail the boot.
+# extlinux.conf. Initramfs usually already moved it here. Never fail
+# the boot.
 
 start() {
 	printf "Mounting boot: "

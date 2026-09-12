@@ -1,8 +1,9 @@
 #!/bin/sh
-# Grow the 512MB ZLYME exFAT seed to fill the card, then format it.
+# Grow the 32MB ZLYME exFAT seed to fill the card, then format it.
 # Knulli S02resize: sgdisk -e, parted resizepart 100%, mkfs.exfat.
 # Runs after /boot is mounted and before S15 mounts /storage.
 # Never fail the boot.
+# Unmount /boot before GPT work; remount only to clear autoresize.
 
 . /etc/zlyme.conf
 
@@ -22,9 +23,27 @@ part_num_of() {
 	echo "$1" | sed -e 's/.*[^0-9]//'
 }
 
+label_dev() {
+	blkid | sed -n "s|^\\([^:]*\\):.*LABEL=\"$1\".*|\\1|p" | head -n 1
+}
+
+say() {
+	msg="$*"
+	echo "$msg"
+	[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
+	[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
+	[ -d "$(dirname "$LOG")" ] && echo "$msg" >>"$LOG" 2>/dev/null || true
+}
+
 remove_trigger() {
 	[ -f "$BOOTCONF" ] || return 0
 	sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF"
+}
+
+umount_path() {
+	p=$1
+	grep -q " $p " /proc/mounts || return 0
+	umount "$p" >>"$LOG" 2>&1 || umount -l "$p" >>"$LOG" 2>&1
 }
 
 start() {
@@ -32,38 +51,47 @@ start() {
 		return 0
 	fi
 
-	printf "Resizing storage: "
+	say "Resizing storage: "
 	: > "$LOG"
 
-	PART=$(blkid | sed -n 's|^\([^:]*\):.*LABEL="ZLYME".*|\1|p' | head -n 1)
+	BOOTDEV=$(label_dev ZLYMEBOOT)
+	PART=$(label_dev ZLYME)
 	if [ -z "$PART" ]; then
-		echo "no ZLYME partition" | tee -a "$LOG"
+		say "no ZLYME partition"
 		return 0
 	fi
 
 	DISK=$(disk_of "$PART")
 	PARTNUM=$(part_num_of "$PART")
 	if [ -z "$DISK" ] || [ -z "$PARTNUM" ]; then
-		echo "cannot parse $PART" | tee -a "$LOG"
+		say "cannot parse $PART"
 		return 0
 	fi
 
 	if [ ! -x /usr/sbin/sgdisk ] || [ ! -x /usr/sbin/parted ] || [ ! -x /usr/sbin/mkfs.exfat ]; then
-		echo "sgdisk/parted/mkfs.exfat missing" | tee -a "$LOG"
+		say "sgdisk/parted/mkfs.exfat missing"
 		return 0
 	fi
 
-	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
-		umount "$ZLYME_STORAGE" >>"$LOG" 2>&1 || {
-			echo "busy" | tee -a "$LOG"
-			return 0
-		}
+	if ! umount_path "$ZLYME_STORAGE"; then
+		say "storage busy"
+		return 0
 	fi
 
-	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM" >>"$LOG"
+	# Unmount /boot before sgdisk/partprobe.
+	if ! umount_path /boot; then
+		say "boot busy"
+		return 0
+	fi
+	if grep -q " /boot " /proc/mounts; then
+		say "boot still mounted"
+		return 0
+	fi
+
+	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM Boot=$BOOTDEV" >>"$LOG"
 
 	# Knulli FORMAT_ALLOWED: only mkfs the factory seed (256/512M, we
-	# use 512). A larger partition already has user data; do not wipe.
+	# use 32). A larger partition already has user data; do not wipe.
 	PARTSIZE=$(blockdev --getsize64 "$PART" 2>/dev/null || true)
 	if [ -z "$PARTSIZE" ] || [ "$PARTSIZE" = 0 ]; then
 		b=$(basename "$PART")
@@ -78,13 +106,13 @@ start() {
 	fi
 
 	if ! sgdisk -e "$DISK" >>"$LOG" 2>&1; then
-		echo "sgdisk -e failed" | tee -a "$LOG"
+		say "sgdisk -e failed"
 		return 0
 	fi
 
 	if ! parted -s -m -f "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
 		if ! parted -s -m "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
-			echo "parted resizepart failed" | tee -a "$LOG"
+			say "parted resizepart failed"
 			return 0
 		fi
 	fi
@@ -96,7 +124,7 @@ start() {
 	# seed. Skip if this is not the factory size.
 	if [ "$FORMAT_SEED" = 1 ]; then
 		if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
-			echo "mkfs.exfat failed" | tee -a "$LOG"
+			say "mkfs.exfat failed"
 			return 0
 		fi
 	else
@@ -108,11 +136,21 @@ start() {
 	partprobe "$DISK" >>"$LOG" 2>&1 || true
 	sync
 
-	remove_trigger
-	sync
-	echo "OK, rebooting"
+	if [ -n "$BOOTDEV" ]; then
+		mkdir -p /boot
+		if mount -t vfat -o rw,noatime,utf8 "$BOOTDEV" /boot; then
+			remove_trigger
+			cp -f "$LOG" /boot/resize.log 2>/dev/null || true
+			sync
+			umount_path /boot
+			sync
+		else
+			say "could not remount boot to clear autoresize"
+		fi
+	fi
+
+	say "OK, rebooting"
 	# Partition table + mkfs.exfat are not live until reboot.
-	# Same as Knulli/Batocera after autoresize.
 	reboot -f
 	return 0
 }

@@ -62,8 +62,9 @@ rm -rf "${TARGET_DIR}/var/lib/bluetooth"
 ln -sfn /run/bluetooth "${TARGET_DIR}/var/lib/bluetooth"
 
 # Library-card mountpoints must exist on the squashfs; mkdir at runtime
-# cannot create them on a read-only /mnt.
-mkdir -p "${TARGET_DIR}/mnt/sd2" "${TARGET_DIR}/mnt/media"
+# cannot create them on a read-only /mnt. /boot must exist so initramfs
+# can mount --move ZLYMEBOOT onto it.
+mkdir -p "${TARGET_DIR}/mnt/sd2" "${TARGET_DIR}/mnt/media" "${TARGET_DIR}/boot"
 ln -sfn /storage "${TARGET_DIR}/mnt/SDCARD"
 
 chmod 0755 \

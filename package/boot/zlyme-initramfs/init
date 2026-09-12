@@ -1,0 +1,104 @@
+#!/bin/ash
+# Mount LABEL=ZLYMEBOOT. If ZLYME has a staged squashfs, copy it over
+# /zlyme (the live file stays on FAT; the payload lives on exFAT).
+# Then loop-mount zlyme and switch_root.
+
+log() {
+	echo "zlyme-init: $*"
+	[ -w /dev/console ] && echo "zlyme-init: $*" >/dev/console 2>/dev/null
+	[ -w /dev/tty1 ] && echo "zlyme-init: $*" >/dev/tty1 2>/dev/null
+}
+
+mount_boot() {
+	mount -t vfat -o rw,noatime,utf8 "$1" /boot_root 2>/dev/null
+}
+
+mount_storage() {
+	mount -t exfat -o rw,noatime "$1" /storage_root 2>/dev/null
+}
+
+wait_mount() {
+	fn=$1
+	spec=$2
+	i=0
+	while [ "$i" -lt 20 ]; do
+		if "$fn" "$spec"; then
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1
+	done
+	return 1
+}
+
+commit_update() {
+	src=/storage_root/.update/pending/zlyme
+	[ -f "$src" ] || return 0
+
+	log "copying new zlyme from ZLYME"
+	if ! cp -f "$src" /boot_root/zlyme; then
+		log "copy failed, keeping current zlyme"
+		return 1
+	fi
+	sync
+	rm -rf /storage_root/.update/pending
+	rm -f /storage_root/.update/zlyme-my355-update.tar
+	rm -f /storage_root/.update/WANT
+	sync
+	log "zlyme committed"
+	return 0
+}
+
+do_root() {
+	mkdir -p /boot_root /storage_root /new_root /sys /proc /dev || return 1
+	mount -t proc -o nodev,noexec,nosuid proc /proc || return 1
+	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
+	mount -t devtmpfs none /dev 2>/dev/null || true
+
+	read -r cmdline < /proc/cmdline
+
+	label=ZLYMEBOOT
+	for param in ${cmdline}; do
+		case ${param} in
+			label=*) label=${param#label=} ;;
+		esac
+	done
+
+	if ! wait_mount mount_boot "LABEL=${label}"; then
+		log "could not mount LABEL=${label}"
+		return 1
+	fi
+
+	if wait_mount mount_storage "LABEL=ZLYME"; then
+		commit_update || true
+	else
+		log "ZLYME not mounted (ok if no pending update)"
+	fi
+
+	if [ ! -e /boot_root/zlyme ]; then
+		log "no /zlyme on ${label}"
+		return 1
+	fi
+
+	if ! mount -t squashfs -o loop /boot_root/zlyme /new_root; then
+		if ! mount -t squashfs /boot_root/zlyme /new_root; then
+			log "squashfs mount failed"
+			return 1
+		fi
+	fi
+
+	mkdir -p /new_root/boot /new_root/proc /new_root/sys /new_root/dev
+	mount --move /boot_root /new_root/boot || return 1
+	# Leave ZLYME for S15; do not move it (userspace mounts /storage).
+	umount /storage_root 2>/dev/null || true
+	mount --move /sys /new_root/sys || return 1
+	mount --move /proc /new_root/proc || return 1
+	mount --move /dev /new_root/dev || return 1
+
+	exec switch_root /new_root /sbin/init
+}
+
+if ! do_root; then
+	log "failed, dropping to ash"
+	exec /bin/ash
+fi

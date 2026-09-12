@@ -24,9 +24,10 @@ tmpfs		/run		tmpfs	mode=0755,nosuid,nodev		0	0
 # hand -- which is exactly how the first attempt shipped without /var/lib/dbus and
 # left dbus unable to write a machine-id.
 #
-# Nothing here mounts the boot or games partitions, and the boot partition is
-# now mounted anyway -- by S15bootpart rather than from this file, because it is
-# found by filesystem label and busybox mount is built without
-# FEATURE_MOUNT_LABEL. A script can also decline to mount and carry on, which is
-# the part that matters: on a handheld a partition failing to mount can never be
-# allowed to wedge the device, because there is no console to rescue it from.
+# Nothing here mounts the boot or games partitions. Initramfs already
+# moved ZLYMEBOOT to /boot; S12bootfs remounts it if needed. Storage is
+# mounted by S15bootpart (label ZLYME) because busybox mount is built
+# without FEATURE_MOUNT_LABEL. A script can also decline to mount and
+# carry on, which is the part that matters: on a handheld a partition
+# failing to mount can never be allowed to wedge the device, because
+# there is no console to rescue it from.
