@@ -156,6 +156,10 @@ fi
 # or any key (same DTS as ROCKNIX). Do not overwrite user timeouts.
 cfg=$SHARED_USERDATA_PATH/minuisettings.txt
 mkdir -p "$SHARED_USERDATA_PATH"
+if [ -f "$cfg" ]; then
+	# exFAT + Windows editors leave CR; grep '$' then misses 60/30.
+	sed -i 's/\r$//' "$cfg"
+fi
 if [ ! -f "$cfg" ]; then
 	printf '%s\n' 'screentimeout=120' 'suspendTimeout=600' > "$cfg"
 else
@@ -174,9 +178,11 @@ if [ ! -f "$flag" ]; then
 	: > "$flag"
 fi
 # Product defaults moved 60/30 -> 120/600 (2 min screen, 10 min mem).
-# Do not touch Never (0) or any other custom value.
+# Do not touch Never (0) or any other custom value. v3 retries after
+# v2 missed CRLF lines.
 flag2=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v2
-if [ ! -f "$flag2" ]; then
+flag3=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v3
+if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
 	if [ -f "$cfg" ]; then
 		grep -q '^screentimeout=60$' "$cfg" && \
 			sed -i 's/^screentimeout=60$/screentimeout=120/' "$cfg"
@@ -184,6 +190,7 @@ if [ ! -f "$flag2" ]; then
 			sed -i 's/^suspendTimeout=30$/suspendTimeout=600/' "$cfg"
 	fi
 	: > "$flag2"
+	: > "$flag3"
 fi
 rm -f /tmp/poweroff /tmp/reboot
 

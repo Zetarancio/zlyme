@@ -33,7 +33,47 @@ maybe_restart_ssh() {
 	fi
 }
 
+ensure_wpa_conf() {
+	# Never replace a file that may already hold networks. An older
+	# conf without ctrl_interface only gets a header prepended.
+	if [ ! -s "$CONF" ]; then
+		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
+		if [ -r "$example" ]; then
+			cp "$example" "$CONF"
+		else
+			printf '%s\n' \
+				'ctrl_interface=/var/run/wpa_supplicant' \
+				'update_config=1' \
+				'ap_scan=1' > "$CONF"
+		fi
+		echo "Seeded $CONF (no networks yet)"
+		return 0
+	fi
+	if ! grep -q ctrl_interface "$CONF" 2>/dev/null; then
+		tmp=$(mktemp) || return 0
+		printf '%s\n' \
+			'ctrl_interface=/var/run/wpa_supplicant' \
+			'update_config=1' \
+			'ap_scan=1' '' > "$tmp"
+		cat "$CONF" >> "$tmp"
+		cat "$tmp" > "$CONF"
+		rm -f "$tmp"
+	fi
+}
+
+load_card_wifi_modules() {
+	[ -d "/sys/class/net/$IFACE" ] && return 0
+	hot=/storage/.config/zlyme
+	if ! grep -q '^rtl8733bu_power ' /proc/modules 2>/dev/null; then
+		[ -f "$hot/rtl8733bu_power.ko" ] && insmod "$hot/rtl8733bu_power.ko" 2>/dev/null || true
+	fi
+	if ! grep -q '^8733bu ' /proc/modules 2>/dev/null; then
+		[ -f "$hot/8733bu.ko" ] && insmod "$hot/8733bu.ko" 2>/dev/null || true
+	fi
+}
+
 start() {
+	load_card_wifi_modules
 	printf "Waiting for %s: " "$IFACE"
 	i=0
 	while [ ! -d "/sys/class/net/$IFACE" ] && [ $i -lt 50 ]; do
@@ -64,18 +104,7 @@ start() {
 	ip link set "$IFACE" up 2>/dev/null || true
 	rm -f /var/run/wpa_supplicant.pid
 
-	if [ ! -s "$CONF" ] || ! grep -q ctrl_interface "$CONF" 2>/dev/null; then
-		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
-		if [ -r "$example" ]; then
-			cp "$example" "$CONF"
-		else
-			printf '%s\n' \
-				'ctrl_interface=/var/run/wpa_supplicant' \
-				'update_config=1' \
-				'ap_scan=1' > "$CONF"
-		fi
-		echo "Seeded $CONF (no networks yet)"
-	fi
+	ensure_wpa_conf
 
 	printf "Starting wpa_supplicant: "
 	# Not -B: start-stop-daemon would see the parent exit and print FAIL.

@@ -143,14 +143,9 @@ static int num_joysticks = 0;
 void PLAT_initInput(void) {
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0)
 		LOG_error("Failed initializing joysticks: %s\n", SDL_GetError());
-	num_joysticks = SDL_NumJoysticks();
-    if (num_joysticks > 0) {
-        joysticks = (SDL_Joystick **)malloc(sizeof(SDL_Joystick *) * num_joysticks);
-        for (int i = 0; i < num_joysticks; i++) {
-			joysticks[i] = SDL_JoystickOpen(i);
-			LOG_info("Opening joystick %d: %s\n", i, SDL_JoystickName(joysticks[i]));
-        }
-    }
+	SDL_JoystickEventState(SDL_ENABLE);
+	/* Open on SDL_JOYDEVICEADDED only. Opening here AND on ADDED
+	 * duplicated retrogame_joypad (init + hotplug) in the log. */
 }
 
 void PLAT_quitInput(void) {
@@ -173,13 +168,25 @@ void PLAT_updateInput(const SDL_Event *event) {
     case SDL_JOYDEVICEADDED: {
         int device_index = event->jdevice.which;
         SDL_Joystick *new_joy = SDL_JoystickOpen(device_index);
-        if (new_joy) {
-            joysticks = realloc(joysticks, sizeof(SDL_Joystick *) * (num_joysticks + 1));
-            joysticks[num_joysticks++] = new_joy;
-            LOG_info("Joystick added at index %d: %s\n", device_index, SDL_JoystickName(new_joy));
-        } else {
+        SDL_JoystickID iid;
+        int i;
+        if (!new_joy) {
             LOG_error("Failed to open added joystick at index %d: %s\n", device_index, SDL_GetError());
+            break;
         }
+        iid = SDL_JoystickInstanceID(new_joy);
+        for (i = 0; i < num_joysticks; i++) {
+            if (joysticks[i] && SDL_JoystickInstanceID(joysticks[i]) == iid) {
+                SDL_JoystickClose(new_joy);
+                new_joy = NULL;
+                break;
+            }
+        }
+        if (!new_joy)
+            break;
+        joysticks = realloc(joysticks, sizeof(SDL_Joystick *) * (num_joysticks + 1));
+        joysticks[num_joysticks++] = new_joy;
+        LOG_info("Joystick added at index %d: %s\n", device_index, SDL_JoystickName(new_joy));
         break;
     }
 

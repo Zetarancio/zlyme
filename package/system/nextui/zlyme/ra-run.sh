@@ -10,6 +10,7 @@ CFGDIR="${XDG_CONFIG_HOME:-/storage/.config}/retroarch"
 CFG=$CFGDIR/retroarch.cfg
 ETC=/etc/retroarch.cfg
 SEED_OPTS=/usr/share/zlyme/retroarch/config
+CARD_OPTS=/storage/.config/zlyme/retroarch/config
 MINUI_RA=/tmp/zlyme-minui-ra.cfg
 MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.userdata/shared}/minuisettings.txt"
 
@@ -20,9 +21,12 @@ if [ ! -s "$CFG" ]; then
 fi
 
 # First-run core options from spruce Flip (frameskip/dynarec/resolution).
-# Never overwrite a file the user already has.
-if [ -d "$SEED_OPTS" ]; then
-	for dir in "$SEED_OPTS"/*; do
+# Never overwrite a file the user already has. Card copy is for a live
+# unit before the next image ships /usr/share.
+seed_ra_opts() {
+	src=$1
+	[ -d "$src" ] || return 0
+	for dir in "$src"/*; do
 		[ -d "$dir" ] || continue
 		name=${dir##*/}
 		mkdir -p "$CFGDIR/config/$name"
@@ -33,7 +37,9 @@ if [ -d "$SEED_OPTS" ]; then
 			cp "$f" "$CFGDIR/config/$name/$bn"
 		done
 	done
-fi
+}
+seed_ra_opts "$SEED_OPTS"
+seed_ra_opts "$CARD_OPTS"
 
 ra_bool() {
 	case "$1" in
@@ -131,7 +137,10 @@ write_minui_ra() {
 write_minui_ra
 
 APPEND="$ETC"
-[ -s "$MINUI_RA" ] && APPEND="$ETC,$MINUI_RA"
+for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra-perf.cfg; do
+	[ -s "$extra" ] && APPEND="$APPEND,$extra"
+done
+[ -s "$MINUI_RA" ] && APPEND="$APPEND,$MINUI_RA"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"
