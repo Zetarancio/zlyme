@@ -1089,7 +1089,7 @@ int main(int argc, char *argv[])
         std::vector<AbstractMenuItem*> mainItems = {
             new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu},
             new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
-            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, governors, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
+            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, boost, zram, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
         };
 
         if(deviceInfo.hasMuteToggle())

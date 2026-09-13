@@ -306,7 +306,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
     }
 
     // wifi icon
@@ -316,7 +316,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
                         : ASSET_WIFI_LOW; // -71 and below
     SDL_Rect rect = {0, 0, 12, 12};
     int ix = dst.x + dst.w - SCALE1(OPTION_PADDING + rect.w);
-    int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+    int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
     SDL_Rect tgt{ix, y};
     GFX_blitAssetColor(asset, NULL, surface, &tgt, THEME_COLOR6);
 
@@ -324,7 +324,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
     if(connected) {
         SDL_Rect rect = {0, 0, 12, 12};
         ix = ix - SCALE1(OPTION_PADDING + rect.w);
-        int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+        int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(ASSET_CHECKCIRCLE, NULL, surface, &tgt, THEME_COLOR6);
     }
@@ -332,7 +332,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
     else if(net.security != SECURITY_NONE) {
         SDL_Rect rect = {0, 0, 8, 11};
         ix = ix - SCALE1(OPTION_PADDING + rect.w + 2);
-        int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+        int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(ASSET_LOCK, NULL, surface, &tgt, THEME_COLOR6);
     }
@@ -341,13 +341,13 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
     {
         // white pill
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
+    text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
     SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
     SDL_FreeSurface(text);
 }

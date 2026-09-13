@@ -319,14 +319,14 @@ void PairableItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, con
 
     if (selected)
     {
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
     }
 
     if(dev.kind != BLUETOOTH_NONE) {
         auto asset = (dev.kind == BLUETOOTH_AUDIO) ? ASSET_AUDIO : ASSET_CONTROLLER;
         SDL_Rect rect = {0, 0, 12, 12};
         int ix = dst.x + dst.w - SCALE1(OPTION_PADDING + rect.w);
-        int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+        int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(asset, NULL, surface, &tgt, THEME_COLOR6);
     }
@@ -338,13 +338,13 @@ void PairableItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, con
     if (selected)
     {
         int w = 0;
-        TTF_SizeUTF8(font.small, nm, &w, NULL);
+        TTF_SizeUTF8(font.large, nm, &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    SDL_Surface *text = TTF_RenderUTF8_Blended(font.small, nm, text_color);
+    SDL_Surface *text = TTF_RenderUTF8_Blended(font.large, nm, text_color);
     if (text) {
         SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
         SDL_FreeSurface(text);
@@ -366,7 +366,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
     }
 
     // rssi icon
@@ -377,7 +377,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
                         : ASSET_WIFI_LOW;
     SDL_Rect rect = {0, 0, 12, 12};
     int ix = dst.x + dst.w - SCALE1(OPTION_PADDING + rect.w);
-    int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+    int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
     SDL_Rect tgt{ix, y};
     GFX_blitAssetColor(asset, NULL, surface, &tgt, THEME_COLOR6);
 
@@ -385,7 +385,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
     if(dev.is_connected) {
         SDL_Rect rect = {0, 0, 12, 12};
         ix = ix - SCALE1(OPTION_PADDING + rect.w);
-        int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+        int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(ASSET_CHECKCIRCLE, NULL, surface, &tgt, THEME_COLOR6);
     }
@@ -393,7 +393,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
     else if(dev.is_bonded) {
         SDL_Rect rect = {0, 0, 8, 11};
         ix = ix - SCALE1(OPTION_PADDING + rect.w + 2);
-        int y = dst.y + SCALE1(BUTTON_SIZE - rect.h) / 2;
+        int y = dst.y + SCALE1(PILL_SIZE - rect.h) / 2;
         SDL_Rect tgt{ix, y};
         GFX_blitAssetColor(ASSET_LOCK, NULL, surface, &tgt, THEME_COLOR6);
     }
@@ -402,16 +402,16 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
     {
         // white pill
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
     const char *nm = item.getName().c_str();
     if (!nm || !*nm)
         nm = "(unknown)";
-    SDL_Surface *named = TTF_RenderUTF8_Blended(font.small, nm, text_color);
+    SDL_Surface *named = TTF_RenderUTF8_Blended(font.large, nm, text_color);
     if (named) {
         SDL_BlitSurfaceCPP(named, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
         SDL_FreeSurface(named);

@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 
+extern "C" {
+#include "msettings.h"
+}
+
 static std::string trim(std::string s)
 {
 	while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ' || s.back() == '\t'))
@@ -154,6 +158,41 @@ void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items)
 {
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
+	const std::vector<std::any> sink_v = {
+		std::string("codec"), std::string("hdmi"), std::string("bt")};
+	const std::vector<std::string> sink_l = {"Speaker / jack", "HDMI", "Bluetooth"};
+
+	items.push_back(new MenuItem{ListItemType::Generic, "Audio sink",
+		"Applies to the next game or app that opens audio. Relaunch the ROM after switching.",
+		sink_v, sink_l,
+		[]() -> std::any {
+			std::string s;
+			FILE *f = popen("zlyme-audio get 2>/dev/null", "r");
+			if (f) {
+				char buf[64] = {0};
+				if (fgets(buf, sizeof(buf), f))
+					s = trim(buf);
+				pclose(f);
+			}
+			if (s != "hdmi" && s != "bt")
+				s = "codec";
+			return s;
+		},
+		[](const std::any &v) {
+			std::string s = std::any_cast<std::string>(v);
+			int sink = AUDIO_SINK_DEFAULT;
+			if (s == "bt")
+				sink = AUDIO_SINK_BLUETOOTH;
+			else if (s == "hdmi")
+				sink = AUDIO_SINK_HDMI;
+			std::string cmd = std::string("zlyme-audio set ") + s;
+			system(cmd.c_str());
+			SetAudioSink(sink);
+		},
+		[]() {
+			system("zlyme-audio set codec");
+			SetAudioSink(AUDIO_SINK_DEFAULT);
+		}});
 	items.push_back(new MenuItem{ListItemType::Generic, "SSH",
 		"OpenSSH with SFTP. Applies immediately. Empty-password login is on.",
 		on_off_v, on_off,
@@ -209,50 +248,26 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			system("zlyme-ctl apply-overlays");
 		}});
 
-	const std::vector<std::any> cpu_v = {
-		std::string("schedutil"), std::string("performance"), std::string("powersave")};
-	const std::vector<std::string> cpu_l = {"schedutil", "Performance", "Powersave"};
-	items.push_back(new MenuItem{ListItemType::Generic, "CPU governor",
-		"Applies now. In-game auto still uses this when NextUI asks for auto.",
-		cpu_v, cpu_l,
-		[]() -> std::any {
-			std::string c = ctl_get("cpu_gov");
-			if (c != "performance" && c != "powersave")
-				c = "schedutil";
-			return c;
-		},
-		[](const std::any &v) {
-			ctl_set("cpu_gov", std::any_cast<std::string>(v).c_str());
-			system("zlyme-ctl apply-gov");
-		},
-		[]() {
-			ctl_set("cpu_gov", "schedutil");
-			system("zlyme-ctl apply-gov");
-		}});
-
-	const std::vector<std::any> gpu_gov_v = {
-		std::string("simple_ondemand"), std::string("performance"), std::string("powersave")};
-	const std::vector<std::string> gpu_gov_l = {"simple_ondemand", "Performance", "Powersave"};
-	items.push_back(new MenuItem{ListItemType::Generic, "GPU governor",
-		"Panfrost devfreq. Applies now.",
-		gpu_gov_v, gpu_gov_l,
-		[]() -> std::any {
-			std::string g = ctl_get("gpu_gov");
-			if (g != "performance" && g != "powersave")
-				g = "simple_ondemand";
-			return g;
-		},
-		[](const std::any &v) {
-			ctl_set("gpu_gov", std::any_cast<std::string>(v).c_str());
-			system("zlyme-ctl apply-gov");
-		},
-		[]() {
-			ctl_set("gpu_gov", "simple_ondemand");
-			system("zlyme-ctl apply-gov");
-		}});
-
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
+	items.push_back(new MenuItem{ListItemType::Generic, "CPU boost 1992",
+		"Unlocks the 1992 MHz OPP for heavy emus. Gets hot. Off keeps Performance at 1800.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("boost"); },
+		[](const std::any &v) { ctl_set("boost", std::any_cast<bool>(v) ? "on" : "off"); },
+		[]() { ctl_set("boost", "off"); }});
+	items.push_back(new MenuItem{ListItemType::Generic, "zram swap",
+		"384 MiB lz4 swap as an OOM net on 1 GiB. Off if a heavy emu feels spongy.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("zram"); },
+		[](const std::any &v) {
+			ctl_set("zram", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-zram");
+		},
+		[]() {
+			ctl_set("zram", "on");
+			system("zlyme-ctl apply-zram");
+		}});
 	items.push_back(new MenuItem{ListItemType::Generic, "USB OTG",
 		"Lower USB-C gadget port. Off saves power. Takes effect on next boot.",
 		on_off_v, on_off,

@@ -347,7 +347,7 @@ void MenuList::performLayout(const SDL_Rect &dst)
         // we are leaving some space to show the description label here, account for roughly two lines or one pill
         // also account for the scroll icon, in case we need it.
         // scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE * 2)) / SCALE1(BUTTON_SIZE);
-        scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE)) / SCALE1(BUTTON_SIZE);
+        scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE)) / SCALE1(PILL_SIZE);
     }
     scope.end = std::min(scope.count, scope.max_visible_options);
     scope.visible_rows = scope.end;
@@ -510,7 +510,7 @@ SDL_Rect MenuList::itemSizeHint(const AbstractMenuItem &item)
     {
         // calculate the size of the list
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
         return {0, 0, w, SCALE1(PILL_SIZE)};
     }
@@ -519,7 +519,7 @@ SDL_Rect MenuList::itemSizeHint(const AbstractMenuItem &item)
         int w = 0;
         int lw = 0;
         int rw = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &lw, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &lw, NULL);
         // get the width of the widest row
         int mrw = 0;
         // every value list in an input table is the same
@@ -654,8 +654,8 @@ void MenuList::drawList(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rec
     int selected_row = scope.selected - scope.start;
     for (int i = scope.start, j = 0; i < scope.end; i++, j++)
     {
-        auto pos = dy(rect, SCALE1(j * BUTTON_SIZE));
-        pos.h = SCALE1(BUTTON_SIZE);
+        auto pos = dy(rect, SCALE1(j * PILL_SIZE));
+        pos.h = SCALE1(PILL_SIZE);
         drawListItem(surface, pos, *items[i], j == selected_row);
     }
 }
@@ -670,13 +670,13 @@ void MenuList::drawListItem(SDL_Surface *surface, const SDL_Rect &dst, const Abs
     {
         // move out of conditional if centering
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
 
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
+    text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
     SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y  + ((dst.h - text->h) / 2)});
     SDL_FreeSurface(text);
 }
@@ -694,8 +694,8 @@ void MenuList::drawFixed(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Re
     int selected_row = scope.selected - scope.start;
     for (int i = scope.start, j = 0; i < scope.end; i++, j++)
     {
-        auto pos = dy(rect, SCALE1(j * BUTTON_SIZE));
-        pos.h = SCALE1(BUTTON_SIZE);
+        auto pos = dy(rect, SCALE1(j * PILL_SIZE));
+        pos.h = SCALE1(PILL_SIZE);
         drawFixedItem(surface, pos, *items[i], j == selected_row);
     }
 }
@@ -731,7 +731,7 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
     }
 
     if (item.getValue().has_value())
@@ -749,7 +749,7 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
             uint32_t color = mapUint(surface, rawColor);
             SDL_Rect rect = {
                 dst.x + dst.w - SCALE1(OPTION_PADDING + FONT_TINY),
-                dst.y + SCALE1(BUTTON_SIZE - FONT_TINY) / 2,
+                dst.y + SCALE1(PILL_SIZE - FONT_TINY) / 2,
                 SCALE1(FONT_TINY), SCALE1(FONT_TINY)};
             SDL_FillRect(surface, &rect, RGB_WHITE);
             rect = dy(dx(rect, 1), 1);
@@ -780,13 +780,13 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
     {
         // white pill
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
+    text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
     SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + ((dst.h - text->h) / 2)});
     SDL_FreeSurface(text);
 }
@@ -814,8 +814,8 @@ void MenuList::drawInput(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Re
     int selected_row = scope.selected - scope.start;
     for (int i = scope.start, j = 0; i < scope.end; i++, j++)
     {
-        auto pos = dy(rect, SCALE1(j * BUTTON_SIZE));
-        pos.h = SCALE1(BUTTON_SIZE);
+        auto pos = dy(rect, SCALE1(j * PILL_SIZE));
+        pos.h = SCALE1(PILL_SIZE);
         pos.w = max_width;
         drawInputItem(surface, pos, *items[i], j == selected_row);
     }
@@ -832,16 +832,16 @@ void MenuList::drawInputItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
 
         // white pill
         int w = 0;
-        TTF_SizeUTF8(font.small, item.getName().c_str(), &w, NULL);
+        TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(BUTTON_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
         text_color = COLOR_BLACK;
     }
-    text = TTF_RenderUTF8_Blended(font.small, item.getName().c_str(), text_color);
+    text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
     SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + ((dst.h - text->h) / 2)});
     SDL_FreeSurface(text);
 
