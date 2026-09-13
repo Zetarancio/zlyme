@@ -6,6 +6,7 @@ config BR2_PACKAGE_RETROARCH
 	select BR2_PACKAGE_SDL2
 	select BR2_PACKAGE_LIBDRM
 	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_XZ
 	help
 	  RetroArch, built for KMSDRM + GLES + ALSA.
 
