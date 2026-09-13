@@ -1,0 +1,10 @@
+Update.pak
+==========
+
+Downloads the latest GitHub release tar, checks sha256, mv's it to
+/storage/.update/zlyme-my355-update.tar, and reboots.
+
+Required Notice: NextUI is a fork of MinUI by Shaun Inman.
+Required Notice: Licensed under PolyForm Noncommercial 1.0.0.
+
+https://polyformproject.org/licenses/noncommercial/1.0.0

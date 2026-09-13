@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Pack KERNEL + DTB + overlays + squashfs file for OTA.
-# On the device: copy to /storage/.update/zlyme-my355-update.tar and reboot.
-# zlyme-update extracts on ZLYME; initramfs copies pending/zlyme onto FAT.
+# Device boot path is always /storage/.update/zlyme-my355-update.tar
+# (the pak renames this file after the hash check). Releases only ship
+# the versioned tar and its .sha256.
 
 set -euo pipefail
 
@@ -37,7 +38,13 @@ if [ -d "${BINARIES_DIR}/overlays" ]; then
 fi
 printf '%s\n' "$ver" "$stamp" > "$stage/VERSION"
 
-out="${BINARIES_DIR}/zlyme-my355-${stamp}-${ver}.tar"
+base="zlyme-my355-${stamp}-${ver}.tar"
+out="${BINARIES_DIR}/${base}"
 tar -C "$stage" -cf "$out" Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION
-ln -sfn "$(basename "$out")" "${BINARIES_DIR}/zlyme-my355-update.tar"
+rm -f "${BINARIES_DIR}/zlyme-my355-update.tar"
+(
+	cd "${BINARIES_DIR}"
+	sha256sum "${base}" > "${base}.sha256"
+)
 echo "make-update-tar: $out"
+echo "make-update-tar: ${out}.sha256"

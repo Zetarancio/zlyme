@@ -209,6 +209,10 @@ apply_files() {
 	if [ -f "$QUEUED_TAR" ]; then
 		rm -f "$QUEUED_TAR"
 	fi
+	# Versioned leftovers only; the well-known name is already gone.
+	rm -f "$STAGEDIR"/zlyme-my355-[0-9]*.tar \
+		"$STAGEDIR"/zlyme-my355-[0-9]*.sha256 \
+		"$STAGEDIR"/zlyme-my355-[0-9]*.tar.sha256 2>/dev/null || true
 	sync
 	log "pending squashfs on ZLYME, kernel on $BOOT"
 	do_reboot
@@ -261,6 +265,11 @@ reapply_once() {
 	if [ -x /usr/sbin/zlyme-ctl ]; then
 		zlyme-ctl apply-settings || true
 	fi
+	# Named Zlyme palette: hint used to be gray on white pills.
+	s="$STORAGE/.userdata/shared/minuisettings.txt"
+	if [ -f "$s" ] && grep -q '^palette=Zlyme' "$s"; then
+		sed -i 's/^color6=0xB9BDC4FF$/color6=0xF7B07CFF/' "$s" 2>/dev/null || true
+	fi
 	rm -f "$REAPPLY"
 }
 
@@ -304,7 +313,7 @@ case "$cmd" in
 		;;
 	*)
 		echo "usage: zlyme-update {queue|apply|boot-apply|verify|status|cancel|dry-run} [tar]" >&2
-		echo "  pak: copy tar to $QUEUED_TAR && reboot" >&2
+		echo "  pak: mv the hashed tar to $QUEUED_TAR && reboot" >&2
 		exit 1
 		;;
 esac

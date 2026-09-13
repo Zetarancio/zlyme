@@ -54,8 +54,8 @@ fi
 sq_bytes=$(wc -c < "${BINARIES_DIR}/zlyme")
 echo "post-image: squashfs ${sq_bytes} bytes as FAT file zlyme on 1300M ZLYMEBOOT"
 support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
-# OTA tar next to zlyme.img. Copy to /storage/.update/zlyme-my355-update.tar
-# and reboot; do not Etcher over a games card.
+# Versioned OTA tar + sha256 next to zlyme.img. The device pak mv's it
+# to /storage/.update/zlyme-my355-update.tar. Do not Etcher over a games card.
 if [ -x "${BOARD_DIR}/make-update-tar.sh" ]; then
 	"${BOARD_DIR}/make-update-tar.sh" "${BINARIES_DIR}" || \
 		echo "post-image: update tar skipped" >&2
