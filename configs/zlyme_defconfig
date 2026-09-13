@@ -1,9 +1,10 @@
 BR2_aarch64=y
 BR2_cortex_a55=y
 
-# Cortex-A55 with CRC/crypto/fp/simd/rcpc. Leave -O3 to packages that
-# need it; some libretro cores miscompile at -O3.
+# Cortex-A55 with CRC/crypto/fp/simd/rcpc. Userspace -O3 (BR2_OPTIMIZE_3);
+# pin known-bad packages back to -O2 in their .mk. Kernel stays -O2.
 BR2_TARGET_OPTIMIZATION="-pipe -fsigned-char -mcpu=cortex-a55+crc+crypto+fp+simd+rcpc"
+BR2_OPTIMIZE_3=y
 
 BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
