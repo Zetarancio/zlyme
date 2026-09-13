@@ -3,6 +3,7 @@ config BR2_PACKAGE_PICO8
 	select BR2_PACKAGE_SDL2
 	help
 	  PICO-8 launcher only. The fantasy-console binary is
-	  proprietary; drop pico8_64 in /mnt/SDCARD/Roms/PICO-8/.
+	  proprietary; drop pico8_64 + pico8.dat in Bios/PICO
+	  (MinUI). Bios/ and the Pico-8 roms folder still work.
 
 	  https://www.lexaloffle.com/pico-8.php

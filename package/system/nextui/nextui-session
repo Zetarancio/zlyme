@@ -225,6 +225,7 @@ while [ -f "$EXEC_PATH" ]; do
 		esac
 		printf '%s' "$last" > /tmp/last.txt
 	fi
+	killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
 	nextui.elf >> "$LOGS_PATH/nextui.txt" 2>&1
 	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
 	# on SIGTERM; if /tmp/next is set, run that instead.
@@ -245,7 +246,8 @@ while [ -f "$EXEC_PATH" ]; do
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 				;;
 		esac
-		killall -9 minui-list minui-presenter scrapegoat 2>/dev/null || true
+		# Splore's pad grab must not outlive the pak.
+		killall -9 pico8-splore-pad pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
 		sleep 0.2
 		continue
 	fi
