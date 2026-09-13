@@ -40,6 +40,15 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 	fi
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/portmaster-launch \
 		$(TARGET_DIR)/usr/bin/portmaster
+	# pugwash lists extra themes from PortMaster/themes/<name>/theme.json
+	# (pylibs/default_theme is the built-in). Copy the stock assets, then
+	# inject a Zlyme colour scheme as the default.
+	rm -rf $(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme
+	mkdir -p $(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme
+	cp -a $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/default_theme/. \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/
+	python3 $(PORTMASTER_PKGDIR)/zlyme-theme/inject-scheme.py \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/theme.json
 endef
 
 $(eval $(generic-package))

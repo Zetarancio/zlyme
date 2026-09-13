@@ -45,6 +45,41 @@ fi
 
 cd "$root" || exit 1
 
+seed_zlyme_theme() {
+	src=/usr/share/portmaster/PortMaster/themes/Zlyme
+	[ -f "$src/theme.json" ] || return 0
+	# pugwash reads HM_TOOLS_DIR/PortMaster/themes, not pylibs/.
+	tools="${HM_TOOLS_DIR:-/storage/Roms/.portmaster}/PortMaster"
+	dest="$tools/themes/Zlyme"
+	mkdir -p "$dest"
+	cp -a "$src/." "$dest/" 2>/dev/null || true
+
+	stamp="${ZLYME_CFG:-/storage/.config}/portmaster/.zlyme-theme-seeded"
+	[ -f "$stamp" ] && return 0
+	mkdir -p "$(dirname "$stamp")" "$tools/config"
+	cfg="$tools/config/config.json"
+	if command -v python3 >/dev/null 2>&1; then
+		python3 - "$cfg" <<'PY'
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+data = {}
+if p.is_file():
+    try:
+        data = json.loads(p.read_text() or "{}")
+    except json.JSONDecodeError:
+        data = {}
+theme = data.get("theme", "default_theme")
+if theme in ("default_theme", "Zlyme", None, ""):
+    data["theme"] = "Zlyme"
+    data["theme-scheme"] = "Zlyme"
+    p.write_text(json.dumps(data, indent=4) + "\n")
+PY
+	fi
+	: >"$stamp"
+}
+
+
 export HOME="${ZLYME_CFG}/portmaster"
 mkdir -p "$HOME" "$HOME/.local/share"
 export XDG_DATA_HOME="$HOME/.local/share"
@@ -65,6 +100,7 @@ mkdir -p /storage/Roms/PORTS /storage/Roms/.portmaster/PortMaster
 export HM_PORTS_DIR=/storage/Roms/PORTS
 export HM_SCRIPTS_DIR=/storage/Roms/PORTS
 export HM_TOOLS_DIR=/storage/Roms/.portmaster
+seed_zlyme_theme
 # Saying yes to a GUI self-update (or a timed-out one) leaves this
 # flag; pugwash then skips the main loop and exits 0.
 rm -f "$HM_TOOLS_DIR/PortMaster/.pugwash-reboot"
