@@ -1,0 +1,9 @@
+version=1
+name=Zlyme
+color1=0xF2F3F5FF
+color2=0xF7B07CFF
+color3=0xE99962FF
+color4=0xF2F3F5FF
+color5=0x050608FF
+color6=0xF7B07CFF
+color7=0x050608FF
