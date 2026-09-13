@@ -1,13 +1,13 @@
 #!/bin/sh
 # Grow the 32MB ZLYME exFAT seed to fill the card, then format it.
-# Knulli S02resize: sgdisk -e, parted resizepart 100%, mkfs.exfat.
-# Runs after /boot is mounted and before S15 mounts /storage.
 # Never fail the boot.
 #
-# Do not remount ZLYMEBOOT after GPT work. Last time umount-before-sgdisk
-# was not enough: sed -i + resize.log after partprobe still zeroed FAT1
-# (u-boot: Invalid FAT entry on /Image). A grown partition (>600MB) is
-# the latch; leave autoresize=true on the vfat alone.
+# Knulli S02resize: keep /boot mounted, umount storage, sgdisk -e,
+# parted resizepart 100%, mkfs.exfat. ROCKNIX fs-resize: no partprobe,
+# reboot -f. Do not umount /boot (squashfs loop). Do not partprobe or
+# sed the vfat after GPT work (FAT1 -> u-boot Invalid FAT entry on
+# /Image). Comment autoresize only on a later boot that already sees
+# a grown ZLYME.
 
 . /etc/zlyme.conf
 
@@ -53,22 +53,44 @@ say() {
 umount_path() {
 	p=$1
 	grep -q " $p " /proc/mounts || return 0
-	umount "$p" >>"$LOG" 2>&1 || umount -l "$p" >>"$LOG" 2>&1
+	umount "$p" >>"$LOG" 2>&1
+}
+
+# No GPT work here. /boot is a normal rw vfat.
+remove_trigger() {
+	mount -o remount,rw /boot >>"$LOG" 2>&1 || true
+	if [ -f "$BOOTCONF" ]; then
+		sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF"
+	fi
+	sync
 }
 
 start() {
+	if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' "$BOOTCONF" 2>/dev/null; then
+		return 0
+	fi
+
 	PART=$(label_dev ZLYME)
+	if [ -z "$PART" ]; then
+		for cand in /dev/mmcblk0p3 /dev/mmcblk1p3; do
+			[ -b "$cand" ] || continue
+			boot=$(label_dev ZLYMEBOOT)
+			if [ -n "$boot" ]; then
+				bdisk=$(disk_of "$boot")
+				[ "$(disk_of "$cand")" = "$bdisk" ] || continue
+			fi
+			PART=$cand
+			break
+		done
+	fi
 	if [ -z "$PART" ]; then
 		return 0
 	fi
 
 	PARTSIZE=$(part_size_mb "$PART")
-	# Already grown (or not the factory seed). Never touch GPT or FAT.
+	# Already grown. Latch the trigger; never mkfs a games card.
 	if [ "$PARTSIZE" -gt 600 ]; then
-		return 0
-	fi
-
-	if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' "$BOOTCONF" 2>/dev/null; then
+		remove_trigger
 		return 0
 	fi
 
@@ -87,27 +109,27 @@ start() {
 		return 0
 	fi
 
-	if ! umount_path "$ZLYME_STORAGE"; then
+	# ROCKNIX: umount storage only. Never touch /boot.
+	umount_path "$ZLYME_STORAGE"
+	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
 		say "storage busy"
 		return 0
 	fi
 
-	if ! umount_path /boot; then
-		say "boot busy"
-		return 0
-	fi
-	if grep -q " /boot " /proc/mounts; then
-		say "boot still mounted"
-		return 0
-	fi
-
 	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM size=${PARTSIZE}MB" >>"$LOG"
+	sync
 
-	if ! sgdisk -e "$DISK" >>"$LOG" 2>&1; then
-		say "sgdisk -e failed"
-		return 0
+	TABLETYPE=$(parted -s "$DISK" print 2>/dev/null | grep 'Partition Table' | awk '{print $3}')
+	echo "Disk partition table type = $TABLETYPE" >>"$LOG"
+	if [ "$TABLETYPE" = "gpt" ]; then
+		if ! sgdisk -e "$DISK" >>"$LOG" 2>&1; then
+			say "sgdisk -e failed"
+			return 0
+		fi
 	fi
 
+	# parted resizepart uses BLKPG_RESIZE; skip partprobe (that is what
+	# smashed FAT1 while this vfat was mounted).
 	if ! parted -s -m -f "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
 		if ! parted -s -m "$DISK" resizepart "$PARTNUM" 100% >>"$LOG" 2>&1; then
 			say "parted resizepart failed"
@@ -115,19 +137,18 @@ start() {
 		fi
 	fi
 
-	partprobe "$DISK" >>"$LOG" 2>&1 || true
 	sleep 2
+	echo "sysfs size=$(cat /sys/class/block/$(basename "$PART")/size 2>/dev/null) sectors" >>"$LOG"
 
 	if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
 		say "mkfs.exfat failed"
 		return 0
 	fi
 
-	sgdisk -t "${PARTNUM}:0700" "$DISK" >>"$LOG" 2>&1 || true
-	partprobe "$DISK" >>"$LOG" 2>&1 || true
 	sync
-
-	say "OK, rebooting"
+	say "OK"
+	# ROCKNIX always reboot -f after resize. Leave autoresize set; the
+	# next boot sees a grown ZLYME and only comments the trigger.
 	reboot -f
 	return 0
 }
