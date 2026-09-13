@@ -155,11 +155,11 @@ void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items)
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
 	items.push_back(new MenuItem{ListItemType::Generic, "SSH",
-		"Dropbear. Applies immediately. Empty-password login is on.",
+		"OpenSSH with SFTP. Applies immediately. Empty-password login is on.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("ssh"); },
-		[](const std::any &v) { service_apply("ssh", "/etc/init.d/S50dropbear", std::any_cast<bool>(v)); },
-		[]() { service_apply("ssh", "/etc/init.d/S50dropbear", true); }});
+		[](const std::any &v) { service_apply("ssh", "/etc/init.d/S50sshd", std::any_cast<bool>(v)); },
+		[]() { service_apply("ssh", "/etc/init.d/S50sshd", true); }});
 	items.push_back(new MenuItem{ListItemType::Generic, "Samba",
 		"File share of /storage. Applies immediately.",
 		on_off_v, on_off,

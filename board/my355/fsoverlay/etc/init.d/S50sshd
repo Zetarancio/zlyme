@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# sshd after Wi-Fi (S30). NextUI is S28 and does not wait on this.
+# Host key lives on exFAT and is copied to tmpfs (exFAT has no mode bits;
+# sshd refuses a world-readable HostKey).
+
+. /etc/zlyme.conf
+
+NAME=sshd
+DAEMON=/usr/sbin/sshd
+PIDFILE=/var/run/sshd.pid
+KEYDIR=/var/run/ssh
+KEYFILE=$KEYDIR/ssh_host_ed25519_key
+STORE=${ZLYME_CFG}/ssh/ssh_host_ed25519_key
+
+prepare_dirs() {
+	mkdir -p "$KEYDIR" /var/empty "${ZLYME_CFG}/ssh" 2>/dev/null || true
+	chmod 755 /var/empty 2>/dev/null || true
+}
+
+have_key() {
+	[ -s "$KEYFILE" ]
+}
+
+install_stored_key() {
+	if [ -s "$STORE" ] && [ ! -s "$KEYFILE" ]; then
+		cp "$STORE" "$KEYFILE" 2>/dev/null || true
+		[ -s "$STORE.pub" ] && cp "$STORE.pub" "$KEYFILE.pub" 2>/dev/null || true
+	fi
+	chmod 600 "$KEYFILE" 2>/dev/null || true
+	chmod 644 "$KEYFILE.pub" 2>/dev/null || true
+}
+
+make_key() {
+	command -v ssh-keygen >/dev/null 2>&1 || return 1
+	rm -f "$KEYFILE" "$KEYFILE.pub"
+	ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -q || return 1
+	chmod 600 "$KEYFILE" 2>/dev/null || true
+	[ -s "$KEYFILE" ] && cp "$KEYFILE" "$STORE" 2>/dev/null || true
+	[ -s "$KEYFILE.pub" ] && cp "$KEYFILE.pub" "$STORE.pub" 2>/dev/null || true
+}
+
+run_sshd() {
+	printf "Starting %s: " "$NAME"
+	if ! "$DAEMON" -t >/tmp/sshd-t.log 2>&1; then
+		echo "FAIL (sshd -t)"
+		return 1
+	fi
+	if start-stop-daemon -S -b -q -m -p "$PIDFILE" --exec "$DAEMON" -- -D; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+}
+
+start() {
+	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want ssh; then
+		echo "SSH: disabled by zlyme-ctl"
+		return 0
+	fi
+	if [ ! -x "$DAEMON" ]; then
+		echo "SSH: sshd missing"
+		return 0
+	fi
+	prepare_dirs
+	install_stored_key
+	if ! have_key; then
+		echo "SSH: generating host key"
+		make_key || return 0
+	fi
+	run_sshd
+}
+
+stop() {
+	printf "Stopping %s: " "$NAME"
+	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null || true
+	killall sshd 2>/dev/null || true
+	echo "OK"
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

@@ -31,7 +31,7 @@ start() {
 }
 
 seed() {
-	for d in "$ZLYME_CFG" "$ZLYME_CFG/dropbear" "$ZLYME_CFG/seedrng" \
+	for d in "$ZLYME_CFG" "$ZLYME_CFG/ssh" "$ZLYME_CFG/seedrng" \
 		"$ZLYME_CFG/retroarch" "$ZLYME_CFG/zlyme" \
 		"$ZLYME_CFG/samba" "$ZLYME_CFG/syncthing"; do
 		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null

@@ -27,12 +27,6 @@ dhcp_after_assoc() {
 	fi
 }
 
-maybe_restart_ssh() {
-	if command -v zlyme-ctl >/dev/null && zlyme-ctl want ssh; then
-		[ -x /etc/init.d/S50dropbear ] && /etc/init.d/S50dropbear restart >/dev/null 2>&1 || true
-	fi
-}
-
 ensure_wpa_conf() {
 	# Never replace a file that may already hold networks. An older
 	# conf without ctrl_interface only gets a header prepended.
@@ -90,7 +84,6 @@ start() {
 		echo "WiFi: already running"
 		ip link set "$IFACE" up 2>/dev/null || true
 		dhcp_after_assoc
-		maybe_restart_ssh
 		return 0
 	fi
 
@@ -119,7 +112,6 @@ start() {
 	fi
 
 	dhcp_after_assoc
-	maybe_restart_ssh
 	return 0
 }
 

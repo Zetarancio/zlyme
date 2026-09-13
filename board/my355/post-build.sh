@@ -75,6 +75,10 @@ chmod 0755 \
 	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
 	"${TARGET_DIR}/etc/init.d/S27led" \
 	"${TARGET_DIR}/etc/init.d/S90minui"
+[ -e "${TARGET_DIR}/etc/init.d/S50sshd" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S50sshd"
+[ -e "${TARGET_DIR}/usr/sbin/sshd" ] || [ -e "${TARGET_DIR}/usr/bin/sshd" ] || \
+	note "sshd is missing (BR2_PACKAGE_OPENSSH)"
+[ -e "${TARGET_DIR}/usr/bin/scp" ] || note "scp is missing (OpenSSH client)"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"

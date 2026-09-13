@@ -119,8 +119,9 @@ BR2_PACKAGE_WPA_SUPPLICANT_PASSPHRASE=y
 # iw, for bring-up.
 BR2_PACKAGE_IW=y
 
-# SSH.
-BR2_PACKAGE_DROPBEAR=y
+# SSH (SFTP). Host key on tmpfs; S27sshd starts before NextUI.
+BR2_PACKAGE_OPENSSL=y
+BR2_PACKAGE_OPENSSH=y
 
 # BlueZ: pairing, HID/HOG. Audio plugin comes with ALSA below. dbus is required.
 BR2_PACKAGE_BLUEZ5_UTILS=y

@@ -1,0 +1,22 @@
+# Zlyme sshd. Overlay wins over the Buildroot default.
+# HostKey is on tmpfs; S50sshd copies it from /storage/.config/ssh.
+
+Port 22
+HostKey /var/run/ssh/ssh_host_ed25519_key
+PidFile /var/run/sshd.pid
+LogLevel INFO
+
+LoginGraceTime 60
+PermitRootLogin yes
+PermitEmptyPasswords yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys /storage/.config/ssh/authorized_keys
+UsePAM no
+StrictModes no
+UseDNS no
+X11Forwarding no
+PrintMotd no
+
+Subsystem sftp internal-sftp
