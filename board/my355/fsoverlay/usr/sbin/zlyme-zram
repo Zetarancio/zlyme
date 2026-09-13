@@ -1,0 +1,42 @@
+#!/bin/sh
+# Modest zram swap on 1 GiB. Default on (384 MiB, lz4). Toggle from Settings.
+
+. /etc/zlyme.conf 2>/dev/null || true
+
+SIZE=384M
+
+want_zram() {
+	if command -v zlyme-ctl >/dev/null 2>&1; then
+		zlyme-ctl want zram
+		return $?
+	fi
+	return 0
+}
+
+start() {
+	want_zram || return 0
+	modprobe zram 2>/dev/null || true
+	[ -e /sys/block/zram0/disksize ] || return 0
+	grep -q 'zram0' /proc/swaps 2>/dev/null && return 0
+	echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || true
+	echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+	echo "$SIZE" > /sys/block/zram0/disksize 2>/dev/null || return 0
+	mkswap /dev/zram0 >/dev/null 2>&1 || return 0
+	swapon /dev/zram0 2>/dev/null || return 0
+	echo 45 > /proc/sys/vm/swappiness 2>/dev/null || true
+	echo 0 > /proc/sys/vm/page-cluster 2>/dev/null || true
+	return 0
+}
+
+stop() {
+	swapoff /dev/zram0 2>/dev/null || true
+	echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+	return 0
+}
+
+case "${1:-start}" in
+	start) start ;;
+	stop) stop ;;
+	restart) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

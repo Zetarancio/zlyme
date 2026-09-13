@@ -1,0 +1,24 @@
+#!/bin/sh
+# zram swap. Off if Settings zram=off. Default on.
+
+start() {
+	printf "Starting zram: "
+	if [ -x /usr/sbin/zlyme-zram ]; then
+		/usr/sbin/zlyme-zram start && echo OK || echo skip
+	else
+		echo missing
+	fi
+}
+
+stop() {
+	printf "Stopping zram: "
+	[ -x /usr/sbin/zlyme-zram ] && /usr/sbin/zlyme-zram stop
+	echo OK
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

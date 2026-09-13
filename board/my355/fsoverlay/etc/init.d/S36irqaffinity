@@ -1,0 +1,76 @@
+#!/bin/sh
+# Pin Wi-Fi/BT EHCI (fd880000.usb) and MMC (dw-mci) to CPU0.
+# Leave upper USB-C, OTG (fcc00000), HDMI, and GPU alone.
+# Live /proc/interrupts names: dw-mci, ehci_hcd:usbN — not dw-mmc or fd880000.
+
+pin_irq() {
+	irq=$1
+	[ -n "$irq" ] || return 0
+	[ -w "/proc/irq/$irq/smp_affinity" ] || return 0
+	echo 1 > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+}
+
+irq_from_line() {
+	line=$1
+	irq=${line%%:*}
+	irq=${irq#"${irq%%[![:space:]]*}"}
+	irq=${irq%"${irq##*[![:space:]]}"}
+	case "$irq" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	echo "$irq"
+}
+
+pin_match() {
+	needle=$1
+	[ -n "$needle" ] || return 0
+	[ -r /proc/interrupts ] || return 0
+	while IFS= read -r line; do
+		case "$line" in
+			*"$needle"*)
+				irq=$(irq_from_line "$line") || continue
+				pin_irq "$irq"
+				;;
+		esac
+	done < /proc/interrupts
+}
+
+pin_once() {
+	# MMC hosts show up as "dw-mci", not dw-mmc / mmc0.
+	pin_match "dw-mci"
+	pin_match "fe2b0000.mmc"
+	pin_match "fe2c0000.mmc"
+	pin_match "fd880000"
+
+	# Wi-Fi EHCI is whatever usbN sits under fd880000.usb (usb4 on this board).
+	for usb in /sys/devices/platform/fd880000.usb/usb[0-9]*; do
+		[ -d "$usb" ] || continue
+		bus=$(basename "$usb")
+		pin_match "ehci_hcd:$bus"
+	done
+}
+
+start() {
+	printf "IRQ affinity: "
+	pin_once
+	(
+		i=0
+		while [ "$i" -lt 40 ]; do
+			sleep 1
+			pin_once
+			i=$((i + 1))
+		done
+	) >/dev/null 2>&1 &
+	echo OK
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
