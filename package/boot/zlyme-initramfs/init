@@ -44,6 +44,9 @@ commit_update() {
 	rm -rf /storage_root/.update/pending
 	rm -f /storage_root/.update/zlyme-my355-update.tar
 	rm -f /storage_root/.update/WANT
+	rm -f /storage_root/.update/zlyme-my355-[0-9]*.tar \
+		/storage_root/.update/zlyme-my355-[0-9]*.sha256 \
+		/storage_root/.update/zlyme-my355-[0-9]*.tar.sha256
 	sync
 	log "zlyme committed"
 	return 0
@@ -54,6 +57,10 @@ do_root() {
 	mount -t proc -o nodev,noexec,nosuid proc /proc || return 1
 	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
 	mount -t devtmpfs none /dev 2>/dev/null || true
+
+	if [ -x /zlyme-splash ]; then
+		/zlyme-splash /splash.rgb565 || true
+	fi
 
 	read -r cmdline < /proc/cmdline
 

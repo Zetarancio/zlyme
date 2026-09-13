@@ -30,7 +30,8 @@ define ZLYME_LINUX_ASSERT_CONFIG
 	               CONFIG_MODULE_UNLOAD=y CONFIG_SQUASHFS=y \
 	               CONFIG_VFAT_FS=y CONFIG_BLK_DEV_LOOP=y \
 	               CONFIG_EFI_PARTITION=y CONFIG_MMC_SDHCI_OF_DWCMSHC=y \
-	               CONFIG_MMC_DW_ROCKCHIP=y; do \
+	               CONFIG_MMC_DW_ROCKCHIP=y \
+	               CONFIG_FRAMEBUFFER_CONSOLE_DEFERRED_TAKEOVER=y; do \
 		grep -qx "$$opt" $(@D)/.config || { \
 			echo "zlyme: $$opt did not survive olddefconfig" >&2; exit 1; }; \
 	done
@@ -41,8 +42,13 @@ endef
 LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_ASSERT_CONFIG
 
 ifeq ($(BR2_PACKAGE_ZLYME_INITRAMFS),y)
-LINUX_DEPENDENCIES += zlyme-initramfs
+# linux/linux.mk $(eval)s before this file; LINUX_DEPENDENCIES += is ignored.
+$(LINUX_DIR)/.stamp_built: $(ZLYME_INITRAMFS_DIR)/.stamp_target_installed
 define ZLYME_LINUX_SET_INITRAMFS
+	$(Q)if [ ! -x $(BINARIES_DIR)/initramfs/init ]; then \
+		rm -f $(ZLYME_INITRAMFS_DIR)/.stamp_target_installed; \
+		$(MAKE) zlyme-initramfs; \
+	fi
 	$(Q)test -x $(BINARIES_DIR)/initramfs/init || { \
 		echo "zlyme: initramfs is missing (BR2_PACKAGE_ZLYME_INITRAMFS)" >&2; \
 		exit 1; }
