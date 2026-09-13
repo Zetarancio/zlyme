@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme20
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme22
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -93,6 +93,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
+	rm -f $(TARGET_DIR)/usr/share/nextui/res/branding/*.svg
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
