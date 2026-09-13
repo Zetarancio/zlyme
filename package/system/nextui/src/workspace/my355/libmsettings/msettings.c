@@ -15,7 +15,11 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <dirent.h>
+#include <stdint.h>
 #include <linux/input.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include "msettings.h"
 
@@ -25,7 +29,8 @@ typedef struct Settings {
 	int brightness;
 	int headphones;
 	int speaker;
-	int unused[2];
+	int contrast; /* NextUI -4..5, 0 = identity */
+	int saturation; /* NextUI -5..5, 0 = identity */
 	int jack;
 	int hdmi;
 	int audiosink;
@@ -106,6 +111,133 @@ static void putInt(char *path, int value)
 
 	snprintf(buffer, sizeof(buffer), "%d", value);
 	putFile(path, buffer);
+}
+
+static int clamp_int(int v, int lo, int hi)
+{
+	if (v < lo)
+		return lo;
+	if (v > hi)
+		return hi;
+	return v;
+}
+
+/* NextUI contrast -4..5 and saturation -5..5 map onto DRM TV 0–100 around 50. */
+static int contrast_to_drm(int ui)
+{
+	return clamp_int(50 + ui * 5, 0, 100);
+}
+
+static int saturation_to_drm(int ui)
+{
+	return clamp_int(50 + ui * 10, 0, 100);
+}
+
+static int existing_drm_fd(void)
+{
+	DIR *d = opendir("/proc/self/fd");
+	struct dirent *e;
+	int best = -1;
+
+	if (!d)
+		return -1;
+	while ((e = readdir(d))) {
+		char path[64], link[128];
+		ssize_t n;
+		int fd;
+
+		if (e->d_name[0] == '.')
+			continue;
+		fd = atoi(e->d_name);
+		snprintf(path, sizeof(path), "/proc/self/fd/%s", e->d_name);
+		n = readlink(path, link, sizeof(link) - 1);
+		if (n < 0)
+			continue;
+		link[n] = '\0';
+		if (!strstr(link, "dri/card"))
+			continue;
+		if (drmIsMaster(fd)) {
+			closedir(d);
+			return fd;
+		}
+		best = fd;
+	}
+	closedir(d);
+	return best;
+}
+
+static int open_drm_fd(int *owned)
+{
+	int fd = existing_drm_fd();
+	static const char *cards[] = { "/dev/dri/card0", "/dev/dri/card1", NULL };
+	int i;
+
+	*owned = 0;
+	if (fd >= 0)
+		return fd;
+	for (i = 0; cards[i]; i++) {
+		fd = open(cards[i], O_RDWR | O_CLOEXEC);
+		if (fd >= 0) {
+			*owned = 1;
+			return fd;
+		}
+	}
+	return -1;
+}
+
+static void set_conn_tv_prop(int fd, uint32_t conn_id, drmModeObjectProperties *props,
+			     const char *name, uint64_t value)
+{
+	uint32_t i;
+
+	for (i = 0; i < props->count_props; i++) {
+		drmModePropertyPtr p = drmModeGetProperty(fd, props->props[i]);
+
+		if (!p)
+			continue;
+		if (strcmp(p->name, name) == 0)
+			drmModeObjectSetProperty(fd, conn_id, DRM_MODE_OBJECT_CONNECTOR,
+						 p->prop_id, value);
+		drmModeFreeProperty(p);
+	}
+}
+
+static void apply_bcsh(void)
+{
+	int owned = 0;
+	int fd = open_drm_fd(&owned);
+	drmModeRes *res;
+	int ci;
+	int drm_c = contrast_to_drm(settings ? settings->contrast : 0);
+	int drm_s = saturation_to_drm(settings ? settings->saturation : 0);
+
+	if (fd < 0)
+		return;
+	res = drmModeGetResources(fd);
+	if (!res) {
+		if (owned)
+			close(fd);
+		return;
+	}
+	for (ci = 0; ci < res->count_connectors; ci++) {
+		drmModeConnector *conn = drmModeGetConnectorCurrent(fd, res->connectors[ci]);
+		drmModeObjectProperties *props;
+
+		if (!conn)
+			continue;
+		props = drmModeObjectGetProperties(fd, conn->connector_id, DRM_MODE_OBJECT_CONNECTOR);
+		if (props) {
+			set_conn_tv_prop(fd, conn->connector_id, props, "brightness", 50);
+			set_conn_tv_prop(fd, conn->connector_id, props, "contrast", (uint64_t)drm_c);
+			set_conn_tv_prop(fd, conn->connector_id, props, "saturation", (uint64_t)drm_s);
+			set_conn_tv_prop(fd, conn->connector_id, props, "hue", 50);
+			drmModeFreeObjectProperties(props);
+		}
+		drmModeFreeConnector(conn);
+	}
+	drmModeFreeResources(res);
+	if (owned)
+		close(fd);
 }
 
 static int HDMI_enabled(void)
@@ -191,6 +323,8 @@ void InitSettings(void)
 	settings->hdmi = HDMI_enabled();
 	SetVolume(GetVolume());
 	SetBrightness(GetBrightness());
+	SetContrast(GetContrast());
+	SetSaturation(GetSaturation());
 }
 
 void QuitSettings(void)
@@ -314,16 +448,42 @@ void SetDisplayCalGreenGain(int value) { (void)value; }
 void SetDisplayCalBlueGain(int value) { (void)value; }
 
 int GetColortemp(void) { return 0; }
-int GetContrast(void) { return 0; }
-int GetSaturation(void) { return 0; }
+int GetContrast(void)
+{
+	return settings ? clamp_int(settings->contrast, -4, 5) : 0;
+}
+int GetSaturation(void)
+{
+	return settings ? clamp_int(settings->saturation, -5, 5) : 0;
+}
 int GetExposure(void) { return 0; }
 void SetRawColortemp(int value) { (void)value; }
-void SetRawContrast(int value) { (void)value; }
-void SetRawSaturation(int value) { (void)value; }
+void SetRawContrast(int value)
+{
+	SetContrast((clamp_int(value, 0, 100) - 50) / 5);
+}
+void SetRawSaturation(int value)
+{
+	SetSaturation((clamp_int(value, 0, 100) - 50) / 10);
+}
 void SetRawExposure(int value) { (void)value; }
 void SetColortemp(int value) { (void)value; }
-void SetContrast(int value) { (void)value; }
-void SetSaturation(int value) { (void)value; }
+void SetContrast(int value)
+{
+	if (!settings)
+		return;
+	settings->contrast = clamp_int(value, -4, 5);
+	apply_bcsh();
+	SaveSettings();
+}
+void SetSaturation(int value)
+{
+	if (!settings)
+		return;
+	settings->saturation = clamp_int(value, -5, 5);
+	apply_bcsh();
+	SaveSettings();
+}
 void SetExposure(int value) { (void)value; }
 
 int GetAudioSink(void)
@@ -333,8 +493,21 @@ int GetAudioSink(void)
 
 void SetAudioSink(int value)
 {
+	const char *sink = "codec";
+
+	if (value == AUDIO_SINK_BLUETOOTH)
+		sink = "bt";
+	else if (value == AUDIO_SINK_HDMI)
+		sink = "hdmi";
+	else
+		value = AUDIO_SINK_DEFAULT;
 	if (settings)
 		settings->audiosink = value;
+	char cmd[80];
+
+	snprintf(cmd, sizeof(cmd), "zlyme-audio set %s >/dev/null 2>&1", sink);
+	if (system(cmd) != 0)
+		/* sink file may be missing before the card is mounted */;
 	SetVolume(GetVolume());
 }
 
