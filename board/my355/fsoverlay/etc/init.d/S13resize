@@ -3,12 +3,16 @@
 # Knulli S02resize: sgdisk -e, parted resizepart 100%, mkfs.exfat.
 # Runs after /boot is mounted and before S15 mounts /storage.
 # Never fail the boot.
-# Unmount /boot before GPT work; remount only to clear autoresize.
+#
+# Do not remount ZLYMEBOOT after GPT work. Last time umount-before-sgdisk
+# was not enough: sed -i + resize.log after partprobe still zeroed FAT1
+# (u-boot: Invalid FAT entry on /Image). A grown partition (>600MB) is
+# the latch; leave autoresize=true on the vfat alone.
 
 . /etc/zlyme.conf
 
-BOOTCONF="/boot/zlyme-boot.conf"
 LOG="/tmp/resize.log"
+BOOTCONF="/boot/zlyme-boot.conf"
 
 disk_of() {
 	# /dev/mmcblk0p4 -> /dev/mmcblk0 ; /dev/sda1 -> /dev/sda
@@ -27,17 +31,23 @@ label_dev() {
 	blkid | sed -n "s|^\\([^:]*\\):.*LABEL=\"$1\".*|\\1|p" | head -n 1
 }
 
+part_size_mb() {
+	p=$1
+	bytes=$(blockdev --getsize64 "$p" 2>/dev/null || true)
+	if [ -z "$bytes" ] || [ "$bytes" = 0 ]; then
+		b=$(basename "$p")
+		sec=$(cat "/sys/class/block/$b/size" 2>/dev/null || echo 0)
+		bytes=$((sec * 512))
+	fi
+	echo $((bytes / 1024 / 1024))
+}
+
 say() {
 	msg="$*"
 	echo "$msg"
 	[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
 	[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
 	[ -d "$(dirname "$LOG")" ] && echo "$msg" >>"$LOG" 2>/dev/null || true
-}
-
-remove_trigger() {
-	[ -f "$BOOTCONF" ] || return 0
-	sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF"
 }
 
 umount_path() {
@@ -47,19 +57,23 @@ umount_path() {
 }
 
 start() {
+	PART=$(label_dev ZLYME)
+	if [ -z "$PART" ]; then
+		return 0
+	fi
+
+	PARTSIZE=$(part_size_mb "$PART")
+	# Already grown (or not the factory seed). Never touch GPT or FAT.
+	if [ "$PARTSIZE" -gt 600 ]; then
+		return 0
+	fi
+
 	if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' "$BOOTCONF" 2>/dev/null; then
 		return 0
 	fi
 
 	say "Resizing storage: "
 	: > "$LOG"
-
-	BOOTDEV=$(label_dev ZLYMEBOOT)
-	PART=$(label_dev ZLYME)
-	if [ -z "$PART" ]; then
-		say "no ZLYME partition"
-		return 0
-	fi
 
 	DISK=$(disk_of "$PART")
 	PARTNUM=$(part_num_of "$PART")
@@ -78,7 +92,6 @@ start() {
 		return 0
 	fi
 
-	# Unmount /boot before sgdisk/partprobe.
 	if ! umount_path /boot; then
 		say "boot busy"
 		return 0
@@ -88,22 +101,7 @@ start() {
 		return 0
 	fi
 
-	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM Boot=$BOOTDEV" >>"$LOG"
-
-	# Knulli FORMAT_ALLOWED: only mkfs the factory seed (256/512M, we
-	# use 32). A larger partition already has user data; do not wipe.
-	PARTSIZE=$(blockdev --getsize64 "$PART" 2>/dev/null || true)
-	if [ -z "$PARTSIZE" ] || [ "$PARTSIZE" = 0 ]; then
-		b=$(basename "$PART")
-		sec=$(cat "/sys/class/block/$b/size" 2>/dev/null || echo 0)
-		PARTSIZE=$((sec * 512))
-	fi
-	PARTSIZE=$((PARTSIZE / 1024 / 1024))
-	echo "Initial partition size: ${PARTSIZE} MB" >>"$LOG"
-	FORMAT_SEED=0
-	if [ "$PARTSIZE" -gt 0 ] && [ "$PARTSIZE" -le 600 ]; then
-		FORMAT_SEED=1
-	fi
+	echo "Disk=$DISK Part=$PART PartNum=$PARTNUM size=${PARTSIZE}MB" >>"$LOG"
 
 	if ! sgdisk -e "$DISK" >>"$LOG" 2>&1; then
 		say "sgdisk -e failed"
@@ -120,37 +118,16 @@ start() {
 	partprobe "$DISK" >>"$LOG" 2>&1 || true
 	sleep 2
 
-	# exfatprogs 1.2.9 has no resize.exfat, so format fills the grown
-	# seed. Skip if this is not the factory size.
-	if [ "$FORMAT_SEED" = 1 ]; then
-		if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
-			say "mkfs.exfat failed"
-			return 0
-		fi
-	else
-		echo "skipping mkfs.exfat (not a seed partition)" >>"$LOG"
+	if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
+		say "mkfs.exfat failed"
+		return 0
 	fi
 
-	# Microsoft basic data so Windows/macOS see the exFAT volume.
 	sgdisk -t "${PARTNUM}:0700" "$DISK" >>"$LOG" 2>&1 || true
 	partprobe "$DISK" >>"$LOG" 2>&1 || true
 	sync
 
-	if [ -n "$BOOTDEV" ]; then
-		mkdir -p /boot
-		if mount -t vfat -o rw,noatime,utf8 "$BOOTDEV" /boot; then
-			remove_trigger
-			cp -f "$LOG" /boot/resize.log 2>/dev/null || true
-			sync
-			umount_path /boot
-			sync
-		else
-			say "could not remount boot to clear autoresize"
-		fi
-	fi
-
 	say "OK, rebooting"
-	# Partition table + mkfs.exfat are not live until reboot.
 	reboot -f
 	return 0
 }
