@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# Keep ZLYME_SINK in sync with a live A2DP headset. BlueZ auto-reconnect
+# and bluetoothctl never call `zlyme-audio set`, so RetroArch stays on
+# the speaker. ALSA picks the sink at PCM open: the session loop re-exports
+# and, if a pak is running, relaunches it.
+
+. /etc/zlyme.conf 2>/dev/null || true
+
+want_bt() {
+	bluealsa-cli list-pcms 2>/dev/null | grep -q a2dpsrc
+}
+
+reload_clients() {
+	# Transient A2DP drops (deep suspend re-enumerates 8733bu) must not
+	# kill the emulator — that restarts the ROM.
+	[ -f /tmp/zlyme-keep-emu ] && return 0
+	if pidof nextui.elf >/dev/null 2>&1; then
+		kill -9 $(pidof nextui.elf) 2>/dev/null || true
+		return 0
+	fi
+	touch /tmp/zlyme-sink-reload
+	for p in retroarch PPSSPPSDL flycast drastic moonlight gptokeyb; do
+		killall -9 "$p" 2>/dev/null || true
+	done
+}
+
+apply() {
+	want=$1
+	now=$(zlyme-audio get 2>/dev/null || echo codec)
+	[ "$now" = "$want" ] && return 0
+	zlyme-audio set "$want" >/dev/null 2>&1 || return 0
+	reload_clients
+}
+
+need() {
+	# Connecting buds should be snappy. Losing A2DP is often resume,
+	# not an unpair — wait longer before flipping to the speaker.
+	case "$1" in
+		bt) echo 2 ;;
+		*) echo 12 ;;
+	esac
+}
+
+# Foreground: called from S46 with start-stop-daemon -b.
+prev=""
+pending=""
+npending=0
+while :; do
+	if want_bt; then
+		cur=bt
+	else
+		cur=codec
+	fi
+	if [ -z "$prev" ]; then
+		apply "$cur"
+		prev=$cur
+		pending=""
+		npending=0
+	elif [ "$cur" = "$prev" ]; then
+		pending=""
+		npending=0
+	else
+		if [ "$pending" = "$cur" ]; then
+			npending=$((npending + 1))
+		else
+			pending=$cur
+			npending=1
+		fi
+		if [ "$npending" -ge "$(need "$cur")" ]; then
+			apply "$cur"
+			prev=$cur
+			pending=""
+			npending=0
+		fi
+	fi
+	sleep 1
+done

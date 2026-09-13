@@ -63,6 +63,13 @@ fi
 
 [ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage bind
 
+# PortMaster: /roms/ports is baked into the squashfs. If the card only
+# has lowercase ports, point the symlink there (needs a writable /roms).
+ports_dir="/storage/Roms/Ports (PORTS)"
+if [ ! -d "$ports_dir" ] && [ -d /storage/Roms/ports ]; then
+	ln -sfn /storage/Roms/ports /roms/ports 2>/dev/null || true
+fi
+
 # Refresh stock assets when the image version changes. Copying paks
 # onto exFAT blocked the first frame (Artwork Scraper.pak is large).
 # Bind the squashfs copies instead; that also hides stale card launch.sh.
@@ -226,6 +233,10 @@ while [ -f "$EXEC_PATH" ]; do
 		printf '%s' "$last" > /tmp/last.txt
 	fi
 	killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
+	# ALSA default PCM reads ZLYME_SINK at open. Re-export every loop.
+	if command -v zlyme-audio >/dev/null 2>&1; then
+		eval "$(zlyme-audio export 2>/dev/null)" || true
+	fi
 	nextui.elf >> "$LOGS_PATH/nextui.txt" 2>&1
 	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
 	# on SIGTERM; if /tmp/next is set, run that instead.
@@ -236,8 +247,21 @@ while [ -f "$EXEC_PATH" ]; do
 		echo "RUN $cmd" >> "$LOGS_PATH/next.txt"
 		# DRM master from nextui.elf is not always gone on the next line.
 		sleep 0.4
+		if command -v zlyme-audio >/dev/null 2>&1; then
+			eval "$(zlyme-audio export 2>/dev/null)" || true
+		fi
 		eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
 		st=$?
+		# A2DP connect/disconnect: zlyme-btsink kills the emu and
+		# asks us to open it again with the new ZLYME_SINK.
+		while [ -f /tmp/zlyme-sink-reload ]; do
+			rm -f /tmp/zlyme-sink-reload
+			if command -v zlyme-audio >/dev/null 2>&1; then
+				eval "$(zlyme-audio export 2>/dev/null)" || true
+			fi
+			eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
+			st=$?
+		done
 		# minui-list B/menu is 2/3, not a crash.
 		case "$st" in
 			0|2|3) ;;

@@ -149,5 +149,18 @@ if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	exit 0
 fi
 
+# Heavy cores (PPSSPP/Flycast/Mupen/Yaba/DraStic) take Performance; others Smart.
+if command -v zlyme-governor >/dev/null 2>&1; then
+	zlyme-governor emu "$@" >/dev/null 2>&1 || true
+elif [ -x /usr/share/nextui/bin/governor.sh ]; then
+	/usr/share/nextui/bin/governor.sh emu "$@" >/dev/null 2>&1 || true
+fi
+# Modeset from NextUI can drop VOP2 TV props; re-apply before RA takes DRM.
+command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
+
+if command -v zlyme-audio >/dev/null 2>&1; then
+	eval "$(zlyme-audio export 2>/dev/null)" || true
+fi
+
 # MENU opens the RetroArch menu; MENU+Start exits to NextUI.
 exec retroarch --appendconfig "$APPEND" "$@"

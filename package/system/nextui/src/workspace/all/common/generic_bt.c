@@ -21,6 +21,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
 
 bool PLAT_hasBluetooth() { return true; }
 bool PLAT_bluetoothEnabled() { return CFG_getBluetooth(); }
@@ -500,16 +501,32 @@ void PLAT_bluetoothUnpair(char *addr) {
 	}
 }
 
+static int bt_addr_is_audio(const char *addr)
+{
+	char cmd[320];
+	char output[4096];
+
+	if (!addr || !addr[0])
+		return 0;
+	snprintf(cmd, sizeof(cmd), "bluetoothctl info %s 2>/dev/null", addr);
+	if (bt_run_cmd(cmd, output, sizeof(output)) != 0)
+		return 0;
+	if (strstr(output, "0000110b") || strstr(output, "Audio Sink") || strstr(output, "A2DP"))
+		return 1;
+	return 0;
+}
+
 void PLAT_bluetoothConnect(char *addr) {
 	btlog("Connecting to %s\n", addr);
 	
 	char cmd[256];
 	snprintf(cmd, sizeof(cmd), "bluetoothctl connect %s 2>/dev/null", addr);
-	int ret = system(cmd);
-	if (ret != 0) {
-		LOG_error("BT connect failed: %d\n", ret);
+	system(cmd);
+	/* bluetoothctl often returns 1 after a successful connect. */
+	if (bt_addr_is_audio(addr)) {
+		system("zlyme-audio set bt >/dev/null 2>&1");
+		SetAudioSink(AUDIO_SINK_BLUETOOTH);
 	}
-	LOG_info("BT connect returned: %d\n", ret);
 }
 
 void PLAT_bluetoothDisconnect(char *addr) {
@@ -520,6 +537,10 @@ void PLAT_bluetoothDisconnect(char *addr) {
 	int ret = system(cmd);
 	if (ret != 0) {
 		LOG_error("BT disconnect failed: %d\n", ret);
+	}
+	if (bt_addr_is_audio(addr) && GetAudioSink() == AUDIO_SINK_BLUETOOTH) {
+		system("zlyme-audio set codec >/dev/null 2>&1");
+		SetAudioSink(AUDIO_SINK_DEFAULT);
 	}
 }
 
@@ -598,6 +619,15 @@ static char watched_file_path[MAX_PATH];
 
 // Function to detect audio device type from .asoundrc content
 static int detect_audio_device_type() {
+	const char *sink = getenv("ZLYME_SINK");
+	if (sink && sink[0]) {
+		if (strcmp(sink, "bt") == 0)
+			return AUDIO_SINK_BLUETOOTH;
+		if (strcmp(sink, "hdmi") == 0)
+			return AUDIO_SINK_HDMI;
+		return AUDIO_SINK_DEFAULT;
+	}
+
     FILE *file = fopen(watched_file_path, "r");
     if (!file) {
 		//LOG_info("detect_audio_device_type: .asoundrc not found, defaulting to AUDIO_SINK_DEFAULT\n");

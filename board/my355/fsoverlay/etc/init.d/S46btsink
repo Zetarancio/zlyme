@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Follow A2DP connect/disconnect so the ALSA default sink matches.
+
+DAEMON=/usr/sbin/zlyme-btsink
+PIDFILE=/var/run/zlyme-btsink.pid
+
+start() {
+	[ -x "$DAEMON" ] || return 0
+	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want bluetooth; then
+		return 0
+	fi
+	printf "Starting zlyme-btsink: "
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo already
+		return 0
+	fi
+	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON"; then
+		echo OK
+	else
+		echo FAIL
+	fi
+}
+
+stop() {
+	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null || true
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

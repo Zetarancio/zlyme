@@ -19,6 +19,10 @@ start() {
 		return 0
 	fi
 
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo "Starting bluealsad: already running"
+		return 0
+	fi
 	printf "Starting bluealsad: "
 	if start-stop-daemon -S -q -b -m -p "$PIDFILE" \
 		--exec "$DAEMON" -- -p a2dp-source

@@ -4269,15 +4269,23 @@ static void PWR_enterSleep(void)
 	system("killall -STOP batmon.elf");
 	system("killall -STOP audiomon.elf");
 
+	PWR_setCPUSpeed(CPU_SPEED_POWERSAVE);
+
 	PWR_updateFrequency(-1, false);
 
 	sync();
+	/* ROCKNIX sleep.sh: stop BT (and Wi-Fi) before mem so the combo
+	 * chip GPIO cut in rtl8733bu_power_suspend_late cannot hang
+	 * hci_dev_close during freeze. */
+	system("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 }
 static void PWR_exitSleep(void)
 {
 	LEDS_popProfileOverride(LIGHT_PROFILE_SLEEP);
 
 	PWR_updateFrequency(-1, true);
+
+	PWR_setCPUSpeed(CPU_SPEED_AUTO);
 
 	system("killall -CONT keymon.elf");
 	system("killall -CONT batmon.elf");
@@ -4304,7 +4312,7 @@ static void PWR_exitSleep(void)
 	/* USB wifi (8733bu) is re-probed after mem. udhcpc/wpa do not
 	 * come back unless we start them again. Background: S30 waits
 	 * up to ~15s for association and would freeze the UI thread. */
-	system("/etc/init.d/S30wifi start >/dev/null 2>&1 &");
+	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1 &");
 
 	sync();
 }

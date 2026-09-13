@@ -23,6 +23,10 @@ start() {
 		return 0
 	fi
 	DAEMON=$(daemon) || return 0
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo "Starting $NAME: already running"
+		return 0
+	fi
 	printf "Starting %s: " "$NAME"
 	# BlueZ 5 stays in the foreground unless we background it. Without -b,
 	# rcS never finishes, getty never starts, and serial has no login.

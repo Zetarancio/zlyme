@@ -1,0 +1,46 @@
+#!/bin/sh
+# Ordered Wi-Fi then BT. ROCKNIX sleep.sh stops Bluetooth *before* mem so
+# rtl8733bu_power_suspend_late can cut the combo-chip GPIO without
+# hci_dev_close hanging freeze. Resume is the reverse: Wi-Fi first.
+
+dmc_kick() {
+	d=/sys/class/devfreq/dmc
+	[ -w "$d/governor" ] || return 0
+	g=$(tr -d ' \n' < "$d/governor")
+	min=$(tr -d ' \n' < "$d/min_freq")
+	max=$(tr -d ' \n' < "$d/max_freq")
+	[ -n "$g" ] || return 0
+	# After mem, cur_freq can sit at 1056M while min=max=324 until an
+	# OPP change. Open the range, then restore whatever profile we had.
+	printf '%s\n' 324000000 > "$d/min_freq"
+	printf '%s\n' 1056000000 > "$d/max_freq"
+	printf '%s\n' simple_ondemand > "$d/governor"
+	[ -n "$min" ] && printf '%s\n' "$min" > "$d/min_freq"
+	[ -n "$max" ] && printf '%s\n' "$max" > "$d/max_freq"
+	printf '%s\n' "$g" > "$d/governor"
+}
+
+case "${1:-}" in
+	pre)
+		touch /tmp/zlyme-keep-emu
+		[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink stop
+		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
+		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop
+		[ -x /etc/init.d/S30wifi ] && /etc/init.d/S30wifi stop
+		;;
+	resume)
+		[ -x /etc/init.d/S30wifi ] && /etc/init.d/S30wifi start
+		[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
+		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
+		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
+		[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink start
+		dmc_kick
+		# 8733bu re-enumerates for many seconds. Dropping the hold
+		# immediately lets btsink treat that as an unpair and kill RA.
+		( sleep 25; rm -f /tmp/zlyme-keep-emu ) &
+		;;
+	*)
+		echo "usage: $0 {pre|resume}" >&2
+		exit 1
+		;;
+esac
