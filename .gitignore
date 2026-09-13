@@ -4,9 +4,6 @@
 # Device serial dumps and session lab notes.
 /DEVLOGS/
 
-# Build instructions (unpublished for now).
-/README.md
-
 # Machine-local paths. See storage.sh.example.
 storage.sh
 
