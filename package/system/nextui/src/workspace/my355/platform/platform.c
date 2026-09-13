@@ -443,22 +443,34 @@ void *PLAT_cpu_monitor(void *arg) {
 
 void PLAT_setCPUSpeed(int speed) {
 	const char* mode;
+	char script[512];
 	switch (speed) {
-		case CPU_SPEED_AUTO: mode = "auto"; break;
+		case CPU_SPEED_AUTO: mode = "smart"; break;
 		case CPU_SPEED_PERFORMANCE: mode = "performance"; break;
-		case CPU_SPEED_POWERSAVE: mode = "powersave"; break;
+		case CPU_SPEED_POWERSAVE: mode = "idle"; break;
 		default: return;
 	}
-	
-	const char* system_path = getenv("SYSTEM_PATH");
-	if (!system_path) {
-		LOG_info("WARNING: SYSTEM_PATH not set, cannot run governor script\n");
-		return;
+
+	if (access("/usr/sbin/zlyme-governor", X_OK) == 0)
+		snprintf(script, sizeof(script), "/usr/sbin/zlyme-governor");
+	else if (access("/usr/share/nextui/bin/governor.sh", X_OK) == 0)
+		snprintf(script, sizeof(script), "/usr/share/nextui/bin/governor.sh");
+	else {
+		const char* system_path = getenv("SYSTEM_PATH");
+		if (!system_path) {
+			LOG_info("WARNING: governor script missing\n");
+			return;
+		}
+		int n = snprintf(script, sizeof(script), "%s/bin/governor.sh", system_path);
+		if (n < 0 || n >= (int)sizeof(script) || access(script, X_OK) != 0) {
+			LOG_info("WARNING: SYSTEM_PATH governor missing\n");
+			return;
+		}
 	}
-	char cmd[512];
-	int n = snprintf(cmd, sizeof(cmd), "sh \"%s/bin/governor.sh\" \"%s\"", system_path, mode);
+	char cmd[640];
+	int n = snprintf(cmd, sizeof(cmd), "sh \"%s\" \"%s\"", script, mode);
 	if (n < 0 || n >= (int)sizeof(cmd)) {
-		LOG_info("WARNING: SYSTEM_PATH too long for governor script path\n");
+		LOG_info("WARNING: governor command too long\n");
 		return;
 	}
 	int ret = system(cmd);
