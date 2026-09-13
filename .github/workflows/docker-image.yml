@@ -1,0 +1,32 @@
+# Build and push ghcr.io/<owner>/zlyme-build:latest
+# Replace nothing: github.repository_owner is the org/user after you push.
+
+name: Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - Dockerfile
+      - .github/workflows/docker-image.yml
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        run: |
+          img="ghcr.io/${{ github.repository_owner }}/zlyme-build:latest"
+          docker build -t "$img" - < Dockerfile
+          docker push "$img"
