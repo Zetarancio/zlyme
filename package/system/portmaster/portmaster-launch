@@ -96,9 +96,13 @@ export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
 # harbourmaster defaults to /roms/ports (RO squashfs). Zlyme ROMs live here.
-mkdir -p /storage/Roms/PORTS /storage/Roms/.portmaster/PortMaster
-export HM_PORTS_DIR=/storage/Roms/PORTS
-export HM_SCRIPTS_DIR=/storage/Roms/PORTS
+ports_dir="/storage/Roms/Ports (PORTS)"
+if [ ! -d "$ports_dir" ] && [ -d /storage/Roms/ports ]; then
+	ports_dir=/storage/Roms/ports
+fi
+mkdir -p "$ports_dir" /storage/Roms/.portmaster/PortMaster
+export HM_PORTS_DIR="$ports_dir"
+export HM_SCRIPTS_DIR="$ports_dir"
 export HM_TOOLS_DIR=/storage/Roms/.portmaster
 seed_zlyme_theme
 # Saying yes to a GUI self-update (or a timed-out one) leaves this

@@ -60,12 +60,22 @@ shopt -u nullglob
 
 rm -rf "${TARGET_DIR}/var/lib/bluetooth"
 ln -sfn /run/bluetooth "${TARGET_DIR}/var/lib/bluetooth"
+# Samba private/msg.sock needs unix 0700; ZLYME is exFAT. tmpfs is enough
+# for a guest share (no persisted secrets).
+rm -rf "${TARGET_DIR}/var/lib/samba"
+ln -sfn /tmp/samba-lib "${TARGET_DIR}/var/lib/samba"
 
 # Library-card mountpoints must exist on the squashfs; mkdir at runtime
 # cannot create them on a read-only /mnt. /boot must exist so initramfs
 # can mount --move ZLYMEBOOT onto it.
 mkdir -p "${TARGET_DIR}/mnt/sd2" "${TARGET_DIR}/mnt/media" "${TARGET_DIR}/boot"
 ln -sfn /storage "${TARGET_DIR}/mnt/SDCARD"
+# PortMaster scripts source /roms/ports/PortMaster/control.txt and set
+# GAMEDIR=/$directory/ports/<name> with directory=roms. NextUI's folder
+# is "Ports (PORTS)". /opt/system/Tools/PortMaster is the other lookup.
+mkdir -p "${TARGET_DIR}/roms" "${TARGET_DIR}/opt/system/Tools"
+ln -sfn "/storage/Roms/Ports (PORTS)" "${TARGET_DIR}/roms/ports"
+ln -sfn /roms/ports/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
 
 chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-led" \
@@ -80,6 +90,10 @@ chmod 0755 \
 	note "sshd is missing (BR2_PACKAGE_OPENSSH)"
 [ -e "${TARGET_DIR}/usr/bin/scp" ] || note "scp is missing (OpenSSH client)"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-audio" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-audio"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-btsink" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-btsink"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-radios" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-radios"
+[ -e "${TARGET_DIR}/etc/init.d/S46btsink" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S46btsink"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
@@ -95,10 +109,13 @@ if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then
 	[ -f "$sysc" ] || note "python sysconfigdata .py is missing (host pyc was unreadable)"
 	[ -s "${TARGET_DIR}/etc/ssl/certs/ca-certificates.crt" ] || \
 		note "ca-certificates.crt is missing (PortMaster HTTPS)"
+	if [ ! -x "${TARGET_DIR}/usr/bin/bash" ] && [ ! -x "${TARGET_DIR}/bin/bash" ]; then
+		note "bash is missing (PortMaster scripts are #!/bin/bash)"
+	fi
 fi
 
 for l in var/cache var/log var/spool var/tmp var/run var/lock var/lib/dbus \
-	 var/lib/bluetooth; do
+	 var/lib/bluetooth var/lib/samba; do
 	[ -L "${TARGET_DIR}/${l}" ] || note "/${l} is not a symlink"
 done
 if grep -qE '^[^#]*[[:space:]]/var[[:space:]]' "${TARGET_DIR}/etc/fstab"; then
