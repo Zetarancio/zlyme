@@ -12,7 +12,17 @@ start() {
 		echo "Samba: disabled"
 		return 0
 	fi
-	mkdir -p /var/log/samba /var/lib/samba /var/run/samba 2>/dev/null
+	# squashfs /var/lib is read-only. Samba requires unix mode 0700 on
+	# private/msg.sock; ZLYME is exFAT and cannot. Use tmpfs.
+	RUNTIME=/tmp/samba-lib
+	mkdir -p "$RUNTIME/private" /var/log/samba /var/run/samba 2>/dev/null
+	chmod 0700 "$RUNTIME/private" 2>/dev/null || true
+	if [ -d /var/lib/samba ] && [ ! -L /var/lib/samba ]; then
+		mountpoint -q /var/lib/samba 2>/dev/null || \
+			mount --bind "$RUNTIME" /var/lib/samba 2>/dev/null || true
+	fi
+	mkdir -p /var/lib/samba/private 2>/dev/null
+	chmod 0700 /var/lib/samba/private 2>/dev/null || true
 	printf "Starting smbd: "
 	if start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D; then
 		echo "OK"
