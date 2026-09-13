@@ -6,7 +6,7 @@ Zlyme is a custom OS for the **Miyoo Flip** based on buildroot, running mainline
 
 The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI) (itself from [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman)). There is no desktop and no compositor. **It boots in under 10 seconds.** 
 
-**Everything on the device works:** Wi-Fi, Bluetooth (including audio and controller), HDMI, sleep, the lid, analog sticks, rumble, the headphone jack, USB OTG, and both SD slots are supported. It feature a Dynamic Scaling Ram driver to save battery when playing light games, does not drain while off.
+**Everything on the device works:** Wi-Fi, Bluetooth (including audio and controller), HDMI, sleep, the lid, analog sticks, rumble, the headphone jack, USB OTG, and both SD slots are supported. It feature a dynamic scaling ram driver to save battery when playing light games, does not drain while off.
 
 Pull requests and other contributions are welcome, if needed other systems will be supported.
 
@@ -14,7 +14,8 @@ Kernel, boot, and flashing detail lives in the [Miyoo Flip wiki](https://github.
 
 ## Features
 
-Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few libretro cores that miscompile are pinned back to `-O2` so they stay correct. The kernel stays on its usual performance profile.
+Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few libretro cores that miscompile are pinned back to `-O2` so they stay correct. The kernel stays on its usual performance profile. It offers both mali and panfrost (only mali supports Vulkan as of now). Optimized core pinning and per-emulator performance settings battle-tested by the friends at [SpruceOS](https://spruceui.github.io/).  
+
 
 “It’s not buttery smooth. It’s slime-smooth.”  
 
@@ -141,7 +142,7 @@ The image lands in `output/images/`.
 
 ## Thanks
 
-[Sundownersport](https://github.com/Sundownersport) and the community behind [SpruceOS]([https://spruceui.github.io/](https://spruceui.github.io/)) for their continuing work and support.  
+[Sundownersport](https://github.com/Sundownersport) and the community behind [SpruceOS](https://spruceui.github.io/) for their continuing work and support.  
 The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355). 
 
 ## License
