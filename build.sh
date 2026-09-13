@@ -107,7 +107,7 @@ build_container() {
 # Host gcc is still --prefix=/flip/output/host, so the same output tree is
 # also mounted at /flip/output. Do not byte-replace those paths in ELFs.
 in_container() {
-    docker run --rm -i ${TTY_FLAG} \
+    docker run --rm -i ${TTY_FLAG} --privileged \
         --user "$(id -u):$(id -g)" \
         -e HOME=/tmp \
         -e BR2_DL_DIR=/zlyme/dl \
