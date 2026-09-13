@@ -59,3 +59,34 @@ CONFIG_BT_HIDP=m
 # CONFIG_DEBUG_DEVRES is not set
 # CONFIG_KALLSYMS_ALL is not set
 CONFIG_KALLSYMS=y
+# --- Stage 8: conservative, zram lz4, unused USB-net / camera / PCIe PHY ---
+CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y
+CONFIG_ZRAM_DEF_COMP_LZ4=y
+# CONFIG_ZRAM_DEF_COMP_LZORLE is not set
+CONFIG_ZRAM_DEF_COMP="lz4"
+
+# USB ethernet dongles. eudev would autoload =m on a matching modalias.
+# CONFIG_USB_RTL8150 is not set
+# CONFIG_USB_RTL8152 is not set
+# CONFIG_USB_RTL8153_ECM is not set
+# CONFIG_USB_NET_AX8817X is not set
+# CONFIG_USB_NET_AX88179_178A is not set
+# CONFIG_USB_NET_CDCETHER is not set
+# CONFIG_USB_NET_CDC_NCM is not set
+# CONFIG_USB_NET_CDC_MBIM is not set
+# CONFIG_USB_NET_RNDIS_HOST is not set
+# CONFIG_USB_NET_QMI_WWAN is not set
+# CONFIG_USB_RTL8153_ECM is not set
+
+# No camera / CSI on this board. Keep DSI PHY.
+# CONFIG_MEDIA_CAMERA_SUPPORT is not set
+# CONFIG_PHY_ROCKCHIP_DPHY_RX0 is not set
+# CONFIG_PHY_ROCKCHIP_INNO_CSIDPHY is not set
+
+# No PCIe on the Flip.
+# CONFIG_PHY_ROCKCHIP_PCIE is not set
+# CONFIG_PHY_ROCKCHIP_SNPS_PCIE3 is not set
+
+# Keep DEBUG_KERNEL. Too early to strip; OOT this_module size tracks debug flags.
+CONFIG_DEBUG_KERNEL=y
+

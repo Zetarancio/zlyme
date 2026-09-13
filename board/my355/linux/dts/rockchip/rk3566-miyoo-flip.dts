@@ -565,7 +565,8 @@
 };
 
 /* OPP clock-latency: cpufreq transition_latency. 300 ms avoids I2C storm (DVFS via PMIC on I2C).
- * schedutil uses it for rate_limit_us; ondemand still needs 300 ms sampling_rate in profile.d.
+ * Smart uses schedutil (this value is rate_limit_us). If ondemand is used, it still needs
+ * a 300 ms sampling_rate in userspace — do not drop this latency.
  */
 &cpu0_opp_table {
 	opp-408000000 {
