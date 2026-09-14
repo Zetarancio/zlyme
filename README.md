@@ -1,4 +1,4 @@
-![Zlyme](package/system/nextui/res/branding/zlyme-horizontal-lockup-exact.svg)
+![Zlyme](package/system/nextui/res/branding/zlyme-horizontal-exact.svg)
 
 **Low latency. High viscosity.**
 
@@ -55,7 +55,7 @@ Speaker vs jack is automatic (`flip-jackd`). Bluetooth audio follows the headset
 
 ## Install
 
-GitHub Actions and Releases are not live yet. When they are, a downloadable image and an update tar will appear on this repository’s Releases page.
+GitHub Actions builds the image on push to `main`. A downloadable `zlyme.img` and an update tar appear on this repository’s Releases page after a `workflow_dispatch` run (or a tag).
 
 The Flip will not boot an SD OS until you change how it starts. Without one of the steps below, it keeps booting stock from internal storage and ignores the card.
 
