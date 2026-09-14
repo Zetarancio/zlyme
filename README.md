@@ -68,7 +68,31 @@ Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). 
 
 Games live on the **ZLYME** partition (`/storage`). NextUI only lists a system if that folder exists and is not empty. The name must include the tag in parentheses — that tag is how the pak is chosen. A slash in the name (`2000/2003`) becomes nested directories; use the hyphenated names in the table. Libretro cores run through RetroArch; the rest are standalones.
 
-BIOS files go in `Bios/` (RetroArch `system` dir). Pico-8’s `pico8_64` + `pico8.dat` go in `Bios/PICO`. EasyRPG RTP is `Bios/rtp/2000` and `Bios/rtp/2003`. mkxp-z RTP is `Bios/mkxp-z/RTP`. A second card in the other slot is picked up if it has a `Roms/` (or `roms/`) folder, including Spruce short names (`EASYRPG`, `MKXP-Z`); `Bios/` or `Roms/bios` on that card is used the same way. Saves are `Saves/`. Box art is `{folder}/.media/{rom}.png` (Spruce `Imgs/` is copied there). Multi-disc games use a `Game.m3u` next to a `Game/` folder of `.chd`/`.cue` files; playlist lines are paths relative to the `.m3u`.
+BIOS files go in `Bios/` (RetroArch `system` dir). Pico-8’s `pico8_64` + `pico8.dat` go in `Bios/PICO`. EasyRPG RTP is `Bios/rtp/2000` and `Bios/rtp/2003`. mkxp-z RTP is `Bios/mkxp-z/RTP`. A second card in the other slot is picked up if it has a `roms/` or `Roms/` folder using the **same `Pretty (TAG)` names** as the table. BIOS on that card is `Bios/` at the card root. Saves are `Saves/`.
+
+Box art is NextUI’s `{folder}/.media/{rom stem}.png` (same basename as the game file or playlist, `.png`). Put art there; Zlyme does not read EmulationStation `images/` or Spruce `Imgs/`.
+
+### Multi-disc (`.m3u`)
+
+NextUI lists the `.m3u` as the game. Put the discs in a folder with the **same name** as the playlist (no leading `.` or `_`):
+
+```
+Roms/Sony PlayStation (PS)/
+  Game Name.m3u
+  Game Name/
+    Game Name (Disc 1).chd
+    Game Name (Disc 2).chd
+  .media/Game Name.png
+```
+
+Playlist lines are paths **relative to the `.m3u`**, Unix newlines, no leading slash:
+
+```
+Game Name/Game Name (Disc 1).chd
+Game Name/Game Name (Disc 2).chd
+```
+
+Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap discs. Saturn and Amiga do not use `.m3u` on this image. PC Engine, DOS, Dreamcast, and PlayStation do.
 
 | System | Emulator | Folder | Files |
 | --- | --- | --- | --- |
