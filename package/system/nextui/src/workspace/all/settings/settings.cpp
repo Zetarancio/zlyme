@@ -22,6 +22,8 @@ extern "C"
 #include <atomic>
 #include <mutex>
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include "wifimenu.hpp"
 #include "btmenu.hpp"
 #include "keyboardprompt.hpp"
@@ -206,6 +208,49 @@ namespace {
         return "";
     }
 
+    static std::string trim_nl(std::string s) {
+        while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' '))
+            s.pop_back();
+        size_t i = 0;
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\n' || s[i] == '\r'))
+            i++;
+        return s.substr(i);
+    }
+
+    static std::string nextui_short_version() {
+        std::ifstream t(ROOT_SYSTEM_PATH "/version.txt");
+        std::string s((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+        s = trim_nl(s);
+        auto pos = s.rfind("-zlyme");
+        if (pos != std::string::npos)
+            s = s.substr(pos + 1);
+        std::ifstream d("/usr/share/nextui/build-date.txt");
+        std::string date;
+        if (d)
+            std::getline(d, date);
+        date = trim_nl(date);
+        if (!date.empty()) {
+            if (s.empty())
+                s = date;
+            else
+                s += " (" + date + ")";
+        }
+        if (s.empty())
+            s = "unknown";
+        return s;
+    }
+
+    static std::string kernel_version() {
+        std::string s = trim_nl(execCommand("uname -r"));
+        return s.empty() ? "unknown" : s;
+    }
+
+    static std::string wlan_ip() {
+        std::string s = trim_nl(execCommand(
+            "ip -4 -o addr show wlan0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1"));
+        return s.empty() ? "not connected" : s;
+    }
+
     class DeviceInfo {
     public:
         enum Vendor {
@@ -269,7 +314,9 @@ namespace {
         }
 
         bool hasContrastSaturation() const {
-            return m_platform == my355 || m_platform == tg5040;
+            /* VOP2 TV contrast/saturation blacks this DSI panel. Brightness
+             * and hue identity (50) stay in apply_bcsh. */
+            return m_platform == tg5040;
         }
 
         bool hasExposure() const {
@@ -1008,16 +1055,8 @@ int main(int argc, char *argv[])
 
         auto aboutMenu = new MenuList(MenuItemType::Fixed, "About",
         {
-            new StaticMenuItem{ListItemType::Generic, "NextUI", "Frontend pin from the image.",
-            []() -> std::any {
-                std::ifstream t(ROOT_SYSTEM_PATH "/version.txt");
-                std::string s((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-                while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
-                    s.pop_back();
-                if (s.empty())
-                    s = "unknown";
-                return s;
-            }},
+            new StaticMenuItem{ListItemType::Generic, "NextUIzlyme", "Frontend pin from the image.",
+            []() -> std::any { return nextui_short_version(); }},
             new StaticMenuItem{ListItemType::Generic, "Hardware", "Board name from the platform layer.",
             []() -> std::any {
                 return std::string(PLAT_getModel()); }
@@ -1039,6 +1078,12 @@ int main(int argc, char *argv[])
                 }
                 return pretty;
             }},
+            new StaticMenuItem{ListItemType::Generic, "Kernel", "uname -r",
+            []() -> std::any { return kernel_version(); }},
+            new StaticMenuItem{ListItemType::Generic, "SSH", "OpenSSH login. Password is empty.",
+            []() -> std::any { return std::string("root / (empty)"); }},
+            new StaticMenuItem{ListItemType::Generic, "IP", "wlan0 IPv4 when associated.",
+            []() -> std::any { return wlan_ip(); }},
             new StaticMenuItem{ListItemType::Generic, "BusyBox", "Init and core utilities.",
             [&]() -> std::any { return bbver; }
             },

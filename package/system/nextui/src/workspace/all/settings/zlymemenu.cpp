@@ -271,7 +271,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 		std::string("battery"), std::string("green"), std::string("red"), std::string("off")};
 	const std::vector<std::string> led_l = {"Battery", "Green", "Red", "Off"};
 	items.push_back(new MenuItem{ListItemType::Generic, "Status LED",
-		"Green on battery, red while charging. Low battery flashes red.",
+		"Battery: auto (green, red charging, flash if low). Green/Red/Off lock the colour.",
 		led_v, led_l,
 		[]() -> std::any {
 			std::string l = ctl_get("led");
@@ -299,7 +299,7 @@ void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
 		"Save .config and .userdata to /storage/zlyme-backup.tar.gz",
 		Zlyme_backup});
 	items.push_back(new MenuItem{ListItemType::Button, "Restore backup",
-		"Extract /storage/zlyme-backup.tar.gz over .config and .userdata. Reboot after.",
+		"Unpack zlyme-backup.tar.gz. Reboot after.",
 		Zlyme_restoreBackup});
 }
 

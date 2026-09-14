@@ -451,9 +451,21 @@ InputReactionHint MenuList::handleInput(int &dirty, int &quit)
         return NoOp;
     }
 
-    ReadLock r(itemLock);
-    if (items.empty() || scope.selected < 0 || scope.selected >= (int)items.size())
-        return Unhandled;
+	ReadLock r(itemLock);
+	if (items.empty() || scope.selected < 0 || scope.selected >= (int)items.size())
+	{
+		if (type == MenuItemType::Custom)
+		{
+			/* KeyboardPrompt has no rows; still consume dpad/A. */
+			if (PAD_justPressed(BTN_B))
+			{
+				quit = 1;
+				return NoOp;
+			}
+			return Unhandled;
+		}
+		return Unhandled;
+	}
     InputReactionHint handled = items[scope.selected]->handleInput(dirty);
     if(handled == ResetAllItems) {
         resetAllItems();
@@ -562,7 +574,14 @@ void MenuList::draw(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &d
 
     ReadLock r(itemLock);
     if (items.empty())
+    {
+        if (type == MenuItemType::Custom)
+        {
+            drawCustom(surface, dst, dstTitle);
+            return;
+        }
         return;
+    }
     if (scope.selected < 0 || scope.selected >= (int)items.size())
         return;
 

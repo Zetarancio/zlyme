@@ -122,16 +122,8 @@ static int clamp_int(int v, int lo, int hi)
 	return v;
 }
 
-/* NextUI contrast -4..5 and saturation -5..5 map onto DRM TV 0–100 around 50. */
-static int contrast_to_drm(int ui)
-{
-	return clamp_int(50 + ui * 5, 0, 100);
-}
-
-static int saturation_to_drm(int ui)
-{
-	return clamp_int(50 + ui * 10, 0, 100);
-}
+/* Contrast/saturation mapping kept out of apply_bcsh: those DRM TV
+ * properties black this DSI panel. Identity is 50. */
 
 static int existing_drm_fd(void)
 {
@@ -208,8 +200,10 @@ static void apply_bcsh(void)
 	int fd = open_drm_fd(&owned);
 	drmModeRes *res;
 	int ci;
-	int drm_c = contrast_to_drm(settings ? settings->contrast : 0);
-	int drm_s = saturation_to_drm(settings ? settings->saturation : 0);
+	/* Contrast/saturation on this DSI panel go black (identity is 50).
+	 * Keep brightness and hue at identity. */
+	int drm_c = 50;
+	int drm_s = 50;
 
 	if (fd < 0)
 		return;
@@ -321,10 +315,13 @@ void InitSettings(void)
 
 	settings->jack = jack_from_evdev();
 	settings->hdmi = HDMI_enabled();
+	if (settings->contrast != 0)
+		settings->contrast = 0;
+	if (settings->saturation != 0)
+		settings->saturation = 0;
 	SetVolume(GetVolume());
 	SetBrightness(GetBrightness());
-	SetContrast(GetContrast());
-	SetSaturation(GetSaturation());
+	apply_bcsh();
 }
 
 void QuitSettings(void)
