@@ -161,6 +161,8 @@ for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra
 done
 [ -s "$MINUI_RA" ] && APPEND="$APPEND,$MINUI_RA"
 APPEND="$APPEND,$RA_AC"
+THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
+[ -s "$THEME" ] && APPEND="$APPEND,$THEME"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"

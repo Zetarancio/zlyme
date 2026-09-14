@@ -29,10 +29,12 @@ define VTREE_INSTALL_TARGET_CMDS
 		-e 's|^StartDirectoryRight=.*|StartDirectoryRight=/storage|' \
 		$(TARGET_DIR)/usr/share/vtree/config.ini
 	if grep -q '^ActiveTheme=' $(TARGET_DIR)/usr/share/vtree/config.ini; then \
-		sed -i 's|^ActiveTheme=.*|ActiveTheme=Zlyme|' \
+		sed -i \
+			-e '/^\[ActiveTheme\]/,/^\[/{s/^ActiveTheme=.*/ActiveTheme=Zlyme/;}' \
+			-e 's|^ActiveTheme=.*|ActiveTheme=Zlyme|' \
 			$(TARGET_DIR)/usr/share/vtree/config.ini; \
 	else \
-		printf '%s\n' 'ActiveTheme=Zlyme' \
+		printf '%s\n' '[ActiveTheme]' 'ActiveTheme=Zlyme' \
 			>> $(TARGET_DIR)/usr/share/vtree/config.ini; \
 	fi
 	if grep -q '^GameControllerDB=' $(TARGET_DIR)/usr/share/vtree/config.ini; then \
