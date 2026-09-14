@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libssl-dev \
       gawk diffutils \
       graphviz python3-matplotlib \
+      ruby autoconf automake libtool zip universal-ctags bison flex curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/^# *en_US.UTF-8 /s/^# *//' /etc/locale.gen && locale-gen

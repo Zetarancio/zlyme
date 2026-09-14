@@ -1,0 +1,9 @@
+liblcf
+======
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: fetched upstream source
+Declared SPDX / license field: MIT
+Upstream / origin: https://github.com/EasyRPG/liblcf
+
+Recipe files (.mk, Config.in) are packaging for Zlyme.

@@ -1,0 +1,12 @@
+config BR2_PACKAGE_LIBLCF
+	bool "liblcf"
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_EXPAT
+	select BR2_PACKAGE_ICU
+	select BR2_PACKAGE_INIH
+	help
+	  Library to handle RPG Maker 2000 and 2003 game data.
+	  EasyRPG Project. https://easyrpg.org/
+
+comment "liblcf needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

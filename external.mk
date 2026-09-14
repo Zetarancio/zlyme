@@ -72,6 +72,11 @@ target-post-image: host-exfatprogs
 # Panfrost does not need LLVM in the GL client.
 MESA3D_CONF_OPTS += -Ddraw-use-llvm=false
 
+# mkxp-z's meson wrap leaked SDL3 into staging; fluidsynth then linked it
+# and the image had no libSDL3.so.0. EasyRPG/mkxp MIDI does not need SDL
+# audio — ALSA is enough.
+FLUIDSYNTH_CONF_OPTS += -Denable-sdl3=OFF -Denable-sdl2=OFF
+
 # host-clang is wrapped for the target; libclc needs the unwrapped binary.
 ZLYME_LIBCLC_UNWRAPPED_CLANG = \
 	-DLLVM_TOOL_clang=$(HOST_DIR)/bin/clang.br_real \

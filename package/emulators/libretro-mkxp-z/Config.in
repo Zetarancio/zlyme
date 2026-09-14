@@ -1,0 +1,16 @@
+config BR2_PACKAGE_LIBRETRO_MKXP_Z
+	bool "libretro-mkxp-z"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_OPENSSL
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_LIBPNG
+	help
+	  mkxp-z libretro core (RPG Maker XP / VX / VX Ace).
+	  white-axe/mkxp-z branch libretro. Host stage1 embeds Ruby 3.3
+	  via WASI SDK 30 (no target ruby).
+
+	  https://github.com/white-axe/mkxp-z
+
+comment "libretro-mkxp-z needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

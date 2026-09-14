@@ -1,0 +1,26 @@
+config BR2_PACKAGE_LIBRETRO_EASYRPG
+	bool "libretro-easyrpg"
+	depends on BR2_PACKAGE_RETROARCH
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_MIXER
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_FMT
+	select BR2_PACKAGE_FREETYPE
+	select BR2_PACKAGE_MPG123
+	select BR2_PACKAGE_LIBVORBIS
+	select BR2_PACKAGE_OPUSFILE
+	select BR2_PACKAGE_PIXMAN
+	select BR2_PACKAGE_SPEEXDSP
+	select BR2_PACKAGE_LIBXMP
+	select BR2_PACKAGE_WILDMIDI
+	select BR2_PACKAGE_LIBLCF
+	select BR2_PACKAGE_FLUIDSYNTH
+	help
+	  EasyRPG Player libretro core (RPG Maker 2000/2003).
+
+	  https://easyrpg.org/
+
+comment "libretro-easyrpg needs a toolchain w/ C++"
+	depends on !BR2_INSTALL_LIBSTDCPP

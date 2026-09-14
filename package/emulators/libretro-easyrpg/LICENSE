@@ -1,0 +1,10 @@
+libretro-easyrpg
+================
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: fetched upstream source
+Declared SPDX / license field: GPL-3.0
+Upstream / origin: https://github.com/EasyRPG/Player
+
+Recipe files (.mk, Config.in) are packaging for Zlyme.
+Patches of GPL/LGPL sources follow those upstream licenses.

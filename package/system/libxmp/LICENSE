@@ -1,0 +1,10 @@
+libxmp
+======
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: fetched upstream source
+Declared SPDX / license field: LGPL-2.1+
+Upstream / origin: https://github.com/libxmp/libxmp
+
+Recipe files (.mk, Config.in) are packaging for Zlyme.
+Patches of GPL/LGPL sources follow those upstream licenses.
