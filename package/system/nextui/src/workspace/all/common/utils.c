@@ -154,10 +154,16 @@ int skipCompanionDisc(const char* dir, const char* name) {
 }
 
 /* MinUI/NextUI multi-disc: Game.m3u sits next to Game/. Do not list the
- * folder; the playlist is the game. */
+ * folder; the playlist is the game. PPSSPP also drops a memstick tree
+ * (PSP/SYSTEM, SAVEDATA, …) next to ISOs — hide that, not a game named GAME. */
 int skipCompanionFolder(const char* dir, const char* name) {
 	char probe[512];
 	if (!dir || !name || !name[0]) return 0;
+	if (exactMatch((char *)name, "PSP") || exactMatch((char *)name, "PPSSPP") ||
+	    exactMatch((char *)name, "SYSTEM") || exactMatch((char *)name, "SAVEDATA") ||
+	    exactMatch((char *)name, "CHEATS") || exactMatch((char *)name, "TEXTURES") ||
+	    exactMatch((char *)name, "PPSSPP_STATE"))
+		return 1;
 	snprintf(probe, sizeof(probe), "%s/%s.m3u", dir, name);
 	return exists(probe);
 }

@@ -9,6 +9,8 @@ for s in /usr/share/zlyme/emu-defaults/ppsspp.ini /storage/.config/zlyme/emu-def
 	[ -f "$s" ] && SEED=$s && break
 done
 INI="${XDG_CONFIG_HOME:-$HOME/.config}/ppsspp/PSP/SYSTEM/ppsspp.ini"
+MEMSTICK="${XDG_CONFIG_HOME:-$HOME/.config}/ppsspp"
+mkdir -p "$MEMSTICK/PSP/SYSTEM" "$MEMSTICK/PSP/SAVEDATA"
 if [ -n "$SEED" ] && [ ! -e "$INI" ]; then
 	mkdir -p "$(dirname "$INI")"
 	cp "$SEED" "$INI"
@@ -18,4 +20,4 @@ command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
-exec PPSSPPSDL "$ROM"
+exec PPSSPPSDL --memstick "$MEMSTICK" "$ROM"
