@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Rasterize the faithful SVG pack onto 640x480 #050608 (and a 512x512 logo).
 
-The lockup is 40% smaller than a full-frame fit and sits in the upper third.
+The lockup is 20% larger than the previous 40%-smaller pass and sits
+halfway between that upper-third band and the screen center.
 SVGs are vector traces; rsvg-convert draws them (no embedded PNG).
 """
 from __future__ import annotations
@@ -12,14 +13,16 @@ import sys
 import tempfile
 from pathlib import Path
 
+from typing import Optional
 from PIL import Image
 
 BG = (0x05, 0x06, 0x08, 255)
 W, H = 640, 480
 LOGO = 512
-# 40% smaller than a full-canvas fit, then clamped into the upper third.
-SCALE_MUL = 0.60
-BAND = (0.0, 1.0 / 3.0)
+# Previous pass was SCALE_MUL 0.60 in the upper third (center ~80).
+# 20% bigger, vertical center halfway between 80 and 240 → 160 (1/3).
+SCALE_MUL = 0.72
+Y_CENTER_FRAC = 1.0 / 3.0
 
 
 def rsvg_png(svg: Path, dest: Path, width: int) -> None:
@@ -34,21 +37,23 @@ def place_on_canvas(
     ch: int,
     fill=BG,
     scale_mul: float = SCALE_MUL,
-    band: tuple[float, float] = BAND,
+    y_center_frac: Optional[float] = Y_CENTER_FRAC,
 ) -> Image.Image:
     canvas = Image.new("RGBA", (cw, ch), fill)
     full = min(cw / src.width, ch / src.height)
-    band_h = max(1, int(ch * (band[1] - band[0])))
-    band_fit = min(cw / src.width, band_h / src.height)
-    scale = min(full * scale_mul, band_fit)
+    scale = full * scale_mul
     nw = max(1, int(src.width * scale))
     nh = max(1, int(src.height * scale))
     resized = src.resize((nw, nh), Image.Resampling.LANCZOS)
     x = (cw - nw) // 2
-    band_top = int(ch * band[0])
-    y = band_top + (band_h - nh) // 2
+    if y_center_frac is None:
+        y = (ch - nh) // 2
+    else:
+        y = int(ch * y_center_frac) - nh // 2
     if y < 0:
         y = 0
+    if y + nh > ch:
+        y = max(0, ch - nh)
     canvas.alpha_composite(resized, (x, y))
     return canvas
 
@@ -107,7 +112,7 @@ def main() -> None:
         horiz = Image.open(horiz_png).convert("RGBA")
 
     bg = place_on_canvas(horiz, W, H)
-    logo = place_on_canvas(beaker, LOGO, LOGO, band=(0.0, 1.0), scale_mul=SCALE_MUL)
+    logo = place_on_canvas(beaker, LOGO, LOGO, y_center_frac=None, scale_mul=SCALE_MUL)
 
     write_png(bg, res / "background.png")
     write_png(bg, res / "charging-640-480.png")
