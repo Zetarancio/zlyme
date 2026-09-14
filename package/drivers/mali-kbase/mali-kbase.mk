@@ -16,5 +16,8 @@ MALI_KBASE_MODULE_MAKE_OPTS = \
 	CONFIG_MALI_DEVFREQ=y \
 	CONFIG_MALI_GATOR_SUPPORT=y
 
+# 002-lowercase-interrupts-first.patch (ROCKNIX RK3566 mali-bifrost) lives
+# next to this .mk. DTB IRQ names are lowercase; do not uppercase DTS.
+
 $(eval $(kernel-module))
 $(eval $(generic-package))
