@@ -34,6 +34,11 @@ case "$repo" in
 esac
 
 CURL="curl -fsSL --connect-timeout 15 --max-time 180"
+TOKEN_FILE=/storage/.config/github-token
+if [ -r "$TOKEN_FILE" ]; then
+	tok=$(tr -d ' \t\r\n' < "$TOKEN_FILE")
+	[ -n "$tok" ] && CURL="$CURL -H Authorization: Bearer $tok"
+fi
 for ca in /etc/ssl/certs/ca-certificates.crt \
           /etc/pki/tls/certs/ca-bundle.crt \
           /etc/ssl/cert.pem; do

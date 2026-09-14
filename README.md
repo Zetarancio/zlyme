@@ -55,7 +55,7 @@ Speaker vs jack is automatic (`flip-jackd`). Bluetooth audio follows the headset
 
 ## Install
 
-GitHub Actions builds the image on push to `main`. A downloadable `zlyme.img` and an update tar appear on this repository’s Releases page after a `workflow_dispatch` run (or a tag).
+GitHub Actions builds the image on push to `main`. A cold image is several sequential jobs because hosted runners cap each job at six hours; later runs reuse ccache. A successful run publishes a GitHub Release (`zlyme-<run_id>`, also marked latest) with `zlyme.img` and the OTA tar. Update.pak pulls `/releases/latest`. The repo is private, so put a PAT with `repo` scope in `/storage/.config/github-token` on the device (one line, no quotes). Do not bake a token into the image.
 
 The Flip will not boot an SD OS until you change how it starts. Without one of the steps below, it keeps booting stock from internal storage and ignores the card.
 
@@ -143,7 +143,29 @@ cp storage.sh.example storage.sh   # optional; set local paths
 ./build.sh --config zlyme_defconfig
 ```
 
-The image lands in `output/images/`. 
+The image lands in `output/images/`. `./build.sh` options:
+
+| Flag | What it does |
+| --- | --- |
+| `--minimal` | `zlyme_minimal_defconfig` (bootable, no emulators) |
+| `--config NAME` | named defconfig (`zlyme_defconfig` is the product image) |
+| `--shell` | interactive shell in the build container |
+| `--check` | print paths and change nothing |
+| `--loops` | detach loop devices this build leaked |
+| `--clean` | delete the build tree (keeps downloads and ccache) |
+| `--rebuild-image` | rebuild the `zlyme-build` container even if it exists |
+| `-h`, `--help` | usage |
+
+With no make target, it builds the image. Any extra arguments are passed to Buildroot `make`, so these work:
+
+```sh
+./build.sh --config zlyme_defconfig menuconfig
+./build.sh --config zlyme_defconfig linux-rebuild
+./build.sh --config zlyme_defconfig nextui-rebuild
+./build.sh --config zlyme_defconfig savedefconfig
+```
+
+A full image write goes to `output/build.log` (overwritten each run). Watch it with `less +F output/build.log`. Do not start a second `./build.sh` on the same `output/`. 
 
 ## Thanks
 
