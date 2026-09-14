@@ -22,6 +22,14 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <linux/fb.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+
+static void plat_blank_fb0(void);
 
 #if defined(__has_feature)
 #if __has_feature(thread_sanitizer)
@@ -774,7 +782,72 @@ SDL_Surface* PLAT_initVideo(void) {
 
 	vid.sharpness = SHARPNESS_SOFT;
 
+	plat_blank_fb0();
 	return vid.screen;
+}
+
+/* Initramfs paints the splash on /dev/fb0. KMSDRM sits above it; when
+ * NextUI or Settings drop DRM master the logo would flash back. Fill
+ * fb0 with the panel colour once KMS is up. */
+static void plat_blank_fb0(void)
+{
+	const uint8_t r = 0x05, g = 0x06, b = 0x08;
+	int fd;
+	struct fb_var_screeninfo v;
+	struct fb_fix_screeninfo f;
+	uint8_t *fb;
+	uint32_t line, x, y;
+	int bpp;
+	size_t span;
+
+	fd = open("/dev/fb0", O_RDWR);
+	if (fd < 0)
+		return;
+	memset(&v, 0, sizeof(v));
+	memset(&f, 0, sizeof(f));
+	if (ioctl(fd, FBIOGET_VSCREENINFO, &v) < 0 ||
+	    ioctl(fd, FBIOGET_FSCREENINFO, &f) < 0) {
+		close(fd);
+		return;
+	}
+	bpp = v.bits_per_pixel;
+	line = f.line_length;
+	if (!line)
+		line = v.xres_virtual * ((uint32_t)(bpp + 7) / 8);
+	if (v.xres < 1 || v.yres < 1 || line < 1) {
+		close(fd);
+		return;
+	}
+	span = (size_t)line * (v.yres_virtual ? v.yres_virtual : v.yres);
+	fb = mmap(NULL, span, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (fb == MAP_FAILED) {
+		close(fd);
+		return;
+	}
+	for (y = 0; y < v.yres; y++) {
+		for (x = 0; x < v.xres; x++) {
+			uint8_t *dst = fb + (size_t)y * line +
+				(size_t)x * ((uint32_t)(bpp + 7) / 8);
+			if (bpp == 16) {
+				uint16_t p = (uint16_t)(((r >> 3) << 11) |
+					((g >> 2) << 5) | (b >> 3));
+				dst[0] = (uint8_t)(p & 0xff);
+				dst[1] = (uint8_t)(p >> 8);
+			} else if (bpp == 24) {
+				dst[0] = b;
+				dst[1] = g;
+				dst[2] = r;
+			} else if (bpp >= 32) {
+				dst[0] = b;
+				dst[1] = g;
+				dst[2] = r;
+				dst[3] = 0xff;
+			}
+		}
+	}
+	msync(fb, span, MS_SYNC);
+	munmap(fb, span);
+	close(fd);
 }
 
 void PLAT_setClearColor(uint32_t color) {
