@@ -55,7 +55,23 @@ if [ -z "$LAUNCH_DIR" ]; then
 fi
 
 chmod 0755 "$LAUNCH_DIR/$STATIC_BIN" 2>/dev/null || true
-mkdir -p "$HOME_DIR/carts"
+mkdir -p "$HOME_DIR/carts" "$HOME_DIR/cdata" "$HOME_DIR/bbs"
+
+# Splore BBS "cannot connect" is often missing CA certs; list update
+# can still work. Prefer a writable rom folder for carts (sd2 ext4).
+for ca in /etc/ssl/certs/ca-certificates.crt \
+	/etc/ssl/cert.pem /etc/pki/tls/certs/ca-bundle.crt; do
+	if [ -f "$ca" ]; then
+		export SSL_CERT_FILE="$ca"
+		export CURL_CA_BUNDLE="$ca"
+		export SSL_CERT_DIR=/etc/ssl/certs
+		break
+	fi
+done
+export HOME="$HOME_DIR"
+
+# Dummy Splore.p8 lives in the rom folder; pico8 must not -root_path that.
+CARTS="$HOME_DIR/carts"
 
 export SDL_GAMECONTROLLERCONFIG_FILE="$DB"
 if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ] && [ -f "$DB" ]; then
@@ -83,8 +99,8 @@ if echo "$ROM" | grep -qi splore; then
 	killall -9 pico8-splore-pad 2>/dev/null || true
 	if command -v pico8-splore-pad >/dev/null 2>&1; then
 		exec pico8-splore-pad "./${STATIC_BIN}" \
-			-home "$HOME_DIR" -root_path "$HOME_DIR/carts" -splore
+			-home "$HOME_DIR" -root_path "$CARTS" -splore
 	fi
-	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$HOME_DIR/carts" -splore
+	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$CARTS" -splore
 fi
 exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -run "$ROM"

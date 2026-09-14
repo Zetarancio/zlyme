@@ -7,7 +7,7 @@
 #
 ################################################################################
 
-PICO8_VERSION = 3
+PICO8_VERSION = 4
 PICO8_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/emulators/pico8
 PICO8_SITE_METHOD = local
 # Launcher only. Pico-8 itself is proprietary Lexaloffle; not shipped.

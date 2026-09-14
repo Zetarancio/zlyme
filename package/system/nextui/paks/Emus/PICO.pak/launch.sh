@@ -40,6 +40,8 @@ seed_splore() {
 }
 
 seed_splore
-HOME="$USERDATA_PATH"
+# pico8 wrapper sets -home. Do not point HOME at the parent userdata dir.
+export HOME="${SHARED_USERDATA_PATH}/Pico-8-native"
+mkdir -p "$HOME/carts"
 cd "$HOME"
 exec pico8 "$ROM"
