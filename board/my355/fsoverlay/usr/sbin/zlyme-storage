@@ -94,6 +94,12 @@ bind_roms() {
 		[ "$found" = 1 ] || return 0
 	fi
 	[ -d "$ROMS" ] || return 0
+	# Empty leftovers from an old rom-dirs.txt that used a slash in the name.
+	rmdir "$ROMS/RPG Maker 2000/2003 (EASYRPG)" 2>/dev/null || true
+	rmdir "$ROMS/RPG Maker 2000" 2>/dev/null || true
+	rmdir "$ROMS/RPG Maker XP/VX/Ace (MKXPZ)" 2>/dev/null || true
+	rmdir "$ROMS/RPG Maker XP/VX" 2>/dev/null || true
+	rmdir "$ROMS/RPG Maker XP" 2>/dev/null || true
 	find "$src" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
 	while IFS= read -r d; do
 		name=$(basename "$d")
