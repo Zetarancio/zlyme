@@ -16,7 +16,13 @@ MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.userdata/shared}/minuisettings
 
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
-mkdir -p "$CFGDIR"
+# MENU is udev BTN_MODE 10. Unset GameController so sdl2 cannot remap
+# GUIDE to 5 (R1 on this pad). nextui-session still exports mappings
+# for Tools.
+unset SDL_GAMECONTROLLERCONFIG
+unset SDL_GAMECONTROLLERCONFIG_FILE
+
+mkdir -p "$CFGDIR" "$CFGDIR/assets"
 if [ ! -s "$CFG" ]; then
 	rm -f "$CFG"
 	[ -f "$ETC" ] && cp "$ETC" "$CFG"
@@ -138,11 +144,23 @@ write_minui_ra() {
 
 write_minui_ra
 
+AC=/usr/share/zlyme/retroarch/autoconfig
+if [ ! -f "$AC/udev/retrogame_joypad.cfg" ]; then
+	if [ -f /storage/.config/retroarch/autoconfig/udev/retrogame_joypad.cfg ]; then
+		AC=/storage/.config/retroarch/autoconfig
+	elif [ -f /tmp/autoconfig/udev/retrogame_joypad.cfg ]; then
+		AC=/tmp/autoconfig
+	fi
+fi
+RA_AC=/tmp/zlyme-ra-ac.cfg
+printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
+
 APPEND="$ETC"
 for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra-perf.cfg; do
 	[ -s "$extra" ] && APPEND="$APPEND,$extra"
 done
 [ -s "$MINUI_RA" ] && APPEND="$APPEND,$MINUI_RA"
+APPEND="$APPEND,$RA_AC"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"
@@ -162,5 +180,9 @@ if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
 
-# MENU opens the RetroArch menu; MENU+Start exits to NextUI.
+# MENU (js 10) opens RGUI via udev autoconfig; MENU+Start is
+# zlyme-pak-hotkey, not RA quit.
+if [ -n "$ZLYME_RA_DEBUG" ]; then
+	exec retroarch -v --log-file "$LOGS_PATH/ra-debug.log" --appendconfig "$APPEND" "$@"
+fi
 exec retroarch --appendconfig "$APPEND" "$@"

@@ -42,7 +42,9 @@ RETROARCH_CONF_OPTS = \
 	--enable-zlib \
 	--enable-builtinflac \
 	--enable-udev \
-	--disable-hid
+	--disable-hid \
+	--disable-update_cores \
+	--disable-update_core_info
 
 define RETROARCH_CONFIGURE_CMDS
 	(cd $(@D); rm -rf config.cache; \

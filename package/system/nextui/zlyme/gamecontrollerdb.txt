@@ -1,6 +1,8 @@
 # Miyoo Flip (retrogame_joypad). Nintendo layout: physical A = east = b1,
 # matching NextUI JOY_A=1 / JOY_B=0. ROCKNIX ships Xbox a:b0 for the same
 # name; that swaps A/B in vtree, ScrapeGoat, and SDL GameController apps.
-# GUIDs from ROCKNIX es_input.cfg / gamecontrollerdb.txt.
-03009b4d4b4800000111000000010000,retrogame_joypad,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,dpleft:b15,dpdown:b14,dpright:b16,dpup:b13,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,leftstick:b11,rightstick:b12,leftx:a0,lefty:a1,rightx:a2,righty:a3,
-19009b4d4b4800000111000000010000,retrogame_joypad,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,dpleft:b15,dpdown:b14,dpright:b16,dpup:b13,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,leftstick:b11,rightstick:b12,leftx:a0,lefty:a1,rightx:a2,righty:a3,
+# SDL 2.32 GUIDs: bus, crc16("retrogame_joypad")=0x4d9b, vendor 0x484B,
+# product 0x1101, version 0x0100. 1900… is BUS_HOST (this DTS). 0300… is
+# BUS_USB leftover from ROCKNIX. Nintendo A/B: a:b1,b:b0. MENU=guide:b10.
+03009b4d4b4800000111000000010000,retrogame_joypad,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,guide:b10,dpleft:b15,dpdown:b14,dpright:b16,dpup:b13,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,leftstick:b11,rightstick:b12,leftx:a0,lefty:a1,rightx:a2,righty:a3,
+19009b4d4b4800000111000000010000,retrogame_joypad,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,guide:b10,dpleft:b15,dpdown:b14,dpright:b16,dpup:b13,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,leftstick:b11,rightstick:b12,leftx:a0,lefty:a1,rightx:a2,righty:a3,
