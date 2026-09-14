@@ -1577,7 +1577,7 @@ static void toggleQuick(Entry* self)
 		BT_enable(!BT_enabled());
 	}
 	else if(!strcmp(self->name, "Sleep")) {
-		PWR_sleep();
+		PWR_sleepNow();
 	}
 	else if(!strcmp(self->name, "Reboot")) {
 		cleanupImageLoaderPool();  // Stop worker threads before SDL cleanup

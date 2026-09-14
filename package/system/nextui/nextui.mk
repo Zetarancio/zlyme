@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme28
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme29
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -129,12 +129,15 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/CREDITS \
 		$(TARGET_DIR)/usr/share/nextui/CREDITS
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt
+	date -u +%Y-%m-%d > $(TARGET_DIR)/usr/share/nextui/build-date.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/wifi_init.sh \
 		$(TARGET_DIR)/usr/share/nextui/etc/wifi/wifi_init.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/bt_init.sh \
 		$(TARGET_DIR)/usr/share/nextui/etc/bluetooth/bt_init.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/governor.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/governor.sh
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/suspend \
+		$(TARGET_DIR)/usr/share/nextui/bin/suspend
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/governor.sh \
 		$(TARGET_DIR)/usr/sbin/zlyme-governor
 	$(INSTALL) -D -m 0755 $(@D)/show.elf \

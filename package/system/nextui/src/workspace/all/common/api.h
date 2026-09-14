@@ -571,6 +571,7 @@ void PWR_powerOff(int reboot);
 int PWR_isPoweringOff(void);
 
 void PWR_sleep(void);
+void PWR_sleepNow(void);
 int PWR_deepSleep(void);
 
 void PWR_disableSleep(void);

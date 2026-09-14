@@ -4129,7 +4129,13 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 
 	int delay_settings = BTN_MOD_BRIGHTNESS == BTN_MENU; // when both volume and brighness require a modifier hide settings as soon as it is released
 #define SETTING_DELAY 500
-	if (show_setting && (now - setting_shown_at >= SETTING_DELAY || !delay_settings) && !PAD_isPressed(BTN_MOD_VOLUME) && !PAD_isPressed(BTN_MOD_BRIGHTNESS) && !PAD_isPressed(BTN_MOD_COLORTEMP))
+	/* BTN_MOD_VOLUME is BTN_NONE on this pad (PAD_isPressed(0) is always
+	 * false). Keep the overlay up while PLUS/MINUS is held or it hides
+	 * after 500ms on the first volume tap. */
+	if (show_setting && (now - setting_shown_at >= SETTING_DELAY || !delay_settings) &&
+		!PAD_isPressed(BTN_MOD_VOLUME) && !PAD_isPressed(BTN_MOD_BRIGHTNESS) &&
+		!PAD_isPressed(BTN_MOD_COLORTEMP) &&
+		!PAD_isPressed(BTN_MOD_PLUS) && !PAD_isPressed(BTN_MOD_MINUS))
 	{
 		show_setting = 0;
 		dirty = 1;
@@ -4159,6 +4165,35 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 		else
 		{
 			show_setting = 2;
+		}
+	}
+
+	/* keymon.elf is not shipped. Apply volume/brightness here or the
+	 * overlay appears and the value never changes. justRepeated is set
+	 * on the first press and on the software repeat timer. */
+	if (InitializedSettings() && (PAD_justRepeated(BTN_MOD_PLUS) || PAD_justRepeated(BTN_MOD_MINUS)))
+	{
+		int plus = PAD_justRepeated(BTN_MOD_PLUS);
+		int minus = PAD_justRepeated(BTN_MOD_MINUS);
+		if (PAD_isPressed(BTN_MOD_BRIGHTNESS))
+		{
+			int v = GetBrightness();
+			if (plus && v < BRIGHTNESS_MAX)
+				SetBrightness(v + 1);
+			else if (minus && v > BRIGHTNESS_MIN)
+				SetBrightness(v - 1);
+			show_setting = 1;
+			setting_shown_at = now;
+		}
+		else
+		{
+			int v = GetVolume();
+			if (plus && v < VOLUME_MAX)
+				SetVolume(v + 1);
+			else if (minus && v > VOLUME_MIN)
+				SetVolume(v - 1);
+			show_setting = 2;
+			setting_shown_at = now;
 		}
 	}
 
@@ -4372,6 +4407,27 @@ void PWR_sleep(void)
 	PAD_reset();
 	PWR_enterSleep();
 	PWR_waitForWake();
+	PWR_exitSleep();
+	PAD_reset();
+
+	system("gametimectl.elf resume");
+
+	pwr.resume_tick = SDL_GetTicks();
+}
+
+void PWR_sleepNow(void)
+{
+	LOG_info("Entering mem sleep\n");
+
+	system("gametimectl.elf stop_all");
+
+	GFX_clear(gfx.screen);
+	PAD_reset();
+	PWR_enterSleep();
+	if (PLAT_supportsDeepSleep())
+		PWR_deepSleep();
+	else
+		PWR_waitForWake();
 	PWR_exitSleep();
 	PAD_reset();
 

@@ -121,6 +121,12 @@ if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
 	cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
 	chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
 fi
+if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/suspend" ]; then
+	if [ -x "$seed/bin/suspend" ]; then
+		cp "$seed/bin/suspend" "$SYSTEM_PATH/bin/suspend"
+		chmod 0755 "$SYSTEM_PATH/bin/suspend"
+	fi
+fi
 if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
 	cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
 	chmod 0755 "$SYSTEM_PATH/bin/show.elf"
@@ -221,6 +227,20 @@ if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
 	fi
 	: > "$flag2"
 	: > "$flag3"
+fi
+# Battery percent on by default. Existing cards had batteryperc=0.
+flag_bat=$SHARED_USERDATA_PATH/.zlyme-batteryperc-on
+if [ ! -f "$flag_bat" ]; then
+	if [ -f "$cfg" ]; then
+		if grep -q '^batteryperc=' "$cfg"; then
+			sed -i 's/^batteryperc=.*/batteryperc=1/' "$cfg"
+		else
+			echo 'batteryperc=1' >> "$cfg"
+		fi
+	else
+		printf '%s\n' 'batteryperc=1' >> "$cfg"
+	fi
+	: > "$flag_bat"
 fi
 rm -f /tmp/poweroff /tmp/reboot
 
