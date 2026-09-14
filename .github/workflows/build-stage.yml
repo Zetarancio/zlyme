@@ -1,0 +1,168 @@
+# One hosted-runner job. GitHub kills the VM at 360 minutes (runs
+# 34801512689 and 34828905859 were cancelled there during a cold image).
+# Stop compile ~50 minutes early so ccache can be packed while the job
+# is still allowed to run. The next stage starts a fresh output/ and
+# relies on ccache hits; the 51G output tree cannot be an artifact.
+
+name: Build stage
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        description: Stage id (a, b, c) for cache keys
+        type: string
+        required: true
+    outputs:
+      have_image:
+        description: true if this stage wrote output/images/zlyme-my355-*.tar
+        value: ${{ jobs.image.outputs.have_image }}
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  CACHE_REPO: ${{ vars.CACHE_REPO || 'zlyme-cache' }}
+  ZLYME_DEFCONFIG: zlyme_defconfig
+  # Leave headroom under the 360-minute hard cap for cache save + upload.
+  BUILD_WINDOW: 310m
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    outputs:
+      have_image: ${{ steps.build.outputs.have_image }}
+    steps:
+      # Default max profile deletes docker-engine. This job needs it.
+      - uses: justinthelaw/maximize-github-runner-space@v0.12.2
+        continue-on-error: true
+        with:
+          skip-components: docker-engine
+
+      - uses: actions/checkout@v4
+
+      - name: Ensure Docker
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y docker.io
+            sudo chmod 666 /var/run/docker.sock || true
+          fi
+          sudo apt-get install -y zstd ccache
+          docker version
+
+      - uses: docker/login-action@v3
+        continue-on-error: true
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore ccache (Actions cache)
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: .ccache
+          key: ccache-my355-${{ github.run_id }}-${{ inputs.stage }}
+          restore-keys: |
+            ccache-my355-${{ github.run_id }}-
+            ccache-my355-
+
+      - name: Restore ccache (zlyme-cache release)
+        continue-on-error: true
+        run: |
+          if [ -d .ccache ] && [ -n "$(ls -A .ccache 2>/dev/null)" ]; then
+            echo "Actions cache already restored .ccache"
+            exit 0
+          fi
+          owner="${{ github.repository_owner }}"
+          base="https://github.com/${owner}/${CACHE_REPO}/releases/download/ccache"
+          if curl -L --fail --silent --show-error -o /tmp/ccache.zst "${base}/ccache-my355.tar.zst"; then
+            zstd -d -c /tmp/ccache.zst | tar -xf -
+          elif curl -L --fail --silent --show-error "${base}/ccache-my355.tar" | tar -xf -; then
+            echo "restored uncompressed ccache tarball"
+          else
+            echo "no ccache yet"
+          fi
+
+      - name: Pull or build zlyme-build
+        run: |
+          img="ghcr.io/${{ github.repository_owner }}/zlyme-build:latest"
+          if ! docker pull "$img"; then
+            docker build -t zlyme-build - < Dockerfile
+          else
+            docker tag "$img" zlyme-build
+          fi
+
+      - name: Build image
+        id: build
+        run: |
+          echo "have_image=false" >> "$GITHUB_OUTPUT"
+          chmod +x ./build.sh
+          set +e
+          timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}"
+          rc=$?
+          docker ps -aq | xargs -r docker stop || true
+          docker ps -aq | xargs -r docker rm -f || true
+          if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+            echo "have_image=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 124 = GNU timeout, 137 = SIGKILL, 143 = SIGTERM
+          case "$rc" in
+            124|137|143)
+              echo "Build window closed without an image; next stage continues from ccache."
+              exit 0
+              ;;
+          esac
+          exit "$rc"
+
+      - name: Upload artifacts
+        if: steps.build.outputs.have_image == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlyme-my355-${{ github.run_id }}
+          path: |
+            output/images/zlyme-my355-*.tar
+            output/images/zlyme-my355-*.sha256
+            output/images/zlyme.img
+          if-no-files-found: error
+
+      # Save before prune so the next stage of this run keeps the full cache.
+      - name: Save ccache (Actions cache)
+        if: always()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-my355-${{ github.run_id }}-${{ inputs.stage }}
+
+      - name: Pack ccache
+        if: always()
+        continue-on-error: true
+        run: |
+          docker ps -aq | xargs -r docker rm -f || true
+          if [ ! -d .ccache ]; then
+            echo "no .ccache"
+            exit 0
+          fi
+          CCACHE_DIR="$PWD/.ccache" ccache -M 1.5G -c || true
+          tar --exclude='.ccache/tmp' -C . -cf - .ccache | zstd -T0 -3 -o ccache-my355.tar.zst
+          ls -lh ccache-my355.tar.zst
+
+      - name: Save ccache (zlyme-cache release)
+        if: always()
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ccache
+          name: ccache
+          prerelease: true
+          make_latest: false
+          files: ccache-my355.tar.zst
+          repository: ${{ github.repository_owner }}/${{ env.CACHE_REPO }}
+          token: ${{ secrets.GH_PAT }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

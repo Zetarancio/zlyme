@@ -1,4 +1,7 @@
-# Full my355 image. One board, one build.sh — not ROCKNIX's device/stage DAG.
+# Full my355 image. Hosted runners cap a single job at 360 minutes; a cold
+# zlyme_defconfig build is longer than that (cancelled at the cap:
+# 34801512689, 34828905859). Sequential stages each compile for ~310 minutes,
+# then pack ccache. Later stages skip if an earlier one already has the tar.
 #
 # Secrets: GH_PAT (classic PAT, repo + workflow) to write the ccache repo.
 # Optional variable CACHE_REPO (default zlyme-cache).
@@ -15,77 +18,54 @@ on:
   schedule:
     - cron: "0 4 * * *"
 
+concurrency:
+  group: zlyme-build
+  cancel-in-progress: true
+
 permissions:
   contents: write
   packages: read
 
-env:
-  CACHE_REPO: ${{ vars.CACHE_REPO || 'zlyme-cache' }}
-  ZLYME_DEFCONFIG: zlyme_defconfig
-
 jobs:
-  image:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 360
-    steps:
-      # Default max profile deletes docker-engine. The image job needs it.
-      - uses: justinthelaw/maximize-github-runner-space@v0.12.2
-        continue-on-error: true
-        with:
-          skip-components: docker-engine
+  stage-a:
+    uses: ./.github/workflows/build-stage.yml
+    with:
+      stage: a
+    secrets: inherit
 
+  stage-b:
+    needs: stage-a
+    if: needs.stage-a.result == 'success' && needs.stage-a.outputs.have_image != 'true'
+    uses: ./.github/workflows/build-stage.yml
+    with:
+      stage: b
+    secrets: inherit
+
+  stage-c:
+    needs: stage-b
+    if: needs.stage-b.result == 'success' && needs.stage-b.outputs.have_image != 'true'
+    uses: ./.github/workflows/build-stage.yml
+    with:
+      stage: c
+    secrets: inherit
+
+  release:
+    needs: [stage-a, stage-b, stage-c]
+    if: always() && !cancelled() && (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure Docker
-        run: |
-          if ! command -v docker >/dev/null 2>&1; then
-            sudo apt-get update -y
-            sudo apt-get install -y docker.io
-            sudo chmod 666 /var/run/docker.sock || true
-          fi
-          docker version
-
-      - uses: docker/login-action@v3
-        continue-on-error: true
+      - uses: actions/download-artifact@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Retrieve ccache
-        continue-on-error: true
-        run: |
-          url="https://github.com/${{ github.repository_owner }}/${{ env.CACHE_REPO }}/releases/download/ccache/ccache-my355.tar"
-          curl -L --fail --silent --show-error "$url" | tar -xf - || echo "no ccache yet"
-
-      - name: Pull or build zlyme-build
-        run: |
-          img="ghcr.io/${{ github.repository_owner }}/zlyme-build:latest"
-          if ! docker pull "$img"; then
-            docker build -t zlyme-build - < Dockerfile
-          else
-            docker tag "$img" zlyme-build
-          fi
-
-      - name: Build image
-        run: |
-          chmod +x ./build.sh
-          ./build.sh --config "${ZLYME_DEFCONFIG}"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: zlyme-my355-${{ github.run_id }}
-          path: |
-            output/images/zlyme-my355-*.tar
-            output/images/zlyme-my355-*.sha256
-            output/images/zlyme.img
-          if-no-files-found: error
+          pattern: zlyme-my355-*
+          merge-multiple: true
+          path: output/images
 
       # /releases/latest is what Update.pak hits. Tag the run so a push
       # to main also publishes; workflow_dispatch on a branch is not a tag.
       - name: Release
-        if: success() && (github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/'))
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('zlyme-{0}', github.run_id) }}
@@ -98,26 +78,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pack ccache
-        if: always()
-        continue-on-error: true
-        run: |
-          if [ -d .ccache ]; then
-            tar -cf ccache-my355.tar .ccache
-          fi
-
-      - name: Save ccache
-        if: always()
-        continue-on-error: true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ccache
-          name: ccache
-          prerelease: true
-          make_latest: false
-          files: ccache-my355.tar
-          repository: ${{ github.repository_owner }}/${{ env.CACHE_REPO }}
-          token: ${{ secrets.GH_PAT }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
