@@ -152,6 +152,16 @@ int skipCompanionDisc(const char* dir, const char* name) {
 	if (exists(probe)) return 1;
 	return 0;
 }
+
+/* MinUI/NextUI multi-disc: Game.m3u sits next to Game/. Do not list the
+ * folder; the playlist is the game. */
+int skipCompanionFolder(const char* dir, const char* name) {
+	char probe[512];
+	if (!dir || !name || !name[0]) return 0;
+	snprintf(probe, sizeof(probe), "%s/%s.m3u", dir, name);
+	return exists(probe);
+}
+
 char *splitString(char *str, const char *delim)
 {
     char *p = strstr(str, delim);

@@ -37,4 +37,9 @@ int PALETTE_enumerate(ColorPalette *out, int max);
 // palette. Fires the color-set callback per color; does not modify the palette file.
 void PALETTE_apply(const ColorPalette *palette);
 
+// Re-apply the named palette from disk (not Custom). Returns true if colors
+// were written. Used at CFG_init so a Zlyme.txt role fix wins over baked
+// minuisettings colorN= from an older image.
+bool PALETTE_reapplyCurrent(void);
+
 #endif

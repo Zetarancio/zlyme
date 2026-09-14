@@ -13,6 +13,7 @@ int hide(char* file_name);
 int isJunkDir(const char* name);
 int isAllowedRom(const char* emu_tag, const char* file_name);
 int skipCompanionDisc(const char* dir, const char* name);
+int skipCompanionFolder(const char* dir, const char* name);
 
 char *splitString(char *str, const char *delim);
 char *replaceString2(const char *orig, char *rep, char *with);

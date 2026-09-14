@@ -23,8 +23,9 @@ export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
 if [ -r "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
-	# First matching line is enough; SDL reads the env as one mapping.
-	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep 'retrogame_joypad' | head -n 1)"
+	# Newline-separated. The Flip pad is BUS_HOST (1900…), not USB (0300…).
+	# SDL_GAMECONTROLLERCONFIG is extra mappings; include every GUID.
+	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep 'retrogame_joypad')"
 fi
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
@@ -214,6 +215,23 @@ if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
 fi
 rm -f /tmp/poweroff /tmp/reboot
 
+# setsid so MENU+Start can SIGTERM the pak group. Helper dies with the child.
+run_pak_cmd() {
+	setsid sh -c 'eval "$1"' sh "$1" >> "$LOGS_PATH/next.txt" 2>&1 &
+	_pak_pid=$!
+	_hk=
+	if [ -x /usr/sbin/zlyme-pak-hotkey ]; then
+		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$LOGS_PATH/next.txt" 2>&1 &
+		_hk=$!
+	fi
+	wait "$_pak_pid"
+	st=$?
+	if [ -n "$_hk" ]; then
+		kill "$_hk" 2>/dev/null || true
+		wait "$_hk" 2>/dev/null || true
+	fi
+}
+
 EXEC_PATH=/tmp/nextui_exec
 NEXT_PATH=/tmp/next
 touch "$EXEC_PATH"
@@ -250,8 +268,7 @@ while [ -f "$EXEC_PATH" ]; do
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
-		eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
-		st=$?
+		run_pak_cmd "$cmd"
 		# A2DP connect/disconnect: zlyme-btsink kills the emu and
 		# asks us to open it again with the new ZLYME_SINK.
 		while [ -f /tmp/zlyme-sink-reload ]; do
@@ -259,12 +276,11 @@ while [ -f "$EXEC_PATH" ]; do
 			if command -v zlyme-audio >/dev/null 2>&1; then
 				eval "$(zlyme-audio export 2>/dev/null)" || true
 			fi
-			eval "$cmd" >> "$LOGS_PATH/next.txt" 2>&1
-			st=$?
+			run_pak_cmd "$cmd"
 		done
-		# minui-list B/menu is 2/3, not a crash.
+		# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
 		case "$st" in
-			0|2|3) ;;
+			0|2|3|137|143) ;;
 			*)
 				echo "pak exit $st" >> "$LOGS_PATH/next.txt"
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3

@@ -1022,6 +1022,18 @@ static int getFirstDisc(char* m3u_path, char* disc_path) { // based on getDiscs(
 	return found;
 }
 
+static int easyrpgIsGameDir(const char *dir_path, const char *name)
+{
+	char ldb[512];
+	if (suffixMatch(".easyrpg", (char *)name))
+		return 1;
+	snprintf(ldb, sizeof(ldb), "%s/RPG_RT.ldb", dir_path);
+	if (exists(ldb))
+		return 1;
+	snprintf(ldb, sizeof(ldb), "%s/RPG_RT.LDB", dir_path);
+	return exists(ldb);
+}
+
 static void addEntries(Array* entries, char* path) {
 	DIR *dh = opendir(path);
 	if (dh!=NULL) {
@@ -1042,7 +1054,16 @@ static void addEntries(Array* entries, char* path) {
 				if (suffixMatch(".pak", dp->d_name)) {
 					type = ENTRY_PAK;
 				}
+				else if (exactMatch(emu_name, "PORTS")) {
+					continue;
+				}
+				else if (exactMatch(emu_name, "EASYRPG")) {
+					if (!easyrpgIsGameDir(full_path, dp->d_name))
+						continue;
+					type = ENTRY_ROM;
+				}
 				else {
+					if (skipCompanionFolder(path, dp->d_name)) continue;
 					type = ENTRY_DIR;
 				}
 			}
@@ -1309,6 +1330,7 @@ static void openRom(char* path, char* last) {
 	char emu_name[256];
 	getEmuName(sd_path, emu_name);
 
+	int resume_disc = 0;
 	if (should_resume) {
 		char slot[16];
 		getFile(slot_path, slot, 16);
@@ -1333,6 +1355,7 @@ static void openRom(char* path, char* last) {
 					char* tmp = strrchr(sd_path, '/') + 1;
 					strcpy(tmp, disc_path);
 				}
+				resume_disc = 1;
 			}
 		}
 	}
@@ -1345,12 +1368,18 @@ static void openRom(char* path, char* last) {
 	// so we need to save the path before we call that
 	addRecent(recent_path, recent_alias); // yiiikes
 	saveLast(last==NULL ? sd_path : last);
+
+	// Libretro Disk Control needs the playlist. minarch is not built, so
+	// pass the .m3u when one exists. Resume can still pin a specific disc.
+	char launch_rom[256];
+	strcpy(launch_rom, (has_m3u && !resume_disc) ? m3u_path : sd_path);
+
 	char act[256];
-	sprintf(act, "gametimectl.elf start '%s'", escapeSingleQuotes(sd_path));
+	sprintf(act, "gametimectl.elf start '%s'", escapeSingleQuotes(launch_rom));
 	system(act);
 	char cmd[256];
-	// dont escape sd_path again because it was already escaped for gametimectl and function modifies input str aswell
-	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), sd_path);
+	// dont escape launch_rom again because it was already escaped for gametimectl
+	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), launch_rom);
 	queueNext(cmd);
 }
 
@@ -2314,16 +2343,10 @@ int main (int argc, char *argv[]) {
 
 	int lastScreen = SCREEN_OFF;
 	int currentScreen = CFG_getDefaultView();
-
-	if(exists(GAME_SWITCHER_PERSIST_PATH)) {
-		// consider this "consumed", dont bring up the switcher next time we regularly exit a game
+	if (currentScreen == SCREEN_GAMESWITCHER)
+		currentScreen = SCREEN_GAMELIST;
+	if (exists(GAME_SWITCHER_PERSIST_PATH))
 		unlink(GAME_SWITCHER_PERSIST_PATH);
-		currentScreen = SCREEN_GAMESWITCHER;
-	}
-
-	// add a nice fade into the game switcher
-	if(currentScreen == SCREEN_GAMESWITCHER)
-		lastScreen = SCREEN_GAME;
 
 	// make sure we have no running games logged as active anymore (we might be launching back into the UI here)
 	system("gametimectl.elf stop_all");
@@ -2538,11 +2561,6 @@ int main (int argc, char *argv[]) {
 				dirty = 1;
 				folderbgchanged = 1; // The background painting code is a clusterfuck, just force a repaint here
 				if (!HAS_POWER_BUTTON && !simple_mode) PWR_enableSleep();
-			}
-			else if (PAD_tappedSelect(now)) {
-				currentScreen = SCREEN_GAMESWITCHER;
-				switcher_selected = 0;
-				dirty = 1;
 			}
 			else if (total>0) {
 				if (PAD_justRepeated(BTN_UP)) {

@@ -13,8 +13,6 @@ namespace Wifi
         MenuItem *toggleItem;
         // diagnostics on/off
         MenuItem *diagItem;
-        MenuItem *btItem;
-        std::vector<AbstractMenuItem *> serviceItems;
 
         std::thread worker;
         bool quit = false;

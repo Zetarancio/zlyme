@@ -154,41 +154,9 @@ static const std::vector<std::string> progress_duration_labels = {"Off", "1s", "
 static const std::vector<std::any>    transition_mode_values = {(int)TRANSITION_OFF, (int)TRANSITION_SNAPPY, (int)TRANSITION_COMFY};
 static const std::vector<std::string> transition_mode_labels = {"Off", "Snappy", "Comfy"};
 
-// Game switcher curtain opacity options (0-100)
-static const std::vector<std::any>    curtain_opacity_values = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
-static const std::vector<std::string> curtain_opacity_labels = {"Off", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"};
-
 // Input prompt style options
 static const std::vector<std::any>    input_prompt_style_values = {(int)INPUT_STYLE_TEXT, (int)INPUT_STYLE_ABXY, (int)INPUT_STYLE_CARDINALS, (int)INPUT_STYLE_SHAPES};
 static const std::vector<std::string> input_prompt_style_labels = {"Text", "ABXY", "Cardinals", "Shapes"};
-
-// RetroAchievements sort order options
-static const std::vector<std::any> ra_sort_values = {
-    (int)RA_SORT_UNLOCKED_FIRST,
-    (int)RA_SORT_DISPLAY_ORDER_FIRST,
-    (int)RA_SORT_DISPLAY_ORDER_LAST,
-    (int)RA_SORT_WON_BY_MOST,
-    (int)RA_SORT_WON_BY_LEAST,
-    (int)RA_SORT_POINTS_MOST,
-    (int)RA_SORT_POINTS_LEAST,
-    (int)RA_SORT_TITLE_AZ,
-    (int)RA_SORT_TITLE_ZA,
-    (int)RA_SORT_TYPE_ASC,
-    (int)RA_SORT_TYPE_DESC
-};
-static const std::vector<std::string> ra_sort_labels = {
-    "Unlocked First",
-    "Display Order (First)",
-    "Display Order (Last)",
-    "Won By (Most)",
-    "Won By (Least)",
-    "Points (Most)",
-    "Points (Least)",
-    "Title (A-Z)",
-    "Title (Z-A)",
-    "Type (Asc)",
-    "Type (Desc)"
-};
 
 namespace {
     struct ColorDef { int id; const char *name; const char *desc; uint32_t defaultColor; };
@@ -486,10 +454,6 @@ int main(int argc, char *argv[])
             []() -> std::any{ return CFG_getShowQuickswitcherUI(); },
             [](const std::any &value){ CFG_setShowQuickswitcherUI(std::any_cast<bool>(value)); },
             []() { CFG_setShowQuickswitcherUI(CFG_DEFAULT_SHOWQUICKWITCHERUI);}});
-        appearanceItems.push_back(new MenuItem{ListItemType::Generic, "Game switcher curtain opacity", "Show/hide curtain overlay. Helps UI elements to \nstand out when using transparent backgrounds.", curtain_opacity_values, curtain_opacity_labels, 
-            []() -> std::any{ return CFG_getGameSwitcherCurtain(); },
-            [](const std::any &value){ CFG_setGameSwitcherCurtain(std::any_cast<int>(value)); },
-            []() { CFG_setGameSwitcherCurtain(CFG_DEFAULT_GAMESWITCHER_CURTAIN);}});
         appearanceItems.push_back(new MenuItem{ListItemType::Generic, "Input prompt style", "Select the style of input prompts.", input_prompt_style_values, input_prompt_style_labels,
             []() -> std::any{ return CFG_getInputPromptStyle(); },
             [](const std::any &value){ CFG_setInputPromptStyle(std::any_cast<int>(value)); },
@@ -597,8 +561,8 @@ int main(int argc, char *argv[])
             { CFG_setHaptics(std::any_cast<bool>(value)); },
             []() { CFG_setHaptics(CFG_DEFAULT_HAPTICS);}},
             new MenuItem{ListItemType::Generic, "Default view", "The initial view to show on boot",
-            {(int)SCREEN_GAMELIST, (int)SCREEN_GAMESWITCHER, (int)SCREEN_QUICKMENU},
-            {"Content List","Game Switcher","Quick Menu"},
+            {(int)SCREEN_GAMELIST, (int)SCREEN_QUICKMENU},
+            {"Content List","Quick Menu"},
             []() -> std::any { return CFG_getDefaultView(); },
             [](const std::any &value){ CFG_setDefaultView(std::any_cast<int>(value)); },
             []() { CFG_setDefaultView(CFG_DEFAULT_VIEW);}},
@@ -905,10 +869,6 @@ int main(int argc, char *argv[])
             []() -> std::any { return CFG_getRAProgressNotificationDuration(); },
             [](const std::any &value) { CFG_setRAProgressNotificationDuration(std::any_cast<int>(value)); },
             []() { CFG_setRAProgressNotificationDuration(CFG_DEFAULT_RA_PROGRESS_NOTIFICATION_DURATION);}},
-            new MenuItem{ListItemType::Generic, "Achievement Sort Order", "How achievements are sorted in the in-game menu", ra_sort_values, ra_sort_labels,
-            []() -> std::any { return CFG_getRAAchievementSortOrder(); },
-            [](const std::any &value) { CFG_setRAAchievementSortOrder(std::any_cast<int>(value)); },
-            []() { CFG_setRAAchievementSortOrder(CFG_DEFAULT_RA_ACHIEVEMENT_SORT_ORDER);}},
             new MenuItem{ListItemType::Button, "Sync Offline Unlocks",
             []() -> std::string {
                 uint32_t count = 0;
@@ -1101,9 +1061,15 @@ int main(int argc, char *argv[])
 
         mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Notifications and RetroAchievements. Applied to RetroArch on launch; MENU opens the RA menu, MENU+Start exits.", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
 
-        if(deviceInfo.hasWifi())
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, Bluetooth, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)});
-        else if(deviceInfo.hasBluetooth())
+        if(deviceInfo.hasWifi()) {
+            std::vector<AbstractMenuItem*> networkItems = {
+                new MenuItem{ListItemType::Generic, "WiFi", "Toggle, diagnostics, and AP list", {}, {}, nullptr, nullptr, DeferToSubmenu, new Wifi::Menu(appQuit, ctx.dirty)},
+                new MenuItem{ListItemType::Generic, "Bluetooth", "Pair HID controllers and headsets", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)},
+            };
+            Zlyme_appendNetworkItems(networkItems);
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "Network", "WiFi, Bluetooth, SSH, Samba, Syncthing", {}, {}, nullptr, nullptr, DeferToSubmenu,
+                new MenuList(MenuItemType::Fixed, "Network", std::move(networkItems))});
+        } else if(deviceInfo.hasBluetooth())
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "Pair and connect HID", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
 
         mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "Build and hardware info", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});

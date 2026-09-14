@@ -19,6 +19,15 @@ extern "C"
 // leftovers to port
 #define OPTION_PADDING 8
 
+// ASSET_BUTTON is native BUTTON_SIZE (20) tall. Stretching it to PILL_SIZE
+// (30) wrecks the 9-slice. Keep the row stride at PILL_SIZE for font.large.
+inline SDL_Rect nativeButtonRect(int x, int y, int w, int row_h)
+{
+    int h = SCALE1(BUTTON_SIZE);
+    int yy = y + (row_h - h) / 2;
+    return {x, yy, w, h};
+}
+
 // c++ compat/convenience
 // MinUI is passing a lot of temp value ptrs, which is not very c++
 inline bool rectIsNull(const SDL_Rect &rect)

@@ -14,7 +14,7 @@ PSP: iso cso pbp chd
 DC: cdi gdi cue chd m3u
 N64: z64 n64 v64 zip 7z
 NDS: nds zip 7z
-PCE: pce cue ccd iso img chd sgx zip 7z
+PCE: pce cue ccd iso img chd sgx zip 7z m3u
 NGP: ngp ngc zip 7z
 WS: ws wsc zip 7z
 VB: vb zip 7z
@@ -24,12 +24,14 @@ A78: a78 bin zip 7z
 PKM: min zip 7z
 FBNEO: zip 7z
 MAME: zip 7z
-DOS: exe com bat dos dosz zip iso cue m3u
+DOS: exe com bat dos dosz zip iso cue m3u m3u8
 3DO: iso chd cue
 NEOCD: cue iso chd
-SATURN: cue ccd m3u chd iso
-AMIGA: adf ipf hdf lha cue iso chd m3u zip
+SATURN: cue ccd chd iso
+AMIGA: adf ipf hdf lha cue iso chd zip
 DOOM: wad iwad pwad pk3
 TIC: tic
 PICO: p8 png zip
 PORTS: sh
+EASYRPG: zip lzh ldb easyrpg
+MKXPZ: rxproj rvproj rvproj2 mkxp mkxpz zip 7z

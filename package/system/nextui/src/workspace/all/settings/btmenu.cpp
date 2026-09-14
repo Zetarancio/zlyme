@@ -17,7 +17,7 @@ typedef std::shared_lock<Lock> ReadLock;
 using namespace Bluetooth;
 using namespace std::placeholders;
 
-Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fixed, "Network", {}), globalQuit(globalQuit), globalDirty(globalDirty)
+Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fixed, "Bluetooth", {}), globalQuit(globalQuit), globalDirty(globalDirty)
 {
     toggleItem = new MenuItem(ListItemType::Generic, "Bluetooth", "Enable/disable Bluetooth", {false, true}, {"Off", "On"},
                               std::bind(&Menu::getBtToggleState, this),
@@ -319,7 +319,7 @@ void PairableItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, con
 
     if (selected)
     {
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, mw, dst.h));
     }
 
     if(dev.kind != BLUETOOTH_NONE) {
@@ -340,7 +340,7 @@ void PairableItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, con
         int w = 0;
         TTF_SizeUTF8(font.large, nm, &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
@@ -366,7 +366,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, mw, dst.h));
     }
 
     // rssi icon
@@ -404,7 +404,7 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
         int w = 0;
         TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = uintToColour(THEME_COLOR5_255);
     }
 

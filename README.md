@@ -19,46 +19,6 @@ Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few l
 
 “It’s not buttery smooth. It’s slime-smooth.”  
 
-### Systems
-
-
-| System                    | Emulator                             |
-| ------------------------- | ------------------------------------ |
-| NES                       | Nestopia (libretro)                  |
-| Game Boy / Game Boy Color | Gambatte (libretro)                  |
-| Game Boy Advance          | gpSP (libretro)                      |
-| SNES                      | Mednafen SuperFaust (libretro)       |
-| Master System / Game Gear | Genesis Plus GX (libretro)           |
-| Mega Drive / Genesis      | PicoDrive (libretro)                 |
-| 32X                       | PicoDrive (libretro)                 |
-| PC Engine                 | Mednafen PCE Fast (libretro)         |
-| Neo Geo (AES/MVS)         | FinalBurn Neo (libretro)             |
-| Arcade                    | MAME 2003-Plus (libretro)            |
-| Neo Geo CD                | NeoCD (libretro)                     |
-| Neo Geo Pocket            | Mednafen NGP (libretro)              |
-| WonderSwan                | Mednafen WonderSwan (libretro)       |
-| Virtual Boy               | Mednafen VB (libretro)               |
-| Pokémon Mini              | PokeMini (libretro)                  |
-| Atari 2600                | Stella (libretro)                    |
-| Atari 7800                | ProSystem (libretro)                 |
-| Atari Lynx                | Handy (libretro)                     |
-| 3DO                       | Opera (libretro)                     |
-| DOS                       | DOSBox Pure (libretro)               |
-| PlayStation               | PCSX ReARMed (libretro)              |
-| Nintendo 64               | Mupen64Plus-Next (libretro)          |
-| Saturn                    | YabaSanshiro (libretro)              |
-| TIC-80                    | TIC-80 (libretro)                    |
-| Pico-8                    | Official Pico-8 (you add `pico8_64`) |
-| PSP                       | PPSSPP                               |
-| Dreamcast                 | Flycast                              |
-| Nintendo DS               | DraStic                              |
-| Amiga                     | Amiberry                             |
-| Doom                      | GZDoom                               |
-| Portmaster                | Built-in                             |
-
-
-Libretro cores run through RetroArch. The rest are standalones. This list we'll change over time.
-
 ### Tools
 
 Each community pak below was ported (paths, Flip joystick, this image’s binaries).
@@ -73,7 +33,25 @@ Each community pak below was ported (paths, Flip joystick, this image’s binari
 - **Autocal** — save analog-stick calibration.
 - **Update** — **OTA**: pulls a release tar, checks the hash, and reboots into the new OS.
 
+## Controls
 
+The Miyoo Flip wiki Start+Vol brightness combo is not this device.
+
+**Launcher**
+
+- A open, B back
+- MENU tap = quick menu
+- Vol = volume; **MENU+Vol** = brightness
+- Power = sleep
+- Short Select does nothing (no game switcher)
+
+**In a pak / game**
+
+- **MENU+Start** closes whatever is running (libretro, standalones, PortMaster, Pico-8, Tools)
+- MENU tap = RetroArch RGUI; standalones keep their own menu
+- No color-temp shortcut (the Flip has no panel color-temperature sysfs; hue is not white-point)
+
+Speaker vs jack is automatic (`flip-jackd`). Bluetooth audio follows the headset connect. `zlyme-audio` stays on the CLI for debug.
 
 ## Install
 
@@ -86,48 +64,51 @@ The Flip will not boot an SD OS until you change how it starts. Without one of t
 
 Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). Do not flash over a card that already has games. Put that card in the **right** slot (next to power). Later updates are the OTA tar from Tools → Update.
 
-## Roms and Bios
+## Systems
 
-Games and BIOS live on the **ZLYME** partition (`/storage` on the device). NextUI only lists a system if that folder exists and is not empty. The name must include the tag in parentheses — that tag is how the pak is chosen.
+Games live on the **ZLYME** partition (`/storage`). NextUI only lists a system if that folder exists and is not empty. The name must include the tag in parentheses — that tag is how the pak is chosen. A slash in the name (`2000/2003`) becomes nested directories; use the hyphenated names in the table. Libretro cores run through RetroArch; the rest are standalones.
 
+BIOS files go in `Bios/` (RetroArch `system` dir). Pico-8’s `pico8_64` + `pico8.dat` go in `Bios/PICO`. EasyRPG RTP is `Bios/rtp/2000` and `Bios/rtp/2003`. mkxp-z RTP is `Bios/mkxp-z/RTP`. A second card in the other slot is picked up if it has a `Roms/` (or `roms/`) folder, including Spruce short names (`EASYRPG`, `MKXP-Z`); `Bios/` or `Roms/bios` on that card is used the same way. Saves are `Saves/`. Box art is `{folder}/.media/{rom}.png` (Spruce `Imgs/` is copied there). Multi-disc games use a `Game.m3u` next to a `Game/` folder of `.chd`/`.cue` files; playlist lines are paths relative to the `.m3u`.
 
-| Folder                                            | System                   |
-| ------------------------------------------------- | ------------------------ |
-| `Roms/Nintendo Entertainment System (FC)/`        | NES                      |
-| `Roms/Game Boy (GB)/`                             | Game Boy                 |
-| `Roms/Game Boy Color (GBC)/`                      | Game Boy Color           |
-| `Roms/Game Boy Advance (GBA)/`                    | Game Boy Advance         |
-| `Roms/Super Nintendo Entertainment System (SFC)/` | SNES                     |
-| `Roms/Sega Master System (MS)/`                   | Master System            |
-| `Roms/Sega Game Gear (GG)/`                       | Game Gear                |
-| `Roms/Sega Genesis (MD)/`                         | Mega Drive / Genesis     |
-| `Roms/Sega 32X (32X)/`                            | 32X                      |
-| `Roms/PC Engine (PCE)/`                           | PC Engine                |
-| `Roms/FBNeo (FBNEO)/`                             | Neo Geo / arcade (FBNeo) |
-| `Roms/MAME (MAME)/`                               | Arcade (MAME 2003-Plus)  |
-| `Roms/Neo Geo CD (NEOCD)/`                        | Neo Geo CD               |
-| `Roms/Neo Geo Pocket (NGP)/`                      | Neo Geo Pocket           |
-| `Roms/WonderSwan (WS)/`                           | WonderSwan               |
-| `Roms/Virtual Boy (VB)/`                          | Virtual Boy              |
-| `Roms/Pokemon Mini (PKM)/`                        | Pokémon Mini             |
-| `Roms/Atari 2600 (A26)/`                          | Atari 2600               |
-| `Roms/Atari 7800 (A78)/`                          | Atari 7800               |
-| `Roms/Atari Lynx (LYNX)/`                         | Atari Lynx               |
-| `Roms/3DO (3DO)/`                                 | 3DO                      |
-| `Roms/DOS (DOS)/`                                 | DOS                      |
-| `Roms/Sony PlayStation (PS)/`                     | PlayStation              |
-| `Roms/Nintendo 64 (N64)/`                         | Nintendo 64              |
-| `Roms/Sega Saturn (SATURN)/`                      | Saturn                   |
-| `Roms/TIC-80 (TIC)/`                              | TIC-80                   |
-| `Roms/Pico-8 (PICO)/`                             | Pico-8                   |
-| `Roms/Sony PlayStation Portable (PSP)/`           | PSP                      |
-| `Roms/Sega Dreamcast (DC)/`                       | Dreamcast                |
-| `Roms/Nintendo DS (NDS)/`                         | Nintendo DS              |
-| `Roms/Commodore Amiga (AMIGA)/`                   | Amiga                    |
-| `Roms/Doom (DOOM)/`                               | Doom                     |
+| System | Emulator | Folder | Files |
+| --- | --- | --- | --- |
+| NES | Nestopia (libretro) | `Roms/Nintendo Entertainment System (FC)/` | `.nes` `.unif` `.unf` `.fds` `.zip` `.7z` |
+| Game Boy | Gambatte (libretro) | `Roms/Game Boy (GB)/` | `.gb` `.zip` `.7z` |
+| Game Boy Color | Gambatte (libretro) | `Roms/Game Boy Color (GBC)/` | `.gbc` `.gb` `.zip` `.7z` |
+| Game Boy Advance | gpSP (libretro) | `Roms/Game Boy Advance (GBA)/` | `.gba` `.zip` `.7z` |
+| SNES | Mednafen SuperFaust (libretro) | `Roms/Super Nintendo Entertainment System (SFC)/` | `.smc` `.sfc` `.fig` `.swc` `.bsx` `.zip` `.7z` |
+| Master System | Genesis Plus GX (libretro) | `Roms/Sega Master System (MS)/` | `.sms` `.bin` `.zip` `.7z` |
+| Game Gear | Genesis Plus GX (libretro) | `Roms/Sega Game Gear (GG)/` | `.gg` `.bin` `.zip` `.7z` |
+| Mega Drive / Genesis | PicoDrive (libretro) | `Roms/Sega Genesis (MD)/` | `.md` `.smd` `.gen` `.bin` `.zip` `.7z` |
+| 32X | PicoDrive (libretro) | `Roms/Sega 32X (32X)/` | `.32x` `.smd` `.md` `.bin` `.zip` `.7z` |
+| PC Engine | Mednafen PCE Fast (libretro) | `Roms/PC Engine (PCE)/` | `.pce` `.cue` `.ccd` `.iso` `.img` `.chd` `.sgx` `.zip` `.7z` `.m3u` |
+| Neo Geo (AES/MVS) | FinalBurn Neo (libretro) | `Roms/FBNeo (FBNEO)/` | `.zip` `.7z` |
+| Arcade | MAME 2003-Plus (libretro) | `Roms/MAME (MAME)/` | `.zip` `.7z` |
+| Neo Geo CD | NeoCD (libretro) | `Roms/Neo Geo CD (NEOCD)/` | `.cue` `.iso` `.chd` |
+| Neo Geo Pocket | Mednafen NGP (libretro) | `Roms/Neo Geo Pocket (NGP)/` | `.ngp` `.ngc` `.zip` `.7z` |
+| WonderSwan | Mednafen WonderSwan (libretro) | `Roms/WonderSwan (WS)/` | `.ws` `.wsc` `.zip` `.7z` |
+| Virtual Boy | Mednafen VB (libretro) | `Roms/Virtual Boy (VB)/` | `.vb` `.zip` `.7z` |
+| Pokémon Mini | PokeMini (libretro) | `Roms/Pokemon Mini (PKM)/` | `.min` `.zip` `.7z` |
+| Atari 2600 | Stella (libretro) | `Roms/Atari 2600 (A26)/` | `.a26` `.bin` `.zip` `.7z` |
+| Atari 7800 | ProSystem (libretro) | `Roms/Atari 7800 (A78)/` | `.a78` `.bin` `.zip` `.7z` |
+| Atari Lynx | Handy (libretro) | `Roms/Atari Lynx (LYNX)/` | `.lnx` `.lyx` `.bll` `.o` `.zip` `.7z` |
+| 3DO | Opera (libretro) | `Roms/3DO (3DO)/` | `.iso` `.chd` `.cue` |
+| DOS | DOSBox Pure (libretro) | `Roms/DOS (DOS)/` | `.exe` `.com` `.bat` `.dos` `.dosz` `.zip` `.iso` `.cue` `.m3u` `.m3u8` |
+| PlayStation | PCSX ReARMed (libretro) | `Roms/Sony PlayStation (PS)/` | `.cue` `.chd` `.m3u` `.pbp` `.iso` `.ccd` `.img` `.toc` |
+| Nintendo 64 | Mupen64Plus-Next (libretro) | `Roms/Nintendo 64 (N64)/` | `.z64` `.n64` `.v64` `.zip` `.7z` |
+| Saturn | YabaSanshiro (libretro) | `Roms/Sega Saturn (SATURN)/` | `.cue` `.ccd` `.chd` `.iso` |
+| TIC-80 | TIC-80 (libretro) | `Roms/TIC-80 (TIC)/` | `.tic` |
+| Pico-8 | Official Pico-8 (add `pico8_64`) | `Roms/Pico-8 (PICO)/` | `.p8` `.png` `.zip` |
+| PSP | PPSSPP | `Roms/Sony PlayStation Portable (PSP)/` | `.iso` `.cso` `.pbp` `.chd` |
+| Dreamcast | Flycast | `Roms/Sega Dreamcast (DC)/` | `.cdi` `.gdi` `.cue` `.chd` `.m3u` |
+| Nintendo DS | DraStic | `Roms/Nintendo DS (NDS)/` | `.nds` `.zip` `.7z` |
+| Amiga | Amiberry | `Roms/Commodore Amiga (AMIGA)/` | `.adf` `.ipf` `.hdf` `.lha` `.cue` `.iso` `.chd` `.zip` |
+| Doom | GZDoom | `Roms/Doom (DOOM)/` | `.wad` `.iwad` `.pwad` `.pk3` |
+| Ports | PortMaster | `Roms/Ports (PORTS)/` | `.sh` only |
+| RPG Maker 2000/2003 | EasyRPG Player (libretro) | `Roms/RPG Maker 2000-2003 (EASYRPG)/` | `.zip` `.lzh` `.ldb` `.easyrpg`; folders with `RPG_RT.ldb` or `*.easyrpg` |
+| RPG Maker XP / VX / Ace | mkxp-z (libretro) | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/` | `.rxproj` `.rvproj` `.rvproj2` `.mkxp` `.mkxpz` `.zip` `.7z` |
 
-
-BIOS files go in `Bios/` (RetroArch `system` dir). A second card in the other slot is picked up if it has a `Roms/` (or `roms/`) folder; `Bios/` or `Roms/bios` on that card is used the same way. Saves are `Saves/`.
+This list will change over time.
 
 ## Build
 

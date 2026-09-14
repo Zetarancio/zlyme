@@ -1,7 +1,5 @@
 #include "wifimenu.hpp"
 #include "keyboardprompt.hpp"
-#include "zlymemenu.hpp"
-#include "btmenu.hpp"
 
 #include <unordered_set>
 #include <map>
@@ -15,7 +13,7 @@ typedef std::shared_lock<Lock> ReadLock;
 using namespace Wifi;
 using namespace std::placeholders;
 
-Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fixed, "Network", {}), globalQuit(globalQuit), globalDirty(globalDirty)
+Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fixed, "WiFi", {}), globalQuit(globalQuit), globalDirty(globalDirty)
 {
     toggleItem = new MenuItem(ListItemType::Generic, "WiFi", "Radio on or off. Leave this on to scan and connect.", {false, true}, {"Off", "On"},
                               std::bind(&Menu::getWifToggleState, this),
@@ -25,12 +23,8 @@ Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fix
                               std::bind(&Menu::getWifDiagnosticsState, this),
                               std::bind(&Menu::setWifiDiagnosticsState, this, std::placeholders::_1),
                               std::bind(&Menu::resetWifiDiagnosticsState, this));
-    Zlyme_appendNetworkItems(serviceItems);
-    btItem = new MenuItem(ListItemType::Button, "Bluetooth", "Pair HID controllers and headsets.", DeferToSubmenu, new Bluetooth::Menu(globalQuit, globalDirty));
     items.push_back(toggleItem);
     items.push_back(diagItem);
-    items.push_back(btItem);
-    items.insert(items.end(), serviceItems.begin(), serviceItems.end());
 
     // best effort layout based on the platform defines, user should really call performLayout manually
     MenuList::performLayout((SDL_Rect){0, 0, FIXED_WIDTH, FIXED_HEIGHT});
@@ -149,20 +143,13 @@ void Menu::updater()
                     selectedName = getSelectedItemName();
                     for (auto *i : items)
                     {
-                        bool keep = (i == toggleItem || i == diagItem || i == btItem);
-                        for (auto *s : serviceItems)
-                        {
-                            if (i == s)
-                                keep = true;
-                        }
+                        bool keep = (i == toggleItem || i == diagItem);
                         if (!keep)
                             stale.push_back(i);
                     }
                     items.clear();
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
-                    items.push_back(btItem);
-                    items.insert(items.end(), serviceItems.begin(), serviceItems.end());
 
                     for (auto &[s, r] : scanSsids)
                     {
@@ -225,20 +212,13 @@ void Menu::updater()
                     WriteLock w(itemLock);
                     for (auto *i : items)
                     {
-                        bool keep = (i == toggleItem || i == diagItem || i == btItem);
-                        for (auto *s : serviceItems)
-                        {
-                            if (i == s)
-                                keep = true;
-                        }
+                        bool keep = (i == toggleItem || i == diagItem);
                         if (!keep)
                             stale.push_back(i);
                     }
                     items.clear();
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
-                    items.push_back(btItem);
-                    items.insert(items.end(), serviceItems.begin(), serviceItems.end());
                     selectionDirty = true;
                 }
                 for (auto *i : stale)
@@ -306,7 +286,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, mw, dst.h));
     }
 
     // wifi icon
@@ -343,7 +323,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
         int w = 0;
         TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = uintToColour(THEME_COLOR5_255);
     }
 

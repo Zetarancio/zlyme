@@ -2,17 +2,21 @@
 
 Panel fill / charging / splash letterbox: `#050608`.
 
-NextUI palette (`res/palettes/Zlyme.txt`), packed as `0xRRGGBBAA`:
+NextUI palette (`res/palettes/Zlyme.txt`), packed as `0xRRGGBBAA`. Roles
+match Catppuccin Macchiato (peach fill, dark pills, contrasting glyphs):
 
 | Role | Hex | NextUI |
 |------|-----|--------|
-| Main | `#F2F3F5` | color1 |
-| Primary accent | `#F7B07C` | color2 |
-| Secondary accent | `#E99962` | color3 |
+| Main (selected pill / buttons) | `#F7B07C` | color1 |
+| Primary accent (unselected pill) | `#050608` | color2 |
+| Secondary accent (glyph on buttons) | `#050608` | color3 |
 | List text | `#F2F3F5` | color4 |
 | List text selected | `#050608` | color5 |
-| Hint | `#F7B07C` | color6 (orange; gray is unreadable on the white pills) |
+| Hint (wifi/battery/footer icons) | `#E99962` | color6 |
 | Background | `#050608` | color7 |
+
+color2 and color6 must not share a hex: hardware-group icons blit color6
+on a color2 pill. Catppuccin Macchiato stays a second orange.
 
 SVGs in this folder are the source pack (PNG-in-SVG). Regenerated bitmaps:
 

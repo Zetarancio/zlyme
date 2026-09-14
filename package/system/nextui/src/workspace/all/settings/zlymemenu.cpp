@@ -6,10 +6,6 @@
 #include <string>
 #include <vector>
 
-extern "C" {
-#include "msettings.h"
-}
-
 static std::string trim(std::string s)
 {
 	while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ' || s.back() == '\t'))
@@ -158,41 +154,7 @@ void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items)
 {
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
-	const std::vector<std::any> sink_v = {
-		std::string("codec"), std::string("hdmi"), std::string("bt")};
-	const std::vector<std::string> sink_l = {"Speaker / jack", "HDMI", "Bluetooth"};
 
-	items.push_back(new MenuItem{ListItemType::Generic, "Audio sink",
-		"Applies to the next game or app that opens audio. Relaunch the ROM after switching.",
-		sink_v, sink_l,
-		[]() -> std::any {
-			std::string s;
-			FILE *f = popen("zlyme-audio get 2>/dev/null", "r");
-			if (f) {
-				char buf[64] = {0};
-				if (fgets(buf, sizeof(buf), f))
-					s = trim(buf);
-				pclose(f);
-			}
-			if (s != "hdmi" && s != "bt")
-				s = "codec";
-			return s;
-		},
-		[](const std::any &v) {
-			std::string s = std::any_cast<std::string>(v);
-			int sink = AUDIO_SINK_DEFAULT;
-			if (s == "bt")
-				sink = AUDIO_SINK_BLUETOOTH;
-			else if (s == "hdmi")
-				sink = AUDIO_SINK_HDMI;
-			std::string cmd = std::string("zlyme-audio set ") + s;
-			system(cmd.c_str());
-			SetAudioSink(sink);
-		},
-		[]() {
-			system("zlyme-audio set codec");
-			SetAudioSink(AUDIO_SINK_DEFAULT);
-		}});
 	items.push_back(new MenuItem{ListItemType::Generic, "SSH",
 		"OpenSSH with SFTP. Applies immediately. Empty-password login is on.",
 		on_off_v, on_off,

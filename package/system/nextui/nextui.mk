@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme26
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme27
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -48,6 +48,8 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/zlyme-bcsh \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-bcsh.c \
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
+		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
 	$(foreach src,scaler utils config api palette,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
@@ -59,7 +61,7 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/nextui.o $(@D)/workspace/all/nextui/nextui.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
 		$(@D)/nextui.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
-		$(@D)/api.o $(@D)/platform.o \
+		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
@@ -90,6 +92,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/show.elf $(TARGET_DIR)/usr/bin/show.elf
 	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(TARGET_DIR)/usr/lib/libmsettings.so
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-bcsh $(TARGET_DIR)/usr/sbin/zlyme-bcsh
+	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-hotkey $(TARGET_DIR)/usr/sbin/zlyme-pak-hotkey
 	ln -sf nextui.elf $(TARGET_DIR)/usr/bin/minui.elf
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/minarch.sh \
 		$(TARGET_DIR)/usr/bin/minarch.elf

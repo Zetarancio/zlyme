@@ -131,3 +131,22 @@ void PALETTE_apply(const ColorPalette *palette)
     // doesn't match it.
     CFG_applyPalette(palette->name, palette->colors);
 }
+
+bool PALETTE_reapplyCurrent(void)
+{
+    const char *name = CFG_getPaletteName();
+    if (!name || !name[0])
+        return false;
+
+    ColorPalette pals[64];
+    int n = PALETTE_enumerate(pals, 64);
+    for (int i = 0; i < n; i++)
+    {
+        if (strcmp(pals[i].name, name) == 0)
+        {
+            PALETTE_apply(&pals[i]);
+            return true;
+        }
+    }
+    return false;
+}

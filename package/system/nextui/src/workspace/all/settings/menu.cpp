@@ -673,7 +673,7 @@ void MenuList::drawListItem(SDL_Surface *surface, const SDL_Rect &dst, const Abs
         TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
 
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = uintToColour(THEME_COLOR5_255);
     }
     text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
@@ -731,7 +731,7 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, mw, dst.h));
     }
 
     if (item.getValue().has_value())
@@ -782,7 +782,7 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
         int w = 0;
         TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
@@ -832,13 +832,13 @@ void MenuList::drawInputItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
     if (selected)
     {
         // gray pill
-        GFX_blitPillLightCPP(ASSET_BUTTON, surface, {dst.x, dst.y, mw, SCALE1(PILL_SIZE)});
+        GFX_blitPillLightCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, mw, dst.h));
 
         // white pill
         int w = 0;
         TTF_SizeUTF8(font.large, item.getName().c_str(), &w, NULL);
         w += SCALE1(OPTION_PADDING * 2);
-        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, {dst.x, dst.y, w, SCALE1(PILL_SIZE)});
+        GFX_blitPillDarkCPP(ASSET_BUTTON, surface, nativeButtonRect(dst.x, dst.y, w, dst.h));
         text_color = COLOR_BLACK;
     }
     text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
