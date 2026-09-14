@@ -49,6 +49,10 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/
 	python3 $(PORTMASTER_PKGDIR)/zlyme-theme/inject-scheme.py \
 		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/theme.json
+	if [ -f $(PORTMASTER_PKGDIR)/zlyme-theme/logo.png ]; then \
+		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/zlyme-theme/logo.png \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/logo.png; \
+	fi
 endef
 
 $(eval $(generic-package))

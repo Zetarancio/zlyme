@@ -187,6 +187,15 @@ else
 	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=120' >> "$cfg"
 	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=600' >> "$cfg"
 fi
+# Named Zlyme palette follows the faithful pack v4 oranges.
+if [ -f "$cfg" ] && grep -q '^palette=Zlyme' "$cfg"; then
+	sed -i \
+		-e 's/^color1=0xF7B07CFF$/color1=0xFA7C08FF/' \
+		-e 's/^color6=0xB9BDC4FF$/color6=0xEC2A01FF/' \
+		-e 's/^color6=0xF7B07CFF$/color6=0xEC2A01FF/' \
+		-e 's/^color6=0xE99962FF$/color6=0xEC2A01FF/' \
+		"$cfg"
+fi
 # Older images wrote 0 on every start so sleep never ran. Restore once.
 flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
 if [ ! -f "$flag" ]; then

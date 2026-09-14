@@ -6,24 +6,24 @@ import json
 import sys
 from pathlib import Path
 
-# Orange on #050608. No gray fills — those wash out on the light button atlas.
+# Faithful pack v4 beaker oranges on #050608.
 SCHEME = {
     "#pallet": {
         "background": [5, 6, 8, 255],
         "background_fade": [5, 6, 8, 0],
         "list_text": [242, 243, 245, 255],
-        "list_selected": [247, 176, 124, 255],
-        "list_unselectable": [233, 153, 98, 255],
-        "button": [247, 176, 124, 255],
+        "list_selected": [250, 124, 8, 255],
+        "list_unselectable": [236, 42, 1, 255],
+        "button": [250, 124, 8, 255],
         "general_font": [242, 243, 245],
         "download_font": [5, 6, 8],
         "panels": [5, 6, 8],
-        "selection-fill": [247, 176, 124],
+        "selection-fill": [250, 124, 8],
         "secondary-selection-fill": [5, 6, 8],
     },
     "#resources": {
         "buttons.png": {"image-mod": [5, 6, 8]},
-        "pointenfedde.png": {"image-mod": [247, 176, 124]},
+        "pointenfedde.png": {"image-mod": [250, 124, 8]},
     },
 }
 

@@ -3,9 +3,9 @@
   "version": 1,
   "background": "#050608",
   "text": "#F2F3F5",
-  "primary": "#F7B07C",
-  "secondary": "#E99962",
+  "primary": "#FA7C08",
+  "secondary": "#EC2A01",
   "list_text": "#F2F3F5",
   "list_text_selected": "#050608",
-  "hint": "#F7B07C"
+  "hint": "#FA7C08"
 }

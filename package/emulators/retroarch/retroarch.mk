@@ -2,7 +2,7 @@
 #
 # retroarch
 #
-# KMS + EGL + GLES + SDL2 + ALSA. RGUI only.
+# KMS + EGL + GLES + SDL2 + ALSA. RGUI only (ozone/xmb are not built).
 # 1.22 libchdr needs vendored dr_flac; Knulli's --disable-builtinflac is for 1.21.
 ################################################################################
 

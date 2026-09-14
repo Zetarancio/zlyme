@@ -1,9 +1,9 @@
 version=1
 name=Zlyme
-color1=0xF7B07CFF
+color1=0xFA7C08FF
 color2=0x050608FF
 color3=0x050608FF
 color4=0xF2F3F5FF
 color5=0x050608FF
-color6=0xE99962FF
+color6=0xEC2A01FF
 color7=0x050608FF
