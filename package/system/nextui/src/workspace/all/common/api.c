@@ -3737,8 +3737,8 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 		}
 	}
 
-	if (lid.has_lid && PLAT_lidChanged(NULL))
-		pad.just_released |= BTN_SLEEP;
+	if (lid.has_lid && PLAT_lidChanged(NULL) && !lid.is_open)
+		pwr.requested_sleep = 1;
 }
 FALLBACK_IMPLEMENTATION int PLAT_shouldWake(void)
 {
@@ -4168,9 +4168,10 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 		}
 	}
 
-	/* keymon.elf is not shipped. Apply volume/brightness here or the
-	 * overlay appears and the value never changes. justRepeated is set
-	 * on the first press and on the software repeat timer. */
+	/* Volume/brightness in the list and in Settings. In a pak,
+	 * keymon.elf applies the same keys (and grabs gpio-keys-volume
+	 * so RetroArch does not). justRepeated is set on the first press
+	 * and on the software repeat timer. */
 	if (InitializedSettings() && (PAD_justRepeated(BTN_MOD_PLUS) || PAD_justRepeated(BTN_MOD_MINUS)))
 	{
 		int plus = PAD_justRepeated(BTN_MOD_PLUS);

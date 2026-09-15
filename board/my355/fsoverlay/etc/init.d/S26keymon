@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Class A: start before NextUI so keymon is the msettings shm host.
+# Volume/brightness only while a pak runs; lid sleep always (not in NextUI).
+
+DAEMON=/usr/bin/keymon.elf
+PIDFILE=/var/run/keymon.pid
+
+start() {
+	[ -x "$DAEMON" ] || return 0
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		echo "Starting keymon: already"
+		return 0
+	fi
+	printf "Starting keymon: "
+	export USERDATA_PATH=/storage/.config/nextui/my355
+	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON"; then
+		echo OK
+	else
+		echo FAIL
+	fi
+}
+
+stop() {
+	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null || true
+	killall -TERM keymon.elf 2>/dev/null || true
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) stop; start ;;
+	*) echo "usage: $0 {start|stop|restart}" >&2; exit 1 ;;
+esac

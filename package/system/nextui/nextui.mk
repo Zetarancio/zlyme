@@ -12,7 +12,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme30
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme31
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -50,6 +50,10 @@ define NEXTUI_BUILD_CMDS
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) $(NEXTUI_INCLUDES) \
+		-o $(@D)/keymon.elf \
+		$(@D)/workspace/$(NEXTUI_PLATFORM)/keymon/keymon.c \
+		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(foreach src,scaler utils config api palette,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
@@ -93,6 +97,10 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(TARGET_DIR)/usr/lib/libmsettings.so
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-bcsh $(TARGET_DIR)/usr/sbin/zlyme-bcsh
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-hotkey $(TARGET_DIR)/usr/sbin/zlyme-pak-hotkey
+	$(INSTALL) -D -m 0755 $(@D)/keymon.elf $(TARGET_DIR)/usr/bin/keymon.elf
+	rm -f $(TARGET_DIR)/usr/sbin/zlyme-volmon \
+		$(TARGET_DIR)/etc/init.d/S26volmon \
+		$(TARGET_DIR)/etc/udev/rules.d/60-zlyme-volume-keys.rules
 	ln -sf nextui.elf $(TARGET_DIR)/usr/bin/minui.elf
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/minarch.sh \
 		$(TARGET_DIR)/usr/bin/minarch.elf

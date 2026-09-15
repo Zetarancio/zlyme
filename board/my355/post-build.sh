@@ -84,6 +84,7 @@ chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
 	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
 	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
+	"${TARGET_DIR}/etc/init.d/S26keymon" \
 	"${TARGET_DIR}/etc/init.d/S27led" \
 	"${TARGET_DIR}/etc/init.d/S90minui"
 [ -e "${TARGET_DIR}/etc/init.d/S50sshd" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S50sshd"
@@ -102,7 +103,10 @@ chmod 0755 \
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
-rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver"
+rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver" \
+	"${TARGET_DIR}/usr/sbin/zlyme-volmon" \
+	"${TARGET_DIR}/etc/init.d/S26volmon" \
+	"${TARGET_DIR}/etc/udev/rules.d/60-zlyme-volume-keys.rules"
 ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
 
 if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then
