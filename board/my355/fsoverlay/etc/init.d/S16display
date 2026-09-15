@@ -3,6 +3,7 @@
 
 start() {
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
+	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-hdmi-mode
 	# Coldplug while ALSA/jackd run so wlan0 exists before S30, without
 	# delaying NextUI (S28). S29 still fires after the list is up.
 	if command -v udevadm >/dev/null 2>&1; then

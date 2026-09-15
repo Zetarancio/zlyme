@@ -1,15 +1,13 @@
 #!/bin/sh
 #
-# Follow A2DP connect/disconnect so the ALSA default sink matches.
+# ALSA sink matrix (A2DP / HDMI ELD / codec). Runs even if Bluetooth is off
+# so an HDMI cable can move audio without a reboot.
 
 DAEMON=/usr/sbin/zlyme-btsink
 PIDFILE=/var/run/zlyme-btsink.pid
 
 start() {
 	[ -x "$DAEMON" ] || return 0
-	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want bluetooth; then
-		return 0
-	fi
 	printf "Starting zlyme-btsink: "
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
 		echo already

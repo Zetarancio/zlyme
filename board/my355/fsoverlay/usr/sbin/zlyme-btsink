@@ -1,9 +1,8 @@
 #!/bin/sh
 #
-# Keep ZLYME_SINK in sync with a live A2DP headset. BlueZ auto-reconnect
-# and bluetoothctl never call `zlyme-audio set`, so RetroArch stays on
-# the speaker. ALSA picks the sink at PCM open: the session loop re-exports
-# and, if a pak is running, relaunches it.
+# Live ALSA sink matrix. A2DP headset wins; else HDMI if the sink has
+# audio (ELD SAD); else codec + jack mux. HID pads never change this.
+# Poll so a cable or buds switch without reboot.
 
 . /etc/zlyme.conf 2>/dev/null || true
 
@@ -11,9 +10,40 @@ want_bt() {
 	bluealsa-cli list-pcms 2>/dev/null | grep -q a2dpsrc
 }
 
+hdmi_connected() {
+	for s in /sys/class/drm/card*-HDMI-A-1/status; do
+		[ -r "$s" ] || continue
+		st=$(tr -d ' \t\r\n' < "$s")
+		[ "$st" = connected ] && return 0
+	done
+	return 1
+}
+
+hdmi_has_audio() {
+	hdmi_connected || return 1
+	for f in /proc/asound/card*/eld*; do
+		[ -r "$f" ] || continue
+		# Kernel ELD proc is "sad_count<TAB>N", not sad_count=.
+		sc=$(sed -n 's/^sad_count[[:space:]]*//p' "$f" | head -n 1 | tr -d ' \t\r')
+		case "$sc" in
+			''|0) continue ;;
+			*) return 0 ;;
+		esac
+	done
+	return 1
+}
+
+pick() {
+	if want_bt; then
+		echo bt
+	elif hdmi_has_audio; then
+		echo hdmi
+	else
+		echo codec
+	fi
+}
+
 reload_clients() {
-	# Transient A2DP drops (deep suspend re-enumerates 8733bu) must not
-	# kill the emulator — that restarts the ROM.
 	[ -f /tmp/zlyme-keep-emu ] && return 0
 	if pidof nextui.elf >/dev/null 2>&1; then
 		kill -9 $(pidof nextui.elf) 2>/dev/null || true
@@ -34,24 +64,18 @@ apply() {
 }
 
 need() {
-	# Connecting buds should be snappy. Losing A2DP is often resume,
-	# not an unpair — wait longer before flipping to the speaker.
 	case "$1" in
 		bt) echo 2 ;;
-		*) echo 12 ;;
+		hdmi) echo 2 ;;
+		*) echo 5 ;;
 	esac
 }
 
-# Foreground: called from S46 with start-stop-daemon -b.
 prev=""
 pending=""
 npending=0
 while :; do
-	if want_bt; then
-		cur=bt
-	else
-		cur=codec
-	fi
+	cur=$(pick)
 	if [ -z "$prev" ]; then
 		apply "$cur"
 		prev=$cur

@@ -236,10 +236,20 @@ static void apply_bcsh(void)
 
 static int HDMI_enabled(void)
 {
+	static const char *paths[] = {
+		"/sys/class/drm/card0-HDMI-A-1/status",
+		"/sys/class/drm/card1-HDMI-A-1/status",
+		NULL
+	};
 	char value[64];
+	int i;
 
-	getFile(HDMI_STATE_PATH, value, sizeof(value));
-	return strncmp(value, "connected", 9) == 0;
+	for (i = 0; paths[i]; i++) {
+		getFile((char *)paths[i], value, sizeof(value));
+		if (strncmp(value, "connected", 9) == 0)
+			return 1;
+	}
+	return 0;
 }
 
 static int jack_from_evdev(void)
@@ -408,7 +418,11 @@ void SetJack(int value)
 
 int GetHDMI(void)
 {
-	return settings->hdmi;
+	int on = HDMI_enabled();
+
+	if (settings)
+		settings->hdmi = on;
+	return on;
 }
 
 void SetHDMI(int value)
