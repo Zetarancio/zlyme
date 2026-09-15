@@ -131,7 +131,7 @@ void Zlyme_appendDisplayItems(std::vector<AbstractMenuItem *> &items)
 static InputReactionHint Zlyme_backup(AbstractMenuItem &item)
 {
 	(void)item;
-	int r = system("sync; tar -acf /storage/zlyme-backup.tar.gz -C /storage .config .userdata");
+	int r = system("sync; tar -acf /storage/zlyme-backup.tar.gz -C /storage .config");
 	MenuList::showOverlay(r == 0 ? "Saved /storage/zlyme-backup.tar.gz" : "Backup failed",
 		OverlayDismissMode::DismissOnA);
 	return NoOp;
@@ -230,8 +230,8 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			ctl_set("zram", "on");
 			system("zlyme-ctl apply-zram");
 		}});
-	items.push_back(new MenuItem{ListItemType::Generic, "USB OTG",
-		"Lower USB-C gadget port. Off saves power. Takes effect on next boot.",
+	items.push_back(new MenuItem{ListItemType::Generic, "USB host (top port)",
+		"Upper USB-C host (sticks, hubs). Off saves power. Bottom port is charge only. Takes effect on next boot.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("otg"); },
 		[](const std::any &v) {
@@ -296,7 +296,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
 {
 	items.push_back(new MenuItem{ListItemType::Button, "Backup now",
-		"Save .config and .userdata to /storage/zlyme-backup.tar.gz",
+		"Save /storage/.config to /storage/zlyme-backup.tar.gz",
 		Zlyme_backup});
 	items.push_back(new MenuItem{ListItemType::Button, "Restore backup",
 		"Unpack zlyme-backup.tar.gz. Reboot after.",
@@ -336,6 +336,20 @@ static InputReactionHint Zlyme_ejectSd2(AbstractMenuItem &item)
 
 void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items)
 {
+	const std::vector<std::any> on_off_v = {false, true};
+	const std::vector<std::string> on_off = {"Off", "On"};
+	items.push_back(new MenuItem{ListItemType::Generic, "Merge extra storage",
+		"Show SD2 and USB games in the same folders as the OS card. Duplicate names keep the OS-card file. Applies immediately.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("merge"); },
+		[](const std::any &v) {
+			ctl_set("merge", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-merge");
+		},
+		[]() {
+			ctl_set("merge", "on");
+			system("zlyme-ctl apply-merge");
+		}});
 	items.push_back(new MenuItem{ListItemType::Button, "Mount library card",
 		"Second SD or a USB disk with roms/. Games show in the list after this. Also runs at boot via eudev.",
 		Zlyme_mountSd2});

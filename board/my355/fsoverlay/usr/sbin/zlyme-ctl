@@ -9,7 +9,7 @@ DIR="${ZLYME_CFG}/zlyme"
 # Defaults when the file is absent. Keep in sync with S15bootpart seed.
 default_of() {
 	case "$1" in
-		wifi|bluetooth|ssh|otg|hdmi|sd2) echo on ;;
+		wifi|bluetooth|ssh|otg|hdmi|sd2|merge) echo on ;;
 		samba|syncthing) echo off ;;
 		gpu) echo libmali ;;
 		display_mode) echo "" ;;
@@ -129,6 +129,20 @@ apply_zram() {
 	fi
 }
 
+apply_hdmi_mode() {
+	mode=$(get display_mode)
+	[ -n "$mode" ] || return 0
+	for c in /sys/class/drm/card*-HDMI-A-1; do
+		[ -e "$c/mode" ] || continue
+		printf '%s\n' "$mode" > "$c/mode" 2>/dev/null && return 0
+	done
+	return 0
+}
+
+apply_merge() {
+	[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage merge
+}
+
 apply_boost() {
 	# Sysfs boost is owned by governor profiles. This only exists so
 	# `zlyme-ctl apply-boost` is a documented no-op after set.
@@ -139,9 +153,11 @@ apply_settings() {
 	apply_overlays
 	apply_gov
 	apply_refresh
+	apply_hdmi_mode
 	apply_led
 	apply_zram
 	apply_boost
+	apply_merge
 }
 
 cmd=$1
@@ -158,14 +174,16 @@ case "$cmd" in
 	apply-gov) apply_gov ;;
 	apply-zram) apply_zram ;;
 	apply-boost) apply_boost ;;
+	apply-hdmi-mode) apply_hdmi_mode ;;
+	apply-merge) apply_merge ;;
 	apply-settings) apply_settings ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-boost|apply-settings|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-boost|apply-hdmi-mode|apply-merge|apply-settings|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

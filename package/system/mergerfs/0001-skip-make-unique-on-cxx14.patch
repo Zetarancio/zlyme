@@ -1,0 +1,16 @@
+--- a/libfuse/lib/make_unique.hpp
++++ b/libfuse/lib/make_unique.hpp
+@@ -3,6 +3,7 @@
+ #include <type_traits>
+ #include <utility>
+ 
++#if __cplusplus < 201402L
+ namespace std
+ {
+   template<class T> struct _Unique_if
+@@ -38,4 +39,5 @@
+   template<class T, class... Args>
+   typename _Unique_if<T>::_Known_bound
+   make_unique(Args&&...) = delete;
+ }
++#endif
