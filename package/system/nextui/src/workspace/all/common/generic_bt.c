@@ -22,6 +22,9 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
 bool PLAT_hasBluetooth() { return true; }
 bool PLAT_bluetoothEnabled() { return CFG_getBluetooth(); }
@@ -482,6 +485,21 @@ void PLAT_bluetoothPair(char *addr) {
 	
 	// Remove from discovered list since it's now paired
 	bt_remove_discovered_device(addr);
+
+	snprintf(cmd, sizeof(cmd), "bluetoothctl connect %s 2>/dev/null", addr);
+	system(cmd);
+	{
+		char info[2048];
+		int i;
+		for (i = 0; i < 25; i++) {
+			snprintf(cmd, sizeof(cmd), "bluetoothctl info %s 2>/dev/null", addr);
+			if (bt_run_cmd(cmd, info, sizeof(info)) == 0 &&
+			    strstr(info, "Connected: yes"))
+				break;
+			usleep(200000);
+		}
+	}
+	system("zlyme-bluetooth save >/dev/null 2>&1");
 }
 
 void PLAT_bluetoothUnpair(char *addr) {
@@ -499,6 +517,7 @@ void PLAT_bluetoothUnpair(char *addr) {
 	if (ret != 0) {
 		LOG_error("BT unpair failed\n");
 	}
+	system("zlyme-bluetooth save >/dev/null 2>&1");
 }
 
 static int bt_addr_is_audio(const char *addr)
@@ -538,10 +557,7 @@ void PLAT_bluetoothDisconnect(char *addr) {
 	if (ret != 0) {
 		LOG_error("BT disconnect failed: %d\n", ret);
 	}
-	if (bt_addr_is_audio(addr) && GetAudioSink() == AUDIO_SINK_BLUETOOTH) {
-		system("zlyme-audio set codec >/dev/null 2>&1");
-		SetAudioSink(AUDIO_SINK_DEFAULT);
-	}
+	/* zlyme-btsink recomputes HDMI-if-ELD else codec. Do not force codec. */
 }
 
 bool PLAT_bluetoothConnected() {

@@ -1,24 +1,30 @@
 #!/bin/sh
 #
-# After WiFi is up, persist pairings and load btusb.
+# After WiFi (or instead of it): tmpfs BlueZ store, hidp, then btusb.
 # btusb is blacklisted until then so the combo chip does not reset.
-
 
 . /etc/zlyme.conf
 
 start() {
-	# Pairings live on the card. /var/lib/bluetooth -> /run/bluetooth.
-	if [ -d "$ZLYME_CFG" ]; then
-		mkdir -p "$ZLYME_CFG/bluetooth" 2>/dev/null
-		ln -sfn "$ZLYME_CFG/bluetooth" /run/bluetooth 2>/dev/null
-	else
-		mkdir -p /run/bluetooth 2>/dev/null
-	fi
+	mkdir -p /run/bluetooth
+	# Never point this at the card: exFAT rejects colon names.
 
 	if ! zlyme-ctl want bluetooth; then
 		echo "Bluetooth: disabled by zlyme-ctl"
 		return 0
 	fi
+
+	[ -x /usr/sbin/zlyme-combo ] && /usr/sbin/zlyme-combo bt-on
+
+	printf "Loading hidp: "
+	if modprobe hidp 2>/dev/null; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	modprobe uhid 2>/dev/null || true
+
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth restore
 
 	printf "Loading btusb: "
 	if modprobe btusb 2>/dev/null; then
@@ -44,6 +50,8 @@ start() {
 }
 
 stop() {
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
+	[ -x /usr/sbin/zlyme-combo ] && /usr/sbin/zlyme-combo bt-off
 	return 0
 }
 

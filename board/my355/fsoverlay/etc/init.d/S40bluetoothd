@@ -1,8 +1,7 @@
 #!/bin/sh
 #
 # Overlay of BlueZ's bluetoothd so it stays down when Bluetooth is off.
-# S35btusb already skipped the adapter in that case; starting bluetoothd
-# anyway prints FAIL.
+# Restore the tar onto tmpfs before the daemon starts.
 
 NAME=bluetoothd
 PIDFILE=/var/run/$NAME.pid
@@ -22,22 +21,29 @@ start() {
 		echo "bluetoothd: disabled by zlyme-ctl"
 		return 0
 	fi
+	mkdir -p /run/bluetooth
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth restore
 	DAEMON=$(daemon) || return 0
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
 		echo "Starting $NAME: already running"
+		[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth adapter-on
+		[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth agent
 		return 0
 	fi
 	printf "Starting %s: " "$NAME"
-	# BlueZ 5 stays in the foreground unless we background it. Without -b,
-	# rcS never finishes, getty never starts, and serial has no login.
 	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON"; then
 		echo "OK"
 	else
 		echo "FAIL"
+		return 0
 	fi
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth adapter-on
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth agent
 }
 
 stop() {
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
+	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth agent-stop
 	printf "Stopping %s: " "$NAME"
 	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null
 	echo "OK"

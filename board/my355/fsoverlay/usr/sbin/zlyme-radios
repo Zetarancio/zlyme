@@ -23,6 +23,7 @@ dmc_kick() {
 case "${1:-}" in
 	pre)
 		touch /tmp/zlyme-keep-emu
+		[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
 		[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink stop
 		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
 		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop

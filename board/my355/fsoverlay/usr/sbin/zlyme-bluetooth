@@ -1,80 +1,104 @@
 #!/bin/sh
 #
-# Same verbs EmulationStation uses (ROCKNIX rocknix-bluetooth / Knulli
-# knulli-bluetooth). Pairings live on the card; see S35btusb.
+# Knulli-style BlueZ store on exFAT: the live tree is posix tmpfs
+# (/run/bluetooth, also /var/lib/bluetooth via symlink). One tar on the
+# card has no colons. Copied from knulli-bluetooth do_save/do_restore.
 
 . /etc/zlyme.conf 2>/dev/null || true
 
-CACHE="${ZLYME_CFG:-/storage/.config}/bluetooth"
-BACKUP="${ZLYME_STORAGE:-/storage}/zlyme-bluetooth.tar"
-
-usage() {
-	echo "usage: $0 list|enable|disable|connect|disconnect|remove|save|restore" >&2
-	exit 1
-}
-
-do_enable() {
-	zlyme-ctl set bluetooth on >/dev/null 2>&1 || true
-	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
-	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
-	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
-}
-
-do_disable() {
-	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
-	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop
-	zlyme-ctl set bluetooth off >/dev/null 2>&1 || true
-}
-
-do_list() {
-	find "$CACHE" /var/lib/bluetooth /run/bluetooth -type f -name info 2>/dev/null |
-	while read -r FILE; do
-		grep -qE '^Trusted=true$' "$FILE" || continue
-		DEVNAME=$(grep -E '^Name=' "$FILE" | sed -e 's/^Name=//')
-		DEVADDR=$(basename "$(dirname "$FILE")")
-		if bluetoothctl -- info "$DEVADDR" 2>/dev/null | grep -q "Connected: yes"; then
-			CONNECTED=yes
-		else
-			CONNECTED=no
-		fi
-		echo "<device id=\"${DEVADDR}\" name=\"${DEVNAME}\" connected=\"${CONNECTED}\" />"
-	done
-}
-
-do_connect() {
-	bluetoothctl -- connect "$1"
-}
-
-do_disconnect() {
-	bluetoothctl -- disconnect "$1"
-}
-
-do_remove() {
-	(echo "untrust $1"; echo "remove $1") | bluetoothctl >/dev/null 2>&1
-}
+TAR="${ZLYME_CFG:-/storage/.config}/bluetooth.tar"
+STORE=/run/bluetooth
+AGENT_PID=/var/run/bluetooth-agent.pid
+HCI=/org/bluez/hci0
 
 do_save() {
-	[ -d "$CACHE" ] || return 0
-	tar cf "$BACKUP" -C "$(dirname "$CACHE")" "$(basename "$CACHE")"
+	[ -d "$STORE" ] || return 0
+	mkdir -p "${ZLYME_CFG:-/storage/.config}" 2>/dev/null || return 0
+	tar -C /run -cf "$TAR" bluetooth
 }
 
 do_restore() {
-	[ -f "$BACKUP" ] || return 1
-	mkdir -p "$(dirname "$CACHE")"
-	tar xf "$BACKUP" -C "$(dirname "$CACHE")"
+	mkdir -p "$STORE"
+	[ -f "$TAR" ] || return 0
+	tar -C /run -xf "$TAR"
 }
 
-[ $# -ge 1 ] || usage
-ACTION=$1
-shift
-case "$ACTION" in
-	enable) do_enable ;;
-	disable) do_disable ;;
-	list) do_list ;;
-	connect) [ $# -ge 1 ] || usage; do_connect "$1" ;;
-	disconnect) [ $# -ge 1 ] || usage; do_disconnect "$1" ;;
-	remove) [ $# -ge 1 ] || usage; do_remove "$1" ;;
+adapter_set() {
+	prop=$1
+	val=$2
+	command -v dbus-send >/dev/null 2>&1 || return 0
+	dbus-send --system --print-reply --dest=org.bluez "$HCI" \
+		org.freedesktop.DBus.Properties.Set \
+		string:org.bluez.Adapter1 string:"$prop" variant:boolean:"$val" \
+		>/dev/null 2>&1
+}
+
+wait_hci() {
+	i=0
+	while [ ! -d /sys/class/bluetooth/hci0 ] && [ "$i" -lt 50 ]; do
+		sleep 0.1
+		i=$((i + 1))
+	done
+	[ -d /sys/class/bluetooth/hci0 ]
+}
+
+do_adapter_on() {
+	wait_hci || return 0
+	# bluetoothd may not have exported Adapter1 yet.
+	i=0
+	while [ "$i" -lt 20 ]; do
+		adapter_set Powered true
+		adapter_set Pairable true
+		adapter_set Discoverable true
+		i=$((i + 1))
+		powered=$(dbus-send --system --print-reply --dest=org.bluez "$HCI" \
+			org.freedesktop.DBus.Properties.Get \
+			string:org.bluez.Adapter1 string:Pairable 2>/dev/null) || true
+		echo "$powered" | grep -q 'boolean true' && break
+		sleep 0.2
+	done
+	command -v dbus-send >/dev/null 2>&1 || return 0
+	dbus-send --system --print-reply --dest=org.bluez "$HCI" \
+		org.freedesktop.DBus.Properties.Set \
+		string:org.bluez.Adapter1 string:Alias \
+		variant:string:"Miyoo Flip" >/dev/null 2>&1 || true
+}
+
+do_adapter_off() {
+	adapter_set Discoverable false
+	adapter_set Pairable false
+	adapter_set Powered false
+}
+
+do_agent() {
+	btctl=""
+	for c in /usr/bin/bluetoothctl /usr/sbin/bluetoothctl; do
+		[ -x "$c" ] && btctl=$c && break
+	done
+	[ -n "$btctl" ] || return 0
+	if [ -f "$AGENT_PID" ] && kill -0 "$(cat "$AGENT_PID" 2>/dev/null)" 2>/dev/null; then
+		return 0
+	fi
+	# bluetoothctl --agent exits as soon as stdin hits EOF. start-stop-daemon
+	# closes stdin, so the agent never stayed registered (pair Just-Works failed).
+	start-stop-daemon -S -q -b -m -p "$AGENT_PID" --exec /bin/sh -- -c \
+		"tail -f /dev/null | exec $btctl --agent=NoInputNoOutput"
+}
+
+do_agent_stop() {
+	start-stop-daemon -K -q -p "$AGENT_PID" 2>/dev/null || true
+	rm -f "$AGENT_PID"
+}
+
+case "${1:-}" in
 	save) do_save ;;
 	restore) do_restore ;;
-	*) usage ;;
+	adapter-on) do_adapter_on ;;
+	adapter-off) do_adapter_off ;;
+	agent) do_agent ;;
+	agent-stop) do_agent_stop ;;
+	*)
+		echo "usage: $0 {save|restore|adapter-on|adapter-off|agent|agent-stop}" >&2
+		exit 1
+		;;
 esac
