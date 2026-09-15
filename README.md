@@ -1,4 +1,6 @@
-![Zlyme](package/system/nextui/res/branding/zlyme-horizontal-exact.svg)
+<p align="center">
+  <img src="package/system/nextui/res/branding/zlyme-horizontal-exact.svg" width="70%" alt="Zlyme" />
+</p>
 
 **Low latency. High viscosity.**
 
