@@ -3,6 +3,9 @@
 # 34801512689, 34828905859). Sequential stages each compile for ~310 minutes,
 # then pack ccache. Later stages skip if an earlier one already has the tar.
 #
+# cancel-in-progress is false so a push to main does not kill a running
+# ccache/image job. The group still serializes new runs.
+#
 # Secrets: GH_PAT (classic PAT, repo + workflow) to write the ccache repo.
 # Optional variable CACHE_REPO (default zlyme-cache).
 # Releases upload zlyme-my355-YYYYMMDD-*.tar, the matching .sha256, and zlyme.img.
@@ -20,7 +23,7 @@ on:
 
 concurrency:
   group: zlyme-build
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
