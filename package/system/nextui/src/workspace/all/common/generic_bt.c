@@ -270,6 +270,7 @@ void PLAT_bluetoothInit() {
 
 void PLAT_bluetoothDeinit() {
 	if (bt_initialized) {
+		PLAT_bluetoothDiscovery(0);
 		bt_clear_discovered_devices();
 		bt_initialized = false;
 	}
@@ -281,11 +282,7 @@ void PLAT_bluetoothEnable(bool shouldBeOn) {
 		system(SYSTEM_PATH "/etc/bluetooth/bt_init.sh start");
 	} else {
 		btlog("Turning BT off...\n");
-		// Stop discovery if active
-		if (bt_discovering) {
-			//system("bluetoothctl scan off 2>/dev/null");
-			bt_discovering = false;
-		}
+		PLAT_bluetoothDiscovery(0);
 		system(SYSTEM_PATH "/etc/bluetooth/bt_init.sh stop");
 	}
 	CFG_setBluetooth(shouldBeOn);
@@ -302,24 +299,16 @@ void PLAT_bluetoothDiagnosticsEnable(bool on) {
 void PLAT_bluetoothDiscovery(int on) {
 	if (on) {
 		btlog("Starting BT discovery.\n");
-		// Clear old discovered devices
 		bt_clear_discovered_devices();
-		
-		// Start scanning - version-dependent command
-		if (bt_version_gte(5, 70)) {
-			// In 5.70+, timeout option works differently
-			// Start scan in background and schedule auto-stop
-			system("sh -c 'bluetoothctl scan on 2>/dev/null & BT_PID=$!; sleep 60; bluetoothctl scan off 2>/dev/null; kill $BT_PID 2>/dev/null' &");
-		} else {
-			// For 5.54 and similar versions
-			system("bluetoothctl --timeout 60 scan on 2>/dev/null &");
-		}
+		/* dbus, not a leftover bluetoothctl. 8733bu drops HID
+		 * while scan is running (ROCKNIX sleep.sh / Spruce stop). */
+		system("dbus-send --system --type=method_call --dest=org.bluez /org/bluez/hci0 org.bluez.Adapter1.StartDiscovery >/dev/null 2>&1");
 		bt_discovering = true;
 	} else {
 		btlog("Stopping BT discovery.\n");
+		system("dbus-send --system --type=method_call --dest=org.bluez /org/bluez/hci0 org.bluez.Adapter1.StopDiscovery >/dev/null 2>&1");
 		system("bluetoothctl scan off 2>/dev/null");
-		// Also try to kill any background scan processes
-		system("pkill -f 'bluetoothctl scan on' 2>/dev/null");
+		system("pkill -f 'bluetoothctl scan' 2>/dev/null");
 		bt_discovering = false;
 	}
 }

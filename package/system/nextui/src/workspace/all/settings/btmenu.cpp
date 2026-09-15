@@ -55,6 +55,8 @@ Menu::~Menu()
     if (worker.joinable())
         worker.join();
 
+    BT_discovery(false);
+
 #ifdef HAS_BTAGENT
     pairingAgent->stopPairingWindow();
     delete pairingAgent;

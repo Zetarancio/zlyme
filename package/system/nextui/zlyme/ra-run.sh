@@ -155,6 +155,27 @@ fi
 RA_AC=/tmp/zlyme-ra-ac.cfg
 printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
 
+# Flip pad is udev index 0. A connected Switch Pro is otherwise P2, so
+# GB/etc. ignore it. Prefer it as P1 (same assignment ES/Knulli does).
+pro_idx=
+idx=0
+for ev in /dev/input/event*; do
+	[ -c "$ev" ] || continue
+	props=$(udevadm info -q property -n "$ev" 2>/dev/null) || continue
+	echo "$props" | grep -q '^ID_INPUT_JOYSTICK=1$' || continue
+	sysname=$(cat /sys/class/input/${ev##*/}/device/name 2>/dev/null) || continue
+	case "$sysname" in
+		*IMU*) continue ;;
+		*Pro\ Controller*|Nintendo\ Switch\ Pro*)
+			pro_idx=$idx
+			;;
+	esac
+	idx=$((idx + 1))
+done
+if [ -n "$pro_idx" ]; then
+	printf 'input_player1_joypad_index = "%s"\n' "$pro_idx" >> "$RA_AC"
+fi
+
 APPEND="$ETC"
 for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra-perf.cfg; do
 	[ -s "$extra" ] && APPEND="$APPEND,$extra"

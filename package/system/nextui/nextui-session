@@ -290,6 +290,22 @@ while [ -f "$EXEC_PATH" ]; do
 		echo "RUN $cmd" >> "$LOGS_PATH/next.txt"
 		# DRM master from nextui.elf is not always gone on the next line.
 		sleep 0.4
+		# 8733bu drops HID if discovery is still running (Settings
+		# used to leave bluetoothctl scan on). Spruce/ROCKNIX
+		# stop scan, then reconnect paired pads before the emu.
+		dbus-send --system --type=method_call --dest=org.bluez \
+			/org/bluez/hci0 org.bluez.Adapter1.StopDiscovery \
+			>/dev/null 2>&1 || true
+		bluetoothctl scan off >/dev/null 2>&1 || true
+		pkill -f 'bluetoothctl scan' 2>/dev/null || true
+		sleep 0.3
+		modprobe hid-nintendo >/dev/null 2>&1 || true
+		bluetoothctl devices Paired 2>/dev/null | while read _ mac rest; do
+			[ -n "$mac" ] || continue
+			bluetoothctl info "$mac" 2>/dev/null | grep -q 'UUID: Human Interface Device' || continue
+			bluetoothctl connect "$mac" >/dev/null 2>&1 || true
+		done
+		sleep 0.6
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
