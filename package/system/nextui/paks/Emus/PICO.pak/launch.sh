@@ -5,8 +5,8 @@ PAK_DIR="$(dirname "$0")"
 EMU_TAG=$(basename "$PAK_DIR" .pak)
 ROM="$1"
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
-SHARED_USERDATA_PATH="${SHARED_USERDATA_PATH:-$SDCARD_PATH/.userdata/shared}"
-USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.userdata/${PLATFORM:-my355}}"
+SHARED_USERDATA_PATH="${SHARED_USERDATA_PATH:-$SDCARD_PATH/.config/nextui/shared}"
+USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 	"$USERDATA_PATH/Pico-8-native" "$SHARED_USERDATA_PATH/Pico-8-native"
 
@@ -42,6 +42,8 @@ seed_splore() {
 seed_splore
 # pico8 wrapper sets -home. Do not point HOME at the parent userdata dir.
 export HOME="${SHARED_USERDATA_PATH}/Pico-8-native"
-mkdir -p "$HOME/carts"
+mkdir -p "$HOME/carts" "$HOME/cdata" "$HOME/bbs" "$HOME/config" "$HOME/data"
+export XDG_CONFIG_HOME="$HOME/config"
+export XDG_DATA_HOME="$HOME/data"
 cd "$HOME"
 exec pico8 "$ROM"

@@ -3,13 +3,14 @@
 # plus pico8.dat (also accepted next to carts).
 #
 # A path whose name contains "splore" starts Splore instead of -run.
-# The NextUI dummy Splore.p8 must not be on -root_path: pico8 then
-# run_carts that PNG stub and the pad does nothing.
+# Dummy Splore.p8 stays in the rom folder; -root_path is that folder
+# (minui-pico-8-pak). XDG is under Pico-8-native so BBS state is not
+# written into OS .config.
 
 STATIC_BIN="pico8_64"
 SDCARD="${SDCARD_PATH:-/storage}"
 BIOS="${BIOS_PATH:-$SDCARD/Bios}"
-SHARED="${SHARED_USERDATA_PATH:-$SDCARD/.userdata/shared}"
+SHARED="${SHARED_USERDATA_PATH:-$SDCARD/.config/nextui/shared}"
 HOME_DIR="${SHARED}/Pico-8-native"
 ROM="$1"
 DB="${SDL_GAMECONTROLLERCONFIG_FILE:-/usr/lib/gamecontrollerdb.txt}"
@@ -55,7 +56,7 @@ if [ -z "$LAUNCH_DIR" ]; then
 fi
 
 chmod 0755 "$LAUNCH_DIR/$STATIC_BIN" 2>/dev/null || true
-mkdir -p "$HOME_DIR/carts" "$HOME_DIR/cdata" "$HOME_DIR/bbs"
+mkdir -p "$HOME_DIR/carts" "$HOME_DIR/cdata" "$HOME_DIR/bbs" "$HOME_DIR/config" "$HOME_DIR/data"
 
 # Splore BBS "cannot connect" is often missing CA certs; list update
 # can still work. Prefer a writable rom folder for carts (sd2 ext4).
@@ -69,9 +70,11 @@ for ca in /etc/ssl/certs/ca-certificates.crt \
 	fi
 done
 export HOME="$HOME_DIR"
+export XDG_CONFIG_HOME="$HOME_DIR/config"
+export XDG_DATA_HOME="$HOME_DIR/data"
 
-# Dummy Splore.p8 lives in the rom folder; pico8 must not -root_path that.
-CARTS="$HOME_DIR/carts"
+# Dummy Splore.p8 stays in the rom folder; -root_path is that folder
+# (minui-pico-8-pak). An empty carts/ root broke BBS list update.
 
 export SDL_GAMECONTROLLERCONFIG_FILE="$DB"
 if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ] && [ -f "$DB" ]; then
@@ -94,13 +97,11 @@ fi
 
 cd "$LAUNCH_DIR" || exit 1
 if echo "$ROM" | grep -qi splore; then
-	# Splore wants mouse/keys. Mapper is the pak process so a NextUI
-	# kill ungrabs the Flip pad. Do not pass -joystick (dpad is buttons).
 	killall -9 pico8-splore-pad 2>/dev/null || true
 	if command -v pico8-splore-pad >/dev/null 2>&1; then
 		exec pico8-splore-pad "./${STATIC_BIN}" \
-			-home "$HOME_DIR" -root_path "$CARTS" -splore
+			-home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
 	fi
-	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$CARTS" -splore
+	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
 fi
 exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -run "$ROM"
