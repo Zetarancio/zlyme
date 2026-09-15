@@ -623,10 +623,6 @@ int main(int argc, char *argv[])
             [](const std::any &value)
             { CFG_setShowClock(std::any_cast<bool>(value)); },
             []() { CFG_setShowClock(CFG_DEFAULT_SHOWCLOCK);}},
-            new MenuItem{ListItemType::Generic, "Set time and date automatically", "Automatically adjust system time\nwith NTP (requires internet access)", {false, true}, on_off, []() -> std::any
-            { return TIME_getNetworkTimeSync(); }, [](const std::any &value)
-            { TIME_setNetworkTimeSync(std::any_cast<bool>(value)); },
-            []() { TIME_setNetworkTimeSync(false);}}, // default from stock
             new MenuItem{ListItemType::Generic, "Time zone", "Your time zone", tz_values, tz_labels, []() -> std::any
             { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value)
             { TIME_setCurrentTimezone(std::any_cast<std::string>(value).c_str()); },
@@ -1094,7 +1090,7 @@ int main(int argc, char *argv[])
         std::vector<AbstractMenuItem*> mainItems = {
             new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu},
             new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
-            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, boost, zram, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
+            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, zram, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
         };
 
         if(deviceInfo.hasMuteToggle())

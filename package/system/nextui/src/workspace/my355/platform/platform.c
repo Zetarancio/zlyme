@@ -769,12 +769,8 @@ bool PLAT_getNetworkTimeSync(void) {
 }
 
 void PLAT_setNetworkTimeSync(bool on) {
-	CFG_setNTP(on);
-	if (on) {
-		system("/etc/init.d/S49ntp restart &");
-	} else {
-		system("/etc/init.d/S49ntp stop &");
-	}
+	(void)on;
+	/* Clock comes from S49ntp after Wi-Fi. No Settings switch. */
 }
 
 /////////////////////////

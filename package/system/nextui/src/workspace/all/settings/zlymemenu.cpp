@@ -184,7 +184,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 	const std::vector<std::string> uv_l = {"Off", "L1", "L2", "L3"};
 
 	items.push_back(new MenuItem{ListItemType::Generic, "GPU",
-		"libmali (default, GLES+Vulkan ICD) or Panfrost GLES. They cannot share the GPU. Takes effect on next boot. Pick Vulkan inside the emulator, not here.",
+		"libmali (GLES+Vulkan) or Panfrost GLES.\nTakes effect on next boot.",
 		gpu_v, gpu_l,
 		[]() -> std::any {
 			std::string g = ctl_get("gpu");
@@ -193,7 +193,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 		[](const std::any &v) { ctl_set("gpu", std::any_cast<std::string>(v).c_str()); },
 		[]() { ctl_set("gpu", "libmali"); }});
 	items.push_back(new MenuItem{ListItemType::Generic, "CPU undervolt",
-		"ROCKNIX opp-table overlays. Takes effect on next boot.",
+		"ROCKNIX opp-table overlays.\nTakes effect on next boot.",
 		uv_v, uv_l,
 		[]() -> std::any {
 			std::string u = ctl_get("undervolt");
@@ -212,14 +212,8 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
-	items.push_back(new MenuItem{ListItemType::Generic, "CPU boost 1992",
-		"Unlocks the 1992 MHz OPP for heavy emus. Gets hot. Off keeps Performance at 1800.",
-		on_off_v, on_off,
-		[]() -> std::any { return ctl_on("boost"); },
-		[](const std::any &v) { ctl_set("boost", std::any_cast<bool>(v) ? "on" : "off"); },
-		[]() { ctl_set("boost", "off"); }});
 	items.push_back(new MenuItem{ListItemType::Generic, "zram swap",
-		"384 MiB lz4 swap as an OOM net on 1 GiB. Off if a heavy emu feels spongy.",
+		"384 MiB lz4 OOM net on 1 GiB.\nOff if a heavy emu feels spongy.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("zram"); },
 		[](const std::any &v) {
@@ -230,8 +224,8 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			ctl_set("zram", "on");
 			system("zlyme-ctl apply-zram");
 		}});
-	items.push_back(new MenuItem{ListItemType::Generic, "USB host (top port)",
-		"Upper USB-C host (sticks, hubs). Off saves power. Bottom port is charge only. Takes effect on next boot.",
+	items.push_back(new MenuItem{ListItemType::Generic, "USB OTG (top)",
+		"Turning it off saves a little power.\nTakes effect on next boot.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("otg"); },
 		[](const std::any &v) {
@@ -243,7 +237,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			system("zlyme-ctl apply-overlays");
 		}});
 	items.push_back(new MenuItem{ListItemType::Generic, "HDMI port",
-		"Disable the HDMI controller. Off saves power. Takes effect on next boot.",
+		"Turning it off saves some power.\nTakes effect on next boot.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("hdmi"); },
 		[](const std::any &v) {
@@ -255,7 +249,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 			system("zlyme-ctl apply-overlays");
 		}});
 	items.push_back(new MenuItem{ListItemType::Generic, "Second SD slot",
-		"Disable sdmmc1. Off saves power. Takes effect on next boot.",
+		"Turning it off saves some power.\nTakes effect on next boot.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("sd2"); },
 		[](const std::any &v) {
@@ -269,9 +263,9 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 
 	const std::vector<std::any> led_v = {
 		std::string("battery"), std::string("green"), std::string("red"), std::string("off")};
-	const std::vector<std::string> led_l = {"Battery", "Green", "Red", "Off"};
+	const std::vector<std::string> led_l = {"Auto", "Green", "Red", "Off"};
 	items.push_back(new MenuItem{ListItemType::Generic, "Status LED",
-		"Battery: auto (green, red charging, flash if low). Green/Red/Off lock the colour.",
+		"Auto: green, red charging, flash if low.\nGreen/Red/Off lock the colour.",
 		led_v, led_l,
 		[]() -> std::any {
 			std::string l = ctl_get("led");
@@ -336,24 +330,10 @@ static InputReactionHint Zlyme_ejectSd2(AbstractMenuItem &item)
 
 void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items)
 {
-	const std::vector<std::any> on_off_v = {false, true};
-	const std::vector<std::string> on_off = {"Off", "On"};
-	items.push_back(new MenuItem{ListItemType::Generic, "Merge extra storage",
-		"Show SD2 and USB games in the same folders as the OS card. Duplicate names keep the OS-card file. Applies immediately.",
-		on_off_v, on_off,
-		[]() -> std::any { return ctl_on("merge"); },
-		[](const std::any &v) {
-			ctl_set("merge", std::any_cast<bool>(v) ? "on" : "off");
-			system("zlyme-ctl apply-merge");
-		},
-		[]() {
-			ctl_set("merge", "on");
-			system("zlyme-ctl apply-merge");
-		}});
 	items.push_back(new MenuItem{ListItemType::Button, "Mount library card",
-		"Second SD or a USB disk with roms/. Games show in the list after this. Also runs at boot via eudev.",
+		"Second SD or a USB disk with roms/.\nAlso runs at boot via eudev.",
 		Zlyme_mountSd2});
 	items.push_back(new MenuItem{ListItemType::Button, "Eject library card",
-		"Unmount the second SD before pulling it. Do not eject while a game from that card is running.",
+		"Unmount the second SD before pulling it.\nDo not eject while a game from that card is running.",
 		Zlyme_ejectSd2});
 }
