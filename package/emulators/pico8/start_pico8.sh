@@ -95,6 +95,10 @@ if [ -z "$GAME_DIR" ] || [ ! -d "$GAME_DIR" ]; then
 	mkdir -p "$GAME_DIR"
 fi
 
+# Splore's wget is PATH "wget URL -q -O file". Prefer the curl wrapper
+# over BusyBox (no TLS) even if cwd is Bios/PICO.
+export PATH="/usr/bin:/bin:${PATH:-/usr/bin}"
+
 cd "$LAUNCH_DIR" || exit 1
 if echo "$ROM" | grep -qi splore; then
 	killall -9 pico8-splore-pad 2>/dev/null || true

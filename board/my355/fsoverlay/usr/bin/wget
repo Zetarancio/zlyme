@@ -1,8 +1,12 @@
 #!/bin/sh
-# BusyBox wget has no TLS. Pico-8 Splore (and NextUI's own todo) download
-# carts with wget https://... so wrap curl, which is already in the image.
+# BusyBox wget has no TLS. Pico-8 Splore calls:
+#   wget "URL" -q -O "file"
+#   wget "URL" -q -O "file" --post-file=...
+# URL may come first. Speak a Wget user-agent; lexaloffle 404s curl's.
 out=""
-quiet=""
+url=""
+post=""
+timeout=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 		-O)
@@ -13,12 +17,33 @@ while [ $# -gt 0 ]; do
 			out=${1#-O}
 			shift
 			;;
-		-q|--quiet)
-			quiet="-s"
+		-q|--quiet|-c|--continue|--no-check-certificate|--no-verbose|-nv)
 			shift
 			;;
-		-c|--continue)
+		--post-file=*)
+			post=${1#--post-file=}
 			shift
+			;;
+		--post-file)
+			post=$2
+			shift 2
+			;;
+		--timeout=*)
+			timeout=${1#--timeout=}
+			shift
+			;;
+		--timeout|-T)
+			timeout=$2
+			shift 2
+			;;
+		--header)
+			shift 2
+			;;
+		-h|--help|--version)
+			echo "GNU Wget 1.21.4"
+			echo "Usage: wget [OPTION]... [URL]"
+			echo "HTTPS supported."
+			exit 0
 			;;
 		--)
 			shift
@@ -28,13 +53,18 @@ while [ $# -gt 0 ]; do
 			shift
 			;;
 		*)
-			break
+			[ -z "$url" ] && url=$1
+			shift
 			;;
 	esac
 done
-url=$1
+[ -n "$url" ] || url=$1
 [ -n "$url" ] || exit 1
-if [ -n "$out" ]; then
-	exec curl -L --fail $quiet -o "$out" "$url"
-fi
-exec curl -L --fail $quiet -O "$url"
+[ -n "$out" ] || out=$(printf '%s' "$url" | sed 's/[?#].*//; s|.*/||')
+[ -n "$out" ] || exit 1
+# No --fail: GNU wget still writes the body on 4xx (exit 8). Pico-8
+# looks at the file, not curl's 22.
+set -- curl -L -sS -A "Wget/1.21.4" --retry 2
+[ -n "$timeout" ] && set -- "$@" --max-time "$timeout"
+[ -n "$post" ] && set -- "$@" --data-binary @"$post"
+exec "$@" -o "$out" "$url"
