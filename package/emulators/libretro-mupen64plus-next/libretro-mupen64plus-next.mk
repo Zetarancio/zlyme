@@ -145,6 +145,8 @@ endef
 define LIBRETRO_MUPEN64PLUS_NEXT_INSTALL_TARGET_CMDS
 	$(INSTALL) -D $(@D)/mupen64plus_next_libretro.so \
 		$(TARGET_DIR)/usr/lib/libretro/mupen64plus-next_libretro.so
+	ln -sf mupen64plus-next_libretro.so \
+		$(TARGET_DIR)/usr/lib/libretro/mupen64plus_next_libretro.so
 endef
 
 $(eval $(generic-package))

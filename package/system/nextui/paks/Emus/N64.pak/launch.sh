@@ -1,5 +1,5 @@
 #!/bin/sh
-EMU_EXE=mupen64plus_next
+EMU_EXE=mupen64plus-next
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
