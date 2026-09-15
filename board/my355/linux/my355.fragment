@@ -50,6 +50,13 @@ CONFIG_BT_RTL=m
 CONFIG_BT_HCIBTUSB=m
 CONFIG_BT_HIDP=m
 
+# Switch Pro/Joy-Con over BT: hid-generic binds 057e:2009, creates js1,
+# then emits no events (Nintendo vendor report mode). hid-nintendo
+# sends 0x30 full reports and standard BTN_SOUTH/ABS_*. DualShock
+# already has CONFIG_HID_PLAYSTATION=y; this was the missing sibling.
+CONFIG_HID_NINTENDO=m
+CONFIG_NINTENDO_FF=y
+
 # Debug spinlocks / devres cost cycles on every lock. ROCKNIX's copied
 # aarch64.conf still has them on; a 4xA55 gaming image should not.
 # Changing DEBUG_SPINLOCK changes sizeof(struct module). Out-of-tree
