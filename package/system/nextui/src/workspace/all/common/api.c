@@ -4106,16 +4106,26 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 	if (screenOffDelay == 0 || (now - last_input_at >= screenOffDelay && PWR_preventAutosleep()))
 		last_input_at = now;
 
-	if (
-		pwr.requested_sleep ||											   // hardware requested sleep
-		(screenOffDelay > 0 && now - last_input_at >= screenOffDelay) ||   // autosleep
-		(pwr.can_sleep && PAD_justReleased(BTN_SLEEP) && power_pressed_at) // manual sleep
-	)
+	if (pwr.requested_sleep ||
+		(screenOffDelay > 0 && now - last_input_at >= screenOffDelay))
 	{
 		pwr.requested_sleep = 0;
 		if (before_sleep)
 			before_sleep();
+		/* Lid and idle timeout: screen + radios off, wait for wake.
+		 * Power button uses mem below. */
 		PWR_sleep();
+		if (after_sleep)
+			after_sleep();
+		last_input_at = now = SDL_GetTicks();
+		power_pressed_at = 0;
+		dirty = 1;
+	}
+	else if (pwr.can_sleep && PAD_justReleased(BTN_SLEEP) && power_pressed_at)
+	{
+		if (before_sleep)
+			before_sleep();
+		PWR_sleepNow();
 		if (after_sleep)
 			after_sleep();
 		last_input_at = now = SDL_GetTicks();

@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # Class A: start before NextUI so keymon is the msettings shm host.
-# Volume/brightness only while a pak runs; lid sleep always (not in NextUI).
+# Volume/brightness only while a pak runs. Lid is hybrid screen-off;
+# power button is mem. NextUI owns both while it is on screen.
 
 DAEMON=/usr/bin/keymon.elf
 PIDFILE=/var/run/keymon.pid

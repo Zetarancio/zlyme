@@ -20,8 +20,13 @@
 #define VOL_NAME "gpio-keys-volume"
 #define HALL_NAME "gpio-keys-hall"
 #define PAD_NAME "retrogame_joypad"
+#define PWR_NAME "rk805 pwrkey"
+#define BLANK_PATH "/sys/class/backlight/backlight/bl_power"
+#define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
 #define VOLUME_MAX 20
 #define BRIGHTNESS_MAX 10
+#define FB_BLANK_UNBLANK 0
+#define FB_BLANK_POWERDOWN 4
 
 static volatile sig_atomic_t quit;
 
@@ -101,7 +106,61 @@ static int open_by_name(const char *want)
 	return found;
 }
 
-static void do_lid_sleep(void)
+static void write_int(const char *path, int v)
+{
+	char buf[16];
+	int n, fd;
+
+	fd = open(path, O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	n = snprintf(buf, sizeof(buf), "%d\n", v);
+	if (n > 0)
+		write(fd, buf, (size_t)n);
+	close(fd);
+}
+
+static void screen_off(void)
+{
+	write_int(BLANK_PATH, FB_BLANK_POWERDOWN);
+	write_int(BRIGHTNESS_PATH, 0);
+}
+
+static void screen_on(void)
+{
+	write_int(BLANK_PATH, FB_BLANK_UNBLANK);
+	SetBrightness(GetBrightness());
+}
+
+/* Lid: screen + radios off, wait for open. Power uses mem. */
+static void do_lid_sleep(int hall_fd)
+{
+	struct pollfd p = { .fd = hall_fd, .events = POLLIN };
+	struct input_event ev;
+
+	if (menu_owns_keys() || hall_fd < 0)
+		return;
+	system("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
+	screen_off();
+	while (!quit) {
+		if (poll(&p, 1, 300) < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (!(p.revents & POLLIN))
+			continue;
+		while (read(hall_fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
+			if (ev.type == EV_SW && ev.code == SW_LID && ev.value == 0)
+				goto wake;
+		}
+	}
+wake:
+	screen_on();
+	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
+}
+
+static void do_mem_sleep(void)
 {
 	if (menu_owns_keys())
 		return;
@@ -137,8 +196,8 @@ static void apply_bri(int up)
 
 int main(void)
 {
-	struct pollfd pf[3];
-	int vol_fd, hall_fd, pad_fd;
+	struct pollfd pf[4];
+	int vol_fd, hall_fd, pad_fd, pwr_fd;
 	int grabbed = 0;
 	int menu = 0;
 	int nfd;
@@ -155,7 +214,8 @@ int main(void)
 	vol_fd = open_by_name(VOL_NAME);
 	hall_fd = open_by_name(HALL_NAME);
 	pad_fd = open_by_name(PAD_NAME);
-	if (vol_fd < 0 && hall_fd < 0)
+	pwr_fd = open_by_name(PWR_NAME);
+	if (vol_fd < 0 && hall_fd < 0 && pwr_fd < 0)
 		return 1;
 
 	nfd = 0;
@@ -171,6 +231,11 @@ int main(void)
 	}
 	if (pad_fd >= 0) {
 		pf[nfd].fd = pad_fd;
+		pf[nfd].events = POLLIN;
+		nfd++;
+	}
+	if (pwr_fd >= 0) {
+		pf[nfd].fd = pwr_fd;
 		pf[nfd].events = POLLIN;
 		nfd++;
 	}
@@ -199,7 +264,10 @@ int main(void)
 			while (read(pf[i].fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
 				if (pf[i].fd == hall_fd && ev.type == EV_SW &&
 				    ev.code == SW_LID && ev.value == 1)
-					do_lid_sleep();
+					do_lid_sleep(hall_fd);
+				if (pf[i].fd == pwr_fd && ev.type == EV_KEY &&
+				    ev.code == KEY_POWER && ev.value == 1)
+					do_mem_sleep();
 				if (pf[i].fd == pad_fd && ev.type == EV_KEY &&
 				    ev.code == BTN_MODE)
 					menu = ev.value != 0;
@@ -225,5 +293,7 @@ int main(void)
 		close(hall_fd);
 	if (pad_fd >= 0)
 		close(pad_fd);
+	if (pwr_fd >= 0)
+		close(pwr_fd);
 	return 0;
 }
