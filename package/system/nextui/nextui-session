@@ -300,9 +300,12 @@ while [ -f "$EXEC_PATH" ]; do
 		pkill -f 'bluetoothctl scan' 2>/dev/null || true
 		sleep 0.3
 		modprobe hid-nintendo >/dev/null 2>&1 || true
+		# bluetoothctl connect on an already-live HID drops the
+		# 8733bu link (status 0x04). Skip pads NextUI is using.
 		bluetoothctl devices Paired 2>/dev/null | while read _ mac rest; do
 			[ -n "$mac" ] || continue
 			bluetoothctl info "$mac" 2>/dev/null | grep -q 'UUID: Human Interface Device' || continue
+			bluetoothctl info "$mac" 2>/dev/null | grep -q 'Connected: yes' && continue
 			bluetoothctl connect "$mac" >/dev/null 2>&1 || true
 		done
 		sleep 0.6

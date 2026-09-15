@@ -1,3 +1,5 @@
 # hid-nintendo exposes the IMU as a second input node. Keep it out of
-# RetroArch udev so only the gamepad is a joystick (ROCKNIX/Knulli too).
+# RetroArch so only the gamepad is a joystick (ROCKNIX/Knulli too).
 ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="*IMU*", ENV{ID_INPUT_JOYSTICK}="", ENV{ID_INPUT_ACCELEROMETER}="1"
+ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="*Accel*", ENV{ID_INPUT_JOYSTICK}="", ENV{ID_INPUT_ACCELEROMETER}="1"
+ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="*Gyro*", ENV{ID_INPUT_JOYSTICK}="", ENV{ID_INPUT_ACCELEROMETER}="1"

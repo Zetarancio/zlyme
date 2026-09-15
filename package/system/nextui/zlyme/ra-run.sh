@@ -16,11 +16,13 @@ MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.config/nextui/shared}/minuiset
 
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
-# MENU is udev BTN_MODE 10. Unset GameController so sdl2 cannot remap
-# GUIDE to 5 (R1 on this pad). nextui-session still exports mappings
-# for Tools.
-unset SDL_GAMECONTROLLERCONFIG
-unset SDL_GAMECONTROLLERCONFIG_FILE
+# Spruce Flip: sdl2 + GameController. Export Flip + Linux Pro GUIDs so
+# MENU is GUIDE (5) and a Switch Pro is the same pad NextUI already sees.
+# Session CONFIG is Flip-only; replace it with the full file.
+export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
+if [ -f "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
+	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep -v '^$')"
+fi
 
 mkdir -p "$CFGDIR" "$CFGDIR/assets"
 if [ ! -s "$CFG" ]; then
@@ -145,28 +147,29 @@ write_minui_ra() {
 write_minui_ra
 
 AC=/usr/share/zlyme/retroarch/autoconfig
-if [ ! -f "$AC/udev/retrogame_joypad.cfg" ]; then
-	if [ -f /storage/.config/retroarch/autoconfig/udev/retrogame_joypad.cfg ]; then
+if [ ! -f "$AC/sdl2/retrogame_joypad.cfg" ]; then
+	if [ -f /storage/.config/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
 		AC=/storage/.config/retroarch/autoconfig
-	elif [ -f /tmp/autoconfig/udev/retrogame_joypad.cfg ]; then
+	elif [ -f /tmp/autoconfig/sdl2/retrogame_joypad.cfg ]; then
 		AC=/tmp/autoconfig
 	fi
 fi
 RA_AC=/tmp/zlyme-ra-ac.cfg
 printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
 
-# Flip pad is udev index 0. A connected Switch Pro is otherwise P2, so
-# GB/etc. ignore it. Prefer it as P1 (same assignment ES/Knulli does).
+# sdl2 follows /dev/input/js* (IMU is event-only). Flip is js0; a
+# connected Switch Pro is otherwise P2, so GB/etc. ignore it. Prefer
+# it as P1 (same assignment ES/Knulli does). Last appendconfig wins
+# over a stale card ra-perf.cfg that still says udev.
+printf 'input_driver = "sdl"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
 pro_idx=
 idx=0
-for ev in /dev/input/event*; do
-	[ -c "$ev" ] || continue
-	props=$(udevadm info -q property -n "$ev" 2>/dev/null) || continue
-	echo "$props" | grep -q '^ID_INPUT_JOYSTICK=1$' || continue
-	sysname=$(cat /sys/class/input/${ev##*/}/device/name 2>/dev/null) || continue
+for js in /dev/input/js*; do
+	[ -c "$js" ] || continue
+	sysname=$(cat /sys/class/input/${js##*/}/device/name 2>/dev/null) || continue
 	case "$sysname" in
-		*IMU*) continue ;;
-		*Pro\ Controller*|Nintendo\ Switch\ Pro*)
+		*IMU*|*Accel*|*Gyro*) continue ;;
+		*Pro\ Controller*|Nintendo\ Switch\ Pro*|Nintendo\ Co.*)
 			pro_idx=$idx
 			;;
 	esac
@@ -203,8 +206,26 @@ if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
 
-# MENU (js 10) opens RGUI via udev autoconfig; MENU+Start is
-# zlyme-pak-hotkey, not RA quit.
+# MENU/Home (SDL GUIDE) opens RGUI; MENU+Start is zlyme-pak-hotkey.
+# Knulli installs mupen64plus-next_libretro.so; NextUI used underscore.
+if [ "$1" = "-L" ] && [ -n "$2" ] && [ ! -f "$2" ]; then
+	_core_dir=$(dirname "$2")
+	_core_bn=$(basename "$2")
+	_core_hit=
+	case "$_core_bn" in
+		mupen64plus_next_libretro.so)
+			_core_hit=$_core_dir/mupen64plus-next_libretro.so
+			;;
+		mupen64plus-next_libretro.so)
+			_core_hit=$_core_dir/mupen64plus_next_libretro.so
+			;;
+	esac
+	if [ -n "$_core_hit" ] && [ -f "$_core_hit" ]; then
+		shift 2
+		set -- -L "$_core_hit" "$@"
+	fi
+	unset _core_dir _core_bn _core_hit
+fi
 if [ -n "$ZLYME_RA_DEBUG" ]; then
 	exec retroarch -v --log-file "$LOGS_PATH/ra-debug.log" --appendconfig "$APPEND" "$@"
 fi
