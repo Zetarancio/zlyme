@@ -22,9 +22,10 @@
 #include <time.h>
 #include <pthread.h>
 
-#include <dirent.h>
 #include <linux/input.h>
+#include <dirent.h>
 #include <string.h>
+#include <stdint.h>
 
 ///////////////////////////////
 
@@ -478,9 +479,106 @@ void PLAT_setCPUSpeed(int speed) {
 }
 
 
-/* Stock writes gpio20. Rumble is ff-memless on retrogame_joypad. */
+/* ff-memless rumble on retrogame_joypad (PWM5). Stock wrote gpio20. */
+static int rumble_fd = -1;
+static int rumble_id = -1;
+
+static int rumble_has_ff(int fd)
+{
+	unsigned long bits[(FF_MAX / (sizeof(unsigned long) * 8)) + 1];
+	unsigned shift = (unsigned)(sizeof(unsigned long) * 8);
+
+	memset(bits, 0, sizeof(bits));
+	if (ioctl(fd, EVIOCGBIT(EV_FF, sizeof(bits)), bits) < 0)
+		return 0;
+	return (bits[FF_RUMBLE / shift] >> (FF_RUMBLE % shift)) & 1UL;
+}
+
+static int rumble_open(void)
+{
+	DIR *dir;
+	struct dirent *de;
+	int best = -1;
+
+	if (rumble_fd >= 0)
+		return 0;
+	dir = opendir("/dev/input");
+	if (!dir)
+		return -1;
+	while ((de = readdir(dir))) {
+		char path[64];
+		char name[256];
+		int fd;
+		int named;
+
+		if (strncmp(de->d_name, "event", 5) != 0)
+			continue;
+		snprintf(path, sizeof(path), "/dev/input/%s", de->d_name);
+		fd = open(path, O_RDWR | O_CLOEXEC);
+		if (fd < 0)
+			continue;
+		if (!rumble_has_ff(fd)) {
+			close(fd);
+			continue;
+		}
+		memset(name, 0, sizeof(name));
+		named = ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0 &&
+			strstr(name, "retrogame") != NULL;
+		if (named) {
+			if (best >= 0)
+				close(best);
+			best = fd;
+			break;
+		}
+		if (best < 0)
+			best = fd;
+		else
+			close(fd);
+	}
+	closedir(dir);
+	if (best < 0)
+		return -1;
+	rumble_fd = best;
+	rumble_id = -1;
+	return 0;
+}
+
 void PLAT_setRumble(int strength) {
-	(void)strength;
+	struct ff_effect e;
+	struct input_event ev;
+
+	if (strength < 0)
+		strength = 0;
+	if (strength > 0xffff)
+		strength = 0xffff;
+	if (rumble_open() < 0)
+		return;
+
+	if (strength == 0) {
+		if (rumble_id < 0)
+			return;
+		memset(&ev, 0, sizeof(ev));
+		ev.type = EV_FF;
+		ev.code = (uint16_t)rumble_id;
+		ev.value = 0;
+		write(rumble_fd, &ev, sizeof(ev));
+		return;
+	}
+
+	memset(&e, 0, sizeof(e));
+	e.type = FF_RUMBLE;
+	e.id = rumble_id;
+	e.u.rumble.strong_magnitude = (uint16_t)strength;
+	e.u.rumble.weak_magnitude = (uint16_t)strength;
+	e.replay.length = 5000;
+	if (ioctl(rumble_fd, EVIOCSFF, &e) < 0)
+		return;
+	rumble_id = e.id;
+	memset(&ev, 0, sizeof(ev));
+	ev.type = EV_FF;
+	ev.code = (uint16_t)rumble_id;
+	ev.value = 1;
+	write(rumble_fd, &ev, sizeof(ev));
 }
 
 int PLAT_pickSampleRate(int requested, int max) {
@@ -531,7 +629,7 @@ int PLAT_setDateTime(int y, int m, int d, int h, int i, int s) {
 #define ZONE_PATH "/usr/share/zoneinfo"
 #define ZONE_TAB_PATH ZONE_PATH "/zone.tab"
 #define ZONE_TAB_FALLBACK "/storage/.system/zoneinfo/zone.tab"
-#define CUR_ZONE_PATH "/storage/.userdata/shared/localtime"
+#define CUR_ZONE_PATH "/storage/.config/nextui/shared/localtime"
 
 static char cached_timezones[MAX_TIMEZONES][MAX_TZ_LENGTH];
 static int cached_tz_count = -1;
