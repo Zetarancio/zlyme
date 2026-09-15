@@ -265,16 +265,6 @@ reapply_once() {
 	if [ -x /usr/sbin/zlyme-ctl ]; then
 		zlyme-ctl apply-settings || true
 	fi
-	# Named Zlyme palette: hint used to be gray on white pills.
-	s="$STORAGE/.userdata/shared/minuisettings.txt"
-	if [ -f "$s" ] && grep -q '^palette=Zlyme' "$s"; then
-		sed -i \
-			-e 's/^color1=0xF7B07CFF$/color1=0xFA7C08FF/' \
-			-e 's/^color6=0xB9BDC4FF$/color6=0xEC2A01FF/' \
-			-e 's/^color6=0xF7B07CFF$/color6=0xEC2A01FF/' \
-			-e 's/^color6=0xE99962FF$/color6=0xEC2A01FF/' \
-			"$s" 2>/dev/null || true
-	fi
 	rm -f "$REAPPLY"
 }
 

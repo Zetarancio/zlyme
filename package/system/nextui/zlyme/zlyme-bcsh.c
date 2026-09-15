@@ -11,7 +11,7 @@
 int main(void)
 {
 	if (!getenv("USERDATA_PATH"))
-		setenv("USERDATA_PATH", "/storage/.userdata/my355", 0);
+		setenv("USERDATA_PATH", "/storage/.config/nextui/my355", 0);
 	InitSettings();
 	QuitSettings();
 	return 0;

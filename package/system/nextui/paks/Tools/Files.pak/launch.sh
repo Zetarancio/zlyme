@@ -13,7 +13,7 @@ if [ ! -x /usr/bin/vtree ]; then
 fi
 # Squashfs /usr/share/vtree is read-only. Run from userdata so ActiveTheme
 # is Zlyme even if an older image still has Dark in the packaged ini.
-RUN=/storage/.userdata/shared/vtree
+RUN=/storage/.config/nextui/shared/vtree
 mkdir -p "$RUN/theme"
 cp -a /usr/share/vtree/config.ini "$RUN/config.ini"
 cp -a /usr/share/vtree/theme.ini "$RUN/theme.ini" 2>/dev/null || true

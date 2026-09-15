@@ -1038,7 +1038,7 @@ const char *ap_resolve_log_path(const char *app_name) {
 
     const char *home = getenv("HOME");
     if (home && home[0]) {
-        snprintf(path, sizeof(path), "%s/.userdata/logs/%s.txt", home, app_name);
+        snprintf(path, sizeof(path), "%s/logs/%s.txt", home, app_name);
         return path;
     }
 
@@ -1359,7 +1359,7 @@ static void ap__resolve_device_metrics(void) {
 static const char *ap__nextui_settings_path(char *buf, size_t buf_size) {
 #if AP_PLATFORM_IS_DEVICE
     const char *shared = getenv("SHARED_USERDATA_PATH");
-    if (!shared || !shared[0]) shared = "/mnt/SDCARD/.userdata/shared";
+    if (!shared || !shared[0]) shared = "/mnt/SDCARD/.config/nextui/shared";
     snprintf(buf, buf_size, "%s/minuisettings.txt", shared);
     return buf;
 #else

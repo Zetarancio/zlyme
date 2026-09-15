@@ -16,8 +16,8 @@ export SAVES_PATH=/storage/Saves
 export CHEATS_PATH=/storage/Cheats
 export SYSTEM_PATH=/storage/.system/$PLATFORM
 export CORES_PATH=/usr/lib/libretro
-export USERDATA_PATH=/storage/.userdata/$PLATFORM
-export SHARED_USERDATA_PATH=/storage/.userdata/shared
+export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
+export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
 export LOGS_PATH=$USERDATA_PATH/logs
 export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
@@ -40,19 +40,19 @@ mkdir -p /mnt
 
 mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
 	"$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH" \
-	/storage/Roms /storage/Tools/my355
+	/storage/.roms_base /storage/Roms /storage/Tools/my355
 
 seed=/usr/share/nextui
 if [ -r "$seed/rom-dirs.txt" ]; then
 	while IFS= read -r d; do
 		[ -n "$d" ] || continue
-		mkdir -p "/storage/Roms/$d"
+		mkdir -p "/storage/.roms_base/$d"
 	done < "$seed/rom-dirs.txt"
 fi
 
 # Dummy cart so Pico-8 is visible before the user adds .p8 files.
 # Name contains "splore" so start_pico8.sh uses -splore (ROCKNIX / minui-pico-8-pak).
-pico_rom="/storage/Roms/Pico-8 (PICO)"
+pico_rom="/storage/.roms_base/Pico-8 (PICO)"
 pico_art="$seed/paks/Emus/PICO.pak/splore/Splore.p8.png"
 pico_mark="$SHARED_USERDATA_PATH/Pico-8-native/splore-installed"
 if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
@@ -62,7 +62,7 @@ if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
 	: >"$pico_mark"
 fi
 
-[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage bind
+[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage merge
 
 # PortMaster: /roms/ports is baked into the squashfs. If the card only
 # has lowercase ports, point the symlink there (needs a writable /roms).
@@ -109,14 +109,10 @@ if [ -d /usr/share/zoneinfo ] && [ ! -e /usr/share/zoneinfo/zone.tab ] && \
 	[ -d /storage/.system/zoneinfo ]; then
 	mount --bind /storage/.system/zoneinfo /usr/share/zoneinfo 2>/dev/null || true
 fi
-if [ ! -e "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
-	cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-	chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-fi
-if [ ! -e "$SYSTEM_PATH/etc/bluetooth/bt_init.sh" ]; then
-	cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-	chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-fi
+cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
+chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
 if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
 	cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
 	chmod 0755 "$SYSTEM_PATH/bin/governor.sh"

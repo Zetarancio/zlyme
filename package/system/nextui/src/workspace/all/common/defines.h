@@ -17,8 +17,8 @@
 #define ROOT_SYSTEM_PATH SDCARD_PATH "/.system/"
 #define SYSTEM_PATH SDCARD_PATH "/.system/" PLATFORM
 #define RES_PATH SDCARD_PATH "/.system/res"
-#define USERDATA_PATH SDCARD_PATH "/.userdata/" PLATFORM
-#define SHARED_USERDATA_PATH SDCARD_PATH "/.userdata/shared"
+#define USERDATA_PATH SDCARD_PATH "/.config/nextui/" PLATFORM
+#define SHARED_USERDATA_PATH SDCARD_PATH "/.config/nextui/shared"
 #define PAKS_PATH SYSTEM_PATH "/paks"
 #define BIN_PATH SYSTEM_PATH "/bin"
 #define TOOLS_PATH SDCARD_PATH "/Tools/" PLATFORM

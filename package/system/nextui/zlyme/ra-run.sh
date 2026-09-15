@@ -12,7 +12,7 @@ ETC=/etc/retroarch.cfg
 SEED_OPTS=/usr/share/zlyme/retroarch/config
 CARD_OPTS=/storage/.config/zlyme/retroarch/config
 MINUI_RA=/tmp/zlyme-minui-ra.cfg
-MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.userdata/shared}/minuisettings.txt"
+MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.config/nextui/shared}/minuisettings.txt"
 
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 

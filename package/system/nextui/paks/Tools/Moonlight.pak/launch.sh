@@ -12,10 +12,10 @@ chmod +x "$PAK_DIR/$APP_BIN" 2>/dev/null || true
 
 if [ -n "${SHARED_USERDATA_PATH:-}" ]; then
 	SHARED_USERDATA_ROOT="$SHARED_USERDATA_PATH"
-elif [ -d "/mnt/SDCARD/.userdata/shared" ] || [ -d "/mnt/SDCARD" ]; then
-	SHARED_USERDATA_ROOT="/mnt/SDCARD/.userdata/shared"
+elif [ -d "/mnt/SDCARD/.config/nextui/shared" ] || [ -d "/mnt/SDCARD" ]; then
+	SHARED_USERDATA_ROOT="/mnt/SDCARD/.config/nextui/shared"
 else
-	SHARED_USERDATA_ROOT="${HOME:-/tmp}/.userdata/shared"
+	SHARED_USERDATA_ROOT="${HOME:-/tmp}/.config/nextui/shared"
 fi
 LOG_ROOT=${LOGS_PATH:-"$SHARED_USERDATA_ROOT/logs"}
 mkdir -p "$LOG_ROOT"

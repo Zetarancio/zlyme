@@ -37,7 +37,11 @@ seed() {
 		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null
 	done
 
-	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on; do
+	for d in "$ZLYME_CFG/nextui/shared" "$ZLYME_CFG/nextui/my355"; do
+		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null
+	done
+
+	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on merge=on; do
 		n=${kv%%=*}
 		v=${kv#*=}
 		[ -e "$ZLYME_CFG/zlyme/$n" ] && continue

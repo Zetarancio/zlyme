@@ -17,8 +17,8 @@
 -		SetValueForKey("Path", "/usr/share/doom/fm_banks", true);
 +		SetValueForKey("Path", "/usr/share/gzdoom/soundfonts", true);
 +		SetValueForKey("Path", "/usr/share/gzdoom/fm_banks", true);
-+		SetValueForKey("Path", "/mnt/SDCARD/.userdata/shared/configs/gzdoom/soundfonts", true);
-+		SetValueForKey("Path", "/mnt/SDCARD/.userdata/shared/configs/gzdoom/fm_banks", true);
++		SetValueForKey("Path", "/mnt/SDCARD/.config/nextui/shared/configs/gzdoom/soundfonts", true);
++		SetValueForKey("Path", "/mnt/SDCARD/.config/nextui/shared/configs/gzdoom/fm_banks", true);
  		SetValueForKey("Path", "/usr/share/games/doom/soundfonts", true);
  		SetValueForKey("Path", "/usr/share/games/doom/fm_banks", true);
  		SetValueForKey("Path", SHARE_DIR "/doom/soundfonts", true);
@@ -108,7 +108,7 @@
 -	}
 -	path += file;
 -	return path;
-+    return FString("/mnt/SDCARD/.userdata/shared/saves/gzdoom/") + file;
++    return FString("/mnt/SDCARD/.config/nextui/shared/saves/gzdoom/") + file;
  }
  
  //===========================================================================
@@ -117,7 +117,7 @@
  	// Don't use GAME_DIR and such so that ZDoom and its child ports can
  	// share the node cache.
 -	FString path = NicePath("$HOME/.config/" GAMENAMELOWERCASE);
-+	FString path = NicePath("/mnt/SDCARD/.userdata/shared/saves/gzdoom");
++	FString path = NicePath("/mnt/SDCARD/.config/nextui/shared/saves/gzdoom");
  	if (create)
  	{
  		CreatePath(path.GetChars());
@@ -126,7 +126,7 @@
  	// Don't use GAME_DIR and such so that ZDoom and its child ports can
  	// share the node cache.
 -	FString path = NicePath("$HOME/.config/zdoom/cache");
-+	FString path = NicePath("/mnt/SDCARD/.userdata/shared/cache/gzdoom");
++	FString path = NicePath("/mnt/SDCARD/.config/nextui/shared/cache/gzdoom");
  	if (create)
  	{
  		CreatePath(path.GetChars());
@@ -135,7 +135,7 @@
  FString M_GetAutoexecPath()
  {
 -	return GetUserFile("autoexec.cfg");
-+	return FString("/mnt/SDCARD/.userdata/shared/configs/gzdoom/autoexec.cfg");
++	return FString("/mnt/SDCARD/.config/nextui/shared/configs/gzdoom/autoexec.cfg");
  }
  
  //===========================================================================
@@ -144,7 +144,7 @@
  FString M_GetConfigPath(bool for_reading)
  {
 -	return GetUserFile(GAMENAMELOWERCASE ".ini");
-+	return FString("/mnt/SDCARD/.userdata/shared/configs/gzdoom/gzdoom.ini");
++	return FString("/mnt/SDCARD/.config/nextui/shared/configs/gzdoom/gzdoom.ini");
  }
  
  //===========================================================================
@@ -153,7 +153,7 @@
  FString M_GetScreenshotsPath()
  {
 -	return NicePath("$HOME/" GAME_DIR "/screenshots/");
-+	return FString("/mnt/SDCARD/.userdata/shared/screenshots/");
++	return FString("/mnt/SDCARD/.config/nextui/shared/screenshots/");
  }
  
  //===========================================================================
@@ -162,7 +162,7 @@
  FString M_GetDocumentsPath()
  {
 -	return NicePath("$HOME/" GAME_DIR "/");
-+	return FString("/mnt/SDCARD/.userdata/shared/saves/gzdoom/");
++	return FString("/mnt/SDCARD/.config/nextui/shared/saves/gzdoom/");
  }
  
  //===========================================================================
@@ -173,7 +173,7 @@
      }
  
 -    logfd = open(crashlogfilename, O_APPEND | O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-+    logfd = open("/mnt/SDCARD/.userdata/shared/logs/gzdoom.crash.log", O_APPEND | O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
++    logfd = open("/mnt/SDCARD/.config/nextui/shared/logs/gzdoom.crash.log", O_APPEND | O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
  
      if (logfd) {
          time_t curtime;
