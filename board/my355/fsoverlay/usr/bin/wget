@@ -1,0 +1,40 @@
+#!/bin/sh
+# BusyBox wget has no TLS. Pico-8 Splore (and NextUI's own todo) download
+# carts with wget https://... so wrap curl, which is already in the image.
+out=""
+quiet=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-O)
+			out=$2
+			shift 2
+			;;
+		-O*)
+			out=${1#-O}
+			shift
+			;;
+		-q|--quiet)
+			quiet="-s"
+			shift
+			;;
+		-c|--continue)
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+done
+url=$1
+[ -n "$url" ] || exit 1
+if [ -n "$out" ]; then
+	exec curl -L --fail $quiet -o "$out" "$url"
+fi
+exec curl -L --fail $quiet -O "$url"

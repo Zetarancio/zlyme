@@ -87,6 +87,16 @@ chmod 0755 \
 	"${TARGET_DIR}/etc/init.d/S26keymon" \
 	"${TARGET_DIR}/etc/init.d/S27led" \
 	"${TARGET_DIR}/etc/init.d/S90minui"
+# BusyBox wget has no TLS. Pico-8 Splore uses wget https:// so force
+# the curl wrapper even if busybox.links recreated the applet.
+wget_wrap="$(cd "$(dirname "$0")" && pwd)/fsoverlay/usr/bin/wget"
+if [ -f "$wget_wrap" ]; then
+	cp -f "$wget_wrap" "${TARGET_DIR}/usr/bin/wget"
+	chmod 0755 "${TARGET_DIR}/usr/bin/wget"
+	ln -sfn /usr/bin/wget "${TARGET_DIR}/bin/wget"
+else
+	note "wget curl wrapper missing from fsoverlay"
+fi
 [ -e "${TARGET_DIR}/etc/init.d/S50sshd" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S50sshd"
 [ -e "${TARGET_DIR}/usr/sbin/sshd" ] || [ -e "${TARGET_DIR}/usr/bin/sshd" ] || \
 	note "sshd is missing (BR2_PACKAGE_OPENSSH)"
