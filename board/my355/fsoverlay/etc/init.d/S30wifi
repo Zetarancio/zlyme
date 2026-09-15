@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # Bring up WiFi. Do not load btusb here (combo chip, shared firmware).
+# Assoc/DHCP stay in the background so Settings is not stuck on the overlay.
 
 . /etc/zlyme.conf
 
 CONF="${ZLYME_CFG}/wpa_supplicant.conf"
 IFACE=wlan0
 
-# DHCP before association gets 169.254. Wait for COMPLETED, then udhcpc.
 dhcp_after_assoc() {
 	n=0
 	while [ "$n" -lt 30 ]; do
@@ -22,14 +22,15 @@ dhcp_after_assoc() {
 	printf "Starting udhcpc on %s: " "$IFACE"
 	if udhcpc -b -i "$IFACE" -t 8 -T 2 -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1; then
 		echo "OK"
+		# First IPv4 ARP to the gateway often FAILED on 8733bu; one ping
+		# moves neigh out of FAILED so HTTPS/DNS can proceed.
+		( ping -c 2 -W 2 "$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')" >/dev/null 2>&1 ) &
 	else
 		echo "FAIL"
 	fi
 }
 
 ensure_wpa_conf() {
-	# Never replace a file that may already hold networks. An older
-	# conf without ctrl_interface only gets a header prepended.
 	if [ ! -s "$CONF" ]; then
 		example="${ZLYME_CFG}/wpa_supplicant.conf.example"
 		if [ -r "$example" ]; then
@@ -55,19 +56,14 @@ ensure_wpa_conf() {
 	fi
 }
 
-load_card_wifi_modules() {
-	[ -d "/sys/class/net/$IFACE" ] && return 0
-	hot=/storage/.config/zlyme
-	if ! grep -q '^rtl8733bu_power ' /proc/modules 2>/dev/null; then
-		[ -f "$hot/rtl8733bu_power.ko" ] && insmod "$hot/rtl8733bu_power.ko" 2>/dev/null || true
-	fi
-	if ! grep -q '^8733bu ' /proc/modules 2>/dev/null; then
-		[ -f "$hot/8733bu.ko" ] && insmod "$hot/8733bu.ko" 2>/dev/null || true
-	fi
-}
-
 start() {
-	load_card_wifi_modules
+	if ! zlyme-ctl want wifi; then
+		echo "WiFi: disabled by zlyme-ctl"
+		return 0
+	fi
+
+	[ -x /usr/sbin/zlyme-combo ] && /usr/sbin/zlyme-combo wlan-on
+
 	printf "Waiting for %s: " "$IFACE"
 	i=0
 	while [ ! -d "/sys/class/net/$IFACE" ] && [ $i -lt 50 ]; do
@@ -83,24 +79,16 @@ start() {
 	if [ -f /var/run/wpa_supplicant.pid ] && kill -0 "$(cat /var/run/wpa_supplicant.pid)" 2>/dev/null; then
 		echo "WiFi: already running"
 		ip link set "$IFACE" up 2>/dev/null || true
-		dhcp_after_assoc
+		dhcp_after_assoc &
 		return 0
 	fi
 
-	if ! zlyme-ctl want wifi; then
-		echo "WiFi: disabled by zlyme-ctl"
-		return 0
-	fi
-
-	# After mem suspend the USB netdev exists but is DOWN. wpa then
-	# exits and start-stop-daemon prints FAIL.
 	ip link set "$IFACE" up 2>/dev/null || true
 	rm -f /var/run/wpa_supplicant.pid
 
 	ensure_wpa_conf
 
 	printf "Starting wpa_supplicant: "
-	# Not -B: start-stop-daemon would see the parent exit and print FAIL.
 	if start-stop-daemon -S -b -q -m -p /var/run/wpa_supplicant.pid \
 		--exec /usr/sbin/wpa_supplicant -- \
 		-P /var/run/wpa_supplicant.pid -i "$IFACE" -c "$CONF"
@@ -111,7 +99,7 @@ start() {
 		return 0
 	fi
 
-	dhcp_after_assoc
+	dhcp_after_assoc &
 	return 0
 }
 
@@ -119,6 +107,8 @@ stop() {
 	printf "Stopping WiFi: "
 	start-stop-daemon -K -q -p /var/run/udhcpc.$IFACE.pid 2>/dev/null
 	start-stop-daemon -K -q -p /var/run/wpa_supplicant.pid 2>/dev/null
+	ip link set "$IFACE" down 2>/dev/null || true
+	[ -x /usr/sbin/zlyme-combo ] && /usr/sbin/zlyme-combo wlan-off
 	echo "OK"
 	return 0
 }
