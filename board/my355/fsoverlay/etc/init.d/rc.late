@@ -19,13 +19,14 @@ start_bg /etc/init.d/S22zram
 start_bg /etc/init.d/S27led
 start_bg /etc/init.d/S29udevtrigger
 start_bg /etc/init.d/S36irqaffinity
-	start_bg /etc/init.d/S46btsink
-	start_bg /etc/init.d/S50sshd
+start_bg /etc/init.d/S46btsink
+start_bg /etc/init.d/S50sshd
 start_bg /etc/init.d/S70samba
 start_bg /etc/init.d/S75syncthing
 start_bg /etc/init.d/S91smb
 
 start_bg /etc/init.d/S30wifi
+start_bg /etc/init.d/S49ntp
 
 (
 	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start

@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# Wall clock from HTTP Date. The RK3566 RTC often sits at 2017 without a
+# battery, which makes TLS certs "not yet valid" so Splore and curl HTTPS
+# fail even when the AP has internet. rc.late starts this after S30wifi.
+
+http_date_to_stamp() {
+	# "Tue, 15 Sep 2026 01:32:00 GMT" → "2026-09-15 01:32:00"
+	set -- $1
+	day=$2
+	mon=$3
+	year=$4
+	time=$5
+	case "$mon" in
+		Jan) m=01 ;; Feb) m=02 ;; Mar) m=03 ;; Apr) m=04 ;;
+		May) m=05 ;; Jun) m=06 ;; Jul) m=07 ;; Aug) m=08 ;;
+		Sep) m=09 ;; Oct) m=10 ;; Nov) m=11 ;; Dec) m=12 ;;
+		*) return 1 ;;
+	esac
+	[ -n "$day" ] && [ -n "$year" ] && [ -n "$time" ] || return 1
+	printf '%s-%s-%02d %s' "$year" "$m" "$day" "$time"
+}
+
+start() {
+	(
+		n=0
+		while [ "$n" -lt 40 ]; do
+			gw=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
+			[ -n "$gw" ] && break
+			sleep 0.5
+			n=$((n + 1))
+		done
+		[ -n "$gw" ] || exit 0
+		# 8733bu often drops the first IPv4 ARP probes; ping unsticks neigh.
+		ping -c 1 -W 2 "$gw" >/dev/null 2>&1 || ping -c 2 -W 2 "$gw" >/dev/null 2>&1 || true
+		i=0
+		while [ "$i" -lt 8 ]; do
+			hdr=$(curl -sI --max-time 4 http://1.1.1.1 2>/dev/null \
+				| sed -n 's/^[Dd]ate:[[:space:]]*//p' | tr -d '\r' | head -n 1)
+			stamp=
+			[ -n "$hdr" ] && stamp=$(http_date_to_stamp "$hdr")
+			if [ -n "$stamp" ] && date -u -s "$stamp" >/dev/null 2>&1; then
+				hwclock -w >/dev/null 2>&1 || true
+				exit 0
+			fi
+			if [ -n "$hdr" ] && date -u -D "%a, %d %b %Y %H:%M:%S GMT" -s "$hdr" >/dev/null 2>&1; then
+				hwclock -w >/dev/null 2>&1 || true
+				exit 0
+			fi
+			sleep 2
+			i=$((i + 1))
+		done
+	) >/dev/null 2>&1 &
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) start ;;
+	*) echo "usage: $0 {start|stop|restart}" >&2; exit 1 ;;
+esac
