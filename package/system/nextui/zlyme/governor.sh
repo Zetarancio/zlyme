@@ -1,13 +1,20 @@
 #!/bin/sh
-# Spruce-like profiles for the Flip (RK3566).
-#   smart        NextUI + light emus: schedutil, cores 01, DMC 324M
-#   performance  PSP/NDS/DC/N64/SATURN/PORTS: 1800, cores 0123, DMC 1056M
-#   overclock    same as performance at 1992 when CPU boost is on
-#   idle         screen off: conservative, cores 01, DMC 324M
-#   auto         smart (NextUI CPU_SPEED_AUTO)
-#   powersave    idle
-#   emu <tag>    pick smart vs performance from the core/pak name
+# RK3566 Flip. Spruce smart stays on the NextUI list (2 cores, DMC 324).
+# Light paks used to inherit that; GB + A2DP then underruns on USB/DDR.
+# Games get play or heavy. NextUI calls smart again on return.
 #
+#   smart        NextUI list: 2 cores, schedutil 408-1800, DMC 324
+#   play         Ports/GB/GBA/FC/Pico-8/Moonlight/most RA:
+#                4 cores, schedutil 408-1800, DMC 528-1056
+#   heavy        PSP/NDS/DC/N64/Saturn: 4c, schedutil 1104-1800
+#   performance  same as heavy (NextUI CPU_SPEED_PERFORMANCE)
+#   overclock    1992 when zlyme-ctl boost is on (serial debug only)
+#   idle         lid: 2 cores, conservative 408-1104, DMC 324
+#   auto         smart
+#   powersave    idle
+#   emu <tag>    play, or heavy if the core/pak is heavy
+#
+# CPU never uses ondemand. GPU/DMC stay simple_ondemand in-game.
 # GPU sysfs is /sys/class/devfreq/*.gpu (panfrost or mali). DMC is not the GPU.
 
 boost_on() {
@@ -116,6 +123,16 @@ profile_smart() {
 	set_gpu simple_ondemand
 }
 
+# In-game, including GB and Ports. 4 cores + DMC headroom for combo USB / A2DP.
+profile_play() {
+	set_boost 0
+	online_all
+	set_cpu_minmax 408000 1800000
+	set_cpu_gov schedutil
+	set_dmc simple_ondemand 528000000 1056000000
+	set_gpu simple_ondemand
+}
+
 profile_idle() {
 	set_boost 0
 	online_all
@@ -126,29 +143,30 @@ profile_idle() {
 	set_gpu powersave
 }
 
-profile_performance() {
+# Heavy consoles. Floor 1104, not a locked performance governor.
+profile_heavy() {
 	online_all
 	set_boost 0
-	set_cpu_minmax 408000 1800000
-	set_cpu_gov performance
-	set_dmc simple_ondemand 324000000 1056000000
-	set_gpu performance
+	set_cpu_minmax 1104000 1800000
+	set_cpu_gov schedutil
+	set_dmc simple_ondemand 528000000 1056000000
+	set_gpu simple_ondemand
 }
 
 profile_overclock() {
 	online_all
 	set_boost 1
 	set_cpu_minmax 408000 1992000
-	set_cpu_gov performance
+	set_cpu_gov schedutil
 	set_dmc simple_ondemand 324000000 1056000000
-	set_gpu performance
+	set_gpu simple_ondemand
 }
 
 is_heavy() {
 	tag=$(printf '%s' "$*" | tr 'A-Z' 'a-z')
 	case "$tag" in
 		*ppsspp*|*psp*|*flycast*|*dreamcast*|*drastic*|*nds*|*melonds*|\
-		*mupen*|*n64*|*yaba*|*saturn*|*ports*|*moonlight*)
+		*mupen*|*n64*|*yaba*|*saturn*)
 			return 0
 			;;
 	esac
@@ -165,23 +183,26 @@ case "$mode" in
 			if boost_on; then
 				mode=overclock
 			else
-				mode=performance
+				mode=heavy
 			fi
 		else
-			mode=smart
+			mode=play
 		fi
 		;;
-	performance)
+	performance|heavy)
 		if boost_on; then
 			mode=overclock
+		else
+			mode=heavy
 		fi
 		;;
 esac
 
 case "$mode" in
 	smart) profile_smart ;;
+	play) profile_play ;;
 	idle) profile_idle ;;
-	performance) profile_performance ;;
+	heavy) profile_heavy ;;
 	overclock) profile_overclock ;;
 	*) profile_smart ;;
 esac

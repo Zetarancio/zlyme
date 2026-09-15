@@ -169,7 +169,7 @@ if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	exit 0
 fi
 
-# Heavy cores (PPSSPP/Flycast/Mupen/Yaba/DraStic) take Performance; others Smart.
+# Heavy cores (PPSSPP/Flycast/Mupen/Yaba/DraStic) take heavy; others play.
 if command -v zlyme-governor >/dev/null 2>&1; then
 	zlyme-governor emu "$@" >/dev/null 2>&1 || true
 elif [ -x /usr/share/nextui/bin/governor.sh ]; then
