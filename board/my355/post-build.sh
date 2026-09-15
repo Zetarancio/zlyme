@@ -36,6 +36,7 @@ if [ -e "${TARGET_DIR}/usr/bin/nextui.elf" ]; then
 		usr/share/nextui/res/font1.ttf; do
 		[ -e "${TARGET_DIR}/${b}" ] || note "${b} is missing"
 	done
+	[ -x "${TARGET_DIR}/usr/bin/mergerfs" ] || note "mergerfs is missing"
 fi
 
 for f in lib/firmware/rtl_bt/rtl8723fu_fw.bin \
@@ -93,7 +94,11 @@ chmod 0755 \
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-audio" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-audio"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-btsink" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-btsink"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-radios" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-radios"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-combo" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-combo"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-bluetooth" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-bluetooth"
 [ -e "${TARGET_DIR}/etc/init.d/S46btsink" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S46btsink"
+[ -e "${TARGET_DIR}/etc/init.d/rcS" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rcS"
+[ -e "${TARGET_DIR}/etc/init.d/rc.late" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rc.late"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
@@ -157,6 +162,18 @@ if [ -e "${TARGET_DIR}/sbin/modprobe" ]; then
 	esac
 else
 	note "no modprobe on the target"
+fi
+
+# Class B after NextUI. Keep generated getty/sysinit; only add ::once.
+if [ -f "${TARGET_DIR}/etc/inittab" ]; then
+	if ! grep -q '/etc/init.d/rc.late' "${TARGET_DIR}/etc/inittab"; then
+		if grep -q '::sysinit:/etc/init.d/rcS' "${TARGET_DIR}/etc/inittab"; then
+			sed -i '/::sysinit:\/etc\/init.d\/rcS/a ::once:\/etc\/init.d\/rc.late' \
+				"${TARGET_DIR}/etc/inittab"
+		else
+			printf '%s\n' '::once:/etc/init.d/rc.late' >> "${TARGET_DIR}/etc/inittab"
+		fi
+	fi
 fi
 
 exit "${fail}"

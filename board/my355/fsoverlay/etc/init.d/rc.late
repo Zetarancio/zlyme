@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+# Class B: wifi, BT, ssh, LED, zram, irq, extra storage, udev trigger.
+# Started from inittab ::once: (init does not wait). Ignore HUP so the
+# children survive when this script exits.
+
+trap '' HUP
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late" >> /tmp/boot-timing
+
+start_bg() {
+	[ -x "$1" ] || return 0
+	"$1" start >/dev/null 2>&1 &
+}
+
+start_bg /etc/init.d/S17sd2
+start_bg /etc/init.d/S22zram
+start_bg /etc/init.d/S27led
+start_bg /etc/init.d/S29udevtrigger
+start_bg /etc/init.d/S36irqaffinity
+	start_bg /etc/init.d/S46btsink
+	start_bg /etc/init.d/S50sshd
+start_bg /etc/init.d/S70samba
+start_bg /etc/init.d/S75syncthing
+start_bg /etc/init.d/S91smb
+
+start_bg /etc/init.d/S30wifi
+
+(
+	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
+	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
+	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
+) >/tmp/zlyme-bt-late.log 2>&1 &
+
+echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late-forked" >> /tmp/boot-timing

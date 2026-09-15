@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Class A only, then fork NextUI. Class B is /etc/init.d/rc.late via
+# inittab ::once: so wifi/BT/ssh/LED do not delay the first frame.
+
+boot_mark() {
+	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*" >> /tmp/boot-timing
+}
+
+is_class_b() {
+	case "$1" in
+		S17sd2|S22zram|S27led|S29udevtrigger|S30wifi|S35btusb|S36irqaffinity|S40bluetoothd|S45bluealsa|S46btsink|S50sshd|S70samba|S75syncthing|S91smb|S49ntp)
+			return 0
+			;;
+	esac
+	return 1
+}
+
+boot_mark rcS-start
+
+# dbus is cheap and BlueZ/Settings need it; S30dbus would otherwise sit
+# after NextUI or be skipped with S30wifi.
+for i in /etc/init.d/S??*dbus*; do
+	[ -f "$i" ] || continue
+	boot_mark "start ${i##*/}"
+	"$i" start
+	boot_mark "done ${i##*/}"
+done
+
+for i in /etc/init.d/S??*; do
+	[ -f "$i" ] || continue
+	base=${i##*/}
+	case "$base" in
+		S90*|*dbus*) continue ;;
+	esac
+	is_class_b "$base" && continue
+	boot_mark "start $base"
+	case "$i" in
+		*.sh)
+			(
+				trap - INT QUIT TSTP
+				set start
+				# shellcheck disable=SC1090
+				. "$i"
+			)
+			;;
+		*)
+			"$i" start
+			;;
+	esac
+	boot_mark "done $base"
+done
+
+boot_mark rcS-nextui-ready

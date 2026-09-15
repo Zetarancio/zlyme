@@ -13,12 +13,10 @@ start() {
 		echo "missing"
 		return 0
 	fi
-	i=0
-	while [ "$i" -lt 40 ]; do
-		[ -e /sys/class/leds/green:power/brightness ] && break
-		sleep 0.1
-		i=$((i + 1))
-	done
+	if [ ! -e /sys/class/leds/green:power/brightness ]; then
+		echo "no sysfs"
+		return 0
+	fi
 	/usr/sbin/zlyme-led apply >>/tmp/zlyme-led.log 2>&1 || true
 	/usr/sbin/zlyme-led watch >>/tmp/zlyme-led.log 2>&1 &
 	echo $! >"$PIDFILE"
