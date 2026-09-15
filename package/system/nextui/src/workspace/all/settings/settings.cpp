@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[])
             }},
             new StaticMenuItem{ListItemType::Generic, "Kernel", "uname -r",
             []() -> std::any { return kernel_version(); }},
-            new StaticMenuItem{ListItemType::Generic, "SSH", "OpenSSH login. Password is empty.",
+            new StaticMenuItem{ListItemType::Generic, "SSH", "",
             []() -> std::any { return std::string("root / (empty)"); }},
             new StaticMenuItem{ListItemType::Generic, "IP", "wlan0 IPv4 when associated.",
             []() -> std::any { return wlan_ip(); }},
@@ -1100,7 +1100,7 @@ int main(int argc, char *argv[])
         if(buttonMenu)
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
 
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Notifications and RetroAchievements. Applied to RetroArch on launch; MENU opens the RA menu, MENU+Start exits.", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "In-game settings for MinArch", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
 
         if(deviceInfo.hasWifi()) {
             std::vector<AbstractMenuItem*> networkItems = {
