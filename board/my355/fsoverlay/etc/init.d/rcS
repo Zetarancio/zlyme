@@ -8,11 +8,12 @@ boot_mark() {
 	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*" >> /tmp/boot-timing
 }
 
-# Panel, pad, storage, GPU, ALSA, keymon, then the list. Everything
-# else is rc.late (wifi/BT/ssh/dbus/syslog/avahi/cron/sd2).
+# Panel, pad, storage, GPU, ALSA, keymon, then the list. S17 is forked
+# (not waited): zlyme35 reached the list without blocking on mergerfs.
+# Session bind of .roms_base; zlyme-storage unmounts that and merges.
 is_class_a() {
 	case "$1" in
-		S10udevd|S11modules|S12bootfs|S13resize|S15bootpart|S15gpudriver|S16display|S18zlymeupdate|S20alsa|S25jackd|S26joypadcal|S26keymon|S28minui)
+		S10udevd|S11modules|S12bootfs|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26joypadcal|S26keymon|S28minui)
 			return 0
 			;;
 	esac
@@ -21,6 +22,12 @@ is_class_a() {
 
 boot_mark rcS-start
 
+# Session + NextUI are the remaining seconds. schedutil leaves the
+# A55s idle while we mount and bind.
+for g in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
+	[ -w "$g" ] && echo performance > "$g"
+done
+
 for i in /etc/init.d/S??*; do
 	[ -f "$i" ] || continue
 	base=${i##*/}
@@ -28,6 +35,13 @@ for i in /etc/init.d/S??*; do
 		S90*) continue ;;
 	esac
 	is_class_a "$base" || continue
+	# Merge SD2 while GPU/ALSA/keymon/NextUI run. Do not wait: a
+	# hung blkid/mergerfs left the splash up on the first Etcher boot.
+	if [ "$base" = S17sd2 ]; then
+		boot_mark "fork $base"
+		"$i" start &
+		continue
+	fi
 	boot_mark "start $base"
 	case "$i" in
 		*.sh)

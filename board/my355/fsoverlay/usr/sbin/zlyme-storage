@@ -151,32 +151,92 @@ rescan_nextui() {
 	for p in retroarch PPSSPPSDL flycast drastic moonlight pico8_64; do
 		pidof "$p" >/dev/null 2>&1 && return 0
 	done
+	# SIGKILL before the first flip drops DRM master; deferred
+	# takeover then keeps the splash forever (zlyme36 Etcher).
+	grep -q 'nextui-first-flip' /tmp/boot-timing 2>/dev/null || return 0
 	if pidof nextui.elf >/dev/null 2>&1; then
 		kill -9 $(pidof nextui.elf) 2>/dev/null || true
 	fi
 }
 
+roms_is_mergerfs() {
+	awk -v m="$ROMS" '$2 == m && $3 ~ /mergerfs/ { found = 1 } END { exit !found }' /proc/mounts
+}
+
+roms_ctl() {
+	printf '%s/.mergerfs' "$ROMS"
+}
+
+# NextUI bind-mounts .roms_base onto Roms for the first frame. One umount
+# is not enough if S17/udev stacked more binds; mergerfs then sees dest
+# as a branch ("branches can not include the mountpoint").
 unmount_roms() {
-	if mountpoint -q "$ROMS" 2>/dev/null; then
+	n=0
+	while awk -v m="$ROMS" '$2 == m { found = 1 } END { exit !found }' /proc/mounts &&
+		[ "$n" -lt 16 ]; do
 		umount "$ROMS" 2>/dev/null || umount -l "$ROMS" 2>/dev/null || true
-	fi
+		n=$((n + 1))
+	done
 	unbind_under "$ROMS/"
+}
+
+# If Roms is already FUSE, add missing SD2/USB dirs without remounting
+# (avoids "branches can not include the mountpoint").
+add_rom_branches() {
+	list=$1
+	ctl=$(roms_ctl)
+	[ -e "$ctl" ] || return 1
+	cur=$(getfattr -n user.mergerfs.branches --only-values "$ctl" 2>/dev/null || true)
+	added=0
+	oldifs=$IFS
+	IFS=:
+	# shellcheck disable=SC2086
+	set -- $list
+	IFS=$oldifs
+	for b in "$@"; do
+		[ -n "$b" ] || continue
+		[ -d "$b" ] || continue
+		case "$cur" in
+			*"$b"*) continue ;;
+		esac
+		if setfattr -n user.mergerfs.branches -v "+>$b" "$ctl" 2>>/tmp/zlyme-storage.log; then
+			echo "merge xattr +$b" >> /tmp/zlyme-storage.log
+			added=1
+			cur="$cur:$b"
+		fi
+	done
+	[ "$added" = 1 ]
 }
 
 merge_roms() {
 	ensure_roms_base
 	ensure_media
-	unmount_roms
+	{
+		flock 9
+		merge_roms_locked
+	} 9>/tmp/zlyme-storage.lock
+}
+
+merge_roms_locked() {
 	if ! want_merge; then
+		if mountpoint -q "$ROMS" 2>/dev/null; then
+			return 0
+		fi
 		mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
 		return 0
 	fi
 	list=$(branches)
 	if ! command -v mergerfs >/dev/null 2>&1; then
 		echo "mergerfs missing; bind .roms_base" >> /tmp/zlyme-storage.log
-		mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
+		mountpoint -q "$ROMS" 2>/dev/null ||
+			mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
 		return 0
 	fi
+	if roms_is_mergerfs; then
+		add_rom_branches "$list" || true
+		return 0
+	fi
+	unmount_roms
 	mkdir -p "$ROMS"
 	if mergerfs -o "defaults,allow_other,use_ino,cache.files=off,dropcacheonclose=true,category.create=ff,minfreespace=0" \
 		"$list" "$ROMS" 2>>/tmp/zlyme-storage.log
@@ -184,7 +244,10 @@ merge_roms() {
 		echo "merge $list" >> /tmp/zlyme-storage.log
 	else
 		echo "merge fail $list" >> /tmp/zlyme-storage.log
-		mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
+		# Do not stack another bind on a dest that is still a branch.
+		if ! mountpoint -q "$ROMS" 2>/dev/null; then
+			mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
+		fi
 	fi
 }
 

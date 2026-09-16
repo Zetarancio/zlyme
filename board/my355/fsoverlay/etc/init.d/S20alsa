@@ -19,8 +19,6 @@ start() {
 		return 0
 	fi
 
-	prime_softvol
-
 	printf "Restoring mixer state: "
 	if [ -r "$STATE" ]; then
 		if alsactl -f "$STATE" -F restore "$CARD" >/dev/null 2>&1; then
@@ -32,6 +30,9 @@ start() {
 		echo "no saved state -- storing current"
 		store
 	fi
+	# FlipVolume exists after the first PCM open. Do not hold Class A
+	# for aplay (~0.4 s).
+	prime_softvol &
 
 	return 0
 }

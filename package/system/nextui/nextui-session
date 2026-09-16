@@ -35,8 +35,11 @@ export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
 boot_mark() {
-	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*" >> /tmp/boot-timing
+	line="$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*"
+	echo "$line" >> /tmp/boot-timing
+	echo "$line" >> /storage/.config/zlyme/boot-timing 2>/dev/null || true
 }
+mkdir -p /storage/.config/zlyme
 boot_mark session-start
 
 # Stock MinUI tools still open /mnt/SDCARD. Keep one path for scrapers.
@@ -48,11 +51,20 @@ mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
 	/storage/.roms_base /storage/Roms /storage/Tools/my355
 
 seed=/usr/share/nextui
-if [ -r "$seed/rom-dirs.txt" ]; then
+img_ver=""
+[ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
+rom_dirs_stamp=/storage/.roms_base/.zlyme-rom-dirs
+need_rom_dirs=1
+if [ -n "$img_ver" ] && [ -f "$rom_dirs_stamp" ] &&
+	[ "$(cat "$rom_dirs_stamp")" = "$img_ver" ]; then
+	need_rom_dirs=0
+fi
+if [ "$need_rom_dirs" = 1 ] && [ -r "$seed/rom-dirs.txt" ]; then
 	while IFS= read -r d; do
 		[ -n "$d" ] || continue
 		mkdir -p "/storage/.roms_base/$d"
 	done < "$seed/rom-dirs.txt"
+	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > "$rom_dirs_stamp"
 fi
 
 # Dummy cart so Pico-8 is visible before the user adds .p8 files.
@@ -67,8 +79,8 @@ if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
 	: >"$pico_mark"
 fi
 
-# Internal list first. mergerfs of SD2/USB is S17 (rc.late). Calling
-# merge here blocked nextui.elf for ~11 s on a card with mmcblk1.
+# Same bind zlyme35 used (fast, shown the list). S17 unmounts it and
+# mergerfs-es SD2; do not mergerfs here (that blocked the first frame).
 if ! mountpoint -q /storage/Roms 2>/dev/null; then
 	mount --bind /storage/.roms_base /storage/Roms 2>/dev/null || true
 fi
@@ -84,9 +96,7 @@ fi
 # Refresh stock assets when the image version changes. Copying paks
 # onto exFAT blocked the first frame (Artwork Scraper.pak is large).
 # Bind the squashfs copies instead; that also hides stale card launch.sh.
-img_ver=""
 card_ver=""
-[ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
 [ -r /storage/.system/version.txt ] && card_ver=$(cat /storage/.system/version.txt)
 refresh=1
 [ -n "$img_ver" ] && [ "$img_ver" = "$card_ver" ] && refresh=0
@@ -107,79 +117,19 @@ if [ -d "$seed/res" ]; then
 	}
 fi
 
-mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" "$SYSTEM_PATH/bin" \
-	"$SYSTEM_PATH/lib" /storage/.system/zoneinfo
-if [ ! -e /storage/.system/zoneinfo/zone.tab ] && [ -r "$seed/zone.tab" ]; then
-	cp "$seed/zone.tab" /storage/.system/zoneinfo/zone.tab
-fi
-# Current NextUI reads /usr/share/zoneinfo. Overlaying all of /usr/share
-# hid PortMaster/vtree and left squashfs busy at shutdown. Bind only
-# zoneinfo if the image copy is missing.
-if [ -d /usr/share/zoneinfo ] && [ ! -e /usr/share/zoneinfo/zone.tab ] && \
-	[ -d /storage/.system/zoneinfo ]; then
-	mount --bind /storage/.system/zoneinfo /usr/share/zoneinfo 2>/dev/null || true
-fi
-cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
-	cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
-	chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
-fi
-if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/suspend" ]; then
-	if [ -x "$seed/bin/suspend" ]; then
-		cp "$seed/bin/suspend" "$SYSTEM_PATH/bin/suspend"
-		chmod 0755 "$SYSTEM_PATH/bin/suspend"
-	fi
-fi
-if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
-	cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
-	chmod 0755 "$SYSTEM_PATH/bin/show.elf"
-fi
-if [ ! -e "$SYSTEM_PATH/lib/libmsettings.so" ] && [ -f /usr/lib/libmsettings.so ]; then
-	mkdir -p "$SYSTEM_PATH/lib"
-	cp /usr/lib/libmsettings.so "$SYSTEM_PATH/lib/libmsettings.so"
-fi
-# Refresh shipped paks so a stale launch.sh cannot keep calling minarch.
-# SSH/Samba/Syncthing/GPU/Display/Backup/Wi-Fi/Bluetooth live in Settings.
-if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-wifi ]; then
-	cp /usr/sbin/zlyme-wifi "$SYSTEM_PATH/bin/zlyme-wifi"
-	chmod 0755 "$SYSTEM_PATH/bin/zlyme-wifi"
-fi
-if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-bluetooth ]; then
-	cp /usr/sbin/zlyme-bluetooth "$SYSTEM_PATH/bin/zlyme-bluetooth"
-	chmod 0755 "$SYSTEM_PATH/bin/zlyme-bluetooth"
-fi
-# Bind image paks over the card so a version bump does not copy first.
+# Bind emu paks before nextui.elf (hasEmu). Tools and one-time
+# migrations are after the first exec so they do not sit on the list.
 if [ -d "$seed/paks" ]; then
-	mkdir -p "$SYSTEM_PATH/paks" /storage/Tools/my355
-	mkdir -p "$SYSTEM_PATH/paks/Emus"
-	for src in "$seed/paks/Emus"/*.pak; do
-		[ -d "$src" ] || continue
-		bind_dir "$src" "$SYSTEM_PATH/paks/Emus/$(basename "$src")"
-	done
+	mkdir -p "$SYSTEM_PATH/paks"
+	if [ -d "$seed/paks/Emus" ]; then
+		bind_dir "$seed/paks/Emus" "$SYSTEM_PATH/paks/Emus"
+	fi
 	if [ -d "$seed/paks/MinUI.pak" ]; then
 		bind_dir "$seed/paks/MinUI.pak" "$SYSTEM_PATH/paks/MinUI.pak"
 	fi
-	rm -rf \
-		/storage/Tools/my355/Wi-Fi.pak \
-		/storage/Tools/my355/Bluetooth.pak \
-		/storage/Tools/my355/SSH.pak \
-		/storage/Tools/my355/Samba.pak \
-		/storage/Tools/my355/Syncthing.pak \
-		/storage/Tools/my355/GPU.pak \
-		/storage/Tools/my355/Display.pak \
-		/storage/Tools/my355/Backup.pak
-	for src in "$seed/paks/Tools"/*.pak; do
-		[ -d "$src" ] || continue
-		base=$(basename "$src")
-		case "$base" in
-			Wi-Fi.pak|Bluetooth.pak|SSH.pak|Samba.pak|Syncthing.pak|GPU.pak|Display.pak|Backup.pak) continue ;;
-		esac
-		bind_dir "$src" "/storage/Tools/my355/$base"
-	done
-	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > /storage/.system/version.txt
+	if [ "$refresh" = 1 ] && [ -n "$img_ver" ]; then
+		printf '%s\n' "$img_ver" > /storage/.system/version.txt
+	fi
 fi
 boot_mark session-paks
 if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
@@ -272,6 +222,77 @@ EXEC_PATH=/tmp/nextui_exec
 NEXT_PATH=/tmp/next
 touch "$EXEC_PATH"
 cd /storage
+
+bind_tools_late() {
+	mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" \
+		"$SYSTEM_PATH/bin" "$SYSTEM_PATH/lib" /storage/.system/zoneinfo \
+		/storage/Tools/my355
+	if [ ! -e /storage/.system/zoneinfo/zone.tab ] && [ -r "$seed/zone.tab" ]; then
+		cp "$seed/zone.tab" /storage/.system/zoneinfo/zone.tab
+	fi
+	if [ -d /usr/share/zoneinfo ] && [ ! -e /usr/share/zoneinfo/zone.tab ] && \
+		[ -d /storage/.system/zoneinfo ]; then
+		mount --bind /storage/.system/zoneinfo /usr/share/zoneinfo 2>/dev/null || true
+	fi
+	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
+		cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+		chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
+	fi
+	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/etc/bluetooth/bt_init.sh" ]; then
+		cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
+		chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
+	fi
+	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
+		cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
+		chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
+	fi
+	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/suspend" ]; then
+		if [ -x "$seed/bin/suspend" ]; then
+			cp "$seed/bin/suspend" "$SYSTEM_PATH/bin/suspend"
+			chmod 0755 "$SYSTEM_PATH/bin/suspend"
+		fi
+	fi
+	if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
+		cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
+		chmod 0755 "$SYSTEM_PATH/bin/show.elf"
+	fi
+	if [ ! -e "$SYSTEM_PATH/lib/libmsettings.so" ] && [ -f /usr/lib/libmsettings.so ]; then
+		cp /usr/lib/libmsettings.so "$SYSTEM_PATH/lib/libmsettings.so"
+	fi
+	if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-wifi ]; then
+		cp /usr/sbin/zlyme-wifi "$SYSTEM_PATH/bin/zlyme-wifi"
+		chmod 0755 "$SYSTEM_PATH/bin/zlyme-wifi"
+	fi
+	if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-bluetooth ]; then
+		cp /usr/sbin/zlyme-bluetooth "$SYSTEM_PATH/bin/zlyme-bluetooth"
+		chmod 0755 "$SYSTEM_PATH/bin/zlyme-bluetooth"
+	fi
+	stamp=/storage/Tools/my355/.zlyme-settings-paks-gone
+	if [ ! -f "$stamp" ]; then
+		rm -rf \
+			/storage/Tools/my355/Wi-Fi.pak \
+			/storage/Tools/my355/Bluetooth.pak \
+			/storage/Tools/my355/SSH.pak \
+			/storage/Tools/my355/Samba.pak \
+			/storage/Tools/my355/Syncthing.pak \
+			/storage/Tools/my355/GPU.pak \
+			/storage/Tools/my355/Display.pak \
+			/storage/Tools/my355/Backup.pak
+		: > "$stamp"
+	fi
+	if [ -d "$seed/paks/Tools" ]; then
+		for src in "$seed/paks/Tools"/*.pak; do
+			[ -d "$src" ] || continue
+			base=$(basename "$src")
+			case "$base" in
+				Wi-Fi.pak|Bluetooth.pak|SSH.pak|Samba.pak|Syncthing.pak|GPU.pak|Display.pak|Backup.pak) continue ;;
+			esac
+			bind_dir "$src" "/storage/Tools/my355/$base"
+		done
+	fi
+	boot_mark session-tools
+}
+bind_tools_late &
 
 while [ -f "$EXEC_PATH" ]; do
 	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh

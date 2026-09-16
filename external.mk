@@ -1,5 +1,15 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_ZLYME_PATH)/package/*/*/*.mk))
 
+# quartz64 defaults to 2 s. The defconfig patch can lose that line across
+# re-extracts; keep 0 in .config. Etcher of zlyme.img writes u-boot.itb;
+# OTA does not.
+define ZLYME_UBOOT_BOOTDELAY
+	$(SED) 's/^CONFIG_BOOTDELAY=.*/CONFIG_BOOTDELAY=0/' $(@D)/.config
+	grep -qx 'CONFIG_BOOTDELAY=0' $(@D)/.config || \
+		echo 'CONFIG_BOOTDELAY=0' >> $(@D)/.config
+endef
+UBOOT_POST_CONFIGURE_HOOKS += ZLYME_UBOOT_BOOTDELAY
+
 ZLYME_LINUX_DIR = $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux
 
 # Panel driver has no Kconfig symbol. Copy it in and add the Makefile line.

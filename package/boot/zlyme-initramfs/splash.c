@@ -30,11 +30,11 @@ static int open_fb(void)
 {
 	int i, fd;
 
-	for (i = 0; i < 50; i++) {
+	for (i = 0; i < 40; i++) {
 		fd = open("/dev/fb0", O_RDWR);
 		if (fd >= 0)
 			return fd;
-		sleep_ms(100);
+		sleep_ms(20);
 	}
 	return -1;
 }

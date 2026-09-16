@@ -371,10 +371,8 @@ SDL_Surface *GFX_init(int mode)
 	if(mode == MODE_MAIN)
 		GFX_setClearColor(mapUint(CFG_getColor(COLOR_BACKGROUND)));
 
-	// We always have to symlink, does not depend on NTP being enabled
-	PLAT_initTimezones();
-	PLAT_setCurrentTimezone(PLAT_getCurrentTimezone());
-
+	// zone.tab parse + hwclock blocked first frame. Settings still
+	// TIME_init() when opening the timezone row.
 	PLAT_initLid();
 	LEDS_initLeds();
 

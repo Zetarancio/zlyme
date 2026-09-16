@@ -751,11 +751,6 @@ SDL_Surface* PLAT_initVideo(void) {
 	SDL_RendererInfo info;
 	SDL_GetRendererInfo(vid.renderer, &info);
 	LOG_info("Current render driver: %s\n", info.name);
-	// print texture formats
-	LOG_info("Supported texture formats:\n");
-	for (Uint32 i=0; i<info.num_texture_formats; i++) {
-		LOG_info("- %s\n", SDL_GetPixelFormatName(info.texture_formats[i]));
-	}
 
 	vid.target	= NULL; // only needed for non-native sizes
 

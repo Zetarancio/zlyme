@@ -702,16 +702,18 @@ static int hasRoms(char* dir_name) {
 		char full[512];
 		while((dp = readdir(dh)) != NULL) {
 			if (hide(dp->d_name)) continue;
+			/* exFAT often reports DT_UNKNOWN. Prefer a ROM name match
+			 * so we do not stat thousands of files to decide the
+			 * console belongs on the root list. */
+			if (isAllowedRom(emu_name, dp->d_name)) {
+				has = 1;
+				break;
+			}
+			if (isJunkDir(dp->d_name)) continue;
+			if (dp->d_type == DT_REG)
+				continue;
 			snprintf(full, sizeof(full), "%s%s", rom_path, dp->d_name);
 			if (entryIsDir(full, dp->d_type)) {
-				if (!isJunkDir(dp->d_name)) {
-					has = 1;
-					break;
-				}
-				continue;
-			}
-			if (isAllowedRom(emu_name, dp->d_name) &&
-			    !skipCompanionDisc(rom_path, dp->d_name)) {
 				has = 1;
 				break;
 			}
@@ -2305,7 +2307,24 @@ void cleanupImageLoaderPool() {
 }
 ///////////////////////////////////////
 
+static void zlyme_boot_mark(const char *msg)
+{
+	FILE *u = fopen("/proc/uptime", "r");
+	FILE *o = fopen("/tmp/boot-timing", "a");
+	double up = 0;
+	if (u) {
+		if (fscanf(u, "%lf", &up) != 1)
+			up = 0;
+		fclose(u);
+	}
+	if (o) {
+		fprintf(o, "%.2f nextui-%s\n", up, msg);
+		fclose(o);
+	}
+}
+
 int main (int argc, char *argv[]) {
+	zlyme_boot_mark("enter");
 	// LOG_info("time from launch to:\n");
 	// unsigned long main_begin = SDL_GetTicks();
 	// unsigned long first_draw = 0;
@@ -2322,6 +2341,7 @@ int main (int argc, char *argv[]) {
 		LOG_error("GFX_init failed\n");
 		return 1;
 	}
+	zlyme_boot_mark("gfx");
 // LOG_info("- graphics init: %lu\n", SDL_GetTicks() - main_begin);
 
 	PAD_init();
@@ -2334,6 +2354,7 @@ int main (int argc, char *argv[]) {
 	// start my threaded image loader :D
 	initImageLoaderPool();
 	Menu_init();
+	zlyme_boot_mark("menu");
 	int qm_row = 0;
 	int qm_col = 0;
 	int qm_slot = 0;
@@ -2347,9 +2368,6 @@ int main (int argc, char *argv[]) {
 		currentScreen = SCREEN_GAMELIST;
 	if (exists(GAME_SWITCHER_PERSIST_PATH))
 		unlink(GAME_SWITCHER_PERSIST_PATH);
-
-	// make sure we have no running games logged as active anymore (we might be launching back into the UI here)
-	system("gametimectl.elf stop_all");
 
 	GFX_setVsync(VSYNC_STRICT);
 	PWR_setCPUSpeed(CPU_SPEED_AUTO);
@@ -3324,8 +3342,14 @@ int main (int argc, char *argv[]) {
 				}
 				SDL_UnlockMutex(animMutex);
 			}
-			if(!startgame) // dont flip if game gonna start
+			if(!startgame) { // dont flip if game gonna start
 				GFX_flip(screen);
+				static int first_flip_logged;
+				if (!first_flip_logged) {
+					first_flip_logged = 1;
+					zlyme_boot_mark("first-flip");
+				}
+			}
 
 			dirty = 0;
 		} else if(getAnimationDraw() || folderbgchanged || thumbchanged || is_scrolling) {

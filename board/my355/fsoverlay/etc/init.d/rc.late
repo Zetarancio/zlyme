@@ -19,7 +19,6 @@ start_bg /etc/init.d/S01syslogd
 start_bg /etc/init.d/S02klogd
 start_bg /etc/init.d/S02sysctl
 start_bg /etc/init.d/S05avahi-setup.sh
-start_bg /etc/init.d/S17sd2
 start_bg /etc/init.d/S22zram
 start_bg /etc/init.d/S27led
 start_bg /etc/init.d/S29udevtrigger
@@ -46,3 +45,14 @@ start_bg /etc/init.d/S49ntp
 ) >/tmp/zlyme-bt-late.log 2>&1 &
 
 echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late-forked" >> /tmp/boot-timing
+
+# /tmp is gone if the panel hangs and the card is pulled. Snapshot after
+# NextUI has had a chance at DRM.
+(
+	n=0
+	while [ "$n" -lt 6 ]; do
+		sleep 5
+		cp /tmp/boot-timing /storage/.config/zlyme/boot-timing 2>/dev/null || true
+		n=$((n + 1))
+	done
+) &

@@ -18,10 +18,12 @@ start() {
 		return 0
 	fi
 	printf "Starting NextUI: "
+	mkdir -p /storage/.config/zlyme /tmp
+	# /tmp vanishes when the card is pulled; keep a copy on ZLYME.
 	if [ -x /usr/sbin/nextui-session ]; then
-		nextui-session > /tmp/nextui.log 2>&1 &
+		nextui-session >> /storage/.config/zlyme/nextui-session.log 2>&1 &
 	else
-		minui-session > /tmp/minui.log 2>&1 &
+		minui-session >> /storage/.config/zlyme/nextui-session.log 2>&1 &
 	fi
 	echo "OK"
 }

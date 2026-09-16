@@ -760,7 +760,7 @@ void PLAT_setCurrentTimezone(const char* tz) {
 	system(cmd);
 	free(tz_path);
 
-	// apply timezone to RTC and kernel
+	// Settings timezone row only. GFX_init no longer calls this.
 	system("hwclock -u -w && hwclock --systz -u");
 }
 

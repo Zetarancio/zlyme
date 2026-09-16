@@ -11,7 +11,12 @@ start() {
 	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
 		echo "already mounted"
 	else
-		dev=$(blkid | sed -n "s|^\([^:]*\):.*LABEL=\"${STORAGE_LABEL}\".*|\1|p" | head -n 1)
+		dev=
+		if [ -b /dev/mmcblk0p3 ]; then
+			dev=/dev/mmcblk0p3
+		else
+			dev=$(blkid | sed -n "s|^\([^:]*\):.*LABEL=\"${STORAGE_LABEL}\".*|\1|p" | head -n 1)
+		fi
 
 		if [ -z "$dev" ]; then
 			echo "no filesystem labelled ${STORAGE_LABEL}"
@@ -27,6 +32,8 @@ start() {
 	fi
 
 	seed
+	# seedrng waits for crng. rc.late S01seedrng owns it after
+	# the list is up.
 	return 0
 }
 
@@ -53,8 +60,8 @@ seed() {
 		[ -r "$ZLYME_DEFAULTS/$f" ] || continue
 		cp "$ZLYME_DEFAULTS/$f" "$ZLYME_CFG/$f" 2>/dev/null
 	done
-
-	[ -x /etc/init.d/S01seedrng ] && /etc/init.d/S01seedrng reload >/dev/null 2>&1
+	# seedrng waits for crng. rc.late S01seedrng owns it after
+	# the list is up.
 }
 
 stop() {
