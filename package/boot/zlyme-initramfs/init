@@ -17,15 +17,38 @@ mount_storage() {
 	mount -t exfat -o rw,noatime "$1" /storage_root 2>/dev/null
 }
 
+# Initramfs busybox sleep is whole seconds. LABEL= fails for a few
+# hundred ms after mmcblk0 appears (GPT not visible yet). Spin on the
+# node, then sleep 1 as a fallback (max ~20 s).
 wait_mount() {
 	fn=$1
 	spec=$2
-	i=0
-	while [ "$i" -lt 20 ]; do
+	n=0
+	while [ "$n" -lt 20 ]; do
 		if "$fn" "$spec"; then
 			return 0
 		fi
-		i=$((i + 1))
+		for node in /dev/mmcblk0p2 /dev/mmcblk0p1 /dev/mmcblk1p2 /dev/mmcblk1p1; do
+			[ -b "$node" ] || continue
+			if "$fn" "$node"; then
+				return 0
+			fi
+		done
+		# ~50 failed mounts before yielding a second (MMC retry).
+		i=0
+		while [ "$i" -lt 50 ]; do
+			if "$fn" "$spec"; then
+				return 0
+			fi
+			for node in /dev/mmcblk0p2 /dev/mmcblk0p1 /dev/mmcblk1p2 /dev/mmcblk1p1; do
+				[ -b "$node" ] || continue
+				if "$fn" "$node"; then
+					return 0
+				fi
+			done
+			i=$((i + 1))
+		done
+		n=$((n + 1))
 		sleep 1
 	done
 	return 1

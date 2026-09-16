@@ -34,6 +34,11 @@ export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib
 export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
+boot_mark() {
+	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*" >> /tmp/boot-timing
+}
+boot_mark session-start
+
 # Stock MinUI tools still open /mnt/SDCARD. Keep one path for scrapers.
 mkdir -p /mnt
 [ -e /mnt/SDCARD ] || ln -sfn /storage /mnt/SDCARD
@@ -62,7 +67,12 @@ if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
 	: >"$pico_mark"
 fi
 
-[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage merge
+# Internal list first. mergerfs of SD2/USB is S17 (rc.late). Calling
+# merge here blocked nextui.elf for ~11 s on a card with mmcblk1.
+if ! mountpoint -q /storage/Roms 2>/dev/null; then
+	mount --bind /storage/.roms_base /storage/Roms 2>/dev/null || true
+fi
+boot_mark session-roms
 
 # PortMaster: /roms/ports is baked into the squashfs. If the card only
 # has lowercase ports, point the symlink there (needs a writable /roms).
@@ -171,6 +181,7 @@ if [ -d "$seed/paks" ]; then
 	done
 	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > /storage/.system/version.txt
 fi
+boot_mark session-paks
 if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
 	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
 fi
@@ -280,6 +291,7 @@ while [ -f "$EXEC_PATH" ]; do
 	if command -v zlyme-audio >/dev/null 2>&1; then
 		eval "$(zlyme-audio export 2>/dev/null)" || true
 	fi
+	boot_mark session-nextui
 	nextui.elf >> "$LOGS_PATH/nextui.txt" 2>&1
 	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
 	# on SIGTERM; if /tmp/next is set, run that instead.

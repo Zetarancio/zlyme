@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# Overlay of Buildroot S30dbus-daemon. dbus-uuidgen --ensure blocks
+# until "random: crng init done" (~12 s on this SoC). Seed machine-id
+# from the squashfs copy so BlueZ can start without waiting.
+
+DAEMON="dbus-daemon"
+PIDFILE="/var/run/$DAEMON.pid"
+
+start() {
+	printf 'Starting system %s: ' "$DAEMON"
+	mkdir -p /run/dbus /tmp/dbus
+	if [ ! -s /tmp/dbus/machine-id ]; then
+		if [ -s /etc/machine-id ]; then
+			cp /etc/machine-id /tmp/dbus/machine-id
+		fi
+	fi
+	dbus-uuidgen --ensure
+
+	start-stop-daemon --start --pidfile "$PIDFILE" \
+		--exec "/usr/bin/$DAEMON" \
+		-- --system --syslog
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+stop() {
+	printf 'Stopping %s: ' "$DAEMON"
+	start-stop-daemon --stop --pidfile "$PIDFILE" --exec "/usr/bin/$DAEMON"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+		return "$status"
+	fi
+	while start-stop-daemon --stop --test --quiet --pidfile "$PIDFILE" \
+		--exec "/usr/bin/$DAEMON"; do
+		sleep 0.1
+	done
+	rm -f "$PIDFILE"
+	return "$status"
+}
+
+reload() {
+	printf "Reloading %s config: " "$DAEMON"
+	start-stop-daemon --stop --signal HUP -q --pidfile "$PIDFILE" \
+		--exec "/usr/bin/$DAEMON"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+restart() {
+	stop
+	start
+}
+
+case "$1" in
+	start|stop|reload|restart)
+		"$1"
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}"
+		exit 1
+		;;
+esac

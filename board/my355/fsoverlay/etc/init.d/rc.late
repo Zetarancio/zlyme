@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Class B: wifi, BT, ssh, LED, zram, irq, extra storage, udev trigger.
+# Class B: wifi, BT, ssh, dbus, LED, zram, irq, extra storage, udev.
 # Started from inittab ::once: (init does not wait). Ignore HUP so the
 # children survive when this script exits.
 
@@ -14,12 +14,20 @@ start_bg() {
 	"$1" start >/dev/null 2>&1 &
 }
 
+start_bg /etc/init.d/S01seedrng
+start_bg /etc/init.d/S01syslogd
+start_bg /etc/init.d/S02klogd
+start_bg /etc/init.d/S02sysctl
+start_bg /etc/init.d/S05avahi-setup.sh
 start_bg /etc/init.d/S17sd2
 start_bg /etc/init.d/S22zram
 start_bg /etc/init.d/S27led
 start_bg /etc/init.d/S29udevtrigger
 start_bg /etc/init.d/S36irqaffinity
+start_bg /etc/init.d/S40network
 start_bg /etc/init.d/S46btsink
+start_bg /etc/init.d/S50avahi-daemon
+start_bg /etc/init.d/S50crond
 start_bg /etc/init.d/S50sshd
 start_bg /etc/init.d/S70samba
 start_bg /etc/init.d/S75syncthing
@@ -28,7 +36,10 @@ start_bg /etc/init.d/S91smb
 start_bg /etc/init.d/S30wifi
 start_bg /etc/init.d/S49ntp
 
+# dbus-uuidgen used to run in rcS and wait for crng (~9 s). Seed
+# /tmp/dbus from the squashfs id so this is cheap, then BT.
 (
+	[ -x /etc/init.d/S30dbus-daemon ] && /etc/init.d/S30dbus-daemon start
 	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
 	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
 	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
