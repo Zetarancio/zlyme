@@ -70,7 +70,7 @@ Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). 
 
 Games live on the **ZLYME** partition (`/storage`). NextUI only lists a system if that folder exists and is not empty. The name must include the tag in parentheses — that tag is how the pak is chosen. A slash in the name (`2000/2003`) becomes nested directories; use the hyphenated names in the table. Libretro cores run through RetroArch; the rest are standalones.
 
-BIOS files go in `Bios/` (RetroArch `system` dir). Pico-8’s `pico8_64` + `pico8.dat` go in `Bios/PICO`. EasyRPG RTP is `Bios/rtp/2000` and `Bios/rtp/2003`. mkxp-z RTP is `Bios/mkxp-z/RTP`. A second card in the other slot is picked up if it has a `roms/` or `Roms/` folder using the **same `Pretty (TAG)` names** as the table. BIOS on that card is `Bios/` at the card root. Saves are `Saves/`.
+BIOS files go in `Bios/` (RetroArch `system` dir). Pico-8’s `pico8_64` + `pico8.dat` go in `Bios/PICO`. EasyRPG RTP is `Bios/rtp/2000` and `Bios/rtp/2003`. mkxp-z RTP is `Bios/mkxp-z/RTP`. MSX wants `Machines/` and `Databases/` in `Bios/` (linked from the squashfs on first launch if missing). Hatari wants `tos.img` in `Bios/ST`. A second card in the other slot is picked up if it has a `roms/` or `Roms/` folder using the **same `Pretty (TAG)` names** as the table. BIOS on that card is `Bios/` at the card root. Saves are `Saves/`.
 
 Box art is NextUI’s `{folder}/.media/{rom stem}.png` (same basename as the game file or playlist, `.png`). Put art there; Zlyme does not read EmulationStation `images/` or Spruce `Imgs/`.
 
@@ -105,9 +105,16 @@ Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap
 | SNES | Mednafen SuperFaust (libretro) | `Roms/Super Nintendo Entertainment System (SFC)/` | `.smc` `.sfc` `.fig` `.swc` `.bsx` `.zip` `.7z` |
 | Master System | Genesis Plus GX (libretro) | `Roms/Sega Master System (MS)/` | `.sms` `.bin` `.zip` `.7z` |
 | Game Gear | Genesis Plus GX (libretro) | `Roms/Sega Game Gear (GG)/` | `.gg` `.bin` `.zip` `.7z` |
+| SG-1000 | Genesis Plus GX (libretro) | `Roms/Sega SG-1000 (SG1000)/` | `.sg` `.bin` `.zip` `.7z` |
 | Mega Drive / Genesis | PicoDrive (libretro) | `Roms/Sega Genesis (MD)/` | `.md` `.smd` `.gen` `.bin` `.zip` `.7z` |
 | 32X | PicoDrive (libretro) | `Roms/Sega 32X (32X)/` | `.32x` `.smd` `.md` `.bin` `.zip` `.7z` |
 | PC Engine | Mednafen PCE Fast (libretro) | `Roms/PC Engine (PCE)/` | `.pce` `.cue` `.ccd` `.iso` `.img` `.chd` `.sgx` `.zip` `.7z` `.m3u` |
+| SuperGrafx | Mednafen SuperGrafx (libretro) | `Roms/SuperGrafx (SGX)/` | `.sgx` `.pce` `.cue` `.ccd` `.chd` `.zip` `.7z` |
+| ColecoVision | Gearcoleco (libretro) | `Roms/ColecoVision (COLECO)/` | `.col` `.bin` `.rom` `.zip` `.7z` |
+| Intellivision | FreeIntv (libretro) | `Roms/Intellivision (INTV)/` | `.int` `.bin` `.rom` `.zip` `.7z` |
+| MSX | blueMSX (libretro) | `Roms/MSX (MSX)/` | `.mx1` `.mx2` `.dsk` `.rom` `.cas` `.zip` `.7z` |
+| Odyssey 2 | O2EM (libretro) | `Roms/Odyssey 2 (O2)/` | `.bin` `.zip` `.7z` |
+| Vectrex | vecx (libretro) | `Roms/Vectrex (VEC)/` | `.vec` `.bin` `.gam` `.zip` `.7z` |
 | Neo Geo (AES/MVS) | FinalBurn Neo (libretro) | `Roms/FBNeo (FBNEO)/` | `.zip` `.7z` |
 | Arcade | MAME 2003-Plus (libretro) | `Roms/MAME (MAME)/` | `.zip` `.7z` |
 | Neo Geo CD | NeoCD (libretro) | `Roms/Neo Geo CD (NEOCD)/` | `.cue` `.iso` `.chd` |
@@ -116,7 +123,10 @@ Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap
 | Virtual Boy | Mednafen VB (libretro) | `Roms/Virtual Boy (VB)/` | `.vb` `.zip` `.7z` |
 | Pokémon Mini | PokeMini (libretro) | `Roms/Pokemon Mini (PKM)/` | `.min` `.zip` `.7z` |
 | Atari 2600 | Stella (libretro) | `Roms/Atari 2600 (A26)/` | `.a26` `.bin` `.zip` `.7z` |
+| Atari 5200 | a5200 (libretro) | `Roms/Atari 5200 (A5200)/` | `.a52` `.bin` `.zip` `.7z` |
 | Atari 7800 | ProSystem (libretro) | `Roms/Atari 7800 (A78)/` | `.a78` `.bin` `.zip` `.7z` |
+| Atari 8-bit | Atari800 (libretro) | `Roms/Atari 8-bit (A800)/` | `.atr` `.atx` `.rom` `.xex` `.cas` `.car` `.zip` `.7z` |
+| Atari ST | Hatari (libretro) | `Roms/Atari ST (ST)/` | `.st` `.msa` `.stx` `.dim` `.ipf` `.zip` `.7z` |
 | Atari Lynx | Handy (libretro) | `Roms/Atari Lynx (LYNX)/` | `.lnx` `.lyx` `.bll` `.o` `.zip` `.7z` |
 | 3DO | Opera (libretro) | `Roms/3DO (3DO)/` | `.iso` `.chd` `.cue` |
 | DOS | DOSBox Pure (libretro) | `Roms/DOS (DOS)/` | `.exe` `.com` `.bat` `.dos` `.dosz` `.zip` `.iso` `.cue` `.m3u` `.m3u8` |
@@ -125,6 +135,7 @@ Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap
 | Saturn | YabaSanshiro (libretro) | `Roms/Sega Saturn (SATURN)/` | `.cue` `.ccd` `.chd` `.iso` |
 | TIC-80 | TIC-80 (libretro) | `Roms/TIC-80 (TIC)/` | `.tic` |
 | Pico-8 | Official Pico-8 (add `pico8_64`) | `Roms/Pico-8 (PICO)/` | `.p8` `.png` `.zip` |
+| Pico-8 (fake-08) | fake-08 (libretro) | `Roms/Pico-8 fake-08 (P8)/` | `.p8` `.png` `.zip` |
 | PSP | PPSSPP | `Roms/Sony PlayStation Portable (PSP)/` | `.iso` `.cso` `.pbp` `.chd` |
 | Dreamcast | Flycast | `Roms/Sega Dreamcast (DC)/` | `.cdi` `.gdi` `.cue` `.chd` `.m3u` |
 | Nintendo DS | DraStic | `Roms/Nintendo DS (NDS)/` | `.nds` `.zip` `.7z` |
