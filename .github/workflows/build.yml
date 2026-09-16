@@ -3,8 +3,10 @@
 # 34801512689, 34828905859). Sequential stages each compile for ~310 minutes,
 # then pack ccache. Later stages skip if an earlier one already has the tar.
 #
-# cancel-in-progress is false so a push to main does not kill a running
-# ccache/image job. The group still serializes new runs.
+# Manual only: no push trigger, no daily cron. A private-repo cold build
+# is ~930 runner-minutes (3×310). Public standard ubuntu-24.04 is free and
+# 4 CPU / 16 GB (private is 2/8). cancel-in-progress is false so a second
+# dispatch does not kill a running ccache/image job; it still queues.
 #
 # Secrets: GH_PAT (classic PAT, repo + workflow) to write the ccache repo.
 # Optional variable CACHE_REPO (default zlyme-cache).
@@ -14,12 +16,6 @@ name: Build
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
-  schedule:
-    - cron: "0 4 * * *"
 
 concurrency:
   group: zlyme-build
@@ -66,8 +62,8 @@ jobs:
           merge-multiple: true
           path: output/images
 
-      # /releases/latest is what Update.pak hits. Tag the run so a push
-      # to main also publishes; workflow_dispatch on a branch is not a tag.
+      # /releases/latest is what Update.pak hits. workflow_dispatch is
+      # not a tag, so name the release after the run.
       - name: Release
         uses: softprops/action-gh-release@v2
         with:

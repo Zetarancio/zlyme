@@ -124,6 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zlyme-my355-${{ github.run_id }}
+          retention-days: 1
           path: |
             output/images/zlyme-my355-*.tar
             output/images/zlyme-my355-*.sha256
