@@ -4,7 +4,8 @@
 # Drop /storage/.update/zlyme-my355-update.tar and reboot. This script
 # extracts to /storage/.update/pending and copies Image/dtb/overlays
 # onto /boot. Initramfs copies pending/zlyme over the live squashfs
-# file. After the new OS is up, reapply user flags once.
+# file. Flag reapply is rc.late: doing it here waited on S17's
+# storage lock and left the splash on "applying settings after OS swap".
 
 start() {
 	if [ ! -x /usr/sbin/zlyme-update ]; then
@@ -24,10 +25,6 @@ start() {
 		# the old squashfs in place so boot can continue.
 		echo "FAIL"
 		return 0
-	fi
-
-	if [ -f /storage/.update/reapply ]; then
-		"$upd" reapply >/dev/null 2>&1 || true
 	fi
 }
 

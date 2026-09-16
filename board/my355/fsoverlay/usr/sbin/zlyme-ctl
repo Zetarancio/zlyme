@@ -152,12 +152,11 @@ apply_boost() {
 apply_settings() {
 	apply_overlays
 	apply_gov
-	apply_refresh
-	apply_hdmi_mode
 	apply_led
 	apply_zram
 	apply_boost
-	apply_merge
+	# Merge and DRM mode belong to S17 / NextUI. Calling mergerfs
+	# from S18 after an OTA sat behind S17's flock.
 }
 
 cmd=$1

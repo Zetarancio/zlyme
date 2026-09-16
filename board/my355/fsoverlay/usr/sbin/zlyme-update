@@ -261,11 +261,15 @@ status() {
 
 reapply_once() {
 	[ -f "$REAPPLY" ] || return 0
-	log "applying settings after OS swap"
-	if [ -x /usr/sbin/zlyme-ctl ]; then
-		zlyme-ctl apply-settings || true
-	fi
+	# Drop the flag first. apply-settings used to call mergerfs while
+	# S17 held the lock; S18 waited, splash stuck, and this file
+	# survived so the next boot hung the same way.
 	rm -f "$REAPPLY"
+	if [ -x /usr/sbin/zlyme-ctl ]; then
+		zlyme-ctl apply-gov || true
+		zlyme-ctl apply-led || true
+		zlyme-ctl apply-zram || true
+	fi
 }
 
 cmd=${1:-}
