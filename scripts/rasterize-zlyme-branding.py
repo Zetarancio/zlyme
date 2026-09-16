@@ -1,34 +1,62 @@
 #!/usr/bin/env python3
-"""Rasterize the faithful SVG pack onto 640x480 #050608 (and a 512x512 logo).
+"""Rasterize branding onto 640x480 #050608 (and a 512x512 logo).
 
-The lockup is 20% larger than the previous 40%-smaller pass and sits
-halfway between that upper-third band and the screen center.
-SVGs are vector traces; rsvg-convert draws them (no embedded PNG).
+Prefers the PNGs in package/system/nextui/res/branding/ (Logo.png =
+wordmark, Z.png = mark). Falls back to the SVGs via rsvg-convert.
+Near-black pixels are treated as transparent so the #050608 panel fill
+shows through.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
 from typing import Optional
+
 from PIL import Image
 
 BG = (0x05, 0x06, 0x08, 255)
 W, H = 640, 480
 LOGO = 512
-# Previous pass was SCALE_MUL 0.60 in the upper third (center ~80).
-# 20% bigger, vertical center halfway between 80 and 240 → 160 (1/3).
 SCALE_MUL = 0.72
 Y_CENTER_FRAC = 1.0 / 3.0
+BLACK_CUTOFF = 24
 
 
 def rsvg_png(svg: Path, dest: Path, width: int) -> None:
     subprocess.check_call(
         ["rsvg-convert", "-w", str(width), "-o", str(dest), str(svg)]
     )
+
+
+def knock_out_black(src: Image.Image) -> Image.Image:
+    im = src.convert("RGBA")
+    pix = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = pix[x, y]
+            if a == 0:
+                continue
+            if r <= BLACK_CUTOFF and g <= BLACK_CUTOFF and b <= BLACK_CUTOFF:
+                pix[x, y] = (r, g, b, 0)
+    return im
+
+
+def load_art(branding: Path, names: list[str], svg_width: int) -> Image.Image:
+    for name in names:
+        path = branding / name
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in {".png", ".webp"}:
+            return knock_out_black(Image.open(path))
+        if path.suffix.lower() == ".svg":
+            with tempfile.TemporaryDirectory() as td:
+                dest = Path(td) / "art.png"
+                rsvg_png(path, dest, svg_width)
+                return knock_out_black(Image.open(dest))
+    raise FileNotFoundError(f"none of {names} in {branding}")
 
 
 def place_on_canvas(
@@ -79,40 +107,37 @@ def write_rgb565(im: Image.Image, path: Path) -> None:
 
 
 def main() -> None:
-    pack = Path(
+    repo = Path("/home/ale/ZETAOS")
+    branding = Path(
         sys.argv[1]
         if len(sys.argv) > 1
-        else "/home/ale/Downloads/zlyme-faithful-svg-pack-v4"
+        else repo / "package/system/nextui/res/branding"
     )
     res = Path(
         sys.argv[2]
         if len(sys.argv) > 2
-        else "/home/ale/ZETAOS/package/system/nextui/res"
+        else repo / "package/system/nextui/res"
     )
-    branding = res / "branding"
-    ramfs = Path("/home/ale/ZETAOS/package/boot/zlyme-initramfs")
-    pm_logo = Path("/home/ale/ZETAOS/package/system/portmaster/zlyme-theme/logo.png")
+    ramfs = repo / "package/boot/zlyme-initramfs"
+    pm_logo = repo / "package/system/portmaster/zlyme-theme/logo.png"
 
-    branding.mkdir(parents=True, exist_ok=True)
-    for stale in branding.glob("zlyme-horizontal-lockup*.svg"):
+    for stale in branding.glob("*.crdownload"):
         stale.unlink()
         print(f"removed {stale}")
-    for svg in sorted(pack.glob("*.svg")):
-        dest = branding / svg.name
-        dest.write_bytes(svg.read_bytes())
-        print(f"copied {dest}")
 
-    with tempfile.TemporaryDirectory() as td:
-        tmp = Path(td)
-        beaker_png = tmp / "beaker.png"
-        horiz_png = tmp / "horiz.png"
-        rsvg_png(pack / "zlyme-beaker-exact.svg", beaker_png, 512)
-        rsvg_png(pack / "zlyme-horizontal-exact.svg", horiz_png, 800)
-        beaker = Image.open(beaker_png).convert("RGBA")
-        horiz = Image.open(horiz_png).convert("RGBA")
+    wordmark = load_art(
+        branding,
+        ["Logo.png", "zlyme-horizontal-exact.svg", "zlyme-horizontal-lockup.svg"],
+        800,
+    )
+    mark = load_art(
+        branding,
+        ["Z.png", "zlyme_beaker-exact.svg", "zlyme-beaker-exact.svg"],
+        512,
+    )
 
-    bg = place_on_canvas(horiz, W, H)
-    logo = place_on_canvas(beaker, LOGO, LOGO, y_center_frac=None, scale_mul=SCALE_MUL)
+    bg = place_on_canvas(wordmark, W, H)
+    logo = place_on_canvas(mark, LOGO, LOGO, y_center_frac=None, scale_mul=SCALE_MUL)
 
     write_png(bg, res / "background.png")
     write_png(bg, res / "charging-640-480.png")

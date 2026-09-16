@@ -24,9 +24,12 @@ on a color2 pill.
 
 SVGs in this folder are the source pack (vector traces). Regenerated bitmaps:
 
-- `zlyme-beaker-exact.svg` → `../logo.png` and PortMaster `zlyme-theme/logo.png` (512×512, 20% larger than the previous lockup, `#050608`)
-- `zlyme-horizontal-exact.svg` → `../background.png` and `../charging-640-480.png` (640×480, 20% larger, vertical center at 160px), and initramfs `splash.rgb565`
+- `zlyme-horizontal-exact.svg` / `Logo.png` → `../background.png` and
+  `../charging-640-480.png` (640×480, vertical center at 160px), and
+  initramfs `splash.rgb565`
+- `Z.png` / `zlyme_beaker-exact.svg` → `../logo.png` and PortMaster
+  `zlyme-theme/logo.png` (512×512)
 
-`zlyme-z-exact.svg` is unused in code; kept here.
+Rebuild bitmaps from the files in this folder:
 
-Rebuild bitmaps: `python3 scripts/rasterize-zlyme-branding.py`
+`python3 scripts/rasterize-zlyme-branding.py`
