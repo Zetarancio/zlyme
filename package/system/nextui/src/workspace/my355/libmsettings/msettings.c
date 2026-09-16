@@ -278,15 +278,21 @@ static int jack_from_evdev(void)
 	return 0;
 }
 
+static int settings_applying;
+
 static void SaveSettings(void)
 {
-	int fd = open(SettingsPath, O_CREAT | O_WRONLY, 0644);
+	int fd;
+
+	if (settings_applying)
+		return;
+
+	fd = open(SettingsPath, O_CREAT | O_WRONLY, 0644);
 
 	if (fd >= 0) {
 		if (write(fd, settings, shm_size) != shm_size)
 			/* ignore */;
 		close(fd);
-		sync();
 	}
 }
 
@@ -329,9 +335,11 @@ void InitSettings(void)
 		settings->contrast = 0;
 	if (settings->saturation != 0)
 		settings->saturation = 0;
+	settings_applying = 1;
 	SetVolume(GetVolume());
 	SetBrightness(GetBrightness());
-	apply_bcsh();
+	settings_applying = 0;
+	/* Identity TV props. Opening DRM here raced SDL KMS. */
 }
 
 void QuitSettings(void)

@@ -124,10 +124,13 @@ do_root() {
 		fi
 	fi
 
-	mkdir -p /new_root/boot /new_root/proc /new_root/sys /new_root/dev
+	mkdir -p /new_root/boot /new_root/proc /new_root/sys /new_root/dev \
+		/new_root/storage
 	mount --move /boot_root /new_root/boot || return 1
-	# Leave ZLYME for S15; do not move it (userspace mounts /storage).
-	umount /storage_root 2>/dev/null || true
+	# Keep ZLYME mounted. S15 remount of a 58 G exFAT was ~0.8 s.
+	if ! mount --move /storage_root /new_root/storage 2>/dev/null; then
+		umount /storage_root 2>/dev/null || true
+	fi
 	if [ -n "$splash_pid" ]; then
 		wait "$splash_pid" 2>/dev/null || true
 	fi

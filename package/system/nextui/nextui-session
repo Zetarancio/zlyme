@@ -30,7 +30,9 @@ fi
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
 export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
-export LD_LIBRARY_PATH=$SYSTEM_PATH/lib:/usr/lib
+# Squashfs first. An exFAT dir at the front of LD_LIBRARY_PATH makes
+# every NEEDED .so miss before /usr/lib.
+export LD_LIBRARY_PATH=/usr/lib:$SYSTEM_PATH/lib
 export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
@@ -47,36 +49,34 @@ mkdir -p /mnt
 [ -e /mnt/SDCARD ] || ln -sfn /storage /mnt/SDCARD
 
 mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
-	"$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH" \
-	/storage/.roms_base /storage/Roms /storage/Tools/my355
+	/storage/.roms_base /storage/Roms
 
 seed=/usr/share/nextui
 img_ver=""
 [ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
-rom_dirs_stamp=/storage/.roms_base/.zlyme-rom-dirs
-need_rom_dirs=1
-if [ -n "$img_ver" ] && [ -f "$rom_dirs_stamp" ] &&
-	[ "$(cat "$rom_dirs_stamp")" = "$img_ver" ]; then
-	need_rom_dirs=0
-fi
-if [ "$need_rom_dirs" = 1 ] && [ -r "$seed/rom-dirs.txt" ]; then
-	while IFS= read -r d; do
-		[ -n "$d" ] || continue
-		mkdir -p "/storage/.roms_base/$d"
-	done < "$seed/rom-dirs.txt"
-	[ -n "$img_ver" ] && printf '%s\n' "$img_ver" > "$rom_dirs_stamp"
-fi
 
 # Dummy cart so Pico-8 is visible before the user adds .p8 files.
 # Name contains "splore" so start_pico8.sh uses -splore (ROCKNIX / minui-pico-8-pak).
 pico_rom="/storage/.roms_base/Pico-8 (PICO)"
 pico_art="$seed/paks/Emus/PICO.pak/splore/Splore.p8.png"
 pico_mark="$SHARED_USERDATA_PATH/Pico-8-native/splore-installed"
-if [ -d "$pico_rom" ] && [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
+if [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
 	mkdir -p "$SHARED_USERDATA_PATH/Pico-8-native" "$pico_rom/.media"
 	cp -f "$pico_art" "$pico_rom/Splore.p8"
 	cp -f "$pico_art" "$pico_rom/.media/Splore.png"
 	: >"$pico_mark"
+fi
+
+# Older images mkdir'd every Pretty name. hasRoms then opens each empty
+# folder through mergerfs. rmdir is a no-op if a ROM is already there.
+prune_stamp=/storage/.roms_base/.zlyme-empty-pruned
+if [ ! -f "$prune_stamp" ] && [ -r "$seed/rom-dirs.txt" ]; then
+	while IFS= read -r d; do
+		[ -n "$d" ] || continue
+		rmdir "/storage/.roms_base/$d/.media" 2>/dev/null || true
+		rmdir "/storage/.roms_base/$d" 2>/dev/null || true
+	done < "$seed/rom-dirs.txt"
+	: >"$prune_stamp"
 fi
 
 # Same bind zlyme35 used (fast, shown the list). S17 unmounts it and
@@ -136,69 +136,6 @@ if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
 	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
 fi
 
-# Screen-off / mem suspend wakes from the RK817 pwrkey, lid, volume,
-# or any key (same DTS as ROCKNIX). Do not overwrite user timeouts.
-cfg=$SHARED_USERDATA_PATH/minuisettings.txt
-mkdir -p "$SHARED_USERDATA_PATH"
-if [ -f "$cfg" ]; then
-	# exFAT + Windows editors leave CR; grep '$' then misses 60/30.
-	sed -i 's/\r$//' "$cfg"
-fi
-if [ ! -f "$cfg" ]; then
-	printf '%s\n' 'screentimeout=120' 'suspendTimeout=600' > "$cfg"
-else
-	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=120' >> "$cfg"
-	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=600' >> "$cfg"
-fi
-# Named Zlyme palette follows the faithful pack v4 oranges.
-if [ -f "$cfg" ] && grep -q '^palette=Zlyme' "$cfg"; then
-	sed -i \
-		-e 's/^color1=0xF7B07CFF$/color1=0xFA7C08FF/' \
-		-e 's/^color6=0xB9BDC4FF$/color6=0xEC2A01FF/' \
-		-e 's/^color6=0xF7B07CFF$/color6=0xEC2A01FF/' \
-		-e 's/^color6=0xE99962FF$/color6=0xEC2A01FF/' \
-		"$cfg"
-fi
-# Older images wrote 0 on every start so sleep never ran. Restore once.
-flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
-if [ ! -f "$flag" ]; then
-	if [ -f "$cfg" ]; then
-		grep -q '^screentimeout=0$' "$cfg" && \
-			sed -i 's/^screentimeout=0$/screentimeout=120/' "$cfg"
-		grep -q '^suspendTimeout=0$' "$cfg" && \
-			sed -i 's/^suspendTimeout=0$/suspendTimeout=600/' "$cfg"
-	fi
-	: > "$flag"
-fi
-# Product defaults moved 60/30 -> 120/600 (2 min screen, 10 min mem).
-# Do not touch Never (0) or any other custom value. v3 retries after
-# v2 missed CRLF lines.
-flag2=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v2
-flag3=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v3
-if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
-	if [ -f "$cfg" ]; then
-		grep -q '^screentimeout=60$' "$cfg" && \
-			sed -i 's/^screentimeout=60$/screentimeout=120/' "$cfg"
-		grep -q '^suspendTimeout=30$' "$cfg" && \
-			sed -i 's/^suspendTimeout=30$/suspendTimeout=600/' "$cfg"
-	fi
-	: > "$flag2"
-	: > "$flag3"
-fi
-# Battery percent on by default. Existing cards had batteryperc=0.
-flag_bat=$SHARED_USERDATA_PATH/.zlyme-batteryperc-on
-if [ ! -f "$flag_bat" ]; then
-	if [ -f "$cfg" ]; then
-		if grep -q '^batteryperc=' "$cfg"; then
-			sed -i 's/^batteryperc=.*/batteryperc=1/' "$cfg"
-		else
-			echo 'batteryperc=1' >> "$cfg"
-		fi
-	else
-		printf '%s\n' 'batteryperc=1' >> "$cfg"
-	fi
-	: > "$flag_bat"
-fi
 rm -f /tmp/poweroff /tmp/reboot
 
 # setsid so MENU+Start can SIGTERM the pak group. Helper dies with the child.
@@ -224,6 +161,70 @@ touch "$EXEC_PATH"
 cd /storage
 
 bind_tools_late() {
+	# Do not fight nextui.elf for exFAT/CPU. Tools are unused until A.
+	n=0
+	while [ "$n" -lt 40 ]; do
+		grep -q 'nextui-first-flip' /tmp/boot-timing 2>/dev/null && break
+		sleep 0.5
+		n=$((n + 1))
+	done
+	mkdir -p "$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH"
+	# Screen-off / mem suspend. Do not rewrite minuisettings unless
+	# a Windows CR is actually there (sed -i on exFAT is a full copy).
+	cfg=$SHARED_USERDATA_PATH/minuisettings.txt
+	mkdir -p "$SHARED_USERDATA_PATH"
+	if [ -f "$cfg" ] && grep -q $'\r' "$cfg"; then
+		sed -i 's/\r$//' "$cfg"
+	fi
+	if [ ! -f "$cfg" ]; then
+		printf '%s\n' 'screentimeout=120' 'suspendTimeout=600' > "$cfg"
+	else
+		grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=120' >> "$cfg"
+		grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=600' >> "$cfg"
+	fi
+	if [ -f "$cfg" ] && grep -q '^palette=Zlyme' "$cfg"; then
+		sed -i \
+			-e 's/^color1=0xF7B07CFF$/color1=0xFA7C08FF/' \
+			-e 's/^color6=0xB9BDC4FF$/color6=0xEC2A01FF/' \
+			-e 's/^color6=0xF7B07CFF$/color6=0xEC2A01FF/' \
+			-e 's/^color6=0xE99962FF$/color6=0xEC2A01FF/' \
+			"$cfg"
+	fi
+	flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
+	if [ ! -f "$flag" ]; then
+		if [ -f "$cfg" ]; then
+			grep -q '^screentimeout=0$' "$cfg" && \
+				sed -i 's/^screentimeout=0$/screentimeout=120/' "$cfg"
+			grep -q '^suspendTimeout=0$' "$cfg" && \
+				sed -i 's/^suspendTimeout=0$/suspendTimeout=600/' "$cfg"
+		fi
+		: > "$flag"
+	fi
+	flag2=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v2
+	flag3=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v3
+	if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
+		if [ -f "$cfg" ]; then
+			grep -q '^screentimeout=60$' "$cfg" && \
+				sed -i 's/^screentimeout=60$/screentimeout=120/' "$cfg"
+			grep -q '^suspendTimeout=30$' "$cfg" && \
+				sed -i 's/^suspendTimeout=30$/suspendTimeout=600/' "$cfg"
+		fi
+		: > "$flag2"
+		: > "$flag3"
+	fi
+	flag_bat=$SHARED_USERDATA_PATH/.zlyme-batteryperc-on
+	if [ ! -f "$flag_bat" ]; then
+		if [ -f "$cfg" ]; then
+			if grep -q '^batteryperc=' "$cfg"; then
+				sed -i 's/^batteryperc=.*/batteryperc=1/' "$cfg"
+			else
+				echo 'batteryperc=1' >> "$cfg"
+			fi
+		else
+			printf '%s\n' 'batteryperc=1' >> "$cfg"
+		fi
+		: > "$flag_bat"
+	fi
 	mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" \
 		"$SYSTEM_PATH/bin" "$SYSTEM_PATH/lib" /storage/.system/zoneinfo \
 		/storage/Tools/my355
@@ -294,6 +295,7 @@ bind_tools_late() {
 }
 bind_tools_late &
 
+boot_loop=1
 while [ -f "$EXEC_PATH" ]; do
 	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh
 	# and has crashed NextUI after Settings. Stay on the card root.
@@ -307,13 +309,18 @@ while [ -f "$EXEC_PATH" ]; do
 		esac
 		printf '%s' "$last" > /tmp/last.txt
 	fi
-	killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
-	# ALSA default PCM reads ZLYME_SINK at open. Re-export every loop.
-	if command -v zlyme-audio >/dev/null 2>&1; then
-		eval "$(zlyme-audio export 2>/dev/null)" || true
+	# First exec: nothing is running yet. killall walks /proc; zlyme-audio
+	# forks a script. Both belong after a pak, not before the list.
+	if [ "$boot_loop" = 0 ]; then
+		killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
+		if command -v zlyme-audio >/dev/null 2>&1; then
+			eval "$(zlyme-audio export 2>/dev/null)" || true
+		fi
 	fi
+	boot_loop=0
 	boot_mark session-nextui
-	nextui.elf >> "$LOGS_PATH/nextui.txt" 2>&1
+	# Logs on ZLYME used to be every LOG_info during Menu_init.
+	nextui.elf >> /tmp/nextui.txt 2>&1
 	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
 	# on SIGTERM; if /tmp/next is set, run that instead.
 	if [ -f "$NEXT_PATH" ]; then

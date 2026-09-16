@@ -35,13 +35,15 @@ for i in /etc/init.d/S??*; do
 		S90*) continue ;;
 	esac
 	is_class_a "$base" || continue
-	# Merge SD2 while GPU/ALSA/keymon/NextUI run. Do not wait: a
-	# hung blkid/mergerfs left the splash up on the first Etcher boot.
-	if [ "$base" = S17sd2 ]; then
-		boot_mark "fork $base"
-		"$i" start &
-		continue
-	fi
+	# Merge SD2 / check OTA while GPU/ALSA/keymon/NextUI run. Do not
+	# wait: a hung blkid/mergerfs left the splash up on Etcher.
+	case "$base" in
+		S17sd2|S18zlymeupdate)
+			boot_mark "fork $base"
+			"$i" start &
+			continue
+			;;
+	esac
 	boot_mark "start $base"
 	case "$i" in
 		*.sh)

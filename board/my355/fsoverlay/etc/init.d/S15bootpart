@@ -30,10 +30,10 @@ start() {
 			return 0
 		fi
 	fi
+	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) S15-mounted" >> /tmp/boot-timing
 
-	seed
-	# seedrng waits for crng. rc.late S01seedrng owns it after
-	# the list is up.
+	# mkdir of flags that already exist is not needed before the list.
+	seed &
 	return 0
 }
 

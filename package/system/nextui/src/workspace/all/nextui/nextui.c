@@ -579,8 +579,8 @@ static int hasM3u(char* rom_path, char* m3u_path) { // NOTE: rom_path not dir_pa
 }
 
 static int hasRecents(void) {
-	LOG_info("hasRecents %s\n", RECENT_PATH);
 	int has = 0;
+	int mutated = 0;
 	RecentArray_free(recents);
 	recents = Array_new();
 
@@ -601,6 +601,7 @@ static int hasRecents(void) {
 			Array_push(parent_paths, strdup(parent_path));
 		}
 		unlink(CHANGE_DISC_PATH);
+		mutated = 1;
 	}
 
 	FILE *file = fopen(RECENT_PATH, "r"); // newest at top
@@ -657,7 +658,8 @@ static int hasRecents(void) {
 		fclose(file);
 	}
 
-	saveRecents();
+	if (mutated)
+		saveRecents();
 
 	StringArray_free(parent_paths);
 	return has>0;
@@ -742,6 +744,8 @@ static Array* getRoms()
         Array* emus = Array_new();
         while ((dp = readdir(dh)) != NULL) {
             if (hide(dp->d_name)) continue;
+            if (dp->d_type == DT_REG || dp->d_type == DT_LNK)
+                continue;
             if (hasRoms(dp->d_name)) {
                 strcpy(tmp, dp->d_name);
                 Array_push(emus, Entry_new(full_path, ENTRY_DIR));
@@ -1721,8 +1725,6 @@ static void Menu_init(void) {
 	recents = Array_new();
 
 	openDirectory(SDCARD_PATH, 0);
-	loadLast(); // restore state when available
-
 	QuickMenu_init(); // needs Menu_init
 }
 static void Menu_quit(void) {
@@ -2232,9 +2234,13 @@ void initImageLoaderPool() {
 	frameMutex = SDL_CreateMutex();
 	fontMutex = SDL_CreateMutex();
 	flipCond = SDL_CreateCond();
+}
 
-    bgLoadThread = SDL_CreateThread(BGLoadWorker, "BGLoadWorker", NULL);
-    thumbLoadThread = SDL_CreateThread(ThumbLoadWorker, "ThumbLoadWorker", NULL);
+static void startImageLoaderWorkers(void) {
+	if (bgLoadThread || thumbLoadThread || animWorkerThread)
+		return;
+	bgLoadThread = SDL_CreateThread(BGLoadWorker, "BGLoadWorker", NULL);
+	thumbLoadThread = SDL_CreateThread(ThumbLoadWorker, "ThumbLoadWorker", NULL);
 	animWorkerThread = SDL_CreateThread(animWorker, "animWorker", NULL);
 }
 
@@ -2335,6 +2341,7 @@ int main (int argc, char *argv[]) {
 
 	LOG_info("NextUI\n");
 	InitSettings();
+	zlyme_boot_mark("settings");
 
 	screen = GFX_init(MODE_MAIN);
 	if (!screen) {
@@ -3348,10 +3355,16 @@ int main (int argc, char *argv[]) {
 				if (!first_flip_logged) {
 					first_flip_logged = 1;
 					zlyme_boot_mark("first-flip");
+					/* List is up. Restore last row and start thumbs after. */
+					loadLast();
+					startImageLoaderWorkers();
+					dirty = 1;
+				} else {
+					dirty = 0;
 				}
+			} else {
+				dirty = 0;
 			}
-
-			dirty = 0;
 		} else if(getAnimationDraw() || folderbgchanged || thumbchanged || is_scrolling) {
 			// honestly this whole thing is here only for the scrolling text, I set it now to run this at 30fps which is enough for scrolling text, should move this to seperate animation function eventually
 			Uint32 now = SDL_GetTicks();
