@@ -3222,8 +3222,10 @@
     "SUPERGRAFX": "supergrafx",
     "SWAN": "playstation",
     "ScummVM": "scummvm",
+    "ST": "atarist",
     "TIC": "tic80",
     "VB": "virtualboy",
+    "VEC": "vectrex",
     "VIC": "vic20"
   },
   "tag_candidates": {

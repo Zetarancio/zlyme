@@ -20,7 +20,17 @@ WS: ws wsc zip 7z
 VB: vb zip 7z
 LYNX: lnx lyx bll o zip 7z
 A26: a26 bin zip 7z
+A5200: a52 bin zip 7z
 A78: a78 bin zip 7z
+A800: atr atx rom xex cas car zip 7z
+ST: st msa stx dim ipf zip 7z
+COLECO: col bin rom zip 7z
+INTV: int bin rom zip 7z
+MSX: mx1 mx2 dsk rom cas zip 7z
+O2: bin zip 7z
+SG1000: sg bin zip 7z
+SGX: sgx pce cue ccd chd zip 7z
+VEC: vec bin gam zip 7z
 PKM: min zip 7z
 FBNEO: zip 7z
 MAME: zip 7z
@@ -32,6 +42,7 @@ AMIGA: adf ipf hdf lha cue iso chd zip
 DOOM: wad iwad pwad pk3
 TIC: tic
 PICO: p8 png zip
+P8: p8 png zip
 PORTS: sh
 EASYRPG: zip lzh ldb easyrpg
 MKXPZ: rxproj rvproj rvproj2 mkxp mkxpz zip 7z
