@@ -4,12 +4,9 @@
 start() {
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-hdmi-mode
-	# Coldplug while ALSA/jackd run so wlan0 exists before S30, without
-	# delaying NextUI (S28). S29 still fires after the list is up.
-	if command -v udevadm >/dev/null 2>&1; then
-		(udevadm trigger --type=subsystems --action=add
-		 udevadm trigger --type=devices --action=add) >/dev/null 2>&1 &
-	fi
+	# Do not udevtrigger here. A full add at S16 raced S17, loaded
+	# 8733bu during nextui.elf, and blocked a udev worker for 180 s.
+	# S29 coldplugs after the list (no block devices).
 	return 0
 }
 

@@ -81,6 +81,7 @@ ln -sfn /roms/ports/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
 chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-led" \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage" \
+	"${TARGET_DIR}/usr/sbin/zlyme-storage-udev" \
 	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
 	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
 	"${TARGET_DIR}/etc/init.d/S26joypadcal" \

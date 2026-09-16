@@ -1,7 +1,7 @@
-# Extra MMC / USB filesystems. zlyme-storage skips the boot slot (mmcblk0)
-# and labels ZLYME / ZLYMEBOOT. Labels are often missing at this instant,
-# so the script re-reads blkid.
-ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", RUN+="/usr/sbin/zlyme-storage add %k"
-ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[0-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage add %k"
-ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", RUN+="/usr/sbin/zlyme-storage remove %k"
-ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[0-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage remove %k"
+# Extra MMC / USB. Boot-time cards are S17 (S29 does not retrigger
+# block). The wrapper forks so udevd never sits on flock/blkid.
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="mmcblk0*", OPTIONS+="nowatch"
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", KERNEL!="mmcblk0*", RUN+="/usr/sbin/zlyme-storage-udev add %k"
+ACTION=="add", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[1-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage-udev add %k"
+ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", KERNEL!="mmcblk0*", RUN+="/usr/sbin/zlyme-storage-udev remove %k"
+ACTION=="remove", SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="mmcblk[1-9]|sd[a-z]", RUN+="/usr/sbin/zlyme-storage-udev remove %k"

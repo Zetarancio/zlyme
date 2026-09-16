@@ -238,8 +238,11 @@ merge_roms_locked() {
 	fi
 	unmount_roms
 	mkdir -p "$ROMS"
+	# 9>&- so the FUSE daemon does not inherit the flock fd. That leak
+	# held /tmp/zlyme-storage.lock forever; udev RUN+ then sat until
+	# the 180 s worker kill (zlyme38: 188 s, then 372 s).
 	if mergerfs -o "defaults,allow_other,use_ino,cache.files=off,dropcacheonclose=true,category.create=ff,minfreespace=0" \
-		"$list" "$ROMS" 2>>/tmp/zlyme-storage.log
+		"$list" "$ROMS" 9>&- 2>>/tmp/zlyme-storage.log
 	then
 		echo "merge $list" >> /tmp/zlyme-storage.log
 	else
@@ -273,9 +276,14 @@ bind_bios() {
 mount_fs() {
 	dev=$1
 	mp=$2
-	raw=$(blkid "$dev" 2>/dev/null || true)
-	typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE="\([^"]*\)".*/\1/p')
-	[ -n "$typ" ] || typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE=\([^ ]*\).*/\1/p' | tr -d '"')
+	# udev RUN+ used to call blkid here and deadlock the worker. Prefer
+	# ID_FS_TYPE from the event; S17 has no udev env and uses blkid.
+	typ=${ID_FS_TYPE:-}
+	if [ -z "$typ" ]; then
+		raw=$(blkid "$dev" 2>/dev/null || true)
+		typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE="\([^"]*\)".*/\1/p')
+		[ -n "$typ" ] || typ=$(printf '%s' "$raw" | sed -n 's/.*TYPE=\([^ ]*\).*/\1/p' | tr -d '"')
+	fi
 	mkdir -p "$mp"
 	case "$typ" in
 		exfat|vfat|msdos|ext4|ext3|ext2|ntfs|f2fs)
@@ -285,14 +293,6 @@ mount_fs() {
 			fi
 			;;
 	esac
-	# blkid often has no TYPE until udev finishes; try the usual USB set.
-	for t in ${typ:-} exfat vfat ntfs ext4; do
-		[ -n "$t" ] || continue
-		if mount -t "$t" -o rw,noatime "$dev" "$mp"; then
-			echo "mount $dev $mp type=$t" >> /tmp/zlyme-storage.log
-			return 0
-		fi
-	done
 	if mount -o rw,noatime "$dev" "$mp"; then
 		echo "mount $dev $mp type=${typ:-guess}" >> /tmp/zlyme-storage.log
 		return 0
@@ -340,11 +340,20 @@ add_dev() {
 			[ -b "/dev/${name}1" ] && return 0
 			;;
 	esac
-	label=$(blkid "$dev" 2>/dev/null | sed -n 's/.*LABEL="\([^"]*\)".*/\1/p')
+	label=${ID_FS_LABEL:-}
+	if [ -z "$label" ]; then
+		label=$(blkid "$dev" 2>/dev/null | sed -n 's/.*LABEL="\([^"]*\)".*/\1/p')
+	fi
 	case "$label" in
 		ZLYME|ZLYMEBOOT) return 0 ;;
 	esac
 	if awk -v d="$dev" '$1 == d { found=1 } END { exit !found }' /proc/mounts; then
+		# S17 already mounted this. Taking the lock while mergerfs
+		# still held it is what parked udev for 180 s.
+		if roms_is_mergerfs; then
+			echo "add $name already merged" >> /tmp/zlyme-storage.log
+			return 0
+		fi
 		merge_roms
 		bind_bios
 		return 0
@@ -405,7 +414,10 @@ status() {
 case "${1:-}" in
 	start|scan)
 		scan_add
-		merge_roms
+		# scan_add already merged if a library card was present.
+		if ! roms_is_mergerfs && ! mountpoint -q "$ROMS" 2>/dev/null; then
+			merge_roms
+		fi
 		bind_bios
 		;;
 	bind|merge)

@@ -5,7 +5,8 @@
 
 DAEMON="udevd"
 PIDFILE="/var/run/$DAEMON.pid"
-UDEVD_ARGS=""
+# 20 s, not the 180 s default. RUN+ must still return immediately.
+UDEVD_ARGS="--event-timeout=20"
 
 [ -r "/etc/default/$DAEMON" ] && . "/etc/default/$DAEMON"
 

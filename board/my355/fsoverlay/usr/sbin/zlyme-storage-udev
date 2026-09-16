@@ -1,0 +1,6 @@
+#!/bin/sh
+# udevd RUN+ waits for this process. Fork the helper so the worker
+# cannot sit on flock/blkid until --event-timeout (180 s default).
+[ -n "${2:-}" ] || exit 0
+/usr/sbin/zlyme-storage "$1" "$2" >/dev/null 2>&1 &
+exit 0
