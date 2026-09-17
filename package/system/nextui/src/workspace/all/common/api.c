@@ -15,6 +15,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #include "utils.h"
 #include "config.h"
@@ -4083,7 +4085,6 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 	{
 		if (before_sleep)
 			before_sleep();
-		system("gametimectl.elf stop_all");
 		PWR_powerOff(0);
 	}
 
@@ -4177,7 +4178,7 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 	}
 
 	/* Volume/brightness in the list and in Settings. In a pak,
-	 * keymon.elf applies the same keys (and grabs gpio-keys-volume
+	 * zlyme-keylidmon applies the same keys (and grabs gpio-keys-volume
 	 * so RetroArch does not). justRepeated is set on the first press
 	 * and on the software repeat timer. */
 	if (InitializedSettings() && (PAD_justRepeated(BTN_MOD_PLUS) || PAD_justRepeated(BTN_MOD_MINUS)))
@@ -4220,7 +4221,7 @@ void PWR_update(int *_dirty, int *_show_setting, PWR_callback_t before_sleep, PW
 	LEDS_applyRules();
 
 	if (show_setting)
-		dirty = 1; // shm is slow or keymon is catching input on the next frame
+		dirty = 1; // shm is slow or zlyme-keylidmon is catching input on the next frame
 	if (_dirty)
 		*_dirty = dirty;
 	if (_show_setting)
@@ -4241,6 +4242,42 @@ void PWR_disablePowerOff(void)
 {
 	pwr.can_poweroff = 0;
 }
+
+#define ZLYME_KEYLIDMON_PIDFILE "/var/run/zlyme-keylidmon.pid"
+
+static void zlyme_keylidmon_signal(int sig)
+{
+	char buf[32];
+	FILE *f;
+	const char *signame;
+	char cmd[64];
+
+	f = fopen(ZLYME_KEYLIDMON_PIDFILE, "r");
+	if (f) {
+		if (fgets(buf, sizeof(buf), f)) {
+			pid_t pid = (pid_t)atoi(buf);
+			if (pid > 1)
+				kill(pid, sig);
+		}
+		fclose(f);
+	}
+	switch (sig) {
+	case SIGTERM:
+		signame = "TERM";
+		break;
+	case SIGSTOP:
+		signame = "STOP";
+		break;
+	case SIGCONT:
+		signame = "CONT";
+		break;
+	default:
+		return;
+	}
+	snprintf(cmd, sizeof(cmd), "killall -%s zlyme-keylidmon", signame);
+	system(cmd);
+}
+
 void PWR_powerOff(int reboot)
 {
 	if (pwr.can_poweroff)
@@ -4281,9 +4318,7 @@ void PWR_powerOff(int reboot)
 		GFX_blitMessage(font.large, msg, gfx.screen, &(SDL_Rect){0, 0, gfx.screen->w, gfx.screen->h}); //, NULL);
 		GFX_flip(gfx.screen);
 
-		system("killall -TERM keymon.elf");
-		system("killall -TERM batmon.elf");
-		system("killall -TERM audiomon.elf");
+		zlyme_keylidmon_signal(SIGTERM);
 
 		PWR_updateFrequency(-1, false);
 
@@ -4309,9 +4344,7 @@ static void PWR_enterSleep(void)
 		}
 		PLAT_enableBacklight(0);
 	}
-	system("killall -STOP keymon.elf");
-	system("killall -STOP batmon.elf");
-	system("killall -STOP audiomon.elf");
+	zlyme_keylidmon_signal(SIGSTOP);
 
 	PWR_setCPUSpeed(CPU_SPEED_POWERSAVE);
 
@@ -4331,9 +4364,7 @@ static void PWR_exitSleep(void)
 
 	PWR_setCPUSpeed(CPU_SPEED_AUTO);
 
-	system("killall -CONT keymon.elf");
-	system("killall -CONT batmon.elf");
-	system("killall -CONT audiomon.elf");
+	zlyme_keylidmon_signal(SIGCONT);
 
 	if (GetHDMI())
 	{
@@ -4410,8 +4441,6 @@ void PWR_sleep(void)
 {
 	LOG_info("Entering hybrid sleep\n");
 
-	system("gametimectl.elf stop_all");
-
 	GFX_clear(gfx.screen);
 	PAD_reset();
 	PWR_enterSleep();
@@ -4419,16 +4448,12 @@ void PWR_sleep(void)
 	PWR_exitSleep();
 	PAD_reset();
 
-	system("gametimectl.elf resume");
-
 	pwr.resume_tick = SDL_GetTicks();
 }
 
 void PWR_sleepNow(void)
 {
 	LOG_info("Entering mem sleep\n");
-
-	system("gametimectl.elf stop_all");
 
 	GFX_clear(gfx.screen);
 	PAD_reset();
@@ -4439,8 +4464,6 @@ void PWR_sleepNow(void)
 		PWR_waitForWake();
 	PWR_exitSleep();
 	PAD_reset();
-
-	system("gametimectl.elf resume");
 
 	pwr.resume_tick = SDL_GetTicks();
 }

@@ -1196,6 +1196,8 @@ int ap_theme_load_nextui(void) {
         if (access("/mnt/SDCARD/.system/my355/bin/nextval.elf", X_OK) == 0)
             nextval_path = "/mnt/SDCARD/.system/my355/bin/nextval.elf";
     #endif
+        if (!nextval_path && access("/usr/bin/nextval.elf", X_OK) == 0)
+            nextval_path = "/usr/bin/nextval.elf";
     }
 
     if (!nextval_path) {

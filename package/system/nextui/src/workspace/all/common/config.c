@@ -526,6 +526,12 @@ void CFG_init(FontLoad_callback_t cb, ColorSet_callback_t ccb)
 
     uint32_t before[7];
     int i, persist = 0;
+    /* Empty name + stock NextUI magenta is an unmigrated card, not Custom. */
+    if (settings.paletteName[0] == '\0' &&
+        (settings.color2_255 == 0x9B2257FFU)) {
+        setPaletteNameRaw(CFG_DEFAULT_PALETTE_NAME);
+        persist = 1;
+    }
     /* Named palette files win over independently-saved colorN=. */
     for (i = 0; i < 7; i++)
         before[i] = CFG_getColor(i + 1);

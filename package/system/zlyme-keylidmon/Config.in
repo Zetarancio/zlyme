@@ -1,0 +1,8 @@
+config BR2_PACKAGE_ZLYME_KEYLIDMON
+	bool "zlyme-keylidmon"
+	depends on BR2_PACKAGE_NEXTUI
+	help
+	  Volume, brightness, lid close, and power while a pak owns
+	  the screen. NextUI applies those keys in the list and in
+	  Settings; this daemon is the msettings shm host and only
+	  grabs gpio-keys-volume when nextui.elf is not running.

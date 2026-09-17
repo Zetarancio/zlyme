@@ -4,8 +4,7 @@
 #
 # Vendored LoveRetro/NextUI (see src/UPSTREAM), edited here. When this
 # fork is proven it will become its own repo and Zlyme will fetch it.
-# Cores stay /usr/lib/libretro; emu paks exec RetroArch until minarch
-# is built from this tree.
+# Cores stay /usr/lib/libretro; emu paks exec RetroArch (ra-run).
 #
 # NextUI: https://github.com/LoveRetro/NextUI
 # Originally MinUI by Shaun Inman: https://github.com/shauninman/MinUI
@@ -17,6 +16,7 @@ NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
+NEXTUI_INSTALL_STAGING = YES
 NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm
 
 NEXTUI_PLATFORM = my355
@@ -50,10 +50,6 @@ define NEXTUI_BUILD_CMDS
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
-	$(TARGET_CC) $(NEXTUI_CFLAGS) $(NEXTUI_INCLUDES) \
-		-o $(@D)/keymon.elf \
-		$(@D)/workspace/$(NEXTUI_PLATFORM)/keymon/keymon.c \
-		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(foreach src,scaler utils config api palette,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
@@ -88,24 +84,25 @@ define NEXTUI_BUILD_CMDS
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/show.elf \
 		$(NEXTUI_PKGDIR)/zlyme/show.c \
 		$(TARGET_LDFLAGS) -lSDL2 -lSDL2_ttf
+	$(TARGET_CC) $(NEXTUI_CFLAGS) $(NEXTUI_INCLUDES) \
+		-o $(@D)/nextval.elf \
+		$(NEXTUI_PKGDIR)/zlyme/nextval.c \
+		$(@D)/config.o $(@D)/palette.o $(@D)/utils.o \
+		$(TARGET_LDFLAGS) -lm
 endef
 
 define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/nextui.elf $(TARGET_DIR)/usr/bin/nextui.elf
 	$(INSTALL) -D -m 0755 $(@D)/settings.elf $(TARGET_DIR)/usr/bin/settings.elf
 	$(INSTALL) -D -m 0755 $(@D)/show.elf $(TARGET_DIR)/usr/bin/show.elf
+	$(INSTALL) -D -m 0755 $(@D)/nextval.elf $(TARGET_DIR)/usr/bin/nextval.elf
 	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(TARGET_DIR)/usr/lib/libmsettings.so
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-bcsh $(TARGET_DIR)/usr/sbin/zlyme-bcsh
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-hotkey $(TARGET_DIR)/usr/sbin/zlyme-pak-hotkey
-	$(INSTALL) -D -m 0755 $(@D)/keymon.elf $(TARGET_DIR)/usr/bin/keymon.elf
-	rm -f $(TARGET_DIR)/usr/sbin/zlyme-volmon \
-		$(TARGET_DIR)/etc/init.d/S26volmon \
-		$(TARGET_DIR)/etc/udev/rules.d/60-zlyme-volume-keys.rules
-	ln -sf nextui.elf $(TARGET_DIR)/usr/bin/minui.elf
-	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/minarch.sh \
-		$(TARGET_DIR)/usr/bin/minarch.elf
-	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/gametimectl.sh \
+	rm -f $(TARGET_DIR)/usr/bin/keymon.elf \
+		$(TARGET_DIR)/usr/bin/minarch.elf \
 		$(TARGET_DIR)/usr/bin/gametimectl.elf
+	ln -sf nextui.elf $(TARGET_DIR)/usr/bin/minui.elf
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/nextui-session \
 		$(TARGET_DIR)/usr/sbin/nextui-session
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
@@ -150,6 +147,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-governor
 	$(INSTALL) -D -m 0755 $(@D)/show.elf \
 		$(TARGET_DIR)/usr/share/nextui/bin/show.elf
+	$(INSTALL) -D -m 0755 $(@D)/nextval.elf \
+		$(TARGET_DIR)/usr/share/nextui/bin/nextval.elf
 	if [ -f /usr/share/zoneinfo/zone.tab ]; then \
 		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
 			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
@@ -167,6 +166,12 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	fi
 	rm -rf $(TARGET_DIR)/usr/share/minui
 	ln -sfn nextui $(TARGET_DIR)/usr/share/minui
+endef
+
+define NEXTUI_INSTALL_STAGING_CMDS
+	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(STAGING_DIR)/usr/lib/libmsettings.so
+	$(INSTALL) -D -m 0644 $(@D)/workspace/$(NEXTUI_PLATFORM)/libmsettings/msettings.h \
+		$(STAGING_DIR)/usr/include/msettings.h
 endef
 
 $(eval $(generic-package))

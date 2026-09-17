@@ -31,7 +31,7 @@ else
 fi
 
 if [ -e "${TARGET_DIR}/usr/bin/nextui.elf" ]; then
-	for b in usr/bin/minui.elf usr/bin/minarch.elf usr/lib/libmsettings.so \
+	for b in usr/bin/minui.elf usr/lib/libmsettings.so \
 		usr/sbin/nextui-session usr/share/nextui/res/assets@2x.png \
 		usr/share/nextui/res/font1.ttf; do
 		[ -e "${TARGET_DIR}/${b}" ] || note "${b} is missing"
@@ -85,7 +85,8 @@ chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
 	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
 	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
-	"${TARGET_DIR}/etc/init.d/S26keymon" \
+	"${TARGET_DIR}/etc/init.d/S25jackd" \
+	"${TARGET_DIR}/etc/init.d/S26keylidmon" \
 	"${TARGET_DIR}/etc/init.d/S27led" \
 	"${TARGET_DIR}/etc/init.d/S90minui"
 # BusyBox wget has no TLS. Pico-8 Splore uses wget https:// so force
@@ -104,6 +105,8 @@ fi
 [ -e "${TARGET_DIR}/usr/bin/scp" ] || note "scp is missing (OpenSSH client)"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-audio" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-audio"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-jackd" ] || note "zlyme-jackd is missing"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-keylidmon" ] || note "zlyme-keylidmon is missing"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-btsink" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-btsink"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-radios" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-radios"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-combo" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-combo"
@@ -116,9 +119,12 @@ fi
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
 rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver" \
+	"${TARGET_DIR}/usr/bin/keymon.elf" \
 	"${TARGET_DIR}/usr/sbin/zlyme-volmon" \
-	"${TARGET_DIR}/etc/init.d/S26volmon" \
-	"${TARGET_DIR}/etc/udev/rules.d/60-zlyme-volume-keys.rules"
+	"${TARGET_DIR}/etc/init.d/S26keymon" \
+	"${TARGET_DIR}/usr/sbin/flip-jackd" \
+	"${TARGET_DIR}/usr/bin/minarch.elf" \
+	"${TARGET_DIR}/usr/bin/gametimectl.elf"
 ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
 
 if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then

@@ -1,19 +1,19 @@
 #!/bin/sh
 #
-# Class A: start before NextUI so keymon is the msettings shm host.
+# Class A: start before NextUI so zlyme-keylidmon is the msettings shm host.
 # Volume/brightness only while a pak runs. Lid is hybrid screen-off;
 # power button is mem. NextUI owns both while it is on screen.
 
-DAEMON=/usr/bin/keymon.elf
-PIDFILE=/var/run/keymon.pid
+DAEMON=/usr/sbin/zlyme-keylidmon
+PIDFILE=/var/run/zlyme-keylidmon.pid
 
 start() {
 	[ -x "$DAEMON" ] || return 0
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-		echo "Starting keymon: already"
+		echo "Starting zlyme-keylidmon: already"
 		return 0
 	fi
-	printf "Starting keymon: "
+	printf "Starting zlyme-keylidmon: "
 	export USERDATA_PATH=/storage/.config/nextui/my355
 	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON"; then
 		echo OK
@@ -24,7 +24,7 @@ start() {
 
 stop() {
 	start-stop-daemon -K -q -p "$PIDFILE" 2>/dev/null || true
-	killall -TERM keymon.elf 2>/dev/null || true
+	killall -TERM zlyme-keylidmon 2>/dev/null || true
 	return 0
 }
 

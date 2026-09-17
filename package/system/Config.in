@@ -1,6 +1,7 @@
 # Recipes.
 
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-jackd/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-keylidmon/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/nextui/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/gpudriver/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/libmali/Config.in"

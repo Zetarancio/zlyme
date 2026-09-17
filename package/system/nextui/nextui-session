@@ -131,6 +131,13 @@ if [ -d "$seed/paks" ]; then
 		printf '%s\n' "$img_ver" > /storage/.system/version.txt
 	fi
 fi
+mkdir -p "$SYSTEM_PATH/bin"
+if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/nextval.elf" ]; then
+	if [ -x /usr/bin/nextval.elf ]; then
+		cp /usr/bin/nextval.elf "$SYSTEM_PATH/bin/nextval.elf"
+		chmod 0755 "$SYSTEM_PATH/bin/nextval.elf"
+	fi
+fi
 boot_mark session-paks
 if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
 	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
@@ -257,6 +264,12 @@ bind_tools_late() {
 		cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
 		chmod 0755 "$SYSTEM_PATH/bin/show.elf"
 	fi
+	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/nextval.elf" ]; then
+		if [ -x /usr/bin/nextval.elf ]; then
+			cp /usr/bin/nextval.elf "$SYSTEM_PATH/bin/nextval.elf"
+			chmod 0755 "$SYSTEM_PATH/bin/nextval.elf"
+		fi
+	fi
 	if [ ! -e "$SYSTEM_PATH/lib/libmsettings.so" ] && [ -f /usr/lib/libmsettings.so ]; then
 		cp /usr/lib/libmsettings.so "$SYSTEM_PATH/lib/libmsettings.so"
 	fi
@@ -338,17 +351,24 @@ while [ -f "$EXEC_PATH" ]; do
 			>/dev/null 2>&1 || true
 		bluetoothctl scan off >/dev/null 2>&1 || true
 		pkill -f 'bluetoothctl scan' 2>/dev/null || true
-		sleep 0.3
-		modprobe hid-nintendo >/dev/null 2>&1 || true
-		# bluetoothctl connect on an already-live HID drops the
-		# 8733bu link (status 0x04). Skip pads NextUI is using.
-		bluetoothctl devices Paired 2>/dev/null | while read _ mac rest; do
-			[ -n "$mac" ] || continue
-			bluetoothctl info "$mac" 2>/dev/null | grep -q 'UUID: Human Interface Device' || continue
-			bluetoothctl info "$mac" 2>/dev/null | grep -q 'Connected: yes' && continue
-			bluetoothctl connect "$mac" >/dev/null 2>&1 || true
-		done
-		sleep 0.6
+		# Tools do not need HID reconnect. The 0.9 s plus
+		# bluetoothctl info used to sit in front of Settings.
+		case "$cmd" in
+			*'/Tools/'*|*'settings.elf'*) ;;
+			*)
+				sleep 0.3
+				modprobe hid-nintendo >/dev/null 2>&1 || true
+				# bluetoothctl connect on an already-live HID drops
+				# the 8733bu link (status 0x04). Skip pads NextUI is using.
+				bluetoothctl devices Paired 2>/dev/null | while read _ mac rest; do
+					[ -n "$mac" ] || continue
+					bluetoothctl info "$mac" 2>/dev/null | grep -q 'UUID: Human Interface Device' || continue
+					bluetoothctl info "$mac" 2>/dev/null | grep -q 'Connected: yes' && continue
+					bluetoothctl connect "$mac" >/dev/null 2>&1 || true
+				done
+				sleep 0.6
+				;;
+		esac
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
