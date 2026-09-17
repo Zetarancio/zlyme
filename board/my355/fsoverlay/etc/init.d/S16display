@@ -4,6 +4,16 @@
 start() {
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-hdmi-mode
+	# Initramfs splash should still be looping. Restart only if
+	# switch_root dropped it, so the lockup does not reload as a still.
+	if [ -x /usr/sbin/zlyme-splash ] && ! pidof zlyme-splash >/dev/null 2>&1; then
+		still=/usr/share/zlyme/splash.rgb565
+		anim=/usr/share/zlyme/splash.anim
+		[ -f "$still" ] || still=/splash.rgb565
+		[ -f "$anim" ] || anim=/splash.anim
+		/usr/sbin/zlyme-splash "$still" "$anim" >/dev/null 2>&1 &
+		echo $! > /tmp/zlyme-splash.pid
+	fi
 	# Do not udevtrigger here. A full add at S16 raced S17, loaded
 	# 8733bu during nextui.elf, and blocked a udev worker for 180 s.
 	# S29 coldplugs after the list (no block devices).

@@ -66,6 +66,13 @@ commit_update() {
 		return 1
 	fi
 	sync
+	if [ -x /storage_root/.update/pending/post-update.sh ]; then
+		log "running post-update.sh"
+		/storage_root/.update/pending/post-update.sh || log "post-update.sh failed (ignored)"
+	elif [ -f /storage_root/.update/pending/post-update.sh ]; then
+		log "running post-update.sh"
+		sh /storage_root/.update/pending/post-update.sh || log "post-update.sh failed (ignored)"
+	fi
 	rm -rf /storage_root/.update/pending
 	rm -f /storage_root/.update/zlyme-my355-update.tar
 	rm -f /storage_root/.update/WANT
@@ -83,13 +90,12 @@ do_root() {
 	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
 	mount -t devtmpfs none /dev 2>/dev/null || true
 
-	# Blit in the background so MMC mount is not waiting on fb0.
-	# Must exit before switch_root: a live splash holds /dev/fb0 and
-	# KMSDRM never takes the panel (splash forever, keymon still runs).
-	splash_pid=
+	# Loop the splash in the background so MMC mount is not waiting
+	# on fb0. Leave it running across switch_root: S16 and session
+	# reuse the PID, and NextUI kills it when KMSDRM takes the panel.
+	# Killing it here made the lockup restart as a still.
 	if [ -x /zlyme-splash ]; then
-		/zlyme-splash /splash.rgb565 &
-		splash_pid=$!
+		/zlyme-splash /splash.rgb565 /splash.anim &
 	fi
 
 	read -r cmdline < /proc/cmdline
@@ -130,9 +136,6 @@ do_root() {
 	# Keep ZLYME mounted. S15 remount of a 58 G exFAT was ~0.8 s.
 	if ! mount --move /storage_root /new_root/storage 2>/dev/null; then
 		umount /storage_root 2>/dev/null || true
-	fi
-	if [ -n "$splash_pid" ]; then
-		wait "$splash_pid" 2>/dev/null || true
 	fi
 
 	mount --move /sys /new_root/sys || return 1

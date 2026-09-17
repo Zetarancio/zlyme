@@ -565,7 +565,7 @@ void PLAT_initShaders() {
 		shaders[i].program = &shader_programs[i];
 	}
 
-	// Init .system shaders
+	// Stock shaders on squashfs (SYSTEM_PATH/shaders)
 	// Final display shader (simple texture blit)
 	init_shader_program(&s_shader_default, SYSSHADERS_FOLDER, "default.glsl");
 
@@ -669,6 +669,12 @@ static int plat_video_try_open(int w, int h) {
 }
 
 SDL_Surface* PLAT_initVideo(void) {
+	/* fb0 splash holds DRM. Drop it here so KMSDRM can take the panel. */
+	if (system("killall zlyme-splash >/dev/null 2>&1") == -1) {
+		/* ignore */
+	}
+	unlink("/tmp/zlyme-splash.pid");
+	usleep(20000);
 
 #if NEXTUI_TSAN
 	/*
@@ -777,8 +783,13 @@ SDL_Surface* PLAT_initVideo(void) {
 
 	vid.sharpness = SHARPNESS_SOFT;
 
-	plat_blank_fb0();
+	/* Keep the fb0 spinner until the game list's first flip. */
 	return vid.screen;
+}
+
+void PLAT_blankFb0(void)
+{
+	plat_blank_fb0();
 }
 
 /* Initramfs paints the splash on /dev/fb0. KMSDRM sits above it; when

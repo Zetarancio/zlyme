@@ -2302,6 +2302,9 @@ void cleanupImageLoaderPool() {
 }
 ///////////////////////////////////////
 
+/* Skip folder art until first-flip so the fb0 splash is not covered. */
+static int zlyme_skip_folder_bg = 1;
+
 static void zlyme_boot_mark(const char *msg)
 {
 	FILE *u = fopen("/proc/uptime", "r");
@@ -2331,6 +2334,12 @@ int main (int argc, char *argv[]) {
 	LOG_info("NextUI\n");
 	InitSettings();
 	zlyme_boot_mark("settings");
+
+	{
+		const char *e = getenv("ZLYME_BOOT_SPLASH");
+		if (!(e && e[0] == '1'))
+			zlyme_skip_folder_bg = 0;
+	}
 
 	screen = GFX_init(MODE_MAIN);
 	if (!screen) {
@@ -3068,7 +3077,9 @@ int main (int argc, char *argv[]) {
 				char defaultBgPath[512];
 				snprintf(defaultBgPath, sizeof(defaultBgPath), SDCARD_PATH "/bg.png");
 
-				if(((entry->type == ENTRY_DIR || entry->type == ENTRY_ROM) && CFG_getRomsUseFolderBackground())) {
+				if (zlyme_skip_folder_bg) {
+					list_show_entry_names = true;
+				} else if(((entry->type == ENTRY_DIR || entry->type == ENTRY_ROM) && CFG_getRomsUseFolderBackground())) {
 					char *newBg = entry->type == ENTRY_DIR ? entry->path:rompath;
 					if((strcmp(newBg, folderBgPath) != 0 || lastType != entry->type) && sizeof(folderBgPath) != 1) {
 						lastType = entry->type;
@@ -3344,6 +3355,8 @@ int main (int argc, char *argv[]) {
 				if (!first_flip_logged) {
 					first_flip_logged = 1;
 					zlyme_boot_mark("first-flip");
+					zlyme_skip_folder_bg = 0;
+					PLAT_blankFb0();
 					/* List is up. Restore last row and start thumbs after. */
 					loadLast();
 					startImageLoaderWorkers();
