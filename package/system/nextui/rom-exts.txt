@@ -46,3 +46,7 @@ P8: p8 png zip
 PORTS: sh
 EASYRPG: zip lzh ldb easyrpg
 MKXPZ: rxproj rvproj rvproj2 mkxp mkxpz zip 7z
+SCUMMVM: scummvm svm zip
+OPENBOR: pak
+DAPHNE: txt daphne singe
+WINE: exe msi bat cmd
