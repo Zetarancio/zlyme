@@ -45,6 +45,12 @@ fi
 
 cd "$root" || exit 1
 
+if [ -f "$root/pylibs/harbourmaster/hardware.py" ] && \
+	[ -f /usr/share/portmaster/patch-hardware.py ]; then
+	python3 /usr/share/portmaster/patch-hardware.py \
+		"$root/pylibs/harbourmaster/hardware.py" >/dev/null 2>&1 || true
+fi
+
 seed_zlyme_theme() {
 	src=/usr/share/portmaster/PortMaster/themes/Zlyme
 	[ -f "$src/theme.json" ] || return 0
@@ -88,10 +94,10 @@ export controlfolder="$root"
 export PYSDL2_DLL_PATH=/usr/lib
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
-export LD_LIBRARY_PATH="${SYSTEM_PATH:-/storage/.system/my355}/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="${SYSTEM_PATH:-/usr/share/nextui}/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 # pugwash calls pgrep/pkill; busybox here has neither. Overlay stubs live
 # on the card so they survive a RO /usr.
-export PATH="${SYSTEM_PATH:-/storage/.system/my355}/bin:/usr/bin:/usr/sbin:/bin:/sbin${PATH:+:$PATH}"
+export PATH="${SYSTEM_PATH:-/usr/share/nextui}/bin:/usr/bin:/usr/sbin:/bin:/sbin${PATH:+:$PATH}"
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
@@ -113,7 +119,11 @@ if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
 	export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
 	export CURL_CA_BUNDLE="$SSL_CERT_FILE"
 fi
-# device_info.txt falls through to os-release; ROCKNIX gl4es helper is closest.
+# harbourmaster ignores CFW_NAME/DEVICE_NAME. It reads ~/.config/.DEVICE
+# (ArkOS) and quoted NAME/HW_DEVICE in /etc/os-release. DTB "Miyoo Flip"
+# is not in its table; miyoo-flip is (RK3566, 640x480, two sticks).
+mkdir -p "$HOME/.config"
+printf '%s\n' 'miyoo-flip' > "$HOME/.config/.DEVICE"
 export CFW_NAME="${CFW_NAME:-ROCKNIX}"
 export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
 

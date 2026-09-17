@@ -149,6 +149,32 @@ if grep -qE '^[^#]*[[:space:]]/var[[:space:]]' "${TARGET_DIR}/etc/fstab"; then
 	note "/etc/fstab mounts /var"
 fi
 
+# PortMaster harbourmaster only parses quoted KEY="value" (NAME→CFW,
+# HW_DEVICE→device). DTB model "Miyoo Flip" is not in its table.
+# Identify as ROCKNIX + miyoo-flip (PortMaster already has 640x480
+# RK3566 / two-stick specs for that slug). Keep PRETTY_NAME so About → OS
+# stays the Buildroot string.
+pm_os_release() {
+	src="${TARGET_DIR}/usr/lib/os-release"
+	[ -f "$src" ] || src="${TARGET_DIR}/etc/os-release"
+	[ -f "$src" ] || return 0
+	if grep -q '^NAME=' "$src"; then
+		sed -i 's/^NAME=.*/NAME="ROCKNIX"/' "$src"
+	else
+		printf '%s\n' 'NAME="ROCKNIX"' >> "$src"
+	fi
+	if grep -q '^HW_DEVICE=' "$src"; then
+		sed -i 's/^HW_DEVICE=.*/HW_DEVICE="miyoo-flip"/' "$src"
+	else
+		printf '%s\n' 'HW_DEVICE="miyoo-flip"' >> "$src"
+	fi
+	if [ -f "${TARGET_DIR}/etc/os-release" ] && [ ! -L "${TARGET_DIR}/etc/os-release" ] && \
+		[ "${TARGET_DIR}/etc/os-release" != "$src" ]; then
+		cp -f "$src" "${TARGET_DIR}/etc/os-release"
+	fi
+}
+pm_os_release
+
 # linux-reconfigure can rebuild vmlinux without rebuilding BR2 kernel-module
 # packages. sizeof(struct module) then disagrees and every OOT .ko fails
 # insmod (no joypad, no WiFi). Compare .gnu.linkonce.this_module to panfrost.

@@ -38,8 +38,14 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 			-xf $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSans.tar.xz \
 			|| true; \
 	fi
+	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/harbourmaster/hardware.py ]; then \
+		python3 $(PORTMASTER_PKGDIR)/patch-hardware.py \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/harbourmaster/hardware.py; \
+	fi
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/portmaster-launch \
 		$(TARGET_DIR)/usr/bin/portmaster
+	$(INSTALL) -D -m 0644 $(PORTMASTER_PKGDIR)/patch-hardware.py \
+		$(TARGET_DIR)/usr/share/portmaster/patch-hardware.py
 	# pugwash lists extra themes from PortMaster/themes/<name>/theme.json
 	# (pylibs/default_theme is the built-in). Copy the stock assets, then
 	# inject a Zlyme colour scheme as the default.
