@@ -57,7 +57,7 @@ static int open_jack(void)
 
 	dir = opendir("/dev/input");
 	if (!dir) {
-		say("flip-jackd: /dev/input: %s", strerror(errno));
+		say("zlyme-jackd: /dev/input: %s", strerror(errno));
 		return -1;
 	}
 
@@ -89,7 +89,7 @@ static int open_jack(void)
 		memset(sw, 0, sizeof(sw));
 		if (ioctl(fd, EVIOCGBIT(EV_SW, sizeof(sw)), sw) < 0 ||
 		    !TEST_BIT(SW_HEADPHONE_INSERT, sw)) {
-			say("flip-jackd: \"%s\" has no SW_HEADPHONE_INSERT", name);
+			say("zlyme-jackd: \"%s\" has no SW_HEADPHONE_INSERT", name);
 			close(fd);
 			continue;
 		}
@@ -108,7 +108,7 @@ static bool jack_inserted(int fd)
 
 	memset(sw, 0, sizeof(sw));
 	if (ioctl(fd, EVIOCGSW(sizeof(sw)), sw) < 0) {
-		say("flip-jackd: EVIOCGSW: %s", strerror(errno));
+		say("zlyme-jackd: EVIOCGSW: %s", strerror(errno));
 		return false;
 	}
 
@@ -137,11 +137,11 @@ static int set_route(snd_ctl_t *ctl, bool inserted)
 
 	err = snd_ctl_elem_write(ctl, val);
 	if (err < 0) {
-		say("flip-jackd: writing %s: %s", CONTROL, snd_strerror(err));
+		say("zlyme-jackd: writing %s: %s", CONTROL, snd_strerror(err));
 		return err;
 	}
 
-	say("flip-jackd: output -> %s", inserted ? "headphones" : "speaker");
+	say("zlyme-jackd: output -> %s", inserted ? "headphones" : "speaker");
 	return 0;
 }
 
@@ -160,13 +160,13 @@ int main(void)
 	 */
 	jack = open_jack();
 	if (jack < 0) {
-		say("flip-jackd: no \"%s\" input device -- nothing to watch", JACK_NAME);
+		say("zlyme-jackd: no \"%s\" input device -- nothing to watch", JACK_NAME);
 		return 0;
 	}
 
 	err = snd_ctl_open(&ctl, CARD_ID, 0);
 	if (err < 0) {
-		say("flip-jackd: %s: %s", CARD_ID, snd_strerror(err));
+		say("zlyme-jackd: %s: %s", CARD_ID, snd_strerror(err));
 		close(jack);
 		return 0;
 	}
@@ -190,7 +190,7 @@ int main(void)
 		if (n < 0) {
 			if (errno == EINTR)
 				continue;
-			say("flip-jackd: read: %s", strerror(errno));
+			say("zlyme-jackd: read: %s", strerror(errno));
 			break;
 		}
 

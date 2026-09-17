@@ -169,7 +169,7 @@ BR2_PACKAGE_ALSA_UTILS_SPEAKER_TEST=y
 
 # bluealsa (SBC). A2DP PCM is the `bt` sink in asound.conf.
 BR2_PACKAGE_BLUEZ_ALSA=y
-BR2_PACKAGE_FLIP_JACKD=y
+BR2_PACKAGE_ZLYME_JACKD=y
 
 # zlyme_defconfig = zlyme_minimal plus emulators. Keep the shared lines in step.
 # SDL2: KMSDRM + GLES only.

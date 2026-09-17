@@ -2,7 +2,7 @@
  * libmsettings for Zlyme.
  *
  * Stock my355 talks to BSP mixer names (Playback Path, SPK) and a GPIO
- * jack. This device has FlipVolume on the rk817ext card and flip-jackd
+ * jack. This device has FlipVolume on the rk817ext card and zlyme-jackd
  * already owns Playback Mux. One volume for speaker and headphones.
  */
 
@@ -393,7 +393,7 @@ void SetRawVolume(int val)
 		val = 0;
 	if (val > 100)
 		val = 100;
-	/* FlipVolume is the one softvol on rk817ext. flip-jackd owns the mux. */
+	/* FlipVolume is the one softvol on rk817ext. zlyme-jackd owns the mux. */
 	snprintf(cmd, sizeof(cmd), "amixer -q sset FlipVolume %i%%", val);
 	if (system(cmd) != 0)
 		/* control appears the first time a PCM opens; ignore */;

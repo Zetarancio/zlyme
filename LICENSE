@@ -11,7 +11,7 @@ Original Zlyme code
 -------------------
 
 Unless a file or directory says otherwise, original Zlyme sources
-(board glue, local drivers and helpers such as flip-jackd and
+(board glue, local drivers and helpers such as zlyme-jackd and
 rtl8733bu-power, Autocal.pak, Files.pak launch.sh, pico8 launcher)
 are licensed under the MIT License:
 

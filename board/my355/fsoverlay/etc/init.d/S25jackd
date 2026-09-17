@@ -4,8 +4,8 @@
 # over a saved Playback Mux.
 
 
-DAEMON=/usr/sbin/flip-jackd
-PIDFILE=/var/run/flip-jackd.pid
+DAEMON=/usr/sbin/zlyme-jackd
+PIDFILE=/var/run/zlyme-jackd.pid
 
 case "$1" in
 	start)

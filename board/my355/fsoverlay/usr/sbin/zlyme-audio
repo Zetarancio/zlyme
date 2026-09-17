@@ -23,7 +23,7 @@ usage: $(basename "$0") <command>
   test                 play a tone through the current sink
   export               print a shell assignment: eval \$($(basename "$0") export)
 
-Speaker versus headphones is not selectable: flip-jackd follows the jack.
+Speaker versus headphones is not selectable: zlyme-jackd follows the jack.
 A sink change applies to audio started afterwards, not to anything already playing.
 EOF
 }
