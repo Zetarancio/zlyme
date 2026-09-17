@@ -52,12 +52,24 @@ define ZLYME_INITRAMFS_INSTALL_TARGET_CMDS
 		$(ZLYME_INITRAMFS_PKGDIR)/splash.c
 	$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.rgb565 \
 		$(INITRAMFS_DIR)/splash.rgb565
+	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/splash.anim ]; then \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.anim \
+			$(INITRAMFS_DIR)/splash.anim; \
+	fi
 	mkdir -p $(INITRAMFS_DIR)/proc \
 		$(INITRAMFS_DIR)/sys \
 		$(INITRAMFS_DIR)/dev \
 		$(INITRAMFS_DIR)/boot_root \
 		$(INITRAMFS_DIR)/storage_root \
 		$(INITRAMFS_DIR)/new_root
+	$(INSTALL) -D -m 0755 $(INITRAMFS_DIR)/zlyme-splash \
+		$(TARGET_DIR)/usr/sbin/zlyme-splash
+	$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.rgb565 \
+		$(TARGET_DIR)/usr/share/zlyme/splash.rgb565
+	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/splash.anim ]; then \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.anim \
+			$(TARGET_DIR)/usr/share/zlyme/splash.anim; \
+	fi
 endef
 
 $(eval $(kconfig-package))

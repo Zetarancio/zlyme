@@ -23,11 +23,12 @@ color2 and color6 must not share a hex: hardware-group icons blit color6
 on a color2 pill.
 
 The looping lockup is `zlyme_slime_loop.gif` (README; paletted, 640×320).
-Splash / charging / NextUI background are a mid-loop frame max-fitted
-and centered on 640×480 `#050608` (not the old upper-third 0.72 lockup).
+Splash is every GIF frame max-fitted and centered on 640×480 `#050608`:
+`splash.rgb565` (frame 0) plus `splash.anim` (moving glass). Charging /
+NextUI background stay a mid-loop still.
 
 - `zlyme_slime_loop.gif` → `../background.png`, `../charging-640-480.png`,
-  initramfs `splash.rgb565`
+  initramfs `splash.rgb565` + `splash.anim`
 - `Z.png` / `zlyme_beaker-exact.svg` → `../logo.png` and PortMaster
   `zlyme-theme/logo.png` (512×512)
 

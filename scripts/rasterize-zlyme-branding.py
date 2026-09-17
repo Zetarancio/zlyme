@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Rasterize branding onto 640x480 #050608 (and a 512x512 logo).
 
-Splash / charging / NextUI background use the slime loop
-(`zlyme_slime_loop.gif`, a mid-loop frame) fitted and centered on the
-panel. Z.png is still the 512 mark. Near-black knockout is only for
-the still PNGs / SVGs, not the loop (that file already has real alpha).
+Splash uses every frame of `zlyme_slime_loop.gif`, max-fitted and
+centered. `splash.rgb565` is frame 0; `splash.anim` is the moving
+glass rect. Charging / NextUI background stay a mid-loop still.
 """
 from __future__ import annotations
 
@@ -12,9 +11,12 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import struct
 from typing import Optional
 
-from PIL import Image
+from PIL import Image, ImageSequence
+
+import numpy as np
 
 BG = (0x05, 0x06, 0x08, 255)
 W, H = 640, 480
@@ -49,16 +51,16 @@ def knock_out_black(src: Image.Image) -> Image.Image:
     return im
 
 
-def load_loop_frame(branding: Path) -> Optional[Image.Image]:
+def load_loop_frames(branding: Path) -> list[Image.Image]:
     for name in LOOP_NAMES:
         path = branding / name
         if not path.is_file():
             continue
         im = Image.open(path)
-        n = getattr(im, "n_frames", 1)
-        im.seek(max(0, (n // 2) if n > 1 else 0))
-        return im.convert("RGBA")
-    return None
+        frames = [fr.convert("RGBA") for fr in ImageSequence.Iterator(im)]
+        if frames:
+            return frames
+    return []
 
 
 def load_art(branding: Path, names: list[str], svg_width: int) -> Image.Image:
@@ -109,18 +111,66 @@ def write_png(im: Image.Image, path: Path, mode: str = "RGB") -> None:
     print(f"wrote {path} {im.size}")
 
 
+def rgb565_bytes(im: Image.Image) -> bytes:
+    arr = np.asarray(im.convert("RGB"), dtype=np.uint16)
+    pix = ((arr[..., 0] >> 3) << 11) | ((arr[..., 1] >> 2) << 5) | (arr[..., 2] >> 3)
+    return pix.astype("<u2").tobytes()
+
+
 def write_rgb565(im: Image.Image, path: Path) -> None:
-    rgb = im.convert("RGB")
-    out = bytearray()
-    for y in range(rgb.height):
-        for x in range(rgb.width):
-            r, g, b = rgb.getpixel((x, y))
-            pix = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
-            out.append(pix & 0xFF)
-            out.append((pix >> 8) & 0xFF)
+    out = rgb565_bytes(im)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(out)
+    print(f"wrote {path} {len(out)} bytes")
+
+
+def write_splash_anim(frames: list[Image.Image], path: Path, delay_ms: int) -> None:
+    # Keep the anim small enough for initramfs, but cover the whole lockup
+    # (not only the glass dirty-rect) so the spinner reads as the logo.
+    if len(frames) > 16:
+        last = len(frames) - 1
+        frames = [frames[round(i * last / 15)] for i in range(16)]
+    rgb = [np.asarray(im.convert("RGB"), dtype=np.uint8) for im in frames]
+    stack = np.stack(rgb)
+    bg = np.array(BG[:3], dtype=np.uint8)
+    not_bg = np.any(stack != bg, axis=(0, 3))
+    ys, xs = np.where(not_bg)
+    if len(xs) == 0:
+        print(f"skip {path}: frames are identical")
+        return
+    pad = 2
+    x0 = max(0, int(xs.min()) - pad)
+    y0 = max(0, int(ys.min()) - pad)
+    x1 = min(W - 1, int(xs.max()) + pad)
+    y1 = min(H - 1, int(ys.max()) + pad)
+    # Full lockup, capped at 640x320 as packed into splash.anim.
+    if (y1 - y0 + 1) > 320:
+        cy = (y0 + y1) // 2
+        y0 = max(0, cy - 160)
+        y1 = min(H - 1, y0 + 319)
+        if y1 - y0 + 1 < 320:
+            y0 = max(0, y1 - 319)
+    w = x1 - x0 + 1
+    h = y1 - y0 + 1
+    hdr = struct.pack(
+        "<4sHHHHHHHH",
+        b"ZLYA",
+        1,
+        x0,
+        y0,
+        w,
+        h,
+        len(frames),
+        delay_ms,
+        0,
+    )
+    out = bytearray(hdr)
+    for im in frames:
+        crop = im.crop((x0, y0, x0 + w, y0 + h))
+        out.extend(rgb565_bytes(crop))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(bytes(out))
-    print(f"wrote {path} {len(out)} bytes")
+    print(f"wrote {path} {len(out)} bytes {len(frames)}f {w}x{h}+{x0},{y0} {delay_ms}ms")
 
 
 def main() -> None:
@@ -136,21 +186,28 @@ def main() -> None:
         else repo / "package/system/nextui/res"
     )
     ramfs = repo / "package/boot/zlyme-initramfs"
-    pm_logo = repo / "package/system/portmaster/zlyme-theme/logo.png"
 
     for stale in branding.glob("*.crdownload"):
         stale.unlink()
         print(f"removed {stale}")
 
-    mark = load_art(
-        branding,
-        ["Z.png", "zlyme_beaker-exact.svg", "zlyme-beaker-exact.svg"],
-        512,
-    )
-    loop = load_loop_frame(branding)
-    if loop is not None:
-        # Max-fit, true center — the loading screen is the 640x480 panel.
-        bg = place_on_canvas(loop, W, H, scale_mul=1.0, y_center_frac=None)
+    loop_frames = [
+        place_on_canvas(fr, W, H, scale_mul=1.0, y_center_frac=None)
+        for fr in load_loop_frames(branding)
+    ]
+    if loop_frames:
+        wall = loop_frames[len(loop_frames) // 2]
+        still = loop_frames[0]
+        delay = 80
+        src = Image.open(branding / LOOP_NAMES[0]) if (branding / LOOP_NAMES[0]).is_file() else None
+        if src is not None:
+            d = src.info.get("duration")
+            if isinstance(d, (int, float)) and d > 0:
+                delay = int(round(d)) if d >= 20 else 80
+        write_png(wall, res / "background.png")
+        write_png(wall, res / "charging-640-480.png")
+        write_rgb565(still, ramfs / "splash.rgb565")
+        write_splash_anim(loop_frames, ramfs / "splash.anim", delay)
     else:
         wordmark = load_art(
             branding,
@@ -158,13 +215,9 @@ def main() -> None:
             800,
         )
         bg = place_on_canvas(wordmark, W, H)
-    logo = place_on_canvas(mark, LOGO, LOGO, y_center_frac=None, scale_mul=SCALE_MUL)
-
-    write_png(bg, res / "background.png")
-    write_png(bg, res / "charging-640-480.png")
-    write_png(logo, res / "logo.png", mode="RGBA")
-    write_png(logo, pm_logo, mode="RGBA")
-    write_rgb565(bg, ramfs / "splash.rgb565")
+        write_png(bg, res / "background.png")
+        write_png(bg, res / "charging-640-480.png")
+        write_rgb565(bg, ramfs / "splash.rgb565")
 
 
 if __name__ == "__main__":
