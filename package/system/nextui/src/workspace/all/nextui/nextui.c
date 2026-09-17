@@ -688,6 +688,36 @@ static int entryIsDir(const char *full_path, unsigned char d_type)
 	return S_ISDIR(st.st_mode);
 }
 
+/* Lexaloffle pico8_64 + pico8.dat. Same dirs as start_pico8.sh. */
+static int pico8_bios_in(const char *dir)
+{
+	char bin[MAX_PATH];
+	char dat[MAX_PATH];
+
+	if (!dir || !dir[0])
+		return 0;
+	snprintf(bin, sizeof(bin), "%s/pico8_64", dir);
+	snprintf(dat, sizeof(dat), "%s/pico8.dat", dir);
+	return exists(bin) && exists(dat);
+}
+
+static int hasPico8Bios(void)
+{
+	static int cached = -1;
+
+	if (cached >= 0)
+		return cached;
+	cached = pico8_bios_in(SDCARD_PATH "/Bios/PICO")
+		|| pico8_bios_in(SDCARD_PATH "/Bios/PICO/aarch64")
+		|| pico8_bios_in(SDCARD_PATH "/Bios/PICO-8")
+		|| pico8_bios_in(SDCARD_PATH "/Bios")
+		|| pico8_bios_in(SDCARD_PATH "/Roms/Pico-8 (PICO)")
+		|| pico8_bios_in(SDCARD_PATH "/Roms/Pico-8 (PICO)/aarch64")
+		|| pico8_bios_in(SDCARD_PATH "/Roms/PICO-8")
+		|| pico8_bios_in(SDCARD_PATH "/Roms/PICO-8/aarch64");
+	return cached;
+}
+
 static int hasRoms(char* dir_name) {
 	int has = 0;
 	char emu_name[256];
@@ -697,6 +727,8 @@ static int hasRoms(char* dir_name) {
 
 	// check for emu pak
 	if (!hasEmu(emu_name)) return has;
+	if (exactMatch(emu_name, "PICO") && !hasPico8Bios()) return 0;
+
 	sprintf(rom_path, "%s/%s/", ROMS_PATH, dir_name);
 	DIR *dh = opendir(rom_path);
 	if (dh!=NULL) {
