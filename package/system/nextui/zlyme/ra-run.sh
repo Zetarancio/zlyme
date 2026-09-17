@@ -62,9 +62,9 @@ ra_quote() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-# Map MinUI In-Game (minuisettings.txt) onto RetroArch. Minarch is not
-# built yet; this is what makes Notifications / RetroAchievements apply
-# when a pak execs ra-run.
+# Map MinUI In-Game (minuisettings.txt) onto RetroArch. Cheevos stay
+# enabled from Settings even with no WAN so rcheevos can load a cached
+# game hash; token and password both go in so login or cache still works.
 write_minui_ra() {
 	ra_enable=0
 	ra_user=
@@ -137,6 +137,9 @@ write_minui_ra() {
 		echo "cheevos_visibility_unlock = \"$(ra_bool "$ra_notify")\""
 		echo "cheevos_visibility_mastery = \"$(ra_bool "$ra_notify")\""
 		echo "cheevos_visibility_progress_tracker = \"$progress\""
+		echo "cheevos_badges_enable = \"$(ra_bool "$ra_enable")\""
+		echo "cheevos_richpresence_enable = \"$(ra_bool "$ra_enable")\""
+		echo "cheevos_start_active = \"$(ra_bool "$ra_enable")\""
 		echo "notification_show_save_state = \"$show_state\""
 		echo "notification_show_screenshot = \"$(ra_bool "$notify_shot")\""
 		echo "notification_show_screenshot_duration = \"$shot_dur\""
