@@ -37,10 +37,13 @@ if [ -d "${BINARIES_DIR}/overlays" ]; then
 	cp -a "${BINARIES_DIR}/overlays/." "$stage/overlays/"
 fi
 printf '%s\n' "$ver" "$stamp" > "$stage/VERSION"
+install -m 0755 "${BOARD_DIR}/pre-update.sh" "$stage/pre-update.sh"
+install -m 0755 "${BOARD_DIR}/post-update.sh" "$stage/post-update.sh"
 
 base="zlyme-my355-${stamp}-${ver}.tar"
 out="${BINARIES_DIR}/${base}"
-tar -C "$stage" -cf "$out" Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION
+tar -C "$stage" -cf "$out" Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION \
+	pre-update.sh post-update.sh
 rm -f "${BINARIES_DIR}/zlyme-my355-update.tar"
 (
 	cd "${BINARIES_DIR}"

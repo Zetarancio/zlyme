@@ -200,9 +200,21 @@ do_reboot() {
 	done
 }
 
+run_pending_hook() {
+	hook=$1
+	if [ -x "$PENDING/$hook" ]; then
+		log "running $hook"
+		"$PENDING/$hook" || log "$hook failed (ignored)"
+	elif [ -f "$PENDING/$hook" ]; then
+		log "running $hook (sh)"
+		sh "$PENDING/$hook" || log "$hook failed (ignored)"
+	fi
+}
+
 # Extract on ZLYME, copy kernel to /boot, leave pending/zlyme for initramfs.
 apply_files() {
 	ensure_pending
+	run_pending_hook pre-update.sh
 	install_boot "$PENDING" || return 1
 	apply_overlays_now
 	rm -f "$WANT" "$FAILED"
