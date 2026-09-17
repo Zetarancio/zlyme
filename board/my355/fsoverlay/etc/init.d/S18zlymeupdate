@@ -10,15 +10,8 @@
 # storage lock and left the splash on "applying settings after OS swap".
 
 start() {
-	if [ ! -x /usr/sbin/zlyme-update ]; then
-		if [ -x /storage/.system/my355/bin/zlyme-update ]; then
-			upd=/storage/.system/my355/bin/zlyme-update
-		else
-			return 0
-		fi
-	else
-		upd=/usr/sbin/zlyme-update
-	fi
+	[ -x /usr/sbin/zlyme-update ] || return 0
+	upd=/usr/sbin/zlyme-update
 
 	if "$upd" queued >/dev/null 2>&1; then
 		printf "Zlyme update: "

@@ -300,6 +300,25 @@ void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items)
 		Zlyme_restoreBackup});
 }
 
+static InputReactionHint Zlyme_factoryReset(AbstractMenuItem &item)
+{
+	(void)item;
+	system("mkdir -p /storage/.config/zlyme");
+	system("touch /storage/.config/zlyme/factory-reset");
+	system("rm -rf /storage/.config/nextui");
+	system("sync");
+	MenuList::showOverlay("Resetting stock paks. Rebooting.", OverlayDismissMode::DismissOnA);
+	system("reboot -f");
+	return NoOp;
+}
+
+void Zlyme_appendFactoryResetItem(std::vector<AbstractMenuItem *> &items)
+{
+	items.push_back(new MenuItem{ListItemType::Button, "Factory reset",
+		"Restore stock Tools and Emus from the image. Extra paks, Roms, Bios, Saves, and Wi-Fi stay. Reboots.",
+		Zlyme_factoryReset});
+}
+
 static std::string sd2_status_line()
 {
 	FILE *f = popen("zlyme-storage status 2>/dev/null", "r");

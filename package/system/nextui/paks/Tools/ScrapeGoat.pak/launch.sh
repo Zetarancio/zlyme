@@ -56,6 +56,14 @@ if [ ! -e "./$APP_BIN" ]; then
 	exit 1
 fi
 
+# Prebuilt Apostrophe still looks at ./font.ttf and .system, not /usr/share/nextui.
+# Tools live on exFAT, so a symlink is not allowed — copy the file.
+if [ -f /usr/share/nextui/res/font1.ttf ]; then
+	mkdir -p "$PAK_DIR/res"
+	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/font.ttf"
+	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/res/font.ttf"
+fi
+
 sleep 0.4
 ./"$APP_BIN" "$@"
 st=$?

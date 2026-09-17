@@ -5,8 +5,7 @@ NextUI (LoveRetro)
 
 Originally MinUI by Shaun Inman
   https://github.com/shauninman/MinUI
-  No formal SPDX license — see src/NOTICE and paks/MinUI.pak/NOTICE
-  MinUI.pak ships LICENSE (PolyForm NC) + NOTICE + CREDITS
+  No formal SPDX license — see src/NOTICE
 
 Zlyme vendors a working copy of NextUI until this fork is proven
 and becomes its own repository. LoveRetro has no my355 tree; the
@@ -17,6 +16,18 @@ wrapper.
 
 SSH, Samba, Syncthing, GPU, HDMI, and Backup live in Settings
 (workspace/all/settings/zlymemenu.cpp), not as Tools paks.
+
+minui-list (Tools helper)
+  Jose Diaz-Gonzalez, MIT
+  https://github.com/josegonzalez/minui-list
+  0.15.2. Linked here against NextUI (PolyForm Noncommercial 1.0.0).
+  See package/system/minui-list/LICENSE and src/LICENSE.
+
+minui-presenter (Tools helper)
+  Jose Diaz-Gonzalez, MIT
+  https://github.com/josegonzalez/minui-presenter
+  0.13.2. Linked here against NextUI (PolyForm Noncommercial 1.0.0).
+  See package/system/minui-presenter/LICENSE and src/LICENSE.
 
 Artwork Scraper (Tools)
   Jose Diaz-Gonzalez, MIT

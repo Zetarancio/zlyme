@@ -1,0 +1,15 @@
+config BR2_PACKAGE_MINUI_LIST
+	bool "minui-list"
+	depends on BR2_PACKAGE_NEXTUI
+	help
+	  Scrollable list UI for NextUI/MinUI tool paks
+	  (Artwork Scraper, Overlays, …).
+
+	  Built from josegonzalez/minui-list (MIT, Jose Diaz-Gonzalez)
+	  against Zlyme's NextUI SDK so fonts/assets come from
+	  /usr/share/nextui/res. The linked NextUI objects stay
+	  PolyForm Noncommercial 1.0.0 (originally MinUI by Shaun Inman).
+
+	  https://github.com/josegonzalez/minui-list
+	  NextUI: https://github.com/LoveRetro/NextUI
+	  MinUI: https://github.com/shauninman/MinUI

@@ -851,10 +851,11 @@ static const char *ap__status_assets_dir(char *buf, size_t buf_size) {
     if (dir && dir[0]) return dir;
 
 #if AP_PLATFORM_IS_DEVICE
-    const char *sdcard = getenv("SDCARD_PATH");
-    if (!sdcard || !sdcard[0]) sdcard = "/mnt/SDCARD";
-    snprintf(buf, buf_size, "%s/.system/res", sdcard);
-    return buf;
+    if (access("/usr/share/nextui/res", R_OK) == 0)
+        return "/usr/share/nextui/res";
+    (void)buf;
+    (void)buf_size;
+    return NULL;
 #else
     (void)buf;
     (void)buf_size;
@@ -892,22 +893,14 @@ static const char *ap__font_search_paths[] = {
     "./font.ttf",
     "./res/font.ttf",
     "../res/font.ttf",
-#if defined(PLATFORM_NEXTUI)
+    "/usr/share/nextui/res/font1.ttf",
+    "/usr/share/nextui/res/font2.ttf",
+    "/usr/share/nextui/res/BPreplayBold-unhinted.otf",
+#if defined(PLATFORM_TG5040) || defined(PLATFORM_TG5050)
     "/mnt/SDCARD/.system/res/font1.ttf",
     "/mnt/SDCARD/.system/res/font2.ttf",
     "/mnt/SDCARD/.system/res/font.ttf",
     "/mnt/SDCARD/.system/tg5040/res/font.ttf",
-    "/mnt/SDCARD/.system/my355/res/font.ttf",
-#elif defined(PLATFORM_TG5040) || defined(PLATFORM_TG5050)
-    "/mnt/SDCARD/.system/res/font1.ttf",
-    "/mnt/SDCARD/.system/res/font2.ttf",
-    "/mnt/SDCARD/.system/res/font.ttf",
-    "/mnt/SDCARD/.system/tg5040/res/font.ttf",
-#elif defined(PLATFORM_MY355)
-    "/mnt/SDCARD/.system/res/font1.ttf",
-    "/mnt/SDCARD/.system/res/font2.ttf",
-    "/mnt/SDCARD/.system/res/font.ttf",
-    "/mnt/SDCARD/.system/my355/res/font.ttf",
 #elif defined(PLATFORM_MAC)
     "/System/Library/Fonts/Helvetica.ttc",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -1172,29 +1165,23 @@ int ap_theme_load_nextui(void) {
     /* Look for nextval.elf — prefer SYSTEM_PATH env var, fall back to hardcoded path */
     const char *nextval_path = NULL;
     char nextval_env_buf[256] = {0};
-    #if defined(PLATFORM_NEXTUI)
-    char nextval_fallback_buf[256] = {0};
-    #endif
     const char *system_path_env = getenv("SYSTEM_PATH");
     if (system_path_env && system_path_env[0]) {
         snprintf(nextval_env_buf, sizeof(nextval_env_buf), "%s/bin/nextval.elf", system_path_env);
         if (access(nextval_env_buf, X_OK) == 0) nextval_path = nextval_env_buf;
     }
     if (!nextval_path) {
-    #if defined(PLATFORM_NEXTUI)
-        snprintf(nextval_fallback_buf, sizeof(nextval_fallback_buf),
-                 "/mnt/SDCARD/.system/%s/bin/nextval.elf", ap_get_platform_name());
-        if (access(nextval_fallback_buf, X_OK) == 0)
-            nextval_path = nextval_fallback_buf;
+    #if defined(PLATFORM_NEXTUI) || defined(PLATFORM_MY355)
+        if (access("/usr/bin/nextval.elf", X_OK) == 0)
+            nextval_path = "/usr/bin/nextval.elf";
+        else if (access("/usr/share/nextui/bin/nextval.elf", X_OK) == 0)
+            nextval_path = "/usr/share/nextui/bin/nextval.elf";
     #elif defined(PLATFORM_TG5040)
         if (access("/mnt/SDCARD/.system/tg5040/bin/nextval.elf", X_OK) == 0)
             nextval_path = "/mnt/SDCARD/.system/tg5040/bin/nextval.elf";
     #elif defined(PLATFORM_TG5050)
         if (access("/mnt/SDCARD/.system/tg5050/bin/nextval.elf", X_OK) == 0)
             nextval_path = "/mnt/SDCARD/.system/tg5050/bin/nextval.elf";
-    #elif defined(PLATFORM_MY355)
-        if (access("/mnt/SDCARD/.system/my355/bin/nextval.elf", X_OK) == 0)
-            nextval_path = "/mnt/SDCARD/.system/my355/bin/nextval.elf";
     #endif
         if (!nextval_path && access("/usr/bin/nextval.elf", X_OK) == 0)
             nextval_path = "/usr/bin/nextval.elf";
@@ -1435,10 +1422,8 @@ static int ap__load_fonts(const char *user_font_path) {
         static char nextui_font_buf[256];
         int font_id = ap__read_nextui_setting_int("font", 1);
         {
-            const char *sdcard = getenv("SDCARD_PATH");
-            if (!sdcard || !sdcard[0]) sdcard = "/mnt/SDCARD";
             snprintf(nextui_font_buf, sizeof(nextui_font_buf),
-                     "%s/.system/res/font%d.ttf", sdcard, font_id);
+                     "/usr/share/nextui/res/font%d.ttf", font_id);
         }
         if (access(nextui_font_buf, R_OK) == 0) {
             font_path = nextui_font_buf;

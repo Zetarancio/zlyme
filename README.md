@@ -57,7 +57,7 @@ Speaker vs jack is automatic (`zlyme-jackd`). Bluetooth audio follows the headse
 
 ## Install
 
-GitHub Actions does **not** build on push. Open the repo → **Actions** → **Build** → **Run workflow** (branch `main`). Hosted runners cap each job at six hours, so a cold image is several sequential stages; later runs reuse ccache. A successful run publishes a GitHub Release tagged `zlyme-<run_id>` (also marked latest) with `zlyme.img` and the OTA tar. Tools → **Update** hits `/releases/latest`, not Actions artifacts. The repo is private, so put a PAT with `repo` scope in `/storage/.config/github-token` on the device (one line, no quotes). A public repo would not need the PAT. Do not bake a token into the image. There is no release until the first workflow finishes, so Update will say so instead of hanging.
+GitHub Actions does **not** build on push. Open the repo → **Actions** → **Build** → **Run workflow** (branch `main`). Hosted runners cap each job at six hours, so a cold image is several sequential stages; later runs reuse ccache. A successful run publishes a GitHub Release tagged `zlyme-<run_id>` (marked latest) with `zlyme.img` and the OTA tar. Tools → **Update** uses `/releases/latest`, and if that 404s (GitHub hides prereleases from that endpoint) it lists `/releases` and takes the newest published tar — no GitHub token is required. A PAT in `/storage/.config/github-token` is only used if GitHub returns 401/403. Do not bake a token into the image. There is no release until the first workflow finishes, so Update will say so instead of hanging.
 
 The Flip will not boot an SD OS until you change how it starts. Without one of the steps below, it keeps booting stock from internal storage and ignores the card.
 
@@ -144,8 +144,22 @@ Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap
 | Ports | PortMaster | `Roms/Ports (PORTS)/` | `.sh` only |
 | RPG Maker 2000/2003 | EasyRPG Player (libretro) | `Roms/RPG Maker 2000-2003 (EASYRPG)/` | `.zip` `.lzh` `.ldb` `.easyrpg`; folders with `RPG_RT.ldb` or `*.easyrpg` |
 | RPG Maker XP / VX / Ace | mkxp-z (libretro) | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/` | `.rxproj` `.rvproj` `.rvproj2` `.mkxp` `.mkxpz` `.zip` `.7z` |
+| ScummVM | ScummVM | `Roms/ScummVM (SCUMMVM)/` | `.scummvm` `.svm` `.zip`; game folders |
+| OpenBOR | OpenBOR | `Roms/OpenBOR (OPENBOR)/` | `.pak` |
+| Daphne | Hypseus Singe | `Roms/Daphne (DAPHNE)/` | `.txt` `.daphne` `.singe` |
+| Windows | Wine (box64) | `Roms/Windows (WINE)/` | `.exe` `.msi` `.bat` `.cmd` |
 
-This list will change over time.
+## User Systems and Tools
+
+Stock copies live on the card at `Tools/my355/` and `Emus/my355/`. Fonts and the OS stay in the squashfs — there is no `.system` folder to edit.
+
+OTA replaces only pak **names that exist in the image**. Extra folders you add are left alone. Example: editing `GBA.pak` is overwritten on the next Update; renaming it to `GBA2.pak` survives, but games must sit in `Roms/… (GBA2)/`. The same rule is `TAG.pak` ↔ `Roms/… (TAG)/` for every system.
+
+New **system**: put an executable `Emus/my355/TAG.pak/launch.sh` plus a non-empty `Roms/Pretty Name (TAG)/`. The tag in parentheses is the pak name. `launch.sh` receives the ROM path; libretro examples are the existing paks (`ra-run -L …`).
+
+New **tool**: `Tools/my355/My Tool.pak/launch.sh`. It shows up under Tools after a restart of the list.
+
+To **ship** a pak in the OS, drop it under `package/system/nextui/paks/Emus` or `paks/Tools` in this tree. The updater globs that folder — names are not hardcoded.
 
 ## Build
 
@@ -187,4 +201,4 @@ The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork o
 
 ## License
 
-See [LICENSE](LICENSE). Original Zlyme glue is MIT. This tree is **not** one license. NextUI is PolyForm Noncommercial 1.0.0. Each package and pak ships its own terms.
+See [LICENSE](LICENSE). Original Zlyme glue is MIT. This tree is **not** one license. NextUI (LoveRetro) is PolyForm Noncommercial 1.0.0 and must stay that way; it is a fork of MinUI by Shaun Inman. minui-list and minui-presenter are MIT (Jose Diaz-Gonzalez) and, on this image, link NextUI. Each package and pak ships its own terms.

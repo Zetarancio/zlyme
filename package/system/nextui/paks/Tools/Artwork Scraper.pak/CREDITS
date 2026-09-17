@@ -10,4 +10,6 @@ and 32-bit jq were removed; this image is aarch64 my355.
 
 minui-list and minui-presenter under bin/my355/ are rebuilt against
 this tree's NextUI my355 platform (joystick JOY_* plus keyboard),
-not the upstream keyboard-only Flip build.
+not the upstream keyboard-only Flip build. Those helpers are MIT
+(Jose Diaz-Gonzalez) linked with NextUI (PolyForm Noncommercial 1.0.0,
+originally MinUI by Shaun Inman). See LICENSE in this pak.

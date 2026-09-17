@@ -27,12 +27,12 @@ if uname -m | grep -q '64'; then
   ARCH="arm64"
 fi
 
-# Persistent storage for downloaded helpers / settings
+# Persistent storage for overlay cache / settings
 export HOME="${SHARED_USERDATA_PATH:-/tmp}/$PAK_NAME"
-mkdir -p "$HOME/bin" "$HOME/cache"
+mkdir -p "$HOME/cache"
 
-# Add bundled and persisted helper directories to PATH
-export PATH="$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin/$ARCH:$PAK_DIR/bin/shared:$HOME/bin:$PATH"
+# OS minui-list/presenter (built against /usr/share/nextui/res).
+export PATH="/usr/bin:$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin/$ARCH:$PAK_DIR/bin/shared:$PATH"
 
 # Working dir for transient artifacts (tree.json, preview images)
 WORK_DIR="$(mktemp -d 2>/dev/null || echo "/tmp/${PAK_NAME}.$$")"
@@ -75,9 +75,6 @@ fi
 TREE_API="https://api.github.com/repos/${REPO_USER}/${REPO_NAME}/git/trees/${REPO_BRANCH}?recursive=1"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/${REPO_BRANCH}"
 
-MINUI_LIST_RELEASE="https://github.com/josegonzalez/minui-list/releases/latest/download"
-MINUI_PRES_RELEASE="https://github.com/josegonzalez/minui-presenter/releases/latest/download"
-
 # Where overlays are installed for libretro cores. NextUI reads
 # /Overlays/[CORE]/*.png  (some forks support /Overlays/[res]/[CORE]/*).
 OVERLAYS_ROOT="${SDCARD_PATH:-/mnt/SDCARD}/Overlays"
@@ -86,9 +83,8 @@ OVERLAYS_ROOT="${SDCARD_PATH:-/mnt/SDCARD}/Overlays"
 # Platform/resolution detection
 # ---------------------------------------------------------------------------
 
-# Map NextUI's $PLATFORM (and optional $DEVICE) into:
-#   - REPO_RES: which resolution folder of the overlays repo to look at
-#   - MINUI_BIN_TAG: which prebuilt binary suffix to pull from josegonzalez releases
+# Map NextUI's $PLATFORM (and optional $DEVICE) into REPO_RES,
+# the resolution folder of the overlays repo.
 detect_platform() {
   PLAT="${PLATFORM:-}"
   DEV="${DEVICE:-}"
@@ -101,77 +97,43 @@ detect_platform() {
       else
         REPO_RES="720p"
       fi
-      MINUI_BIN_TAG="tg5040"
       ;;
     tg3040)
       REPO_RES="768p"
-      MINUI_BIN_TAG="tg5040"
       ;;
     tg5050)
       REPO_RES="768p"
-      MINUI_BIN_TAG="tg5050"
       ;;
     rg35xxplus)
       case "$DEV" in
         hdmi) REPO_RES="720p" ;;
         *)    REPO_RES="480p" ;;
       esac
-      MINUI_BIN_TAG="rg35xxplus"
       ;;
-    rg35xx)         REPO_RES="480p"; MINUI_BIN_TAG="rg35xx" ;;
-    rgb30)          REPO_RES="480p"; MINUI_BIN_TAG="rgb30" ;;
-    my282|miyoomini) REPO_RES="480p"; MINUI_BIN_TAG="${PLAT}" ;;
-    my355)          REPO_RES="480p"; MINUI_BIN_TAG="my355" ;;
-    magicmini)      REPO_RES="480p"; MINUI_BIN_TAG="magicmini" ;;
-    trimui|trimuismart) REPO_RES="480p"; MINUI_BIN_TAG="trimuismart" ;;
-    zero28)         REPO_RES="480p"; MINUI_BIN_TAG="zero28" ;;
-    m17)            REPO_RES="720p"; MINUI_BIN_TAG="m17" ;;
+    rg35xx)         REPO_RES="480p" ;;
+    rgb30)          REPO_RES="480p" ;;
+    my282|miyoomini) REPO_RES="480p" ;;
+    my355)          REPO_RES="480p" ;;
+    magicmini)      REPO_RES="480p" ;;
+    trimui|trimuismart) REPO_RES="480p" ;;
+    zero28)         REPO_RES="480p" ;;
+    m17)            REPO_RES="720p" ;;
     *)
       # Unknown platform - default to 720p which has the largest catalog
       REPO_RES="720p"
-      MINUI_BIN_TAG="${PLAT:-tg5040}"
       ;;
   esac
 
-  echo "Detected PLATFORM=$PLAT DEVICE=$DEV -> resolution=$REPO_RES bin=$MINUI_BIN_TAG"
-}
-
-# ---------------------------------------------------------------------------
-# Helper-binary bootstrap (minui-list, minui-presenter)
-# ---------------------------------------------------------------------------
-
-ensure_minui_binary() {
-  bin_name="$1"      # minui-list or minui-presenter
-  release_base="$2"  # release URL prefix
-
-  if command -v "$bin_name" >/dev/null 2>&1; then
-    return 0
-  fi
-
-  local_target="$HOME/bin/$bin_name"
-  if [ -x "$local_target" ]; then
-    return 0
-  fi
-
-  # Try to download a prebuilt for our platform tag
-  url="${release_base}/${bin_name}-${MINUI_BIN_TAG}"
-  echo "Fetching $bin_name from $url"
-  if $CURL -o "$local_target.tmp" "$url"; then
-    chmod +x "$local_target.tmp"
-    mv "$local_target.tmp" "$local_target"
-    return 0
-  fi
-
-  rm -f "$local_target.tmp"
-  echo "Failed to fetch $bin_name for tag $MINUI_BIN_TAG"
-  return 1
+  echo "Detected PLATFORM=$PLAT DEVICE=$DEV -> resolution=$REPO_RES"
 }
 
 ensure_helpers() {
-  ensure_minui_binary minui-list      "$MINUI_LIST_RELEASE" || HELPERS_OK=0
-  ensure_minui_binary minui-presenter "$MINUI_PRES_RELEASE" || HELPERS_OK=0
-  HELPERS_OK="${HELPERS_OK:-1}"
-  return 0
+  if command -v minui-list >/dev/null 2>&1 && command -v minui-presenter >/dev/null 2>&1; then
+    HELPERS_OK=1
+  else
+    HELPERS_OK=0
+    echo "minui-list/presenter missing (need /usr/bin)"
+  fi
 }
 
 # ---------------------------------------------------------------------------

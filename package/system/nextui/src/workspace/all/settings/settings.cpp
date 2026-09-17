@@ -665,6 +665,7 @@ int main(int argc, char *argv[])
         Zlyme_appendSystemItems(systemItems);
         Zlyme_appendStorageItems(systemItems);
         Zlyme_appendBackupItem(systemItems);
+        Zlyme_appendFactoryResetItem(systemItems);
         systemItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
 

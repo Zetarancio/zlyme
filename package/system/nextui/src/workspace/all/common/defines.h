@@ -14,9 +14,9 @@
 #define MAX_PATH 512
 
 #define ROMS_PATH SDCARD_PATH "/Roms"
-#define ROOT_SYSTEM_PATH SDCARD_PATH "/.system/"
-#define SYSTEM_PATH SDCARD_PATH "/.system/" PLATFORM
-#define RES_PATH SDCARD_PATH "/.system/res"
+#define ROOT_SYSTEM_PATH "/usr/share/nextui"
+#define SYSTEM_PATH "/usr/share/nextui"
+#define RES_PATH "/usr/share/nextui/res"
 #define USERDATA_PATH SDCARD_PATH "/.config/nextui/" PLATFORM
 #define SHARED_USERDATA_PATH SDCARD_PATH "/.config/nextui/shared"
 #define PAKS_PATH SYSTEM_PATH "/paks"

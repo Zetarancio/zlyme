@@ -11,6 +11,8 @@ config BR2_PACKAGE_NEXTUI
 	select BR2_PACKAGE_OPENSSL
 	select BR2_PACKAGE_LIBCURL
 	select BR2_PACKAGE_ZSTD
+	select BR2_PACKAGE_MINUI_LIST
+	select BR2_PACKAGE_MINUI_PRESENTER
 	help
 	  NextUI launcher (nextui.elf) and Settings, vendored from
 	  LoveRetro/NextUI and edited in-tree for Zlyme. PLATFORM is

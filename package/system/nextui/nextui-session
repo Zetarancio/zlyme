@@ -6,7 +6,8 @@
 # pak: the command is in /tmp/next.
 #
 # Directories come from NextUI's platform.h (SDCARD_PATH /storage).
-# This script only sets the environment NextUI still reads at runtime.
+# Fonts, icons, version, wifi/bt stubs stay on squashfs. Stock Tools
+# and Emus are copied onto the card from the image glob.
 
 export PLATFORM=my355
 export DEVICE=my355
@@ -14,7 +15,7 @@ export SDCARD_PATH=/storage
 export BIOS_PATH=/storage/Bios
 export SAVES_PATH=/storage/Saves
 export CHEATS_PATH=/storage/Cheats
-export SYSTEM_PATH=/storage/.system/$PLATFORM
+export SYSTEM_PATH=/usr/share/nextui
 export CORES_PATH=/usr/lib/libretro
 export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
 export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
@@ -29,10 +30,8 @@ if [ -r "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
 fi
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
-export PATH=$SYSTEM_PATH/bin:/usr/bin:/usr/sbin:/bin:/sbin
-# Squashfs first. An exFAT dir at the front of LD_LIBRARY_PATH makes
-# every NEEDED .so miss before /usr/lib.
-export LD_LIBRARY_PATH=/usr/lib:$SYSTEM_PATH/lib
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/share/nextui/bin
+export LD_LIBRARY_PATH=/usr/lib
 export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
@@ -44,7 +43,6 @@ boot_mark() {
 mkdir -p /storage/.config/zlyme
 boot_mark session-start
 
-# Stock MinUI tools still open /mnt/SDCARD. Keep one path for scrapers.
 mkdir -p /mnt
 [ -e /mnt/SDCARD ] || ln -sfn /storage /mnt/SDCARD
 
@@ -54,6 +52,11 @@ mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
 seed=/usr/share/nextui
 img_ver=""
 [ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
+stamp=/storage/.config/zlyme/paks-version
+card_ver=""
+[ -r "$stamp" ] && card_ver=$(cat "$stamp")
+factory=0
+[ -f /storage/.config/zlyme/factory-reset ] && factory=1
 
 # Dummy cart so Pico-8 is visible before the user adds .p8 files.
 # Name contains "splore" so start_pico8.sh uses -splore (ROCKNIX / minui-pico-8-pak).
@@ -93,91 +96,64 @@ if [ ! -d "$ports_dir" ] && [ -d /storage/Roms/ports ]; then
 	ln -sfn /storage/Roms/ports /roms/ports 2>/dev/null || true
 fi
 
-# Refresh stock assets when the image version changes. Copying paks
-# onto exFAT blocked the first frame (Artwork Scraper.pak is large).
-# Bind the squashfs copies instead; that also hides stale card launch.sh.
-card_ver=""
-[ -r /storage/.system/version.txt ] && card_ver=$(cat /storage/.system/version.txt)
-refresh=1
-[ -n "$img_ver" ] && [ "$img_ver" = "$card_ver" ] && refresh=0
+# Stock paks = glob of the live image. No hardcoded names.
+# Parent missing → full copy. Missing stock name → repair copy.
+# version.txt / factory-reset / interrupted copy → overwrite those
+# names; extras stay.
+lock=/storage/.config/zlyme/paks-copying
+interrupted=0
+[ -f "$lock" ] && interrupted=1
 
-bind_dir() {
-	src=$1
-	dest=$2
-	[ -d "$src" ] || return 0
-	mkdir -p "$dest"
-	mountpoint -q "$dest" && return 0
-	mount --bind "$src" "$dest" 2>/dev/null
-}
-
-mkdir -p /storage/.system/res
-if [ -d "$seed/res" ]; then
-	bind_dir "$seed/res" /storage/.system/res || {
-		[ "$refresh" = 1 ] && cp -a "$seed/res/." /storage/.system/res/
-	}
-fi
-
-# Bind emu paks before nextui.elf (hasEmu). Tools and one-time
-# migrations are after the first exec so they do not sit on the list.
-if [ -d "$seed/paks" ]; then
-	mkdir -p "$SYSTEM_PATH/paks"
-	if [ -d "$seed/paks/Emus" ]; then
-		bind_dir "$seed/paks/Emus" "$SYSTEM_PATH/paks/Emus"
+copy_stock_paks() {
+	srcdir=$1
+	destdir=$2
+	[ -d "$srcdir" ] || return 0
+	overwrite=0
+	[ "$factory" = 1 ] && overwrite=1
+	[ "$interrupted" = 1 ] && overwrite=1
+	[ -n "$img_ver" ] && [ "$img_ver" != "$card_ver" ] && overwrite=1
+	if [ ! -d "$destdir" ]; then
+		mkdir -p "$destdir"
+		for src in "$srcdir"/*.pak; do
+			[ -d "$src" ] || continue
+			cp -a "$src" "$destdir/"
+		done
+		return 0
 	fi
-	if [ -d "$seed/paks/MinUI.pak" ]; then
-		bind_dir "$seed/paks/MinUI.pak" "$SYSTEM_PATH/paks/MinUI.pak"
-	fi
-	if [ "$refresh" = 1 ] && [ -n "$img_ver" ]; then
-		printf '%s\n' "$img_ver" > /storage/.system/version.txt
-	fi
-fi
-mkdir -p "$SYSTEM_PATH/bin"
-if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/nextval.elf" ]; then
-	if [ -x /usr/bin/nextval.elf ]; then
-		cp /usr/bin/nextval.elf "$SYSTEM_PATH/bin/nextval.elf"
-		chmod 0755 "$SYSTEM_PATH/bin/nextval.elf"
-	fi
-fi
-boot_mark session-paks
-if [ ! -e "$SYSTEM_PATH/system.cfg" ]; then
-	cp "$seed/system.cfg" "$SYSTEM_PATH/system.cfg"
-fi
-
-rm -f /tmp/poweroff /tmp/reboot
-
-# setsid so MENU+Start can SIGTERM the pak group. Helper dies with the child.
-run_pak_cmd() {
-	setsid sh -c 'eval "$1"' sh "$1" >> "$LOGS_PATH/next.txt" 2>&1 &
-	_pak_pid=$!
-	_hk=
-	if [ -x /usr/sbin/zlyme-pak-hotkey ]; then
-		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$LOGS_PATH/next.txt" 2>&1 &
-		_hk=$!
-	fi
-	wait "$_pak_pid"
-	st=$?
-	if [ -n "$_hk" ]; then
-		kill "$_hk" 2>/dev/null || true
-		wait "$_hk" 2>/dev/null || true
-	fi
-}
-
-EXEC_PATH=/tmp/nextui_exec
-NEXT_PATH=/tmp/next
-touch "$EXEC_PATH"
-cd /storage
-
-bind_tools_late() {
-	# Do not fight nextui.elf for exFAT/CPU. Tools are unused until A.
-	n=0
-	while [ "$n" -lt 40 ]; do
-		grep -q 'nextui-first-flip' /tmp/boot-timing 2>/dev/null && break
-		sleep 0.5
-		n=$((n + 1))
+	for src in "$srcdir"/*.pak; do
+		[ -d "$src" ] || continue
+		base=$(basename "$src")
+		dest="$destdir/$base"
+		if [ "$overwrite" = 1 ]; then
+			rm -rf "$dest"
+			cp -a "$src" "$dest"
+		elif [ ! -d "$dest" ] || [ ! -f "$dest/launch.sh" ]; then
+			rm -rf "$dest"
+			cp -a "$src" "$dest"
+		fi
 	done
+}
+
+stock_paks_ready() {
+	[ ! -f "$lock" ] || return 1
+	[ -d /storage/Emus/my355 ] && [ -d /storage/Tools/my355 ] || return 1
+	if [ -n "$img_ver" ]; then
+		[ "$img_ver" = "$card_ver" ] || return 1
+	fi
+	for src in "$seed/paks/Emus"/*.pak "$seed/paks/Tools"/*.pak; do
+		[ -d "$src" ] || continue
+		base=$(basename "$src")
+		case "$src" in
+			*/paks/Emus/*.pak) dest="/storage/Emus/my355/$base" ;;
+			*) dest="/storage/Tools/my355/$base" ;;
+		esac
+		[ -f "$dest/launch.sh" ] || return 1
+	done
+	return 0
+}
+
+apply_card_defaults() {
 	mkdir -p "$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH"
-	# Screen-off / mem suspend. Do not rewrite minuisettings unless
-	# a Windows CR is actually there (sed -i on exFAT is a full copy).
 	cfg=$SHARED_USERDATA_PATH/minuisettings.txt
 	mkdir -p "$SHARED_USERDATA_PATH"
 	if [ -f "$cfg" ] && grep -q $'\r' "$cfg"; then
@@ -232,89 +208,176 @@ bind_tools_late() {
 		fi
 		: > "$flag_bat"
 	fi
-	mkdir -p "$SYSTEM_PATH/etc/wifi" "$SYSTEM_PATH/etc/bluetooth" \
-		"$SYSTEM_PATH/bin" "$SYSTEM_PATH/lib" /storage/.system/zoneinfo \
-		/storage/Tools/my355
-	if [ ! -e /storage/.system/zoneinfo/zone.tab ] && [ -r "$seed/zone.tab" ]; then
-		cp "$seed/zone.tab" /storage/.system/zoneinfo/zone.tab
-	fi
-	if [ -d /usr/share/zoneinfo ] && [ ! -e /usr/share/zoneinfo/zone.tab ] && \
-		[ -d /storage/.system/zoneinfo ]; then
-		mount --bind /storage/.system/zoneinfo /usr/share/zoneinfo 2>/dev/null || true
-	fi
-	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
-		cp "$seed/etc/wifi/wifi_init.sh" "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-		chmod 0755 "$SYSTEM_PATH/etc/wifi/wifi_init.sh"
-	fi
-	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/etc/bluetooth/bt_init.sh" ]; then
-		cp "$seed/etc/bluetooth/bt_init.sh" "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-		chmod 0755 "$SYSTEM_PATH/etc/bluetooth/bt_init.sh"
-	fi
-	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/governor.sh" ]; then
-		cp "$seed/bin/governor.sh" "$SYSTEM_PATH/bin/governor.sh"
-		chmod 0755 "$SYSTEM_PATH/bin/governor.sh"
-	fi
-	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/suspend" ]; then
-		if [ -x "$seed/bin/suspend" ]; then
-			cp "$seed/bin/suspend" "$SYSTEM_PATH/bin/suspend"
-			chmod 0755 "$SYSTEM_PATH/bin/suspend"
-		fi
-	fi
-	if [ ! -e "$SYSTEM_PATH/bin/show.elf" ] && [ -x /usr/bin/show.elf ]; then
-		cp /usr/bin/show.elf "$SYSTEM_PATH/bin/show.elf"
-		chmod 0755 "$SYSTEM_PATH/bin/show.elf"
-	fi
-	if [ "$refresh" = 1 ] || [ ! -e "$SYSTEM_PATH/bin/nextval.elf" ]; then
-		if [ -x /usr/bin/nextval.elf ]; then
-			cp /usr/bin/nextval.elf "$SYSTEM_PATH/bin/nextval.elf"
-			chmod 0755 "$SYSTEM_PATH/bin/nextval.elf"
-		fi
-	fi
-	if [ ! -e "$SYSTEM_PATH/lib/libmsettings.so" ] && [ -f /usr/lib/libmsettings.so ]; then
-		cp /usr/lib/libmsettings.so "$SYSTEM_PATH/lib/libmsettings.so"
-	fi
-	if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-wifi ]; then
-		cp /usr/sbin/zlyme-wifi "$SYSTEM_PATH/bin/zlyme-wifi"
-		chmod 0755 "$SYSTEM_PATH/bin/zlyme-wifi"
-	fi
-	if [ "$refresh" = 1 ] && [ -x /usr/sbin/zlyme-bluetooth ]; then
-		cp /usr/sbin/zlyme-bluetooth "$SYSTEM_PATH/bin/zlyme-bluetooth"
-		chmod 0755 "$SYSTEM_PATH/bin/zlyme-bluetooth"
-	fi
-	stamp=/storage/Tools/my355/.zlyme-settings-paks-gone
-	if [ ! -f "$stamp" ]; then
-		rm -rf \
-			/storage/Tools/my355/Wi-Fi.pak \
-			/storage/Tools/my355/Bluetooth.pak \
-			/storage/Tools/my355/SSH.pak \
-			/storage/Tools/my355/Samba.pak \
-			/storage/Tools/my355/Syncthing.pak \
-			/storage/Tools/my355/GPU.pak \
-			/storage/Tools/my355/Display.pak \
-			/storage/Tools/my355/Backup.pak
-		: > "$stamp"
-	fi
-	if [ -d "$seed/paks/Tools" ]; then
-		for src in "$seed/paks/Tools"/*.pak; do
-			[ -d "$src" ] || continue
-			base=$(basename "$src")
-			case "$base" in
-				Wi-Fi.pak|Bluetooth.pak|SSH.pak|Samba.pak|Syncthing.pak|GPU.pak|Display.pak|Backup.pak) continue ;;
-			esac
-			bind_dir "$src" "/storage/Tools/my355/$base"
-		done
-	fi
-	boot_mark session-tools
 }
-bind_tools_late &
+
+ensure_splash() {
+	if [ -f /tmp/zlyme-splash.pid ]; then
+		_sp=$(cat /tmp/zlyme-splash.pid)
+		if [ -n "$_sp" ] && kill -0 "$_sp" 2>/dev/null; then
+			return 0
+		fi
+	fi
+	if pidof zlyme-splash >/dev/null 2>&1; then
+		_sp=$(pidof zlyme-splash)
+		echo "${_sp%% *}" > /tmp/zlyme-splash.pid
+		return 0
+	fi
+	if [ -x /usr/sbin/zlyme-splash ]; then
+		still=/usr/share/zlyme/splash.rgb565
+		anim=/usr/share/zlyme/splash.anim
+		[ -f "$still" ] || still=/splash.rgb565
+		[ -f "$anim" ] || anim=/splash.anim
+		/usr/sbin/zlyme-splash "$still" "$anim" >/dev/null 2>&1 &
+		echo $! > /tmp/zlyme-splash.pid
+	fi
+}
+
+stop_splash() {
+	pid=""
+	[ -f /tmp/zlyme-splash.pid ] && pid=$(cat /tmp/zlyme-splash.pid)
+	rm -f /tmp/zlyme-splash.pid
+	if [ -n "$pid" ]; then
+		kill "$pid" 2>/dev/null || true
+		wait "$pid" 2>/dev/null || true
+	fi
+	killall zlyme-splash 2>/dev/null || true
+}
+
+# busybox here has no timeout applet.
+run_timed() {
+	secs=$1
+	shift
+	"$@" >/dev/null 2>&1 &
+	_tp=$!
+	_n=0
+	_max=$((secs * 10))
+	[ "$_max" -lt 1 ] && _max=10
+	while [ "$_n" -lt "$_max" ]; do
+		kill -0 "$_tp" 2>/dev/null || return 0
+		sleep 0.1
+		_n=$((_n + 1))
+	done
+	kill "$_tp" 2>/dev/null || true
+	wait "$_tp" 2>/dev/null || true
+	return 0
+}
+
+run_timed_to() {
+	secs=$1
+	out=$2
+	shift 2
+	"$@" > "$out" 2>/dev/null &
+	_tp=$!
+	_n=0
+	_max=$((secs * 10))
+	[ "$_max" -lt 1 ] && _max=10
+	while [ "$_n" -lt "$_max" ]; do
+		kill -0 "$_tp" 2>/dev/null || return 0
+		sleep 0.1
+		_n=$((_n + 1))
+	done
+	kill "$_tp" 2>/dev/null || true
+	wait "$_tp" 2>/dev/null || true
+	return 0
+}
+
+bt_stop_scan() {
+	run_timed 2 dbus-send --system --type=method_call --dest=org.bluez \
+		/org/bluez/hci0 org.bluez.Adapter1.StopDiscovery
+	run_timed 2 bluetoothctl scan off
+	pkill -f 'bluetoothctl scan' 2>/dev/null || true
+}
+
+# setsid so MENU+Start can SIGTERM the pak group. Arm the helper before
+# any BlueZ work so a hung bluetoothctl cannot leave the panel stuck.
+run_pak_cmd() {
+	skip_bt=0
+	case "$1" in
+		*'/Tools/'*|*'settings.elf'*) skip_bt=1 ;;
+	esac
+	setsid sh -c 'eval "$1"' sh "$1" >> "$LOGS_PATH/next.txt" 2>&1 &
+	_pak_pid=$!
+	_hk=
+	if [ -x /usr/sbin/zlyme-pak-hotkey ]; then
+		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$LOGS_PATH/next.txt" 2>&1 &
+		_hk=$!
+	fi
+	if [ "$skip_bt" = 0 ]; then
+		bt_stop_scan
+		sleep 0.3
+		modprobe hid-nintendo >/dev/null 2>&1 || true
+		# bluetoothctl connect on an already-live HID drops
+		# the 8733bu link (status 0x04). Skip pads NextUI is using.
+		run_timed_to 3 /tmp/zlyme-bt-paired bluetoothctl devices Paired
+		while read _ mac rest; do
+			[ -n "$mac" ] || continue
+			_inf=/tmp/zlyme-bt-$mac
+			run_timed_to 2 "$_inf" bluetoothctl info "$mac"
+			grep -q 'UUID: Human Interface Device' "$_inf" 2>/dev/null || continue
+			grep -q 'Connected: yes' "$_inf" 2>/dev/null && continue
+			run_timed 2 bluetoothctl connect "$mac"
+			rm -f "$_inf"
+		done < /tmp/zlyme-bt-paired
+		rm -f /tmp/zlyme-bt-paired
+		sleep 0.6
+	fi
+	wait "$_pak_pid"
+	st=$?
+	if [ -n "$_hk" ]; then
+		kill "$_hk" 2>/dev/null || true
+		wait "$_hk" 2>/dev/null || true
+	fi
+}
+
+# Keep the fb0 spinner up through first-setup copy. Do not exec
+# nextui.elf until stock Tools+Emus are on the card (same idea as
+# S18 waiting out OTA). A leftover lock means the last copy died
+# mid-way; overwrite those names and finish before the list.
+ensure_splash
+boot_mark session-copy
+if stock_paks_ready; then
+	apply_card_defaults
+	boot_mark session-paks
+else
+	: > "$lock"
+	sync
+	copy_stock_paks "$seed/paks/Emus" /storage/Emus/my355
+	copy_stock_paks "$seed/paks/Tools" /storage/Tools/my355
+	apply_card_defaults
+	if [ -n "$img_ver" ]; then
+		printf '%s\n' "$img_ver" > "$stamp"
+		card_ver=$img_ver
+	fi
+	rm -f /storage/.config/zlyme/factory-reset
+	rm -f "$lock"
+	sync
+	boot_mark session-paks
+	if ! stock_paks_ready; then
+		boot_mark session-copy-fail
+		if [ ! -f /storage/.config/zlyme/paks-copy-reboot ]; then
+			: > /storage/.config/zlyme/paks-copy-reboot
+			sync
+			if [ -x /usr/sbin/zlyme-halt ]; then
+				exec /usr/sbin/zlyme-halt reboot
+			fi
+			reboot -f
+		fi
+	else
+		rm -f /storage/.config/zlyme/paks-copy-reboot
+	fi
+fi
+
+rm -f /tmp/poweroff /tmp/reboot
+
+EXEC_PATH=/tmp/nextui_exec
+NEXT_PATH=/tmp/next
+touch "$EXEC_PATH"
+cd /storage
 
 boot_loop=1
 while [ -f "$EXEC_PATH" ]; do
 	# Tools/paks write /tmp/last.txt. Restoring into a .pak shows launch.sh
 	# and has crashed NextUI after Settings. Stay on the card root.
-	# getFile() used to keep a trailing newline; loadLast() then walked
-	# "/storage\n" until strrchr was NULL. nextui.c now strips it, and
-	# we still never write one.
 	if [ -f /tmp/last.txt ]; then
 		last=$(cat /tmp/last.txt)
 		case "$last" in
@@ -322,20 +385,24 @@ while [ -f "$EXEC_PATH" ]; do
 		esac
 		printf '%s' "$last" > /tmp/last.txt
 	fi
-	# First exec: nothing is running yet. killall walks /proc; zlyme-audio
-	# forks a script. Both belong after a pak, not before the list.
 	if [ "$boot_loop" = 0 ]; then
 		killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
 	fi
+	if [ "$boot_loop" = 1 ]; then
+		export ZLYME_BOOT_SPLASH=1
+		ensure_splash
+	else
+		unset ZLYME_BOOT_SPLASH
+		stop_splash
+	fi
 	boot_loop=0
 	boot_mark session-nextui
-	# Logs on ZLYME used to be every LOG_info during Menu_init.
+	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
+	# takes the panel. Do not replay the gif in SDL.
 	nextui.elf >> /tmp/nextui.txt 2>&1
-	# A pak launch is not a shutdown. SDL_QUIT used to touch /tmp/poweroff
-	# on SIGTERM; if /tmp/next is set, run that instead.
 	if [ -f "$NEXT_PATH" ]; then
 		rm -f /tmp/poweroff /tmp/reboot
 		cmd=$(cat "$NEXT_PATH")
@@ -343,38 +410,10 @@ while [ -f "$EXEC_PATH" ]; do
 		echo "RUN $cmd" >> "$LOGS_PATH/next.txt"
 		# DRM master from nextui.elf is not always gone on the next line.
 		sleep 0.4
-		# 8733bu drops HID if discovery is still running (Settings
-		# used to leave bluetoothctl scan on). Spruce/ROCKNIX
-		# stop scan, then reconnect paired pads before the emu.
-		dbus-send --system --type=method_call --dest=org.bluez \
-			/org/bluez/hci0 org.bluez.Adapter1.StopDiscovery \
-			>/dev/null 2>&1 || true
-		bluetoothctl scan off >/dev/null 2>&1 || true
-		pkill -f 'bluetoothctl scan' 2>/dev/null || true
-		# Tools do not need HID reconnect. The 0.9 s plus
-		# bluetoothctl info used to sit in front of Settings.
-		case "$cmd" in
-			*'/Tools/'*|*'settings.elf'*) ;;
-			*)
-				sleep 0.3
-				modprobe hid-nintendo >/dev/null 2>&1 || true
-				# bluetoothctl connect on an already-live HID drops
-				# the 8733bu link (status 0x04). Skip pads NextUI is using.
-				bluetoothctl devices Paired 2>/dev/null | while read _ mac rest; do
-					[ -n "$mac" ] || continue
-					bluetoothctl info "$mac" 2>/dev/null | grep -q 'UUID: Human Interface Device' || continue
-					bluetoothctl info "$mac" 2>/dev/null | grep -q 'Connected: yes' && continue
-					bluetoothctl connect "$mac" >/dev/null 2>&1 || true
-				done
-				sleep 0.6
-				;;
-		esac
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
 		run_pak_cmd "$cmd"
-		# A2DP connect/disconnect: zlyme-btsink kills the emu and
-		# asks us to open it again with the new ZLYME_SINK.
 		while [ -f /tmp/zlyme-sink-reload ]; do
 			rm -f /tmp/zlyme-sink-reload
 			if command -v zlyme-audio >/dev/null 2>&1; then
@@ -390,7 +429,6 @@ while [ -f "$EXEC_PATH" ]; do
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 				;;
 		esac
-		# Splore's pad grab must not outlive the pak.
 		killall -9 pico8-splore-pad pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
 		sleep 0.2
 		continue

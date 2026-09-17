@@ -6,11 +6,11 @@ The launch.sh follows NextUI's emu-pak layout
 (https://github.com/LoveRetro/NextUI), a fork of MinUI
 (https://github.com/shauninman/MinUI).
 
-Required Notice: Copyright LoveRetro/NextUI contributors.
-Required Notice: Originally MinUI by Shaun Inman.
+Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/LoveRetro/NextUI).
+Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
 
 Original MinUI has no formal SPDX license. See
-package/system/nextui/src/NOTICE and paks/MinUI.pak/NOTICE.
+package/system/nextui/src/NOTICE.
 Do not treat this file as granting MIT or GPL for Shaun Inman's original work.
 
 This pak is licensed under PolyForm Noncommercial 1.0.0 (NextUI):

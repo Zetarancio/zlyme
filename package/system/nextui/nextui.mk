@@ -113,9 +113,6 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
-	cp -a $(NEXTUI_PKGDIR)/paks/MinUI.pak $(TARGET_DIR)/usr/share/nextui/paks/
-	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/system.cfg \
-		$(TARGET_DIR)/usr/share/nextui/system.cfg
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-dirs.txt \
 		$(TARGET_DIR)/usr/share/nextui/rom-dirs.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-exts.txt \
@@ -134,6 +131,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/NOTICE
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/CREDITS \
 		$(TARGET_DIR)/usr/share/nextui/CREDITS
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/../../../scripts/fetch-test-roms.sh \
+		$(TARGET_DIR)/usr/sbin/fetch-test-roms
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt
 	date -u +%Y-%m-%d > $(TARGET_DIR)/usr/share/nextui/build-date.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/wifi_init.sh \
@@ -150,23 +149,21 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/bin/show.elf
 	$(INSTALL) -D -m 0755 $(@D)/nextval.elf \
 		$(TARGET_DIR)/usr/share/nextui/bin/nextval.elf
-	if [ -f /usr/share/zoneinfo/zone.tab ]; then \
-		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
-			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
-		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
-			$(TARGET_DIR)/usr/share/zoneinfo/zone.tab; \
-	elif [ -f $(NEXTUI_PKGDIR)/zlyme/zone.tab ]; then \
+	if [ -f $(NEXTUI_PKGDIR)/zlyme/zone.tab ]; then \
 		$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zone.tab \
 			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
 		$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zone.tab \
 			$(TARGET_DIR)/usr/share/zoneinfo/zone.tab; \
-	fi
-	if [ -d /usr/share/zoneinfo ]; then \
-		mkdir -p $(TARGET_DIR)/usr/share/zoneinfo; \
-		cp -a /usr/share/zoneinfo/. $(TARGET_DIR)/usr/share/zoneinfo/; \
+	elif [ -f /usr/share/zoneinfo/zone.tab ]; then \
+		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
+			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
+		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
+			$(TARGET_DIR)/usr/share/zoneinfo/zone.tab; \
 	fi
 	rm -rf $(TARGET_DIR)/usr/share/minui
 	ln -sfn nextui $(TARGET_DIR)/usr/share/minui
+	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/MinUI.pak
+	rm -f $(TARGET_DIR)/usr/share/nextui/system.cfg
 endef
 
 define NEXTUI_INSTALL_STAGING_CMDS

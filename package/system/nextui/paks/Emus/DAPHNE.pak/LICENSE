@@ -1,23 +1,19 @@
-MinUI.pak
-=========
+This NextUI emulator pak contains launch.sh only. It execs /usr/bin/ra-run
+(RetroArch). RetroArch and each libretro core keep their own licenses under
+package/emulators/. This file is the license for this pak's launch.sh.
 
-This pak is NextUI's launcher stub: exec /usr/sbin/minui-session.
-The binary it starts is NextUI (package/system/nextui), not a
-separate MinUI tree.
-
-Required Notice: NextUI is a fork of MinUI by Shaun Inman
+The launch.sh follows NextUI's emu-pak layout
+(https://github.com/LoveRetro/NextUI), a fork of MinUI
 (https://github.com/shauninman/MinUI).
-Required Notice: Licensed under PolyForm Noncommercial 1.0.0.
 
-Original MinUI (https://github.com/shauninman/MinUI) has no formal
-SPDX license. Shaun's README allowed forking and learning and did
-not invite commercial use. Inventing MIT/GPL for that code would be
-wrong. See NOTICE in this directory (copied from NextUI's NOTICE).
+Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/LoveRetro/NextUI).
+Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
 
-The terms below are NextUI's PolyForm Noncommercial 1.0.0. They
-apply to this pak and to the NextUI session it launches. They are
-not a relicensing of Shaun Inman's original MinUI beyond what
-NextUI already documented.
+Original MinUI has no formal SPDX license. See
+package/system/nextui/src/NOTICE.
+Do not treat this file as granting MIT or GPL for Shaun Inman's original work.
+
+This pak is licensed under PolyForm Noncommercial 1.0.0 (NextUI):
 
 # PolyForm Noncommercial License 1.0.0
 

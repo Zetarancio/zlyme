@@ -167,8 +167,6 @@ static void do_mem_sleep(void)
 	system("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 	if (access("/usr/share/nextui/bin/suspend", X_OK) == 0)
 		system("/usr/share/nextui/bin/suspend");
-	else if (access("/storage/.system/my355/bin/suspend", X_OK) == 0)
-		system("/storage/.system/my355/bin/suspend");
 	else
 		system("echo mem > /sys/power/state");
 	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");

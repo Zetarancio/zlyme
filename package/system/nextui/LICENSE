@@ -1,11 +1,13 @@
 NextUI (LoveRetro), vendored for Zlyme
 ======================================
 
-Required Notice: Fork of MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
-Required Notice: PolyForm Noncommercial 1.0.0.
+Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/LoveRetro/NextUI).
+Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
+Required Notice: Licensed under PolyForm Noncommercial 1.0.0.
 
 Original MinUI has no formal SPDX license. See src/NOTICE.
-The complete NextUI terms are also in src/LICENSE.
+The complete NextUI terms are also in src/LICENSE. This file must
+stay PolyForm Noncommercial 1.0.0. Do not relicense NextUI as MIT.
 
 # PolyForm Noncommercial License 1.0.0
 

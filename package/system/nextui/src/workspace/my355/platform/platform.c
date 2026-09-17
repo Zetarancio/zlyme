@@ -628,7 +628,7 @@ int PLAT_setDateTime(int y, int m, int d, int h, int i, int s) {
 #define MAX_LINE_LENGTH 200
 #define ZONE_PATH "/usr/share/zoneinfo"
 #define ZONE_TAB_PATH ZONE_PATH "/zone.tab"
-#define ZONE_TAB_FALLBACK "/storage/.system/zoneinfo/zone.tab"
+#define ZONE_TAB_FALLBACK "/usr/share/nextui/zone.tab"
 #define CUR_ZONE_PATH "/storage/.config/nextui/shared/localtime"
 
 static char cached_timezones[MAX_TIMEZONES][MAX_TZ_LENGTH];

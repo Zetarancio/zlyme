@@ -30,7 +30,7 @@ chmod +x "$PAK_DIR/bin/$PLATFORM/minui-list" 2>/dev/null || true
 chmod +x "$PAK_DIR/bin/$PLATFORM/minui-presenter" 2>/dev/null || true
 chmod +x "$PAK_DIR/bin/$PLATFORM/gm" 2>/dev/null || true
 
-export PATH="$PAK_DIR/bin/$architecture:$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin:$PATH"
+export PATH="/usr/bin:$PAK_DIR/bin/$architecture:$PAK_DIR/bin/$PLATFORM:$PAK_DIR/bin:$PATH"
 # System SDL2 / libmsettings first. Bundled libz can break minui-list.
 export LD_LIBRARY_PATH="/usr/lib:${SYSTEM_PATH:-/usr}/lib:$PAK_DIR/lib/$architecture:$PAK_DIR/lib/$PLATFORM:$PAK_DIR/lib:${LD_LIBRARY_PATH:-}"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"

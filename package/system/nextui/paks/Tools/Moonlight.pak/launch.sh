@@ -38,6 +38,14 @@ if [ ! -e "./$APP_BIN" ]; then
 	command -v show.elf >/dev/null 2>&1 && show.elf "Moonlight UI missing" 3
 	exit 1
 fi
+
+# Prebuilt Apostrophe still looks at ./font.ttf and .system, not /usr/share/nextui.
+# Tools live on exFAT, so a symlink is not allowed — copy the file.
+if [ -f /usr/share/nextui/res/font1.ttf ]; then
+	mkdir -p "$PAK_DIR/res"
+	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/font.ttf"
+	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/res/font.ttf"
+fi
 if [ ! -e /usr/bin/moonlight ]; then
 	echo "missing /usr/bin/moonlight"
 	command -v show.elf >/dev/null 2>&1 && show.elf "Moonlight is not installed" 3

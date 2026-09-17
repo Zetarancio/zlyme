@@ -48,7 +48,11 @@ control that component. In particular:
 
   MinUI (origin)  No formal SPDX license. NextUI's NOTICE records that.
                   package/system/nextui/src/NOTICE
-                  package/system/nextui/paks/MinUI.pak/NOTICE
+
+  minui-list /    MIT, Jose Diaz-Gonzalez. Binaries on this image
+  minui-presenter also contain NextUI objects (PolyForm NC).
+                  package/system/minui-list/LICENSE
+                  package/system/minui-presenter/LICENSE
 
   RetroArch, libretro cores, emulators, vtree, PortMaster, Syncthing,
   and the rest: see the LICENSE next to each package and pak.

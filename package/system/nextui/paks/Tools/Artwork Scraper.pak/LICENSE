@@ -1,3 +1,25 @@
+Artwork Scraper
+===============
+
+This pak is minui-artwork-scraper-pak by Jose Diaz-Gonzalez (MIT).
+https://github.com/josegonzalez/minui-artwork-scraper-pak
+
+minui-list and minui-presenter in this pak are also MIT,
+Copyright (c) 2025 Jose Diaz-Gonzalez.
+https://github.com/josegonzalez/minui-list
+https://github.com/josegonzalez/minui-presenter
+
+On this image those two binaries are linked against NextUI
+(LoveRetro), PolyForm Noncommercial 1.0.0, a fork of MinUI by
+Shaun Inman. NextUI is not MIT.
+
+Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/LoveRetro/NextUI).
+Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
+Required Notice: Licensed under PolyForm Noncommercial 1.0.0.
+https://polyformproject.org/licenses/noncommercial/1.0.0
+
+See /usr/share/nextui/LICENSE and package/system/minui-list/LICENSE.
+
 MIT License
 
 Copyright (c) 2025 Jose Diaz-Gonzalez
