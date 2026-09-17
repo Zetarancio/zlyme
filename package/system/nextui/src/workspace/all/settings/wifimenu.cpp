@@ -29,8 +29,8 @@ Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fix
     // best effort layout based on the platform defines, user should really call performLayout manually
     MenuList::performLayout((SDL_Rect){0, 0, FIXED_WIDTH, FIXED_HEIGHT});
     layout_called = false;
-
-    worker = std::thread{&Menu::updater, this};
+    /* Scan from handleInput. Constructing Settings used to start a
+     * wpa scan on the main menu (FAIL-BUSY every two seconds). */
 }
 
 Menu::~Menu()
@@ -42,6 +42,10 @@ Menu::~Menu()
 
 InputReactionHint Menu::handleInput(int &dirty, int &quit)
 {
+    if (!workerStarted) {
+        workerStarted = true;
+        worker = std::thread{&Menu::updater, this};
+    }
     auto ret = MenuList::handleInput(dirty, quit);
     if (selectionDirty)
     {

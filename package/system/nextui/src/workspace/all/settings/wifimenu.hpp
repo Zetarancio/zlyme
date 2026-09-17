@@ -17,6 +17,7 @@ namespace Wifi
         std::thread worker;
         bool quit = false;
         bool selectionDirty = false;
+        bool workerStarted = false;
 
     public:
         Menu(const int &globalQuit, int &globalDirty);

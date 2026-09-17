@@ -40,13 +40,10 @@ Menu::Menu(const int &globalQuit, int &globalDirty) : MenuList(MenuItemType::Fix
     layout_called = false;
 
 #ifdef HAS_BTAGENT
-    // Only NoInputNoOutput for now, but this needs to interact with the UI thread if we 
-    // ever want to show a PIN or passkey
-    pairingAgent = new PairingAgent();
-    pairingAgent->startPairingWindow();
+    pairingAgent = nullptr;
 #endif
-
-    worker = std::thread{&Menu::updater, this};
+    /* Pairing + discovery from handleInput. Settings used to RegisterAgent
+     * and set Discoverable on the main menu (g_dbus timeout -1). */
 }
 
 Menu::~Menu()
@@ -58,13 +55,24 @@ Menu::~Menu()
     BT_discovery(false);
 
 #ifdef HAS_BTAGENT
-    pairingAgent->stopPairingWindow();
-    delete pairingAgent;
+    if (pairingAgent) {
+        pairingAgent->stopPairingWindow();
+        delete pairingAgent;
+        pairingAgent = nullptr;
+    }
 #endif
 }
 
 InputReactionHint Menu::handleInput(int &dirty, int &quit)
 {
+    if (!workerStarted) {
+        workerStarted = true;
+#ifdef HAS_BTAGENT
+        pairingAgent = new PairingAgent();
+        pairingAgent->startPairingWindow();
+#endif
+        worker = std::thread{&Menu::updater, this};
+    }
     auto ret = MenuList::handleInput(dirty, quit);
     if (selectionDirty)
     {

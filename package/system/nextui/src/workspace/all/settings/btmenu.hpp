@@ -21,6 +21,7 @@ namespace Bluetooth
         std::thread worker;
         bool quit = false;
         bool selectionDirty = false;
+        bool workerStarted = false;
         
         PairingAgent* pairingAgent = nullptr;
     public:
