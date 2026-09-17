@@ -101,7 +101,7 @@ InputReactionHint Zlyme_cycleHdmi(AbstractMenuItem &item)
 		if (out)
 			out << next;
 	}
-	MenuList::showOverlay(std::string("HDMI ") + next, OverlayDismissMode::DismissOnA);
+	MenuList::showOverlay(std::string("Display resolution ") + next, OverlayDismissMode::DismissOnA);
 	return NoOp;
 }
 

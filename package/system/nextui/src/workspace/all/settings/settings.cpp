@@ -582,19 +582,19 @@ int main(int argc, char *argv[])
         }
         Zlyme_appendDisplayItems(displayItems);
         displayItems.push_back(
-            new MenuItem{ListItemType::Button, "HDMI mode", "Cycle an attached HDMI connector.", Zlyme_cycleHdmi});
-        displayItems.push_back(
             new MenuItem{ListItemType::Generic, "Screen timeout", "Period of inactivity before screen turns off (0-600s)", screen_timeout_secs, screen_timeout_labels, []() -> std::any
             { return CFG_getScreenTimeoutSecs(); }, [](const std::any &value)
             { CFG_setScreenTimeoutSecs(std::any_cast<uint32_t>(value)); },
             []() { CFG_setScreenTimeoutSecs(CFG_DEFAULT_SCREENTIMEOUTSECS);}});
+        displayItems.push_back(
+            new MenuItem{ListItemType::Button, "Display resolution", "Cycle an attached HDMI connector.", Zlyme_cycleHdmi});
         displayItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
 
         auto displayMenu = new MenuList(MenuItemType::Fixed, "Display", displayItems);
 
         std::vector<AbstractMenuItem*> systemItems = {
-            new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI, screen timeout", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
+            new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, screen timeout, display resolution", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
             new MenuItem{ListItemType::Generic, "Volume", "Speaker volume",
             {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20},
             {"Muted", "5%","10%","15%","20%","25%","30%","35%","40%","45%","50%","55%","60%","65%","70%","75%","80%","85%","90%","95%","100%"},
@@ -1031,7 +1031,7 @@ int main(int argc, char *argv[])
 
         auto aboutMenu = new MenuList(MenuItemType::Fixed, "About",
         {
-            new StaticMenuItem{ListItemType::Generic, "NextUIzlyme", "Frontend pin from the image.",
+            new StaticMenuItem{ListItemType::Generic, "version", "Frontend pin from the image.",
             []() -> std::any { return nextui_short_version(); }},
             new StaticMenuItem{ListItemType::Generic, "Hardware", "Board name from the platform layer.",
             []() -> std::any {
@@ -1056,7 +1056,7 @@ int main(int argc, char *argv[])
             }},
             new StaticMenuItem{ListItemType::Generic, "Kernel", "uname -r",
             []() -> std::any { return kernel_version(); }},
-            new StaticMenuItem{ListItemType::Generic, "SSH", "",
+            new StaticMenuItem{ListItemType::Generic, "SSH user/pss", "",
             []() -> std::any { return std::string("root / (empty)"); }},
             new StaticMenuItem{ListItemType::Generic, "IP", "wlan0 IPv4 when associated.",
             []() -> std::any { return wlan_ip(); }},
