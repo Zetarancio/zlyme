@@ -22,10 +22,11 @@ glyphs) with the new orange:
 color2 and color6 must not share a hex: hardware-group icons blit color6
 on a color2 pill.
 
-SVGs in this folder are the source pack (vector traces). Regenerated bitmaps:
+The looping lockup is `zlyme_slime_loop.gif` (README; paletted, 640×320).
+Splash / charging / NextUI background are a mid-loop frame max-fitted
+and centered on 640×480 `#050608` (not the old upper-third 0.72 lockup).
 
-- `zlyme-horizontal-exact.svg` / `Logo.png` → `../background.png` and
-  `../charging-640-480.png` (640×480, vertical center at 160px), and
+- `zlyme_slime_loop.gif` → `../background.png`, `../charging-640-480.png`,
   initramfs `splash.rgb565`
 - `Z.png` / `zlyme_beaker-exact.svg` → `../logo.png` and PortMaster
   `zlyme-theme/logo.png` (512×512)

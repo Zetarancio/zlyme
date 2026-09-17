@@ -108,7 +108,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
-	rm -f $(TARGET_DIR)/usr/share/nextui/res/branding/*.svg
+	rm -f $(TARGET_DIR)/usr/share/nextui/res/branding/*.svg \
+		$(TARGET_DIR)/usr/share/nextui/res/branding/*.gif
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/

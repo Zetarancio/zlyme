@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="package/system/nextui/res/branding/zlyme-horizontal-exact.svg" width="70%" alt="Zlyme" />
+  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" />
 </p>
 
-**Low latency. High viscosity.**
+<p align="center"><strong>Low latency. High viscosity.</strong></p>
 
 Zlyme is a custom OS for the **Miyoo Flip** based on buildroot, running mainline kernel and latest software available. It's engineered to ooze, cultured for speed. Hardware facts come from this device, emulator recipes are harvested where they already exist. The set is curated so it fits the Flip, instead of shipping a hundred cores nobody on this board will use. 
 

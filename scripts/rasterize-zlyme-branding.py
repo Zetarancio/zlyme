@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Rasterize branding onto 640x480 #050608 (and a 512x512 logo).
 
-Prefers the PNGs in package/system/nextui/res/branding/ (Logo.png =
-wordmark, Z.png = mark). Falls back to the SVGs via rsvg-convert.
-Near-black pixels are treated as transparent so the #050608 panel fill
-shows through.
+Splash / charging / NextUI background use the slime loop
+(`zlyme_slime_loop.gif`, a mid-loop frame) fitted and centered on the
+panel. Z.png is still the 512 mark. Near-black knockout is only for
+the still PNGs / SVGs, not the loop (that file already has real alpha).
 """
 from __future__ import annotations
 
@@ -22,6 +22,11 @@ LOGO = 512
 SCALE_MUL = 0.72
 Y_CENTER_FRAC = 1.0 / 3.0
 BLACK_CUTOFF = 24
+LOOP_NAMES = (
+    "zlyme_slime_loop.gif",
+    "zlyme_slime_loop.png",
+    "zlyme_slime_loop.webp",
+)
 
 
 def rsvg_png(svg: Path, dest: Path, width: int) -> None:
@@ -42,6 +47,18 @@ def knock_out_black(src: Image.Image) -> Image.Image:
             if r <= BLACK_CUTOFF and g <= BLACK_CUTOFF and b <= BLACK_CUTOFF:
                 pix[x, y] = (r, g, b, 0)
     return im
+
+
+def load_loop_frame(branding: Path) -> Optional[Image.Image]:
+    for name in LOOP_NAMES:
+        path = branding / name
+        if not path.is_file():
+            continue
+        im = Image.open(path)
+        n = getattr(im, "n_frames", 1)
+        im.seek(max(0, (n // 2) if n > 1 else 0))
+        return im.convert("RGBA")
+    return None
 
 
 def load_art(branding: Path, names: list[str], svg_width: int) -> Image.Image:
@@ -125,18 +142,22 @@ def main() -> None:
         stale.unlink()
         print(f"removed {stale}")
 
-    wordmark = load_art(
-        branding,
-        ["Logo.png", "zlyme-horizontal-exact.svg", "zlyme-horizontal-lockup.svg"],
-        800,
-    )
     mark = load_art(
         branding,
         ["Z.png", "zlyme_beaker-exact.svg", "zlyme-beaker-exact.svg"],
         512,
     )
-
-    bg = place_on_canvas(wordmark, W, H)
+    loop = load_loop_frame(branding)
+    if loop is not None:
+        # Max-fit, true center — the loading screen is the 640x480 panel.
+        bg = place_on_canvas(loop, W, H, scale_mul=1.0, y_center_frac=None)
+    else:
+        wordmark = load_art(
+            branding,
+            ["Logo.png", "zlyme-horizontal-exact.svg", "zlyme-horizontal-lockup.svg"],
+            800,
+        )
+        bg = place_on_canvas(wordmark, W, H)
     logo = place_on_canvas(mark, LOGO, LOGO, y_center_frac=None, scale_mul=SCALE_MUL)
 
     write_png(bg, res / "background.png")
