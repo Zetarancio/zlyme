@@ -53,11 +53,11 @@ The Miyoo Flip wiki Start+Vol brightness combo is not this device.
 - MENU tap = RetroArch RGUI; standalones keep their own menu
 - No color-temp shortcut (the Flip has no panel color-temperature sysfs; hue is not white-point)
 
-Speaker vs jack is automatic (`flip-jackd`). Bluetooth audio follows the headset connect. `zlyme-audio` stays on the CLI for debug.
+Speaker vs jack is automatic (`zlyme-jackd`). Bluetooth audio follows the headset connect. `zlyme-audio` stays on the CLI for debug.
 
 ## Install
 
-GitHub Actions builds the image on push to `main`. A cold image is several sequential jobs because hosted runners cap each job at six hours; later runs reuse ccache. A successful run publishes a GitHub Release (`zlyme-<run_id>`, also marked latest) with `zlyme.img` and the OTA tar. Update.pak pulls `/releases/latest`. The repo is private, so put a PAT with `repo` scope in `/storage/.config/github-token` on the device (one line, no quotes). Do not bake a token into the image.
+GitHub Actions does **not** build on push. Open the repo → **Actions** → **Build** → **Run workflow** (branch `main`). Hosted runners cap each job at six hours, so a cold image is several sequential stages; later runs reuse ccache. A successful run publishes a GitHub Release tagged `zlyme-<run_id>` (also marked latest) with `zlyme.img` and the OTA tar. Tools → **Update** hits `/releases/latest`, not Actions artifacts. The repo is private, so put a PAT with `repo` scope in `/storage/.config/github-token` on the device (one line, no quotes). A public repo would not need the PAT. Do not bake a token into the image. There is no release until the first workflow finishes, so Update will say so instead of hanging.
 
 The Flip will not boot an SD OS until you change how it starts. Without one of the steps below, it keeps booting stock from internal storage and ignores the card.
 
