@@ -1,5 +1,7 @@
 #!/bin/sh
 # Apply a queued OS tar from /storage/.update *before* NextUI.
+# rcS waits for this (does not fork it) so the list never comes up
+# while the tar is still copying; success reboots and does not return.
 #
 # Drop /storage/.update/zlyme-my355-update.tar and reboot. This script
 # extracts to /storage/.update/pending and copies Image/dtb/overlays
@@ -20,7 +22,9 @@ start() {
 
 	if "$upd" queued >/dev/null 2>&1; then
 		printf "Zlyme update: "
+		touch /tmp/zlyme-ota
 		"$upd" boot-apply
+		rm -f /tmp/zlyme-ota
 		# Success reboots and does not return. Failure leaves
 		# the old squashfs in place so boot can continue.
 		echo "FAIL"

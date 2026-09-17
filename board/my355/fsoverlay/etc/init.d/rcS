@@ -35,10 +35,11 @@ for i in /etc/init.d/S??*; do
 		S90*) continue ;;
 	esac
 	is_class_a "$base" || continue
-	# Merge SD2 / check OTA while GPU/ALSA/keylidmon/NextUI run. Do not
-	# wait: a hung blkid/mergerfs left the splash up on Etcher.
+	# Merge SD2 in the background: a hung blkid/mergerfs left the
+	# splash up on Etcher. OTA is not forked — extracting the tar
+	# then rebooting after NextUI is on screen yanked the list.
 	case "$base" in
-		S17sd2|S18zlymeupdate)
+		S17sd2)
 			boot_mark "fork $base"
 			"$i" start &
 			continue

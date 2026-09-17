@@ -9,6 +9,12 @@ start() {
 		echo "NextUI: disabled"
 		return 0
 	fi
+	# OTA extracts then reboots. rcS waits for S18; this is a belt
+	# if something else calls S28 while boot-apply is still running.
+	if [ -f /tmp/zlyme-ota ]; then
+		echo "NextUI: deferred (OTA)"
+		return 0
+	fi
 	if [ ! -x /usr/sbin/nextui-session ] && [ ! -x /usr/sbin/minui-session ]; then
 		echo "NextUI: missing"
 		return 0
