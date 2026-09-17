@@ -858,6 +858,11 @@ static Array* getQuickEntries(void) {
 static Array* getQuickToggles(void) {
 	Array *entries = Array_new();
 
+	if(WIFI_supported())
+		Array_push(entries, Entry_new("Wifi", ENTRY_DIP));
+	if(BT_supported())
+		Array_push(entries, Entry_new("Bluetooth", ENTRY_DIP));
+
 	Entry *settings = entryFromPakName("Settings");
 	if (settings)
 		Array_push(entries, settings);
@@ -866,11 +871,6 @@ static Array* getQuickToggles(void) {
 	if (store)
 		Array_push(entries, store);
 
-	// quick actions
-	if(WIFI_supported())
-		Array_push(entries, Entry_new("Wifi", ENTRY_DIP));
-	if(BT_supported())
-		Array_push(entries, Entry_new("Bluetooth", ENTRY_DIP));
 	if(PLAT_supportsDeepSleep() && !simple_mode)
 		Array_push(entries, Entry_new("Sleep", ENTRY_DIP));
 	Array_push(entries, Entry_new("Reboot", ENTRY_DIP));
@@ -1256,15 +1256,8 @@ static int autoResume(void) {
 
 	if (!exists(emu_path)) return 0;
 
-	// putFile(LAST_PATH, FAUX_RECENT_PATH); // saveLast() will crash here because top is NULL
-
-	char act[256];
-	sprintf(act, "gametimectl.elf start '%s'", escapeSingleQuotes(sd_path));
-	system(act);
-
 	char cmd[256];
-	// dont escape sd_path again because it was already escaped for gametimectl and function modifies input str aswell
-	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), sd_path);
+	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), escapeSingleQuotes(sd_path));
 	putInt(RESUME_SLOT_PATH, AUTO_RESUME_SLOT);
 	queueNext(cmd);
 	return 1;
@@ -1375,17 +1368,13 @@ static void openRom(char* path, char* last) {
 	addRecent(recent_path, recent_alias); // yiiikes
 	saveLast(last==NULL ? sd_path : last);
 
-	// Libretro Disk Control needs the playlist. minarch is not built, so
-	// pass the .m3u when one exists. Resume can still pin a specific disc.
+	// Libretro Disk Control needs the playlist, so pass the .m3u
+	// when one exists. Resume can still pin a specific disc.
 	char launch_rom[256];
 	strcpy(launch_rom, (has_m3u && !resume_disc) ? m3u_path : sd_path);
 
-	char act[256];
-	sprintf(act, "gametimectl.elf start '%s'", escapeSingleQuotes(launch_rom));
-	system(act);
 	char cmd[256];
-	// dont escape launch_rom again because it was already escaped for gametimectl
-	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), launch_rom);
+	sprintf(cmd, "'%s' '%s'", escapeSingleQuotes(emu_path), escapeSingleQuotes(launch_rom));
 	queueNext(cmd);
 }
 

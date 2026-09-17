@@ -580,29 +580,48 @@ int main(int argc, char *argv[])
                 { SetDisplayCalBlueGain(std::any_cast<int>(value)); },
                 [defaultDisplayCal]() { SetDisplayCalBlueGain(defaultDisplayCal.blue_gain); }});
         }
+        Zlyme_appendDisplayItems(displayItems);
         displayItems.push_back(
             new MenuItem{ListItemType::Button, "HDMI mode", "Cycle an attached HDMI connector.", Zlyme_cycleHdmi});
-        Zlyme_appendDisplayItems(displayItems);
+        displayItems.push_back(
+            new MenuItem{ListItemType::Generic, "Screen timeout", "Period of inactivity before screen turns off (0-600s)", screen_timeout_secs, screen_timeout_labels, []() -> std::any
+            { return CFG_getScreenTimeoutSecs(); }, [](const std::any &value)
+            { CFG_setScreenTimeoutSecs(std::any_cast<uint32_t>(value)); },
+            []() { CFG_setScreenTimeoutSecs(CFG_DEFAULT_SCREENTIMEOUTSECS);}});
         displayItems.push_back(
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
 
         auto displayMenu = new MenuList(MenuItemType::Fixed, "Display", displayItems);
 
         std::vector<AbstractMenuItem*> systemItems = {
+            new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI, screen timeout", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
             new MenuItem{ListItemType::Generic, "Volume", "Speaker volume",
             {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20},
             {"Muted", "5%","10%","15%","20%","25%","30%","35%","40%","45%","50%","55%","60%","65%","70%","75%","80%","85%","90%","95%","100%"},
             []() -> std::any{ return GetVolume(); }, [](const std::any &value)
             { SetVolume(std::any_cast<int>(value)); },
             []() { SetVolume(SETTINGS_DEFAULT_VOLUME);}},
-            new MenuItem{ListItemType::Generic, "Screen timeout", "Period of inactivity before screen turns off (0-600s)", screen_timeout_secs, screen_timeout_labels, []() -> std::any
-            { return CFG_getScreenTimeoutSecs(); }, [](const std::any &value)
-            { CFG_setScreenTimeoutSecs(std::any_cast<uint32_t>(value)); },
-            []() { CFG_setScreenTimeoutSecs(CFG_DEFAULT_SCREENTIMEOUTSECS);}},
+        };
+        Zlyme_appendStatusLed(systemItems);
+        systemItems.insert(systemItems.end(), {
             new MenuItem{ListItemType::Generic, "Suspend timeout", "Time before device goes to sleep after screen is off (5-600s)", sleep_timeout_secs, sleep_timeout_labels, []() -> std::any
             { return CFG_getSuspendTimeoutSecs(); }, [](const std::any &value)
             { CFG_setSuspendTimeoutSecs(std::any_cast<uint32_t>(value)); },
             []() { CFG_setSuspendTimeoutSecs(CFG_DEFAULT_SUSPENDTIMEOUTSECS);}},
+            new MenuItem{ListItemType::Generic, "Show clock", "Show clock in the status pill", {false, true}, on_off, []() -> std::any
+            { return CFG_getShowClock(); },
+            [](const std::any &value)
+            { CFG_setShowClock(std::any_cast<bool>(value)); },
+            []() { CFG_setShowClock(CFG_DEFAULT_SHOWCLOCK);}},
+            new MenuItem{ListItemType::Generic, "Show 24h time format", "Show clock in the 24hrs time format", {false, true}, on_off, []() -> std::any
+            { return CFG_getClock24H(); },
+            [](const std::any &value)
+            { CFG_setClock24H(std::any_cast<bool>(value)); },
+            []() { CFG_setClock24H(CFG_DEFAULT_CLOCK24H);}},
+            new MenuItem{ListItemType::Generic, "Time zone", "Your time zone", tz_values, tz_labels, []() -> std::any
+            { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value)
+            { TIME_setCurrentTimezone(std::any_cast<std::string>(value).c_str()); },
+            []() { TIME_setCurrentTimezone("Asia/Shanghai");}}, // default from Stock
             new MenuItem{ListItemType::Generic, "Haptic feedback", "Enable or disable haptic feedback on certain actions in the OS", {false, true}, on_off, []() -> std::any
             { return CFG_getHaptics(); }, [](const std::any &value)
             { CFG_setHaptics(std::any_cast<bool>(value)); },
@@ -613,37 +632,7 @@ int main(int argc, char *argv[])
             []() -> std::any { return CFG_getDefaultView(); },
             [](const std::any &value){ CFG_setDefaultView(std::any_cast<int>(value)); },
             []() { CFG_setDefaultView(CFG_DEFAULT_VIEW);}},
-            new MenuItem{ListItemType::Generic, "Show 24h time format", "Show clock in the 24hrs time format", {false, true}, on_off, []() -> std::any
-            { return CFG_getClock24H(); },
-            [](const std::any &value)
-            { CFG_setClock24H(std::any_cast<bool>(value)); },
-            []() { CFG_setClock24H(CFG_DEFAULT_CLOCK24H);}},
-            new MenuItem{ListItemType::Generic, "Show clock", "Show clock in the status pill", {false, true}, on_off, []() -> std::any
-            { return CFG_getShowClock(); },
-            [](const std::any &value)
-            { CFG_setShowClock(std::any_cast<bool>(value)); },
-            []() { CFG_setShowClock(CFG_DEFAULT_SHOWCLOCK);}},
-            new MenuItem{ListItemType::Generic, "Time zone", "Your time zone", tz_values, tz_labels, []() -> std::any
-            { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value)
-            { TIME_setCurrentTimezone(std::any_cast<std::string>(value).c_str()); },
-            []() { TIME_setCurrentTimezone("Asia/Shanghai");}}, // default from Stock
-            new MenuItem{ListItemType::Generic, "Save format", "The save format to use.\nMinUI: Game.gba.sav, Retroarch: Game.srm, Generic: Game.sav",
-            {(int)SAVE_FORMAT_SAV, (int)SAVE_FORMAT_SRM, (int)SAVE_FORMAT_SRM_UNCOMPRESSED, (int)SAVE_FORMAT_GEN},
-            {"MinUI (default)", "Retroarch (compressed)", "Retroarch (uncompressed)", "Generic"}, []() -> std::any
-            { return CFG_getSaveFormat(); }, [](const std::any &value)
-            { CFG_setSaveFormat(std::any_cast<int>(value)); },
-            []() { CFG_setSaveFormat(CFG_DEFAULT_SAVEFORMAT);}},
-            new MenuItem{ListItemType::Generic, "Save state format", "The save state format to use. MinUI: Game.st0, \nRetroarch-ish: Game.state.0, Retroarch: Game.state0",
-            {(int)STATE_FORMAT_SAV, (int)STATE_FORMAT_SRM_EXTRADOT, (int)STATE_FORMAT_SRM_UNCOMRESSED_EXTRADOT, (int)STATE_FORMAT_SRM, (int)STATE_FORMAT_SRM_UNCOMRESSED},
-            {"MinUI (default)", "Retroarch-ish (compressed)", "Retroarch-ish (uncompressed)", "Retroarch (compressed)", "Retroarch (uncompressed)"}, []() -> std::any
-            { return CFG_getStateFormat(); }, [](const std::any &value)
-            { CFG_setStateFormat(std::any_cast<int>(value)); },
-            []() { CFG_setStateFormat(CFG_DEFAULT_STATEFORMAT);}},
-            new MenuItem{ListItemType::Generic, "Use extracted file name", "Use the extracted file name instead of the archive name.\nOnly applies to cores that do not handle archives natively", {false, true}, on_off,
-            []() -> std::any{ return CFG_getUseExtractedFileName(); },
-            [](const std::any &value){ CFG_setUseExtractedFileName(std::any_cast<bool>(value)); },
-            []() { CFG_setUseExtractedFileName(CFG_DEFAULT_EXTRACTEDFILENAME);}}
-        };
+        });
 
         if(deviceInfo.getPlatform() == DeviceInfo::tg5040)
         {
@@ -797,31 +786,6 @@ int main(int argc, char *argv[])
                 }});
         }
         muteItems.push_back(new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu});
-
-        auto notificationsMenu = new MenuList(MenuItemType::Fixed, "Notifications",
-        {
-            new MenuItem{ListItemType::Generic, "Save states", "Show notification when saving game state", {false, true}, on_off,
-            []() -> std::any { return CFG_getNotifyManualSave(); },
-            [](const std::any &value) { CFG_setNotifyManualSave(std::any_cast<bool>(value)); },
-            []() { CFG_setNotifyManualSave(CFG_DEFAULT_NOTIFY_MANUAL_SAVE);}},
-            new MenuItem{ListItemType::Generic, "Load states", "Show notification when loading game state", {false, true}, on_off,
-            []() -> std::any { return CFG_getNotifyLoad(); },
-            [](const std::any &value) { CFG_setNotifyLoad(std::any_cast<bool>(value)); },
-            []() { CFG_setNotifyLoad(CFG_DEFAULT_NOTIFY_LOAD);}},
-            new MenuItem{ListItemType::Generic, "Screenshots", "Show notification when taking a screenshot", {false, true}, on_off,
-            []() -> std::any { return CFG_getNotifyScreenshot(); },
-            [](const std::any &value) { CFG_setNotifyScreenshot(std::any_cast<bool>(value)); },
-            []() { CFG_setNotifyScreenshot(CFG_DEFAULT_NOTIFY_SCREENSHOT);}},
-            new MenuItem{ListItemType::Generic, "Vol / Display Adjustments", "Show overlay for volume, brightness,\nand color temp adjustments", {false, true}, on_off,
-            []() -> std::any { return CFG_getNotifyAdjustments(); },
-            [](const std::any &value) { CFG_setNotifyAdjustments(std::any_cast<bool>(value)); },
-            []() { CFG_setNotifyAdjustments(CFG_DEFAULT_NOTIFY_ADJUSTMENTS);}},
-            new MenuItem{ListItemType::Generic, "Duration", "How long notifications stay on screen", notify_duration_values, notify_duration_labels,
-            []() -> std::any { return CFG_getNotifyDuration(); },
-            [](const std::any &value) { CFG_setNotifyDuration(std::any_cast<int>(value)); },
-            []() { CFG_setNotifyDuration(CFG_DEFAULT_NOTIFY_DURATION);}},
-            new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu},
-        });
 
         // RetroAchievements keyboard prompts
         auto raUsernamePrompt = new KeyboardPrompt("Enter Username", [](AbstractMenuItem &item) -> InputReactionHint {
@@ -1030,10 +994,25 @@ int main(int argc, char *argv[])
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu},
         });
 
-        auto minarchMenu = new MenuList(MenuItemType::List, "In-Game",
+        auto inGameMenu = new MenuList(MenuItemType::List, "In-Game",
         {
-            new MenuItem{ListItemType::Generic, "Notifications", "Save state notifications", {}, {}, nullptr, nullptr, DeferToSubmenu, notificationsMenu},
             new MenuItem{ListItemType::Generic, "RetroAchievements", "Achievement tracking settings", {}, {}, nullptr, nullptr, DeferToSubmenu, retroAchievementsMenu},
+            new MenuItem{ListItemType::Generic, "Save format", "The save format to use.\nMinUI: Game.gba.sav, Retroarch: Game.srm, Generic: Game.sav",
+            {(int)SAVE_FORMAT_SAV, (int)SAVE_FORMAT_SRM, (int)SAVE_FORMAT_SRM_UNCOMPRESSED, (int)SAVE_FORMAT_GEN},
+            {"MinUI (default)", "Retroarch (compressed)", "Retroarch (uncompressed)", "Generic"}, []() -> std::any
+            { return CFG_getSaveFormat(); }, [](const std::any &value)
+            { CFG_setSaveFormat(std::any_cast<int>(value)); },
+            []() { CFG_setSaveFormat(CFG_DEFAULT_SAVEFORMAT);}},
+            new MenuItem{ListItemType::Generic, "Save state format", "The save state format to use. MinUI: Game.st0, \nRetroarch-ish: Game.state.0, Retroarch: Game.state0",
+            {(int)STATE_FORMAT_SAV, (int)STATE_FORMAT_SRM_EXTRADOT, (int)STATE_FORMAT_SRM_UNCOMRESSED_EXTRADOT, (int)STATE_FORMAT_SRM, (int)STATE_FORMAT_SRM_UNCOMRESSED},
+            {"MinUI (default)", "Retroarch-ish (compressed)", "Retroarch-ish (uncompressed)", "Retroarch (compressed)", "Retroarch (uncompressed)"}, []() -> std::any
+            { return CFG_getStateFormat(); }, [](const std::any &value)
+            { CFG_setStateFormat(std::any_cast<int>(value)); },
+            []() { CFG_setStateFormat(CFG_DEFAULT_STATEFORMAT);}},
+            new MenuItem{ListItemType::Generic, "Use extracted file name", "Use the extracted file name instead of the archive name.\nOnly applies to cores that do not handle archives natively", {false, true}, on_off,
+            []() -> std::any{ return CFG_getUseExtractedFileName(); },
+            [](const std::any &value){ CFG_setUseExtractedFileName(std::any_cast<bool>(value)); },
+            []() { CFG_setUseExtractedFileName(CFG_DEFAULT_EXTRACTEDFILENAME);}},
         });
 
         // We need to alert the user about potential issues if the
@@ -1087,20 +1066,7 @@ int main(int argc, char *argv[])
 
         MenuList *buttonMenu = buildFnButtonMenu(); // nullptr if this device has none
 
-        std::vector<AbstractMenuItem*> mainItems = {
-            new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu},
-            new MenuItem{ListItemType::Generic, "Display", "Brightness, panel refresh, HDMI", {}, {}, nullptr, nullptr, DeferToSubmenu, displayMenu},
-            new MenuItem{ListItemType::Generic, "System", "Sleep, GPU, zram, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu},
-        };
-
-        if(deviceInfo.hasMuteToggle())
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "FN switch", "FN switch settings", {}, {}, nullptr, nullptr, DeferToSubmenu,
-                new MenuList(MenuItemType::Fixed, "FN Switch", muteItems)});
-
-        if(buttonMenu)
-            mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
-
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "In-game settings for MinArch", {}, {}, nullptr, nullptr, DeferToSubmenu, minarchMenu});
+        std::vector<AbstractMenuItem*> mainItems;
 
         if(deviceInfo.hasWifi()) {
             std::vector<AbstractMenuItem*> networkItems = {
@@ -1112,6 +1078,17 @@ int main(int argc, char *argv[])
                 new MenuList(MenuItemType::Fixed, "Network", std::move(networkItems))});
         } else if(deviceInfo.hasBluetooth())
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "Pair and connect HID", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
+
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Saves and RetroAchievements", {}, {}, nullptr, nullptr, DeferToSubmenu, inGameMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "System", "Display, sleep, GPU, ZRAM, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu});
+
+        if(deviceInfo.hasMuteToggle())
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "FN switch", "FN switch settings", {}, {}, nullptr, nullptr, DeferToSubmenu,
+                new MenuList(MenuItemType::Fixed, "FN Switch", muteItems)});
+
+        if(buttonMenu)
+            mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
 
         mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "Build and hardware info", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});
 

@@ -175,6 +175,34 @@ void Zlyme_appendNetworkItems(std::vector<AbstractMenuItem *> &items)
 		[]() { service_apply("syncthing", "/etc/init.d/S75syncthing", false); }});
 }
 
+void Zlyme_appendStatusLed(std::vector<AbstractMenuItem *> &items)
+{
+	const std::vector<std::any> led_v = {
+		std::string("battery"), std::string("green"), std::string("red"), std::string("off")};
+	const std::vector<std::string> led_l = {"Auto", "Green", "Red", "Off"};
+	items.push_back(new MenuItem{ListItemType::Generic, "Status LED",
+		"Auto: green, red charging, flash if low.\nGreen/Red/Off lock the colour.",
+		led_v, led_l,
+		[]() -> std::any {
+			std::string l = ctl_get("led");
+			if (l != "green" && l != "red" && l != "off" && l != "amber")
+				l = "battery";
+			if (l == "amber")
+				l = "red";
+			return l;
+		},
+		[](const std::any &v) {
+			std::string l = std::any_cast<std::string>(v);
+			ctl_set("led", l.c_str());
+			std::string cmd = std::string("zlyme-led ") + l;
+			system(cmd.c_str());
+		},
+		[]() {
+			ctl_set("led", "battery");
+			system("zlyme-led battery");
+		}});
+}
+
 void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 {
 	const std::vector<std::any> gpu_v = {std::string("panfrost"), std::string("libmali")};
@@ -212,7 +240,7 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 
 	const std::vector<std::any> on_off_v = {false, true};
 	const std::vector<std::string> on_off = {"Off", "On"};
-	items.push_back(new MenuItem{ListItemType::Generic, "zram swap",
+	items.push_back(new MenuItem{ListItemType::Generic, "ZRAM swap",
 		"384 MiB lz4 OOM net on 1 GiB.\nOff if a heavy emu feels spongy.",
 		on_off_v, on_off,
 		[]() -> std::any { return ctl_on("zram"); },
@@ -259,31 +287,6 @@ void Zlyme_appendSystemItems(std::vector<AbstractMenuItem *> &items)
 		[]() {
 			ctl_set("sd2", "on");
 			system("zlyme-ctl apply-overlays");
-		}});
-
-	const std::vector<std::any> led_v = {
-		std::string("battery"), std::string("green"), std::string("red"), std::string("off")};
-	const std::vector<std::string> led_l = {"Auto", "Green", "Red", "Off"};
-	items.push_back(new MenuItem{ListItemType::Generic, "Status LED",
-		"Auto: green, red charging, flash if low.\nGreen/Red/Off lock the colour.",
-		led_v, led_l,
-		[]() -> std::any {
-			std::string l = ctl_get("led");
-			if (l != "green" && l != "red" && l != "off" && l != "amber")
-				l = "battery";
-			if (l == "amber")
-				l = "red";
-			return l;
-		},
-		[](const std::any &v) {
-			std::string l = std::any_cast<std::string>(v);
-			ctl_set("led", l.c_str());
-			std::string cmd = std::string("zlyme-led ") + l;
-			system(cmd.c_str());
-		},
-		[]() {
-			ctl_set("led", "battery");
-			system("zlyme-led battery");
 		}});
 }
 
