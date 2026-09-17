@@ -20,6 +20,7 @@
 #include "utils.h"
 
 #include <sys/wait.h>
+#include <signal.h>
 #include <unistd.h>
 
 bool PLAT_hasWifi() { return true; }
@@ -62,8 +63,24 @@ static int zlyme_wifi_argv(char *const argv[])
         _exit(127);
     }
     int st = 0;
-    if (waitpid(pid, &st, 0) < 0)
-        return -1;
+    int waited = 0;
+    int got = 0;
+    while (waited < 10000) {
+        pid_t r = waitpid(pid, &st, WNOHANG);
+        if (r == pid) {
+            got = 1;
+            break;
+        }
+        if (r < 0)
+            return -1;
+        usleep(20000);
+        waited += 20;
+    }
+    if (!got) {
+        kill(pid, SIGKILL);
+        waitpid(pid, &st, 0);
+        return 124;
+    }
     if (WIFEXITED(st))
         return WEXITSTATUS(st);
     return -1;
@@ -72,31 +89,7 @@ static int zlyme_wifi_argv(char *const argv[])
 // Helper function to run a command and capture output
 static int wifi_run_cmd(const char *cmd, char *output, size_t output_len) {
     wifilog("Running command: %s\n", cmd);
-    FILE *fp = popen(cmd, "r");
-    if (!fp) {
-        LOG_error("wifi_run_cmd: failed to run command: %s\n", cmd);
-        return -1;
-    }
-    
-    if (output && output_len > 0) {
-        output[0] = '\0';
-        size_t total = 0;
-        char buf[256];
-        while (fgets(buf, sizeof(buf), fp) && total < output_len - 1) {
-            size_t len = strlen(buf);
-            if (total + len >= output_len) {
-                len = output_len - total - 1;
-            }
-            memcpy(output + total, buf, len);
-            total += len;
-        }
-        output[total] = '\0';
-    }
-    
-    int status = pclose(fp);
-    int exit_code = WEXITSTATUS(status);
-    wifilog("Command exit code: %d\n", exit_code);
-    return exit_code;
+    return runCmdTimeout(cmd, output, output_len, 5000);
 }
 
 // Helper to check if wpa_supplicant is running
@@ -137,7 +130,7 @@ void PLAT_wifiEnable(bool on) {
 		wifilog("turning wifi on...\n");
 		char *argv[] = { "zlyme-wifi", "enable", NULL };
 		if (zlyme_wifi_argv(argv) == -127)
-			system(SYSTEM_PATH "/etc/wifi/wifi_init.sh start > /dev/null 2>&1");
+			runCmdTimeout(SYSTEM_PATH "/etc/wifi/wifi_init.sh start > /dev/null 2>&1", NULL, 0, 10000);
 		CFG_setWifi(on);
 	}
 	else {
@@ -145,7 +138,7 @@ void PLAT_wifiEnable(bool on) {
 		CFG_setWifi(on);
 		char *argv[] = { "zlyme-wifi", "disable", NULL };
 		if (zlyme_wifi_argv(argv) == -127)
-			system(SYSTEM_PATH "/etc/wifi/wifi_init.sh stop > /dev/null 2>&1");
+			runCmdTimeout(SYSTEM_PATH "/etc/wifi/wifi_init.sh stop > /dev/null 2>&1", NULL, 0, 10000);
 	}
 }
 
@@ -158,7 +151,7 @@ int PLAT_wifiScan(struct WIFI_network *networks, int max)
 
     wifilog("PLAT_wifiScan: Starting WiFi scan...\n");
     // Trigger a scan
-    system(WPA_CLI_CMD " scan 2>/dev/null");
+    runCmdTimeout(WPA_CLI_CMD " scan 2>/dev/null", NULL, 0, 3000);
     wifilog("PLAT_wifiScan: Waiting 2s for scan to complete...\n");
 	usleep(2000000); // Give time for scan to complete
 
@@ -472,8 +465,8 @@ void PLAT_wifiForget(char *ssid, WifiSecurityType sec)
 	if (network_id >= 0) {
 		char cmd[128];
 		snprintf(cmd, sizeof(cmd), "%s remove_network %d 2>/dev/null", WPA_CLI_CMD, network_id);
-		system(cmd);
-		system(WPA_CLI_CMD " save_config 2>/dev/null");
+		runCmdTimeout(cmd, NULL, 0, 3000);
+		runCmdTimeout(WPA_CLI_CMD " save_config 2>/dev/null", NULL, 0, 3000);
 		wifilog("PLAT_wifiForget: removed network %s (id=%d)\n", ssid, network_id);
 	} else {
 		wifilog("PLAT_wifiForget: network %s not found\n", ssid);
@@ -496,7 +489,7 @@ void PLAT_wifiConnectPass(const char *ssid, WifiSecurityType sec, const char* pa
 		char *argv[] = { "zlyme-wifi", "disconnect", NULL };
 		if (zlyme_wifi_argv(argv) != -127)
 			return;
-		system(WPA_CLI_CMD " disconnect 2>/dev/null");
+		runCmdTimeout(WPA_CLI_CMD " disconnect 2>/dev/null", NULL, 0, 3000);
 		return;
 	}
 
@@ -540,8 +533,8 @@ void PLAT_wifiDiagnosticsEnable(bool on)
 	CFG_setWifiDiagnostics(on);
     // set wpa_cli log level
     if (on) {
-        system(WPA_CLI_CMD " log_level DEBUG 2>/dev/null");
+        runCmdTimeout(WPA_CLI_CMD " log_level DEBUG 2>/dev/null", NULL, 0, 2000);
     } else {
-        system(WPA_CLI_CMD " log_level WARNING 2>/dev/null");
+        runCmdTimeout(WPA_CLI_CMD " log_level WARNING 2>/dev/null", NULL, 0, 2000);
     }
 }

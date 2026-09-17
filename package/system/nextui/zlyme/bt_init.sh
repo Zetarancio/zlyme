@@ -15,6 +15,7 @@ start_bt() {
 }
 
 stop_bt() {
+	killall -9 bluetoothctl >/dev/null 2>&1 || true
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth adapter-off
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
 	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop

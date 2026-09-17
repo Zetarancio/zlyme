@@ -53,4 +53,9 @@ double clampd(double x, double lower, double upper);
 
 char* findFileInDir(const char *directory, const char *filename);
 
+/* Shell helper with a hard deadline. Returns the exit status, 124 on
+ * timeout, or -1 if the command could not be started. BusyBox has no
+ * timeout applet, and bluetoothctl/wpa_cli can block the UI forever. */
+int runCmdTimeout(const char *cmd, char *output, size_t output_len, int timeout_ms);
+
 #endif

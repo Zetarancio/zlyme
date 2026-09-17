@@ -10,7 +10,12 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <stdint.h>
+#include <errno.h>
+#include <poll.h>
+#include <signal.h>
 #include <sys/time.h>
+#include <sys/wait.h>
+#include <time.h>
 #include "defines.h"
 #include "utils.h"
 
@@ -716,4 +721,83 @@ char* findFileInDir(const char *directory, const char *filename) {
 
     free(filename_copy);
     return full_path;
+}
+
+int runCmdTimeout(const char *cmd, char *output, size_t output_len, int timeout_ms)
+{
+	int pipefd[2];
+	pid_t pid;
+	struct timespec start, now;
+	int status = 0;
+	int done = 0;
+	size_t total = 0;
+
+	if (!cmd || timeout_ms <= 0)
+		return -1;
+	if (pipe(pipefd) < 0)
+		return -1;
+
+	pid = fork();
+	if (pid < 0) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return -1;
+	}
+	if (pid == 0) {
+		setpgid(0, 0);
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		dup2(pipefd[1], STDERR_FILENO);
+		close(pipefd[1]);
+		execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+		_exit(127);
+	}
+
+	close(pipefd[1]);
+	setpgid(pid, pid);
+	if (output && output_len)
+		output[0] = '\0';
+
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	while (1) {
+		int elapsed, remain;
+		struct pollfd pfd = { .fd = pipefd[0], .events = POLLIN };
+		pid_t waited;
+
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		elapsed = (int)((now.tv_sec - start.tv_sec) * 1000L +
+			(now.tv_nsec - start.tv_nsec) / 1000000L);
+		remain = timeout_ms - elapsed;
+		if (remain <= 0)
+			break;
+
+		if (poll(&pfd, 1, remain > 50 ? 50 : remain) > 0 &&
+		    (pfd.revents & POLLIN)) {
+			char buf[256];
+			ssize_t n = read(pipefd[0], buf, sizeof buf);
+			if (n > 0 && output && output_len > 1) {
+				size_t room = output_len - 1 - total;
+				size_t cpy = (size_t)n < room ? (size_t)n : room;
+				memcpy(output + total, buf, cpy);
+				total += cpy;
+				output[total] = '\0';
+			}
+		}
+
+		waited = waitpid(pid, &status, WNOHANG);
+		if (waited == pid) {
+			done = 1;
+			break;
+		}
+	}
+
+	close(pipefd[0]);
+	if (!done) {
+		kill(-pid, SIGKILL);
+		waitpid(pid, &status, 0);
+		return 124;
+	}
+	if (WIFEXITED(status))
+		return WEXITSTATUS(status);
+	return -1;
 }
