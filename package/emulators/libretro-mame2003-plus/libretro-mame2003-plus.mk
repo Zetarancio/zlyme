@@ -52,6 +52,8 @@ endef
 define LIBRETRO_MAME2003_PLUS_INSTALL_TARGET_CMDS
 	$(INSTALL) -D $(@D)/mame2003_plus_libretro.so \
 		$(TARGET_DIR)/usr/lib/libretro/mame078plus_libretro.so
+	ln -sf mame078plus_libretro.so \
+		$(TARGET_DIR)/usr/lib/libretro/mame2003_plus_libretro.so
 
 	# Bios
     # Need to think of another way to use these files.

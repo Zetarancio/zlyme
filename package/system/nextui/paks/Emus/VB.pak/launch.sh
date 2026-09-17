@@ -1,5 +1,5 @@
 #!/bin/sh
-EMU_EXE=mednafen_vb
+EMU_EXE=vb
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"

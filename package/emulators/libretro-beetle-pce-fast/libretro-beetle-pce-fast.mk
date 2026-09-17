@@ -33,6 +33,8 @@ endef
 define LIBRETRO_BEETLE_PCE_FAST_INSTALL_TARGET_CMDS
 	$(INSTALL) -D $(@D)/mednafen_pce_fast_libretro.so \
 		$(TARGET_DIR)/usr/lib/libretro/pce_fast_libretro.so
+	ln -sf pce_fast_libretro.so \
+		$(TARGET_DIR)/usr/lib/libretro/mednafen_pce_fast_libretro.so
 endef
 
 $(eval $(generic-package))

@@ -164,6 +164,10 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	ln -sfn nextui $(TARGET_DIR)/usr/share/minui
 	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/MinUI.pak
 	rm -f $(TARGET_DIR)/usr/share/nextui/system.cfg
+	rm -f $(TARGET_DIR)/usr/lib/libretro/parallel_n64_libretro.so \
+		$(TARGET_DIR)/usr/lib/libretro/melondsds_libretro.so \
+		$(TARGET_DIR)/usr/share/libretro/info/parallel_n64_libretro.info \
+		$(TARGET_DIR)/usr/share/libretro/info/melondsds_libretro.info
 endef
 
 define NEXTUI_INSTALL_STAGING_CMDS

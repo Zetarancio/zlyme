@@ -1,5 +1,5 @@
 #!/bin/sh
-EMU_EXE=mednafen_pce_fast
+EMU_EXE=pce_fast
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
