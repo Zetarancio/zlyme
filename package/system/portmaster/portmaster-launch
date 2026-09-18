@@ -30,12 +30,14 @@ if [ ! -f "$DEST/PortMaster/pugwash" ] && [ -f "$IMG/pugwash" ]; then
 fi
 
 root=""
-if pm_ok "$DEST/PortMaster"; then
+# Prefer the image pugwash so a card self-update cannot skip --no-check.
+# Keep a writable card copy for harbourmaster first_run dumps.
+if pm_ok "$IMG"; then
+	root="$IMG"
+elif pm_ok "$DEST/PortMaster"; then
 	root="$DEST/PortMaster"
 elif pm_ok "$DEST"; then
 	root="$DEST"
-elif pm_ok "$IMG"; then
-	root="$IMG"
 fi
 
 if [ -z "$root" ]; then
@@ -43,7 +45,13 @@ if [ -z "$root" ]; then
 	exit 1
 fi
 
-cd "$root" || exit 1
+cwd="$root"
+if [ -d "$DEST/PortMaster" ]; then
+	cwd="$DEST/PortMaster"
+elif [ -d "$DEST" ] && [ -f "$DEST/pugwash" ]; then
+	cwd="$DEST"
+fi
+cd "$cwd" || exit 1
 
 if [ -f "$root/pylibs/harbourmaster/hardware.py" ] && \
 	[ -f /usr/share/portmaster/patch-hardware.py ]; then
@@ -60,7 +68,7 @@ seed_zlyme_theme() {
 	mkdir -p "$dest"
 	cp -a "$src/." "$dest/" 2>/dev/null || true
 
-	stamp="${ZLYME_CFG:-/storage/.config}/portmaster/.zlyme-theme-seeded"
+	stamp="${ZLYME_CFG:-/storage/.config}/portmaster-home/.zlyme-theme-seeded"
 	[ -f "$stamp" ] && return 0
 	mkdir -p "$(dirname "$stamp")" "$tools/config"
 	cfg="$tools/config/config.json"
@@ -86,7 +94,7 @@ PY
 }
 
 
-export HOME="${ZLYME_CFG}/portmaster"
+export HOME="${ZLYME_CFG}/portmaster-home"
 mkdir -p "$HOME" "$HOME/.local/share"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CONFIG_HOME="$HOME"
@@ -111,6 +119,23 @@ export HM_PORTS_DIR="$ports_dir"
 export HM_SCRIPTS_DIR="$ports_dir"
 export HM_TOOLS_DIR=/storage/Roms/.portmaster
 seed_zlyme_theme
+# ROCKNIX first_run copies /storage/.config/PortMaster/control.txt.
+# exFAT treats that name the same as portmaster, so HOME stays elsewhere.
+pm_cfg="${ZLYME_CFG}/PortMaster"
+mkdir -p "$pm_cfg"
+seed_pm() {
+	src=$1
+	dest=$2
+	[ -f "$dest" ] && [ -s "$dest" ] && return 0
+	[ -f "$src" ] && cp -f "$src" "$dest"
+}
+seed_pm "$root/control.txt" "$pm_cfg/control.txt"
+seed_pm /usr/config/PortMaster/control.txt "$pm_cfg/control.txt"
+seed_pm "$root/gamecontrollerdb.txt" "$pm_cfg/gamecontrollerdb.txt"
+seed_pm /usr/config/PortMaster/gamecontrollerdb.txt "$pm_cfg/gamecontrollerdb.txt"
+seed_pm /usr/lib/gamecontrollerdb.txt "$pm_cfg/gamecontrollerdb.txt"
+seed_pm /usr/config/PortMaster/mapper.txt "$pm_cfg/mapper.txt"
+[ -f "$pm_cfg/mapper.txt" ] || : >"$pm_cfg/mapper.txt"
 # Saying yes to a GUI self-update (or a timed-out one) leaves this
 # flag; pugwash then skips the main loop and exits 0.
 rm -f "$HM_TOOLS_DIR/PortMaster/.pugwash-reboot"
@@ -124,7 +149,7 @@ fi
 # is not in its table; miyoo-flip is (RK3566, 640x480, two sticks).
 mkdir -p "$HOME/.config"
 printf '%s\n' 'miyoo-flip' > "$HOME/.config/.DEVICE"
-export CFW_NAME="${CFW_NAME:-ROCKNIX}"
+export CFW_NAME="${CFW_NAME:-Zlyme}"
 export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
 
 sleep 0.4
@@ -136,14 +161,14 @@ if [ -n "${LOGS_PATH:-}" ]; then
 fi
 
 st=1
-if [ -f ./pugwash ]; then
+if [ -f "$root/pugwash" ]; then
 	# Self-update downloads a GitHub zip and freezes the GUI on this
 	# link; the image copy is the one we patched (pgrep, paths, jpeg).
 	if command -v python3 >/dev/null 2>&1; then
-		python3 ./pugwash --no-check "$@" >"$log" 2>&1
+		python3 "$root/pugwash" --no-check "$@" >"$log" 2>&1
 		st=$?
 	else
-		/usr/bin/python3 ./pugwash --no-check "$@" >"$log" 2>&1
+		/usr/bin/python3 "$root/pugwash" --no-check "$@" >"$log" 2>&1
 		st=$?
 	fi
 elif [ -f ./PortMaster.sh ]; then

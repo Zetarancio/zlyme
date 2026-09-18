@@ -9,7 +9,7 @@ DEVICE = "miyoo-flip"
 PATTERN = f"    ('miyoo flip*', '{DEVICE}'),"
 DEVICES = (
     '    "Miyoo Flip": '
-    f'{{"device": "{DEVICE}", "manufacturer": "Miyoo", "cfw": ["ROCKNIX"]}},'
+    f'{{"device": "{DEVICE}", "manufacturer": "Miyoo", "cfw": ["Zlyme", "ROCKNIX"]}},'
 )
 
 
@@ -25,6 +25,11 @@ def main() -> int:
     text = text.replace(
         '"Miyoo Flip": {"device": "rg353m"',
         f'"Miyoo Flip": {{"device": "{DEVICE}"',
+    )
+
+    text = text.replace(
+        '"Miyoo Flip": {"device": "miyoo-flip", "manufacturer": "Miyoo", "cfw": ["ROCKNIX"]}',
+        '"Miyoo Flip": {"device": "miyoo-flip", "manufacturer": "Miyoo", "cfw": ["Zlyme", "ROCKNIX"]}',
     )
 
     needle = "('miyoo rk3566 355 v10*', 'miyoo-flip'),"
@@ -45,6 +50,19 @@ def main() -> int:
 
     if text != orig:
         path.write_text(text)
+
+    # NAME="Zlyme" in os-release; first_run still uses the ROCKNIX/JELOS path.
+    plat = path.parent / "platform.py"
+    if plat.is_file():
+        ptxt = plat.read_text()
+        if "'zlyme':" not in ptxt:
+            ptxt2 = ptxt.replace(
+                "'rocknix':   PlatformROCKNIX,",
+                "'rocknix':   PlatformROCKNIX,\n    'zlyme':     PlatformROCKNIX,",
+                1,
+            )
+            if ptxt2 != ptxt:
+                plat.write_text(ptxt2)
     return 0
 
 

@@ -116,6 +116,8 @@ fi
 [ -e "${TARGET_DIR}/etc/init.d/rc.late" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rc.late"
 [ -e "${TARGET_DIR}/etc/init.d/S30dbus-daemon" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S30dbus-daemon"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-update" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-update"
+[ -e "${TARGET_DIR}/usr/sbin/zlyme-splash-progress" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-splash-progress"
+[ -e "${TARGET_DIR}/etc/init.d/S12splash" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S12splash"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
 rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver" \
@@ -145,23 +147,60 @@ for l in var/cache var/log var/spool var/tmp var/run var/lock var/lib/dbus \
 	 var/lib/bluetooth var/lib/samba; do
 	[ -L "${TARGET_DIR}/${l}" ] || note "/${l} is not a symlink"
 done
+if [ -e "${TARGET_DIR}/usr/share/minui" ] && [ ! -L "${TARGET_DIR}/usr/share/minui" ]; then
+	note "/usr/share/minui must stay a symlink to nextui"
+fi
 if grep -qE '^[^#]*[[:space:]]/var[[:space:]]' "${TARGET_DIR}/etc/fstab"; then
 	note "/etc/fstab mounts /var"
 fi
 
 # PortMaster harbourmaster only parses quoted KEY="value" (NAME→CFW,
-# HW_DEVICE→device). DTB model "Miyoo Flip" is not in its table.
-# Identify as ROCKNIX + miyoo-flip (PortMaster already has 640x480
-# RK3566 / two-stick specs for that slug). Keep PRETTY_NAME so About → OS
-# stays the Buildroot string.
+# VERSION/OS_VERSION→version, HW_DEVICE→device). Unquoted
+# VERSION=2026.02.3 left the GUI at 0.0.0. Use the same short string
+# Settings → version shows (zlyme39 plus build date), not git describe.
+# DTB model "Miyoo Flip" is not in its table. HW_DEVICE still selects
+# miyoo-flip. platform.py aliases zlyme to the ROCKNIX first_run path.
+# Keep PRETTY_NAME so About → OS stays the Buildroot string.
+pm_short_version() {
+	local raw="" date="" zver=""
+	if [ -f "${TARGET_DIR}/usr/share/nextui/version.txt" ]; then
+		raw=$(tr -d '\r\n' < "${TARGET_DIR}/usr/share/nextui/version.txt")
+		case "$raw" in
+			*-zlyme*) zver="zlyme${raw##*-zlyme}" ;;
+			*) zver=$raw ;;
+		esac
+	fi
+	if [ -f "${TARGET_DIR}/usr/share/nextui/build-date.txt" ]; then
+		date=$(tr -d '\r\n' < "${TARGET_DIR}/usr/share/nextui/build-date.txt")
+	fi
+	if [ -z "$zver" ]; then
+		zver=${date:-unknown}
+	elif [ -n "$date" ]; then
+		zver="$zver ($date)"
+	fi
+	printf '%s\n' "$zver"
+}
 pm_os_release() {
 	src="${TARGET_DIR}/usr/lib/os-release"
 	[ -f "$src" ] || src="${TARGET_DIR}/etc/os-release"
 	[ -f "$src" ] || return 0
+	zver=$(pm_short_version)
+	mkdir -p "${TARGET_DIR}/usr/share/zlyme"
+	printf '%s\n' "$zver" > "${TARGET_DIR}/usr/share/zlyme/version"
 	if grep -q '^NAME=' "$src"; then
-		sed -i 's/^NAME=.*/NAME="ROCKNIX"/' "$src"
+		sed -i 's/^NAME=.*/NAME="Zlyme"/' "$src"
 	else
-		printf '%s\n' 'NAME="ROCKNIX"' >> "$src"
+		printf '%s\n' 'NAME="Zlyme"' >> "$src"
+	fi
+	if grep -q '^VERSION=' "$src"; then
+		sed -i "s/^VERSION=.*/VERSION=\"${zver}\"/" "$src"
+	else
+		printf '%s\n' "VERSION=\"${zver}\"" >> "$src"
+	fi
+	if grep -q '^OS_VERSION=' "$src"; then
+		sed -i "s/^OS_VERSION=.*/OS_VERSION=\"${zver}\"/" "$src"
+	else
+		printf '%s\n' "OS_VERSION=\"${zver}\"" >> "$src"
 	fi
 	if grep -q '^HW_DEVICE=' "$src"; then
 		sed -i 's/^HW_DEVICE=.*/HW_DEVICE="miyoo-flip"/' "$src"

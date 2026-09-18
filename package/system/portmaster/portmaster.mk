@@ -59,6 +59,19 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/zlyme-theme/logo.png \
 			$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/logo.png; \
 	fi
+	# ROCKNIX first_run copytree source.
+	mkdir -p $(TARGET_DIR)/usr/config/PortMaster
+	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/control.txt ]; then \
+		$(INSTALL) -m 0644 \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/control.txt \
+			$(TARGET_DIR)/usr/config/PortMaster/control.txt; \
+	fi
+	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/gamecontrollerdb.txt ]; then \
+		$(INSTALL) -m 0644 \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/gamecontrollerdb.txt \
+			$(TARGET_DIR)/usr/config/PortMaster/gamecontrollerdb.txt; \
+	fi
+	: > $(TARGET_DIR)/usr/config/PortMaster/mapper.txt
 endef
 
 $(eval $(generic-package))
