@@ -1,18 +1,37 @@
 #!/bin/sh
-# Apply the saved DSI refresh once DRM is up.
+# Apply the saved DSI refresh once DRM is up. Splash itself is
+# restarted in S12splash so S13resize can USR1 galaxy before we get here.
 
 start() {
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
 	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-hdmi-mode
-	# Initramfs splash should still be looping. Restart only if
-	# switch_root dropped it, so the lockup does not reload as a still.
+	# S12 already started the squashfs splash. Only restart if it
+	# died; do not kill a running lockup (flicker, and resize/OTA
+	# may already be on galaxy).
 	if [ -x /usr/sbin/zlyme-splash ] && ! pidof zlyme-splash >/dev/null 2>&1; then
 		still=/usr/share/zlyme/splash.rgb565
 		anim=/usr/share/zlyme/splash.anim
+		pstill=/usr/share/zlyme/progress.rgb565
+		panim=/usr/share/zlyme/progress.anim
+		[ -f /boot/splash.anim ] && anim=/boot/splash.anim
+		[ -f /boot/progress.anim ] && panim=/boot/progress.anim
 		[ -f "$still" ] || still=/splash.rgb565
-		[ -f "$anim" ] || anim=/splash.anim
-		/usr/sbin/zlyme-splash "$still" "$anim" >/dev/null 2>&1 &
+		[ -f "$pstill" ] || pstill=/progress.rgb565
+		mode=
+		if [ -f /tmp/zlyme-splash.progress ] || [ -f /boot/zlyme-splash.progress ]; then
+			mode=progress
+		fi
+		/usr/sbin/zlyme-splash "$still" "$anim" "$pstill" "$panim" $mode \
+			>/dev/null 2>&1 &
 		echo $! > /tmp/zlyme-splash.pid
+	fi
+	if [ -d /boot ] && grep -q " /boot " /proc/mounts; then
+		(
+			[ -s /boot/splash.anim ] || \
+				cp -f /usr/share/zlyme/splash.anim /boot/splash.anim
+			[ -s /boot/progress.anim ] || \
+				cp -f /usr/share/zlyme/progress.anim /boot/progress.anim
+		) >/dev/null 2>&1 &
 	fi
 	# Do not udevtrigger here. A full add at S16 raced S17, loaded
 	# 8733bu during nextui.elf, and blocked a udev worker for 180 s.

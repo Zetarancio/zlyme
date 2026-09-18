@@ -5,6 +5,10 @@
 
 log() {
 	echo "zlyme-init: $*"
+	# Do not scribble on the panel while the lockup is up.
+	if [ -f /zlyme-splash.progress ] || [ -f /boot_root/zlyme-splash.progress ]; then
+		return 0
+	fi
 	[ -w /dev/console ] && echo "zlyme-init: $*" >/dev/console 2>/dev/null
 	[ -w /dev/tty1 ] && echo "zlyme-init: $*" >/dev/tty1 2>/dev/null
 }
@@ -91,11 +95,23 @@ do_root() {
 	mount -t devtmpfs none /dev 2>/dev/null || true
 
 	# Loop the splash in the background so MMC mount is not waiting
-	# on fb0. Leave it running across switch_root: S16 and session
-	# reuse the PID, and NextUI kills it when KMSDRM takes the panel.
-	# Killing it here made the lockup restart as a still.
+	# on fb0. Leave it running across switch_root until S12splash
+	# restarts it from the squashfs copy (initramfs splash cannot
+	# see /usr/share/zlyme). NextUI kills it when KMSDRM takes the panel.
+	# One try at FAT first so an OTA reboot paints galaxy, not slime.
+	if [ -b /dev/mmcblk0p2 ]; then
+		mount_boot /dev/mmcblk0p2 || true
+	elif [ -b /dev/mmcblk1p2 ]; then
+		mount_boot /dev/mmcblk1p2 || true
+	fi
+	if [ -f /boot_root/zlyme-splash.progress ]; then
+		: > /zlyme-splash.progress
+	fi
 	if [ -x /zlyme-splash ]; then
-		/zlyme-splash /splash.rgb565 /splash.anim &
+		# Stills from the ramdisk. Anims appear on FAT at
+		# /boot_root once MMC is up; splash loads them then.
+		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
+			/progress.rgb565 /boot_root/progress.anim &
 	fi
 
 	read -r cmdline < /proc/cmdline
@@ -107,12 +123,18 @@ do_root() {
 		esac
 	done
 
-	if ! wait_mount mount_boot "LABEL=${label}"; then
-		log "could not mount LABEL=${label}"
-		return 1
+	if ! grep -q " /boot_root " /proc/mounts; then
+		if ! wait_mount mount_boot "LABEL=${label}"; then
+			log "could not mount LABEL=${label}"
+			return 1
+		fi
 	fi
 
 	if wait_mount mount_storage "LABEL=ZLYME"; then
+		if [ -f /storage_root/.update/pending/zlyme ]; then
+			: > /zlyme-splash.progress
+			: > /boot_root/zlyme-splash.progress
+		fi
 		commit_update || true
 	else
 		log "ZLYME not mounted (ok if no pending update)"

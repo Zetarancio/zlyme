@@ -52,9 +52,9 @@ define ZLYME_INITRAMFS_INSTALL_TARGET_CMDS
 		$(ZLYME_INITRAMFS_PKGDIR)/splash.c
 	$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.rgb565 \
 		$(INITRAMFS_DIR)/splash.rgb565
-	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/splash.anim ]; then \
-		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.anim \
-			$(INITRAMFS_DIR)/splash.anim; \
+	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/progress.rgb565 ]; then \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/progress.rgb565 \
+			$(INITRAMFS_DIR)/progress.rgb565; \
 	fi
 	mkdir -p $(INITRAMFS_DIR)/proc \
 		$(INITRAMFS_DIR)/sys \
@@ -66,9 +66,24 @@ define ZLYME_INITRAMFS_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-splash
 	$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.rgb565 \
 		$(TARGET_DIR)/usr/share/zlyme/splash.rgb565
+	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/progress.rgb565 ]; then \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/progress.rgb565 \
+			$(TARGET_DIR)/usr/share/zlyme/progress.rgb565; \
+	fi
+	# Anims are too big for the ramdisk. FAT + squashfs copies so
+	# splash can load them after MMC, and S12splash can restart
+	# after switch_root (before S13resize).
 	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/splash.anim ]; then \
 		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.anim \
 			$(TARGET_DIR)/usr/share/zlyme/splash.anim; \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/splash.anim \
+			$(BINARIES_DIR)/splash.anim; \
+	fi
+	if [ -f $(ZLYME_INITRAMFS_PKGDIR)/progress.anim ]; then \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/progress.anim \
+			$(TARGET_DIR)/usr/share/zlyme/progress.anim; \
+		$(INSTALL) -D -m 0644 $(ZLYME_INITRAMFS_PKGDIR)/progress.anim \
+			$(BINARIES_DIR)/progress.anim; \
 	fi
 endef
 

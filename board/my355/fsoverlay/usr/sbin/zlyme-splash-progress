@@ -1,0 +1,43 @@
+#!/bin/sh
+# Flip the running splash to the galaxy lockup (first-boot resize / OTA).
+# Do not kill zlyme-splash; it already holds fb0 and just swaps frames.
+# persist = also plant a flag on FAT so the next initramfs starts on
+# galaxy instead of slime (OTA reboot → copy squashfs → NextUI).
+
+touch_flag() {
+	: > "$1" 2>/dev/null || true
+}
+
+drop_flag() {
+	rm -f "$1" 2>/dev/null || true
+}
+
+mode=${1:-on}
+case "$mode" in
+	on|progress)
+		touch_flag /tmp/zlyme-splash.progress
+		if [ "${2:-}" = persist ] || [ "${2:-}" = boot ]; then
+			touch_flag /boot/zlyme-splash.progress
+		fi
+		# Initramfs splash keeps the old root across switch_root, so
+		# /tmp flags from S13 are invisible to it. SIGUSR1 is.
+		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
+		;;
+	keep)
+		# Stay on galaxy until NextUI, but do not persist past this boot.
+		drop_flag /boot/zlyme-splash.progress
+		touch_flag /tmp/zlyme-splash.progress
+		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
+		;;
+	off|boot)
+		drop_flag /tmp/zlyme-splash.progress
+		drop_flag /boot/zlyme-splash.progress
+		drop_flag /boot_root/zlyme-splash.progress
+		drop_flag /zlyme-splash.progress
+		killall -USR2 zlyme-splash >/dev/null 2>&1 || true
+		;;
+	*)
+		echo "usage: zlyme-splash-progress {on|keep|off} [persist]" >&2
+		exit 1
+		;;
+esac

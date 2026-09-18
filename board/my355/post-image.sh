@@ -50,6 +50,12 @@ fi
 [ -x "${BINARIES_DIR}/initramfs/init" ] ||
 	{ echo "post-image: initramfs is missing (BR2_PACKAGE_ZLYME_INITRAMFS)" >&2
 	  exit 1; }
+[ -s "${BINARIES_DIR}/splash.anim" ] ||
+	{ echo "post-image: splash.anim is missing (rasterize branding, rebuild zlyme-initramfs)" >&2
+	  exit 1; }
+[ -s "${BINARIES_DIR}/progress.anim" ] ||
+	{ echo "post-image: progress.anim is missing (rasterize branding, rebuild zlyme-initramfs)" >&2
+	  exit 1; }
 
 sq_bytes=$(wc -c < "${BINARIES_DIR}/zlyme")
 echo "post-image: squashfs ${sq_bytes} bytes as FAT file zlyme on 1300M ZLYMEBOOT"

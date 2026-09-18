@@ -1,0 +1,58 @@
+#!/bin/sh
+# Kill the initramfs splash (it keeps the old root across switch_root
+# and cannot see /usr/share/zlyme) and start the squashfs copy. Must
+# run after S12bootfs and before S13resize: resize can reboot -f
+# before S16, and galaxy during that work needs this process.
+
+start_splash() {
+	[ -x /usr/sbin/zlyme-splash ] || return 0
+	if pidof zlyme-splash >/dev/null 2>&1; then
+		killall zlyme-splash 2>/dev/null || true
+		n=0
+		while pidof zlyme-splash >/dev/null 2>&1 && [ "$n" -lt 40 ]; do
+			sleep 0.05
+			n=$((n + 1))
+		done
+	fi
+	still=/usr/share/zlyme/splash.rgb565
+	anim=/usr/share/zlyme/splash.anim
+	pstill=/usr/share/zlyme/progress.rgb565
+	panim=/usr/share/zlyme/progress.anim
+	[ -f /boot/splash.anim ] && anim=/boot/splash.anim
+	[ -f /boot/progress.anim ] && panim=/boot/progress.anim
+	[ -f "$still" ] || still=/splash.rgb565
+	[ -f "$pstill" ] || pstill=/progress.rgb565
+	mode=
+	if [ -f /tmp/zlyme-splash.progress ] || [ -f /boot/zlyme-splash.progress ]; then
+		mode=progress
+	fi
+	/usr/sbin/zlyme-splash "$still" "$anim" "$pstill" "$panim" $mode \
+		>/dev/null 2>&1 &
+	echo $! > /tmp/zlyme-splash.pid
+	# Next cold boot's initramfs reads these off FAT. OTA with an
+	# older updater left them missing; seed in the background.
+	if [ -d /boot ] && grep -q " /boot " /proc/mounts; then
+		(
+			[ -s /boot/splash.anim ] || \
+				cp -f /usr/share/zlyme/splash.anim /boot/splash.anim
+			[ -s /boot/progress.anim ] || \
+				cp -f /usr/share/zlyme/progress.anim /boot/progress.anim
+		) >/dev/null 2>&1 &
+	fi
+}
+
+start() {
+	start_splash
+	return 0
+}
+
+stop() {
+	return 0
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart|reload) start_splash ;;
+	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

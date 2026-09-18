@@ -674,6 +674,8 @@ SDL_Surface* PLAT_initVideo(void) {
 		/* ignore */
 	}
 	unlink("/tmp/zlyme-splash.pid");
+	unlink("/tmp/zlyme-splash.progress");
+	unlink("/boot/zlyme-splash.progress");
 	usleep(20000);
 
 #if NEXTUI_TSAN

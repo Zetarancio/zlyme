@@ -13,7 +13,7 @@ boot_mark() {
 # Session bind of .roms_base; zlyme-storage unmounts that and merges.
 is_class_a() {
 	case "$1" in
-		S10udevd|S11modules|S12bootfs|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26joypadcal|S26keylidmon|S28minui)
+		S10udevd|S11modules|S12bootfs|S12splash|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26joypadcal|S26keylidmon|S28minui)
 			return 0
 			;;
 	esac

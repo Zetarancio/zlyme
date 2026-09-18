@@ -225,9 +225,18 @@ ensure_splash() {
 	if [ -x /usr/sbin/zlyme-splash ]; then
 		still=/usr/share/zlyme/splash.rgb565
 		anim=/usr/share/zlyme/splash.anim
+		pstill=/usr/share/zlyme/progress.rgb565
+		panim=/usr/share/zlyme/progress.anim
+		[ -f /boot/splash.anim ] && anim=/boot/splash.anim
+		[ -f /boot/progress.anim ] && panim=/boot/progress.anim
 		[ -f "$still" ] || still=/splash.rgb565
-		[ -f "$anim" ] || anim=/splash.anim
-		/usr/sbin/zlyme-splash "$still" "$anim" >/dev/null 2>&1 &
+		[ -f "$pstill" ] || pstill=/progress.rgb565
+		mode=
+		if [ -f /tmp/zlyme-splash.progress ] || [ -f /boot/zlyme-splash.progress ]; then
+			mode=progress
+		fi
+		/usr/sbin/zlyme-splash "$still" "$anim" "$pstill" "$panim" $mode \
+			>/dev/null 2>&1 &
 		echo $! > /tmp/zlyme-splash.pid
 	fi
 }
@@ -235,7 +244,9 @@ ensure_splash() {
 stop_splash() {
 	pid=""
 	[ -f /tmp/zlyme-splash.pid ] && pid=$(cat /tmp/zlyme-splash.pid)
-	rm -f /tmp/zlyme-splash.pid
+	rm -f /tmp/zlyme-splash.pid \
+		/tmp/zlyme-splash.progress \
+		/boot/zlyme-splash.progress
 	if [ -n "$pid" ]; then
 		kill "$pid" 2>/dev/null || true
 		wait "$pid" 2>/dev/null || true

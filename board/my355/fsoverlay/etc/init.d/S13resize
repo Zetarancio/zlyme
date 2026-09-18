@@ -45,8 +45,6 @@ part_size_mb() {
 say() {
 	msg="$*"
 	echo "$msg"
-	[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
-	[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
 	[ -d "$(dirname "$LOG")" ] && echo "$msg" >>"$LOG" 2>/dev/null || true
 }
 
@@ -96,6 +94,12 @@ start() {
 
 	say "Resizing storage: "
 	: > "$LOG"
+	if [ -x /usr/sbin/zlyme-splash-progress ]; then
+		zlyme-splash-progress on
+	else
+		: > /tmp/zlyme-splash.progress
+		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
+	fi
 
 	DISK=$(disk_of "$PART")
 	PARTNUM=$(part_num_of "$PART")
