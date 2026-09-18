@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Pack KERNEL + DTB + overlays + squashfs file for OTA.
-# Device boot path is always /storage/.update/zlyme-my355-update.tar
-# (the pak renames this file after the hash check). Releases only ship
-# the versioned tar and its .sha256.
+# Device picks the newest /storage/.update/zlyme-my355-*.tar
+# (the pak still renames a GitHub download to update.tar). Releases
+# ship the versioned tar and its .sha256.
 
 set -euo pipefail
 
@@ -32,6 +32,15 @@ mkdir -p "$stage/overlays" "$stage/extlinux"
 install -m 0644 "${BINARIES_DIR}/Image" "$stage/Image"
 install -m 0644 "${BINARIES_DIR}/rk3566-miyoo-flip.dtb" "$stage/rk3566-miyoo-flip.dtb"
 install -m 0644 "${BINARIES_DIR}/zlyme" "$stage/zlyme"
+ota_files="Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION pre-update.sh post-update.sh"
+if [ -s "${BINARIES_DIR}/splash.anim" ]; then
+	install -m 0644 "${BINARIES_DIR}/splash.anim" "$stage/splash.anim"
+	ota_files="$ota_files splash.anim"
+fi
+if [ -s "${BINARIES_DIR}/progress.anim" ]; then
+	install -m 0644 "${BINARIES_DIR}/progress.anim" "$stage/progress.anim"
+	ota_files="$ota_files progress.anim"
+fi
 install -m 0644 "${BOARD_DIR}/extlinux.conf" "$stage/extlinux/extlinux.conf"
 if [ -d "${BINARIES_DIR}/overlays" ]; then
 	cp -a "${BINARIES_DIR}/overlays/." "$stage/overlays/"
@@ -42,8 +51,8 @@ install -m 0755 "${BOARD_DIR}/post-update.sh" "$stage/post-update.sh"
 
 base="zlyme-my355-${stamp}-${ver}.tar"
 out="${BINARIES_DIR}/${base}"
-tar -C "$stage" -cf "$out" Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION \
-	pre-update.sh post-update.sh
+# shellcheck disable=SC2086
+tar -C "$stage" -cf "$out" $ota_files
 rm -f "${BINARIES_DIR}/zlyme-my355-update.tar"
 (
 	cd "${BINARIES_DIR}"

@@ -4,7 +4,8 @@
 # as a second file on ZLYMEBOOT).
 #
 # Contract:
-#   1. Copy the tar to /storage/.update/zlyme-my355-update.tar
+#   1. Copy a tar to /storage/.update/zlyme-my355-*.tar
+#      (update.tar, versioned, or -dirty; newest mtime wins)
 #   2. reboot
 # S18 extracts to /storage/.update/pending, copies Image/dtb/overlays
 # to /boot, then reboots. Initramfs commits the squashfs from ZLYME.
@@ -31,8 +32,11 @@ mkdir -p "$STAGEDIR" 2>/dev/null || true
 log() {
 	msg="zlyme-update: $*"
 	echo "$msg"
-	[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
-	[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
+	if [ ! -f /tmp/zlyme-splash.progress ] && \
+		[ ! -f /boot/zlyme-splash.progress ]; then
+		[ -w /dev/console ] && echo "$msg" >/dev/console 2>/dev/null || true
+		[ -w /dev/tty1 ] && echo "$msg" >/dev/tty1 2>/dev/null || true
+	fi
 	if [ -d "$STAGEDIR" ]; then
 		echo "$msg" >>"$LOG" 2>/dev/null || true
 	fi
@@ -48,11 +52,20 @@ need_cmd() {
 	command -v "$1" >/dev/null 2>&1 || fail "missing $1"
 }
 
-queued_tar() {
-	if [ -s "$QUEUED_TAR" ]; then
-		printf '%s\n' "$QUEUED_TAR"
-		return 0
+# Galaxy lockup for the whole extract/copy. persist so the reboot that
+# commits the squashfs also starts initramfs on galaxy, not slime.
+show_galaxy() {
+	if [ -x /usr/sbin/zlyme-splash-progress ]; then
+		zlyme-splash-progress on persist || true
+	else
+		: > /tmp/zlyme-splash.progress 2>/dev/null || true
+		: > /boot/zlyme-splash.progress 2>/dev/null || true
+		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
 	fi
+}
+
+queued_tar() {
+	# Explicit pin still wins (the GitHub pak writes WANT).
 	if [ -s "$WANT" ]; then
 		t=$(tr -d '\t\r\n' <"$WANT")
 		if [ -s "$t" ]; then
@@ -63,6 +76,24 @@ queued_tar() {
 			printf '%s\n' "$STAGEDIR/$t"
 			return 0
 		fi
+	fi
+	best=""
+	best_m=0
+	for f in "$STAGEDIR"/zlyme-my355-*.tar; do
+		[ -f "$f" ] || continue
+		[ -s "$f" ] || continue
+		case "$f" in
+			*.sha256) continue ;;
+		esac
+		m=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+		if [ -z "$best" ] || [ "$m" -gt "$best_m" ]; then
+			best=$f
+			best_m=$m
+		fi
+	done
+	if [ -n "$best" ]; then
+		printf '%s\n' "$best"
+		return 0
 	fi
 	return 1
 }
@@ -114,6 +145,7 @@ squashfs_fits() {
 
 stage_tar() {
 	tarf=$1
+	show_galaxy
 	verify_tar "$tarf"
 	rm -rf "$PENDING"
 	mkdir -p "$PENDING"
@@ -165,6 +197,12 @@ install_boot() {
 	log "installing kernel/dtb/overlays to $BOOT"
 	cp -f "$dir/Image" "$BOOT/Image"
 	cp -f "$dir/rk3566-miyoo-flip.dtb" "$BOOT/rk3566-miyoo-flip.dtb"
+	if [ -f "$dir/splash.anim" ]; then
+		cp -f "$dir/splash.anim" "$BOOT/splash.anim"
+	fi
+	if [ -f "$dir/progress.anim" ]; then
+		cp -f "$dir/progress.anim" "$BOOT/progress.anim"
+	fi
 	if [ -d "$dir/extlinux" ]; then
 		mkdir -p "$BOOT/extlinux"
 		cp -a "$dir/extlinux/." "$BOOT/extlinux/"
@@ -213,6 +251,7 @@ run_pending_hook() {
 
 # Extract on ZLYME, copy kernel to /boot, leave pending/zlyme for initramfs.
 apply_files() {
+	show_galaxy
 	ensure_pending
 	run_pending_hook pre-update.sh
 	install_boot "$PENDING" || return 1

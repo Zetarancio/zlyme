@@ -3,24 +3,35 @@
 # rcS waits for this (does not fork it) so the list never comes up
 # while the tar is still copying; success reboots and does not return.
 #
-# Drop /storage/.update/zlyme-my355-update.tar and reboot. This script
+# Drop /storage/.update/zlyme-my355-*.tar (newest wins) and reboot. This script
 # extracts to /storage/.update/pending and copies Image/dtb/overlays
-# onto /boot. Initramfs copies pending/zlyme over the live squashfs
-# file. Flag reapply is rc.late: doing it here waited on S17's
-# storage lock and left the splash on "applying settings after OS swap".
+# and splash.anim/progress.anim onto /boot. Initramfs copies pending/zlyme
+# over the live squashfs file. Flag reapply is rc.late: doing it here waited
+# on S17's storage lock and left the splash on "applying settings after OS swap".
 
 start() {
 	[ -x /usr/sbin/zlyme-update ] || return 0
 	upd=/usr/sbin/zlyme-update
 
 	if "$upd" queued >/dev/null 2>&1; then
-		printf "Zlyme update: "
+		if [ -x /usr/sbin/zlyme-splash-progress ]; then
+			zlyme-splash-progress on persist
+		else
+			: > /tmp/zlyme-splash.progress
+			: > /boot/zlyme-splash.progress
+		fi
 		touch /tmp/zlyme-ota
 		"$upd" boot-apply
 		rm -f /tmp/zlyme-ota
 		# Success reboots and does not return. Failure leaves
-		# the old squashfs in place so boot can continue.
-		echo "FAIL"
+		# the old squashfs in place so boot can continue. Keep
+		# galaxy up until NextUI; drop the FAT flag so the next
+		# cold boot is slime.
+		if [ -x /usr/sbin/zlyme-splash-progress ]; then
+			zlyme-splash-progress keep
+		else
+			rm -f /boot/zlyme-splash.progress
+		fi
 		return 0
 	fi
 }
