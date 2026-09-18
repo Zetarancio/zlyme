@@ -1,4 +1,4 @@
-![Zlyme](package/system/nextui/res/branding/zlyme_slime_readme.gif)
+![Zlyme](package/system/nextui/res/branding/zlyme_slime_loop.gif)
 
 **Low latency. High viscosity.**
 
@@ -19,8 +19,6 @@ Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few l
 “It’s not buttery smooth. It’s slime-smooth.”
 
 ### Controls
-
-The Miyoo Flip wiki Start+Vol brightness combo is not this device.
 
 **Launcher**
 
@@ -60,8 +58,8 @@ The Flip will not boot an SD OS until you change how it starts. Without one of t
 1. **apommel-multiboot** (recommended). Repairs the vendor preloader. No card → stock. Bootable card → that OS. Follow the [wiki how-to](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md). The on-device app is [apommel-multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/tree/main/preloader-stock-rocknix/App/apommel-multiboot) in that repo. See the wiki for the supported OS list.
 2. **Erase the preloader.** Then the Flip always boots from SD (or enter MASKROM mode if none is inserted). Wiki: [stock ↔ SD-boot without opening the device](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/stock-rocknix-without-disassembly.md).
 
-Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). Do not flash over a card that already has games. Put that card in the **right** slot (next to power).    
-Later updates are the OTA tar from Tools → Update.   
+Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). Do not flash over a card that already has games. Put that card in the **right** slot (next to power).  
+Later updates are the OTA tar from Tools → Update.  
 Manual updates are done by simply copying a zlyme-my355-XXX-YYY.tar in the .update folder and reboot the device.
 
 ## Systems
