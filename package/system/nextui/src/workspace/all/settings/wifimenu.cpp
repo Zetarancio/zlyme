@@ -99,6 +99,8 @@ bool key_compare(Map const &lhs, Map const &rhs)
 void Menu::updater()
 {
     int pollSecs = 2;
+    std::map<std::string, WIFI_network> prevSsids;
+    std::string prevConn;
 
     while (!quit && !globalQuit)
     {
@@ -123,6 +125,9 @@ void Menu::updater()
             for (int i = 0; i < cnt; i++)
                 scanSsids.emplace(scanResults[i].ssid, scanResults[i]);
 
+            std::string connKey = std::string(connection.ssid) + "|" + std::string(connection.ip);
+            bool sameScan = key_compare(prevSsids, scanSsids) && prevConn == connKey;
+
             bool menuOpen = false;
             {
                 ReadLock r(itemLock);
@@ -136,7 +141,7 @@ void Menu::updater()
                 }
             }
 
-            if (!menuOpen)
+            if (!menuOpen && !sameScan)
             {
                 std::string selectedName;
                 bool selectionApplied = false;
@@ -192,6 +197,8 @@ void Menu::updater()
                 selectionApplied = selectByName(selectedName);
                 globalDirty |= selectionApplied;
                 selectionDirty |= !selectionApplied;
+                prevSsids = scanSsids;
+                prevConn = connKey;
             }
             pollSecs = 2;
         }
@@ -224,6 +231,8 @@ void Menu::updater()
                     items.push_back(toggleItem);
                     items.push_back(diagItem);
                     selectionDirty = true;
+                    prevSsids.clear();
+                    prevConn.clear();
                 }
                 for (auto *i : stale)
                     delete i;
@@ -282,9 +291,6 @@ NetworkItem::NetworkItem(WIFI_network n, bool connected, MenuList* submenu)
 void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const AbstractMenuItem &item, bool selected) const
 {
     SDL_Color text_color = uintToColour(THEME_COLOR4_255);
-    SDL_Surface *text = TTF_RenderUTF8_Blended(font.tiny, item.getLabel().c_str(), COLOR_WHITE); // always white
-
-    // hack - this should be correlated to max_width
     int mw = dst.w;
 
     if (selected)
@@ -331,7 +337,7 @@ void NetworkItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, cons
         text_color = uintToColour(THEME_COLOR5_255);
     }
 
-    text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
+    SDL_Surface *text = TTF_RenderUTF8_Blended(font.large, item.getName().c_str(), text_color);
     SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
     SDL_FreeSurface(text);
 }

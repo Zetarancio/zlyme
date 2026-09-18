@@ -141,6 +141,9 @@ bool key_compare(Map const &lhs, Map const &rhs)
 void Menu::updater()
 {
     int pollSecs = 15;
+    std::map<std::string, BT_device> prevScan;
+    std::map<std::string, BT_devicePaired> prevPaired;
+    std::string prevBtConn;
 
     while (!quit && !globalQuit)
     {
@@ -173,6 +176,14 @@ void Menu::updater()
                 scanMap.emplace(key, sr[i]);
             }
 
+            std::string btConn;
+            for (auto &[s, r] : pairedMap)
+                if (r.is_connected)
+                    btConn += s;
+            bool sameScan = key_compare(prevScan, scanMap) &&
+                            key_compare(prevPaired, pairedMap) &&
+                            prevBtConn == btConn;
+
             bool menuOpen = false;
             {
                 ReadLock r(itemLock);
@@ -186,7 +197,7 @@ void Menu::updater()
                 }
             }
 
-            if (!menuOpen)
+            if (!menuOpen && !sameScan)
             {
                 std::string selectedName;
                 bool selectionApplied = false;
@@ -240,27 +251,48 @@ void Menu::updater()
                 selectionApplied = selectByName(selectedName);
                 globalDirty |= selectionApplied;
                 selectionDirty |= !selectionApplied;
+                prevScan = scanMap;
+                prevPaired = pairedMap;
+                prevBtConn = btConn;
             }
             pollSecs = 2;
         }
         else
         {
-            std::vector<AbstractMenuItem *> stale;
+            bool menuOpen = false;
             {
-                WriteLock w(itemLock);
-                for (auto *i : items)
+                ReadLock r(itemLock);
+                for (auto i : items)
                 {
-                    if (i != toggleItem && i != diagItem && i != rateItem)
-                        stale.push_back(i);
+                    if (i && i->isDeferred())
+                    {
+                        menuOpen = true;
+                        break;
+                    }
                 }
-                items.clear();
-                items.push_back(toggleItem);
-                items.push_back(diagItem);
-                items.push_back(rateItem);
-                selectionDirty = true;
             }
-            for (auto *i : stale)
-                delete i;
+            if (!menuOpen)
+            {
+                std::vector<AbstractMenuItem *> stale;
+                {
+                    WriteLock w(itemLock);
+                    for (auto *i : items)
+                    {
+                        if (i != toggleItem && i != diagItem && i != rateItem)
+                            stale.push_back(i);
+                    }
+                    items.clear();
+                    items.push_back(toggleItem);
+                    items.push_back(diagItem);
+                    items.push_back(rateItem);
+                    selectionDirty = true;
+                    prevScan.clear();
+                    prevPaired.clear();
+                    prevBtConn.clear();
+                }
+                for (auto *i : stale)
+                    delete i;
+            }
             pollSecs = 15;
         }
 
@@ -368,9 +400,6 @@ PairedItem::PairedItem(BT_devicePaired d, MenuList* submenu)
 void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const AbstractMenuItem &item, bool selected) const
 {
     SDL_Color text_color = uintToColour(THEME_COLOR4_255);
-    SDL_Surface *text = TTF_RenderUTF8_Blended(font.tiny, item.getLabel().c_str(), COLOR_WHITE); // always white
-
-    // hack - this should be correlated to max_width
     int mw = dst.w;
 
     if (selected)
@@ -426,6 +455,4 @@ void PairedItem::drawCustomItem(SDL_Surface *surface, const SDL_Rect &dst, const
         SDL_BlitSurfaceCPP(named, {}, surface, {dst.x + SCALE1(OPTION_PADDING), dst.y + SCALE1(1)});
         SDL_FreeSurface(named);
     }
-    if (text)
-        SDL_FreeSurface(text);
 }

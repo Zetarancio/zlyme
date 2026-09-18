@@ -331,26 +331,52 @@ MenuList::~MenuList()
 void MenuList::performLayout(const SDL_Rect &dst)
 {
     ReadLock r(itemLock);
-    // TODO: consecutive calls to this should only update max_visible rows
-    // and try to persist the current selection state
-    // TODO: If we ever need to add menu entries dynamically, this potentially
-    // needs to be called again after.
-    scope.start = 0;
-    scope.selected = 0;
-    scope.count = items.size();
+    int old_selected = scope.selected;
+    int old_start = scope.start;
+    bool keep = layout_called && scope.count > 0;
+
+    scope.count = (int)items.size();
     if (type == MenuItemType::Main)
     {
         scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE)) / SCALE1(PILL_SIZE);
     }
     else
     {
-        // we are leaving some space to show the description label here, account for roughly two lines or one pill
-        // also account for the scroll icon, in case we need it.
-        // scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE * 2)) / SCALE1(BUTTON_SIZE);
+        // One pill for the description. *2 left a blank row on my355
+        // (FIXED_SCALE=2) and WiFi only showed 4 SSIDs.
         scope.max_visible_options = (dst.h - SCALE1(PILL_SIZE)) / SCALE1(PILL_SIZE);
     }
-    scope.end = std::min(scope.count, scope.max_visible_options);
-    scope.visible_rows = scope.end;
+    if (scope.max_visible_options < 1)
+        scope.max_visible_options = 1;
+
+    if (keep && old_selected >= 0 && scope.count > 0)
+    {
+        if (old_selected >= scope.count)
+            old_selected = scope.count - 1;
+        if (old_start < 0)
+            old_start = 0;
+        if (old_start >= scope.count)
+            old_start = 0;
+        scope.selected = old_selected;
+        scope.start = old_start;
+        if (scope.start > scope.selected)
+            scope.start = scope.selected;
+        if (scope.selected >= scope.start + scope.max_visible_options)
+            scope.start = scope.selected - scope.max_visible_options + 1;
+        if (scope.start + scope.max_visible_options > scope.count)
+            scope.start = std::max(0, scope.count - scope.max_visible_options);
+        if (scope.start < 0)
+            scope.start = 0;
+        scope.end = std::min(scope.count, scope.start + scope.max_visible_options);
+        scope.visible_rows = scope.end - scope.start;
+    }
+    else
+    {
+        scope.start = 0;
+        scope.selected = 0;
+        scope.end = std::min(scope.count, scope.max_visible_options);
+        scope.visible_rows = scope.end;
+    }
 
     for (auto itm : items)
         if (itm->getSubMenu())
@@ -410,20 +436,27 @@ bool MenuList::selectByName(const std::string &name)
         return false;
 
     int toSelect = -1;
-    for (int i = 0; i < items.size() && toSelect < 0; i++)
+    for (int i = 0; i < (int)items.size() && toSelect < 0; i++)
         if(items.at(i)->getName() == name)
             toSelect = i;
-    //LOG_info("Found element %s (%d) at pos %d\n", name.c_str(), scope.selected - scope.start, toSelect);
-    if (toSelect >= 0)
-    {
-        performLayout((SDL_Rect){0, 0, FIXED_WIDTH, FIXED_HEIGHT});
-        while(toSelect > 0) {
-            selectNext();
-            toSelect--;
-        }
-        return true;
-    }
-    return false;
+    if (toSelect < 0)
+        return false;
+
+    scope.count = (int)items.size();
+    scope.selected = toSelect;
+    if (scope.max_visible_options < 1)
+        scope.max_visible_options = scope.count > 0 ? scope.count : 1;
+    if (scope.selected < scope.start)
+        scope.start = scope.selected;
+    if (scope.selected >= scope.start + scope.max_visible_options)
+        scope.start = scope.selected - scope.max_visible_options + 1;
+    if (scope.start < 0)
+        scope.start = 0;
+    if (scope.start + scope.max_visible_options > scope.count)
+        scope.start = std::max(0, scope.count - scope.max_visible_options);
+    scope.end = std::min(scope.count, scope.start + scope.max_visible_options);
+    scope.visible_rows = scope.end - scope.start;
+    return true;
 }
 
 // returns true if the input was handled
@@ -569,8 +602,9 @@ SDL_Rect MenuList::itemSizeHint(const AbstractMenuItem &item)
 
 void MenuList::draw(SDL_Surface *surface, const SDL_Rect &dst, const SDL_Rect &dstTitle)
 {
-    if (!layout_called)
-        performLayout(dst);
+    // Updater threads layout against the full 640x480 box. Use the
+    // real list rect so the last row is not drawn on the description.
+    performLayout(dst);
 
     ReadLock r(itemLock);
     if (items.empty())
@@ -740,6 +774,12 @@ namespace
 
 void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const AbstractMenuItem &item, bool selected)
 {
+    if (item.getType() == ListItemType::Custom)
+    {
+        item.drawCustomItem(surface, dst, item, selected);
+        return;
+    }
+
     SDL_Color text_color = uintToColour(THEME_COLOR4_255);
     SDL_Color text_color_value = uintToColour(THEME_COLOR4_255);
     SDL_Surface *text;
@@ -785,9 +825,6 @@ void MenuList::drawFixedItem(SDL_Surface *surface, const SDL_Rect &dst, const Ab
         }
         else if(item.getType() == ListItemType::Button) {
             // dont draw anything for now, could be a button hint later
-        }
-        else if(item.getType() == ListItemType::Custom) {
-            item.drawCustomItem(surface, dst, item, selected);
         }
         else // Generic and fallback
             SDL_BlitSurfaceCPP(text, {}, surface, {dst.x + mw - text->w - SCALE1(OPTION_PADDING), dst.y + ((dst.h - text->h) / 2)});
