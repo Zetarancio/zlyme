@@ -2,6 +2,8 @@
 # Save the kernel's Miyoo UART stick calibration to /storage and show it.
 # The driver auto-cals ~10s after probe; sysfs is ROCKNIX 0003 (miyoo_cal_*).
 
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 msg() {
 	echo "$1"
 	if command -v show.elf >/dev/null 2>&1; then
@@ -33,3 +35,4 @@ fi
 
 vals=$(/usr/sbin/zlyme-joypad-cal show 2>/dev/null || true)
 msg "Saved ${vals:-ok}" 4
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true

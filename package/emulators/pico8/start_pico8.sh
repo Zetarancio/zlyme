@@ -1,6 +1,6 @@
 #!/bin/sh
 # PICO-8 is not redistributable. MinUI layout is Bios/PICO/pico8_64
-# plus pico8.dat (also accepted next to carts).
+# plus pico8.dat. The binary is not loaded from the ROM folder.
 #
 # A path whose name contains "splore" starts Splore instead of -run.
 # Dummy Splore.p8 stays in the rom folder; -root_path is that folder
@@ -29,19 +29,11 @@ if [ -n "$ROM" ] && [ -f "$ROM" ]; then
 fi
 
 LAUNCH_DIR=""
-set --
-[ -n "$GAME_DIR" ] && set -- "$GAME_DIR" "$GAME_DIR/aarch64"
-set -- "$@" \
+set -- \
 	"$BIOS/PICO" \
 	"$BIOS/PICO/aarch64" \
 	"$BIOS/PICO-8" \
-	"$BIOS" \
-	"$SDCARD/Roms/Pico-8 (PICO)" \
-	"$SDCARD/Roms/Pico-8 (PICO)/aarch64" \
-	"$SDCARD/Roms/PICO-8" \
-	"$SDCARD/Roms/PICO-8/aarch64" \
-	"/mnt/SDCARD/Roms/PICO-8" \
-	"/mnt/SDCARD/Roms/PICO-8/aarch64"
+	"$BIOS"
 for d in "$@"; do
 	[ -n "$d" ] || continue
 	if [ -x "$d/$STATIC_BIN" ] || [ -f "$d/$STATIC_BIN" ]; then

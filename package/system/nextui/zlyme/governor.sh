@@ -6,7 +6,7 @@
 #   smart        NextUI list: 2 cores, schedutil 408-1800, DMC 324
 #   play         Ports/GB/GBA/FC/Pico-8/Moonlight/most RA:
 #                4 cores, schedutil 408-1800, DMC 528-1056
-#   heavy        PSP/NDS/DC/N64/Saturn: 4c, schedutil 1104-1800
+#   heavy        PSP/NDS/DC/N64/Saturn/PS2/GC/Wii: 4c, schedutil 1104-1800
 #   performance  same as heavy (NextUI CPU_SPEED_PERFORMANCE)
 #   overclock    1992 when zlyme-ctl boost is on (serial debug only)
 #   idle         lid: 2 cores, conservative 408-1104, DMC 324
@@ -165,8 +165,11 @@ profile_overclock() {
 is_heavy() {
 	tag=$(printf '%s' "$*" | tr 'A-Z' 'a-z')
 	case "$tag" in
-		*ppsspp*|*psp*|*flycast*|*dreamcast*|*drastic*|*nds*|*melonds*|\
-		*mupen*|*n64*|*yaba*|*saturn*)
+		psp|nds|dc|n64|saturn|ps2|gc|wii|gamecube)
+			return 0
+			;;
+		*ppsspp*|*flycast*|*dreamcast*|*drastic*|*melonds*|\
+		*mupen*|*yaba*|*aether*|*dolphin*|*n64*)
 			return 0
 			;;
 	esac

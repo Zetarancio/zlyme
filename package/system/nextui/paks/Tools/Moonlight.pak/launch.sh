@@ -6,6 +6,8 @@ APP_BIN="moonlight-pak"
 PAK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PAK_NAME=$(basename "$PAK_DIR")
 PAK_NAME=${PAK_NAME%.pak}
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
 cd "$PAK_DIR" || exit 1
 chmod +x "$PAK_DIR/$APP_BIN" 2>/dev/null || true
@@ -54,7 +56,7 @@ fi
 
 echo 1 >/tmp/stay_awake
 sleep 0.4
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu moonlight >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true

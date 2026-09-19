@@ -1,4 +1,6 @@
 #!/bin/sh
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 msg() {
 	echo "$1"
 	if command -v show.elf >/dev/null 2>&1; then
@@ -32,4 +34,5 @@ else
 fi
 sleep 0.4
 cd "$RUN" || exit 1
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 exec /usr/share/vtree/vtree

@@ -3,6 +3,8 @@
 # (Knulli). Passing --memstick made PPSSPP treat the config dir as a ROM.
 EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
 USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD_PATH/.config}"
@@ -19,7 +21,7 @@ mkdir -p "$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM" "$XDG_CONFIG_HOME/ppsspp/PSP/SAVED
 if [ -n "$SEED" ] && [ ! -e "$INI" ]; then
 	cp "$SEED" "$INI"
 fi
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu PSP >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor heavy >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true

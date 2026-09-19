@@ -710,11 +710,7 @@ static int hasPico8Bios(void)
 	cached = pico8_bios_in(SDCARD_PATH "/Bios/PICO")
 		|| pico8_bios_in(SDCARD_PATH "/Bios/PICO/aarch64")
 		|| pico8_bios_in(SDCARD_PATH "/Bios/PICO-8")
-		|| pico8_bios_in(SDCARD_PATH "/Bios")
-		|| pico8_bios_in(SDCARD_PATH "/Roms/Pico-8 (PICO)")
-		|| pico8_bios_in(SDCARD_PATH "/Roms/Pico-8 (PICO)/aarch64")
-		|| pico8_bios_in(SDCARD_PATH "/Roms/PICO-8")
-		|| pico8_bios_in(SDCARD_PATH "/Roms/PICO-8/aarch64");
+		|| pico8_bios_in(SDCARD_PATH "/Bios");
 	return cached;
 }
 

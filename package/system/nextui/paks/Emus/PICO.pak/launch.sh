@@ -4,6 +4,8 @@
 PAK_DIR="$(dirname "$0")"
 EMU_TAG=$(basename "$PAK_DIR" .pak)
 ROM="$1"
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
 SHARED_USERDATA_PATH="${SHARED_USERDATA_PATH:-$SDCARD_PATH/.config/nextui/shared}"
 USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
@@ -40,7 +42,7 @@ seed_splore() {
 }
 
 seed_splore
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu PICO >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 # pico8 wrapper sets -home. Do not point HOME at the parent userdata dir.
 export HOME="${SHARED_USERDATA_PATH}/Pico-8-native"
 mkdir -p "$HOME/carts" "$HOME/cdata" "$HOME/bbs" "$HOME/config" "$HOME/data"

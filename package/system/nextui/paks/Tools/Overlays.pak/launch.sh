@@ -10,6 +10,8 @@ printf '%s' /storage > /tmp/last.txt
 PAK_DIR="$(dirname "$0")"
 PAK_NAME="$(basename "$PAK_DIR")"
 PAK_NAME="${PAK_NAME%.*}"
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
 cd "$PAK_DIR" || exit 1
 
@@ -17,6 +19,7 @@ cd "$PAK_DIR" || exit 1
 mkdir -p "$LOGS_PATH" 2>/dev/null
 LOG_FILE="${LOGS_PATH:-/tmp}/$PAK_NAME.txt"
 rm -f "$LOG_FILE"
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 exec >>"$LOG_FILE" 2>&1
 echo "$(date) launch: $0 $*"
 set -x

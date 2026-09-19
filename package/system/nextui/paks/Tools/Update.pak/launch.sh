@@ -3,9 +3,13 @@
 # Public /releases/latest does not need a PAT. A token is only used if
 # GitHub returns 401/403.
 printf '%s' /storage > /tmp/last.txt
+# Comment out to skip this pak's log (About → System logs).
+[ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
 PAK_DIR="$(dirname "$0")"
 cd "$PAK_DIR" || exit 1
+
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 
 STAGEDIR=/storage/.update
 QUEUED="$STAGEDIR/zlyme-my355-update.tar"
