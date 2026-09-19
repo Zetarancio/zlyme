@@ -43,6 +43,7 @@ struct ReleaseMeta {
     bool ok = false;
     std::string error;
     std::string tag;
+    std::string name;
     bool prerelease = false;
     bool use_auth = false;
     std::string tar_name;
@@ -255,14 +256,35 @@ std::string zlyme_ver_from_tag(const std::string &tag)
     return v.size() > 5 ? v : "";
 }
 
+std::string date_in_parens(const std::string &s)
+{
+    auto a = s.find('(');
+    auto b = s.rfind(')');
+    if (a == std::string::npos || b == std::string::npos || b <= a + 1)
+        return "";
+    std::string inner = trim(s.substr(a + 1, b - a - 1));
+    if (inner.size() == 10 && inner[4] == '-' && inner[7] == '-')
+        return inner;
+    return "";
+}
+
+// Same shape as /etc/os-release VERSION: zlyme40 (2026-09-19)
 std::string short_rel_label()
 {
-    std::string id = short_build_id(g_rel.tar_name);
-    if (!id.empty())
-        return id;
-    std::string zv = zlyme_ver_from_tag(g_rel.tag);
+    std::string zv = zlyme_ver_from_tag(g_rel.name);
+    if (zv.empty())
+        zv = zlyme_ver_from_tag(g_rel.tag);
+    std::string date = date_in_parens(g_rel.name);
+    if (date.empty())
+        date = short_build_id(g_rel.tar_name);
+    if (!zv.empty() && !date.empty())
+        return zv + " (" + date + ")";
     if (!zv.empty())
         return zv;
+    if (!date.empty())
+        return date;
+    if (!g_rel.name.empty())
+        return g_rel.name;
     return "update";
 }
 
@@ -317,6 +339,8 @@ ReleaseMeta parse_meta(const std::string &text)
             m.error = v;
         else if (k == "TAG")
             m.tag = v;
+        else if (k == "NAME")
+            m.name = v;
         else if (k == "PRERELEASE")
             m.prerelease = (v == "1");
         else if (k == "USE_AUTH")
@@ -682,6 +706,7 @@ InputReactionHint do_download(AbstractMenuItem &item)
         st.done.store(1);
     });
 
+    std::string label = short_rel_label();
     while (!st.done.load()) {
         GFX_startFrame();
         PAD_poll();
@@ -696,14 +721,14 @@ InputReactionHint do_download(AbstractMenuItem &item)
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - st.t0)
                       .count();
-        char msg[160];
+        char msg[192];
         if (ms > 1000 && n > 0) {
             double mbs = (n / (1024.0 * 1024.0)) / (ms / 1000.0);
-            snprintf(msg, sizeof(msg), "Downloading %d%%\n%s / %s\n%.1f MB/s",
-                pct, fmt_mb(n).c_str(), fmt_mb(t).c_str(), mbs);
+            snprintf(msg, sizeof(msg), "Downloading %s\n%d%%\n%s / %s\n%.1f MB/s",
+                label.c_str(), pct, fmt_mb(n).c_str(), fmt_mb(t).c_str(), mbs);
         } else {
-            snprintf(msg, sizeof(msg), "Downloading %d%%\n%s / %s",
-                pct, fmt_mb(n).c_str(), fmt_mb(t).c_str());
+            snprintf(msg, sizeof(msg), "Downloading %s\n%d%%\n%s / %s",
+                label.c_str(), pct, fmt_mb(n).c_str(), fmt_mb(t).c_str());
         }
         MenuList::showOverlayProgress(msg, frac);
         GFX_sync();

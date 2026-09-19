@@ -62,13 +62,36 @@ jobs:
           merge-multiple: true
           path: output/images
 
-      # /releases/latest is what Update.pak hits. workflow_dispatch is
-      # not a tag, so name the release after the run.
+      # /releases/latest is what Settings → Update hits. workflow_dispatch
+      # is not a tag, so the tag is zlyme-<run_id>. Title is zlymeNN (date)
+      # so the device can show the same string as Installed.
+      - name: Release title
+        id: title
+        run: |
+          set -euo pipefail
+          zver=$(sed -n 's/^NEXTUI_VERSION *= .*-\(zlyme[0-9][0-9]*\).*/\1/p' package/system/nextui/nextui.mk | head -1)
+          shopt -s nullglob
+          tars=(output/images/zlyme-my355-*.tar)
+          tar=""
+          if [ ${#tars[@]} -gt 0 ]; then
+            tar=$(basename "${tars[0]}")
+          fi
+          ymd=$(printf '%s' "$tar" | sed -n 's/^zlyme-my355-\([0-9]\{8\}\).*/\1/p')
+          if [ -n "$ymd" ]; then
+            date="${ymd:0:4}-${ymd:4:2}-${ymd:6:2}"
+          else
+            date=$(date -u +%Y-%m-%d)
+          fi
+          if [ -z "$zver" ]; then
+            zver=zlyme
+          fi
+          echo "name=${zver} (${date})" >> "$GITHUB_OUTPUT"
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('zlyme-{0}', github.run_id) }}
-          name: zlyme ${{ github.run_id }}
+          name: ${{ steps.title.outputs.name }}
           prerelease: false
           make_latest: true
           files: |

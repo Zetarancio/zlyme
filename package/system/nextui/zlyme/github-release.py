@@ -165,6 +165,7 @@ def emit_rel(rel, use_auth):
     with open(BODY_FILE, "w", encoding="utf-8") as f:
         f.write(body)
     tag = rel.get("tag_name") or ""
+    name = (rel.get("name") or "").replace("\n", " ").replace("\r", "")
     pre = 1 if rel.get("prerelease") else 0
     tar_id = tar_a.get("id") or 0
     sha_id = sha_a.get("id") or 0
@@ -172,6 +173,7 @@ def emit_rel(rel, use_auth):
     sys.stdout.write("OK=1\n")
     sys.stdout.write("ERROR=\n")
     sys.stdout.write("TAG=%s\n" % tag)
+    sys.stdout.write("NAME=%s\n" % name)
     sys.stdout.write("PRERELEASE=%s\n" % pre)
     sys.stdout.write("USE_AUTH=%s\n" % (1 if use_auth else 0))
     sys.stdout.write("TAR_NAME=%s\n" % (tar_a.get("name") or ""))
