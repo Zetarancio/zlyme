@@ -1,0 +1,23 @@
+config BR2_PACKAGE_DOLPHIN_EMU
+	bool "dolphin-emu"
+	depends on BR2_aarch64
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_LIBEVDEV
+	select BR2_PACKAGE_FFMPEG
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_XZ
+	select BR2_PACKAGE_LIBPNG
+	select BR2_PACKAGE_LZO
+	select BR2_PACKAGE_LIBUSB
+	select BR2_PACKAGE_LIBCURL
+	select BR2_PACKAGE_BLUEZ5_UTILS
+	select BR2_PACKAGE_HIDAPI
+	select BR2_PACKAGE_LIBDRM
+	select BR2_PACKAGE_SDL2
+	help
+	  GameCube / Wii. Knulli nogui + EGL DRM, no Qt/Wayland/X11.
+	  IPL lives in /storage/Bios/GC.
+
+comment "dolphin-emu needs aarch64, GLES, and C++"
+	depends on !BR2_aarch64 || !BR2_PACKAGE_HAS_LIBGLES || !BR2_INSTALL_LIBSTDCPP

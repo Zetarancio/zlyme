@@ -1,0 +1,10 @@
+aethersx2
+=========
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: prebuilt binary from ROCKNIX/packages
+Declared SPDX / license field: LGPL-3.0
+Upstream / origin: https://github.com/ROCKNIX/packages
+
+Recipe files (.mk, Config.in, start_aethersx2.sh) are packaging for Zlyme.
+The tarball is a PCSX2/AetherSX2 build. Qt6 on this image is EGLFS.

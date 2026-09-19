@@ -1,19 +1,19 @@
 # tag	core_or_bin	kind
-# kind=lr → minarch + ${core}_libretro.so
+# kind=lr → ra-run + ${core}_libretro.so
 # kind=bin → exec the named binary
 GB	gambatte	lr
 GBC	gambatte	lr
 GBA	gpsp	lr
 FC	nestopia	lr
 SFC	mednafen_supafaust	lr
-MD	genesis_plus_gx	lr
+MD	picodrive	lr
 MS	genesis_plus_gx	lr
 GG	genesis_plus_gx	lr
 32X	picodrive	lr
 PS	pcsx_rearmed	lr
 PSP	PPSSPPSDL	bin
 DC	flycast	bin
-N64	mupen64plus_next	lr
+N64	mupen64plus-next	lr
 NDS	start_drastic	bin
 PCE	mednafen_pce_fast	lr
 NGP	mednafen_ngp	lr
@@ -21,10 +21,20 @@ WS	mednafen_wswan	lr
 VB	mednafen_vb	lr
 LYNX	handy	lr
 A26	stella	lr
+A5200	a5200	lr
 A78	prosystem	lr
+A800	atari800	lr
+ST	hatari	lr
+COLECO	gearcoleco	lr
+INTV	freeintv	lr
+MSX	bluemsx	lr
+O2	o2em	lr
+SG1000	genesis_plus_gx	lr
+SGX	mednafen_supergrafx	lr
+VEC	vecx	lr
 PKM	pokemini	lr
 FBNEO	fbneo	lr
-MAME	mame2003_plus	lr
+MAME	mame078plus	lr
 DOS	dosbox_pure	lr
 3DO	opera	lr
 NEOCD	neocd	lr
@@ -32,3 +42,15 @@ SATURN	yabasanshiro	lr
 AMIGA	amiberry	bin
 DOOM	gzdoom	bin
 TIC	tic80	lr
+PICO	pico8	bin
+P8	fake08	lr
+PORTS	port	bin
+EASYRPG	easyrpg	lr
+MKXPZ	mkxp-z	lr
+SCUMMVM	scummvm	bin
+OPENBOR	OpenBOR	bin
+DAPHNE	hypseus	bin
+WINE	wine	bin
+PS2	aethersx2	bin
+GC	start_dolphin	bin
+WII	start_dolphin	bin

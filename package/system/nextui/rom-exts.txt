@@ -50,3 +50,6 @@ SCUMMVM: scummvm svm zip
 OPENBOR: pak
 DAPHNE: txt daphne singe
 WINE: exe msi bat cmd
+PS2: iso mdf nrg bin img dump gz cso chd m3u elf
+GC: gcm iso gcz ciso wbfs rvz m3u elf dol
+WII: gcm iso gcz ciso wbfs wad rvz m3u elf dol

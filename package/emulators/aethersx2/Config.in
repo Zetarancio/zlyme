@@ -1,0 +1,21 @@
+config BR2_PACKAGE_AETHERSX2
+	bool "aethersx2"
+	depends on BR2_aarch64
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	select BR2_PACKAGE_LIBFUSE
+	select BR2_PACKAGE_LIBGPG_ERROR
+	select BR2_PACKAGE_XZ
+	select BR2_PACKAGE_LIBPCAP
+	select BR2_PACKAGE_QT6
+	select BR2_PACKAGE_QT6BASE
+	select BR2_PACKAGE_QT6BASE_GUI
+	select BR2_PACKAGE_QT6BASE_WIDGETS
+	select BR2_PACKAGE_QT6BASE_EGLFS
+	select BR2_PACKAGE_QT6BASE_OPENGL
+	select BR2_PACKAGE_QT6BASE_OPENGL_ES2
+	help
+	  AetherSX2 (ARM PS2). Prebuilt tarball from ROCKNIX/packages,
+	  Qt6 EGLFS. BIOS in /storage/Bios/PS2.
+
+comment "aethersx2 needs aarch64, GLES, and Qt6 EGLFS"
+	depends on !BR2_aarch64 || !BR2_PACKAGE_HAS_LIBGLES

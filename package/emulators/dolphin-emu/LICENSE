@@ -1,0 +1,11 @@
+dolphin-emu
+===========
+
+This directory is a Buildroot recipe. It does not relicense upstream.
+Software built by this recipe: fetched upstream source
+Declared SPDX / license field: GPL-2.0+
+Upstream / origin: https://github.com/dolphin-emu/dolphin
+
+Recipe files (.mk, Config.in) are packaging for Zlyme.
+Patches of GPL/LGPL sources follow those upstream licenses.
+EGL/DRM patches come from Knulli.
