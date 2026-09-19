@@ -1,11 +1,15 @@
-# Local notes. Never committed.
-/NOTES/
-
-# Device serial dumps and session lab notes.
-/DEVLOGS/
-
 # Machine-local paths. See storage.sh.example.
 storage.sh
+
+# Local TODO and serial dumps stay off GitHub.
+/NOTES/TODO.md
+/NOTES/.TODO.md.kate-swp
+/NOTES/DEVLOGS/
+/NOTES/LOGOANIM/out/
+/NOTES/LOGOANIM/__pycache__/
+
+# Device serial dumps and session lab notes (repo root).
+/DEVLOGS/
 
 /buildroot/
 /output/
@@ -14,3 +18,4 @@ storage.sh
 
 *.log
 *.code-workspace
+**/__pycache__/
