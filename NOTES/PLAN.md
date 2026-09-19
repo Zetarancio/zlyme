@@ -11,10 +11,9 @@ Companion to `NOTES.md` (hardware and operational facts). OS name is
 (`VERSION="zlyme40 (2026-09-19)"`). NextUI pin is
 `ae652648…-zlyme40`. OS update is **Settings → Update**, not a Tools
 pak. Do not Etcher a games card. Do not start a second host `./build.sh`
-on `output/`. `README.md` edits stay local until asked. `NOTES/` is
-in git except `TODO.md` and `DEVLOGS/`. RetroArch A/B plus the zlyme
-RGUI theme live in the retroarch package; that is not in the flashed
-image until a rebuild.
+on `output/`. `NOTES/` is in git except `TODO.md` and `DEVLOGS/`.
+RetroArch A/B plus the zlyme RGUI theme live in the retroarch package;
+that is not in the flashed image until a rebuild.
 
 Live pak pass on the Flip after Etcher: RA cores, NDS/PSP/DOOM/PICO,
 PORTS, PS2 (AetherSX2), Tools. Logs on → `/storage/.logs`. Governors
@@ -34,7 +33,7 @@ When I say **commit**: update `LOGBOOK.md`, `PLAN.md`, and `NOTES.md` against th
 Do not Etcher `zlyme.img` onto a card that already has games.
 Do not start a second `build.sh` on the same `output/`.
 `TODO.md` and `NOTES/DEVLOGS/` stay gitignored.
-Propose `README.md` wording when it would help; do not edit `README.md` unless I ask. Uncommitted README changes stay until I say otherwise.
+Propose `README.md` wording when it would help; do not edit `README.md` unless I ask.
 
 ---
 

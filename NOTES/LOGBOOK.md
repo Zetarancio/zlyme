@@ -31,6 +31,11 @@ the September boot/OTA/resize week were deleted; they were already
 folded into NOTES/LOGBOOK. No passwords or tokens in the tracked
 files — only the empty root SSH login and the `GH_PAT` secret *name*.
 
+## 2026-09-19 — README: Update is Settings, not a Tools pak
+
+Public README now lists **Settings → Update**, drops the Tools Update
+pak, and the systems table is the one you edited.
+
 ---
 
 ## 2026-09-18 — paks, logs, PS2/GC/Wii, live Flip
