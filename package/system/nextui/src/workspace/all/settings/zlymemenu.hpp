@@ -1,6 +1,7 @@
 #pragma once
 
 #include "menu.hpp"
+#include "zlymeupdate.hpp"
 
 // Compiled into settings.elf so these are not Tools paks.
 InputReactionHint Zlyme_cycleHdmi(AbstractMenuItem &item);

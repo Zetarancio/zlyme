@@ -174,10 +174,9 @@ log "session=$(pidof nextui-session) nextui=$(pidof nextui.elf)"
 log "sd2=$(zlyme-storage status 2>/dev/null | tr '\n' ' ')"
 log "mergerfs=$(getfattr -n user.mergerfs.srcmounts --only-values /storage/Roms/.mergerfs 2>/dev/null)"
 
-# Tools that failed last pass. Update --check must not download+reboot.
+# Tools that failed last pass.
 run ScrapeGoat "'/storage/Tools/my355/ScrapeGoat.pak/launch.sh'" 20
 run Moonlight "'/storage/Tools/my355/Moonlight.pak/launch.sh'" 20
-run Update "'/storage/Tools/my355/Update.pak/launch.sh' --check" 20
 run ArtworkScraper "'/storage/Tools/my355/Artwork Scraper.pak/launch.sh'" 20
 run Overlays "'/storage/Tools/my355/Overlays.pak/launch.sh'" 25
 run Settings "'/storage/Tools/my355/Settings.pak/launch.sh'" 20

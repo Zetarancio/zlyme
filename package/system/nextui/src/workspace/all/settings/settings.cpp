@@ -1070,6 +1070,7 @@ int main(int argc, char *argv[])
         if(buttonMenu)
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Assignments", "Customize button assignments", {}, {}, nullptr, nullptr, DeferToSubmenu, buttonMenu});
 
+        Zlyme_appendUpdateItem(mainItems);
         mainItems.push_back(new MenuItem{ListItemType::Generic, "About", "Build and hardware info", {}, {}, nullptr, nullptr, DeferToSubmenu, aboutMenu});
 
         ctx.menu = new MenuList(MenuItemType::List, "Main", mainItems);

@@ -48,7 +48,7 @@ seed() {
 		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null
 	done
 
-	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on merge=on logs=off; do
+	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on merge=on logs=off update_channel=releases; do
 		n=${kv%%=*}
 		v=${kv#*=}
 		[ -e "$ZLYME_CFG/zlyme/$n" ] && continue

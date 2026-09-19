@@ -21,6 +21,7 @@ default_of() {
 		boost) echo off ;;
 		zram) echo on ;;
 		logs) echo off ;;
+		update_channel) echo releases ;;
 		*) echo off ;;
 	esac
 }
@@ -183,7 +184,7 @@ case "$cmd" in
 	apply-merge) apply_merge ;;
 	apply-settings) apply_settings ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge logs; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge logs update_channel; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;

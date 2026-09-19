@@ -17,7 +17,7 @@ NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
-NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm
+NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl
 
 NEXTUI_PLATFORM = my355
 
@@ -77,10 +77,11 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/btmenu.cpp \
 		$(@D)/workspace/all/settings/keyboardprompt.cpp \
 		$(@D)/workspace/all/settings/zlymemenu.cpp \
+		$(@D)/workspace/all/settings/zlymeupdate.cpp \
 		$(@D)/utils.o $(@D)/api.o $(@D)/config.o $(@D)/scaler.o \
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
 		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o \
-		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcrypto -lstdc++
+		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcurl -lcrypto -lstdc++
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/show.elf \
 		$(NEXTUI_PKGDIR)/zlyme/show.c \
 		$(TARGET_LDFLAGS) -lSDL2 -lSDL2_ttf
@@ -113,6 +114,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
+	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/Tools/Update.pak
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-dirs.txt \
 		$(TARGET_DIR)/usr/share/nextui/rom-dirs.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-exts.txt \
@@ -141,6 +143,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/fetch-test-roms
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt
 	date -u +%Y-%m-%d > $(TARGET_DIR)/usr/share/nextui/build-date.txt
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/github-release.py \
+		$(TARGET_DIR)/usr/share/zlyme/github-release.py
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/wifi_init.sh \
 		$(TARGET_DIR)/usr/share/nextui/etc/wifi/wifi_init.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/bt_init.sh \

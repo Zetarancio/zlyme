@@ -90,6 +90,12 @@ if [ ! -f "$prune_stamp" ] && [ -r "$seed/rom-dirs.txt" ]; then
 	: >"$prune_stamp"
 fi
 
+# Update lives in Settings. Drop the old Tools pak every boot so an
+# older squashfs (or paks copy) cannot put it back.
+rm -rf /storage/Tools/my355/Update.pak
+rm -f /storage/.config/zlyme/last-ota
+rm -f /storage/.config/zlyme/.zlyme-update-pak-pruned
+
 # Same bind zlyme35 used (fast, shown the list). S17 unmounts it and
 # mergerfs-es SD2; do not mergerfs here (that blocked the first frame).
 if ! mountpoint -q /storage/Roms 2>/dev/null; then
@@ -124,6 +130,7 @@ copy_stock_paks() {
 		mkdir -p "$destdir"
 		for src in "$srcdir"/*.pak; do
 			[ -d "$src" ] || continue
+			[ "$(basename "$src")" = "Update.pak" ] && continue
 			cp -a "$src" "$destdir/"
 		done
 		return 0
@@ -131,6 +138,7 @@ copy_stock_paks() {
 	for src in "$srcdir"/*.pak; do
 		[ -d "$src" ] || continue
 		base=$(basename "$src")
+		[ "$base" = "Update.pak" ] && continue
 		dest="$destdir/$base"
 		if [ "$overwrite" = 1 ]; then
 			rm -rf "$dest"
@@ -151,6 +159,7 @@ stock_paks_ready() {
 	for src in "$seed/paks/Emus"/*.pak "$seed/paks/Tools"/*.pak; do
 		[ -d "$src" ] || continue
 		base=$(basename "$src")
+		[ "$base" = "Update.pak" ] && continue
 		case "$src" in
 			*/paks/Emus/*.pak) dest="/storage/Emus/my355/$base" ;;
 			*) dest="/storage/Tools/my355/$base" ;;
@@ -366,6 +375,7 @@ else
 	sync
 	copy_stock_paks "$seed/paks/Emus" /storage/Emus/my355
 	copy_stock_paks "$seed/paks/Tools" /storage/Tools/my355
+	rm -rf /storage/Tools/my355/Update.pak
 	apply_card_defaults
 	if [ -n "$img_ver" ]; then
 		printf '%s\n' "$img_ver" > "$stamp"
@@ -462,6 +472,24 @@ while [ -f "$EXEC_PATH" ]; do
 		esac
 		killall -9 pico8-splore-pad pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
 		sleep 0.2
+		# Settings/paks use the same /tmp/reboot flag as nextui.elf.
+		# Honor it here; continue would restart NextUI with the panel off.
+		if [ -f /tmp/poweroff ]; then
+			rm -f /tmp/poweroff
+			if [ -x /usr/sbin/zlyme-halt ]; then
+				exec /usr/sbin/zlyme-halt poweroff
+			fi
+			poweroff -f
+			break
+		fi
+		if [ -f /tmp/reboot ]; then
+			rm -f /tmp/reboot
+			if [ -x /usr/sbin/zlyme-halt ]; then
+				exec /usr/sbin/zlyme-halt reboot
+			fi
+			reboot -f
+			break
+		fi
 		continue
 	fi
 	if [ -f /tmp/poweroff ]; then

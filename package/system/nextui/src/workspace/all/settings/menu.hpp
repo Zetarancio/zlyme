@@ -134,7 +134,8 @@ enum class OverlayDismissMode
 {
     None,
     DismissOnA,
-    DismissOnB
+    DismissOnB,
+    ConfirmAB
 };
 
 class AbstractMenuItem;
@@ -340,6 +341,8 @@ public:
     MenuList(MenuList &) = delete;
 
     static void showOverlay(const std::string& message, OverlayDismissMode dismissMode = OverlayDismissMode::None);
+    static void showOverlayAB(const std::string& message, const std::string& aLabel, const std::string& bLabel);
+    static void showOverlayProgress(const std::string& message, double fraction);
     static void hideOverlay();
     static bool isOverlayVisible();
 

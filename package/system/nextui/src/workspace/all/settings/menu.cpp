@@ -17,6 +17,10 @@ typedef std::shared_lock< Lock >  ReadLock;
 static std::string overlayMessage;
 static bool overlayVisible = false;
 static OverlayDismissMode overlayDismissMode = OverlayDismissMode::None;
+static bool overlayHasBar = false;
+static double overlayBarFrac = 0;
+static std::string overlayBtnA = "OK";
+static std::string overlayBtnB = "BACK";
 static SDL_Surface* overlaySurface = nullptr;
 static Lock overlayLock;
 
@@ -976,16 +980,8 @@ void MenuList::resetAllItems()
     }
 }
 
-void MenuList::showOverlay(const std::string& message, OverlayDismissMode dismissMode)
+static void flipOverlayNow()
 {
-    {
-        WriteLock w(overlayLock);
-        overlayMessage = message;
-        overlayVisible = true;
-        overlayDismissMode = dismissMode;
-    }
-    
-    // We want to force a draw right now since usually we are about to block
     WriteLock w(overlayLock);
     if (overlaySurface) {
         // Clear the surface first to prevent text ghosting from previous
@@ -997,10 +993,58 @@ void MenuList::showOverlay(const std::string& message, OverlayDismissMode dismis
     }
 }
 
+void MenuList::showOverlay(const std::string& message, OverlayDismissMode dismissMode)
+{
+    {
+        WriteLock w(overlayLock);
+        overlayMessage = message;
+        overlayVisible = true;
+        overlayDismissMode = dismissMode;
+        overlayHasBar = false;
+        overlayBarFrac = 0;
+        overlayBtnA = "OK";
+        overlayBtnB = "BACK";
+    }
+    flipOverlayNow();
+}
+
+void MenuList::showOverlayAB(const std::string& message, const std::string& aLabel, const std::string& bLabel)
+{
+    {
+        WriteLock w(overlayLock);
+        overlayMessage = message;
+        overlayVisible = true;
+        overlayDismissMode = OverlayDismissMode::ConfirmAB;
+        overlayHasBar = false;
+        overlayBarFrac = 0;
+        overlayBtnA = aLabel.empty() ? "OK" : aLabel;
+        overlayBtnB = bLabel.empty() ? "BACK" : bLabel;
+    }
+    flipOverlayNow();
+}
+
+void MenuList::showOverlayProgress(const std::string& message, double fraction)
+{
+    if (fraction < 0)
+        fraction = 0;
+    if (fraction > 1)
+        fraction = 1;
+    {
+        WriteLock w(overlayLock);
+        overlayMessage = message;
+        overlayVisible = true;
+        overlayDismissMode = OverlayDismissMode::None;
+        overlayHasBar = true;
+        overlayBarFrac = fraction;
+    }
+    flipOverlayNow();
+}
+
 void MenuList::hideOverlay()
 {
     WriteLock w(overlayLock);
     overlayVisible = false;
+    overlayHasBar = false;
 }
 
 bool MenuList::isOverlayVisible()
@@ -1028,17 +1072,47 @@ static void drawOverlayLocal(SDL_Surface* screen) {
     }
     SDL_BlitSurface(shadow, NULL, screen, NULL);
 
-    SDL_Rect screenRect = {0, 0, screen->w, screen->h};
+    int hint_h = 0;
+    if (overlayHasBar || overlayDismissMode != OverlayDismissMode::None)
+        hint_h = SCALE1(PADDING + PILL_SIZE + PADDING);
 
-    GFX_blitMessageCPP(font.medium, overlayMessage, screen, screenRect);
-    
-    if (overlayDismissMode != OverlayDismissMode::None) {
-        if (overlayDismissMode == OverlayDismissMode::DismissOnB) {
-            char *hints[] = {(char *)("B"), (char *)("BACK"), NULL};
-            GFX_blitButtonGroup(hints, 1, screen, 1);
-        } else if (overlayDismissMode == OverlayDismissMode::DismissOnA) {
-            char *hints[] = {(char *)("A"), (char *)("OK"), NULL};
-            GFX_blitButtonGroup(hints, 1, screen, 1);
+    int bar_h = overlayHasBar ? SCALE1(10 + 16) : 0;
+    SDL_Rect msgRect = {0, 0, screen->w, screen->h - hint_h - bar_h};
+    if (msgRect.h < SCALE1(PILL_SIZE))
+        msgRect.h = SCALE1(PILL_SIZE);
+
+    GFX_blitMessageCPP(font.medium, overlayMessage, screen, msgRect);
+
+    if (overlayHasBar) {
+        int margin = SCALE1(40);
+        int bw = screen->w - margin * 2;
+        if (bw < SCALE1(80))
+            bw = SCALE1(80);
+        int bh = SCALE1(10);
+        int bx = (screen->w - bw) / 2;
+        int by = screen->h - hint_h - bh - SCALE1(8);
+        SDL_Rect track = {bx, by, bw, bh};
+        SDL_FillRect(screen, &track, SDL_MapRGB(screen->format, 48, 48, 48));
+        int fw = (int)(bw * overlayBarFrac);
+        if (fw > 0) {
+            if (fw > bw)
+                fw = bw;
+            SDL_Rect fill = {bx, by, fw, bh};
+            SDL_FillRect(screen, &fill, THEME_COLOR1);
         }
+        char *hints[] = {(char *)("B"), (char *)("CANCEL"), NULL};
+        GFX_blitButtonGroup(hints, 1, screen, 1);
+    } else if (overlayDismissMode == OverlayDismissMode::ConfirmAB) {
+        char *hints[] = {
+            (char *)("B"), (char *)overlayBtnB.c_str(),
+            (char *)("A"), (char *)overlayBtnA.c_str(),
+            NULL};
+        GFX_blitButtonGroup(hints, 1, screen, 1);
+    } else if (overlayDismissMode == OverlayDismissMode::DismissOnB) {
+        char *hints[] = {(char *)("B"), (char *)("BACK"), NULL};
+        GFX_blitButtonGroup(hints, 1, screen, 1);
+    } else if (overlayDismissMode == OverlayDismissMode::DismissOnA) {
+        char *hints[] = {(char *)("A"), (char *)("OK"), NULL};
+        GFX_blitButtonGroup(hints, 1, screen, 1);
     }
 }
