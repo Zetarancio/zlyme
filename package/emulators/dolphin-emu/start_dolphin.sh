@@ -15,7 +15,14 @@ export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$USERDATA/.local/share}"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 export EGL_PLATFORM="${EGL_PLATFORM:-drm}"
-mkdir -p "$XDG_DATA_HOME/dolphin-emu" "$XDG_CONFIG_HOME/dolphin-emu"
+mkdir -p "$XDG_DATA_HOME/dolphin-emu" "$XDG_CONFIG_HOME/dolphin-emu" \
+	"$XDG_DATA_HOME/dolphin-emu/GC" "$XDG_DATA_HOME/dolphin-emu/Wii" \
+	"${SAVES_PATH:-$SDCARD/Saves}/GC" "${SAVES_PATH:-$SDCARD/Saves}/WII"
+if [ -d "${SAVES_PATH:-$SDCARD/Saves}/GC" ]; then
+	mount --bind "${SAVES_PATH:-$SDCARD/Saves}/GC" "$XDG_DATA_HOME/dolphin-emu/GC" 2>/dev/null || true
+	mount --bind "${SAVES_PATH:-$SDCARD/Saves}/WII" "$XDG_DATA_HOME/dolphin-emu/Wii" 2>/dev/null || true
+	trap 'umount "$XDG_DATA_HOME/dolphin-emu/GC" 2>/dev/null; umount "$XDG_DATA_HOME/dolphin-emu/Wii" 2>/dev/null' EXIT
+fi
 
 # Card dumps often sit at Bios/IPL.bin. Dolphin only looks under GC/<region>/.
 for region in USA EUR JAP; do

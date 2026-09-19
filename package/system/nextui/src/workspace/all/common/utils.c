@@ -486,34 +486,277 @@ void getDisplayName(const char* in_name, char* out_name) {
     while(tmp>out_name && isspace((unsigned char)*tmp)) tmp--;
     tmp[1] = '\0';
 }
+#define LIBRARY_MAX 8
+#define LIBRARIES_FILE "/run/zlyme/libraries"
+
+static char library_roots[LIBRARY_MAX][MAX_PATH];
+static int library_n;
+static int library_loaded;
+
+void libraryReload(void)
+{
+	library_n = 0;
+	library_loaded = 1;
+	FILE *f = fopen(LIBRARIES_FILE, "r");
+	if (f) {
+		char line[MAX_PATH];
+		while (fgets(line, sizeof(line), f) && library_n < LIBRARY_MAX) {
+			trimTrailingNewlines(line);
+			if (!line[0])
+				continue;
+			if (access(line, F_OK) != 0)
+				continue;
+			snprintf(library_roots[library_n], MAX_PATH, "%s", line);
+			library_n++;
+		}
+		fclose(f);
+	}
+	if (library_n == 0) {
+		snprintf(library_roots[0], MAX_PATH, "%s", SDCARD_PATH);
+		library_n = 1;
+	}
+}
+
+int libraryCount(void)
+{
+	if (!library_loaded)
+		libraryReload();
+	return library_n;
+}
+
+const char *libraryRoot(int i)
+{
+	if (!library_loaded)
+		libraryReload();
+	if (i < 0 || i >= library_n)
+		return SDCARD_PATH;
+	return library_roots[i];
+}
+
+int libraryRomsDir(int i, char *out, size_t n)
+{
+	const char *root = libraryRoot(i);
+	if (!out || n == 0)
+		return 0;
+	snprintf(out, n, "%s/Roms", root);
+	if (exists(out))
+		return 1;
+	snprintf(out, n, "%s/roms", root);
+	if (exists(out))
+		return 1;
+	snprintf(out, n, "%s/ROMS", root);
+	if (exists(out))
+		return 1;
+	out[0] = '\0';
+	return 0;
+}
+
+int pathUnderLibraryRoms(const char *path)
+{
+	char roms[MAX_PATH];
+	int i, n;
+	size_t len;
+
+	if (!path)
+		return 0;
+	if (prefixMatch(ROMS_PATH, path))
+		return 1;
+	n = libraryCount();
+	for (i = 0; i < n; i++) {
+		if (!libraryRomsDir(i, roms, sizeof(roms)))
+			continue;
+		len = strlen(roms);
+		if (strncasecmp(path, roms, len) == 0 && (path[len] == '\0' || path[len] == '/'))
+			return 1;
+	}
+	return 0;
+}
+
+int isLibraryRomsDir(const char *path)
+{
+	char roms[MAX_PATH];
+	int i, n;
+
+	if (!path)
+		return 0;
+	if (exactMatch(path, ROMS_PATH))
+		return 1;
+	n = libraryCount();
+	for (i = 0; i < n; i++) {
+		if (!libraryRomsDir(i, roms, sizeof(roms)))
+			continue;
+		if (exactMatch(path, roms))
+			return 1;
+	}
+	return 0;
+}
+
+void libraryBadge(const char *path, char *out, size_t n)
+{
+	const char *p;
+	const char *slash;
+	size_t len;
+
+	if (!out || n == 0)
+		return;
+	out[0] = '\0';
+	if (!path)
+		return;
+	if (prefixMatch((char *)"/mnt/sd2", path)) {
+		snprintf(out, n, "SD2");
+		return;
+	}
+	if (prefixMatch((char *)"/mnt/media/", path)) {
+		p = path + strlen("/mnt/media/");
+		slash = strchr(p, '/');
+		len = slash ? (size_t)(slash - p) : strlen(p);
+		if (len >= n)
+			len = n - 1;
+		memcpy(out, p, len);
+		out[len] = '\0';
+	}
+}
+
+void pathFromRecent(const char *stored, char *out, size_t n)
+{
+	if (!out || n == 0)
+		return;
+	out[0] = '\0';
+	if (!stored)
+		return;
+	if (stored[0] == '/' && (prefixMatch((char *)"/mnt/", stored) || prefixMatch(SDCARD_PATH, stored))) {
+		snprintf(out, n, "%s", stored);
+		return;
+	}
+	snprintf(out, n, "%s%s", SDCARD_PATH, stored);
+}
+
+int consoleRelFromPath(const char *path, char *tag, size_t tag_n, char *rel, size_t rel_n)
+{
+	char roms[MAX_PATH];
+	const char *rest = NULL;
+	size_t len;
+	char *slash;
+	int i, n;
+	char console[MAX_PATH];
+
+	if (tag && tag_n)
+		tag[0] = '\0';
+	if (rel && rel_n)
+		rel[0] = '\0';
+	if (!path)
+		return 0;
+
+	n = libraryCount();
+	for (i = 0; i < n; i++) {
+		if (!libraryRomsDir(i, roms, sizeof(roms)))
+			continue;
+		len = strlen(roms);
+		if (strncasecmp(path, roms, len) == 0 && path[len] == '/') {
+			rest = path + len + 1;
+			break;
+		}
+	}
+	if (!rest && prefixMatch(ROMS_PATH, path) && path[strlen(ROMS_PATH)] == '/')
+		rest = path + strlen(ROMS_PATH) + 1;
+	if (!rest)
+		return 0;
+
+	slash = strchr((char *)rest, '/');
+	if (slash) {
+		len = (size_t)(slash - rest);
+		if (len >= sizeof(console))
+			len = sizeof(console) - 1;
+		memcpy(console, rest, len);
+		console[len] = '\0';
+		if (rel && rel_n && slash[1])
+			snprintf(rel, rel_n, "%s", slash + 1);
+	} else {
+		snprintf(console, sizeof(console), "%s", rest);
+	}
+	if (tag && tag_n) {
+		char emu[MAX_PATH];
+		getEmuName(console, emu);
+		snprintf(tag, tag_n, "%s", emu);
+	}
+	return 1;
+}
+
 void getEmuName(const char* in_name, char* out_name) { // NOTE: both char arrays need to be MAX_PATH length!
 	char* tmp;
+	char roms[MAX_PATH];
+	int i, n;
+	size_t len;
+
 	strcpy(out_name, in_name);
 	tmp = out_name;
-	
-	// printf("--------\n  in_name: %s\n",in_name); fflush(stdout);
-	
-	// extract just the Roms folder name if necessary
+
+	n = libraryCount();
+	for (i = 0; i < n; i++) {
+		if (!libraryRomsDir(i, roms, sizeof(roms)))
+			continue;
+		len = strlen(roms);
+		if (strncasecmp(tmp, roms, len) == 0 && (tmp[len] == '/' || tmp[len] == '\0')) {
+			tmp += len;
+			if (*tmp == '/')
+				tmp++;
+			char* tmp2 = strchr(tmp, '/');
+			if (tmp2)
+				tmp2[0] = '\0';
+			memmove(out_name, tmp, strlen(tmp) + 1);
+			tmp = out_name;
+			goto extract_tag;
+		}
+	}
+
 	if (prefixMatch(ROMS_PATH, tmp)) {
 		tmp += strlen(ROMS_PATH) + 1;
 		char* tmp2 = strchr(tmp, '/');
-		if (tmp2) tmp2[0] = '\0';
-		// printf("    tmp1: %s\n", tmp);
+		if (tmp2)
+			tmp2[0] = '\0';
 		memmove(out_name, tmp, strlen(tmp) + 1);
 		tmp = out_name;
 	}
 
-	// finally extract pak name from parenths if present
+extract_tag:
 	tmp = strrchr(tmp, '(');
 	if (tmp) {
 		tmp += 1;
-		// printf("    tmp2: %s\n", tmp);
 		memmove(out_name, tmp, strlen(tmp) + 1);
-		tmp = strchr(out_name,')');
-		tmp[0] = '\0';
+		tmp = strchr(out_name, ')');
+		if (tmp)
+			tmp[0] = '\0';
 	}
-	
-	// printf(" out_name: %s\n", out_name); fflush(stdout);
+}
+
+int libraryFindConsole(int i, const char *tag, char *out, size_t n)
+{
+	char roms[MAX_PATH];
+	DIR *dh;
+	struct dirent *dp;
+	char full[MAX_PATH];
+	char emu[MAX_PATH];
+
+	if (!tag || !tag[0] || !out || n == 0)
+		return 0;
+	if (!libraryRomsDir(i, roms, sizeof(roms)))
+		return 0;
+	dh = opendir(roms);
+	if (!dh)
+		return 0;
+	while ((dp = readdir(dh)) != NULL) {
+		if (hide(dp->d_name))
+			continue;
+		snprintf(full, sizeof(full), "%s/%s", roms, dp->d_name);
+		getEmuName(dp->d_name, emu);
+		if (exactMatch(emu, (char *)tag)) {
+			snprintf(out, n, "%s", full);
+			closedir(dh);
+			return 1;
+		}
+	}
+	closedir(dh);
+	return 0;
 }
 void getEmuPath(char* emu_name, char* pak_path) {
 	sprintf(pak_path, "%s/Emus/%s/%s.pak/launch.sh", SDCARD_PATH, PLATFORM, emu_name);

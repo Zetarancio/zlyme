@@ -48,6 +48,14 @@ AspectRatio = 4:3
 EOF
 fi
 
+if [ -f "$INI" ]; then
+	sed -i \
+		-e "s|^Bios = .*|Bios = $BIOS/PS2|" \
+		-e "s|^Savestates = .*|Savestates = ${SAVES_PATH:-$SDCARD/Saves}/PS2|" \
+		-e "s|^MemoryCards = .*|MemoryCards = ${SAVES_PATH:-$SDCARD/Saves}/PS2|" \
+		"$INI" 2>/dev/null || true
+fi
+
 if [ ! -x "$BIN" ]; then
 	echo "aethersx2: missing $BIN" >&2
 	exit 1

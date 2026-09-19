@@ -58,10 +58,14 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/platform.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(@D)/workspace/all/nextui \
+		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/nextui.o $(@D)/workspace/all/nextui/nextui.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-I$(NEXTUI_PKGDIR)/zlyme \
+		-o $(@D)/zlyme_prefs.o $(NEXTUI_PKGDIR)/zlyme/zlyme_prefs.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
 		$(@D)/nextui.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
-		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o \
+		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/zlyme_prefs.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
@@ -155,6 +159,14 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/bin/suspend
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/governor.sh \
 		$(TARGET_DIR)/usr/sbin/zlyme-governor
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/emu-alts.txt \
+		$(TARGET_DIR)/usr/share/nextui/emu-alts.txt
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \
+		$(TARGET_DIR)/usr/share/nextui/bin/zlyme-library.sh
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \
+		$(TARGET_DIR)/usr/sbin/zlyme-library
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-game-cleanup.sh \
+		$(TARGET_DIR)/usr/sbin/zlyme-game-cleanup
 	$(INSTALL) -D -m 0755 $(@D)/show.elf \
 		$(TARGET_DIR)/usr/share/nextui/bin/show.elf
 	$(INSTALL) -D -m 0755 $(@D)/nextval.elf \

@@ -15,3 +15,8 @@ if command -v zlyme-ctl >/dev/null 2>&1 && zlyme-ctl want logs; then
 		exec >>"$ZLYME_PAK_LOG" 2>&1
 	fi
 fi
+
+if [ -n "${ROM:-}" ] && [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+	. /usr/share/nextui/bin/zlyme-library.sh
+	zlyme_library_for "$ROM"
+fi

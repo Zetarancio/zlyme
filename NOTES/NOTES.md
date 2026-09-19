@@ -130,19 +130,16 @@ so KMSDRM can take the panel. Do **not** replay the gif in SDL.
 Class A may **fork** `S17sd2` only. Do **not** fork `S18zlymeupdate`:
 extracting the tar then `reboot -f` after NextUI is on screen yanked
 the list (2026-09-17 apply.log). Wait for S18; success never returns.
-A mergerfs that fails quickly is fine (`|| true`); a hang is not.
-Session bind `.roms_base` onto `/storage/Roms` for the first frame. `zlyme-storage` unmounts that and mergerfs-es SD2.
-Do not `kill -9 nextui.elf` until `/tmp/boot-timing` has
-`nextui-first-flip`.
+`zlyme-storage` only mounts and unmounts; it writes
+`/run/zlyme/libraries` and SIGUSR1s NextUI. No mergerfs and no
+`kill -9 nextui.elf` on card change.
 
 Meter is `/tmp/boot-timing` (also copied to
 `/storage/.config/zlyme/boot-timing`). Live **zlyme39** first flip
 **7.6 s** (zlyme37 14.0, zlyme38 12.0). Initramfs keeps `ZLYME` mounted
 so S15 is a no-op (~0.02 s). rc.late and Tools binds wait for
 `nextui-first-flip`. Do not `udevtrigger` block devices in S16; S17
-owns present cards. mergerfs must close the flock fd (`9>&-`) or it
-keeps `/tmp/zlyme-storage.lock` and udevd kills `zlyme-storage add`
-at 180 s (zlyme38: 188 s, then 372 s).
+owns present cards.
 
 Do not seed 35 empty Pretty dirs; prune ones that are still empty
 (including a leftover `.media`). `LD_LIBRARY_PATH` is `/usr/lib`
@@ -186,10 +183,10 @@ directory.
 | RA core options | `/storage/.config/retroarch/config/<core>/` |
 | MinUI / NextUI settings | `/storage/.config/nextui/shared/minuisettings.txt` |
 | Per-device userdata | `/storage/.config/nextui/my355/` (logs, hooks) |
-| BIOS | `/storage/Bios` (Pico-8: `Bios/PICO/pico8_64` + `pico8.dat` only) |
+| BIOS | `/storage/Bios` on the OS card, or `$library/Bios` on SD2/USB when that volume has a Bios folder (Pico-8: `Bios/PICO/pico8_64` + `pico8.dat`) |
+| Saves | `$library/Saves/<TAG>` on the same volume as the ROM (`/storage`, `/mnt/sd2`, or `/mnt/media/<label>`) |
+| ROMs | `$library/Roms/<Pretty Name (TAG)>`. NextUI merges every root in `/run/zlyme/libraries` by tag. |
 | Pak / boot logs | `/storage/.logs` when Settings → About → System logs is on (`logs=on`) |
-| Saves | `/storage/Saves` |
-| ROMs | `/storage/Roms/<Pretty Name (TAG)>` |
 | OpenSSH host keys | `/storage/.config/ssh` (copied to `/var/run/sshd` because exFAT has no mode bits) |
 | Bluetooth | `/storage/.config/bluetooth.tar` (BlueZ tree lives on tmpfs `/run/bluetooth`) |
 | Settings backup | `/storage/zlyme-backup.tar.gz` |
@@ -204,8 +201,10 @@ stock pak names only.
 Seed defaults (only if the flag file is **absent**): wifi/bluetooth/ssh on,
 samba/syncthing off, **gpu=libmali**, refresh=60, undervolt=off, led=battery,
 otg/hdmi/sd2 on, boost=off, zram=on, **logs=off**. CPU/GPU governors are not Settings
-flags; each pak's `launch.sh` calls `zlyme-governor play` or `heavy`.
-NextUI on the list is still `smart`.
+flags; each pak's `launch.sh` calls `zlyme-governor play` or `heavy`
+(MENU+Y can override). NextUI on the list is still `smart`. New paks
+source `zlyme-library` so `$library/Saves` and `$library/Bios` follow
+the ROM. HOME/`XDG_*` stay on the OS card.
 
 An **empty** flag file is not "off" — a full disk used to truncate flags.
 `zlyme-ctl get` falls back to the default. Do not overwrite an existing
@@ -335,7 +334,7 @@ PolyForm Noncommercial is fine.
 `nextui.elf` writes `'$emu_pak/launch.sh' '$rom'` to `/tmp/next` and
 exits. `nextui-session` evals that and restarts the menu when the
 emulator exits. Emu paks `exec ra-run`. We do not ship `minarch.elf`
-or `gametimectl.elf`. Settings In-Game (RetroAchievements + save
+or `gametimectl.elf`. Settings Game (RetroAchievements + save
 format) is mapped onto RetroArch by `ra-run` (`cheevos_enable` stays
 on from Settings even with no WAN). Quick menu is Wifi, Bluetooth,
 Settings, then Sleep. `nextval.elf` dumps minuisettings as JSON for
@@ -583,14 +582,11 @@ rockchip-drm binds vop/dsi/hdmi, `fb0` ~2.9 s.
 
 ## 12. ROM folders
 
-NextUI scans `/storage/Roms/<Pretty Name (TAG)>` from `rom-dirs.txt`.
-Internal games live in `/storage/.roms_base`. MergerFS pools that with
-SD2 `Roms` and USB `Roms` onto `/storage/Roms` (Settings **Merge extra
-storage**, default on). Duplicate basename: OS card first
-(`category.create=ff`). Bind-mounting a whole Pretty folder hid the
-OS-card list (USB PSP over internal PSP) — do not go back to that.
-Bios is still the first non-empty bind. Unmapped leftovers stay in
-`roms/_orphans/`.
+NextUI scans every root in `/run/zlyme/libraries` (`/storage`, `/mnt/sd2`,
+USB under `/mnt/media/<label>`) for `Roms/<Pretty Name (TAG)>`. Games
+lists one folder per tag; opening it concatenates matching dirs. Duplicate
+basename: both rows, SD2/USB badged. Saves and Bios live on that volume.
+No mergerfs and no `/storage/.roms_base`.
 
 Box art is NextUI `{romdir}/.media/{rom stem}.png`. Do not teach NextUI
 to read ES `images/` or Spruce `Imgs/`; put files in `.media`.
@@ -598,8 +594,11 @@ to read ES `images/` or Spruce `Imgs/`; put files in `.media`.
 Multi-disc: `Game.m3u` next to `Game/` with relative CHD/CUE paths.
 Launch the `.m3u`. Saturn/Amiga have no m3u on this image.
 
-PortMaster games live in `Roms/Ports (PORTS)/`. The squashfs has
-`/roms/ports` → that folder. `BR2_PACKAGE_BASH=y`. harbourmaster
+PortMaster games live in `Roms/Ports (PORTS)/`. `/roms/ports` is a
+real directory on squashfs (not a symlink). PORTS.pak bind-mounts
+the active library's Ports folder onto it. Do not symlink it to
+OS `Roms/Ports (PORTS)` — that overlay listed every `.sh` twice.
+`BR2_PACKAGE_BASH=y`. harbourmaster
 ignores `CFW_NAME`/`DEVICE_NAME`. It wants quoted `NAME="…"`,
 `VERSION="…"` / `OS_VERSION="…"`, and `HW_DEVICE="…"` in
 `/etc/os-release` (Buildroot’s unquoted `VERSION=2026.02.3` showed
@@ -684,8 +683,9 @@ the default — the DT has no battery-led trigger.
 Resolved this pass (do not re-open):
 
 - Class A whitelist, dbus in `rc.late` with squashfs `/etc/machine-id`
-  so uuidgen does not wait for crng. Session binds `.roms_base`;
-  S17 merges SD2/USB. Live meter: dbus 3.53–12.54, `nextui.elf` 26.4 s.
+  so uuidgen does not wait for crng. Live meter: dbus 3.53–12.54,
+  `nextui.elf` 26.4 s. Libraries are `/run/zlyme/libraries`, not
+  mergerfs.
 - N64 core name is Knulli `mupen64plus-next` (underscore pak missed
   the .so). gzdoom needs `-iwad` for `*.wad`.
 - RA pad path is sdl2 + GameController (Spruce Flip). `HID_NINTENDO`

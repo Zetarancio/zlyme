@@ -17,9 +17,16 @@ for s in /usr/share/zlyme/emu-defaults/ppsspp.ini /storage/.config/zlyme/emu-def
 	[ -f "$s" ] && SEED=$s && break
 done
 INI="$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM/ppsspp.ini"
-mkdir -p "$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM" "$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA"
+mkdir -p "$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM" \
+	"$SAVES_PATH/PSP/SAVEDATA" "$SAVES_PATH/PSP/PPSSPP_STATE" \
+	"$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" "$XDG_CONFIG_HOME/ppsspp/PSP/PPSSPP_STATE"
 if [ -n "$SEED" ] && [ ! -e "$INI" ]; then
 	cp "$SEED" "$INI"
+fi
+if [ -d "$SAVES_PATH/PSP/SAVEDATA" ]; then
+	mount --bind "$SAVES_PATH/PSP/SAVEDATA" "$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" 2>/dev/null || true
+	mount --bind "$SAVES_PATH/PSP/PPSSPP_STATE" "$XDG_CONFIG_HOME/ppsspp/PSP/PPSSPP_STATE" 2>/dev/null || true
+	trap 'umount "$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" 2>/dev/null; umount "$XDG_CONFIG_HOME/ppsspp/PSP/PPSSPP_STATE" 2>/dev/null' EXIT
 fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor heavy >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true

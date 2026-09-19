@@ -176,7 +176,7 @@ is_heavy() {
 	return 1
 }
 
-mode=${1:-smart}
+mode=${ZLYME_GOVERNOR:-${1:-smart}}
 case "$mode" in
 	auto) mode=smart ;;
 	powersave) mode=idle ;;

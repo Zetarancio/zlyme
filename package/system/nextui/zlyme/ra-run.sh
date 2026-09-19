@@ -180,6 +180,45 @@ write_minui_ra() {
 
 write_minui_ra
 
+# Saves follow the ROM's volume. pak-log already called zlyme_library_for.
+_ra_rom=
+i=1
+while [ "$i" -le $# ]; do
+	eval "_a=\${$i}"
+	case "$_a" in
+		-*) ;;
+		*) _ra_rom=$_a ;;
+	esac
+	i=$((i + 1))
+done
+if [ -n "$_ra_rom" ] && [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+	. /usr/share/nextui/bin/zlyme-library.sh
+	zlyme_library_for "$_ra_rom"
+fi
+_ra_tag=${EMU_TAG:-}
+if [ -z "$_ra_tag" ] && [ -n "$_ra_rom" ]; then
+	tr=$(zlyme_library_tag_rel "$_ra_rom" 2>/dev/null) || tr=
+	_ra_tag=${tr%%	*}
+fi
+if [ -n "$_ra_tag" ]; then
+	mkdir -p "${SAVES_PATH:-/storage/Saves}/$_ra_tag"
+	RA_SAVES=/tmp/zlyme-ra-saves.cfg
+	{
+		printf 'savefile_directory = "%s/%s"\n' "${SAVES_PATH:-/storage/Saves}" "$_ra_tag"
+		printf 'savestate_directory = "%s/%s"\n' "${SAVES_PATH:-/storage/Saves}" "$_ra_tag"
+		printf 'system_directory = "%s"\n' "${BIOS_PATH:-/storage/Bios}"
+	} > "$RA_SAVES"
+fi
+if [ -n "${ZLYME_EMU_CORE:-}" ] && [ "$1" = "-L" ] && [ -n "$2" ]; then
+	_core_dir=$(dirname "$2")
+	_core_hit=$_core_dir/${ZLYME_EMU_CORE}_libretro.so
+	if [ -f "$_core_hit" ]; then
+		shift 2
+		set -- -L "$_core_hit" "$@"
+	fi
+	unset _core_dir _core_hit
+fi
+
 AC=/usr/share/retroarch/autoconfig
 if [ ! -f "$AC/sdl2/retrogame_joypad.cfg" ]; then
 	if [ -f /usr/share/zlyme/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
@@ -223,6 +262,7 @@ for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra
 done
 [ -s "$MINUI_RA" ] && APPEND="$APPEND|$MINUI_RA"
 APPEND="$APPEND|$RA_AC"
+[ -s "${RA_SAVES:-}" ] && APPEND="$APPEND|$RA_SAVES"
 THEME=/usr/share/retroarch/rgui-theme.cfg
 [ -s "$THEME" ] || THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
 [ -s "$THEME" ] && APPEND="$APPEND|$THEME"

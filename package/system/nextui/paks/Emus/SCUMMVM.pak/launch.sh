@@ -10,8 +10,10 @@ command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
+mkdir -p "$SAVES_PATH/SCUMMVM"
 if [ -d "$ROM" ]; then
-	exec scummvm --fullscreen --joystick=0 --auto-detect -p "$ROM"
+	exec scummvm --fullscreen --joystick=0 --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$ROM"
 fi
 dir=$(dirname "$ROM")
-exec scummvm --fullscreen --joystick=0 --auto-detect -p "$dir"
+mkdir -p "$SAVES_PATH/SCUMMVM"
+exec scummvm --fullscreen --joystick=0 --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$dir"

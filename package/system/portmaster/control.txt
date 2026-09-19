@@ -1,0 +1,72 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# Zlyme PortMaster launch environment. Every port .sh sources this as
+# $controlfolder/control.txt. Do not source /etc/profile: that file sets
+# HOME=/storage and would dump ~/.local onto the OS card.
+#
+# HOME / XDG_* stay on the OS card (nextui-session). PORTS.pak bind-mounts
+# /roms/ports onto that volume's Ports folder for the launch.
+
+CUR_TTY=/dev/tty0
+
+export directory="${directory:-roms}"
+
+# Port scripts set controlfolder to /opt/system/Tools/PortMaster first.
+# Keep that (image). Do not point at /roms/ports/PortMaster (card self-update).
+if [ -z "${controlfolder:-}" ] || [ ! -d "$controlfolder" ]; then
+	if [ -d /opt/system/Tools/PortMaster ]; then
+		controlfolder=/opt/system/Tools/PortMaster
+	else
+		controlfolder=/usr/share/portmaster/PortMaster
+	fi
+fi
+export controlfolder
+
+ESUDO=""
+ESUDOKILL="-1"
+ESUDOKILL2="-1"
+export ESUDO ESUDOKILL ESUDOKILL2
+export PM_CAN_MOUNT="${PM_CAN_MOUNT:-Y}"
+
+export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+if [ -z "${SDL_GAMECONTROLLERCONFIG_FILE:-}" ] || [ ! -f "${SDL_GAMECONTROLLERCONFIG_FILE:-}" ]; then
+	if [ -f /usr/lib/gamecontrollerdb.txt ]; then
+		export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
+	elif [ -f "$controlfolder/gamecontrollerdb.txt" ]; then
+		export SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
+	fi
+fi
+
+raloc="/usr/bin"
+raconf="--config /storage/.config/retroarch/retroarch.cfg"
+
+[ -f "$controlfolder/device_info.txt" ] && . "$controlfolder/device_info.txt"
+[ -f "$controlfolder/funcs.txt" ] && . "$controlfolder/funcs.txt"
+
+export CFW_NAME="${CFW_NAME:-Zlyme}"
+export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
+
+get_controls() {
+	: "${SDL_GAMECONTROLLERCONFIG_FILE:=/usr/lib/gamecontrollerdb.txt}"
+	if [ ! -f "$SDL_GAMECONTROLLERCONFIG_FILE" ] && [ -f "$controlfolder/gamecontrollerdb.txt" ]; then
+		SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
+	fi
+	export SDL_GAMECONTROLLERCONFIG_FILE
+	if [ -f "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
+		cp -f "$SDL_GAMECONTROLLERCONFIG_FILE" /tmp/gamecontrollerdb.txt 2>/dev/null || true
+		if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ]; then
+			SDL_GAMECONTROLLERCONFIG=$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep -v '^$')
+			export SDL_GAMECONTROLLERCONFIG
+		fi
+		sdl_controllerconfig="${SDL_GAMECONTROLLERCONFIG:-$(cat "$SDL_GAMECONTROLLERCONFIG_FILE")}"
+	else
+		sdl_controllerconfig="${SDL_GAMECONTROLLERCONFIG:-}"
+	fi
+	: "${ANALOG_STICKS:=2}"
+	: "${LOWRES:=N}"
+	: "${param_device:=rg552}"
+}
+
+export GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.${DEVICE_ARCH:-aarch64}.so $controlfolder/gptokeyb2 $ESUDOKILL2"
+export GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

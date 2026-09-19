@@ -1,0 +1,5 @@
+# TAG core [core ...]
+# Only tags that actually ship more than one libretro core.
+MD picodrive genesis_plus_gx
+MS genesis_plus_gx picodrive
+GG genesis_plus_gx picodrive

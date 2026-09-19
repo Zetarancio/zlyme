@@ -1,7 +1,12 @@
 #include "zlymemenu.hpp"
 
+extern "C" {
+#include "config.h"
+}
+
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -319,27 +324,21 @@ void Zlyme_appendFactoryResetItem(std::vector<AbstractMenuItem *> &items)
 		Zlyme_factoryReset});
 }
 
-static std::string sd2_status_line()
+static bool extra_volume_mounted()
 {
-	FILE *f = popen("zlyme-storage status 2>/dev/null", "r");
+	FILE *f = fopen("/proc/mounts", "r");
 	if (!f)
-		return "sd2=?";
-	char buf[128] = {0};
-	if (!fgets(buf, sizeof(buf), f)) {
-		pclose(f);
-		return "sd2=?";
+		return false;
+	char line[512];
+	bool found = false;
+	while (fgets(line, sizeof(line), f)) {
+		if (strstr(line, " /mnt/sd2 ") || strstr(line, " /mnt/media/")) {
+			found = true;
+			break;
+		}
 	}
-	pclose(f);
-	return trim(buf);
-}
-
-static InputReactionHint Zlyme_mountSd2(AbstractMenuItem &item)
-{
-	(void)item;
-	system("zlyme-storage start");
-	MenuList::showOverlay(std::string("Library card: ") + sd2_status_line(),
-		OverlayDismissMode::DismissOnA);
-	return NoOp;
+	fclose(f);
+	return found;
 }
 
 static InputReactionHint Zlyme_ejectSd2(AbstractMenuItem &item)
@@ -352,11 +351,12 @@ static InputReactionHint Zlyme_ejectSd2(AbstractMenuItem &item)
 
 void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items)
 {
-	items.push_back(new MenuItem{ListItemType::Button, "Mount library card",
-		"Second SD or a USB disk with roms/.\nAlso runs at boot via eudev.",
-		Zlyme_mountSd2});
+	if (!ctl_on("sd2") && !ctl_on("otg"))
+		return;
+	if (!extra_volume_mounted())
+		return;
 	items.push_back(new MenuItem{ListItemType::Button, "Eject library card",
-		"Unmount the second SD before pulling it.\nDo not eject while a game from that card is running.",
+		"Unmount the second SD or USB disk before pulling it.\nDo not eject while a game from that card is running.",
 		Zlyme_ejectSd2});
 }
 
@@ -376,5 +376,123 @@ void Zlyme_appendAboutLogs(std::vector<AbstractMenuItem *> &items)
 		[]() {
 			ctl_set("logs", "off");
 			system("zlyme-ctl apply-logs");
+		}});
+}
+
+static int wait_ab_game(const std::string &msg, const char *aLabel, const char *bLabel)
+{
+	for (;;) {
+		GFX_startFrame();
+		PAD_poll();
+		if (PAD_justPressed(BTN_A)) {
+			MenuList::hideOverlay();
+			return 1;
+		}
+		if (PAD_justPressed(BTN_B)) {
+			MenuList::hideOverlay();
+			return 0;
+		}
+		MenuList::showOverlayAB(msg, aLabel, bLabel);
+		GFX_sync();
+	}
+}
+
+static int cleanup_count(const char *action, std::string *extra)
+{
+	char cmd[384];
+	snprintf(cmd, sizeof(cmd),
+		"SAVE_FORMAT=%d STATE_FORMAT=%d zlyme-game-cleanup %s --dry-run 2>/dev/null",
+		CFG_getSaveFormat(), CFG_getStateFormat(), action);
+	FILE *f = popen(cmd, "r");
+	if (!f)
+		return 0;
+	int n = 0;
+	char line[512];
+	std::string rest;
+	while (fgets(line, sizeof(line), f)) {
+		if (!strncmp(line, "COUNT=", 6))
+			n = atoi(line + 6);
+		else
+			rest += line;
+	}
+	pclose(f);
+	if (extra)
+		*extra = rest;
+	return n;
+}
+
+static void cleanup_run(const char *action)
+{
+	char cmd[256];
+	snprintf(cmd, sizeof(cmd),
+		"SAVE_FORMAT=%d STATE_FORMAT=%d zlyme-game-cleanup %s >/dev/null 2>&1",
+		CFG_getSaveFormat(), CFG_getStateFormat(), action);
+	system(cmd);
+}
+
+static InputReactionHint cleanup_button(const char *action, const char *empty_msg, const char *ask_fmt)
+{
+	std::string extra;
+	int n = cleanup_count(action, &extra);
+	if (n <= 0) {
+		MenuList::showOverlay(empty_msg, OverlayDismissMode::DismissOnA);
+		return NoOp;
+	}
+	char ask[512];
+	snprintf(ask, sizeof(ask), ask_fmt, n);
+	if (!extra.empty()) {
+		strncat(ask, "\n", sizeof(ask) - strlen(ask) - 1);
+		strncat(ask, extra.c_str(), sizeof(ask) - strlen(ask) - 1);
+	}
+	if (!wait_ab_game(ask, "DELETE", "BACK"))
+		return NoOp;
+	cleanup_run(action);
+	MenuList::showOverlay("Done", OverlayDismissMode::DismissOnA);
+	return NoOp;
+}
+
+void Zlyme_appendGameCleanup(std::vector<AbstractMenuItem *> &items)
+{
+	items.push_back(new MenuItem{ListItemType::Button, "Clean junk",
+		"macOS ._ files, Windows Thumbs.db, desktop trash folders.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("junk", "No junk files", "Delete %d junk files?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Orphan saves / states",
+		"Saves on a card whose ROM is gone from that same card.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("orphan-saves", "No orphan saves", "Delete %d orphan save files?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Orphan boxart",
+		".media images whose ROM is gone.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("orphan-media", "No orphan boxart", "Delete %d orphan images?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Clear Recents",
+		"Empty the Recently Played list.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("recents", "Recents already empty", "Clear %d recent entries?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Reset RetroArch core options",
+		"Delete OS /storage/.config/retroarch/config. Saves stay.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("ra-cores", "No core options", "Delete %d RetroArch option files?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Reset standalones",
+		"Wipe PPSSPP, Flycast, Dolphin, DraStic, AetherSX2, GZDoom, Pico-8-native, Wine prefix on the OS card.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("standalones", "No standalone cfg", "Reset %d standalone cfg trees?");
+		}});
+	items.push_back(new MenuItem{ListItemType::Button, "Orphan per-ROM RetroArch configs",
+		"Drop OS retroarch Game.cfg files whose ROM is gone.",
+		[](AbstractMenuItem &item) -> InputReactionHint {
+			(void)item;
+			return cleanup_button("ra-rom-cfg", "No orphan RA configs", "Delete %d per-ROM configs?");
 		}});
 }

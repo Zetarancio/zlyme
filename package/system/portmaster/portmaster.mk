@@ -61,10 +61,15 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 	fi
 	# ROCKNIX first_run copytree source.
 	mkdir -p $(TARGET_DIR)/usr/config/PortMaster
-	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/control.txt ]; then \
-		$(INSTALL) -m 0644 \
-			$(TARGET_DIR)/usr/share/portmaster/PortMaster/control.txt \
+	if [ -f $(PORTMASTER_PKGDIR)/control.txt ]; then \
+		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/control.txt \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/control.txt; \
+		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/control.txt \
 			$(TARGET_DIR)/usr/config/PortMaster/control.txt; \
+	fi
+	if [ -f $(PORTMASTER_PKGDIR)/mod_Zlyme.txt ]; then \
+		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/mod_Zlyme.txt \
+			$(TARGET_DIR)/usr/share/portmaster/PortMaster/mod_Zlyme.txt; \
 	fi
 	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/gamecontrollerdb.txt ]; then \
 		$(INSTALL) -m 0644 \

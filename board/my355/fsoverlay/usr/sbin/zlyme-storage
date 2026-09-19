@@ -1,8 +1,7 @@
 #!/bin/sh
 #
-# Second SD slot and USB disks. Internal ROMs live in /storage/.roms_base.
-# MergerFS pools that with SD2/USB Roms onto /storage/Roms so three PSP
-# folders appear as one list. Duplicate basename: OS card first.
+# Second SD and USB disks. NextUI scans each root from
+# /run/zlyme/libraries. No mergerfs, no .roms_base, no Bios bind.
 
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -10,12 +9,8 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 SD2=/mnt/sd2
 MEDIA=/mnt/media
-ROMS=/storage/Roms
-ROMS_BASE=/storage/.roms_base
-BIOS=/storage/Bios
+LIBRARIES=/run/zlyme/libraries
 
-# /mnt/media is an empty dir on squashfs (read-only). Put a tmpfs on it
-# so USB extras can mount as merge branches.
 ensure_media() {
 	mkdir -p "$MEDIA" 2>/dev/null || true
 	if touch "$MEDIA/.w" 2>/dev/null; then
@@ -68,15 +63,6 @@ unescape_mp() {
 	printf '%s' "$1" | sed 's/\\040/ /g; s/\\011/\t/g'
 }
 
-unbind_under() {
-	prefix=$1
-	awk -v p="$prefix" '$2 ~ "^" p { print $2 }' /proc/mounts | sort -r |
-		while read -r m; do
-			m=$(unescape_mp "$m")
-			umount "$m" 2>/dev/null || true
-		done
-}
-
 is_library_root() {
 	root=$1
 	[ -d "$root/roms" ] && return 0
@@ -91,193 +77,45 @@ is_library_root() {
 	return 1
 }
 
-roms_dir_of() {
-	root=$1
-	if [ -d "$root/roms" ]; then
-		echo "$root/roms"
-		return 0
-	fi
-	if [ -d "$root/Roms" ]; then
-		echo "$root/Roms"
-		return 0
-	fi
-	if [ -d "$root/ROMS" ]; then
-		echo "$root/ROMS"
-		return 0
-	fi
-	for d in "$root"/*; do
-		[ -d "$d" ] || continue
-		case "$(basename "$d")" in
-			*'('*')') echo "$root"; return 0 ;;
-		esac
-	done
-	return 1
-}
-
-want_merge() {
-	if command -v zlyme-ctl >/dev/null 2>&1; then
-		zlyme-ctl want merge
-		return $?
-	fi
-	return 0
-}
-
-ensure_roms_base() {
-	mkdir -p "$ROMS_BASE" "$ROMS"
-	if mountpoint -q "$ROMS" 2>/dev/null; then
-		return 0
-	fi
-	# First image on an old card: move Pretty dirs out of Roms.
-	find "$ROMS" -mindepth 1 -maxdepth 1 2>/dev/null |
-	while IFS= read -r d; do
-		name=$(basename "$d")
-		[ -e "$ROMS_BASE/$name" ] && continue
-		mv "$d" "$ROMS_BASE/" 2>/dev/null || true
-	done
-}
-
-branches() {
-	printf '%s' "$ROMS_BASE"
-	for mp in "$SD2" "$MEDIA"/*; do
-		[ -d "$mp" ] || continue
-		d=$(roms_dir_of "$mp") || continue
-		printf ':%s' "$d"
-	done
-	printf '\n'
-}
-
 rescan_nextui() {
 	[ -f /tmp/zlyme-keep-emu ] && return 0
-	for p in retroarch PPSSPPSDL flycast drastic moonlight pico8_64; do
+	for p in retroarch PPSSPPSDL flycast drastic moonlight pico8_64 aethersx2 dolphin-emu-nogui; do
 		pidof "$p" >/dev/null 2>&1 && return 0
 	done
-	# SIGKILL before the first flip drops DRM master; deferred
-	# takeover then keeps the splash forever (zlyme36 Etcher).
-	grep -q 'nextui-first-flip' /tmp/boot-timing 2>/dev/null || return 0
-	if pidof nextui.elf >/dev/null 2>&1; then
-		kill -9 $(pidof nextui.elf) 2>/dev/null || true
-	fi
+	pid=$(pidof nextui.elf 2>/dev/null) || return 0
+	[ -n "$pid" ] || return 0
+	kill -USR1 $pid 2>/dev/null || true
 }
 
-roms_is_mergerfs() {
-	awk -v m="$ROMS" '$2 == m && $3 ~ /mergerfs/ { found = 1 } END { exit !found }' /proc/mounts
-}
-
-roms_ctl() {
-	printf '%s/.mergerfs' "$ROMS"
-}
-
-# NextUI bind-mounts .roms_base onto Roms for the first frame. One umount
-# is not enough if S17/udev stacked more binds; mergerfs then sees dest
-# as a branch ("branches can not include the mountpoint").
-unmount_roms() {
-	n=0
-	while awk -v m="$ROMS" '$2 == m { found = 1 } END { exit !found }' /proc/mounts &&
-		[ "$n" -lt 16 ]; do
-		umount "$ROMS" 2>/dev/null || umount -l "$ROMS" 2>/dev/null || true
-		n=$((n + 1))
-	done
-	unbind_under "$ROMS/"
-}
-
-# If Roms is already FUSE, add missing SD2/USB dirs without remounting
-# (avoids "branches can not include the mountpoint").
-add_rom_branches() {
-	list=$1
-	ctl=$(roms_ctl)
-	[ -e "$ctl" ] || return 1
-	cur=$(getfattr -n user.mergerfs.branches --only-values "$ctl" 2>/dev/null || true)
-	added=0
-	oldifs=$IFS
-	IFS=:
-	# shellcheck disable=SC2086
-	set -- $list
-	IFS=$oldifs
-	for b in "$@"; do
-		[ -n "$b" ] || continue
-		[ -d "$b" ] || continue
-		case "$cur" in
-			*"$b"*) continue ;;
-		esac
-		if setfattr -n user.mergerfs.branches -v "+>$b" "$ctl" 2>>/tmp/zlyme-storage.log; then
-			echo "merge xattr +$b" >> /tmp/zlyme-storage.log
-			added=1
-			cur="$cur:$b"
-		fi
-	done
-	[ "$added" = 1 ]
-}
-
-merge_roms() {
-	ensure_roms_base
-	ensure_media
+write_libraries() {
+	mkdir -p /run/zlyme
+	tmp=$(mktemp /run/zlyme/libraries.XXXXXX) || return 0
 	{
-		flock 9
-		merge_roms_locked
-	} 9>/tmp/zlyme-storage.lock
+		echo /storage
+		if awk -v m="$SD2" '$2 == m { found=1 } END { exit !found }' /proc/mounts; then
+			echo "$SD2"
+		fi
+		ensure_media
+		for d in "$MEDIA"/*; do
+			[ -d "$d" ] || continue
+			awk -v m="$d" '$2 == m { found=1 } END { exit !found }' /proc/mounts || continue
+			echo "$d"
+		done
+	} > "$tmp"
+	mv -f "$tmp" "$LIBRARIES"
 }
 
-merge_roms_locked() {
-	if ! want_merge; then
-		if mountpoint -q "$ROMS" 2>/dev/null; then
-			return 0
-		fi
-		mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
-		return 0
-	fi
-	list=$(branches)
-	if ! command -v mergerfs >/dev/null 2>&1; then
-		echo "mergerfs missing; bind .roms_base" >> /tmp/zlyme-storage.log
-		mountpoint -q "$ROMS" 2>/dev/null ||
-			mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
-		return 0
-	fi
-	if roms_is_mergerfs; then
-		add_rom_branches "$list" || true
-		return 0
-	fi
-	unmount_roms
-	mkdir -p "$ROMS"
-	# 9>&- so the FUSE daemon does not inherit the flock fd. That leak
-	# held /tmp/zlyme-storage.lock forever; udev RUN+ then sat until
-	# the 180 s worker kill (zlyme38: 188 s, then 372 s).
-	if mergerfs -o "defaults,allow_other,use_ino,cache.files=off,dropcacheonclose=true,category.create=ff,minfreespace=0" \
-		"$list" "$ROMS" 9>&- 2>>/tmp/zlyme-storage.log
-	then
-		echo "merge $list" >> /tmp/zlyme-storage.log
-	else
-		echo "merge fail $list" >> /tmp/zlyme-storage.log
-		# Do not stack another bind on a dest that is still a branch.
-		if ! mountpoint -q "$ROMS" 2>/dev/null; then
-			mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
-		fi
-	fi
-}
-
-bind_bios() {
-	[ -d "$BIOS" ] || mkdir -p "$BIOS" 2>/dev/null || return 0
-	mountpoint -q "$BIOS" 2>/dev/null && return 0
-	for cand in \
-		"$SD2/roms/_orphans/bios" \
-		"$SD2/Roms/_orphans/bios" \
-		"$SD2/roms/bios" \
-		"$SD2/Roms/bios" \
-		"$SD2/Bios" \
-		"$SD2/bios"
-	do
-		[ -d "$cand" ] || continue
-		n=$(ls -A "$cand" 2>/dev/null | wc -l)
-		[ "$n" -gt 0 ] || continue
-		mount --bind "$cand" "$BIOS" 2>/dev/null || true
-		return 0
-	done
+extra_mounted() {
+	awk -v s="$SD2" '
+		$2 == s { found=1 }
+		$2 ~ /^\/mnt\/media\// { found=1 }
+		END { exit !found }
+	' /proc/mounts
 }
 
 mount_fs() {
 	dev=$1
 	mp=$2
-	# udev RUN+ used to call blkid here and deadlock the worker. Prefer
-	# ID_FS_TYPE from the event; S17 has no udev env and uses blkid.
 	typ=${ID_FS_TYPE:-}
 	if [ -z "$typ" ]; then
 		raw=$(blkid "$dev" 2>/dev/null || true)
@@ -317,6 +155,7 @@ place_volume() {
 			return 0
 		fi
 	fi
+	ensure_media
 	mp=$MEDIA/${label:-$name}
 	mkdir -p "$mp"
 	mount --move "$tmp" "$mp" 2>/dev/null || {
@@ -348,14 +187,7 @@ add_dev() {
 		ZLYME|ZLYMEBOOT) return 0 ;;
 	esac
 	if awk -v d="$dev" '$1 == d { found=1 } END { exit !found }' /proc/mounts; then
-		# S17 already mounted this. Taking the lock while mergerfs
-		# still held it is what parked udev for 180 s.
-		if roms_is_mergerfs; then
-			echo "add $name already merged" >> /tmp/zlyme-storage.log
-			return 0
-		fi
-		merge_roms
-		bind_bios
+		write_libraries
 		return 0
 	fi
 	tmp=$(mktemp -d /tmp/zlyme-probe.XXXXXX) || return 0
@@ -365,8 +197,7 @@ add_dev() {
 	fi
 	ensure_media
 	place_volume "$dev" "$tmp" "$label" "$name"
-	merge_roms
-	bind_bios
+	write_libraries
 	rescan_nextui
 }
 
@@ -378,13 +209,13 @@ remove_dev() {
 	mp=$(unescape_mp "$mp")
 	case "$mp" in
 		"$SD2"|/mnt/sd2)
-			umount "$SD2" 2>/dev/null || true
+			umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
 			;;
 		*)
-			umount "$mp" 2>/dev/null || true
+			umount "$mp" 2>/dev/null || umount -l "$mp" 2>/dev/null || true
 			;;
 	esac
-	merge_roms
+	write_libraries
 	rescan_nextui
 }
 
@@ -395,6 +226,19 @@ scan_add() {
 	done
 }
 
+eject_extras() {
+	if grep -q " $SD2 " /proc/mounts; then
+		umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
+	fi
+	ensure_media
+	for d in "$MEDIA"/*; do
+		[ -d "$d" ] || continue
+		umount "$d" 2>/dev/null || umount -l "$d" 2>/dev/null || true
+	done
+	write_libraries
+	rescan_nextui
+}
+
 status() {
 	if grep -q " $SD2 " /proc/mounts; then
 		echo "sd2=mounted"
@@ -403,27 +247,20 @@ status() {
 	else
 		echo "sd2=empty"
 	fi
-	if mountpoint -q "$ROMS" 2>/dev/null; then
-		src=$(awk -v m="$ROMS" '$2 == m { print $1; exit }' /proc/mounts)
-		echo "roms_fs=$src"
+	if extra_mounted; then
+		echo "extra=mounted"
 	else
-		echo "roms_fs=unmounted"
+		echo "extra=empty"
+	fi
+	if [ -f "$LIBRARIES" ]; then
+		echo "libraries=$(tr '\n' ' ' < "$LIBRARIES")"
 	fi
 }
 
 case "${1:-}" in
 	start|scan)
 		scan_add
-		# scan_add already merged if a library card was present.
-		if ! roms_is_mergerfs && ! mountpoint -q "$ROMS" 2>/dev/null; then
-			merge_roms
-		fi
-		bind_bios
-		;;
-	bind|merge)
-		merge_roms
-		bind_bios
-		rescan_nextui
+		write_libraries
 		;;
 	add)
 		[ -n "${2:-}" ] || exit 0
@@ -434,18 +271,20 @@ case "${1:-}" in
 		remove_dev "$2"
 		;;
 	stop|eject)
-		unmount_roms
-		unbind_under "$BIOS"
-		if grep -q " $SD2 " /proc/mounts; then
-			umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
-		fi
-		ensure_roms_base
-		mount --bind "$ROMS_BASE" "$ROMS" 2>/dev/null || true
-		rescan_nextui
+		eject_extras
 		;;
 	status) status ;;
+	libraries)
+		write_libraries
+		[ -f "$LIBRARIES" ] && cat "$LIBRARIES"
+		;;
+	bind|merge)
+		# leftover from mergerfs; just refresh the list
+		write_libraries
+		rescan_nextui
+		;;
 	*)
-		echo "usage: $0 {start|bind|merge|add <dev>|remove <dev>|eject|status}" >&2
+		echo "usage: $0 {start|add <dev>|remove <dev>|eject|status|libraries}" >&2
 		exit 1
 		;;
 esac

@@ -3,8 +3,7 @@
 # NextUI TAG where one exists. Never No-Intro, Redump, or scene sets.
 # Soft-fail per system (SKIP + why).
 #
-# Dest: ZLYME_ROMS, else /storage/Roms or /storage/.roms_base on device,
-# else a mounted ZLYME/.roms_base on the host.
+# Dest: ZLYME_ROMS, else /storage/Roms on device, else a mounted ZLYME/Roms on the host.
 set -u
 
 log() { printf '%s\n' "$*"; }
@@ -25,25 +24,23 @@ find_dest() {
 		printf '%s\n' "$ZLYME_ROMS"
 		return 0
 	fi
-	if [ -d /storage/.roms_base ]; then
-		printf '%s\n' /storage/.roms_base
-		return 0
-	fi
 	if [ -d /storage/Roms ]; then
 		printf '%s\n' /storage/Roms
 		return 0
 	fi
-	for root in /run/media/*/* /media/*/* /mnt/*; do
-		[ -d "$root" ] || continue
-		if [ -d "$root/.roms_base" ]; then
-			printf '%s\n' "$root/.roms_base"
-			return 0
-		fi
-		if [ -d "$root/Roms" ]; then
-			printf '%s\n' "$root/Roms"
-			return 0
-		fi
+	# Host: OS card labelled ZLYME only. Never SD2/USB games cards.
+	for d in /run/media/*/ZLYME/Roms /media/*/ZLYME/Roms /mnt/ZLYME/Roms; do
+		[ -d "$d" ] || continue
+		printf '%s\n' "$d"
+		return 0
 	done
+	if command -v findmnt >/dev/null 2>&1; then
+		mp=$(findmnt -n -o TARGET LABEL=ZLYME 2>/dev/null | head -n1)
+		if [ -n "$mp" ] && [ -d "$mp/Roms" ]; then
+			printf '%s\n' "$mp/Roms"
+			return 0
+		fi
+	fi
 	return 1
 }
 

@@ -33,7 +33,10 @@ set -- \
 	"$BIOS/PICO" \
 	"$BIOS/PICO/aarch64" \
 	"$BIOS/PICO-8" \
-	"$BIOS"
+	"$BIOS" \
+	"/storage/Bios/PICO" \
+	"/storage/Bios/PICO/aarch64" \
+	"/storage/Bios"
 for d in "$@"; do
 	[ -n "$d" ] || continue
 	if [ -x "$d/$STATIC_BIN" ] || [ -f "$d/$STATIC_BIN" ]; then

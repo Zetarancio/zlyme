@@ -973,8 +973,7 @@ int main(int argc, char *argv[])
             new MenuItem{ListItemType::Button, "Reset to defaults", "Resets all options in this menu to their default values.", ResetCurrentMenu},
         });
 
-        auto inGameMenu = new MenuList(MenuItemType::List, "In-Game",
-        {
+        std::vector<AbstractMenuItem*> gameItems = {
             new MenuItem{ListItemType::Generic, "RetroAchievements", "Achievement tracking settings", {}, {}, nullptr, nullptr, DeferToSubmenu, retroAchievementsMenu},
             new MenuItem{ListItemType::Generic, "Save format", "The save format to use.\nMinUI: Game.gba.sav, Retroarch: Game.srm, Generic: Game.sav",
             {(int)SAVE_FORMAT_SAV, (int)SAVE_FORMAT_SRM, (int)SAVE_FORMAT_SRM_UNCOMPRESSED, (int)SAVE_FORMAT_GEN},
@@ -992,7 +991,9 @@ int main(int argc, char *argv[])
             []() -> std::any{ return CFG_getUseExtractedFileName(); },
             [](const std::any &value){ CFG_setUseExtractedFileName(std::any_cast<bool>(value)); },
             []() { CFG_setUseExtractedFileName(CFG_DEFAULT_EXTRACTEDFILENAME);}},
-        });
+        };
+        Zlyme_appendGameCleanup(gameItems);
+        auto inGameMenu = new MenuList(MenuItemType::List, "Game", std::move(gameItems));
 
         // We need to alert the user about potential issues if the
         // stock OS was modified in way that are known to cause issues
@@ -1059,7 +1060,7 @@ int main(int argc, char *argv[])
         } else if(deviceInfo.hasBluetooth())
             mainItems.push_back(new MenuItem{ListItemType::Generic, "Bluetooth", "Pair and connect HID", {}, {}, nullptr, nullptr, DeferToSubmenu, new Bluetooth::Menu(appQuit, ctx.dirty)});
 
-        mainItems.push_back(new MenuItem{ListItemType::Generic, "In-Game", "Saves and RetroAchievements", {}, {}, nullptr, nullptr, DeferToSubmenu, inGameMenu});
+        mainItems.push_back(new MenuItem{ListItemType::Generic, "Game", "Saves, RetroAchievements, and cleanup", {}, {}, nullptr, nullptr, DeferToSubmenu, inGameMenu});
         mainItems.push_back(new MenuItem{ListItemType::Generic, "Appearance", "UI customization", {}, {}, nullptr, nullptr, DeferToSubmenu, appearanceMenu});
         mainItems.push_back(new MenuItem{ListItemType::Generic, "System", "Display, sleep, GPU, ZRAM, undervolt, backup", {}, {}, nullptr, nullptr, DeferToSubmenu, systemMenu});
 

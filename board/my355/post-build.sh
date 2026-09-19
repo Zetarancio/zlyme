@@ -36,7 +36,6 @@ if [ -e "${TARGET_DIR}/usr/bin/nextui.elf" ]; then
 		usr/share/nextui/res/font1.ttf; do
 		[ -e "${TARGET_DIR}/${b}" ] || note "${b} is missing"
 	done
-	[ -x "${TARGET_DIR}/usr/bin/mergerfs" ] || note "mergerfs is missing"
 fi
 
 for f in lib/firmware/rtl_bt/rtl8723fu_fw.bin \
@@ -74,9 +73,10 @@ ln -sfn /storage "${TARGET_DIR}/mnt/SDCARD"
 # PortMaster scripts source /roms/ports/PortMaster/control.txt and set
 # GAMEDIR=/$directory/ports/<name> with directory=roms. NextUI's folder
 # is "Ports (PORTS)". /opt/system/Tools/PortMaster is the other lookup.
-mkdir -p "${TARGET_DIR}/roms" "${TARGET_DIR}/opt/system/Tools"
-ln -sfn "/storage/Roms/Ports (PORTS)" "${TARGET_DIR}/roms/ports"
-ln -sfn /roms/ports/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
+mkdir -p "${TARGET_DIR}/roms/ports" "${TARGET_DIR}/opt/system/Tools"
+# Real dir so PORTS.pak can bind the active library here. A symlink to
+# OS Roms made mount --bind overlay the OS card and duplicate the list.
+ln -sfn /usr/share/portmaster/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
 
 chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-led" \

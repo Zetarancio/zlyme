@@ -172,7 +172,6 @@ if ! wait_nextui 80; then
 fi
 log "session=$(pidof nextui-session) nextui=$(pidof nextui.elf)"
 log "sd2=$(zlyme-storage status 2>/dev/null | tr '\n' ' ')"
-log "mergerfs=$(getfattr -n user.mergerfs.srcmounts --only-values /storage/Roms/.mergerfs 2>/dev/null)"
 
 # Tools that failed last pass.
 run ScrapeGoat "'/storage/Tools/my355/ScrapeGoat.pak/launch.sh'" 20
@@ -184,8 +183,7 @@ run Files "'/storage/Tools/my355/Files.pak/launch.sh'" 20
 run Autocal "'/storage/Tools/my355/Autocal.pak/launch.sh'" 20
 run PortMaster "'/storage/Tools/my355/PortMaster.pak/launch.sh'" 25
 
-# Prefer OS-card test files, then the merged list. Skip PortMaster
-# vendor trees and boxart. Pico-8 carts are .p8/.png.
+# OS-card test files only.
 first_rom() {
 	pretty=$1
 	tag=$2
@@ -193,7 +191,7 @@ first_rom() {
 	case "$tag" in
 		MKXPZ|EASYRPG|SCUMMVM|PORTS) depth=5 ;;
 	esac
-	for root in /storage/.roms_base /storage/Roms; do
+	for root in /storage/Roms; do
 		[ -d "$root/$pretty" ] || continue
 		f=$(
 			find "$root/$pretty" -maxdepth "$depth" -type f ! -name '.*' \

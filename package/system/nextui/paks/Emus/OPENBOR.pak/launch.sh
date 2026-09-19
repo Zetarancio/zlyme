@@ -6,7 +6,8 @@ ROM="$1"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 	"$USERDATA_PATH/OpenBOR/Paks"
 HOME="$USERDATA_PATH"
-cd "$HOME"
+romdir=$(dirname "$ROM")
+cd "$romdir" 2>/dev/null || cd "$HOME"
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true

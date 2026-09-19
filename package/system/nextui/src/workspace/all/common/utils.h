@@ -33,6 +33,17 @@ void getDisplayName(const char* in_name, char* out_name);
 void getEmuName(const char* in_name, char* out_name);
 void getEmuPath(char* emu_name, char* pak_path);
 
+void libraryReload(void);
+int libraryCount(void);
+const char *libraryRoot(int i);
+int libraryRomsDir(int i, char *out, size_t n);
+int pathUnderLibraryRoms(const char *path);
+int isLibraryRomsDir(const char *path);
+int libraryFindConsole(int i, const char *tag, char *out, size_t n);
+void libraryBadge(const char *path, char *out, size_t n);
+void pathFromRecent(const char *stored, char *out, size_t n);
+int consoleRelFromPath(const char *path, char *tag, size_t tag_n, char *rel, size_t rel_n);
+
 void normalizeNewline(char* line);
 void trimTrailingNewlines(char* line);
 void trimSortingMeta(char** str);

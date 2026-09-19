@@ -26,6 +26,7 @@ Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few l
 - MENU tap = quick menu
 - Vol = volume
 - **MENU+Vol** = brightness
+- **MENU+Y** = emulator / governor for the highlighted console, folder, or ROM
 - Power = sleep
 
 **In a pak / game**

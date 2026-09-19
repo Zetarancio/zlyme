@@ -13,3 +13,4 @@ void Zlyme_appendBackupItem(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendFactoryResetItem(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items);
 void Zlyme_appendAboutLogs(std::vector<AbstractMenuItem *> &items);
+void Zlyme_appendGameCleanup(std::vector<AbstractMenuItem *> &items);

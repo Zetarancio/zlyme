@@ -3845,7 +3845,7 @@ int PAD_tappedBtn(int btn, uint32_t now)
 		ignore_menu = 0;
 		menu_start = now;
 	}
-	else if (PAD_isPressed(btn) && BTN_MOD_BRIGHTNESS == btn && (PAD_justPressed(BTN_MOD_PLUS) || PAD_justPressed(BTN_MOD_MINUS)))
+	else if (PAD_isPressed(btn) && BTN_MOD_BRIGHTNESS == btn && (PAD_justPressed(BTN_MOD_PLUS) || PAD_justPressed(BTN_MOD_MINUS) || PAD_justPressed(BTN_Y)))
 	{
 		ignore_menu = 1;
 	}

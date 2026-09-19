@@ -55,7 +55,7 @@ mkdir -p /mnt
 [ -e /mnt/SDCARD ] || ln -sfn /storage /mnt/SDCARD
 
 mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
-	/storage/.roms_base /storage/Roms
+	/storage/Roms /storage/Saves /storage/Bios
 
 seed=/usr/share/nextui
 img_ver=""
@@ -68,7 +68,7 @@ factory=0
 
 # Dummy cart so Pico-8 is visible before the user adds .p8 files.
 # Name contains "splore" so start_pico8.sh uses -splore (ROCKNIX / minui-pico-8-pak).
-pico_rom="/storage/.roms_base/Pico-8 (PICO)"
+pico_rom="/storage/Roms/Pico-8 (PICO)"
 pico_art="$seed/paks/Emus/PICO.pak/splore/Splore.p8.png"
 pico_mark="$SHARED_USERDATA_PATH/Pico-8-native/splore-installed"
 if [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
@@ -78,36 +78,25 @@ if [ -f "$pico_art" ] && [ ! -f "$pico_mark" ]; then
 	: >"$pico_mark"
 fi
 
-# Older images mkdir'd every Pretty name. hasRoms then opens each empty
-# folder through mergerfs. rmdir is a no-op if a ROM is already there.
-prune_stamp=/storage/.roms_base/.zlyme-empty-pruned
-if [ ! -f "$prune_stamp" ] && [ -r "$seed/rom-dirs.txt" ]; then
-	while IFS= read -r d; do
-		[ -n "$d" ] || continue
-		rmdir "/storage/.roms_base/$d/.media" 2>/dev/null || true
-		rmdir "/storage/.roms_base/$d" 2>/dev/null || true
-	done < "$seed/rom-dirs.txt"
-	: >"$prune_stamp"
-fi
-
 # Update lives in Settings. Drop the old Tools pak every boot so an
 # older squashfs (or paks copy) cannot put it back.
 rm -rf /storage/Tools/my355/Update.pak
 rm -f /storage/.config/zlyme/last-ota
 rm -f /storage/.config/zlyme/.zlyme-update-pak-pruned
 
-# Same bind zlyme35 used (fast, shown the list). S17 unmounts it and
-# mergerfs-es SD2; do not mergerfs here (that blocked the first frame).
-if ! mountpoint -q /storage/Roms 2>/dev/null; then
-	mount --bind /storage/.roms_base /storage/Roms 2>/dev/null || true
+mkdir -p /run/zlyme
+if [ -x /usr/sbin/zlyme-storage ]; then
+	/usr/sbin/zlyme-storage libraries >/dev/null 2>&1 || true
+fi
+if [ ! -s /run/zlyme/libraries ]; then
+	echo /storage > /run/zlyme/libraries
 fi
 boot_mark session-roms
 
-# PortMaster: /roms/ports is baked into the squashfs. If the card only
-# has lowercase ports, point the symlink there (needs a writable /roms).
-ports_dir="/storage/Roms/Ports (PORTS)"
-if [ ! -d "$ports_dir" ] && [ -d /storage/Roms/ports ]; then
-	ln -sfn /storage/Roms/ports /roms/ports 2>/dev/null || true
+# /roms/ports is an empty mountpoint on new images. Do not mkdir through
+# the old squashfs symlink (that created an empty OS Ports folder).
+if [ ! -L /roms/ports ]; then
+	mkdir -p /roms/ports
 fi
 
 # Stock paks = glob of the live image. No hardcoded names.
