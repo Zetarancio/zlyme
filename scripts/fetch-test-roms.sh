@@ -315,9 +315,23 @@ else
 	skip EASYRPG "download failed (TestGame archive)"
 fi
 
-# Windows — PuTTY ARM64 (MIT), matches aarch64 Wine
+# Windows — PuTTY x64 (MIT). Wine here is Kron4ek amd64 under box64,
+# not aarch64 PE.
 try_file WINE "Windows (WINE)" "putty.exe" \
-	"https://the.earth.li/~sgtatham/putty/latest/wa64/putty.exe"
+	"https://the.earth.li/~sgtatham/putty/latest/w64/putty.exe"
+
+# PS2 — wLaunchELF (ps2homebrew). Commercial ISOs are not pinned.
+try_file PS2 "Sony PlayStation 2 (PS2)" "wLaunchELF.elf" \
+	"https://github.com/ps2homebrew/wLaunchELF/releases/download/latest/BOOT.ELF"
+
+# GameCube — cubeboot.dol (GPL IPL helper). Direct asset, not Swiss's 7z.
+try_file GC "Nintendo GameCube (GC)" "cubeboot.dol" \
+	"https://github.com/OffBroadway/cubeboot/releases/download/v0.1.4/cubeboot.dol"
+
+# Wii — Nintendont loader.dol (GPL), in-tree binary.
+try_file WII "Nintendo Wii (WII)" "Nintendont.dol" \
+	"https://github.com/FIX94/Nintendont/raw/master/loader/loader.dol" \
+	300
 
 # Expected skips: no pinned redistributable ROM (disc images / commercial / no binary).
 skip GBC "no separate freeware cart pinned (GB homebrew can live in GBC)"
