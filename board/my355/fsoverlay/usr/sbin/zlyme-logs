@@ -1,0 +1,57 @@
+#!/bin/sh
+# One folder for a bug report: /storage/.logs
+# On: About → System logs. Off by default so the card is not filled.
+
+. /etc/zlyme.conf
+
+LOGDIR=/storage/.logs
+
+want_logs() {
+	[ -x /usr/sbin/zlyme-ctl ] && zlyme-ctl want logs
+}
+
+start() {
+	want_logs || return 0
+	[ -d /storage ] || return 0
+	grep -q " /storage " /proc/mounts || return 0
+	mkdir -p "$LOGDIR" || return 0
+	if [ ! -f "$LOGDIR/README.txt" ]; then
+		printf '%s\n' \
+			'Send this folder if something goes wrong.' \
+			'next.txt is the session. Each pak writes TAG.log (FC.log, PSP.log, ...).' \
+			'dmesg-boot.txt is the initramfs; dmesg.txt is after the card mounted.' \
+			> "$LOGDIR/README.txt"
+	fi
+	dmesg > "$LOGDIR/dmesg.txt" 2>/dev/null || true
+	if [ -f /boot/zlyme-dmesg.txt ]; then
+		cp -f /boot/zlyme-dmesg.txt "$LOGDIR/dmesg-boot.txt" 2>/dev/null || true
+	fi
+	if [ -f /tmp/boot-timing ]; then
+		cp -f /tmp/boot-timing "$LOGDIR/boot-timing.txt" 2>/dev/null || true
+	fi
+	if [ -f /tmp/nextui.txt ]; then
+		cp -f /tmp/nextui.txt "$LOGDIR/nextui.txt" 2>/dev/null || true
+	fi
+	touch /boot/zlyme-logs 2>/dev/null || true
+	return 0
+}
+
+stop() {
+	rm -f /boot/zlyme-logs
+	return 0
+}
+
+apply() {
+	if want_logs; then
+		start
+	else
+		stop
+	fi
+}
+
+case "${1:-start}" in
+	start) start ;;
+	stop) stop ;;
+	apply) apply ;;
+	*) echo "usage: $0 {start|stop|apply}" >&2; exit 1 ;;
+esac

@@ -140,6 +140,16 @@ do_root() {
 		log "ZLYME not mounted (ok if no pending update)"
 	fi
 
+	# About → System logs. Flag lives on FAT so this ramdisk can dump
+	# dmesg before switch_root. The rest lands in /storage/.logs after S15.
+	if [ -f /boot_root/zlyme-logs ]; then
+		dmesg > /boot_root/zlyme-dmesg.txt 2>/dev/null || true
+		if grep -q " /storage_root " /proc/mounts; then
+			mkdir -p /storage_root/.logs
+			dmesg > /storage_root/.logs/dmesg-init.txt 2>/dev/null || true
+		fi
+	fi
+
 	if [ ! -e /boot_root/zlyme ]; then
 		log "no /zlyme on ${label}"
 		return 1

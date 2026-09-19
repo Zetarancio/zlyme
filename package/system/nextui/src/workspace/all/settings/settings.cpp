@@ -372,30 +372,12 @@ int main(int argc, char *argv[])
         ctx.screen = GFX_init(MODE_MAIN);
         PAD_init();
         PWR_init();
-        TIME_init();
 
         signal(SIGINT, sigHandler);
         signal(SIGTERM, sigHandler);
 
-        char timezones[MAX_TIMEZONES][MAX_TZ_LENGTH];
-        int tz_count = 0;
-        TIME_getTimezones(timezones, &tz_count);
-
         int was_online = PWR_isOnline();
         int had_bt = PLAT_btIsConnected();
-
-        std::vector<std::any> tz_values;
-        std::vector<std::string> tz_labels;
-        for (int i = 0; i < tz_count; ++i) {
-            //LOG_info("Timezone: %s\n", timezones[i]);
-            tz_values.push_back(std::string(timezones[i]));
-            // Todo: beautify, remove underscores and so on
-            tz_labels.push_back(std::string(timezones[i]));
-        }
-        if (tz_values.empty()) {
-            tz_values.push_back(std::string("UTC"));
-            tz_labels.push_back(std::string("UTC"));
-        }
 
         // Factory helpers to avoid repeating identical lambda boilerplate for each picker.
         // Editing an individual color detaches from any predefined palette ("Custom").
@@ -618,10 +600,6 @@ int main(int argc, char *argv[])
             [](const std::any &value)
             { CFG_setClock24H(std::any_cast<bool>(value)); },
             []() { CFG_setClock24H(CFG_DEFAULT_CLOCK24H);}},
-            new MenuItem{ListItemType::Generic, "Time zone", "Your time zone", tz_values, tz_labels, []() -> std::any
-            { const char *tz = TIME_getCurrentTimezone(); return std::string(tz ? tz : "UTC"); }, [](const std::any &value)
-            { TIME_setCurrentTimezone(std::any_cast<std::string>(value).c_str()); },
-            []() { TIME_setCurrentTimezone("Asia/Shanghai");}}, // default from Stock
             new MenuItem{ListItemType::Generic, "Haptic feedback", "Enable or disable haptic feedback on certain actions in the OS", {false, true}, on_off, []() -> std::any
             { return CFG_getHaptics(); }, [](const std::any &value)
             { CFG_setHaptics(std::any_cast<bool>(value)); },
@@ -1029,9 +1007,8 @@ int main(int argc, char *argv[])
                 "reverting to clean stock firmware.",
                 OverlayDismissMode::DismissOnA);
 
-        auto aboutMenu = new MenuList(MenuItemType::Fixed, "About",
-        {
-            new StaticMenuItem{ListItemType::Generic, "version", "Frontend pin from the image.",
+        std::vector<AbstractMenuItem*> aboutItems = {
+            new StaticMenuItem{ListItemType::Generic, "Version", "Frontend pin from the image.",
             []() -> std::any { return nextui_short_version(); }},
             new StaticMenuItem{ListItemType::Generic, "Hardware", "Board name from the platform layer.",
             []() -> std::any {
@@ -1063,7 +1040,9 @@ int main(int argc, char *argv[])
             new StaticMenuItem{ListItemType::Generic, "BusyBox", "Init and core utilities.",
             [&]() -> std::any { return bbver; }
             },
-        });
+        };
+        Zlyme_appendAboutLogs(aboutItems);
+        auto aboutMenu = new MenuList(MenuItemType::Fixed, "About", aboutItems);
 
         MenuList *buttonMenu = buildFnButtonMenu(); // nullptr if this device has none
 

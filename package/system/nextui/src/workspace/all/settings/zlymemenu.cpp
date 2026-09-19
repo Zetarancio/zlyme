@@ -359,3 +359,22 @@ void Zlyme_appendStorageItems(std::vector<AbstractMenuItem *> &items)
 		"Unmount the second SD before pulling it.\nDo not eject while a game from that card is running.",
 		Zlyme_ejectSd2});
 }
+
+void Zlyme_appendAboutLogs(std::vector<AbstractMenuItem *> &items)
+{
+	const std::vector<std::any> on_off_v = {false, true};
+	const std::vector<std::string> on_off = {"Off", "On"};
+
+	items.push_back(new MenuItem{ListItemType::Generic, "System logs",
+		"Write boot and per-pak logs to /storage/.logs\nso you can send them if something goes wrong.",
+		on_off_v, on_off,
+		[]() -> std::any { return ctl_on("logs"); },
+		[](const std::any &v) {
+			ctl_set("logs", std::any_cast<bool>(v) ? "on" : "off");
+			system("zlyme-ctl apply-logs");
+		},
+		[]() {
+			ctl_set("logs", "off");
+			system("zlyme-ctl apply-logs");
+		}});
+}

@@ -20,6 +20,7 @@ default_of() {
 		gpu_gov) echo simple_ondemand ;;
 		boost) echo off ;;
 		zram) echo on ;;
+		logs) echo off ;;
 		*) echo off ;;
 	esac
 }
@@ -149,6 +150,10 @@ apply_boost() {
 	return 0
 }
 
+apply_logs() {
+	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs apply
+}
+
 apply_settings() {
 	apply_overlays
 	apply_gov
@@ -173,16 +178,17 @@ case "$cmd" in
 	apply-gov) apply_gov ;;
 	apply-zram) apply_zram ;;
 	apply-boost) apply_boost ;;
+	apply-logs) apply_logs ;;
 	apply-hdmi-mode) apply_hdmi_mode ;;
 	apply-merge) apply_merge ;;
 	apply-settings) apply_settings ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge logs; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-boost|apply-hdmi-mode|apply-merge|apply-settings|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-boost|apply-logs|apply-hdmi-mode|apply-merge|apply-settings|status} [name] [value]" >&2
 		exit 1
 		;;
 esac
