@@ -7,26 +7,23 @@ Companion to `NOTES.md` (hardware and operational facts). OS name is
 `TODO.md` stays gitignored. Device serial dumps are `NOTES/DEVLOGS/`
 (also gitignored). `README.md` is the public product readme.
 
-**Where we are (2026-09-19).** Flashed/OTA image is **zlyme40**
-(`VERSION="zlyme40 (2026-09-19)"`). NextUI pin is
-`ae652648…-zlyme40`. OS update is **Settings → Update**, not a Tools
-pak. Do not Etcher a games card. Do not start a second host `./build.sh`
-on `output/`. `NOTES/` is in git except `TODO.md` and `DEVLOGS/`.
-RetroArch A/B plus the zlyme RGUI theme live in the retroarch package;
-that is not in the flashed image until a rebuild.
+**Where we are (2026-09-20).** Flashed OS is the 2026-09-19 libraries
+image (`VERSION="zlyme40 (2026-09-19)"`). NextUI pin is
+`ae652648…-zlyme40`. Each card keeps its own `Roms` / `Saves` / `Bios`.
+NextUI merges by TAG from `/run/zlyme/libraries`. MENU+Y writes
+per-ROM prefs. Settings → Game has cleanup. OS update is Settings →
+Update; the row should read `zlymeNN (YYYY-MM-DD)` like Installed.
 
-Live pak pass on the Flip after Etcher: RA cores, NDS/PSP/DOOM/PICO,
-PORTS, PS2 (AetherSX2), Tools. Logs on → `/storage/.logs`. Governors
-play vs heavy from each `launch.sh`. Pico-8 binary is **only**
-`Bios/PICO`. PS2 BIOS is `Bios/PS2` (none on this card besides
-`patches.zip`). GC/Wii Dolphin still dies on video backend. Wine
-11.0 prints `--version` under box64; wineboot still cannot load
-PE `kernel32.dll`. User asked for `workflow_dispatch` after this
-push; that is allowed this once.
+Live follow-ups after that Etcher (SD2 folder open, SIGUSR1 without
+use-after-free, DraStic preload only around the binary, Ports bind
+that does not overlay OS Roms) are in the tree. The Flip is running
+copies from `/storage/.config/zlyme/bin` until the next image. Do
+not Etcher a games card. Do not start a second host `./build.sh` on
+`output/`.
 
-Last flashed image was the zlyme40 Etcher write. Local tar
-`output/images/zlyme-my355-20260918-abee3d8c5354-dirty.tar` is an
-older tree.
+Last host image is `output/images/zlyme.img` (2026-09-19). GC/Wii
+Dolphin still dies on video backend. Wine 11.0 still cannot load PE
+`kernel32.dll` on first prefix.
 
 When I say **commit**: update `LOGBOOK.md`, `PLAN.md`, and `NOTES.md` against the tree as it stands, including what is still uncommitted, ensure there are not leftover attempts that are now uncommitted but should be deleted. Comments in the files and the commit message stay written like a person wrote them. Split into more than one commit when the tree holds more than one reason (a hang fix is not a first-frame cut). Do not squash unrelated work into a single “boot” commit.
 
@@ -440,14 +437,25 @@ is a fixed **1300M**. Do not Etcher over a games card.
 
 ## 12. Remaining work
 
-Live card is the zlyme40 Etcher image plus tmpfs overlays (pcre2-16,
-cairo, fontconfig, libaio, SDL3 stub, wine wrapper). Those belong in
-the next squashfs. Do not Etcher a games card. Do not start a second
-`./build.sh`. User asked to dispatch GHA after this push; this host
-has SSH to GitHub but no `gh` login/token, so `workflow_dispatch`
-could not be started from here.
+Live card is the 2026-09-19 libraries Etcher plus PATH copies of
+`nextui.elf`, `start_drastic`, and `zlyme-library` for the follow-ups
+that landed after that image. Those belong in the next squashfs. Do
+not Etcher a games card. Do not start a second `./build.sh`.
 
-Proved on the card:
+Proved on the card (2026-09-20):
+
+- SD2 consoles open from the list (root is `/storage`; `/mnt/sd2`
+is not a filesystem child of it). SIGUSR1 rescan does not crash
+at idle.
+- Saves follow the ROM's volume. NDS second run PASS after DraStic
+preload was limited to the binary.
+- Ports listed once after the leftover OS-Roms bind was dropped.
+- pak-live-test: most RA/standalones PASS on OS Roms; SD2 GBC/MD/GB/
+PSP/OPENBOR/PS/PORTS/MKXPZ PASS. FFT PSP booted. ST/MSX/PICO need
+BIOS or `pico8_64`. Dolphin still video+double free. Wine ntdll.
+SCUMMVM ld.so. EASYRPG 127.
+
+Earlier proved (zlyme40 Etcher, still true):
 
 - Lid close stays hybrid screen+radios off; power button is mem.
 - Splore **download** a cart in the UI (list update already worked).
@@ -461,14 +469,12 @@ tmpfs `/tmp/samba-lib`, `smbclient -N -L localhost` shows `storage`.
 SSH launch stayed up after `EMU_EXE=mupen64plus-next`. Not walked
 from the NextUI list.
 - First flip after the zlyme39 OTA is **7.6 s** (`/tmp/boot-timing`).
-- Slime boot gif moves. PortMaster launches twice. WiFi list scrolls
-(was 4 rows on the flashed image; tree now reserves one pill so 5 fit).
+- Slime boot gif moves. WiFi list scrolls (five rows).
 
 User still needs to test:
 
 - OTA: drop `zlyme-my355-*.tar` in `/storage/.update` and reboot.
 Galaxy during extract and resize. `/boot` gets Image/dtb/anims.
-- PortMaster version `zlyme39 (date)` after the next image.
 - Pico-8 hidden without bios; listed when `pico8_64` + `pico8.dat`
 sit in `Bios/PICO` (not the ROM folder).
 - Smash from the NextUI list (N64 rumble while in-game).
@@ -478,6 +484,8 @@ sit in `Bios/PICO` (not the ROM folder).
 
 Still open:
 
+- Next Etcher of this tree so the live PATH copies are squashfs.
+Do not Etcher a games card.
 - Dolphin GC/Wii: `Failed to initialize video backend` then double
 free, even with NextUI down, `zlyme-drm-release`, `-p drm|fbdev`,
 `-v OGL|Software`. Cubeboot.dol is a legal smoke; IPL is optional
@@ -492,6 +500,10 @@ private (`/storage/.config/github-token`).
 
 Resolved (do not re-open):
 
+- Per-card libraries without mergerfs or `/storage/.roms_base`.
+`/run/zlyme/libraries` lists `/storage`, `/mnt/sd2`, USB. NextUI
+merges by TAG. MENU+Y prefs. Settings Game cleanup. `/roms/ports`
+is a real mountpoint.
 - Live U-Boot delay is still 2 until `u-boot.itb` is rewritten.
 OTA never writes the FIT; `CONFIG_BOOTDELAY=0` only lands with
 Etcher of `zlyme.img` or a UART `setenv`. Do not Etcher a games

@@ -9,6 +9,28 @@ gitignored. The rest of `NOTES/` is committed with the tree.
 
 ---
 
+## 2026-09-20 — per-card libraries, live Flip
+
+Dropped mergerfs and `/storage/.roms_base`. `zlyme-storage` only
+mounts and unmounts, then writes `/run/zlyme/libraries` and
+SIGUSR1s NextUI. Games lists one folder per TAG and concatenates
+matching dirs. Saves and BIOS stay on the volume the ROM is on.
+MENU+Y writes `zlyme-prefs.txt`. Settings → Game has ConfirmAB
+cleanup. `BR2_PACKAGE_MERGERFS` is off.
+
+Etchered the 2026-09-19 image. Opening an SD2 console crashed
+because `/mnt/sd2/Roms/...` is not a child of `/storage` and
+`pathToStack` came back empty. SIGUSR1 at idle had the same
+dangling `top` after `Menu_quit`. DraStic exported
+`LD_PRELOAD=libdrastouch.so` for BusyBox mkdir. `/roms/ports` was
+a symlink, so the Ports bind overlaid OS Roms and every `.sh`
+showed twice.
+
+Those four are in the tree. The Flip is running copies from
+`/storage/.config/zlyme/bin` until the next image. README slime
+gif is half width on GitHub. Settings → Update shows
+`zlymeNN (date)` when GitHub names the release that way.
+
 ## 2026-09-19 — RA A/B and zlyme RGUI in the RetroArch package
 
 Physical A on the Flip is east. The sdl2 `retrogame_joypad` autoconfig
