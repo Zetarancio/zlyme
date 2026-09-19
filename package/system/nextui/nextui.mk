@@ -11,7 +11,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme39
+NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme40
 NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
 NEXTUI_SITE_METHOD = local
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -119,6 +119,12 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/rom-exts.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/ra-run.sh \
 		$(TARGET_DIR)/usr/bin/ra-run
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/drm-release.py \
+		$(TARGET_DIR)/usr/bin/zlyme-drm-release
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/arcade-stage.sh \
+		$(TARGET_DIR)/usr/bin/zlyme-arcade-stage
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-log.sh \
+		$(TARGET_DIR)/usr/share/nextui/bin/pak-log.sh
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
 		$(TARGET_DIR)/usr/lib/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \

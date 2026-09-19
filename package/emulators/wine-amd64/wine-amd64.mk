@@ -24,6 +24,9 @@ define WINE_AMD64_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/wine
 	$(INSTALL) -D -m 0755 $(WINE_AMD64_PKGDIR)/wineserver.sh \
 		$(TARGET_DIR)/usr/bin/wineserver
+	# Do not symlink ntdll.so into lib/wine/. Wine 11 finds PE
+	# builtins next to unix ntdll (../x86_64-windows). A parent
+	# ntdll.so makes it look in lib/x86_64-windows instead.
 endef
 
 $(eval $(generic-package))

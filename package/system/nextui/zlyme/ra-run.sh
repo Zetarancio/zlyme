@@ -30,6 +30,37 @@ if [ ! -s "$CFG" ]; then
 	[ -f "$ETC" ] && cp "$ETC" "$CFG"
 fi
 
+# Cores read system_directory (/storage/Bios). MinUI launchers also
+# mkdir Bios/TAG. Link one level of those files into Bios/ so a dump
+# in Bios/PS/ still counts. Never copy into Roms/.
+BIOS_PATH="${BIOS_PATH:-/storage/Bios}"
+if [ -d "$BIOS_PATH" ]; then
+	for f in "$BIOS_PATH"/*/*; do
+		[ -f "$f" ] || continue
+		bn=$(basename "$f")
+		[ -e "$BIOS_PATH/$bn" ] && continue
+		rel=${f#"$BIOS_PATH/"}
+		ln -s "$rel" "$BIOS_PATH/$bn" 2>/dev/null || true
+	done
+	mkdir -p "$BIOS_PATH/fbneo" "$BIOS_PATH/neocd"
+	for f in neogeo.zip neocdz.zip; do
+		if [ -f "$BIOS_PATH/$f" ] && [ ! -e "$BIOS_PATH/fbneo/$f" ]; then
+			ln -s "../$f" "$BIOS_PATH/fbneo/$f" 2>/dev/null || true
+		fi
+	done
+	for f in neocd.bin uni-bioscd.rom neocd_z.rom; do
+		if [ -f "$BIOS_PATH/$f" ] && [ ! -e "$BIOS_PATH/neocd/$f" ]; then
+			ln -s "../$f" "$BIOS_PATH/neocd/$f" 2>/dev/null || true
+		fi
+	done
+	if [ -f "$BIOS_PATH/ST/tos.img" ] && [ ! -e "$BIOS_PATH/tos.img" ]; then
+		ln -s "ST/tos.img" "$BIOS_PATH/tos.img" 2>/dev/null || true
+	fi
+	if [ -f "$BIOS_PATH/coleco.rom" ] && [ ! -e "$BIOS_PATH/colecovision.rom" ]; then
+		ln -s coleco.rom "$BIOS_PATH/colecovision.rom" 2>/dev/null || true
+	fi
+fi
+
 # First-run core options from spruce Flip (frameskip/dynarec/resolution).
 # Never overwrite a file the user already has. Card copy is for a live
 # unit before the next image ships /usr/share.
@@ -164,7 +195,8 @@ printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" 
 # connected Switch Pro is otherwise P2, so GB/etc. ignore it. Prefer
 # it as P1 (same assignment ES/Knulli does). Last appendconfig wins
 # over a stale card ra-perf.cfg that still says udev.
-printf 'input_driver = "sdl"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
+# RA 1.22's driver named "sdl" is SDL3 (libSDL3.so.0). We ship SDL2.
+printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
 pro_idx=
 idx=0
 for js in /dev/input/js*; do
@@ -182,32 +214,30 @@ if [ -n "$pro_idx" ]; then
 	printf 'input_player1_joypad_index = "%s"\n' "$pro_idx" >> "$RA_AC"
 fi
 
+# RA 1.22 splits --appendconfig on '|', not comma.
 APPEND="$ETC"
 for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra-perf.cfg; do
-	[ -s "$extra" ] && APPEND="$APPEND,$extra"
+	[ -s "$extra" ] && APPEND="$APPEND|$extra"
 done
-[ -s "$MINUI_RA" ] && APPEND="$APPEND,$MINUI_RA"
-APPEND="$APPEND,$RA_AC"
+[ -s "$MINUI_RA" ] && APPEND="$APPEND|$MINUI_RA"
+APPEND="$APPEND|$RA_AC"
 THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
-[ -s "$THEME" ] && APPEND="$APPEND,$THEME"
+[ -s "$THEME" ] && APPEND="$APPEND|$THEME"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"
 	exit 0
 fi
 
-# Heavy cores (PPSSPP/Flycast/Mupen/Yaba/DraStic) take heavy; others play.
-if command -v zlyme-governor >/dev/null 2>&1; then
-	zlyme-governor emu "$@" >/dev/null 2>&1 || true
-elif [ -x /usr/share/nextui/bin/governor.sh ]; then
-	/usr/share/nextui/bin/governor.sh emu "$@" >/dev/null 2>&1 || true
-fi
+# Governor is owned by each pak's launch.sh so editing that file is enough.
 # Modeset from NextUI can drop VOP2 TV props; re-apply before RA takes DRM.
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
 
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
+
+/usr/bin/zlyme-drm-release
 
 # MENU/Home (SDL GUIDE) opens RGUI; MENU+Start is zlyme-pak-hotkey.
 # Knulli installs mupen64plus-next_libretro.so; NextUI used underscore.
@@ -229,7 +259,11 @@ if [ "$1" = "-L" ] && [ -n "$2" ] && [ ! -f "$2" ]; then
 	fi
 	unset _core_dir _core_bn _core_hit
 fi
+if [ -n "$ZLYME_PAK_LOG" ]; then
+	mkdir -p "$(dirname "$ZLYME_PAK_LOG")"
+	exec retroarch -v --log-file "$ZLYME_PAK_LOG" --appendconfig "$APPEND" "$@"
+fi
 if [ -n "$ZLYME_RA_DEBUG" ]; then
-	exec retroarch -v --log-file "$LOGS_PATH/ra-debug.log" --appendconfig "$APPEND" "$@"
+	exec retroarch -v --log-file "${LOGS_PATH:-/tmp}/ra-debug.log" --appendconfig "$APPEND" "$@"
 fi
 exec retroarch --appendconfig "$APPEND" "$@"

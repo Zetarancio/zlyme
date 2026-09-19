@@ -251,6 +251,20 @@ else
 	note "no modprobe on the target"
 fi
 
+# Fluidsynth 2.4 saw SDL3 cmake files in staging (Qt leftover) and
+# DT_NEEDED libSDL3.so.0. We do not ship SDL3. A tiny SONAME stub is
+# enough; MIDI still goes through ALSA.
+if [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-gcc" ]; then
+	stub="$(cd "$(dirname "$0")" && pwd)/sdl3-stub.c"
+	map="$(cd "$(dirname "$0")" && pwd)/sdl3-stub.map"
+	if [ -f "$stub" ] && [ -f "$map" ]; then
+		"${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-gcc" -shared -fPIC \
+			-o "${TARGET_DIR}/usr/lib/libSDL3.so.0" \
+			-Wl,-soname,libSDL3.so.0 -Wl,--version-script="$map" \
+			"$stub"
+	fi
+fi
+
 # Class B after NextUI. Keep generated getty/sysinit; only add ::once.
 if [ -f "${TARGET_DIR}/etc/inittab" ]; then
 	if ! grep -q '/etc/init.d/rc.late' "${TARGET_DIR}/etc/inittab"; then

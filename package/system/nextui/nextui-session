@@ -20,6 +20,12 @@ export CORES_PATH=/usr/lib/libretro
 export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
 export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
 export LOGS_PATH=$USERDATA_PATH/logs
+SESSION_LOG=$LOGS_PATH/next.txt
+if command -v zlyme-ctl >/dev/null 2>&1 && zlyme-ctl want logs; then
+	mkdir -p /storage/.logs
+	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
+	SESSION_LOG=/storage/.logs/next.txt
+fi
 export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
@@ -30,8 +36,10 @@ if [ -r "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
 fi
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
-export PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/share/nextui/bin
-export LD_LIBRARY_PATH=/usr/lib
+# Card extras: lscpu stub, libaio, pcre2-16, cairo (live binds / OTA gap).
+mkdir -p /storage/.config/zlyme/bin /storage/.config/zlyme/lib
+export PATH=/storage/.config/zlyme/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/share/nextui/bin
+export LD_LIBRARY_PATH=/storage/.config/zlyme/lib:/usr/lib
 export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
@@ -306,11 +314,15 @@ run_pak_cmd() {
 	case "$1" in
 		*'/Tools/'*|*'settings.elf'*) skip_bt=1 ;;
 	esac
-	setsid sh -c 'eval "$1"' sh "$1" >> "$LOGS_PATH/next.txt" 2>&1 &
+	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
+		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" &
+	else
+		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" >> "$SESSION_LOG" 2>&1 &
+	fi
 	_pak_pid=$!
 	_hk=
 	if [ -x /usr/sbin/zlyme-pak-hotkey ]; then
-		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$LOGS_PATH/next.txt" 2>&1 &
+		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$SESSION_LOG" 2>&1 &
 		_hk=$!
 	fi
 	if [ "$skip_bt" = 0 ]; then
@@ -414,11 +426,19 @@ while [ -f "$EXEC_PATH" ]; do
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
 	nextui.elf >> /tmp/nextui.txt 2>&1
+	if [ "$SESSION_LOG" = /storage/.logs/next.txt ] && [ -f /tmp/nextui.txt ]; then
+		cp -f /tmp/nextui.txt /storage/.logs/nextui.txt 2>/dev/null || true
+	fi
 	if [ -f "$NEXT_PATH" ]; then
 		rm -f /tmp/poweroff /tmp/reboot
 		cmd=$(cat "$NEXT_PATH")
 		rm -f "$NEXT_PATH"
-		echo "RUN $cmd" >> "$LOGS_PATH/next.txt"
+		echo "RUN $cmd" >> "$SESSION_LOG"
+		# Splash still holds fb0 on the first game after boot.
+		# NextUI dropping DRM then lets RA modeset fail with
+		# "Error when switching mode".
+		stop_splash
+		/usr/bin/zlyme-drm-release
 		# DRM master from nextui.elf is not always gone on the next line.
 		sleep 0.4
 		if command -v zlyme-audio >/dev/null 2>&1; then
@@ -436,7 +456,7 @@ while [ -f "$EXEC_PATH" ]; do
 		case "$st" in
 			0|2|3|137|143) ;;
 			*)
-				echo "pak exit $st" >> "$LOGS_PATH/next.txt"
+				echo "pak exit $st" >> "$SESSION_LOG"
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 				;;
 		esac

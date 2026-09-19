@@ -1,0 +1,22 @@
+SDL3_0.0.0 {
+	global:
+		SDL_OpenAudioDeviceStream;
+		SDL_WasInit;
+		SDL_UnlockMutex;
+		SDL_ResumeAudioStreamDevice;
+		SDL_SetError;
+		SDL_malloc;
+		SDL_GetAudioDeviceName;
+		SDL_LockMutex;
+		SDL_asprintf;
+		SDL_GetCurrentAudioDriver;
+		SDL_GetAudioPlaybackDevices;
+		SDL_free;
+		SDL_CloseAudioDevice;
+		SDL_PauseAudioDevice;
+		SDL_GetAudioStreamDevice;
+		SDL_PutAudioStreamData;
+		SDL_CreateMutex;
+	local:
+		*;
+};
