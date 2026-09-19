@@ -180,9 +180,11 @@ write_minui_ra() {
 
 write_minui_ra
 
-AC=/usr/share/zlyme/retroarch/autoconfig
+AC=/usr/share/retroarch/autoconfig
 if [ ! -f "$AC/sdl2/retrogame_joypad.cfg" ]; then
-	if [ -f /storage/.config/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
+	if [ -f /usr/share/zlyme/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
+		AC=/usr/share/zlyme/retroarch/autoconfig
+	elif [ -f /storage/.config/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
 		AC=/storage/.config/retroarch/autoconfig
 	elif [ -f /tmp/autoconfig/sdl2/retrogame_joypad.cfg ]; then
 		AC=/tmp/autoconfig
@@ -221,7 +223,8 @@ for extra in /usr/share/zlyme/emu-defaults/ra-perf.cfg /storage/.config/zlyme/ra
 done
 [ -s "$MINUI_RA" ] && APPEND="$APPEND|$MINUI_RA"
 APPEND="$APPEND|$RA_AC"
-THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
+THEME=/usr/share/retroarch/rgui-theme.cfg
+[ -s "$THEME" ] || THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
 [ -s "$THEME" ] && APPEND="$APPEND|$THEME"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
