@@ -94,20 +94,39 @@ fetch_buildroot() {
     fi
 }
 
+# Cursor and other non-TTY hosts cannot prompt on the docker socket.
+# If this user cannot talk to the daemon, pkexec pops a graphical polkit
+# password. docker-group users never see it.
+declare -a DOCKER=(docker)
+
+ensure_docker() {
+    if docker info >/dev/null 2>&1; then
+        DOCKER=(docker)
+        return 0
+    fi
+    if command -v pkexec >/dev/null 2>&1; then
+        say "docker needs a password"
+        DOCKER=(pkexec docker)
+        "${DOCKER[@]}" info >/dev/null 2>&1 || die "docker is not usable (polkit password failed)"
+        return 0
+    fi
+    die "docker is not usable. Add your user to the docker group, or install polkit so pkexec can ask for a password."
+}
+
 build_container() {
-    if [ "${REBUILD_IMAGE}" != 1 ] && docker image inspect "${IMAGE}" >/dev/null 2>&1; then
+    if [ "${REBUILD_IMAGE}" != 1 ] && "${DOCKER[@]}" image inspect "${IMAGE}" >/dev/null 2>&1; then
         return
     fi
     say "building the ${IMAGE} container"
     # Fed on stdin deliberately: with a directory context and no COPY, docker
     # would ship the whole repo to the daemon before doing anything.
-    docker build -t "${IMAGE}" - < "${REPO}/Dockerfile"
+    "${DOCKER[@]}" build -t "${IMAGE}" - < "${REPO}/Dockerfile"
 }
 
 # Host gcc is still --prefix=/flip/output/host, so the same output tree is
 # also mounted at /flip/output. Do not byte-replace those paths in ELFs.
 in_container() {
-    docker run --rm -i ${TTY_FLAG} --privileged \
+    "${DOCKER[@]}" run --rm -i ${TTY_FLAG} --privileged \
         --user "$(id -u):$(id -g)" \
         -e HOME=/tmp \
         -e BR2_DL_DIR=/zlyme/dl \
@@ -184,6 +203,7 @@ esac
 assert_no_raw_device_writes
 mkdir -p "${ZLYME_OUTPUT}" "${ZLYME_DL}" "${ZLYME_CCACHE}"
 fetch_buildroot
+ensure_docker
 build_container
 
 if [ "${ACTION}" = shell ]; then
