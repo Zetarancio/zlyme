@@ -73,6 +73,10 @@ ln -sfn /storage "${TARGET_DIR}/mnt/SDCARD"
 # PortMaster scripts source /roms/ports/PortMaster/control.txt and set
 # GAMEDIR=/$directory/ports/<name> with directory=roms. NextUI's folder
 # is "Ports (PORTS)". /opt/system/Tools/PortMaster is the other lookup.
+# Overlay still ships the old OS-Roms symlink. mkdir -p cannot replace it.
+if [ -L "${TARGET_DIR}/roms/ports" ] || [ -f "${TARGET_DIR}/roms/ports" ]; then
+	rm -f "${TARGET_DIR}/roms/ports"
+fi
 mkdir -p "${TARGET_DIR}/roms/ports" "${TARGET_DIR}/opt/system/Tools"
 # Real dir so PORTS.pak can bind the active library here. A symlink to
 # OS Roms made mount --bind overlay the OS card and duplicate the list.
