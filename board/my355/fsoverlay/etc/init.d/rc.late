@@ -9,7 +9,9 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 . /etc/zlyme.conf 2>/dev/null || true
 
-echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late" >> /tmp/boot-timing
+_up=0
+read -r _up _rest < /proc/uptime || true
+echo "$_up rc.late" >> /tmp/boot-timing
 
 # inittab starts us the moment rcS forks NextUI. wifi/udev/sshd used
 # to fight nextui.elf for the A55s (~3 s of session-nextui).
@@ -23,7 +25,9 @@ else
 		n=$((n + 1))
 	done
 fi
-echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late-after-list" >> /tmp/boot-timing
+_up=0
+read -r _up _rest < /proc/uptime || true
+echo "$_up rc.late-after-list" >> /tmp/boot-timing
 
 start_bg() {
 	[ -x "$1" ] || return 0
@@ -37,6 +41,8 @@ start_bg /etc/init.d/S02sysctl
 start_bg /etc/init.d/S05avahi-setup.sh
 start_bg /etc/init.d/S22zram
 start_bg /etc/init.d/S27led
+# Daemon is Class A. Trigger after the list so USB MODALIAS (8733bu)
+# does not share the A55s with nextui.elf.
 start_bg /etc/init.d/S29udevtrigger
 start_bg /etc/init.d/S36irqaffinity
 start_bg /etc/init.d/S40network
@@ -60,7 +66,9 @@ start_bg /etc/init.d/S49ntp
 	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
 ) >/tmp/zlyme-bt-late.log 2>&1 &
 
-echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) rc.late-forked" >> /tmp/boot-timing
+_up=0
+read -r _up _rest < /proc/uptime || true
+echo "$_up rc.late-forked" >> /tmp/boot-timing
 
 # After an OTA squashfs swap. Never from S18: that blocked the list.
 if [ -f /storage/.update/reapply ] && [ -x /usr/sbin/zlyme-update ]; then

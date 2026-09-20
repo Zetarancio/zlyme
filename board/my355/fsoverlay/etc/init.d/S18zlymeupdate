@@ -9,8 +9,22 @@
 # over the live squashfs file. Flag reapply is rc.late: doing it here waited
 # on S17's storage lock and left the splash on "applying settings after OS swap".
 
+ota_queued() {
+	[ -s /storage/.update/pending/zlyme ] && return 0
+	[ -s /storage/.update/WANT ] && return 0
+	for f in /storage/.update/zlyme-my355-*.tar; do
+		[ -f "$f" ] || return 1
+		[ -s "$f" ] || continue
+		return 0
+	done
+	return 1
+}
+
 start() {
 	[ -x /usr/sbin/zlyme-update ] || return 0
+	# BASEOS skips its updater unless /data/update/state exists.
+	# zlyme-update is 400+ lines; do not spawn it on a clean boot.
+	ota_queued || return 0
 	upd=/usr/sbin/zlyme-update
 
 	if "$upd" queued >/dev/null 2>&1; then

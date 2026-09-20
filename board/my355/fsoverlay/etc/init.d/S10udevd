@@ -1,7 +1,8 @@
 #!/bin/sh
 #
-# Start udevd so later USB/BT/OTG events have a daemon. Do not coldplug
-# here: udevadm trigger+settle is what made "eudev" slower than the panel.
+# Start udevd so later USB/BT/OTG events have a daemon. Class A, before
+# NextUI: the pad is a platform device but SDL still wants /dev/input
+# nodes. Do not coldplug here — S29udevtrigger after first-flip.
 
 DAEMON="udevd"
 PIDFILE="/var/run/$DAEMON.pid"

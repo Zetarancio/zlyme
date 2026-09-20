@@ -1,5 +1,6 @@
 #!/bin/sh
 # Coldplug after NextUI is already on screen (S28). No settle.
+# No block devices (S17 owns those).
 
 start() {
 	command -v udevadm >/dev/null 2>&1 || return 0

@@ -7,6 +7,12 @@ start() {
 	printf "Storage extras: "
 	if [ -x /usr/sbin/zlyme-storage ]; then
 		/usr/sbin/zlyme-storage start >>/tmp/zlyme-storage.log 2>&1
+		# udevd starts after first-flip. Scan again once USB has
+		# had a moment; add_dev no-ops devices already mounted.
+		(
+			sleep 2
+			/usr/sbin/zlyme-storage start >>/tmp/zlyme-storage.log 2>&1
+		) &
 		/usr/sbin/zlyme-storage status | tr '\n' ' '
 		echo
 	else

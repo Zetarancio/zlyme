@@ -30,7 +30,9 @@ start() {
 			return 0
 		fi
 	fi
-	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) S15-mounted" >> /tmp/boot-timing
+	_up=0
+	read -r _up _rest < /proc/uptime || true
+	echo "$_up S15-mounted" >> /tmp/boot-timing
 
 	# mkdir of flags that already exist is not needed before the list.
 	seed &

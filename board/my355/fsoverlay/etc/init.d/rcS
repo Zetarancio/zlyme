@@ -3,9 +3,18 @@
 # Class A only, then fork NextUI. Class B is /etc/init.d/rc.late via
 # inittab ::once:. Do not wait for dbus: dbus-uuidgen --ensure blocks
 # until crng init (~9 s). BlueZ starts dbus in rc.late.
+#
+# S11modules must run before the list: joypad.conf loads
+# rocknix-singleadc-joypad. Deferring that left NextUI with no A/B/dpad
+# (2026-09-20). S10udevd can start here too so /dev/input nodes exist
+# before SDL opens. S29udevtrigger stays after first-flip so USB
+# MODALIAS (8733bu) does not fight nextui.elf.
 
 boot_mark() {
-	echo "$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*" >> /tmp/boot-timing
+	# Builtin read: $(cut) forked once per mark (~a dozen in Class A).
+	_up=0
+	read -r _up _rest < /proc/uptime || true
+	echo "$_up $*" >> /tmp/boot-timing
 }
 
 # Panel, pad, storage, GPU, ALSA, keylidmon, then the list. S17 is forked
@@ -22,7 +31,8 @@ is_class_a() {
 boot_mark rcS-start
 
 # Session + NextUI are the remaining seconds. schedutil leaves the
-# A55s idle while we mount and bind.
+# A55s idle while we mount and bind. Initramfs already set this for
+# the squashfs loop; repeat in case we booted without that ramdisk.
 for g in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
 	[ -w "$g" ] && echo performance > "$g"
 done
@@ -37,7 +47,21 @@ for i in /etc/init.d/S??*; do
 	# Merge SD2 in the background: a hung blkid/mergerfs left the
 	# splash up on Etcher. OTA is not forked — extracting the tar
 	# then rebooting after NextUI is on screen yanked the list.
+	# Skip scripts that are no-ops on a normal boot (same idea as
+	# BASEOS not spawning update when /data/update/state is absent).
 	case "$base" in
+		S12bootfs)
+			if grep -q ' /boot ' /proc/mounts; then
+				boot_mark "skip $base"
+				continue
+			fi
+			;;
+		S13resize)
+			if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' /boot/zlyme-boot.conf 2>/dev/null; then
+				boot_mark "skip $base"
+				continue
+			fi
+			;;
 		S17sd2)
 			boot_mark "fork $base"
 			"$i" start &

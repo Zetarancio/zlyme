@@ -8,8 +8,10 @@ SYSFS_DIR=/sys/devices/platform/rocknix-singleadc-joypad
 CAL_DIR=/storage/.config/miyoo-serial-joypad
 
 start() {
-	# Squashfs .ko can be ABI-stale after linux-reconfigure. A rebuilt
-	# module on the card keeps the pad working until the next image.
+	# S11modules loads this from joypad.conf. Probe here too in case
+	# that script is missing. Card copy is only for an ABI-stale
+	# squashfs .ko after linux-reconfigure.
+	modprobe rocknix-singleadc-joypad 2>/dev/null || true
 	if ! grep -q '^rocknix_singleadc_joypad ' /proc/modules 2>/dev/null; then
 		hot=/storage/.config/zlyme/rocknix-singleadc-joypad.ko
 		[ -f "$hot" ] && insmod "$hot" 2>/dev/null || true
