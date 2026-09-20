@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Board dtsi wins over rk3568-u-boot.dtsi (CONFIG_SYS_SOC). Include the
+ * SoC fragments, then pin SPL to SD only. SFC stays enabled in Kconfig;
+ * this stops SPL walking NAND before the card.
+ */
+
+#include "rk356x-u-boot.dtsi"
+
+/ {
+	chosen {
+		u-boot,spl-boot-order = &sdmmc0;
+	};
+};
+
+&gpio0 {
+	bootph-pre-ram;
+};
+
+&vcc_sd_h {
+	bootph-pre-ram;
+};

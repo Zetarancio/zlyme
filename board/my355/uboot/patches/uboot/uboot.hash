@@ -2,8 +2,8 @@
 # outlives Buildroot's default moving on.
 #
 # We pin the version rather than follow BR2_TARGET_UBOOT_LATEST_VERSION, so
-# that bumping Buildroot cannot move u-boot out from under the two patches next
-# to this file. Today the two agree and boot/uboot/uboot.hash covers us. The day
+# that bumping Buildroot cannot move u-boot out from under the patches next
+# to this file. Today they agree and boot/uboot/uboot.hash covers us. The day
 # they diverge, that file lists some other version, no line matches our tarball
 # -- and uboot.mk has already added it to BR_NO_CHECK_HASH_FOR precisely
 # because the version is pinned, so support/download/check-hash treats the

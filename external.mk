@@ -1,15 +1,33 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_ZLYME_PATH)/package/*/*/*.mk))
 
-# quartz64 defaults to 2 s and probes PCI, Ethernet, SATA, and the eMMC
-# SDHCI host. The Flip boots SD via DW MMC and keeps SPI NAND on SFC.
+# quartz64 defaults to 2 s and probes PCI, Ethernet, SATA, USB, and the
+# eMMC SDHCI host. The Flip boots SD via DW MMC and keeps SPI NAND on SFC.
 # olddefconfig can resurrect selected symbols; pin the result here.
 # Routine OTA does not write u-boot.itb; `zlyme-update uboot` does.
+# Control tree is board/my355/uboot/dts/rk3566-miyoo-flip.dts (not quartz64).
 define ZLYME_UBOOT_FLIP_CONFIG
-	$(SED) 's/^CONFIG_BOOTDELAY=.*/CONFIG_BOOTDELAY=0/' $(@D)/.config
-	grep -qx 'CONFIG_BOOTDELAY=0' $(@D)/.config || \
-		echo 'CONFIG_BOOTDELAY=0' >> $(@D)/.config
+	$(SED) 's/^CONFIG_BOOTDELAY=.*/CONFIG_BOOTDELAY=-2/' $(@D)/.config
+	grep -qx 'CONFIG_BOOTDELAY=-2' $(@D)/.config || \
+		echo 'CONFIG_BOOTDELAY=-2' >> $(@D)/.config
 	grep -qx 'CONFIG_GZIP=y' $(@D)/.config || \
 		echo 'CONFIG_GZIP=y' >> $(@D)/.config
+	$(SED) 's/^CONFIG_DEFAULT_DEVICE_TREE=.*/CONFIG_DEFAULT_DEVICE_TREE="rk3566-miyoo-flip"/' $(@D)/.config
+	grep -qx 'CONFIG_DEFAULT_DEVICE_TREE="rk3566-miyoo-flip"' $(@D)/.config || \
+		echo 'CONFIG_DEFAULT_DEVICE_TREE="rk3566-miyoo-flip"' >> $(@D)/.config
+	$(SED) 's/^CONFIG_DEFAULT_FDT_FILE=.*/CONFIG_DEFAULT_FDT_FILE="rk3566-miyoo-flip.dtb"/' $(@D)/.config
+	$(SED) 's/^CONFIG_OF_UPSTREAM=y/# CONFIG_OF_UPSTREAM is not set/' $(@D)/.config
+	grep -qx '# CONFIG_OF_UPSTREAM is not set' $(@D)/.config || \
+		echo '# CONFIG_OF_UPSTREAM is not set' >> $(@D)/.config
+	$(SED) '/^CONFIG_USE_PREBOOT=/d' $(@D)/.config
+	$(SED) '/^CONFIG_PREBOOT=/d' $(@D)/.config
+	echo 'CONFIG_USE_PREBOOT=y' >> $(@D)/.config
+	echo 'CONFIG_PREBOOT="blkcache configure 32 32; my355 fg"' >> $(@D)/.config
+	grep -qx 'CONFIG_BOOTSTAGE=y' $(@D)/.config || \
+		echo 'CONFIG_BOOTSTAGE=y' >> $(@D)/.config
+	grep -qx 'CONFIG_CMD_MY355=y' $(@D)/.config || \
+		echo 'CONFIG_CMD_MY355=y' >> $(@D)/.config
+	grep -qx 'CONFIG_CMD_BLOCK_CACHE=y' $(@D)/.config || \
+		echo 'CONFIG_CMD_BLOCK_CACHE=y' >> $(@D)/.config
 	$(SED) 's/^CONFIG_PCI=y/# CONFIG_PCI is not set/' $(@D)/.config
 	$(SED) 's/^CONFIG_CMD_PCI=y/# CONFIG_CMD_PCI is not set/' $(@D)/.config
 	$(SED) 's/^CONFIG_PCIE_DW_ROCKCHIP=y/# CONFIG_PCIE_DW_ROCKCHIP is not set/' $(@D)/.config
@@ -25,10 +43,37 @@ define ZLYME_UBOOT_FLIP_CONFIG
 	$(SED) 's/^CONFIG_MMC_SDHCI_SDMA=y/# CONFIG_MMC_SDHCI_SDMA is not set/' $(@D)/.config
 	$(SED) 's/^CONFIG_MMC_SDHCI_ROCKCHIP=y/# CONFIG_MMC_SDHCI_ROCKCHIP is not set/' $(@D)/.config
 	$(SED) 's/^CONFIG_SUPPORT_EMMC_RPMB=y/# CONFIG_SUPPORT_EMMC_RPMB is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB=y/# CONFIG_USB is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_CMD_USB=y/# CONFIG_CMD_USB is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_XHCI_HCD=y/# CONFIG_USB_XHCI_HCD is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_EHCI_HCD=y/# CONFIG_USB_EHCI_HCD is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_EHCI_GENERIC=y/# CONFIG_USB_EHCI_GENERIC is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_OHCI_HCD=y/# CONFIG_USB_OHCI_HCD is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_OHCI_GENERIC=y/# CONFIG_USB_OHCI_GENERIC is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_DWC3=y/# CONFIG_USB_DWC3 is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_USB_DWC3_GENERIC=y/# CONFIG_USB_DWC3_GENERIC is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_PHY_ROCKCHIP_INNO_USB2=y/# CONFIG_PHY_ROCKCHIP_INNO_USB2 is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_PHY_ROCKCHIP_NANENG_COMBOPHY=y/# CONFIG_PHY_ROCKCHIP_NANENG_COMBOPHY is not set/' $(@D)/.config
 	grep -qx 'CONFIG_ROCKCHIP_SFC=y' $(@D)/.config || { \
 		echo "zlyme: U-Boot .config lost CONFIG_ROCKCHIP_SFC=y" >&2; exit 1; }
+	grep -qx 'CONFIG_DEFAULT_DEVICE_TREE="rk3566-miyoo-flip"' $(@D)/.config || { \
+		echo "zlyme: U-Boot .config lost Flip control tree" >&2; exit 1; }
+	if grep -q '^CONFIG_OF_UPSTREAM=y' $(@D)/.config; then \
+		echo "zlyme: CONFIG_OF_UPSTREAM came back; Flip DTS is local" >&2; exit 1; \
+	fi
 endef
 UBOOT_POST_CONFIGURE_HOOKS += ZLYME_UBOOT_FLIP_CONFIG
+
+ZLYME_UBOOT_DTS = $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/uboot/dts
+
+# Copied every build so a DTS edit is picked up without uboot-dirclean.
+define ZLYME_UBOOT_COPY_DTS
+	$(INSTALL) -D -m 0644 $(ZLYME_UBOOT_DTS)/rk3566-miyoo-flip.dts \
+		$(@D)/arch/arm/dts/rk3566-miyoo-flip.dts
+	$(INSTALL) -D -m 0644 $(ZLYME_UBOOT_DTS)/rk3566-miyoo-flip-u-boot.dtsi \
+		$(@D)/arch/arm/dts/rk3566-miyoo-flip-u-boot.dtsi
+endef
+UBOOT_PRE_BUILD_HOOKS += ZLYME_UBOOT_COPY_DTS
 
 ZLYME_LINUX_DIR = $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux
 
