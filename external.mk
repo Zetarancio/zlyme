@@ -1,14 +1,34 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_ZLYME_PATH)/package/*/*/*.mk))
 
-# quartz64 defaults to 2 s. The defconfig patch can lose that line across
-# re-extracts; keep 0 in .config. Etcher of zlyme.img writes u-boot.itb;
-# OTA does not.
-define ZLYME_UBOOT_BOOTDELAY
+# quartz64 defaults to 2 s and probes PCI, Ethernet, SATA, and the eMMC
+# SDHCI host. The Flip boots SD via DW MMC and keeps SPI NAND on SFC.
+# olddefconfig can resurrect selected symbols; pin the result here.
+# Routine OTA does not write u-boot.itb; `zlyme-update uboot` does.
+define ZLYME_UBOOT_FLIP_CONFIG
 	$(SED) 's/^CONFIG_BOOTDELAY=.*/CONFIG_BOOTDELAY=0/' $(@D)/.config
 	grep -qx 'CONFIG_BOOTDELAY=0' $(@D)/.config || \
 		echo 'CONFIG_BOOTDELAY=0' >> $(@D)/.config
+	grep -qx 'CONFIG_GZIP=y' $(@D)/.config || \
+		echo 'CONFIG_GZIP=y' >> $(@D)/.config
+	$(SED) 's/^CONFIG_PCI=y/# CONFIG_PCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_CMD_PCI=y/# CONFIG_CMD_PCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_PCIE_DW_ROCKCHIP=y/# CONFIG_PCIE_DW_ROCKCHIP is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_NVME_PCI=y/# CONFIG_NVME_PCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_AHCI=y/# CONFIG_AHCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_SCSI_AHCI=y/# CONFIG_SCSI_AHCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_AHCI_PCI=y/# CONFIG_AHCI_PCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_SCSI=y/# CONFIG_SCSI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_PHY_MOTORCOMM=y/# CONFIG_PHY_MOTORCOMM is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_DWC_ETH_QOS=y/# CONFIG_DWC_ETH_QOS is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_DWC_ETH_QOS_ROCKCHIP=y/# CONFIG_DWC_ETH_QOS_ROCKCHIP is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_MMC_SDHCI=y/# CONFIG_MMC_SDHCI is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_MMC_SDHCI_SDMA=y/# CONFIG_MMC_SDHCI_SDMA is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_MMC_SDHCI_ROCKCHIP=y/# CONFIG_MMC_SDHCI_ROCKCHIP is not set/' $(@D)/.config
+	$(SED) 's/^CONFIG_SUPPORT_EMMC_RPMB=y/# CONFIG_SUPPORT_EMMC_RPMB is not set/' $(@D)/.config
+	grep -qx 'CONFIG_ROCKCHIP_SFC=y' $(@D)/.config || { \
+		echo "zlyme: U-Boot .config lost CONFIG_ROCKCHIP_SFC=y" >&2; exit 1; }
 endef
-UBOOT_POST_CONFIGURE_HOOKS += ZLYME_UBOOT_BOOTDELAY
+UBOOT_POST_CONFIGURE_HOOKS += ZLYME_UBOOT_FLIP_CONFIG
 
 ZLYME_LINUX_DIR = $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux
 

@@ -8,7 +8,7 @@ index 0e25b7e108f..19d23169884 100644
  
 +/ {
 +	chosen {
-+		u-boot,spl-boot-order = &sdmmc0, &sdhci;
++		u-boot,spl-boot-order = &sdmmc0;
 +	};
 +};
 +
