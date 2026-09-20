@@ -3,11 +3,35 @@
 # restarted in S12splash so S13resize can USR1 galaxy before we get here.
 
 start() {
-	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-refresh
-	[ -x /usr/sbin/zlyme-ctl ] && /usr/sbin/zlyme-ctl apply-hdmi-mode
+	# Do not spawn zlyme-ctl (it sources the whole flag script). Skip
+	# the DSI write when the connector is already at the saved Hz.
+	hz=60
+	if [ -r /storage/.config/zlyme/refresh ]; then
+		hz=$(tr -d ' \t\r\n' < /storage/.config/zlyme/refresh)
+	fi
+	case "$hz" in
+		50|40|60) ;;
+		*) hz=60 ;;
+	esac
+	want="640x480@${hz}"
+	for c in /sys/class/drm/card*-DSI-*; do
+		[ -e "$c/mode" ] || continue
+		cur=$(tr -d ' \t\r\n' < "$c/mode" 2>/dev/null)
+		[ "$cur" = "$want" ] && continue
+		printf '%s\n' "$want" > "$c/mode" 2>/dev/null && break
+	done
+	if [ -s /storage/.config/zlyme/display_mode ]; then
+		mode=$(tr -d ' \t\r\n' < /storage/.config/zlyme/display_mode)
+		if [ -n "$mode" ]; then
+			for c in /sys/class/drm/card*-HDMI-A-1; do
+				[ -e "$c/mode" ] || continue
+				printf '%s\n' "$mode" > "$c/mode" 2>/dev/null && break
+			done
+		fi
+	fi
 	# S12 already started the squashfs splash. Only restart if it
 	# died; do not kill a running lockup (flicker, and resize/OTA
-	# may already be on galaxy).
+	# may already be on galaxy). Anim seed is S12splash.
 	if [ -x /usr/sbin/zlyme-splash ] && ! pidof zlyme-splash >/dev/null 2>&1; then
 		still=/usr/share/zlyme/splash.rgb565
 		anim=/usr/share/zlyme/splash.anim
@@ -24,14 +48,6 @@ start() {
 		/usr/sbin/zlyme-splash "$still" "$anim" "$pstill" "$panim" $mode \
 			>/dev/null 2>&1 &
 		echo $! > /tmp/zlyme-splash.pid
-	fi
-	if [ -d /boot ] && grep -q " /boot " /proc/mounts; then
-		(
-			[ -s /boot/splash.anim ] || \
-				cp -f /usr/share/zlyme/splash.anim /boot/splash.anim
-			[ -s /boot/progress.anim ] || \
-				cp -f /usr/share/zlyme/progress.anim /boot/progress.anim
-		) >/dev/null 2>&1 &
 	fi
 	# Do not udevtrigger here. A full add at S16 raced S17, loaded
 	# 8733bu during nextui.elf, and blocked a udev worker for 180 s.

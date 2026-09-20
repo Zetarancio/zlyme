@@ -21,11 +21,15 @@ export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
 export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
 export LOGS_PATH=$USERDATA_PATH/logs
 SESSION_LOG=$LOGS_PATH/next.txt
-if command -v zlyme-ctl >/dev/null 2>&1 && zlyme-ctl want logs; then
-	mkdir -p /storage/.logs
-	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
-	SESSION_LOG=/storage/.logs/next.txt
-fi
+_logs=
+[ -r /storage/.config/zlyme/logs ] && _logs=$(tr -d ' \t\r\n' < /storage/.config/zlyme/logs)
+case "$_logs" in
+	on|1|yes)
+		mkdir -p /storage/.logs
+		[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
+		SESSION_LOG=/storage/.logs/next.txt
+		;;
+esac
 export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
@@ -44,9 +48,10 @@ export IS_NEXT=yes
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
 
 boot_mark() {
-	line="$(cut -d' ' -f1 /proc/uptime 2>/dev/null) $*"
-	echo "$line" >> /tmp/boot-timing
-	echo "$line" >> /storage/.config/zlyme/boot-timing 2>/dev/null || true
+	# /tmp only. rc.late copies onto ZLYME after first-flip.
+	_up=0
+	read -r _up _rest < /proc/uptime || true
+	echo "$_up $*" >> /tmp/boot-timing
 }
 mkdir -p /storage/.config/zlyme
 boot_mark session-start
@@ -84,10 +89,10 @@ rm -rf /storage/Tools/my355/Update.pak
 rm -f /storage/.config/zlyme/last-ota
 rm -f /storage/.config/zlyme/.zlyme-update-pak-pruned
 
+# S17 already writes this (forked). Do not call zlyme-storage here:
+# it blkid-scans and raced the forked start. Seed /storage so the
+# list is never empty; S17 SIGUSR1s when SD2/USB lands.
 mkdir -p /run/zlyme
-if [ -x /usr/sbin/zlyme-storage ]; then
-	/usr/sbin/zlyme-storage libraries >/dev/null 2>&1 || true
-fi
 if [ ! -s /run/zlyme/libraries ]; then
 	echo /storage > /run/zlyme/libraries
 fi
@@ -141,9 +146,13 @@ copy_stock_paks() {
 
 stock_paks_ready() {
 	[ ! -f "$lock" ] || return 1
+	[ "$factory" = 1 ] && return 1
 	[ -d /storage/Emus/my355 ] && [ -d /storage/Tools/my355 ] || return 1
 	if [ -n "$img_ver" ]; then
 		[ "$img_ver" = "$card_ver" ] || return 1
+		# Stamp matches a finished copy. Do not stat every launch.sh
+		# on squashfs+exFAT before the list (~50 paks).
+		return 0
 	fi
 	for src in "$seed/paks/Emus"/*.pak "$seed/paks/Tools"/*.pak; do
 		[ -d "$src" ] || continue

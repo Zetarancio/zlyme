@@ -10,8 +10,6 @@
 # Runs after S15bootpart so /storage/.config/zlyme/gpu is readable.
 # Blacklist the other module so udev does not load both (Radxa/ROCKNIX).
 
-. /etc/zlyme.conf 2>/dev/null
-
 MALI_SO=/usr/lib/mali/libmali-bifrost-g52-g29p1.so
 [ -e "$MALI_SO" ] || MALI_SO=/usr/lib/mali/libEGL.so
 
@@ -71,8 +69,8 @@ write_blacklist() {
 }
 
 want=${1:-}
-if [ -z "$want" ]; then
-	want=$(zlyme-ctl get gpu 2>/dev/null | tr -d '\n')
+if [ -z "$want" ] && [ -r /storage/.config/zlyme/gpu ]; then
+	want=$(tr -d ' \t\r\n' < /storage/.config/zlyme/gpu)
 fi
 [ -n "$want" ] || want=libmali
 
