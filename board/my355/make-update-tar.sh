@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pack KERNEL + DTB + overlays + squashfs file for OTA.
+# Pack kernel + DTB + overlays + squashfs + U-Boot blobs for OTA.
+# apply_files copies the kernel; it does not write the FIT.
 # Device picks the newest /storage/.update/zlyme-my355-*.tar
 # (the pak still renames a GitHub download to update.tar). Releases
 # ship the versioned tar and its .sha256.
@@ -17,9 +18,11 @@ fi
 stamp=$(date -u +%Y%m%d)
 
 need=(
-	"${BINARIES_DIR}/Image"
+	"${BINARIES_DIR}/Image.gz"
 	"${BINARIES_DIR}/rk3566-miyoo-flip.dtb"
 	"${BINARIES_DIR}/zlyme"
+	"${BINARIES_DIR}/idbloader.img"
+	"${BINARIES_DIR}/u-boot.itb"
 )
 for f in "${need[@]}"; do
 	[ -s "$f" ] || { echo "make-update-tar: missing $f" >&2; exit 1; }
@@ -29,10 +32,12 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/overlays" "$stage/extlinux"
 
-install -m 0644 "${BINARIES_DIR}/Image" "$stage/Image"
+install -m 0644 "${BINARIES_DIR}/Image.gz" "$stage/Image.gz"
 install -m 0644 "${BINARIES_DIR}/rk3566-miyoo-flip.dtb" "$stage/rk3566-miyoo-flip.dtb"
 install -m 0644 "${BINARIES_DIR}/zlyme" "$stage/zlyme"
-ota_files="Image rk3566-miyoo-flip.dtb zlyme overlays extlinux VERSION pre-update.sh post-update.sh"
+install -m 0644 "${BINARIES_DIR}/idbloader.img" "$stage/idbloader.img"
+install -m 0644 "${BINARIES_DIR}/u-boot.itb" "$stage/u-boot.itb"
+ota_files="Image.gz rk3566-miyoo-flip.dtb zlyme idbloader.img u-boot.itb overlays extlinux VERSION pre-update.sh post-update.sh"
 if [ -s "${BINARIES_DIR}/splash.anim" ]; then
 	install -m 0644 "${BINARIES_DIR}/splash.anim" "$stage/splash.anim"
 	ota_files="$ota_files splash.anim"

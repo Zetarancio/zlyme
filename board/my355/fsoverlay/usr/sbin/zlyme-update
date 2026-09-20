@@ -8,7 +8,7 @@
 #      (update.tar, versioned, or -dirty; newest mtime wins).
 #      Incomplete downloads must be named *.tar.part — this script ignores them.
 #   2. reboot
-# S18 extracts to /storage/.update/pending, copies Image/dtb/overlays
+# S18 extracts to /storage/.update/pending, copies Image.gz/dtb/overlays
 # to /boot, then reboots. Initramfs commits the squashfs from ZLYME.
 # A structurally OK tar that fails to apply is moved to .update/failed/.
 # Junk archives are deleted.
@@ -27,10 +27,10 @@ WANT="$STAGEDIR/WANT"
 REAPPLY="$STAGEDIR/reapply"
 FAILED="$STAGEDIR/FAILED"
 LOG="$STAGEDIR/apply.log"
+BOOTLOADER="$STAGEDIR/bootloader"
 
 trap '' HUP PIPE
 
-mkdir -p "$STAGEDIR" 2>/dev/null || true
 FAILED_DIR="$STAGEDIR/failed"
 NAMEFILE="$STAGEDIR/NAME"
 FAILKIND="$STAGEDIR/.failkind"
@@ -130,18 +130,19 @@ verify_tar() {
 	tarf=$1
 	[ -s "$tarf" ] || mark_fail junk "empty tar"
 	need_cmd tar
-	tar -tf "$tarf" | grep -qx Image || mark_fail junk "tar has no Image"
 	tar -tf "$tarf" | grep -qx rk3566-miyoo-flip.dtb || mark_fail junk "tar has no dtb"
 	tar -tf "$tarf" | grep -qx zlyme || mark_fail junk "tar has no zlyme squashfs"
+	tar -tf "$tarf" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
 	log "tar ok ($tarf)"
 	tar -xOf "$tarf" VERSION 2>/dev/null | head -n 2 || true
 }
 
 verify_dir() {
 	dir=$1
-	for f in Image rk3566-miyoo-flip.dtb zlyme VERSION; do
-		[ -s "$dir/$f" ] || mark_fail apply "missing $dir/$f"
-	done
+	[ -s "$dir/rk3566-miyoo-flip.dtb" ] || mark_fail apply "missing $dir/rk3566-miyoo-flip.dtb"
+	[ -s "$dir/zlyme" ] || mark_fail apply "missing $dir/zlyme"
+	[ -s "$dir/VERSION" ] || mark_fail apply "missing $dir/VERSION"
+	[ -s "$dir/Image.gz" ] || mark_fail apply "missing $dir/Image.gz"
 }
 
 boot_free_bytes() {
@@ -218,7 +219,10 @@ install_boot() {
 	rm -f "$BOOT/zlyme.update"
 
 	log "installing kernel/dtb/overlays to $BOOT"
-	cp -f "$dir/Image" "$BOOT/Image"
+	cp -f "$dir/Image.gz" "$BOOT/Image.gz"
+	# Gzip is the only kernel we boot. Drop a leftover uncompressed
+	# Image so FAT does not keep a second copy.
+	rm -f "$BOOT/Image"
 	cp -f "$dir/rk3566-miyoo-flip.dtb" "$BOOT/rk3566-miyoo-flip.dtb"
 	if [ -f "$dir/splash.anim" ]; then
 		cp -f "$dir/splash.anim" "$BOOT/splash.anim"
@@ -234,8 +238,89 @@ install_boot() {
 		mkdir -p "$BOOT/overlays"
 		cp -a "$dir/overlays/." "$BOOT/overlays/"
 	fi
+	# Keep loader blobs off FAT. pending/ is wiped when initramfs
+	# commits the squashfs, so park them here for `zlyme-update uboot`.
+	if [ -s "$dir/idbloader.img" ] && [ -s "$dir/u-boot.itb" ]; then
+		mkdir -p "$BOOTLOADER"
+		cp -f "$dir/idbloader.img" "$BOOTLOADER/idbloader.img"
+		cp -f "$dir/u-boot.itb" "$BOOTLOADER/u-boot.itb"
+		sync
+		log "U-Boot blobs staged at $BOOTLOADER (not written)"
+	fi
 	sync
 	log "squashfs stays at $PENDING/zlyme until initramfs"
+}
+
+# GPT name "uboot" at 8M; idbloader sits at 32K, outside the table.
+# Resolve the parent disk at runtime. apply_files never calls this.
+uboot_part_dev() {
+	if [ -b /dev/disk/by-partlabel/uboot ]; then
+		readlink -f /dev/disk/by-partlabel/uboot
+		return 0
+	fi
+	for ue in /sys/class/block/*/uevent; do
+		[ -f "$ue" ] || continue
+		if grep -qx 'PARTNAME=uboot' "$ue"; then
+			printf '/dev/%s\n' "$(basename "$(dirname "$ue")")"
+			return 0
+		fi
+	done
+	dev=$(blkid 2>/dev/null | sed -n 's|^\([^:]*\):.*PARTLABEL="uboot".*|\1|p' | head -n 1)
+	if [ -n "$dev" ] && [ -b "$dev" ]; then
+		printf '%s\n' "$dev"
+		return 0
+	fi
+	return 1
+}
+
+parent_block() {
+	name=$(basename "$1")
+	real=$(readlink -f "/sys/class/block/$name" 2>/dev/null) || return 1
+	printf '/dev/%s\n' "$(basename "$(dirname "$real")")"
+}
+
+stage_uboot_from_tar() {
+	tarf=$1
+	[ -s "$tarf" ] || fail "no tar: $tarf"
+	need_cmd tar
+	tar -tf "$tarf" | grep -qx idbloader.img || fail "tar has no idbloader.img"
+	tar -tf "$tarf" | grep -qx u-boot.itb || fail "tar has no u-boot.itb"
+	mkdir -p "$BOOTLOADER"
+	tar -xf "$tarf" -C "$BOOTLOADER" idbloader.img u-boot.itb || fail "extract U-Boot blobs failed"
+}
+
+install_uboot() {
+	src=""
+	if [ -n "${1:-}" ]; then
+		stage_uboot_from_tar "$1"
+	fi
+	if [ -s "$BOOTLOADER/idbloader.img" ] && [ -s "$BOOTLOADER/u-boot.itb" ]; then
+		src=$BOOTLOADER
+	elif [ -s "$PENDING/idbloader.img" ] && [ -s "$PENDING/u-boot.itb" ]; then
+		src=$PENDING
+	else
+		fail "no idbloader.img + u-boot.itb (OTA apply first, or: zlyme-update uboot <tar>)"
+	fi
+	loader="$src/idbloader.img"
+	fit="$src/u-boot.itb"
+	lsz=$(wc -c <"$loader")
+	fsz=$(wc -c <"$fit")
+	# Gap from 32K to the 8M GPT part; that part is 4M.
+	if [ "$lsz" -gt $((8 * 1024 * 1024 - 32 * 1024)) ]; then
+		fail "idbloader.img ($lsz) is larger than the 32K..8M gap"
+	fi
+	if [ "$fsz" -gt $((4 * 1024 * 1024)) ]; then
+		fail "u-boot.itb ($fsz) is larger than the 4M uboot part"
+	fi
+	part=$(uboot_part_dev) || fail "no GPT partition named uboot"
+	disk=$(parent_block "$part") || fail "no parent disk for $part"
+	[ -b "$disk" ] || fail "parent disk is not a block device: $disk"
+	log "writing idbloader ($lsz) and FIT ($fsz) to $disk"
+	# 32K = 64*512; 8M = 16384*512. Block device, not a partition node.
+	dd if="$loader" of="$disk" bs=512 seek=64 conv=fsync
+	dd if="$fit" of="$disk" bs=512 seek=16384 conv=fsync
+	sync
+	log "U-Boot written. reboot to use it (this command does not reboot)"
 }
 
 apply_overlays_now() {
@@ -342,6 +427,7 @@ apply_files() {
 }
 
 boot_apply() {
+	mkdir -p "$STAGEDIR" 2>/dev/null || true
 	log "boot-apply"
 	rm -f "$FAILED" "$FAILKIND"
 	if ! is_queued; then
@@ -360,8 +446,9 @@ dry_run() {
 	tarf=$1
 	verify_tar "$tarf"
 	echo "zlyme-update: would queue $tarf as $QUEUED_TAR"
-	echo "zlyme-update: reboot extracts to $PENDING, copies Image/dtb to $BOOT"
+	echo "zlyme-update: reboot extracts to $PENDING, copies kernel/dtb to $BOOT"
 	echo "zlyme-update: initramfs copies $PENDING/zlyme over $BOOT/zlyme"
+	echo "zlyme-update: U-Boot blobs are not written unless you run: zlyme-update uboot"
 	if grep -q " $BOOT " /proc/mounts; then
 		free=$(boot_free_bytes) || free=0
 		echo "zlyme-update: $BOOT has $free bytes free"
@@ -435,12 +522,16 @@ case "$cmd" in
 		rm -f "$WANT" "$FAILED"
 		log "cancelled queue (tar left in place if present)"
 		;;
+	uboot)
+		install_uboot "${1:-}"
+		;;
 	dry-run)
 		dry_run "${1:?tar}"
 		;;
 	*)
-		echo "usage: zlyme-update {queue|apply|boot-apply|verify|status|cancel|dry-run} [tar]" >&2
+		echo "usage: zlyme-update {queue|apply|boot-apply|verify|status|cancel|dry-run|uboot} [tar]" >&2
 		echo "  Settings queues $QUEUED_TAR; reboot applies" >&2
+		echo "  uboot writes idbloader + FIT; it is not part of apply" >&2
 		exit 1
 		;;
 esac

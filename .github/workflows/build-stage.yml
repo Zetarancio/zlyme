@@ -119,6 +119,20 @@ jobs:
           esac
           exit "$rc"
 
+      - name: Assert OTA tar includes U-Boot
+        if: steps.build.outputs.have_image == 'true'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tars=(output/images/zlyme-my355-*.tar)
+          if [ ${#tars[@]} -eq 0 ]; then
+            echo "no OTA tar" >&2
+            exit 1
+          fi
+          names=$(tar -tf "${tars[0]}")
+          echo "$names" | grep -qx idbloader.img
+          echo "$names" | grep -qx u-boot.itb
+
       - name: Upload artifacts
         if: steps.build.outputs.have_image == 'true'
         uses: actions/upload-artifact@v4

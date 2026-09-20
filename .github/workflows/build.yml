@@ -87,6 +87,19 @@ jobs:
           fi
           echo "name=${zver} (${date})" >> "$GITHUB_OUTPUT"
 
+      - name: Assert OTA tar includes U-Boot
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tars=(output/images/zlyme-my355-*.tar)
+          if [ ${#tars[@]} -eq 0 ]; then
+            echo "no OTA tar" >&2
+            exit 1
+          fi
+          names=$(tar -tf "${tars[0]}")
+          echo "$names" | grep -qx idbloader.img
+          echo "$names" | grep -qx u-boot.itb
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
