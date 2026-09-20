@@ -23,6 +23,16 @@ mkfs.exfat -L ZLYME "${BINARIES_DIR}/storage.exfat" >/dev/null
 	{ echo "post-image: rk3566-miyoo-flip.dtb is missing" >&2
 	  exit 1; }
 
+# U-Boot gunzips Image.gz off FAT. The uncompressed Image stays in
+# BINARIES_DIR as the gzip input; it is not shipped on ZLYMEBOOT.
+[ -s "${BINARIES_DIR}/Image" ] ||
+	{ echo "post-image: Image is missing" >&2
+	  exit 1; }
+gzip -9 -n -c "${BINARIES_DIR}/Image" > "${BINARIES_DIR}/Image.gz"
+[ -s "${BINARIES_DIR}/Image.gz" ] ||
+	{ echo "post-image: gzip Image failed" >&2
+	  exit 1; }
+
 [ -s "${BINARIES_DIR}/rootfs.squashfs" ] ||
 	{ echo "post-image: rootfs.squashfs is missing" >&2
 	  exit 1; }

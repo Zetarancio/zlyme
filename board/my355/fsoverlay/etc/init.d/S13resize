@@ -6,7 +6,7 @@
 # parted resizepart 100%, mkfs.exfat. ROCKNIX fs-resize: no partprobe,
 # reboot -f. Do not umount /boot (squashfs loop). Do not partprobe or
 # sed the vfat after GPT work (FAT1 -> u-boot Invalid FAT entry on
-# /Image). Comment autoresize only on a later boot that already sees
+# /Image.gz). Comment autoresize only on a later boot that already sees
 # a grown ZLYME.
 
 . /etc/zlyme.conf
