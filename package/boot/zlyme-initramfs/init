@@ -22,19 +22,14 @@ mount_storage() {
 }
 
 # Initramfs busybox sleep is whole seconds. GPT nodes appear a few
-# hundred ms after mmcblk0. Do not hammer LABEL= while the parts are
-# still missing (that was ~50 failed mounts per second).
+# hundred ms after mmcblk0. Wait for the nodes, then mount only by
+# LABEL= (vfat on ZLYMEBOOT, exfat on ZLYME). Trying p1 as exFAT was
+# the FIT partition and printed "Failed to mount exFAT" every boot.
 wait_mount() {
 	fn=$1
 	spec=$2
 	n=0
 	while [ "$n" -lt 400 ]; do
-		for node in /dev/mmcblk0p2 /dev/mmcblk0p1 /dev/mmcblk1p2 /dev/mmcblk1p1; do
-			[ -b "$node" ] || continue
-			if "$fn" "$node"; then
-				return 0
-			fi
-		done
 		if [ -b /dev/mmcblk0p1 ] || [ -b /dev/mmcblk0p2 ] || \
 			[ -b /dev/mmcblk1p1 ] || [ -b /dev/mmcblk1p2 ]; then
 			if "$fn" "$spec"; then
@@ -48,12 +43,6 @@ wait_mount() {
 		if "$fn" "$spec"; then
 			return 0
 		fi
-		for node in /dev/mmcblk0p2 /dev/mmcblk0p1 /dev/mmcblk1p2 /dev/mmcblk1p1; do
-			[ -b "$node" ] || continue
-			if "$fn" "$node"; then
-				return 0
-			fi
-		done
 		n=$((n + 1))
 		sleep 1
 	done
@@ -93,6 +82,12 @@ do_root() {
 	mount -t proc -o nodev,noexec,nosuid proc /proc || return 1
 	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
 	mount -t devtmpfs none /dev 2>/dev/null || true
+
+	# Full A55s for MMC wait + squashfs loop. rcS sets this again;
+	# S27led (after first-flip) puts schedutil back.
+	for g in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
+		[ -w "$g" ] && echo performance > "$g"
+	done
 
 	# Loop the splash in the background so MMC mount is not waiting
 	# on fb0. Leave it running across switch_root until S12splash
