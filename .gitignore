@@ -5,8 +5,10 @@ storage.sh
 /NOTES/TODO.md
 /NOTES/.TODO.md.kate-swp
 /NOTES/DEVLOGS/
-/NOTES/LOGOANIM/out/
-/NOTES/LOGOANIM/__pycache__/
+
+# Branding experiment outputs (source lives in tools/branding/experimental).
+/tools/branding/experimental/out/
+/tools/branding/experimental/__pycache__/
 
 # Device serial dumps and session lab notes (repo root).
 /DEVLOGS/

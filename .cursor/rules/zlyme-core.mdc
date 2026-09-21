@@ -1,0 +1,38 @@
+---
+description: Zlyme architecture, safety, device-boundary and validation rules
+alwaysApply: true
+---
+
+# Zlyme core rule
+
+Read and follow `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`.
+
+Before architectural, device, boot, graphics, audio, storage, update, packaging, or runtime changes, read:
+
+- `docs/ARCHITECTURE.md`
+- `docs/DEVICE_PORTING.md`
+
+For design/refactoring work also read:
+
+- `docs/ENGINEERING_PRINCIPLES.md`
+
+For build/package changes also read:
+
+- `docs/DEVELOPMENT.md`
+- `docs/UPSTREAMS.md`
+
+For live Miyoo Flip behavior and recovery procedures also read:
+
+- `docs/OPERATIONS.md`
+
+Important constraints:
+
+- Miyoo Flip (`my355`) is the only supported device today.
+- Prepare extension seams; do not add hypothetical second-device implementations.
+- Keep board-specific hardware knowledge behind board files or stable `zlyme-*` command contracts.
+- Do not move unrelated code during a focused change.
+- Never claim real-device validation unless it actually occurred.
+
+`docs/ROADMAP.md` describes planned work only. Do not treat later roadmap phases as current architecture or implement them unless the active task requests them.
+
+For major migrations, read `docs/ROADMAP.md` and work on only the requested phase.
