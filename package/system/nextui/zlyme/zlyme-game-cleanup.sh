@@ -222,6 +222,12 @@ do_ra_cores() {
 
 do_standalones() {
 	# names printed to stderr-style list file
+	plat=my355
+	if [ -f /usr/share/zlyme/device.conf ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/zlyme/device.conf
+		plat=${ZLYME_NEXTUI_PLATFORM:-my355}
+	fi
 	: > /tmp/zlyme-sa.list
 	for p in \
 		/storage/.config/ppsspp \
@@ -231,7 +237,7 @@ do_standalones() {
 		/storage/.config/aethersx2 \
 		/storage/.config/nextui/shared/configs/gzdoom \
 		/storage/.config/nextui/shared/Pico-8-native \
-		/storage/.config/nextui/my355/wine
+		/storage/.config/nextui/${plat}/wine
 	do
 		[ -e "$p" ] || continue
 		printf '%s\n' "$p" >> /tmp/zlyme-sa.list

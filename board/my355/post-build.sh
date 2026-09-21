@@ -162,8 +162,9 @@ fi
 # VERSION/OS_VERSION→version, HW_DEVICE→device). Unquoted
 # VERSION=2026.02.3 left the GUI at 0.0.0. Use the same short string
 # Settings → version shows (zlyme39 plus build date), not git describe.
-# DTB model "Miyoo Flip" is not in its table. HW_DEVICE still selects
-# miyoo-flip. platform.py aliases zlyme to the ROCKNIX first_run path.
+# DTB model "Miyoo Flip" is not in its table. HW_DEVICE comes from
+# /usr/share/zlyme/device.conf. platform.py aliases zlyme to the ROCKNIX
+# first_run path.
 # Keep PRETTY_NAME so About → OS stays the Buildroot string.
 pm_short_version() {
 	local raw="" date="" zver=""
@@ -206,10 +207,21 @@ pm_os_release() {
 	else
 		printf '%s\n' "OS_VERSION=\"${zver}\"" >> "$src"
 	fi
+	# shellcheck disable=SC1091
+	. "${TARGET_DIR}/usr/share/zlyme/device.conf"
+	: "${ZLYME_PORTMASTER_HW_DEVICE:?}"
+	: "${ZLYME_NEXTUI_PLATFORM:?}"
+	if [ -n "${BR2_CONFIG:-}" ] && [ -f "${BR2_CONFIG}" ]; then
+		want="BR2_PACKAGE_NEXTUI_PLATFORM=\"${ZLYME_NEXTUI_PLATFORM}\""
+		grep -qx "${want}" "${BR2_CONFIG}" || {
+			echo "post-build: device.conf platform is not ${want}" >&2
+			exit 1
+		}
+	fi
 	if grep -q '^HW_DEVICE=' "$src"; then
-		sed -i 's/^HW_DEVICE=.*/HW_DEVICE="miyoo-flip"/' "$src"
+		sed -i "s/^HW_DEVICE=.*/HW_DEVICE=\"${ZLYME_PORTMASTER_HW_DEVICE}\"/" "$src"
 	else
-		printf '%s\n' 'HW_DEVICE="miyoo-flip"' >> "$src"
+		printf '%s\n' "HW_DEVICE=\"${ZLYME_PORTMASTER_HW_DEVICE}\"" >> "$src"
 	fi
 	if [ -f "${TARGET_DIR}/etc/os-release" ] && [ ! -L "${TARGET_DIR}/etc/os-release" ] && \
 		[ "${TARGET_DIR}/etc/os-release" != "$src" ]; then

@@ -3,8 +3,8 @@
 # rocknix-joypad
 #
 # Out-of-tree input driver. The Flip's buttons, d-pad, analog stick (Miyoo
-# UART1 protocol, not ADC) and rumble PWM all bind here. Pin from NOTES.md
-# section 4; move it when the kernel moves.
+# UART1 protocol, not ADC) and rumble PWM all bind here. The pin is
+# recorded in docs/archive/NOTES.md; move it when the kernel moves.
 ################################################################################
 
 ROCKNIX_JOYPAD_VERSION = 3bc3ef644

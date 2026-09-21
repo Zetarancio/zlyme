@@ -5,7 +5,13 @@ set -u
 
 LOG=/storage/.config/zlyme/pak-live-test.log
 RES=/storage/.config/zlyme/pak-live-test.txt
-NXT=/storage/.config/nextui/my355/logs/next.txt
+NXT_PLAT=my355
+if [ -f /usr/share/zlyme/device.conf ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/device.conf
+	NXT_PLAT=${ZLYME_NEXTUI_PLATFORM:-my355}
+fi
+NXT=/storage/.config/nextui/${NXT_PLAT}/logs/next.txt
 : >"$LOG"
 : >"$RES"
 mkdir -p /storage/.config/zlyme

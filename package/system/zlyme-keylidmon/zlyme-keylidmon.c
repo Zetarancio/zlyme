@@ -192,6 +192,43 @@ static void apply_bri(int up)
 		SetBrightness(v - 1);
 }
 
+/* Platform directory is ZLYME_NEXTUI_PLATFORM. my355 remains the
+ * fallback when device.conf is missing. */
+static void zlyme_set_userdata_path(void)
+{
+	FILE *f;
+	char line[160];
+	char plat[64];
+	char path[160];
+	char *p;
+	size_t n;
+
+	if (getenv("USERDATA_PATH"))
+		return;
+	plat[0] = '\0';
+	f = fopen("/usr/share/zlyme/device.conf", "r");
+	if (f) {
+		while (fgets(line, sizeof(line), f)) {
+			if (strncmp(line, "ZLYME_NEXTUI_PLATFORM=", 22) != 0)
+				continue;
+			p = line + 22;
+			while (*p == ' ' || *p == '\t' || *p == '\'' || *p == '"')
+				p++;
+			n = strcspn(p, "\r\n'\"");
+			if (n > 0 && n < sizeof(plat)) {
+				memcpy(plat, p, n);
+				plat[n] = '\0';
+			}
+			break;
+		}
+		fclose(f);
+	}
+	if (plat[0] == '\0')
+		snprintf(plat, sizeof(plat), "my355");
+	snprintf(path, sizeof(path), "/storage/.config/nextui/%s", plat);
+	setenv("USERDATA_PATH", path, 0);
+}
+
 int main(void)
 {
 	struct pollfd pf[4];
@@ -205,8 +242,7 @@ int main(void)
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	if (!getenv("USERDATA_PATH"))
-		setenv("USERDATA_PATH", "/storage/.config/nextui/my355", 0);
+	zlyme_set_userdata_path();
 	InitSettings();
 
 	vol_fd = open_by_name(VOL_NAME);

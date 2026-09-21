@@ -15,8 +15,10 @@ config BR2_PACKAGE_NEXTUI
 	select BR2_PACKAGE_MINUI_PRESENTER
 	help
 	  NextUI launcher (nextui.elf) and Settings, vendored from
-	  LoveRetro/NextUI and edited in-tree for Zlyme. PLATFORM is
-	  my355; SDCARD_PATH is /storage. Stock CFW skeleton is not used.
+	  LoveRetro/NextUI and edited in-tree for Zlyme. The platform
+	  directory comes from BR2_PACKAGE_NEXTUI_PLATFORM (my355 on
+	  the Miyoo Flip). SDCARD_PATH is /storage. Stock CFW skeleton
+	  is not used.
 
 	  NextUI: https://github.com/LoveRetro/NextUI
 	  Originally MinUI by Shaun Inman: https://github.com/shauninman/MinUI

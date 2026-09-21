@@ -68,6 +68,32 @@ def http_get(url, dest, token=""):
     return code, p.stderr or ""
 
 
+def device_value(key):
+    path = "/usr/share/zlyme/device.conf"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith(key + "="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    if val:
+                        return val
+    except OSError as e:
+        die("cannot read %s (%s)" % (path, e))
+    die("missing %s in %s" % (key, path))
+
+
+_UPDATE_PREFIX = {"v": None}
+
+
+def update_prefix():
+    if _UPDATE_PREFIX["v"] is None:
+        _UPDATE_PREFIX["v"] = device_value("ZLYME_UPDATE_PREFIX") + "-"
+    return _UPDATE_PREFIX["v"]
+
+
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -94,13 +120,13 @@ def find_assets(rel):
     for a in rel.get("assets") or []:
         name = a.get("name") or ""
         if (
-            name.startswith("zlyme-my355-")
+            name.startswith(update_prefix())
             and name.endswith(".tar")
             and not name.endswith(".sha256")
             and tar_a is None
         ):
             tar_a = a
-        elif name.startswith("zlyme-my355-") and (
+        elif name.startswith(update_prefix()) and (
             name.endswith(".tar.sha256") or name.endswith(".sha256")
         ):
             if sha_a is None:
@@ -145,7 +171,7 @@ def scrape_html(repo):
             }
         )
     if not any(
-        a["name"].startswith("zlyme-my355-")
+        a["name"].startswith(update_prefix())
         and a["name"].endswith(".tar")
         and not a["name"].endswith(".sha256")
         for a in assets
@@ -157,7 +183,7 @@ def scrape_html(repo):
 def emit_rel(rel, use_auth):
     tar_a, sha_a = find_assets(rel)
     if not tar_a:
-        die("No zlyme-my355-*.tar in this release")
+        die("No %s*.tar in this release" % update_prefix())
     if not sha_a:
         die("No sha256 next to that tar")
     body = rel.get("body") or ""
@@ -252,7 +278,7 @@ def main():
 
     tar_a, sha_a = find_assets(rel)
     if not tar_a or not sha_a:
-        die("No zlyme-my355-*.tar in this release" if not tar_a else "No sha256 next to that tar")
+        die("No %s*.tar in this release" % update_prefix() if not tar_a else "No sha256 next to that tar")
 
     emit_rel(rel, use_auth)
     for p in (JSON_TMP, ATOM_TMP, HTML_TMP):

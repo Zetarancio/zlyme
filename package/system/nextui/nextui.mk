@@ -19,7 +19,11 @@ NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
 NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl
 
-NEXTUI_PLATFORM = my355
+# Workspace directory from the selected device (Config.in). my355 today.
+NEXTUI_PLATFORM = $(call qstrip,$(BR2_PACKAGE_NEXTUI_PLATFORM))
+ifeq ($(NEXTUI_PLATFORM),)
+$(error BR2_PACKAGE_NEXTUI_PLATFORM is empty; select a Zlyme target device)
+endif
 
 NEXTUI_CFLAGS = $(TARGET_CFLAGS) -std=gnu99 \
 	-DPLATFORM=\"$(NEXTUI_PLATFORM)\" -DUSE_SDL2 -DUSE_GLES \

@@ -5,6 +5,14 @@ set -euo pipefail
 
 BINARIES_DIR="${1:?post-image.sh: expected BINARIES_DIR as the first argument}"
 BOARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "${BOARD_DIR}/fsoverlay/usr/share/zlyme/device.conf"
+: "${ZLYME_DTB:?}"
+: "${ZLYME_STORAGE_LABEL:?}"
+grep -q "FDT /${ZLYME_DTB}" "${BOARD_DIR}/extlinux.conf" || {
+	echo "post-image: extlinux.conf FDT does not match device.conf ${ZLYME_DTB}" >&2
+	exit 1
+}
 
 install -D -m 0644 "${BOARD_DIR}/extlinux.conf" \
 	"${BINARIES_DIR}/extlinux/extlinux.conf"
@@ -17,10 +25,10 @@ install -D -m 0644 "${BOARD_DIR}/zlyme-boot.conf" \
 STORAGE_MB=32
 rm -f "${BINARIES_DIR}/storage.exfat"
 truncate -s "${STORAGE_MB}M" "${BINARIES_DIR}/storage.exfat"
-mkfs.exfat -L ZLYME "${BINARIES_DIR}/storage.exfat" >/dev/null
+mkfs.exfat -L "${ZLYME_STORAGE_LABEL}" "${BINARIES_DIR}/storage.exfat" >/dev/null
 
-[ -s "${BINARIES_DIR}/rk3566-miyoo-flip.dtb" ] ||
-	{ echo "post-image: rk3566-miyoo-flip.dtb is missing" >&2
+[ -s "${BINARIES_DIR}/${ZLYME_DTB}" ] ||
+	{ echo "post-image: ${ZLYME_DTB} is missing" >&2
 	  exit 1; }
 
 # U-Boot gunzips Image.gz off FAT. The uncompressed Image stays in

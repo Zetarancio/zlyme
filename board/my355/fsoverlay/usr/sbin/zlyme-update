@@ -4,7 +4,7 @@
 # as a second file on ZLYMEBOOT).
 #
 # Contract:
-#   1. Copy a finished tar to /storage/.update/zlyme-my355-*.tar
+#   1. Copy a finished tar to /storage/.update/${ZLYME_UPDATE_PREFIX}-*.tar
 #      (update.tar, versioned, or -dirty; newest mtime wins).
 #      Incomplete downloads must be named *.tar.part — this script ignores them.
 #   2. reboot
@@ -17,12 +17,16 @@
 
 set -eu
 
+. /usr/share/zlyme/device.conf
+: "${ZLYME_UPDATE_PREFIX:?device.conf missing ZLYME_UPDATE_PREFIX}"
+: "${ZLYME_DTB:?device.conf missing ZLYME_DTB}"
+
 . /etc/zlyme.conf 2>/dev/null || true
 STORAGE="${ZLYME_STORAGE:-/storage}"
 BOOT="${ZLYME_BOOT:-/boot}"
 STAGEDIR="$STORAGE/.update"
 PENDING="$STAGEDIR/pending"
-QUEUED_TAR="$STAGEDIR/zlyme-my355-update.tar"
+QUEUED_TAR="$STAGEDIR/${ZLYME_UPDATE_PREFIX}-update.tar"
 WANT="$STAGEDIR/WANT"
 REAPPLY="$STAGEDIR/reapply"
 FAILED="$STAGEDIR/FAILED"
@@ -98,7 +102,7 @@ queued_tar() {
 	fi
 	best=""
 	best_m=0
-	for f in "$STAGEDIR"/zlyme-my355-*.tar; do
+	for f in "$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tar; do
 		[ -f "$f" ] || continue
 		[ -s "$f" ] || continue
 		case "$f" in
@@ -130,7 +134,7 @@ verify_tar() {
 	tarf=$1
 	[ -s "$tarf" ] || mark_fail junk "empty tar"
 	need_cmd tar
-	tar -tf "$tarf" | grep -qx rk3566-miyoo-flip.dtb || mark_fail junk "tar has no dtb"
+	tar -tf "$tarf" | grep -qx "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
 	tar -tf "$tarf" | grep -qx zlyme || mark_fail junk "tar has no zlyme squashfs"
 	tar -tf "$tarf" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
 	log "tar ok ($tarf)"
@@ -139,7 +143,7 @@ verify_tar() {
 
 verify_dir() {
 	dir=$1
-	[ -s "$dir/rk3566-miyoo-flip.dtb" ] || mark_fail apply "missing $dir/rk3566-miyoo-flip.dtb"
+	[ -s "$dir/$ZLYME_DTB" ] || mark_fail apply "missing $dir/$ZLYME_DTB"
 	[ -s "$dir/zlyme" ] || mark_fail apply "missing $dir/zlyme"
 	[ -s "$dir/VERSION" ] || mark_fail apply "missing $dir/VERSION"
 	[ -s "$dir/Image.gz" ] || mark_fail apply "missing $dir/Image.gz"
@@ -223,7 +227,7 @@ install_boot() {
 	# Gzip is the only kernel we boot. Drop a leftover uncompressed
 	# Image so FAT does not keep a second copy.
 	rm -f "$BOOT/Image"
-	cp -f "$dir/rk3566-miyoo-flip.dtb" "$BOOT/rk3566-miyoo-flip.dtb"
+	cp -f "$dir/$ZLYME_DTB" "$BOOT/$ZLYME_DTB"
 	if [ -f "$dir/splash.anim" ]; then
 		cp -f "$dir/splash.anim" "$BOOT/splash.anim"
 	fi
@@ -359,19 +363,19 @@ run_pending_hook() {
 
 delete_update_tars() {
 	rm -f "$WANT" "$NAMEFILE"
-	rm -f "$STAGEDIR"/zlyme-my355-*.tar \
-		"$STAGEDIR"/zlyme-my355-*.tar.part \
-		"$STAGEDIR"/zlyme-my355-*.sha256 \
-		"$STAGEDIR"/zlyme-my355-*.sha256.part \
-		"$STAGEDIR"/zlyme-my355-*.tar.sha256 \
-		"$STAGEDIR"/zlyme-my355-*.partial \
-		"$STAGEDIR"/zlyme-my355-*.tmp 2>/dev/null || true
+	rm -f "$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tar \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tar.part \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.sha256 \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.sha256.part \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tar.sha256 \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.partial \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tmp 2>/dev/null || true
 }
 
 quarantine_update_tars() {
 	rm -rf "$FAILED_DIR"
 	mkdir -p "$FAILED_DIR"
-	for f in "$STAGEDIR"/zlyme-my355-*.tar; do
+	for f in "$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-*.tar; do
 		[ -f "$f" ] || continue
 		case "$f" in
 			*.part|*.tmp|*.partial) continue ;;
@@ -418,9 +422,9 @@ apply_files() {
 		rm -f "$QUEUED_TAR"
 	fi
 	# Versioned leftovers only; the well-known name is already gone.
-	rm -f "$STAGEDIR"/zlyme-my355-[0-9]*.tar \
-		"$STAGEDIR"/zlyme-my355-[0-9]*.sha256 \
-		"$STAGEDIR"/zlyme-my355-[0-9]*.tar.sha256 2>/dev/null || true
+	rm -f "$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-[0-9]*.tar \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-[0-9]*.sha256 \
+		"$STAGEDIR"/${ZLYME_UPDATE_PREFIX}-[0-9]*.tar.sha256 2>/dev/null || true
 	sync
 	log "pending squashfs on ZLYME, kernel on $BOOT"
 	do_reboot
