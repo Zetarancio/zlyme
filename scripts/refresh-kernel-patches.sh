@@ -13,12 +13,33 @@ say()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m==>\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m==>\033[0m %s\n' "$*" >&2; exit 1; }
 
-readonly DEFCONFIG="${REPO}/configs/zlyme_minimal_defconfig"
+DEFCONFIG_NAME="${ZLYME_DEFCONFIG:-zlyme_my355_minimal_defconfig}"
+TARBALL_ARG=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--config)
+			DEFCONFIG_NAME="${2:?--config needs a defconfig name}"
+			shift 2
+			;;
+		-*)
+			die "unknown option $1"
+			;;
+		*)
+			TARBALL_ARG="$1"
+			shift
+			;;
+	esac
+done
+
+readonly DEFCONFIG="${REPO}/configs/${DEFCONFIG_NAME}"
+[ -f "${DEFCONFIG}" ] || die "no configs/${DEFCONFIG_NAME}"
 
 # Take the patch directories, in order, from the defconfig rather than listing
 # them here. The order is load-bearing -- later patches build on earlier ones --
 # and a second copy of it in this file is a second thing to forget to update.
-readonly TARBALL="${1:-$(echo "${REPO}"/dl/linux/linux-*.tar.xz)}"
+# Keep directories that actually contain kernel patches. U-Boot patch dirs
+# in the same BR2_GLOBAL_PATCH_DIR line are skipped.
+readonly TARBALL="${TARBALL_ARG:-$(echo "${REPO}"/dl/linux/linux-*.tar.xz)}"
 [ -f "${TARBALL}" ] || die "no kernel tarball: ${TARBALL}
 run ./build.sh --minimal source first, or pass one as \$1"
 
@@ -26,7 +47,10 @@ mapfile -t PATCH_DIRS < <(
 	sed -n 's/^BR2_GLOBAL_PATCH_DIR="\(.*\)"$/\1/p' "${DEFCONFIG}" |
 		tr ' ' '\n' |
 		sed "s|\$(BR2_EXTERNAL_ZLYME_PATH)|${REPO}|" |
-		grep '/board/my355/linux/patches/'
+		while IFS= read -r d; do
+			[ -n "${d}" ] || continue
+			compgen -G "${d}/linux/"*.patch >/dev/null && printf '%s\n' "${d}"
+		done
 )
 [ "${#PATCH_DIRS[@]}" -gt 0 ] ||
 	die "found no kernel patch directories in ${DEFCONFIG#"${REPO}"/}"

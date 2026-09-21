@@ -6,7 +6,7 @@
 #   ZLYME_OUTPUT      build tree and images     (default ./output)
 #   ZLYME_DL          download cache            (default ./dl)
 #   ZLYME_CCACHE      compiler cache             (default ./.ccache)
-#   ZLYME_DEFCONFIG   defconfig name            (default zlyme_minimal_defconfig)
+#   ZLYME_DEFCONFIG   defconfig name            (default zlyme_my355_minimal_defconfig)
 
 set -euo pipefail
 
@@ -22,8 +22,9 @@ ZLYME_BUILDROOT="${ZLYME_BUILDROOT:-${REPO}/buildroot}"
 ZLYME_OUTPUT="${ZLYME_OUTPUT:-${REPO}/output}"
 ZLYME_DL="${ZLYME_DL:-${REPO}/dl}"
 ZLYME_CCACHE="${ZLYME_CCACHE:-${REPO}/.ccache}"
-# The only defconfig names that exist. Default is the bring-up image.
-ZLYME_DEFCONFIG="${ZLYME_DEFCONFIG:-zlyme_minimal_defconfig}"
+# Default is the my355 bring-up image. The product image is
+# zlyme_my355_defconfig (--config).
+ZLYME_DEFCONFIG="${ZLYME_DEFCONFIG:-zlyme_my355_minimal_defconfig}"
 
 say()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m==>\033[0m %s\n' "$*" >&2; }
@@ -33,7 +34,7 @@ usage() {
     cat <<'EOF'
 usage: build.sh [options] [make-target ...]
 
-  --minimal        build zlyme_minimal_defconfig (bootable, no emulators)
+  --minimal        build zlyme_my355_minimal_defconfig (bootable, no emulators)
   --config NAME    build a named defconfig
   --shell          interactive shell in the build container
   --check          report where everything is and change nothing
@@ -78,6 +79,26 @@ sweep_loops() {
     [ "${found}" = 1 ] || say "no leaked loop devices"
 }
 
+# rm dir/* leaves dotfiles (.config, .stamp). Delete every child of a
+# directory that is actually a build output, and nothing else.
+clean_output() {
+    local out base
+    [ -n "${ZLYME_OUTPUT}" ] || die "ZLYME_OUTPUT is empty"
+    out="$(realpath -m "${ZLYME_OUTPUT}")"
+    case "${out}" in
+        /|""|.) die "refusing to clean '${out}'" ;;
+    esac
+    [ "${out}" != "$(realpath -m "${REPO}")" ] || die "refusing to clean the repository"
+    base="$(basename "${out}")"
+    [ "${base}" = "output" ] || die "refusing to clean ${out} (directory must be named output)"
+    if [ ! -d "${out}" ]; then
+        say "no output at ${out}"
+        return 0
+    fi
+    say "deleting ${out} (downloads and ccache kept)"
+    find "${out}" -mindepth 1 -delete
+}
+
 fetch_buildroot() {
     if [ ! -d "${ZLYME_BUILDROOT}/.git" ]; then
         say "cloning Buildroot ${BUILDROOT_VERSION}"
@@ -113,14 +134,26 @@ ensure_docker() {
     die "docker is not usable. Add your user to the docker group, or install polkit so pkexec can ask for a password."
 }
 
+dockerfile_id() {
+    sha256sum "${REPO}/Dockerfile" | awk '{print $1}'
+}
+
 build_container() {
+    local id have=""
+    id="$(dockerfile_id)"
     if [ "${REBUILD_IMAGE}" != 1 ] && "${DOCKER[@]}" image inspect "${IMAGE}" >/dev/null 2>&1; then
-        return
+        have="$("${DOCKER[@]}" image inspect -f '{{ index .Config.Labels "zlyme.dockerfile" }}' "${IMAGE}" 2>/dev/null || true)"
+        if [ "${have}" = "${id}" ]; then
+            return
+        fi
+        say "Dockerfile changed; rebuilding the ${IMAGE} container"
+    else
+        say "building the ${IMAGE} container"
     fi
-    say "building the ${IMAGE} container"
     # Fed on stdin deliberately: with a directory context and no COPY, docker
     # would ship the whole repo to the daemon before doing anything.
-    "${DOCKER[@]}" build -t "${IMAGE}" - < "${REPO}/Dockerfile"
+    # The label is the Dockerfile digest so a later edit cannot reuse this image.
+    "${DOCKER[@]}" build --label "zlyme.dockerfile=${id}" -t "${IMAGE}" - < "${REPO}/Dockerfile"
 }
 
 # Host gcc is still --prefix=/flip/output/host, so the same output tree is
@@ -173,7 +206,7 @@ declare -a MAKE_ARGS=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --minimal)       ZLYME_DEFCONFIG=zlyme_minimal_defconfig ;;
+        --minimal)       ZLYME_DEFCONFIG=zlyme_my355_minimal_defconfig ;;
         --config)        ZLYME_DEFCONFIG="${2:?--config needs a name}"; shift ;;
         --shell)         ACTION=shell ;;
         --check)         ACTION=check ;;
@@ -194,8 +227,7 @@ case "${ACTION}" in
     check) report; exit 0 ;;
     loops) sweep_loops; exit 0 ;;
     clean)
-        say "deleting ${ZLYME_OUTPUT} (downloads and ccache kept)"
-        rm -rf "${ZLYME_OUTPUT:?}"/*
+        clean_output
         exit 0
         ;;
 esac

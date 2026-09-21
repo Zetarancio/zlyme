@@ -176,16 +176,16 @@ Docker is required.
 
 ```sh
 cp storage.sh.example storage.sh   # optional; set local paths
-./build.sh --config zlyme_defconfig
+./build.sh --config zlyme_my355_defconfig
 ```
 
-The image lands in `output/images/`. `./build.sh` options:
+The image lands in `output/images/`. With no `--config`, `./build.sh` builds the minimal image. Options:
 
 
 | Flag              | What it does                                             |
 | ----------------- | -------------------------------------------------------- |
-| `--minimal`       | `zlyme_minimal_defconfig` (bootable, no emulators)       |
-| `--config NAME`   | named defconfig (`zlyme_defconfig` is the product image) |
+| `--minimal`       | `zlyme_my355_minimal_defconfig` (bootable, no emulators) |
+| `--config NAME`   | named defconfig (`zlyme_my355_defconfig` is the product image) |
 | `--shell`         | interactive shell in the build container                 |
 | `--check`         | print paths and change nothing                           |
 | `--loops`         | detach loop devices this build leaked                    |
@@ -197,10 +197,10 @@ The image lands in `output/images/`. `./build.sh` options:
 With no make target, it builds the image. Any extra arguments are passed to Buildroot `make`, so these work:
 
 ```sh
-./build.sh --config zlyme_defconfig menuconfig
-./build.sh --config zlyme_defconfig linux-rebuild
-./build.sh --config zlyme_defconfig nextui-rebuild
-./build.sh --config zlyme_defconfig savedefconfig
+./build.sh --config zlyme_my355_defconfig menuconfig
+./build.sh --config zlyme_my355_defconfig linux-rebuild
+./build.sh --config zlyme_my355_defconfig nextui-rebuild
+./build.sh --config zlyme_my355_defconfig savedefconfig
 ```
 
 A full image write goes to `output/build.log` (overwritten each run). Watch it with `less +F output/build.log`. Do not start a second `./build.sh` on the same `output/`. 

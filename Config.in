@@ -1,3 +1,21 @@
+choice
+	prompt "Zlyme target device"
+	default BR2_ZLYME_DEVICE_MY355
+
+config BR2_ZLYME_DEVICE_MY355
+	bool "Miyoo Flip (my355)"
+	help
+	  Miyoo Flip, RK3566. The only supported device.
+	  Board files live in board/my355/.
+
+endchoice
+
+# NextUI workspace directory for the selected device. Hidden: the
+# default follows the choice above. my355 stays my355.
+config BR2_PACKAGE_NEXTUI_PLATFORM
+	string
+	default "my355" if BR2_ZLYME_DEVICE_MY355
+
 menu "Zlyme"
 
 comment "Boot"

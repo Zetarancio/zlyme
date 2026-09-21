@@ -1,5 +1,5 @@
-# Full my355 image. Hosted runners cap a single job at 360 minutes; a cold
-# zlyme_defconfig build is longer than that (cancelled at the cap:
+# Full my355 image (zlyme_my355_defconfig). Hosted runners cap a single job
+# at 360 minutes; a cold build is longer than that (cancelled at the cap:
 # 34801512689, 34828905859). Sequential stages each compile for ~310 minutes,
 # then pack ccache. Later stages skip if an earlier one already has the tar.
 #

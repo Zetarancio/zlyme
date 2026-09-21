@@ -24,7 +24,7 @@ permissions:
 
 env:
   CACHE_REPO: ${{ vars.CACHE_REPO || 'zlyme-cache' }}
-  ZLYME_DEFCONFIG: zlyme_defconfig
+  ZLYME_DEFCONFIG: zlyme_my355_defconfig
   # Leave headroom under the 360-minute hard cap for cache save + upload.
   BUILD_WINDOW: 310m
 
