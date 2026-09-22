@@ -1,4 +1,4 @@
-Archived. Canonical docs are `docs/ARCHITECTURE.md`, `docs/OPERATIONS.md`, `docs/DEVELOPMENT.md`, and `docs/LOGBOOK.md`. This file is kept for measurements and session notes. See `docs/archive/README.md`.
+**Superseded source hierarchy.** The repository roles and "sources of truth" below are the ones used while these notes were written. They are not current policy. The Miyoo Flip hardware wiki is the hardware, firmware, and protocol authority. This Zlyme repository is the current OS. `Zetarancio/distribution` is archived historical ROCKNIX evidence, not a maintained tree and not the hardware authority. `ROCKNIX/distribution`, KNULLI, and other distributions are external comparisons. See `docs/ARCHITECTURE.md` and `docs/UPSTREAMS.md`. The rest of this file is kept for measurements, SHAs, paths, and session notes. See `docs/archive/README.md`.
 
 # Zlyme notes (my355 / Miyoo Flip)
 
@@ -12,23 +12,23 @@ OS is **Zlyme**. Board / NextUI platform is **my355**. Kernel dtb stays
 `rk3566-miyoo-flip.dtb`. Image is `zlyme.img`. Storage label `ZLYME`,
 boot label `ZLYMEBOOT`.
 
-Two sources of truth outrank this file:
+When these notes were current, two trees were treated as outranking this file. That ranking is historical; see the note at the top.
 
 1. The ROCKNIX fork at `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX`
    (kernel patches, DTS, mixer names, flags known good on this SoC).
 2. The device wiki at `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/Steward-fu-FLIP`.
 
-Knulli/Batocera are the parts bin for **emulator recipes**. Hardware stays
-ROCKNIX / the wiki. Busybox init, KMSDRM, no compositor.
+Knulli/Batocera were the parts bin for **emulator recipes**. Hardware was
+taken from that ROCKNIX fork and the wiki. Busybox init, KMSDRM, no compositor.
 
 ## Upstream pins (for “anything new from X?”)
 
-Refresh this table after a merge. Compare the clone you actually harvest
-from against GitHub if they have moved. Dated **2026-09-20**.
+The pin table below was refreshed by comparing the clone actually harvested
+from against GitHub. Dated **2026-09-20**.
 
 | Tree | Clone / branch | SHA at last look | GitHub tip if different | Notes |
 | --- | --- | --- | --- | --- |
-| ROCKNIX **fork** (ours) | `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX/distribution` `origin` `Zetarancio/distribution` **`flip`** | `d249b09bd9` 2026-09-02 “Merge commit '1ebff24f36' into flip” | — | This is the hardware source of truth. Merge-base includes `1ebff24f36` (`ci: truncate changelog…`, 2026-09-01). |
+| ROCKNIX **fork** (ours) | `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX/distribution` `origin` `Zetarancio/distribution` **`flip`** | `d249b09bd9` 2026-09-02 “Merge commit '1ebff24f36' into flip” | — | Treated, at the date of this table, as the hardware source of truth. Merge-base includes `1ebff24f36` (`ci: truncate changelog…`, 2026-09-01). |
 | ROCKNIX **upstream** | remote `upstream` = `ROCKNIX/distribution` | last merged = `1ebff24f36` | **`6ec91044aad1`** `HEAD` as of 2026-09-17 | Upstream has moved since the flip merge. Absorb candidates live in `1ebff24f36..6ec91044aad1`. |
 | Device **wiki** | `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/Steward-fu-FLIP` (`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`) **`main`** | `cf6500c` 2026-09-03 “docs: explain ROCKNIX image zip vs Specific .img” | same (`cf6500c53fb9`) | Hardware write-ups, mixer names, boot how-to. |
 | **knulli** | `~/Downloads/knulli-linux/knulli-linux` `knulli-main` | `0b1fd94` 2026-08-25 “Update 0203-improve-triggers.patch” | **`064cd0900e7d`** `knulli-cfw/knulli-linux` `knulli-main` (2026-09-11 “fix-yabasanshiro-build”) | Emulator `.mk` / patches. Local clone is behind GitHub. |
@@ -36,7 +36,7 @@ from against GitHub if they have moved. Dated **2026-09-20**.
 | **NextUI** clone | `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/NextUI` (`LoveRetro/NextUI`) **`main`**. Symlink `/home/ale/NextUI`. | `ae652648` 2026-08-15 “chore: License Transition — GPL 3.0 → PolyForm Noncommercial 1.0.0 (#806)” | same as vendored `package/system/nextui/src` (`src/UPSTREAM`) | Harvest clone only. Do not treat this tree as the image; Zlyme edits live in the package. |
 | **BASEOS** | `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/BASEOS/baseos-my355` (`apommel/baseos-my355`) **`main`** | `85b67b4` 2026-09-18 “Update README.md” | — | Hand-off OS: BusyBox init, no UI of its own. Parts bin for first-flip ideas. Not hardware truth. |
 
-How to ask later: “is there anything new I can absorb from knulli / ROCKNIX / Spruce / NextUI / BASEOS / the wiki?” — diff that repo from the SHA in this table to its current tip, then only take emulator recipes from knulli, hardware from ROCKNIX+wiki, init ideas from BASEOS.
+The harvest rule used with this table was: “is there anything new I can absorb from knulli / ROCKNIX / Spruce / NextUI / BASEOS / the wiki?” — diff that repo from the SHA in this table to its tip, then only take emulator recipes from knulli, hardware from the ROCKNIX fork plus the wiki, and init ideas from BASEOS. That rule is not current policy.
 
 ---
 

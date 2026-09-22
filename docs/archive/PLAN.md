@@ -1,4 +1,4 @@
-Archived. Canonical docs are `docs/ARCHITECTURE.md`, `docs/OPERATIONS.md`, `docs/DEVELOPMENT.md`, and `docs/LOGBOOK.md`. This file is kept for measurements and session notes. See `docs/archive/README.md`.
+**Superseded source hierarchy.** The repository roles and "sources of truth" below are the ones used while this plan was written. They are not current policy. The Miyoo Flip hardware wiki is the hardware, firmware, and protocol authority. This Zlyme repository is the current OS. `Zetarancio/distribution` is archived historical ROCKNIX evidence, not a maintained tree and not the hardware authority. `ROCKNIX/distribution`, KNULLI, and other distributions are external comparisons. See `docs/ARCHITECTURE.md` and `docs/UPSTREAMS.md`. The rest of this file is kept as the historical plan, including its status notes. See `docs/archive/README.md`.
 
 # Plan — Zlyme, a minimal fast my355 system on Buildroot
 
@@ -30,8 +30,8 @@ Propose wording for `README.md`, `NOTES.md`, `PLAN.md`, and `LOGBOOK.md` when it
 ## 1. The decision, in one paragraph
 
 Build on **upstream Buildroot** with **our own** `BR2_EXTERNAL` **tree**.
-Harvest emulator recipes from Batocera/Knulli; keep ROCKNIX / the device
-wiki for kernel, DTS, drivers, and mixer names. When a package needs a
+Harvest emulator recipes from Batocera/Knulli; this plan kept the ROCKNIX
+fork and the device wiki for kernel, DTS, drivers, and mixer names. When a package needs a
 patch, start from Knulli’s (same Buildroot layout) and only refresh
 context or replace `/userdata` paths. Put `*.patch` next to the `.mk`;
 Buildroot does not apply `package/foo/patches/`. Boot from the SD card,
@@ -43,16 +43,16 @@ track.
 
 ### Sources of truth
 
-Two, and they outrank anything else including this document:
+When this plan was written, two trees were treated as outranking anything else, including this document. That ranking is historical; see the note at the top.
 
 1. **The ROCKNIX fork** at `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX`
 2. **The device wiki** at `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/Steward-fu-FLIP`
 
-Where Batocera, Knulli, MIMIKI or dArkOS disagree with those two about
-this hardware, the two win. The other projects are parts bins.
-Knulli is emulator recipes. SpruceOS is governors/paks. The
+Where Batocera, Knulli, MIMIKI or dArkOS disagreed with those two about
+this hardware, the plan followed the two. The other projects were parts bins.
+Knulli was the emulator-recipe bin. SpruceOS was governors and paks. The
 LoveRetro/NextUI clone and BASEOS
-(`/run/media/ale/SPCC/Cursor/MIYOO-FLIP/BASEOS/baseos-my355`) are
+(`/run/media/ale/SPCC/Cursor/MIYOO-FLIP/BASEOS/baseos-my355`) were
 init/UI harvest trees. Pins (path + SHA) live in `NOTES.md`.
 
 ---
