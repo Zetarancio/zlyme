@@ -1,7 +1,9 @@
 # Sourced by nextui-session, ra-run, and login shells.
 # vulkan-loader reads VK_ICD_FILENAMES. libmali ships mali_icd.json.
 # Buildroot 2026.02 mesa3d has no PanVK option; panfrost stays GLES.
-# MESA_LOADER_DRIVER_OVERRIDE is the ROCKNIX panfrost hint; unset on libmali.
+# card0 is rockchip-drm and card1 is the Mali GPU. Forcing
+# MESA_LOADER_DRIVER_OVERRIDE=panfrost makes GBM init fail on that
+# split. Leave the override unset so Mesa pairs kmsro with Panfrost.
 
 gpu=""
 if [ -r /storage/.config/zlyme/gpu ]; then
@@ -17,14 +19,7 @@ case "$gpu" in
 		fi
 		;;
 	*)
-		export MESA_LOADER_DRIVER_OVERRIDE=panfrost
+		unset MESA_LOADER_DRIVER_OVERRIDE
 		unset VK_ICD_FILENAMES
-		for f in /usr/share/vulkan/icd.d/panfrost_icd*.json \
-			 /usr/share/vulkan/icd.d/panvk_icd*.json; do
-			if [ -r "$f" ]; then
-				export VK_ICD_FILENAMES="$f"
-				break
-			fi
-		done
 		;;
 esac
