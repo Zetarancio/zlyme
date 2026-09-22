@@ -44,6 +44,10 @@ Before phase 1:
 
 Record a baseline first-frame boot time and a short device smoke log.
 
+### Status
+
+Complete, 2026-09-22. Both my355 defconfigs configure, and the product image was built from a clean `output/` through `./build.sh --config zlyme_my355_defconfig`. The etched card booted to NextUI. Smoke notes are in `docs/LOGBOOK.md` (2026-09-22). Phase 1 has not been started.
+
 ## 1 — Application-scoped Weston/WestonPack support
 
 Goal:

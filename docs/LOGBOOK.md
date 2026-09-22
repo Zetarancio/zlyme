@@ -11,6 +11,42 @@ gitignored. The rest of `NOTES/` is committed with the tree.
 
 ---
 
+## 2026-09-22 — Phase 0 smoke on the etched card
+
+Etched `output/images/zlyme.img` from the clean product build (kernel
+7.0.2 `#1` Tue Sep 22 02:00:08 UTC 2026, NextUI `ae652648…-zlyme40`).
+SSH `root@192.168.0.108` after the host key changed. This boot had
+already applied `zlyme-my355-20260922-837fff5aad39-dirty.tar`
+(`zlyme-update` boot-apply, then initramfs copied the squashfs).
+U-Boot blobs were staged under `/storage/.update/bootloader` and not
+written.
+
+`/tmp/boot-timing`: `rcS-start` 48.96 s, `nextui-first-flip` 56.66 s
+(7.7 s after rcS). `Run /init` is at 1.36 s, so most of the time before
+rcS is the initramfs squashfs swap, not the list. A second
+`nextui-first-flip` at 94.17 s is the session relaunch, not a reboot.
+
+Checked over SSH: `nextui-session` up, `retrogame_joypad` plus volume,
+hall, power, and the headphone switch, `zlyme-audio` sink `codec`
+available at volume 40 (cards HDMI and rk817ext), `/storage` exFAT on
+`mmcblk0p3` and `/boot` vfat on `mmcblk0p2`, `zlyme-update status`
+`queued=no`. `device.conf` is the my355 file.
+
+Suspend: `/sys/power/mem_sleep` was `s2idle [deep]`. Set s2idle, armed
+the RTC, `zlyme-radios pre`, then `echo mem`. dmesg shows
+`PM: suspend entry (s2idle)` at 535.25 s and `PM: suspend exit` at
+537.30 s. A deep cycle at 538.77–540.82 s also returned. NextUI's own
+log says the platform suspend executable exited 0 and audio was
+reinitialized. Codec sink still available after. Wi-Fi dropped during
+`zlyme-radios pre` and SSH came back after exit.
+
+A card that has never queued a tar does not get `/storage/.update`.
+S18 will not start `zlyme-update` until a tar is already there, and
+the first-boot mkfs wipes the exFAT seed. S15 now creates that
+directory with the other storage seeds. This etched image does not
+have that yet; the directory on this card exists because the OTA
+apply created it.
+
 ## 2026-09-20 — image rebuild, BASEOS first-flip cuts
 
 `./build.sh --config zlyme_defconfig nextui-dirclean all` wrote
