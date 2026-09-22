@@ -150,6 +150,9 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/../../../scripts/fetch-test-roms.sh \
 		$(TARGET_DIR)/usr/sbin/fetch-test-roms
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt
+	sh $(NEXTUI_PKGDIR)/paks-version.sh \
+		$(NEXTUI_PKGDIR)/paks \
+		$(TARGET_DIR)/usr/share/nextui/paks-version.txt
 	date -u +%Y-%m-%d > $(TARGET_DIR)/usr/share/nextui/build-date.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/github-release.py \
 		$(TARGET_DIR)/usr/share/zlyme/github-release.py

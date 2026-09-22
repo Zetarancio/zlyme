@@ -63,8 +63,9 @@ mkdir -p "$LOGS_PATH" "$HOOKS_PATH" "$SHARED_USERDATA_PATH/.minui" \
 	/storage/Roms /storage/Saves /storage/Bios
 
 seed=/usr/share/nextui
+# Pak sync uses the stock pak-set hash, not version.txt (the frontend pin).
 img_ver=""
-[ -r "$seed/version.txt" ] && img_ver=$(cat "$seed/version.txt")
+[ -r "$seed/paks-version.txt" ] && img_ver=$(cat "$seed/paks-version.txt")
 stamp=/storage/.config/zlyme/paks-version
 card_ver=""
 [ -r "$stamp" ] && card_ver=$(cat "$stamp")
@@ -106,7 +107,7 @@ fi
 
 # Stock paks = glob of the live image. No hardcoded names.
 # Parent missing → full copy. Missing stock name → repair copy.
-# version.txt / factory-reset / interrupted copy → overwrite those
+# paks-version.txt / factory-reset / interrupted copy → overwrite those
 # names; extras stay.
 lock=/storage/.config/zlyme/paks-copying
 interrupted=0

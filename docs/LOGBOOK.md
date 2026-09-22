@@ -45,6 +45,14 @@ Weston PortMaster title, and Wine were not run. Phase 1 is not complete
 until that cycle is repeated on the device. Phase 6 deep-power config
 was not touched.
 
+Stock pak copy was still keyed off `version.txt` (`ae652648…-zlyme40`),
+so an existing card kept `/storage/.config/zlyme/paks-version` and never
+copied `Tools/Weston.pak`. `version.txt` stays the frontend pin.
+`paks-version.txt` is a content hash of `paks/Emus` and `paks/Tools`.
+`nextui-session` compares that hash to the card stamp. A match still
+skips the per-pak walk. A mismatch recopies stock names and leaves
+extra card paks in place.
+
 ## 2026-09-22 — Phase 0 smoke on the etched card
 
 Etched `output/images/zlyme.img` from the clean product build (kernel
