@@ -237,16 +237,24 @@ do_standalones() {
 		/storage/.config/aethersx2 \
 		/storage/.config/nextui/shared/configs/gzdoom \
 		/storage/.config/nextui/shared/Pico-8-native \
-		/storage/.config/nextui/${plat}/wine
+		/storage/.config/nextui/${plat}/wine \
+		/storage/.config/nextui/${plat}/wine-prefix.ext4
 	do
 		[ -e "$p" ] || continue
 		printf '%s\n' "$p" >> /tmp/zlyme-sa.list
 	done
 	n=$(wc -l < /tmp/zlyme-sa.list | tr -d ' ')
 	if [ "$DRY" = 0 ]; then
-		while IFS= read -r p; do
-			rm -rf "$p"
-		done < /tmp/zlyme-sa.list
+		if [ -x /usr/sbin/zlyme-wine-prefix ]; then
+			/usr/sbin/zlyme-wine-prefix cleanup || true
+		fi
+		if grep -F ' /run/zlyme-wine/prefix ' /proc/mounts >/dev/null 2>&1; then
+			echo "wine prefix still mounted; not removing it" >&2
+		else
+			while IFS= read -r p; do
+				rm -rf "$p"
+			done < /tmp/zlyme-sa.list
+		fi
 	fi
 	printf '%s\n' "$n"
 	if [ "$n" -gt 0 ]; then

@@ -5,11 +5,14 @@ ROM="$1"
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
-export WINEPREFIX="${WINEPREFIX:-$USERDATA_PATH/wine}"
-mkdir -p "$WINEPREFIX"
 cd "$HOME"
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
-exec wine "$ROM"
+# Prefix mount is undone by nextui-session. This script is replaced by
+# exec, and MENU+START can kill the group before an EXIT trap runs.
+prefix=$(zlyme-wine-prefix mount) || exit $?
+export WINEPREFIX="$prefix"
+unset DISPLAY
+exec zlyme-weston-run wine "$ROM"

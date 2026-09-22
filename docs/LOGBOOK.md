@@ -19,6 +19,57 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 1 Weston compatibility
+
+Normal graphics stay NextUI to direct DRM/KMS. There is no permanent compositor.
+
+Zlyme's own Weston is application-scoped. The native tracer rendered a client and returned to NextUI repeatedly, on both Panfrost/Mesa and libmali.
+
+On Panfrost, `card0` is the Rockchip display and `renderD128` is the Panfrost render node. Forcing `MESA_LOADER_DRIVER_OVERRIDE=panfrost` breaks that split, so it stays unset.
+
+PortMaster Alex the Allegator 2 was the X11 tracer. It uses WestonPack and Xwayland. The stock Crusty path works on libmali. On Panfrost, only `drm gl kiosk system` was changed: no Crusty, system Wayland and GLESv2 for the compositor, and the pack's `mesa_x11_stub` kept private to Xwayland. Other WestonPack modes were not claimed. Alex was visible, controls worked, and both a normal exit and MENU+START returned to NextUI on both GPU stacks. The session, not the pak, removes `/tmp/weston` because MENU+START kills the pak group. No Weston, `seatd`, or Xwayland process is left behind.
+
+Wine is Kron4ek 11 amd64 under Box64, using `winewayland.drv` and Zlyme's temporary Weston. `libxkbregistry.so.0` is enabled. Wine does not use Xwayland or WestonPack. `/storage` is exFAT and cannot hold Wine's prefix symlinks, which is why a prefix there failed to load `kernel32.dll`. A tmpfs prefix was too small. The prefix is a 1 GiB ext4 image at `/storage/.config/nextui/<platform>/wine-prefix.ext4`, loop-mounted at `/run/zlyme-wine/prefix` only while Wine runs. exFAT allocates the whole file. A finished prefix used about 612 MiB. Session cleanup stops that prefix's wineserver, unmounts, and detaches only the owned loop. PuTTY was visible on Panfrost and libmali. Normal exit, a second launch, and MENU+START all returned to NextUI on both stacks.
+
+Wine is an advanced compatibility runtime, not a promise that an arbitrary Windows executable is drop-and-run. Phase 1 does not install Mono or Gecko, does not run Winetricks, and does not keep per-game bottles. A global `WINEDLLOVERRIDES=mscoree,mshtml=` was tried on a card copy of `WINE.pak` and rejected because it changes every Windows program. `wine wineboot -u` under Weston exited 137 with the wineserver still running, so that was not adopted as an automatic bootstrap.
+
+The hardware runs used that card-side launcher. The final source removes the override. The user did not ask for another PuTTY run after that deletion. Source build of this tree is `output/images/zlyme-my355-20260922-f5fe1c022eba-dirty.tar` (sha256 `5a627c316d9e530f29296832d668d65f1b599cac9c8d0517ab59c123d988ebc1`). Its rootfs contains this launcher with no Mono/Gecko override. That image was not run on the Flip.
+
+## 2026-09-22 — Wine graphical smoke on native Weston
+
+`/storage` stays exFAT. Wine's prefix is a 1 GiB ext4 image,
+`/storage/.config/nextui/<platform>/wine-prefix.ext4`, loop-mounted
+at `/run/zlyme-wine/prefix` only while a Windows pak runs. exFAT
+stores the whole file. A finished prefix used about 612 MiB. Symlinks
+in that ext4 image are what let `kernel32.dll` load. `c0000135` was
+the missing symlink, not a bad loader path.
+
+`WINE.pak` mounts that image, unsets `DISPLAY`, and runs
+`zlyme-weston-run wine "$ROM"`. Kron4ek Wine 11.0 then uses
+`winewayland.drv`. `libxkbregistry.so.0` comes from libxkbcommon built
+with `-Denable-xkbregistry=true` and `-Denable-x11=false`. There is no
+Xwayland and no WestonPack. `nextui-session` unmounts the prefix after
+the pak returns, including MENU+START. The wineserver is outside the
+pak group, so cleanup sends `wineserver -k` for that prefix only.
+
+Installed image
+`output/images/zlyme-my355-20260922-f5fe1c022eba-dirty.tar` does not
+contain a later card-only edit that exported
+`WINEDLLOVERRIDES=mscoree,mshtml=` for every launch. That export was
+removed. It would have disabled Mono and Gecko for every Windows
+program, not only for first-time setup.
+
+A fresh ext4 prefix, under `zlyme-weston-run` with that override set
+only for the boot command, ran `wine wineboot -u`. No Mono or Gecko
+installer text appeared. `kernel32.dll` and `system.reg` were written,
+and the Wayland driver initialized. The command still exited 137
+(`Killed`). `wineserver`, `services.exe`, and `explorer.exe` were
+still running afterward. A following `wine cmd /c exit` without the
+override also exited 137. That is not a completed bootstrap, so no
+marker was added and no new image was built. The saved prefix's
+`DllOverrides` section is empty. Final exact-image validation is not
+done. Phase 1 is not marked complete.
+
 ## 2026-09-22 — PortMaster ESUDO prefix for the Panfrost Weston path
 
 `pm_platform_helper()` is not the WestonPack lifecycle. In

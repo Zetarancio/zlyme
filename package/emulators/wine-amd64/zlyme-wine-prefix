@@ -1,0 +1,211 @@
+#!/bin/sh
+# Wine prefix on an ext4 image stored on the exFAT card.
+# mount prints the prefix directory. cleanup releases only this image.
+#
+# exFAT cannot store the symlinks Wine puts in a prefix, and /tmp is too
+# small for wineboot. The image file is the persistent object. The loop
+# device and mount exist only while Wine is running.
+
+set -u
+
+STATE=/run/zlyme-wine
+MNT=$STATE/prefix
+# Measured after a finished wineboot, then rounded up. exFAT stores the
+# whole apparent size (a sparse file does not stay sparse), so this is
+# the card allocation as well as the filesystem size.
+SIZE_MIB=1024
+
+log() {
+	echo "zlyme-wine-prefix: $*" >&2
+}
+
+platform() {
+	plat=my355
+	if [ -r /usr/share/zlyme/device.conf ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/zlyme/device.conf
+		plat=${ZLYME_NEXTUI_PLATFORM:-my355}
+	fi
+	printf '%s' "$plat"
+}
+
+backing_file() {
+	printf '%s\n' "/storage/.config/nextui/$(platform)/wine-prefix.ext4"
+}
+
+mounted_at() {
+	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts
+}
+
+backing_of() {
+	dev=$1
+	name=${dev#/dev/}
+	bf=/sys/block/$name/loop/backing_file
+	if [ -r "$bf" ]; then
+		tr -d '\n' < "$bf"
+		return 0
+	fi
+	return 1
+}
+
+# Stop the wineserver that belongs to this prefix, then wait until the
+# mount can go. MENU+START can leave wineserver outside the pak group.
+quiesce() {
+	i=0
+	if [ -x /usr/bin/wineserver ]; then
+		WINEPREFIX=$MNT /usr/bin/wineserver -k >/dev/null 2>&1 || true
+	fi
+	while mounted_at "$MNT"; do
+		if umount "$MNT" 2>/dev/null; then
+			return 0
+		fi
+		i=$((i + 1))
+		if [ "$i" -ge 20 ]; then
+			return 1
+		fi
+		sleep 0.1
+	done
+	return 0
+}
+
+holders() {
+	log "prefix is busy:"
+	for d in /proc/[0-9]*; do
+		pid=${d#/proc/}
+		case "$pid" in
+			*[!0-9]*) continue ;;
+		esac
+		cwd=$(readlink "$d/cwd" 2>/dev/null || true)
+		exe=$(readlink "$d/exe" 2>/dev/null || true)
+		root=$(readlink "$d/root" 2>/dev/null || true)
+		case "$cwd:$exe:$root" in
+			*"$MNT"*)
+				cmd=$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null || true)
+				log "pid $pid $cmd"
+				;;
+		esac
+	done
+}
+
+detach_owned() {
+	img=$1
+	dev=$2
+	[ -n "$dev" ] || return 0
+	[ -b "$dev" ] || return 0
+	got=$(backing_of "$dev" 2>/dev/null || true)
+	if [ "$got" != "$img" ]; then
+		log "not detaching $dev (backing ${got:-unknown})"
+		return 1
+	fi
+	losetup -d "$dev"
+}
+
+cleanup_cmd() {
+	img=$(backing_file)
+	dev=""
+	if [ -r "$STATE/loop" ]; then
+		dev=$(tr -d ' \t\r\n' < "$STATE/loop")
+	fi
+	if mounted_at "$MNT"; then
+		if ! quiesce; then
+			holders
+			return 1
+		fi
+	fi
+	if [ -z "$dev" ] && mounted_at "$MNT"; then
+		return 1
+	fi
+	# Mount source is the loop we just released. If state was lost,
+	# only a loop whose backing file is this image is ours.
+	if [ -z "$dev" ]; then
+		for bf in /sys/block/loop*/loop/backing_file; do
+			[ -r "$bf" ] || continue
+			got=$(tr -d '\n' < "$bf")
+			if [ "$got" = "$img" ]; then
+				name=${bf#/sys/block/}
+				name=${name%/loop/backing_file}
+				dev=/dev/$name
+				break
+			fi
+		done
+	fi
+	if [ -n "$dev" ]; then
+		detach_owned "$img" "$dev" || return 1
+	fi
+	rm -rf "$STATE"
+	return 0
+}
+
+fs_clean() {
+	dev=$1
+	state=$(tune2fs -l "$dev" 2>/dev/null | awk -F: '/^Filesystem state:/ { gsub(/^[ \t]+/, "", $2); print $2; exit }')
+	[ "$state" = "clean" ]
+}
+
+attach() {
+	img=$1
+	dev=$(losetup -f) || return 1
+	losetup "$dev" "$img" || return 1
+	mkdir -p "$STATE"
+	printf '%s\n' "$dev" > "$STATE/loop"
+	printf '%s\n' "$img" > "$STATE/backing"
+	printf '%s\n' "$dev"
+}
+
+mount_cmd() {
+	img=$(backing_file)
+	if mounted_at "$MNT"; then
+		printf '%s\n' "$MNT"
+		return 0
+	fi
+	mkdir -p "$(dirname "$img")" "$STATE"
+	if [ ! -f "$img" ]; then
+		avail=$(df -k /storage | awk 'NR==2 { print $4 }')
+		need=$((SIZE_MIB * 1024 + 16384))
+		if [ -z "$avail" ] || [ "$avail" -lt "$need" ]; then
+			log "not enough space on /storage for a ${SIZE_MIB} MiB Wine prefix"
+			return 1
+		fi
+		if ! dd if=/dev/zero of="$img" bs=1M count="$SIZE_MIB"; then
+			rm -f "$img"
+			log "could not allocate $img"
+			return 1
+		fi
+		if ! mkfs.ext4 -F -m 0 -L zlyme-wine "$img" >/dev/null; then
+			rm -f "$img"
+			log "could not create ext4 on $img"
+			return 1
+		fi
+	fi
+	dev=$(attach "$img") || {
+		log "could not attach $img"
+		cleanup_cmd || true
+		return 1
+	}
+	if ! fs_clean "$dev"; then
+		e2fsck -p "$dev" >/dev/null 2>&1
+		st=$?
+		# 0 = clean, 1 = corrected. Higher means the image is not usable.
+		if [ "$st" -gt 1 ]; then
+			log "fsck failed for $img"
+			cleanup_cmd || true
+			return 1
+		fi
+	fi
+	mkdir -p "$MNT"
+	if ! mount -t ext4 "$dev" "$MNT"; then
+		log "could not mount $img"
+		cleanup_cmd || true
+		return 1
+	fi
+	printf '%s\n' "$MNT"
+}
+
+case "${1:-}" in
+	mount) mount_cmd ;;
+	cleanup) cleanup_cmd ;;
+	*)
+		log "usage: zlyme-wine-prefix mount|cleanup"
+		exit 2
+		;;
+esac

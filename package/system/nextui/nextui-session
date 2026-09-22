@@ -329,6 +329,21 @@ portmaster_cleanup() {
 	/usr/sbin/zlyme-portmaster-cleanup || true
 }
 
+# WINE.pak execs zlyme-weston-run, which stays in this pak group.
+# wineserver can still outlive the group. The prefix helper is the
+# unmount path; it does not share PortMaster's /tmp/weston cleanup.
+wine_pak_cmd() {
+	case "$1" in
+		*WINE.pak/launch.sh*) return 0 ;;
+	esac
+	return 1
+}
+
+wine_prefix_cleanup() {
+	[ -x /usr/sbin/zlyme-wine-prefix ] || return 0
+	/usr/sbin/zlyme-wine-prefix cleanup || true
+}
+
 # setsid so MENU+Start can SIGTERM the pak group. Arm the helper before
 # any BlueZ work so a hung bluetoothctl cannot leave the panel stuck.
 run_pak_cmd() {
@@ -338,6 +353,9 @@ run_pak_cmd() {
 	esac
 	if ports_pak_cmd "$1"; then
 		portmaster_cleanup
+	fi
+	if wine_pak_cmd "$1"; then
+		wine_prefix_cleanup
 	fi
 	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
 		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" &
@@ -377,6 +395,9 @@ run_pak_cmd() {
 	fi
 	if ports_pak_cmd "$1"; then
 		portmaster_cleanup
+	fi
+	if wine_pak_cmd "$1"; then
+		wine_prefix_cleanup
 	fi
 }
 
