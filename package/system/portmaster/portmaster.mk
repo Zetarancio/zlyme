@@ -35,9 +35,20 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 	fi
 	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSans.tar.xz ]; then \
 		tar -C $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources \
-			-xf $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSans.tar.xz \
-			|| true; \
+			-xf $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSans.tar.xz; \
 	fi
+	# funcs.txt extracts NotoSans.tar.xz, copies every .ttf into resources,
+	# then deletes the archive and resources/do_init. Do that here so the
+	# read-only image does not try it again on the device.
+	if [ ! -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSansJP-Regular.ttf ]; then \
+		echo "portmaster: NotoSansJP-Regular.ttf missing after extract" >&2; \
+		exit 1; \
+	fi
+	rm -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/NotoSans.tar.xz
+	mkdir -p $(TARGET_DIR)/usr/share/portmaster/PortMaster/resources
+	cp -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/resources/*.ttf \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/resources/
+	rm -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/resources/do_init
 	if [ -f $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/harbourmaster/hardware.py ]; then \
 		python3 $(PORTMASTER_PKGDIR)/patch-hardware.py \
 			$(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/harbourmaster/hardware.py; \
@@ -77,6 +88,18 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 			$(TARGET_DIR)/usr/config/PortMaster/gamecontrollerdb.txt; \
 	fi
 	: > $(TARGET_DIR)/usr/config/PortMaster/mapper.txt
+	# aarch64 helpers ports exec directly. Leave foreign-arch copies and
+	# sourced text alone. libs is only an empty placeholder in the zip;
+	# ports and harbourmaster must share one writable runtime directory.
+	chmod 0755 \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/gptokeyb \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/gptokeyb2 \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/harbourmaster \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/oga_controls \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/tasksetter
+	rm -rf $(TARGET_DIR)/usr/share/portmaster/PortMaster/libs
+	ln -sfn /storage/Roms/.portmaster/PortMaster/libs \
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/libs
 endef
 
 $(eval $(generic-package))

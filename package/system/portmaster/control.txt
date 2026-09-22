@@ -23,6 +23,27 @@ if [ -z "${controlfolder:-}" ] || [ ! -d "$controlfolder" ]; then
 fi
 export controlfolder
 
+# HarbourMaster sees /opt/system/Tools and otherwise picks /roms/tools.
+# These are the same paths portmaster-launch uses. libs in this tree is
+# a symlink to $HM_TOOLS_DIR/PortMaster/libs, so a port's
+# $controlfolder/libs/<runtime> is the file runtime_check installs.
+if [ -z "${HM_TOOLS_DIR:-}" ]; then
+	HM_TOOLS_DIR=/storage/Roms/.portmaster
+fi
+export HM_TOOLS_DIR
+if [ -z "${HM_PORTS_DIR:-}" ]; then
+	HM_PORTS_DIR="/storage/Roms/Ports (PORTS)"
+	if [ ! -d "$HM_PORTS_DIR" ] && [ -d /storage/Roms/ports ]; then
+		HM_PORTS_DIR=/storage/Roms/ports
+	fi
+fi
+export HM_PORTS_DIR
+if [ -z "${HM_SCRIPTS_DIR:-}" ]; then
+	HM_SCRIPTS_DIR=$HM_PORTS_DIR
+fi
+export HM_SCRIPTS_DIR
+mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
+
 ESUDO=""
 ESUDOKILL="-1"
 ESUDOKILL2="-1"

@@ -77,6 +77,36 @@ success. Output remains `/tmp/zlyme-weston-client.log`.
 
 Phase 1 is not complete. PortMaster, Xwayland, and Wine were not started.
 
+## 2026-09-22 — PortMaster runtime store for unmodified ports
+
+Alex the Allegator 2 failed on both GPU stacks before Weston started.
+The port looks for `weston_pkg_0.2.squashfs` under
+`/opt/system/Tools/PortMaster/libs`, which is the read-only image.
+The file the GUI installed is
+`/storage/Roms/.portmaster/PortMaster/libs/weston_pkg_0.2.squashfs`.
+Mounting that squashfs by hand works, including an executable
+`westonwrap.sh`. HarbourMaster, with no `HM_*` set, then tried to
+create `/roms/tools` on the read-only root. Sourcing `funcs.txt` also
+tried to unpack fonts and delete `do_init` inside the image, and
+`gptokeyb` was not executable.
+
+`control.txt` and `portmaster-launch` now export
+`HM_TOOLS_DIR=/storage/Roms/.portmaster` and the Ports directory
+(`/storage/Roms/Ports (PORTS)`, or `/storage/Roms/ports` when that is
+the one that exists) unless those variables are already set.
+`PortMaster/libs` in the image is a symlink to
+`/storage/Roms/.portmaster/PortMaster/libs`. The packaged `libs`
+directory only contained `.gitkeep`. `runtime_check` writes into that
+same directory, so a fresh card and an existing runtime are the same
+path a port reads. The build extracts Noto Sans, copies the `.ttf`
+files into `resources`, and removes `NotoSans.tar.xz` and
+`resources/do_init`. `gptokeyb`, `gptokeyb2`, `harbourmaster`,
+`oga_controls`, and `tasksetter` are executable.
+
+Hardware revalidation is still required:
+NextUI → Ports → Alex the Allegator 2 → WestonPack/Xwayland → game →
+cleanup → NextUI, on libmali and then Panfrost. Phase 1 is not complete.
+
 ## 2026-09-22 — NextUI GLES context on Panfrost
 
 Panfrost's kernel driver, Mesa EGL/GBM, and the Mesa Wayland platform

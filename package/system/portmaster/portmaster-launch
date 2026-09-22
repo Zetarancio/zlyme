@@ -110,14 +110,23 @@ export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
 # harbourmaster defaults to /roms/ports (RO squashfs). Zlyme ROMs live here.
-ports_dir="/storage/Roms/Ports (PORTS)"
-if [ ! -d "$ports_dir" ] && [ -d /storage/Roms/ports ]; then
-	ports_dir=/storage/Roms/ports
+# Same selection as control.txt. An explicit HM_* from the caller wins.
+if [ -z "${HM_TOOLS_DIR:-}" ]; then
+	HM_TOOLS_DIR=/storage/Roms/.portmaster
+	export HM_TOOLS_DIR
 fi
-mkdir -p "$ports_dir" /storage/Roms/.portmaster/PortMaster
-export HM_PORTS_DIR="$ports_dir"
-export HM_SCRIPTS_DIR="$ports_dir"
-export HM_TOOLS_DIR=/storage/Roms/.portmaster
+if [ -z "${HM_PORTS_DIR:-}" ]; then
+	HM_PORTS_DIR="/storage/Roms/Ports (PORTS)"
+	if [ ! -d "$HM_PORTS_DIR" ] && [ -d /storage/Roms/ports ]; then
+		HM_PORTS_DIR=/storage/Roms/ports
+	fi
+	export HM_PORTS_DIR
+fi
+if [ -z "${HM_SCRIPTS_DIR:-}" ]; then
+	HM_SCRIPTS_DIR=$HM_PORTS_DIR
+	export HM_SCRIPTS_DIR
+fi
+mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
 seed_zlyme_theme
 # ROCKNIX first_run copies /storage/.config/PortMaster/control.txt.
 # exFAT treats that name the same as portmaster, so HOME stays elsewhere.
