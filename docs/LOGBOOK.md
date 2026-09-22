@@ -19,6 +19,31 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-22 — Phase 1 Weston tracer built, not yet run on the Flip
+
+Chose Buildroot Weston 14.0.2 (MIT) with the DRM backend and kiosk shell.
+No Xwayland, no desktop shell, no boot service. PortMaster's
+`weston_pkg_0.2.squashfs` stays a runtime a port downloads; it is not in
+the image. Reasoning is in `docs/research/weston.md`.
+
+`zlyme-weston-run` drops DRM master, starts `seatd` and Weston, runs one
+client, then kills both. Tools → Weston calls `zlyme-weston-test`, which
+shows `weston-simple-egl` for three seconds and returns 0 so NextUI
+restarts. RetroArch and other KMSDRM launches are unchanged.
+
+`./build.sh --config zlyme_my355_defconfig` then `nextui-rebuild` and
+another image build. Rootfs went from about 621M to 623M
+(652926976 bytes). Update tar
+`output/images/zlyme-my355-20260922-9cdca4cbd556.tar`. The squashfs
+contains `weston`, `weston-simple-egl`, `zlyme-weston-run`, and
+`Tools/Weston.pak`. No Weston init script.
+
+The Flip at `192.168.0.108` did not answer after that image was packed,
+so the NextUI → client → NextUI cycle, the second GPU stack, a
+Weston PortMaster title, and Wine were not run. Phase 1 is not complete
+until that cycle is repeated on the device. Phase 6 deep-power config
+was not touched.
+
 ## 2026-09-22 — Phase 0 smoke on the etched card
 
 Etched `output/images/zlyme.img` from the clean product build (kernel
