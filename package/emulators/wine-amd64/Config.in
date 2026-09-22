@@ -4,6 +4,7 @@ config BR2_PACKAGE_WINE_AMD64
 	select BR2_PACKAGE_BOX64
 	select BR2_PACKAGE_LIBXKBCOMMON
 	select BR2_PACKAGE_LIBXML2
+	select BR2_PACKAGE_E2FSPROGS
 	help
 	  Kron4ek Wine 11.0 amd64 build, launched through box64.
 	  Not Buildroot's native wine (that symbol is BR2_PACKAGE_WINE).
