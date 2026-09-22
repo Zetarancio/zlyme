@@ -315,6 +315,20 @@ bt_stop_scan() {
 	pkill -f 'bluetoothctl scan' 2>/dev/null || true
 }
 
+# PORTS.pak execs the port, so it cannot unmount WestonPack after
+# MENU+Start kills that process group. This session is outside the group.
+ports_pak_cmd() {
+	case "$1" in
+		*PORTS.pak/launch.sh*) return 0 ;;
+	esac
+	return 1
+}
+
+portmaster_cleanup() {
+	[ -x /usr/sbin/zlyme-portmaster-cleanup ] || return 0
+	/usr/sbin/zlyme-portmaster-cleanup || true
+}
+
 # setsid so MENU+Start can SIGTERM the pak group. Arm the helper before
 # any BlueZ work so a hung bluetoothctl cannot leave the panel stuck.
 run_pak_cmd() {
@@ -322,6 +336,9 @@ run_pak_cmd() {
 	case "$1" in
 		*'/Tools/'*|*'settings.elf'*) skip_bt=1 ;;
 	esac
+	if ports_pak_cmd "$1"; then
+		portmaster_cleanup
+	fi
 	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
 		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" &
 	else
@@ -357,6 +374,9 @@ run_pak_cmd() {
 	if [ -n "$_hk" ]; then
 		kill "$_hk" 2>/dev/null || true
 		wait "$_hk" 2>/dev/null || true
+	fi
+	if ports_pak_cmd "$1"; then
+		portmaster_cleanup
 	fi
 }
 

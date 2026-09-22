@@ -77,6 +77,22 @@ success. Output remains `/tmp/zlyme-weston-client.log`.
 
 Phase 1 is not complete. PortMaster, Xwayland, and Wine were not started.
 
+## 2026-09-22 — PortMaster WestonPack cleanup is owned by the session
+
+`PORTS.pak` execs the port, and MENU+START kills that process group, so
+the port cannot unmount `/tmp/weston`. `nextui-session` now calls
+`zlyme-portmaster-cleanup` before and after a `PORTS.pak` launch. The
+helper only signals processes whose cwd, exe, maps, or fd is under
+`/tmp/weston`, waits up to 6s after SIGTERM, then SIGKILL, then
+`umount`. No lazy unmount.
+
+On libmali, Alex reached `wp_weston`, Xwayland, and `alex2.aarch64`
+with `/tmp/weston` mounted. After the game process exited, and again
+after MENU+START, the mount and those holders were gone and NextUI was
+running. On Panfrost the launch still fails inside Crusty, and
+MENU+START after `Could not create SDL Window` left no `/tmp/weston`
+and NextUI running. Phase 1 is not complete.
+
 ## 2026-09-22 — PortMaster runtime store for unmodified ports
 
 Alex the Allegator 2 failed on both GPU stacks before Weston started.

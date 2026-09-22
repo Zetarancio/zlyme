@@ -1,0 +1,195 @@
+#!/bin/sh
+# Drop a PortMaster WestonPack left at /tmp/weston.
+# nextui-session calls this from outside the pak process group, including
+# after MENU+START has already killed that group. Idempotent.
+#
+# A stranded wp_weston has ignored SIGTERM for at least four seconds, so
+# the TERM grace is longer than the hotkey helper's 1.5s.
+
+set -u
+
+MNT=/tmp/weston
+# 6.0s of observable polls. The live holder was still alive after 4.0s of TERM.
+TERM_POLLS=60
+# After SIGKILL, wait until the task is gone.
+KILL_POLLS=20
+# Ordinary umount retries while the mount is still busy.
+UMOUNT_POLLS=20
+
+log() {
+	echo "zlyme-portmaster-cleanup: $*" >&2
+}
+
+under_weston() {
+	case "$1" in
+		"$MNT"|"$MNT"/*) return 0 ;;
+	esac
+	return 1
+}
+
+mount_present() {
+	awk -v m="$MNT" '
+		$2 == m || index($2, m "/") == 1 { found = 1 }
+		END { exit found ? 0 : 1 }
+	' /proc/mounts
+}
+
+# Rewrite $list with one PID per line.
+# $1 = light (cwd/exe), maps (also maps), or deep (also fd symlinks).
+collect_holders() {
+	mode=$1
+	: > "$list"
+	for d in /proc/[0-9]*; do
+		pid=${d#/proc/}
+		case "$pid" in
+			*[!0-9]*) continue ;;
+		esac
+		[ "$pid" -eq "$$" ] && continue
+		[ "$pid" -eq 1 ] && continue
+		cwd=$(readlink "$d/cwd" 2>/dev/null || true)
+		exe=$(readlink "$d/exe" 2>/dev/null || true)
+		if under_weston "$cwd" || under_weston "$exe"; then
+			echo "$pid" >> "$list"
+			continue
+		fi
+		[ "$mode" = light ] && continue
+		if [ -r "$d/maps" ] && grep -Eq " ${MNT}(/| |$)" "$d/maps" 2>/dev/null; then
+			echo "$pid" >> "$list"
+			continue
+		fi
+		[ "$mode" = deep ] || continue
+		for f in "$d"/fd/*; do
+			[ -L "$f" ] || continue
+			target=$(readlink "$f" 2>/dev/null || true)
+			if under_weston "$target"; then
+				echo "$pid" >> "$list"
+				break
+			fi
+		done
+	done
+	sort -u "$list" > "$list.sorted"
+	mv "$list.sorted" "$list"
+}
+
+have_holders() {
+	[ -s "$list" ]
+}
+
+signal_holders() {
+	sig=$1
+	[ -s "$list" ] || return 0
+	while read -r pid; do
+		[ -n "$pid" ] || continue
+		kill "-$sig" "$pid" 2>/dev/null || true
+	done < "$list"
+}
+
+# Return 0 when none of the already listed PIDs still reference the runtime.
+# Do not rescan every process; that made the grace last minutes.
+wait_holders_gone() {
+	n=0
+	max=$1
+	while [ "$n" -lt "$max" ]; do
+		alive=0
+		while read -r pid; do
+			[ -n "$pid" ] || continue
+			[ -d "/proc/$pid" ] || continue
+			cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null || true)
+			exe=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+			if under_weston "$cwd" || under_weston "$exe"; then
+				alive=1
+				break
+			fi
+			if [ -r "/proc/$pid/maps" ] && grep -Eq " ${MNT}(/| |$)" "/proc/$pid/maps" 2>/dev/null; then
+				alive=1
+				break
+			fi
+		done < "$list"
+		[ "$alive" = 0 ] && return 0
+		n=$((n + 1))
+		sleep 0.1
+	done
+	return 1
+}
+
+unmount_children() {
+	# Deepest path first so a file bind under /tmp/weston goes before the parent.
+	awk -v p="$MNT/" '
+		index($2, p) == 1 { print length($2), $2 }
+	' /proc/mounts | sort -nr | while read -r _len path; do
+		[ -n "$path" ] || continue
+		if umount "$path" 2>/dev/null; then
+			log "unmounted $path"
+		else
+			log "umount $path failed"
+		fi
+	done
+}
+
+unmount_parent() {
+	n=0
+	while [ "$n" -lt "$UMOUNT_POLLS" ]; do
+		if ! mount_present; then
+			return 0
+		fi
+		# Children may still be mounted after the parent check matches them.
+		unmount_children
+		if ! awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts; then
+			return 0
+		fi
+		if umount "$MNT" 2>/dev/null; then
+			return 0
+		fi
+		collect_holders maps
+		if ! have_holders; then
+			collect_holders deep
+		fi
+		if have_holders; then
+			log "mount busy; killing remaining holders"
+			signal_holders KILL
+			wait_holders_gone "$KILL_POLLS" || true
+		fi
+		n=$((n + 1))
+		sleep 0.1
+	done
+	if awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts; then
+		log "umount $MNT still busy"
+		return 1
+	fi
+	return 0
+}
+
+list=$(mktemp) || {
+	log "mktemp failed"
+	exit 1
+}
+trap 'rm -f "$list"' EXIT INT TERM
+
+if ! mount_present; then
+	collect_holders light
+	if ! have_holders; then
+		exit 0
+	fi
+fi
+
+collect_holders maps
+if have_holders; then
+	signal_holders TERM
+	if ! wait_holders_gone "$TERM_POLLS"; then
+		collect_holders maps
+		signal_holders KILL
+		if ! wait_holders_gone "$KILL_POLLS"; then
+			log "holders still present after SIGKILL"
+		fi
+	fi
+fi
+
+if ! unmount_parent; then
+	exit 1
+fi
+
+if mount_present; then
+	log "$MNT is still mounted"
+	exit 1
+fi
+exit 0
