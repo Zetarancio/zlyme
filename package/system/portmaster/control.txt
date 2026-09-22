@@ -44,7 +44,8 @@ fi
 export HM_SCRIPTS_DIR
 mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
 
-ESUDO=""
+# Prefix only. ESUDOKILL / ESUDOKILL2 stay the gptokeyb signal arguments.
+ESUDO=/usr/sbin/zlyme-portmaster-exec
 ESUDOKILL="-1"
 ESUDOKILL2="-1"
 export ESUDO ESUDOKILL ESUDOKILL2

@@ -1,0 +1,311 @@
+#!/bin/sh
+# PortMaster command prefix. control.txt sets ESUDO to this path.
+#
+# Pass every command through unchanged, except a mount or umount whose
+# target is exactly /tmp/weston. That is the WestonPack runtime lifecycle
+# PortMaster launchers already share. This is not a sudo replacement and
+# it does not intercept wp_weston, westonwrap.sh, or other graphics calls.
+#
+# After a successful /tmp/weston mount, libmali / mali / mali_kbase do
+# nothing. Any other GPU selection (the same default as gpudriver) may
+# bind a Panfrost-only wrapper over the mounted westonwrap.sh. The mounted
+# runtime stays the source of truth. The wrapper is not shipped here:
+# weston_pkg_0.2 carries no license, and binarycounter/Westonpack does not
+# contain this script. An unknown wrapper is left untouched, the mount is
+# removed, and the command fails.
+
+set -u
+
+WESTON=/tmp/weston
+WRAP=$WESTON/westonwrap.sh
+STAGE=/run/zlyme-portmaster
+STAGED=$STAGE/westonwrap.sh
+# weston_pkg_0.2, Westonwrap 0.2.7.1, 18341 bytes, tested on the Flip.
+KNOWN_SHA=b1f879c4099c8aa8513ed04e2cd26ef53f457745a17310304ae414733626a2bc
+KNOWN_VER='echo "Westonwrap 0.2.7.1"'
+
+log() {
+	echo "zlyme-portmaster-exec: $*" >&2
+}
+
+mounted_at() {
+	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts
+}
+
+mount_count() {
+	awk -v p="$1" '$2 == p { c++ } END { print c + 0 }' /proc/mounts
+}
+
+# Same names gpudriver treats as the Mali stack. Empty means libmali.
+gpu_is_mali() {
+	gpu=""
+	if [ -r /storage/.config/zlyme/gpu ]; then
+		gpu=$(tr -d ' \t\r\n' < /storage/.config/zlyme/gpu || true)
+	fi
+	[ -n "$gpu" ] || gpu=libmali
+	case "$gpu" in
+		libmali|mali|mali_kbase) return 0 ;;
+	esac
+	return 1
+}
+
+# Two-operand mount whose destination is exactly /tmp/weston.
+# A one-operand remount is not this case.
+weston_mount_dest() {
+	dest=""
+	n=0
+	for arg in "$@"; do
+		case "$arg" in
+			-*) continue ;;
+		esac
+		dest=$arg
+		n=$((n + 1))
+	done
+	[ "$n" -ge 2 ] && [ "$dest" = "$WESTON" ]
+}
+
+weston_umount_argv() {
+	for arg in "$@"; do
+		[ "$arg" = "$WESTON" ] && return 0
+	done
+	return 1
+}
+
+unmount_wrapper_bind() {
+	if mounted_at "$WRAP"; then
+		command umount "$WRAP"
+		return $?
+	fi
+	return 0
+}
+
+# The mount we just created must not stay up on the stock Panfrost path.
+fail_closed() {
+	log "$1"
+	unmount_wrapper_bind || log "could not unmount $WRAP"
+	if mounted_at "$WESTON"; then
+		command umount "$WESTON" || log "could not unmount $WESTON"
+	fi
+	exit 1
+}
+
+transform_westonwrap() {
+	python3 - "$1" "$2" << 'PY'
+import sys
+
+src_path, dst_path = sys.argv[1], sys.argv[2]
+with open(src_path, "r", encoding="utf-8", newline="") as fh:
+    src = fh.read()
+
+def die(msg):
+    sys.stderr.write("zlyme-portmaster-exec: %s\n" % msg)
+    sys.exit(1)
+
+def replace_once(text, old, new, label):
+    found = text.count(old)
+    if found != 1:
+        die("%s appears %d times" % (label, found))
+    return text.replace(old, new, 1)
+
+ld_line = 'export LD_LIBRARY_PATH="$weston_dir/lib_aarch64:$LD_LIBRARY_PATH"\n'
+drm_pair = (
+    '        export weston_backend="drm --drm-device card0"\n'
+    "        export weston_preload=$weston_dir/lib_aarch64/graphics/crusty_gbm$crustydebug/libcrusty.so\n"
+    "        export weston_backendlib=$weston_dir/lib_aarch64/graphics/crusty_gbm$crustydebug/\n"
+)
+seat_block = (
+    "    pkill -9 seatd\n"
+    '    echo "Starting Seatd"\n'
+    "    LD_PRELOAD=$weston_preload $straceseat ./seatd &\n"
+    "    sleep 0.5\n"
+    "    chmod 777 /run/seatd.sock \n"
+)
+wp_line = (
+    "XWAYLAND_LD_LIBRARY_PATH=$gllib_xwayland "
+    "LD_LIBRARY_PATH=$weston_backendlib:$LD_LIBRARY_PATH "
+    "LD_PRELOAD=$weston_preload CRUSTY_SHOW_CURSOR=0 "
+    "$strace ./wp_weston -c $WESTON_CONFIG -B $weston_backend "
+    "$weston_renderer --shell=$weston_shell -i0  -Swayland-5 --xwayland &\n"
+)
+stub_line = '    gllib_xwayland="$weston_dir/lib_aarch64/graphics/mesa_x11_stub"\n'
+
+for label, needle, expect in (
+    ("version", 'echo "Westonwrap 0.2.7.1"\n', 1),
+    ("library path", ld_line, 1),
+    ("drm crusty pair", drm_pair, 1),
+    ("seatd startup", seat_block, 1),
+    ("wp_weston", wp_line, 1),
+    ("mesa stub", stub_line, 2),
+):
+    found = src.count(needle)
+    if found != expect:
+        die("stock %s appears %d times, expected %d" % (label, found, expect))
+
+ld_new = (
+    ld_line
+    + "\n"
+    + "# Zlyme Panfrost changes only: drm gl kiosk system.\n"
+    + "# Every other invocation keeps the stock Crusty and seatd commands.\n"
+    + "zlyme_panfrost_drm=0\n"
+    + 'if [ "${CFW_NAME:-}" = "Zlyme" ] && [ "$1" = "drm" ] && [ "$2" = "gl" ] && [ "$3" = "kiosk" ] && [ "$4" = "system" ]; then\n'
+    + '\t_zgpu=$(tr -d \' \\t\\r\\n\' < /storage/.config/zlyme/gpu 2>/dev/null || true)\n'
+    + '\t[ -n "$_zgpu" ] || _zgpu=libmali\n'
+    + '\tcase "$_zgpu" in\n'
+    + "\t\tlibmali|mali|mali_kbase) ;;\n"
+    + "\t\t*) zlyme_panfrost_drm=1 ;;\n"
+    + "\tesac\n"
+    + "fi\n"
+    + 'if [ "$zlyme_panfrost_drm" = 1 ]; then\n'
+    + "\tSYS_WAYLAND=$(readlink -f /usr/lib/libwayland-client.so.0)\n"
+    + "\tSYS_GLES=$(readlink -f /usr/lib/libGLESv2.so.2)\n"
+    + '\texport LD_PRELOAD="$SYS_WAYLAND${LD_PRELOAD:+:$LD_PRELOAD}"\n'
+    + '\techo "Zlyme Panfrost: preload $SYS_WAYLAND before findlib"\n'
+    + "fi\n"
+)
+
+drm_new = (
+    '        export weston_backend="drm --drm-device card0"\n'
+    '        if [ "$zlyme_panfrost_drm" = 1 ]; then\n'
+    '            echo "Zlyme Panfrost: drm gl kiosk system without Crusty"\n'
+    '            export weston_preload="$SYS_WAYLAND:$SYS_GLES"\n'
+    "            export weston_backendlib=\n"
+    "            export LIBSEAT_BACKEND=builtin\n"
+    "        else\n"
+    + drm_pair.split("export weston_backend=\"drm --drm-device card0\"\n", 1)[1]
+    + "        fi\n"
+)
+
+seat_new = (
+    "    pkill -9 seatd\n"
+    '    echo "Starting Seatd"\n'
+    '    if [ "$zlyme_panfrost_drm" = 1 ]; then\n'
+    '        echo "Zlyme Panfrost: builtin libseat, no bundled seatd"\n'
+    "    else\n"
+    "    LD_PRELOAD=$weston_preload $straceseat ./seatd &\n"
+    "    sleep 0.5\n"
+    "    chmod 777 /run/seatd.sock \n"
+    "    fi\n"
+)
+
+out = replace_once(src, ld_line, ld_new, "library path")
+out = replace_once(out, drm_pair, drm_new, "drm crusty pair")
+out = replace_once(out, seat_block, seat_new, "seatd startup")
+
+if "MESA_LOADER_DRIVER_OVERRIDE" in out:
+    die("transform introduced MESA_LOADER_DRIVER_OVERRIDE")
+if "libwayland-client.so.0.24.0" in out or "libGLESv2.so.2.0.0" in out:
+    die("transform hardcoded a library version")
+for label, needle, expect in (
+    ("version", 'echo "Westonwrap 0.2.7.1"\n', 1),
+    ("library path", ld_line, 1),
+    ("stock drm crusty commands", "        export weston_preload=$weston_dir/lib_aarch64/graphics/crusty_gbm$crustydebug/libcrusty.so\n        export weston_backendlib=$weston_dir/lib_aarch64/graphics/crusty_gbm$crustydebug/\n", 1),
+    ("stock seatd commands", "    LD_PRELOAD=$weston_preload $straceseat ./seatd &\n    sleep 0.5\n    chmod 777 /run/seatd.sock \n", 1),
+    ("wp_weston", wp_line, 1),
+    ("mesa stub", stub_line, 2),
+    ("panfrost gate", '[ "$1" = "drm" ] && [ "$2" = "gl" ] && [ "$3" = "kiosk" ] && [ "$4" = "system" ]', 1),
+    ("wayland preload", "SYS_WAYLAND=$(readlink -f /usr/lib/libwayland-client.so.0)", 1),
+    ("gles preload", "SYS_GLES=$(readlink -f /usr/lib/libGLESv2.so.2)", 1),
+):
+    found = out.count(needle)
+    if found != expect:
+        die("rewritten %s appears %d times, expected %d" % (label, found, expect))
+
+with open(dst_path, "w", encoding="utf-8", newline="\n") as fh:
+    fh.write(out)
+PY
+}
+
+prepare_panfrost_wrapper() {
+	if ! mounted_at "$WESTON"; then
+		fail_closed "$WESTON is not mounted"
+	fi
+	if [ ! -f "$WRAP" ]; then
+		fail_closed "mounted runtime has no $WRAP"
+	fi
+	if mounted_at "$WRAP"; then
+		# /proc/mounts names this bind as tmpfs, not the staged path.
+		# Replace the one existing bind. Never stack a second one.
+		if [ "$(mount_count "$WRAP")" -ne 1 ]; then
+			fail_closed "multiple mounts on $WRAP"
+		fi
+		if ! command umount "$WRAP"; then
+			fail_closed "could not unmount existing $WRAP bind"
+		fi
+	fi
+	if ! grep -F -x -q "$KNOWN_VER" "$WRAP"; then
+		fail_closed "westonwrap version is not 0.2.7.1; not rewriting it"
+	fi
+	sum=$(sha256sum "$WRAP" 2>/dev/null | awk '{print $1}') || sum=""
+	if [ "$sum" != "$KNOWN_SHA" ]; then
+		fail_closed "westonwrap.sh sha256 ${sum:-unknown} is not supported 0.2.7.1 ($KNOWN_SHA); unmounting $WESTON"
+	fi
+	wl=$(readlink -f /usr/lib/libwayland-client.so.0 2>/dev/null || true)
+	gles=$(readlink -f /usr/lib/libGLESv2.so.2 2>/dev/null || true)
+	if [ -z "$wl" ] || [ ! -e "$wl" ] || [ -z "$gles" ] || [ ! -e "$gles" ]; then
+		fail_closed "system libwayland-client.so.0 or libGLESv2.so.2 is missing"
+	fi
+	mkdir -p "$STAGE"
+	tmp=$STAGE/westonwrap.sh.new
+	rm -f "$tmp"
+	if ! transform_westonwrap "$WRAP" "$tmp"; then
+		rm -f "$tmp"
+		fail_closed "refusing to partially rewrite westonwrap.sh"
+	fi
+	if ! bash -n "$tmp"; then
+		rm -f "$tmp"
+		fail_closed "rewritten westonwrap.sh failed bash -n"
+	fi
+	chmod 0755 "$tmp"
+	mv -f "$tmp" "$STAGED"
+	if ! command mount --bind "$STAGED" "$WRAP"; then
+		fail_closed "could not bind $STAGED over $WRAP"
+	fi
+	if [ "$(mount_count "$WRAP")" -ne 1 ]; then
+		fail_closed "westonwrap bind is not a single mount"
+	fi
+	log "prepared Panfrost westonwrap for drm gl kiosk system"
+}
+
+if [ "$#" -lt 1 ]; then
+	log "missing command"
+	exit 127
+fi
+
+cmd=$1
+shift
+
+case "$cmd" in
+	mount)
+		if weston_mount_dest "$@"; then
+			command mount "$@"
+			st=$?
+			if [ "$st" -ne 0 ]; then
+				exit "$st"
+			fi
+			# BusyBox mount stacks a second mount on the same directory.
+			# Peel that one layer instead of hiding the runtime underneath.
+			if [ "$(mount_count "$WESTON")" -gt 1 ]; then
+				command umount "$WESTON" || log "could not unmount stacked $WESTON"
+				log "refusing to stack $WESTON"
+				exit 1
+			fi
+			if gpu_is_mali; then
+				exit 0
+			fi
+			prepare_panfrost_wrapper
+			exit 0
+		fi
+		;;
+	umount)
+		if weston_umount_argv "$@"; then
+			if ! unmount_wrapper_bind; then
+				log "could not unmount westonwrap bind"
+				exit 1
+			fi
+			command umount "$@"
+			exit $?
+		fi
+		;;
+esac
+
+exec "$cmd" "$@"

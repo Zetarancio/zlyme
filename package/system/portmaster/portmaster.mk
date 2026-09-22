@@ -60,6 +60,8 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/portmaster
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-cleanup \
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-cleanup
+	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-exec \
+		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-exec
 	$(INSTALL) -D -m 0644 $(PORTMASTER_PKGDIR)/patch-hardware.py \
 		$(TARGET_DIR)/usr/share/portmaster/patch-hardware.py
 	# pugwash lists extra themes from PortMaster/themes/<name>/theme.json

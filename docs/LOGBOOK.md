@@ -19,6 +19,53 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-22 — PortMaster ESUDO prefix for the Panfrost Weston path
+
+`pm_platform_helper()` is not the WestonPack lifecycle. In
+PortMaster-New `28383a4` (2026-09-21), 72 launchers mount
+`weston_pkg_0.2` with `$ESUDO mount` onto `/tmp/weston` and unmount
+with `$ESUDO umount`. 55 of those launchers never call
+`pm_platform_helper()`. Orbo and X-YZE are in that set. Minecraft's
+launcher only renames a squashfs and does not mount Weston.
+
+`control.txt` now sets `ESUDO=/usr/sbin/zlyme-portmaster-exec`.
+`ESUDOKILL` and `ESUDOKILL2` are unchanged. The prefix execs every
+command as given, except a mount or umount whose target is exactly
+`/tmp/weston`. libmali, mali, and mali_kbase leave that mount alone.
+Any other GPU selection, the same rule as `gpudriver`, may bind a
+rewritten `westonwrap.sh` from `/run/zlyme-portmaster/` over the
+mounted runtime. The mounted script stays the source of truth. The
+tested file is Westonwrap 0.2.7.1, sha256
+`b1f879c4099c8aa8513ed04e2cd26ef53f457745a17310304ae414733626a2bc`.
+The runtime ships no license, so the script is not copied into the
+tree. An unknown hash is not rewritten; the new mount is unmounted
+and the command fails.
+
+The rewrite changes only `drm gl kiosk system` on Zlyme Panfrost:
+system `libwayland-client.so.0` and `libGLESv2.so.2` resolved with
+`readlink -f`, no Crusty preload, no `crusty_gbm` on the compositor
+library path, `LIBSEAT_BACKEND=builtin`, and no bundled `seatd`.
+Xwayland keeps the pack's `mesa_x11_stub` path. Other wrapper modes
+keep the stock Crusty and seatd commands. `mod_Zlyme.txt` does not
+grow a Weston hook. `zlyme-portmaster-cleanup` is still the
+abnormal-exit path.
+
+Dirty test image
+`output/images/zlyme-my355-20260922-eafc97caf537-dirty.tar` was
+installed. The helpers match that rootfs and are not bind-mounted.
+`ESUDO` is the prefix. After both runs, `/tmp/weston` was gone and
+NextUI was running.
+
+On Panfrost the log shows `prepared Panfrost westonwrap`, compositor
+preload of the resolved system `libwayland-client` and `libGLESv2`,
+no `crusty_gbm` on the compositor library path, builtin libseat,
+`card0`, `renderD128`, Mesa, Mali-G52 (Panfrost), and Xwayland on
+`mesa_x11_stub`. On libmali the same log shows the stock Crusty
+preload and ARM EGL, with no Panfrost wrapper preparation. Alex
+exited 0 on both. The panel check was visible, controllable, a
+normal return, and MENU+START, on both stacks. Phase 1 is not
+complete.
+
 ## 2026-09-22 — Phase 1 Weston tracer built, not yet run on the Flip
 
 Chose Buildroot Weston 14.0.2 (MIT) with the DRM backend and kiosk shell.
