@@ -239,6 +239,8 @@ Zlyme does not run a permanent X11 server, Wayland compositor, or desktop enviro
 
 Applications that require a window system may launch an isolated compatibility environment for the duration of that application.
 
+That path is the planned Phase 1 compatibility design. Phase 0 does not ship Weston or WestonPack, and it does not start that stack.
+
 For example:
 
 ```text
@@ -397,7 +399,7 @@ For hardware facts, electrical constraints, DTS history, suspend research, DDR/D
 Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
 ```
 
-The maintained `Zetarancio/distribution` Flip work is a useful known-working implementation reference.
+`Zetarancio/distribution` is the archived historical Miyoo Flip ROCKNIX implementation/evidence. It is not a maintained or current tree.
 
 Zlyme remains authoritative for Zlyme-specific build, runtime, frontend, storage, update, and service behavior.
 

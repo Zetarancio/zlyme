@@ -245,8 +245,11 @@ fi
 # Buildroot keeps output out of the source tree with O=.
 declare -a MAKE=(make "O=/zlyme/output" "BR2_EXTERNAL=/zlyme/src")
 
-# Reapply the defconfig when it is newer than .config, or when there is none.
+# Which defconfig last configured this output tree. mtime alone is not
+# enough: switching --minimal and --config on one tree must reapply even
+# when the other defconfig file is older than .config.
 CONFIG_SRC="${REPO}/configs/${ZLYME_DEFCONFIG}"
+DEFCONFIG_STATE="${ZLYME_OUTPUT}/.zlyme-defconfig"
 
 # A missing defconfig is a typo, not a licence to reuse the last .config.
 if [ ! -f "${CONFIG_SRC}" ]; then
@@ -266,14 +269,23 @@ start_build_log() {
     fi
 }
 
-if [ ! -f "${ZLYME_OUTPUT}/.config" ]; then
+recorded_defconfig=""
+if [ -f "${DEFCONFIG_STATE}" ]; then
+    recorded_defconfig="$(tr -d '[:space:]' < "${DEFCONFIG_STATE}")"
+fi
+need_defconfig=0
+if [ ! -f "${ZLYME_OUTPUT}/.config" ] || [ ! -f "${DEFCONFIG_STATE}" ]; then
+    need_defconfig=1
+elif [ "${recorded_defconfig}" != "${ZLYME_DEFCONFIG}" ]; then
+    need_defconfig=1
+elif [ "${CONFIG_SRC}" -nt "${ZLYME_OUTPUT}/.config" ]; then
+    need_defconfig=1
+fi
+if [ "${need_defconfig}" = 1 ]; then
     say "configuring ${ZLYME_DEFCONFIG}"
     start_build_log
     logged_make "${ZLYME_DEFCONFIG}"
-elif [ -f "${CONFIG_SRC}" ] && [ "${CONFIG_SRC}" -nt "${ZLYME_OUTPUT}/.config" ]; then
-    say "${ZLYME_DEFCONFIG} changed -- reconfiguring"
-    start_build_log
-    logged_make "${ZLYME_DEFCONFIG}"
+    printf '%s\n' "${ZLYME_DEFCONFIG}" > "${DEFCONFIG_STATE}"
 fi
 
 # Every =y in the defconfig must survive kconfig. Buildroot drops unmet

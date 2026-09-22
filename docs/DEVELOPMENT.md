@@ -33,6 +33,8 @@ configs/zlyme_my355_defconfig
 
 `./build.sh` with no `--config` builds the minimal image. That is the bring-up/debug base.
 
+The output tree records the defconfig that configured it in `.zlyme-defconfig`. A later run reapplies the requested defconfig when that record is missing or different, when `.config` is missing, or when the defconfig file is newer than `.config`. `menuconfig` and `savedefconfig` are not wiped when the recorded selection already matches.
+
 `./build.sh --config zlyme_my355_defconfig` is the product image: frontend, emulators, PortMaster, Wine/Box64, and the other services.
 
 Keep shared configuration decisions synchronized deliberately. Do not blindly copy the entire full defconfig over the minimal one.
