@@ -5,9 +5,17 @@ Defconfig names in entries below are the names used that day. They are now `conf
 OS is **Zlyme**, board is **my355**. Image is `zlyme.img`. Storage label `ZLYME`.
 Older entries used a previous product name; treat those as the same tree.
 
-Durable facts go to `NOTES.md`. This stays the running narrative.
-Device serial dumps: `DEVLOGS/` (gitignored). `TODO.md` stays
-gitignored. The rest of `NOTES/` is committed with the tree.
+This file is the chronological engineering log.
+Durable current facts belong in the appropriate canonical documentation:
+
+- `docs/ARCHITECTURE.md` for system architecture and invariants;
+- `docs/OPERATIONS.md` for live-device behavior and recovery;
+- `docs/DEVELOPMENT.md` for build/development policy;
+- `docs/UPSTREAMS.md` for source/repository authority;
+- the Miyoo Flip hardware wiki for hardware, firmware, electrical, protocol, and reverse-engineering facts.
+
+Historical material from the former `NOTES/` tree is preserved under `docs/archive/`.
+Device serial dumps and temporary developer notes remain local/gitignored where documented.
 
 ---
 
@@ -38,7 +46,8 @@ available at volume 40 (cards HDMI and rk817ext), `/storage` exFAT on
 Suspend: `/sys/power/mem_sleep` was `s2idle [deep]`. Set s2idle, armed
 the RTC, `zlyme-radios pre`, then `echo mem`. dmesg shows
 `PM: suspend entry (s2idle)` at 535.25 s and `PM: suspend exit` at
-537.30 s. A deep cycle at 538.77–540.82 s also returned. NextUI's own
+537.30 s. A Linux `mem_sleep=deep` suspend-to-RAM cycle at 538.77–540.82 s also returned successfully.
+This validates the normal Linux deep suspend state exposed through `/sys/power/mem_sleep`; it does **not** mean Roadmap Phase 6's RK3568 BL31/SIP deep-power configuration (`ARMOFF_LOGOFF`, `vdd_logic` power-off policy, etc.) has been enabled or validated. NextUI's own
 log says the platform suspend executable exited 0 and audio was
 reinitialized. Codec sink still available after. Wi-Fi dropped during
 `zlyme-radios pre` and SSH came back after exit.
