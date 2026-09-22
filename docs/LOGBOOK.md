@@ -21,10 +21,13 @@ already applied `zlyme-my355-20260922-837fff5aad39-dirty.tar`
 U-Boot blobs were staged under `/storage/.update/bootloader` and not
 written.
 
-`/tmp/boot-timing`: `rcS-start` 48.96 s, `nextui-first-flip` 56.66 s
-(7.7 s after rcS). `Run /init` is at 1.36 s, so most of the time before
-rcS is the initramfs squashfs swap, not the list. A second
-`nextui-first-flip` at 94.17 s is the session relaunch, not a reboot.
+That boot's `/tmp/boot-timing` was `rcS-start` 48.96 s and
+`nextui-first-flip` 56.66 s. `Run /init` was already at 1.36 s, so the
+gap was the initramfs squashfs swap, not the list.
+
+A later reboot, with resize skipped and no tar queued, is the normal
+framing. Same kernel. `Run /init` 1.36 s, `rcS-start` 3.79 s,
+`nextui-first-flip` **10.90 s** (7.1 s after rcS). `nextui.elf` was up.
 
 Checked over SSH: `nextui-session` up, `retrogame_joypad` plus volume,
 hall, power, and the headphone switch, `zlyme-audio` sink `codec`
