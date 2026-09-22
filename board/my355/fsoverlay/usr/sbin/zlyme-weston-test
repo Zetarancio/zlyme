@@ -1,0 +1,26 @@
+#!/bin/sh
+# Tracer: draw one Weston client, then return 0 so NextUI comes back.
+# weston-simple-egl runs until killed. Three seconds is enough to see
+# it and short enough to repeat.
+
+set -u
+
+if [ -x /usr/bin/weston-simple-egl ]; then
+	client=/usr/bin/weston-simple-egl
+elif [ -x /usr/bin/weston-simple-shm ]; then
+	client=/usr/bin/weston-simple-shm
+else
+	echo "zlyme-weston-test: no weston simple client" >&2
+	exit 1
+fi
+
+/usr/sbin/zlyme-weston-run sh -c '
+	"$1" >/tmp/zlyme-weston-client.log 2>&1 &
+	p=$!
+	sleep 3
+	kill "$p" 2>/dev/null || true
+	wait "$p" 2>/dev/null || true
+	exit 0
+' sh "$client"
+st=$?
+exit "$st"

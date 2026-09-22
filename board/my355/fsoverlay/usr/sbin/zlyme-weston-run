@@ -1,0 +1,88 @@
+#!/bin/sh
+# One temporary Weston for a single client. Not started at boot.
+# NextUI's session already drops DRM master before a pak; this does
+# it again so an SSH launch is the same sequence.
+#
+#   zlyme-weston-run command [args...]
+# Exit status is the client's. Weston and a seatd we started are gone.
+
+set -u
+
+RUN=/run/zlyme-weston
+SOCK=wayland-zlyme
+WESTON_PID=
+SEATD_PID=
+CLIENT_PID=
+
+if [ "$#" -lt 1 ]; then
+	echo "usage: zlyme-weston-run command [args...]" >&2
+	exit 2
+fi
+
+cleanup() {
+	if [ -n "$CLIENT_PID" ]; then
+		kill "$CLIENT_PID" 2>/dev/null || true
+		wait "$CLIENT_PID" 2>/dev/null || true
+		CLIENT_PID=
+	fi
+	if [ -n "$WESTON_PID" ]; then
+		kill "$WESTON_PID" 2>/dev/null || true
+		wait "$WESTON_PID" 2>/dev/null || true
+		WESTON_PID=
+	fi
+	if [ -n "$SEATD_PID" ]; then
+		kill "$SEATD_PID" 2>/dev/null || true
+		wait "$SEATD_PID" 2>/dev/null || true
+		SEATD_PID=
+	fi
+	rm -rf "$RUN"
+	rm -f /tmp/zlyme-weston.log
+}
+
+trap cleanup EXIT INT TERM
+
+if [ -x /usr/bin/zlyme-drm-release ]; then
+	/usr/bin/zlyme-drm-release || true
+fi
+
+rm -rf "$RUN"
+mkdir -p "$RUN"
+chmod 700 "$RUN"
+
+if ! pidof seatd >/dev/null 2>&1; then
+	seatd >"$RUN/seatd.log" 2>&1 &
+	SEATD_PID=$!
+fi
+
+# Session exports SDL_VIDEODRIVER=kmsdrm. Weston clients must not
+# try to open the KMS device Weston already owns.
+unset SDL_VIDEODRIVER
+export XDG_RUNTIME_DIR="$RUN"
+export WAYLAND_DISPLAY="$SOCK"
+
+weston --backend=drm-backend.so --shell=kiosk-shell.so \
+	--socket="$SOCK" --idle-time=0 \
+	>"$RUN/weston.log" 2>&1 &
+WESTON_PID=$!
+
+i=0
+while [ "$i" -lt 50 ]; do
+	if [ -S "$RUN/$SOCK" ]; then
+		break
+	fi
+	if ! kill -0 "$WESTON_PID" 2>/dev/null; then
+		echo "zlyme-weston-run: weston exited before the socket" >&2
+		cat "$RUN/weston.log" >&2 2>/dev/null || true
+		exit 1
+	fi
+	i=$((i + 1))
+	sleep 0.1
+done
+if [ ! -S "$RUN/$SOCK" ]; then
+	echo "zlyme-weston-run: no $RUN/$SOCK" >&2
+	exit 1
+fi
+
+"$@"
+st=$?
+exit "$st"

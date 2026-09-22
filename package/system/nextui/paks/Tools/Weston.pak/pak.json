@@ -1,0 +1,10 @@
+{
+  "name": "Weston",
+  "version": "1",
+  "type": "TOOL",
+  "description": "Show a Weston test client, then return to NextUI.",
+  "author": "Zlyme",
+  "platforms": [
+    "my355"
+  ]
+}
