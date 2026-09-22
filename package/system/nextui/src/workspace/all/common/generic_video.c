@@ -634,7 +634,20 @@ static void plat_video_teardown_window(void) {
 
 // kmsdrm: a pak that just exited can still hold master. CreateWindow then
 // succeeds with a renderer that cannot make textures. Retry until it can.
+// The frontend needs GLES 3.0: shaders are rewritten to #version 300 es,
+// and draws use vertex arrays and program binaries. SDL reads the profile
+// when the window loads EGL. Minor version 2 asks eglCreateContext for 3.2.
 static int plat_video_try_open(int w, int h) {
+	if (strcmp("Desktop", PLAT_getModel()) == 0) {
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	} else {
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+	}
+
 	vid.window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!vid.window)
 		return 0;
@@ -642,19 +655,12 @@ static int plat_video_try_open(int w, int h) {
 	if (!vid.renderer)
 		return 0;
 
-	if (strcmp("Desktop", PLAT_getModel()) == 0) {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	} else {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-	}
-
 	vid.gl_context = SDL_GL_CreateContext(vid.window);
-	if (!vid.gl_context)
+	if (!vid.gl_context) {
+		if (SDL_GetError()[0] == '\0')
+			SDL_SetError("SDL_GL_CreateContext failed");
 		return 0;
+	}
 	SDL_GL_MakeCurrent(vid.window, vid.gl_context);
 	glViewport(0, 0, w, h);
 

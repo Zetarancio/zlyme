@@ -77,6 +77,29 @@ success. Output remains `/tmp/zlyme-weston-client.log`.
 
 Phase 1 is not complete. PortMaster, Xwayland, and Wine were not started.
 
+## 2026-09-22 — NextUI GLES context on Panfrost
+
+Panfrost's kernel driver, Mesa EGL/GBM, and the Mesa Wayland platform
+passed on the Flip. `kmscube` rendered at about 59.19 fps. The Weston
+native tracer passed. NextUI did not: `PLAT_initVideo` kept logging
+`waiting for display (EGL not initialized)`.
+
+Panfrost/Mesa on this device is OpenGL ES 3.1 (Mesa 26.0.1, Mali-G52 r1
+MC1). `plat_video_try_open()` asked for ES 3.2. The frontend does not
+need that. Its shader loader rewrites shaders to `#version 300 es`.
+The GL calls are vertex arrays, program binaries, framebuffers, and
+ordinary texture draws. There is no compute shader, `glDispatchCompute`,
+shader storage buffer, image load/store, `glBindImageTexture`, memory
+barrier, geometry or tessellation shader, or `#version 310 es` /
+`#version 320 es`. The device request is now ES 3.0, set before the
+window is created, on every non-desktop target. A failed
+`SDL_GL_CreateContext()` still leaves `SDL_GetError()` for the existing
+retry line.
+
+`nextui-dirclean` then `./build.sh --config zlyme_my355_defconfig`
+rebuilt `nextui.elf` (14:27, 298984 bytes, in the squashfs). Mesa stayed
+at the 14:00 `-Dplatforms=wayland` configure. Phase 1 is not complete.
+
 ## 2026-09-22 — Phase 0 smoke on the etched card
 
 Etched `output/images/zlyme.img` from the clean product build (kernel
