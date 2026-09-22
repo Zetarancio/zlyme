@@ -1,7 +1,7 @@
 #!/bin/sh
-# Tracer: draw one Weston client, then return 0 so NextUI comes back.
-# weston-simple-egl runs until killed. Three seconds is enough to see
-# it and short enough to repeat.
+# Tracer: one Weston client for three seconds, then NextUI returns.
+# An early client exit is a failure. Staying up for the whole interval
+# and then being killed here is success. BusyBox has no timeout applet.
 
 set -u
 
@@ -18,6 +18,24 @@ fi
 	"$1" >/tmp/zlyme-weston-client.log 2>&1 &
 	p=$!
 	sleep 3
+	stt=gone
+	if [ -r "/proc/$p/stat" ]; then
+		rest=$(cat "/proc/$p/stat")
+		rest=${rest##*) }
+		stt=${rest# }
+		stt=${stt%% *}
+	fi
+	case "$stt" in
+		Z*|gone)
+			wait "$p"
+			st=$?
+			echo "zlyme-weston-test: client exited $st before 3s" >&2
+			if [ "$st" -eq 0 ]; then
+				exit 1
+			fi
+			exit "$st"
+			;;
+	esac
 	kill "$p" 2>/dev/null || true
 	wait "$p" 2>/dev/null || true
 	exit 0

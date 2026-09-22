@@ -53,6 +53,30 @@ copied `Tools/Weston.pak`. `version.txt` stays the frontend pin.
 skips the per-pak walk. A mismatch recopies stock names and leaves
 extra card paks in place.
 
+## 2026-09-22 — Weston tracer corrections after the first Flip run
+
+Forcing `MESA_LOADER_DRIVER_OVERRIDE=panfrost` broke GBM initialization.
+`card0` is rockchip-drm and `card1` is Panfrost. With the override unset,
+Mesa reported EGL 1.5 and renderer Mali-G52 r1 MC1 (Panfrost). The
+Panfrost branch of `zlyme-gpu-env.sh` now unsets that variable and
+`VK_ICD_FILENAMES`. libmali is unchanged.
+
+The first Weston image reused Mesa configured at 03:17 with
+`-Dplatforms=` empty, so the device EGL client extensions had GBM and
+no Wayland platform. After `./build.sh --config zlyme_my355_defconfig
+mesa3d-dirclean` and `./build.sh --config zlyme_my355_defconfig`, meson
+was `-Dplatforms=wayland` (configured 14:00, installed 14:01). The new
+`libEGL.so.1.0.0` includes `EGL_EXT_platform_wayland` and
+`EGL_KHR_platform_wayland`. Downloads and ccache were kept.
+
+`zlyme-weston-test` used to kill `weston-simple-egl` after three seconds
+and exit 0. The device log had `weston status=0` together with
+`Assertion ret && n >= 1 failed`. An exit before those three seconds is
+now a failure; a client that is still running is killed and counts as
+success. Output remains `/tmp/zlyme-weston-client.log`.
+
+Phase 1 is not complete. PortMaster, Xwayland, and Wine were not started.
+
 ## 2026-09-22 — Phase 0 smoke on the etched card
 
 Etched `output/images/zlyme.img` from the clean product build (kernel

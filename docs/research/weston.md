@@ -22,6 +22,16 @@ Buildroot **Weston 14.0.2** (MIT, `COPYING`), DRM backend, kiosk shell, simple c
 
 `zlyme-weston-run` owns one temporary compositor: drop DRM master with the existing `zlyme-drm-release`, start Weston with libseat's builtin backend (`LIBSEAT_BACKEND=builtin`), run the client, then stop Weston on any exit. There is no `seatd` daemon and no `S70seatd` service. NextUI's session already calls `zlyme-drm-release` before a pak and starts `nextui.elf` again after it.
 
+`zlyme-weston-test` runs `weston-simple-egl` for three seconds. If the client is still alive, the tracer kills it and returns 0. If the client has already exited, the tracer returns that status. Client output stays in `/tmp/zlyme-weston-client.log`.
+
+## What the Flip showed
+
+`card0` is rockchip-drm and `card1` is the Panfrost GPU (`renderD128`). Exporting `MESA_LOADER_DRIVER_OVERRIDE=panfrost` made `kmscube` fail to initialize GBM. With that override unset, EGL 1.5 came up as Mesa, renderer Mali-G52 r1 MC1 (Panfrost). The Panfrost path in `zlyme-gpu-env.sh` now unsets `MESA_LOADER_DRIVER_OVERRIDE` and `VK_ICD_FILENAMES`. The libmali path is unchanged.
+
+The first Weston image reused Mesa 26.0.1 configured before Wayland was enabled. Its meson line was `-Dplatforms=` (empty). The EGL client extensions on the device were `EGL_EXT_platform_device`, `EGL_MESA_platform_gbm`, and `EGL_KHR_platform_gbm`, with no Wayland platform. `mesa3d-dirclean` and a product rebuild configured `-Dplatforms=wayland`, built `platform_wayland.c`, and the installed `libEGL.so.1.0.0` advertises `EGL_EXT_platform_wayland` and `EGL_KHR_platform_wayland`.
+
+The first tracer slept three seconds, killed the client, and exited 0. On the device `weston-simple-egl` had already aborted (`Assertion ret && n >= 1 failed`) while the tracer still reported success.
+
 Rejected for the tracer:
 
 - shipping `weston_pkg_0.2.squashfs` in the image (redistribution and a moving packed blob);
