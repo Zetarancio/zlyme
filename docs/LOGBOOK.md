@@ -26,8 +26,9 @@ No Xwayland, no desktop shell, no boot service. PortMaster's
 `weston_pkg_0.2.squashfs` stays a runtime a port downloads; it is not in
 the image. Reasoning is in `docs/research/weston.md`.
 
-`zlyme-weston-run` drops DRM master, starts `seatd` and Weston, runs one
-client, then kills both. Tools → Weston calls `zlyme-weston-test`, which
+`zlyme-weston-run` drops DRM master, starts Weston with libseat's
+builtin backend, runs one client, then stops Weston. It does not start
+a `seatd` daemon. Tools → Weston calls `zlyme-weston-test`, which
 shows `weston-simple-egl` for three seconds and returns 0 so NextUI
 restarts. RetroArch and other KMSDRM launches are unchanged.
 

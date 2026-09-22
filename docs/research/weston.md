@@ -20,7 +20,7 @@ That squashfs is a packed third-party runtime. Zlyme does not bake it into the i
 
 Buildroot **Weston 14.0.2** (MIT, `COPYING`), DRM backend, kiosk shell, simple clients (`weston-simple-egl` / `weston-simple-shm`). No Xwayland, no Xorg, no desktop shell, no PipeWire, no boot unit.
 
-`zlyme-weston-run` owns one temporary compositor: drop DRM master with the existing `zlyme-drm-release`, start `seatd` and Weston, run the client, then kill both on any exit. NextUI's session already calls `zlyme-drm-release` before a pak and starts `nextui.elf` again after it.
+`zlyme-weston-run` owns one temporary compositor: drop DRM master with the existing `zlyme-drm-release`, start Weston with libseat's builtin backend (`LIBSEAT_BACKEND=builtin`), run the client, then stop Weston on any exit. There is no `seatd` daemon and no `S70seatd` service. NextUI's session already calls `zlyme-drm-release` before a pak and starts `nextui.elf` again after it.
 
 Rejected for the tracer:
 

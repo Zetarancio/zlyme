@@ -4,14 +4,14 @@
 # it again so an SSH launch is the same sequence.
 #
 #   zlyme-weston-run command [args...]
-# Exit status is the client's. Weston and a seatd we started are gone.
+# Exit status is the client's. Weston is gone when this returns.
+# libseat's builtin backend runs inside Weston. Do not start seatd.
 
 set -u
 
 RUN=/run/zlyme-weston
 SOCK=wayland-zlyme
 WESTON_PID=
-SEATD_PID=
 CLIENT_PID=
 
 if [ "$#" -lt 1 ]; then
@@ -30,11 +30,6 @@ cleanup() {
 		wait "$WESTON_PID" 2>/dev/null || true
 		WESTON_PID=
 	fi
-	if [ -n "$SEATD_PID" ]; then
-		kill "$SEATD_PID" 2>/dev/null || true
-		wait "$SEATD_PID" 2>/dev/null || true
-		SEATD_PID=
-	fi
 	rm -rf "$RUN"
 	rm -f /tmp/zlyme-weston.log
 }
@@ -49,16 +44,12 @@ rm -rf "$RUN"
 mkdir -p "$RUN"
 chmod 700 "$RUN"
 
-if ! pidof seatd >/dev/null 2>&1; then
-	seatd >"$RUN/seatd.log" 2>&1 &
-	SEATD_PID=$!
-fi
-
 # Session exports SDL_VIDEODRIVER=kmsdrm. Weston clients must not
 # try to open the KMS device Weston already owns.
 unset SDL_VIDEODRIVER
 export XDG_RUNTIME_DIR="$RUN"
 export WAYLAND_DISPLAY="$SOCK"
+export LIBSEAT_BACKEND=builtin
 
 weston --backend=drm-backend.so --shell=kiosk-shell.so \
 	--socket="$SOCK" --idle-time=0 \
