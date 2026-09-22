@@ -50,6 +50,11 @@ seed() {
 		[ -d "$d" ] || mkdir -p "$d" 2>/dev/null
 	done
 
+	# Manual OTA drop folder. S18 does not start zlyme-update unless a
+	# tar is already queued, and the first-boot mkfs wipes the exFAT
+	# seed, so a fresh card otherwise has nowhere obvious to put one.
+	[ -d "$ZLYME_STORAGE/.update" ] || mkdir -p "$ZLYME_STORAGE/.update" 2>/dev/null
+
 	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on merge=on logs=off update_channel=releases; do
 		n=${kv%%=*}
 		v=${kv#*=}
