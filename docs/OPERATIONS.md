@@ -152,11 +152,17 @@ NextUI and direct-KMS applications may own DRM master at different times.
 
 Application launch/exit must leave DRM in a state where the next client can acquire it.
 
-When adding Weston/WestonPack, Wine, a standalone emulator, or a PortMaster runtime, test repeatedly:
+The regression check for an application-scoped display stack is:
 
 ```text
-frontend -> app -> frontend -> app -> frontend
+frontend -> compatibility app -> frontend -> compatibility app -> frontend
 ```
+
+After the app exits, NextUI must be able to take DRM again. No temporary Weston, WestonPack, or Xwayland process should remain.
+
+PortMaster may mount WestonPack at `/tmp/weston` for one port. MENU+START can kill that port's process group, so NextUI's session cleans the mount, including binds underneath it, before the frontend resumes. A later boot should not show a WestonPack, `seatd`, or Xwayland process left from that launch.
+
+Wine keeps its prefix in `/storage/.config/nextui/<platform>/wine-prefix.ext4`. The card filesystem is exFAT, so the prefix is an ext4 image and is loop-mounted at `/run/zlyme-wine/prefix` only while Wine runs. Cleanup stops that prefix's wineserver, unmounts, then detaches the loop device that still points at this image. That cleanup belongs to the session, because MENU+START can kill the pak before an in-pak trap runs.
 
 Resource cleanup is part of compatibility.
 
@@ -195,7 +201,7 @@ When documentation says something is proven on hardware, preserve the distinctio
 - tested;
 - stress-tested.
 
-Do not turn an untested package such as a newly integrated Wine/Weston path into a supported feature merely because binaries exist.
+Do not turn a newly integrated compatibility path into a supported feature merely because binaries exist.
 
 
 ## Hardware-wiki invariants

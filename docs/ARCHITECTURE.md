@@ -191,6 +191,8 @@ Persistent configuration belongs under:
 
 ROM/save/BIOS handling follows Zlyme's per-library-volume design rather than assuming all content lives on the OS card.
 
+`/storage` remains exFAT. Wine needs a POSIX prefix, so Zlyme stores one Wine-owned ext4 image under `/storage/.config` and loop-mounts it only while Wine runs. That does not change the storage partition format and is not a general image-file mechanism.
+
 Image layout is a board concern. A future device may use another boot layout while preserving the higher-level Zlyme runtime contracts.
 
 ## 7. Update architecture
@@ -237,22 +239,36 @@ Rockchip display hardware
 
 Zlyme does not run a permanent X11 server, Wayland compositor, or desktop environment.
 
-Applications that require a window system may launch an isolated compatibility environment for the duration of that application.
+Applications that cannot use direct KMS may launch an isolated compatibility environment for the duration of that application. Two cases exist.
 
-That path is the planned Phase 1 compatibility design. Phase 0 does not ship Weston or WestonPack, and it does not start that stack.
-
-For example:
+Native Wayland, including the current Wine integration, uses Zlyme's own temporary Weston. That Weston build does not ship Xwayland.
 
 ```text
 NextUI releases DRM
   v
-temporary Weston / WestonPack
+temporary Zlyme Weston
   v
-Wayland and/or Xwayland client
+native Wayland application
   v
 application exits
   v
-temporary display stack exits
+Weston exits
+  v
+NextUI reacquires DRM
+```
+
+PortMaster software that needs X11 uses PortMaster's own WestonPack, which brings Xwayland for that launch. WestonPack is application-scoped and stays owned by PortMaster.
+
+```text
+NextUI releases DRM
+  v
+temporary PortMaster WestonPack
+  v
+Xwayland/X11 application as required
+  v
+application exits
+  v
+WestonPack cleanup
   v
 NextUI reacquires DRM
 ```
