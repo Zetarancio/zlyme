@@ -311,7 +311,7 @@ The result should be a cleaner kernel baseline, not the smallest possible patch 
 
 ### Status
 
-Ready to start after Phase 1. Begin with 2A research only.
+2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is recorded in `docs/research/kernel-patch-audit.md`. 2C has not started.
 
 ## 3 — Rewrite the Miyoo Flip joypad driver as an out-of-tree module
 

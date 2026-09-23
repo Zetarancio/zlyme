@@ -207,7 +207,11 @@ Inherited files that do not touch the Flip DTS or the Flip panel compatible, if 
 
 `0013` (Bluetooth SSP key size) and `0006` (DualSense Edge) need a hunk-level look before either keep or remove. `0030` is a Zlyme diagnostic on the RK817 MFD the board uses; treat it as debug-or-keep, not as a foreign-board drop.
 
+The lists above are the Phase 2A preliminary reading. The Phase 2B classification later in this file is the disposition plan. No patch was removed in 2B.
+
 ## Unknowns
+
+These bullets are the Phase 2A record. Phase 2B, below, answers the SYS_CAN_SD comparison, the 1992 MHz policy, the OTP consumer question from source, the GPU power-domain patch, and the sleep-ownership split. The remaining open items are collected under "Still uncertain" in that section.
 
 - No patch in this inventory was test-applied to a clean 7.0.2 tree during 2A. Symbol checks cover the rows in the upstream table only.
 - Marcel Holtmann `0013` and the MSM series were not matched to an upstream commit id.
@@ -230,3 +234,207 @@ Recorded so they are not implemented here.
 | `libmali` linear scanout force (`084b71874a9a`) | future/backlog; userspace GPU packaging |
 | H700 Panfrost copy-image quirk | ignore |
 | InputPlumber | Phase 4, not started |
+
+## Phase 2B classification
+
+2B assigns a class and a disposition. It does not edit patches. `REPLACE` was not used. Later phases stay deferred.
+
+Class letters:
+
+- A: required specifically for the Miyoo Flip
+- B: reusable RK3566/RK3568 or RK817 platform fix still required on Linux 7.0.2
+- C: upstream-style backport still required on Linux 7.0.2
+- D: irrelevant inherited device or subsystem patch
+- E: historical, diagnostic, or build-policy patch
+- F: later architectural extraction
+
+An optional Zlyme policy is labeled in the reason. The letter does not mean the feature is mandatory for ordinary 1.8 GHz operation.
+
+### SYS_CAN_SD
+
+Zlyme `0007` clears `RK817_SYS_CAN_SD` on every probe with `regmap_write_bits(..., RK817_SYS_CAN_SD, 0)` inside `rk817_battery_init`, next to the existing charge-termination update.
+
+Chris Morgan `5c74541b46510f2e5ca58a0a86a3678691f0c291`, carried by ROCKNIX as `mainline-rockchip/007-power-supply-rk817-clear-sys-can-sd-register-by-default.patch` from commit `39b77d22afafa808f8489366deb55f006940ec2b`, clears the same bit with `regmap_clear_bits` only when `rockchip,gate-function-disable` is absent. The companion binding is `985642a0046d45d8d7bb49b3970c1a60f9bf9d98`. `Reported-by` on both external patches is Zetarancio. Zlyme's own writeup is dated 2026-04-05 and includes the Flip measurement: register `0xe6` reads `0xc5` after a real power-on reset, and clearing bit 7 drops off-state drain from about 8 mA to about 0.05 mA.
+
+`rk3566-miyoo-flip.dts` does not set `rockchip,gate-function-disable`. On this board the default result of both patches is the same clear. The external patch is the more upstream-shaped form (binding, `Fixes:` trailer, opt-out). Zlyme's patch is the smaller one, it matches the BSP unconditional clear, and nothing in Zlyme uses the opt-out.
+
+Disposition: **A + KEEP**. Do not replace it in 2C. The drain fix stays.
+
+### 1992 MHz OPP
+
+`0001` adds `opp-1992000000` at 1.15 V with `turbo-mode` on `&cpu0_opp_table` in `rk3566.dtsi`. The Flip DTS includes that file and only adds `clock-latency-ns` on `opp-408000000`. It does not delete the 1992 MHz point.
+
+Linux treats `turbo-mode` as a boost OPP. It is not a normal scaling frequency while cpufreq boost is off. `governor.sh` uses that contract:
+
+- `profile_smart`, `profile_play`, and `profile_idle` call `set_boost 0` and cap the CPU at 1.8 GHz or lower
+- `profile_overclock` calls `set_boost 1` and `set_cpu_minmax 408000 1992000`
+
+The undervolt overlays `rk3566-undervolt-cpu-l1.dts`, `l2`, and `l3` each contain `opp-1992000000`, so those overlays expect the node to exist. `docs/research/performance.md` already treats 1992 MHz as an optional overclock above the 1.8 GHz baseline.
+
+This is an intentional optional Zlyme performance policy. It is not required for ordinary 1.8 GHz operation. Class **B + KEEP** because the OPP has to stay on the selected kernel for the boost profile and the overlays. 2C does not remove it and does not turn boost on.
+
+The Flip did not answer SSH (`root@192.168.0.108`, connection timed out), so `scaling_boost_frequencies` was not read from a running card. The source contract is enough. No overclock run was started.
+
+### RK3568 OTP
+
+`0022` adds `rockchip,rk3568-otp` read support. `0023` adds the node at `fe38c000` on `rk356x-base.dtsi`, which the Flip includes, with cells `cpu_code`, `otp_cpu_version`, `otp_id`, `cpu_leakage`, `log_leakage`, `npu_leakage`, and `gpu_leakage`. `CONFIG_NVMEM=y`, `CONFIG_NVMEM_SYSFS=y`, and `CONFIG_NVMEM_ROCKCHIP_OTP=y`.
+
+No Zlyme DTS, overlay, or package references those labels or an `nvmem-cells` phandle. The Flip CPU OPP table, including the 1992 MHz point, uses fixed microvolts. Nothing in-tree selects an OPP, a regulator, or a thermal zone from these cells. If the provider probes, sysfs can expose the cells because `CONFIG_NVMEM_SYSFS=y`. That is diagnostic exposure, not binning.
+
+Linux 7.0.2 `drivers/nvmem/rockchip-otp.c` has no `rk3568` support. Current mainline `rk356x-base.dtsi` has the same cell map, but the binding shape differs: mainline uses `nvmem-layout`, clock names `otp`, `apb_pclk`, `phy`, `sbpi`, and four resets. Zlyme's patch uses clock names `usr`, `sbpi`, `apb`, `phy` and one reset, `otp_phy`. Current mainline `rk3566.dtsi` also has no consumer of the leakage cells. The 7.0.2 patches are not a drop-in of that newer node.
+
+The Flip did not answer SSH, so `/sys/bus/nvmem/devices/` and the probe line were not observed. From the tree, the provider is unconsumed. It is not "unused" as a guess from a filename. It is unconsumed because no node or subsystem takes a cell from it.
+
+Disposition: **B + DEFER**. Do not remove it in 2C. A boot log can later show whether probe succeeds. Phase owner remains Phase 2, not Phase 7.
+
+### GPU power management
+
+ROCKNIX `7153ebf9a43b630c9c169b24936eb6956f890446` contains two different changes.
+
+The pmdomain patch drops `GENPD_FLAG_PM_CLK` on `RK3568_PD_GPU` when the power controller is `rockchip,rk3568-power-controller`. That is the Flip's power controller. The flag is a property of the domain, so every device on that domain is affected, including Panfrost. The commit text motivates the change with `mali_kbase` also preparing `SCMI_CLK_GPU` and `CLK_GPU`. Importing it is not a Mali-only fix.
+
+The companion `patches/mali-bifrost/003-fix-unbalanced-regulator.patch` enables regulators at probe and disables them on teardown. That file is Mali-only. Zlyme's `mali-kbase` package pins `39da994bb6fc8819e5e8c1873907dd21d17e53c1` and applies only `002-lowercase-interrupts-first.patch`. That pin contains the "Regulators probed" site and does not contain the "Enable regulators during probe" balance. `enable_gpu_power_control` is not in that file.
+
+`docs/LOGBOOK.md` has no `Enabling unprepared clk_gpu` or `failed to set domain 'gpu'` record. Importing the domain-flag change would alter clock tracking on the already-working standard suspend path for both GPU stacks.
+
+Disposition for both external changes: **DEFER**. Do not import them in 2C. Zlyme's existing Mali DT patch `0008` stays **B + KEEP**. It is not a substitute for this pmdomain change, and this pmdomain change is not a substitute for it.
+
+### Sleep findings, re-owned
+
+RK817 gauge correction across sleep, ROCKNIX patch `005` by Jacob Cook, hooks system suspend and resume in `rk817_charger.c`. That is ordinary system sleep, not BL31 deep suspend. Zlyme builds that driver. The measurements in the patch are from an RG353M, not from the Flip. Adopting it does not start deep-suspend work. Owner: **Phase 2**, disposition **DEFER**. It is not one of the 45 patches, and 2C does not add it.
+
+`platforms/RK3566/modules.keep` in the wifi-sleep merge contains `rtw88_8821cs`. The Flip radio is RTL8733BU. That line is ROCKNIX userspace policy for a different module. Zlyme has no matching sleep script. Owner: **ignore**. It is not Phase 6.
+
+`1010` still belongs to Phase 6 as a disposition. Its callbacks are system PM ops and the current standard-suspend image already includes them, so 2C does not delete them either. The failure described is DDRMON state lost when the center domain gates in deep suspend, which Phase 6 owns. Class **B + DEFER**, owner Phase 6.
+
+### All 45 patches
+
+Paths are under `board/my355/linux/patches/`. Validation is what 2C must do if it follows the disposition. KEEP and DEFER rows are not 2C edits.
+
+| # | Patch | Class | Disposition | Owner | Reason | Validation if 2C touches it |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `10-mainline/linux/0002-input-add-input-polldev-driver.patch` | A | KEEP | Phase 3 | File is absent from Linux 7.0.2. Current `rocknix-joypad` `3bc3ef644` and newer `d02ed13` both include `input-polldev.h`. The newer pin only adds `MODULE_IMPORT_NS("IIO_CONSUMER")`. | Do not remove in 2C. Phase 3 rebuilds the module. |
+| 2 | `10-mainline/linux/0003-pwm-add-pwm_set_period.patch` | D | REMOVE | Phase 2 | Inline is unused on my355. Neither joypad pin calls it. The only ROCKNIX caller found is an RK3326 input patch. | Rebuild the kernel and `rocknix-joypad`. |
+| 3 | `10-mainline/linux/0004-input-adc-keys-redirect-keycode-316-to-rocknix-joypa.patch` | A | KEEP | Phase 3 | Flip DTS has no `adc-keys` node, but the patch defines `joypad_input_g`, and `rocknix-singleadc-joypad.c` references it. Removing it breaks the current module link. | Do not remove in 2C. |
+| 4 | `10-mainline/linux/0005-Bluetooth-btrtl-Add-the-support-for-RTL8733BU.patch` | A | KEEP | Phase 2 | `8733BU` is absent from Linux 7.0.2. Flip DTS uses `rockchip,rtl8733bu-power`. `CONFIG_BT_RTL=m`. | Not a 2C removal. |
+| 5 | `20-rk3566/linux/0001-arm64-dts-rockchip-rk356x-add-1992mhz-cpu-opp-with-t.patch` | B | KEEP | Phase 2 | Optional boost OPP. See the 1992 section. Not required for the 1.8 GHz profiles. | Not a 2C removal. |
+| 6 | `20-rk3566/linux/0002-power-supply-rk817-update-battery-and-charger-name-s.patch` | A | KEEP | Phase 2 | Renames the supplies to `battery` and `charger`. NextUI reads `/sys/class/power_supply/battery/capacity`. | Not a 2C removal. |
+| 7 | `20-rk3566/linux/0003-drm-panel-st7703-Fix-Panel-Initialization-for-Anbern.patch` | D | REMOVE | Phase 2 | st7703 init for RG353V-V2. Flip panel is `rocknix,generic-dsi`, copied by `board.mk`, not this driver. | Kernel build. Display smoke after the panel-driver group. |
+| 8 | `20-rk3566/linux/0004-arm64-dts-rockchip-fix-wifi-sdio-errors.patch` | D | REMOVE | Phase 2 | Only `rk3566-anbernic-rgxx3.dtsi` and `rk3566-powkiddy-x55.dts`. | Kernel dtbs build. Flip DTB unchanged. |
+| 9 | `20-rk3566/linux/0005-arm64-dts-rockchip-fixup-anbernic-controls.patch` | D | REMOVE | Phase 2 | Anbernic DTS only. | Same as the foreign-DTS group. |
+| 10 | `20-rk3566/linux/0006-drm-panel-nv3051d-fix-panel-timings-and-display-mode.patch` | D | REMOVE | Phase 2 | RK2023 panel timings. Flip does not bind `nv3051d`. The driver is built (`CONFIG_DRM_PANEL_NEWVISION_NV3051D=y`) and still has no Flip node. | Kernel build. Display smoke with the panel-driver group. |
+| 11 | `20-rk3566/linux/0007-power-supply-rk817-clear-sys-can-sd-fix-drain.patch` | A | KEEP | Phase 2 | Unconditional off-state drain fix. Equivalent on the Flip to the newer opt-out patch, which Zlyme does not need. | Not a 2C edit. |
+| 12 | `20-rk3566/linux/0008-arm64-dts-rockchip-add-support-for-mali-bifrost-driv.patch` | B | KEEP | Phase 2 | Adds reset and Mali power-model properties on `&gpu` in `rk356x-base.dtsi`. The Flip enables that node for Panfrost or `mali_kbase`. Unknown properties are ignored by Panfrost; the reset is already in the running DT. | Not a 2C edit. |
+| 13 | `20-rk3566/linux/0009-arm64-dts-rockchip-fix-shoulders-triggers-on-powkidd.patch` | D | REMOVE | Phase 2 | Powkiddy RGB10 Max 3 DTS only. | Foreign-DTS group. |
+| 14 | `20-rk3566/linux/0010-drm-panel-st7703-request-higher-pixelclock-for-RGB30.patch` | D | REMOVE | Phase 2 | RGB30 pixel clock in st7703. Flip does not bind that panel. | Panel-driver group. |
+| 15 | `20-rk3566/linux/0012-arm64-dts-rockchip-update-powkiddy-x55-dts-to-suppor.patch` | D | REMOVE | Phase 2 | Powkiddy X55 DTS only. | Foreign-DTS group. |
+| 16 | `20-rk3566/linux/0013-Bluetooth-Check-key-sizes-only-when-Secure-Simple-Pa.patch` | C | KEEP | Phase 2 | Marcel Holtmann, patch id `cce32250027ffa6e2fed8e99734f90cd04f6b86a` (2019). It still changes `hci_conn_check_link_mode` so legacy BR/EDR without SSP skips the encryption check. The 2A search for the uppercase string `SSP` did not describe this hunk. `CONFIG_BT` is built. Not required for the Flip's own pad. | Not a 2C removal. |
+| 17 | `20-rk3566/linux/0014-drm-panel-st7701-fixup-Anbernic-RG-Arc-panel-timings.patch` | D | REMOVE | Phase 2 | RG-Arc timings. `CONFIG_DRM_PANEL_SITRONIX_ST7701=y`, no Flip node. | Panel-driver group. |
+| 18 | `20-rk3566/linux/0015-arm64-dts-rockchip-use-linear-backlight-levels-to-im.patch` | D | REMOVE | Phase 2 | Backlight levels on RG-Arc, RG353, and X55 DTS. Flip backlight is its own `pwm-backlight` node. | Foreign-DTS group. |
+| 19 | `20-rk3566/linux/0016-arm64-dts-rockchip-add-device-tree-for-powkiddy-x35s.patch` | D | REMOVE | Phase 2 | Adds a Powkiddy DTS. | Foreign-DTS group. |
+| 20 | `20-rk3566/linux/0018-arm64-dts-rockchip-add-device-tree-for-powkiddy-rgb2.patch` | D | REMOVE | Phase 2 | Adds a Powkiddy DTS. | Foreign-DTS group. |
+| 21 | `20-rk3566/linux/0019-arm64-dts-rockchip-add-system-power-controller-attri.patch` | D | REMOVE | Phase 2 | `system-power-controller` on RGxx3 only. | Foreign-DTS group. |
+| 22 | `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | B | KEEP | Phase 2 | Adds `dma-names = "tx", "rx"` on `uart1` in `rk356x-base.dtsi`. The Flip uses UART1 for the joypad. This is not the RGxx3-only UART patch. | Not a 2C removal. Phase 3 must keep a working UART. |
+| 23 | `20-rk3566/linux/0022-nvmem-rockchip-otp-Add-support-for-rk3568-otp.patch` | B | DEFER | Phase 2 | Driver half of the unconsumed OTP provider. See the OTP section. | Do not remove in 2C. |
+| 24 | `20-rk3566/linux/0023-arm64-dts-rockchip-rk3568-Add-otp-device-node.patch` | B | DEFER | Phase 2 | Shared-dtsi node. Same conclusion as `0022`. Mainline's later node is not the same binding. | Do not remove in 2C. |
+| 25 | `20-rk3566/linux/0024-sdmmc1-card-detect-delay.patch` | D | REMOVE | Phase 2 | Card-detect delay on RGxx3 only. Flip sdmmc1 power is in the Flip DTS. | Foreign-DTS group. |
+| 26 | `20-rk3566/linux/0025-arc-swap-touch-axes.patch` | D | REMOVE | Phase 2 | RG-Arc-D touch axes only. | Foreign-DTS group. |
+| 27 | `20-rk3566/linux/0026-ASoC-codecs-Add-aw87391-amplifier-driver.patch` | D | REMOVE | Phase 2 | New codec. Flip audio is `simple-audio-amplifier`. `CONFIG_SND_SOC_AW87391=y` exists because this patch adds the option. 2C drops that config line with the patch. | Kernel build plus headphone/speaker smoke. |
+| 28 | `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | E | KEEP | Phase 2 | `dev_info` of ON/OFF source at RK817 probe. No control change. Useful for power-cycle diagnosis. | Not a 2C removal. |
+| 29 | `20-rk3566/linux/0666-cma-region.patch` | B | KEEP | Phase 2 | 256 MiB default CMA on `rk356x-base.dtsi`, so it is the Flip's CMA policy. Removing it changes allocation. | Not a 2C removal. |
+| 30 | `20-rk3566/linux/1001-arm64-dts-rockchip-Add-idle-states-for-rk356x.patch` | B | KEEP | Phase 2 | `cpu-idle-states` on the four CPUs in the shared dtsi. `CONFIG_ARM_PSCI_CPUIDLE=y`. The 0.2 W note in the patch was measured on an RG353P, and the nodes are still on the Flip. | Not a 2C removal. |
+| 31 | `20-rk3566/linux/1002-arm64-dts-rockchip-Add-spk_amp-regulator-for-Anberni.patch` | D | REMOVE | Phase 2 | Anbernic speaker regulator DTS only. | Foreign-DTS group. |
+| 32 | `20-rk3566/linux/1004-arm64-dts-rockchip-Add-avdd_0v9-and-avdd_1v8-for-RGx.patch` | D | REMOVE | Phase 2 | RGxx3 HDMI regulators. Flip HDMI supplies are in the Flip DTS. | Foreign-DTS group. |
+| 33 | `20-rk3566/linux/1006-arm64-dts-rockchip-Correct-boot-enabled-regulators-f.patch` | D | REMOVE | Phase 2 | RGxx3 boot regulators only. | Foreign-DTS group. |
+| 34 | `20-rk3566/linux/1008-arm64-dts-rockchip-Enable-DMA-for-uart1-on-RGxx3.patch` | D | REMOVE | Phase 2 | UART1 DMA on RGxx3 only. The Flip's UART1 `dma-names` come from `0021`, which stays. | Foreign-DTS group. Joypad smoke still belongs to that group's device check. |
+| 35 | `20-rk3566/linux/1009-arm64-dts-rockchip-Map-wifi-host-wake-interrupt-for-.patch` | D | REMOVE | Phase 2 | RGxx3 wifi host-wake only. | Foreign-DTS group. |
+| 36 | `20-rk3566/linux/1010-devfreq-event-rockchip-dfi-add-pm-suspend-resume.patch` | B | DEFER | Phase 6 | In-tree DFI system-sleep callbacks. The stated hardware loss is deep suspend. Current standard suspend already includes the patch, so 2C leaves it in place. | Phase 6. Not a 2C edit. |
+| 37 | `20-rk3566/linux/1011-input-touchscreen-goodix-usability-fixes.patch` | D | REMOVE | Phase 2 | Skips Goodix firmware load from disk. `CONFIG_TOUCHSCREEN_GOODIX=y`, and the Flip DTS has no Goodix node, so the probe path does not run. | Kernel build. No touch device on the Flip. |
+| 38 | `20-rk3566/linux/1012a-dt-bindings-memory-controllers-rockchip-rk3568-dmc.patch` | F | DEFER | Phase 7 | Binding for the Flip `rockchip,rk3568-dmc` node. Extraction is Phase 7. | Not a 2C edit. |
+| 39 | `20-rk3566/linux/1012b-devfreq-rockchip-add-rk3568-dmc-devfreq-driver.patch` | F | DEFER | Phase 7 | Driver behind `CONFIG_ARM_RK3568_DMC_DEVFREQ=y`. `governor.sh` writes the DMC devfreq. | Not a 2C edit. |
+| 40 | `20-rk3566/linux/1013-drm-rockchip-vop2-bcsh-tv-properties.patch` | A | KEEP | Phase 2 | NextUI `msettings.c` sets DRM TV properties `brightness`, `contrast`, `saturation`, and `hue` on the Flip's VOP2 path. | Not a 2C edit. |
+| 41 | `30-default/linux/9901-pm-disable-async-suspend-resume-by-default.patch` | B | KEEP | Phase 2 | Sets `pm_async_enabled` to 0. The validated standard suspend path includes this. It is global PM policy from 2014, and it is not a deep-suspend feature. | Not a 2C removal. |
+| 42 | `40-kernel-7.0/linux/0006-hid-playstation-expose-DualSense-Edge-Fn-and-back-paddles.patch` | C | KEEP | Phase 2 | `CONFIG_HID_PLAYSTATION=y`. Extra buttons are gated on Edge pid `0x0df2`. A plain DualSense is unchanged. Optional external controller, not the built-in pad. | Not a 2C removal. |
+| 43 | `40-kernel-7.0/linux/0010-msm-resource-cleanup.patch` | D | REMOVE | Phase 2 | Seven MSM DPU hunks. `CONFIG_ARCH_QCOM` is not set, so this display controller is not built. The patch still has to apply to the 7.0.2 sources today. | Kernel build. No Qualcomm device on the Flip. |
+| 44 | `40-kernel-7.0/linux/9998-silence-initramfs-unpack-warn.patch` | E | DEFER | Phase 2 | Downgrades an initramfs unpack failure from `KERN_EMERG` to `KERN_DEBUG`. `CONFIG_BLK_DEV_INITRD=y`. No boot log was captured this round, so it is not yet shown to be a harmless expected message. | Do not change in 2C until one boot log is read. |
+| 45 | `40-kernel-7.0/linux/9999-fix-rust-build-error.patch` | E | REMOVE | Phase 2 | Rewrites perf's Rust target triples to `*-rocknix-linux-gnu`. Zlyme does not select `BR2_PACKAGE_LINUX_TOOLS_PERF`. The triple is the wrong one if perf Rust is ever built here. | Kernel build. No runtime change. |
+
+Counts: A 6, B 9, C 2, D 23, E 3, F 2. KEEP 15, REPLACE 0, REMOVE 24, DEFER 6.
+
+### Still uncertain
+
+- OTP probe success and the sysfs directory were not read. SSH to the Flip timed out. The unconsumed conclusion is from the tree, not from a live device.
+- `scaling_boost_frequencies` was not read on a running card. Boost behavior is taken from `turbo-mode` plus `governor.sh`.
+- `9998` may be hiding a real initramfs error or an expected empty-archive message. Left DEFER.
+- `0013` was not matched to a later mainline commit that might have replaced the 2019 hunk with different key-size policy. It stays because the carried hunk is still a delta.
+- The GPU domain warning was not searched in a live `dmesg`. The logbook has no record of it.
+
+### Proposed Phase 2C sequence
+
+2C is not started here. Each group is one conceptual commit. Do not combine a foreign-file deletion with an RK817, GPU, OPP, OTP, DFI, or DMC change.
+
+#### Group 1 — foreign board DTS only
+
+Patches: `0004`, `0005`, `0009`, `0012`, `0015`, `0016`, `0018`, `0019`, `0024`, `0025`, `1002`, `1004`, `1006`, `1008`, `1009` under `20-rk3566/linux/`.
+
+Reason: each file edits only Anbernic or Powkiddy DTS. None edits `rk356x-base.dtsi`, `rk3566.dtsi`, or `rk3566-miyoo-flip.dts`.
+
+Expected runtime impact: none on the Flip.
+
+Build validation: kernel build, Flip DTB still produced.
+
+Device validation: boot to NextUI, display, built-in pad, audio, internal storage. `1008` is the RGxx3 UART file; the Flip UART DMA names stay via `0021`, so the pad check is the rollback signal.
+
+Rollback boundary: this commit alone.
+
+#### Group 2 — uninstantiated foreign drivers and the wrong-SoC display patch
+
+Patches: st7703 `0003` and `0010`, nv3051d `0006`, st7701 `0014`, aw87391 `0026`, Goodix `1011`, `pwm_set_period` `0003`, MSM DPU `0010`.
+
+Reason: the panel, codec, and touch drivers are enabled in `linux.config` and are not bound by the Flip DTS. `pwm_set_period` has no my355 caller. MSM DPU is not compiled because `CONFIG_ARCH_QCOM` is not set.
+
+Expected runtime impact: none if the Flip panel remains `rocknix,generic-dsi` and audio remains `simple-audio-amplifier`.
+
+Build validation: remove the patch and, in the same commit, drop the config symbols that exist only because the patch added them (`CONFIG_SND_SOC_AW87391`, and the panel/Goodix symbols if they stop existing). Rebuild the kernel and `rocknix-joypad`.
+
+Device validation: NextUI frame, DSI panel, backlight, speaker and headphones, built-in pad.
+
+Rollback boundary: this commit alone, separate from Group 1.
+
+#### Group 3 — inherited perf Rust triple
+
+Patch: `40-kernel-7.0/linux/9999-fix-rust-build-error.patch`.
+
+Reason: ROCKNIX perf triple, not used by the Zlyme kernel build.
+
+Expected runtime impact: none.
+
+Build validation: kernel build.
+
+Device validation: not required for this file. A boot smoke is enough if it is stacked on a Group 2 image.
+
+Rollback boundary: this commit alone.
+
+`9998` is not in this group.
+
+#### Group 4 — accepted baseline, no patch edit
+
+Leave in place: `0001` (optional 1992 boost), `0002` battery names, `0005` RTL8733BU, `0007` SYS_CAN_SD, `0008` Mali DT, `0013` Bluetooth key-size, `0021` UART1 dma-names, `0030` ON/OFF log, `0666` CMA, `1001` idle-states, `1013` VOP2 BCSH, `9901` async suspend off, DualSense Edge `0006`, and the Phase 3 inputs `0002` input-polldev and `0004` adc-keys export.
+
+No runtime change, because there is no edit. No device test is required for this group itself.
+
+#### Group 5 — replacements
+
+None. Do not replace `0007`. Do not import the RK817 fuel-gauge series, the GPU pmdomain flag change, or the Mali regulator balance.
+
+#### Held out of 2C
+
+- OTP `0022` and `0023`: DEFER until a probe log exists.
+- `9998`: DEFER until a boot log shows the initramfs line.
+- `1010`: Phase 6.
+- `1012a` and `1012b`: Phase 7.
+- Joypad pin `d02ed13`: Phase 3. The current support patches stay.
+
+### Appendix: not in the 45
+
+`linux.config` says the `1013a/b` rk3568-suspend patches are `.testing-disabled`. Those files are not in `board/my355/linux/patches/`. The Flip DTS deep-suspend node is commented out. Status: disabled, not applied, owner Phase 6. Do not reactivate them in Phase 2.

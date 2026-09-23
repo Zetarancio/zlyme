@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2B kernel patch classification
+
+Classification only. No kernel, DTS, config, or runtime change.
+
+All 45 active Linux patches now have an A–F class and a KEEP, REPLACE, REMOVE, or DEFER disposition in `docs/research/kernel-patch-audit.md`. `SYS_CAN_SD` stays the current unconditional clear. The 1992 MHz OPP is optional boost policy, not the 1.8 GHz path. The RK3568 OTP provider has no in-tree consumer; its live probe was not observed because the Flip did not answer SSH. The ROCKNIX GPU clock patch is not imported. Deep suspend, DMC extraction, and the joypad rewrite stay later.
+
 ## 2026-09-23 — Phase 2A kernel evidence
 
 Research only. No kernel, DTS, config, or runtime change.
