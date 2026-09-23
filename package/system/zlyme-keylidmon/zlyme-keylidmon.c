@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "msettings.h"
@@ -27,6 +28,21 @@
 #define BRIGHTNESS_MAX 10
 #define FB_BLANK_UNBLANK 0
 #define FB_BLANK_POWERDOWN 4
+/* Same window NextUI uses after resume (pwr.resume_tick). */
+#define POWER_RESUME_GUARD_MS 1000
+
+/* 0 means no guard. Armed only after radios resume returns. */
+static unsigned long long power_ignore_until_ms;
+
+static unsigned long long monotonic_ms(void)
+{
+	struct timespec ts;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+		return 0;
+	return (unsigned long long)ts.tv_sec * 1000ULL +
+	       (unsigned long long)ts.tv_nsec / 1000000ULL;
+}
 
 static volatile sig_atomic_t quit;
 
@@ -170,6 +186,17 @@ static void do_mem_sleep(void)
 	else
 		system("echo mem > /sys/power/state");
 	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
+	/*
+	 * The wake press is delivered as KEY_POWER=1 after mem returns.
+	 * Arm the ignore window only once radio recovery has finished,
+	 * so a resume that takes longer than the window cannot expire
+	 * before that queued press is read.
+	 */
+	{
+		unsigned long long now = monotonic_ms();
+
+		power_ignore_until_ms = now ? now + POWER_RESUME_GUARD_MS : 0;
+	}
 }
 
 static void apply_vol(int up)
@@ -300,8 +327,13 @@ int main(void)
 				    ev.code == SW_LID && ev.value == 1)
 					do_lid_sleep(hall_fd);
 				if (pf[i].fd == pwr_fd && ev.type == EV_KEY &&
-				    ev.code == KEY_POWER && ev.value == 1)
-					do_mem_sleep();
+				    ev.code == KEY_POWER && ev.value == 1) {
+					unsigned long long now = monotonic_ms();
+
+					if (!power_ignore_until_ms || !now ||
+					    now >= power_ignore_until_ms)
+						do_mem_sleep();
+				}
 				if (pf[i].fd == pad_fd && ev.type == EV_KEY &&
 				    ev.code == BTN_MODE)
 					menu = ev.value != 0;
