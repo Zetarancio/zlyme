@@ -1,22 +1,13 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0
-# Miyoo Flip: restore saved joystick calibration after the driver autocal.
-# Save from Tools → Autocal. ROCKNIX 020-joypad_cal, plus a delay so the
-# 10s delayed autocal does not overwrite the restored values.
-
-SYSFS_DIR=/sys/devices/platform/rocknix-singleadc-joypad
-CAL_DIR=/storage/.config/miyoo-serial-joypad
+# Phase 3B tracer plumbing. 3C/3D restores calibration restore.
+#
+# Do not modprobe rocknix-singleadc-joypad.
+# Do not run zlyme-joypad-cal. Its restore waits up to 30s for the old
+# sysfs node and then sleeps 12s. The tracer does not persist calibration.
 
 start() {
-	# S11modules loads this from joypad.conf. Probe here too in case
-	# that script is missing. Card copy is only for an ABI-stale
-	# squashfs .ko after linux-reconfigure.
-	modprobe rocknix-singleadc-joypad 2>/dev/null || true
-	if ! grep -q '^rocknix_singleadc_joypad ' /proc/modules 2>/dev/null; then
-		hot=/storage/.config/zlyme/rocknix-singleadc-joypad.ko
-		[ -f "$hot" ] && insmod "$hot" 2>/dev/null || true
-	fi
-	[ -x /usr/sbin/zlyme-joypad-cal ] && /usr/sbin/zlyme-joypad-cal restore &
+	modprobe miyoo-flip-gamepad 2>/dev/null || true
 	return 0
 }
 

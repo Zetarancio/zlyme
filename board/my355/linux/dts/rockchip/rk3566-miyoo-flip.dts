@@ -35,159 +35,6 @@
 
 	/* No adc-keys: volume buttons are on GPIO; saradc ch0 is owned by joypad. */
 
-/* RetroArch joypad button ID reference:
-#define RETRO_DEVICE_ID_JOYPAD_B        0
-#define RETRO_DEVICE_ID_JOYPAD_Y        1
-#define RETRO_DEVICE_ID_JOYPAD_SELECT   2
-#define RETRO_DEVICE_ID_JOYPAD_START    3
-#define RETRO_DEVICE_ID_JOYPAD_UP       4
-#define RETRO_DEVICE_ID_JOYPAD_DOWN     5
-#define RETRO_DEVICE_ID_JOYPAD_LEFT     6
-#define RETRO_DEVICE_ID_JOYPAD_RIGHT    7
-#define RETRO_DEVICE_ID_JOYPAD_A        8
-#define RETRO_DEVICE_ID_JOYPAD_X        9
-#define RETRO_DEVICE_ID_JOYPAD_L       10
-#define RETRO_DEVICE_ID_JOYPAD_R       11
-#define RETRO_DEVICE_ID_JOYPAD_L2      12
-#define RETRO_DEVICE_ID_JOYPAD_R2      13
-#define RETRO_DEVICE_ID_JOYPAD_L3      14
-#define RETRO_DEVICE_ID_JOYPAD_R3      15
-*/
-
-	/* Gamepad: rocknix-singleadc-joypad. Analog stick via UART1.
-	 * rocknix,use-miyoo-serial-joypad: analog stick via UART1 (Miyoo serial protocol), not ADC. */
-	joypad: rocknix-singleadc-joypad {
-		compatible = "rocknix-singleadc-joypad";
-
-		joypad-name = "retrogame_joypad";
-		joypad-product = <0x1101>;
-		joypad-revision = <0x0100>;
-		joypad-vendor = <0x484B>;
-
-		status = "okay";
-
-		/* use miyoo serial instead of adc */
-		rocknix,use-miyoo-serial-joypad;
-
-		/* rumble motor */
-		pwms = <&pwm5 0 10000000 0>;
-		pwm-names = "enable";
-		rumble-boost-weak = <0x00>;
-		rumble-boost-strong = <0x00>;
-
-		/* gpio pincontrol setup */
-		pinctrl-names = "default";
-		pinctrl-0 = <&btn_pins_ctrl>;
-
-		/* poll interval (ms). Single value for both GPIO (buttons/dpad) and UART (joystick).
-		 * Stock miyoo_inputd.c: joystick ~8.3 ms (16666/2), buttons ~4.2 ms (16666/4).
-		 * Use 6 ms for balance of responsiveness and CPU. */
-		poll-interval = <6>;
-
-		/* Miyoo serial joystick tuning.  Requires 0002-miyoo-serial patch.
-		 * 4914 = ~15% radial deadzone.  Tuning <100 softens axis gain.
-		 * Higher fuzz/flat + threshold reduce cross-axis noise in evdev. */
-		miyoo-deadzone = <4914>;
-		miyoo-fuzz = <48>;
-		miyoo-flat = <48>;
-		miyoo-threshold = <192>;
-
-		miyoo-lx-p-tuning = <76>;
-		miyoo-lx-n-tuning = <76>;
-		miyoo-ly-p-tuning = <76>;
-		miyoo-ly-n-tuning = <76>;
-		miyoo-rx-p-tuning = <76>;
-		miyoo-rx-n-tuning = <76>;
-		miyoo-ry-p-tuning = <76>;
-		miyoo-ry-n-tuning = <76>;
-
-		sw1 {
-			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
-			label = "GPIO DPAD-UP";
-			linux,code = <BTN_DPAD_UP>;
-		};
-		sw2 {
-			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>;
-			label = "GPIO DPAD-DOWN";
-			linux,code = <BTN_DPAD_DOWN>;
-		};
-		sw3 {
-			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
-			label = "GPIO DPAD-LEFT";
-			linux,code = <BTN_DPAD_LEFT>;
-		};
-		sw4 {
-			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
-			label = "GPIO DPAD-RIGHT";
-			linux,code = <BTN_DPAD_RIGHT>;
-		};
-		sw5 {
-			gpios = <&gpio3 RK_PC2 GPIO_ACTIVE_LOW>;
-			label = "GPIO KEY BTN-A";
-			linux,code = <BTN_SOUTH>;
-		};
-		sw6 {
-			gpios = <&gpio3 RK_PC3 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN-B";
-			linux,code = <BTN_EAST>;
-		};
-		sw7 {
-			gpios = <&gpio3 RK_PC1 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN-X";
-			linux,code = <BTN_NORTH>;
-		};
-		sw8 {
-			gpios = <&gpio3 RK_PC0 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN-Y";
-			linux,code = <BTN_WEST>;
-		};
-		sw9 {
-			gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_SELECT";
-			linux,code = <BTN_SELECT>;
-		};
-		sw10 {
-			gpios = <&gpio3 RK_PB5 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_START";
-			linux,code = <BTN_START>;
-		};
-		sw11 {
-			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_F";
-			linux,code = <BTN_MODE>;
-		};
-		sw12 {
-			gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_TL";
-			linux,code = <BTN_TL>;
-		};
-		sw13 {
-			gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_TR";
-			linux,code = <BTN_TR>;
-		};
-		sw14 {
-			gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_TL2";
-			linux,code = <BTN_TL2>;
-		};
-		sw15 {
-			gpios = <&gpio3 RK_PB4 GPIO_ACTIVE_LOW>;
-			label = "GPIO BTN_TR2";
-			linux,code = <BTN_TR2>;
-		};
-		sw16 {
-			gpios = <&gpio2 RK_PC1 GPIO_ACTIVE_HIGH>;
-			label = "GPIO BTN_THUMBL";
-			linux,code = <BTN_THUMBL>;
-		};
-		sw17 {
-			gpios = <&gpio2 RK_PC0 GPIO_ACTIVE_HIGH>;
-			label = "GPIO BTN_THUMBR";
-			linux,code = <BTN_THUMBR>;
-		};
-	};
-
 	/* LCD backlight: PWM4, mainline pwm-backlight.
 	 * Stock miyoo355_fw_20250509213001 lcd_frequencies.json offers selectable PWM modes:
 	 *   800 Hz  period=1250000 ns  brightness 20-160  (lowest flicker freq, widest range)
@@ -1271,14 +1118,132 @@
 	rockchip,hw-tshut-polarity = <0>;
 };
 
-/* UART1: used by rocknix-singleadc-joypad Miyoo serial protocol.
- * The driver opens /dev/ttyS1 at 9600 8N1 for analog stick calibration.
- * Must remain enabled — disabling it causes Auto-cal read error: -5. */
+/* UART1 analog sticks. CTS pinmux and DMA stay as on the known-good
+ * board. Phase 3B does not remove them. The child claims the port via
+ * serdev, so /dev/ttyS1 is not created. Protocol flow control is off.
+ */
 &uart1 {
 	status = "okay";
 	dma-names = "tx", "rx";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>;
+
+	/* Phase 3B tracer. Debounce 10 ms is the stock interval, not a
+	 * final constant. No calibration and no SDL mapping in here.
+	 */
+	gamepad {
+		compatible = "miyoo,flip-gamepad";
+		current-speed = <9600>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&btn_pins_ctrl>;
+
+		pwms = <&pwm5 0 10000000 0>;
+		pwm-names = "enable";
+
+		button-dpad-up {
+			label = "DPAD-UP";
+			linux,code = <BTN_DPAD_UP>;
+			gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-dpad-down {
+			label = "DPAD-DOWN";
+			linux,code = <BTN_DPAD_DOWN>;
+			gpios = <&gpio3 RK_PA4 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-dpad-left {
+			label = "DPAD-LEFT";
+			linux,code = <BTN_DPAD_LEFT>;
+			gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-dpad-right {
+			label = "DPAD-RIGHT";
+			linux,code = <BTN_DPAD_RIGHT>;
+			gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-south {
+			label = "SOUTH";
+			linux,code = <BTN_SOUTH>;
+			gpios = <&gpio3 RK_PC2 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-east {
+			label = "EAST";
+			linux,code = <BTN_EAST>;
+			gpios = <&gpio3 RK_PC3 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-north {
+			label = "NORTH";
+			linux,code = <BTN_NORTH>;
+			gpios = <&gpio3 RK_PC1 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-west {
+			label = "WEST";
+			linux,code = <BTN_WEST>;
+			gpios = <&gpio3 RK_PC0 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-select {
+			label = "SELECT";
+			linux,code = <BTN_SELECT>;
+			gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-start {
+			label = "START";
+			linux,code = <BTN_START>;
+			gpios = <&gpio3 RK_PB5 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-menu {
+			label = "MENU";
+			linux,code = <BTN_MODE>;
+			gpios = <&gpio3 RK_PA1 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-l {
+			label = "L";
+			linux,code = <BTN_TL>;
+			gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-r {
+			label = "R";
+			linux,code = <BTN_TR>;
+			gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-l2 {
+			label = "L2";
+			linux,code = <BTN_TL2>;
+			gpios = <&gpio3 RK_PB2 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-r2 {
+			label = "R2";
+			linux,code = <BTN_TR2>;
+			gpios = <&gpio3 RK_PB4 GPIO_ACTIVE_LOW>;
+			debounce-interval = <10>;
+		};
+		button-l3 {
+			label = "L3";
+			linux,code = <BTN_THUMBL>;
+			gpios = <&gpio2 RK_PC1 GPIO_ACTIVE_HIGH>;
+			debounce-interval = <10>;
+		};
+		button-r3 {
+			label = "R3";
+			linux,code = <BTN_THUMBR>;
+			gpios = <&gpio2 RK_PC0 GPIO_ACTIVE_HIGH>;
+			debounce-interval = <10>;
+		};
+	};
 };
 
 /* UART2 (debug serial): must stay enabled for deep sleep resume to work.

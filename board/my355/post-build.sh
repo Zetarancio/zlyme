@@ -17,7 +17,9 @@ if [ ${#moddirs[@]} -ne 1 ]; then
 	note "expected exactly one /lib/modules/<release>, found ${#moddirs[@]}"
 else
 	moddir="${moddirs[0]}"
-	for m in 8733bu rtl8733bu_power rocknix-singleadc-joypad; do
+	# miyoo-flip-gamepad is the Phase 3B tracer. rocknix-singleadc-joypad
+	# stays in the image for rollback and must not be bound by the DTS.
+	for m in 8733bu rtl8733bu_power rocknix-singleadc-joypad miyoo-flip-gamepad; do
 		found=$(find "${moddir}" -name "${m}.ko" -print -quit)
 		[ -n "${found}" ] || note "kernel module ${m}.ko is missing"
 	done
