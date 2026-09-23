@@ -441,13 +441,13 @@ SARADC stays enabled through the initial Phase 3 work. The stick axes are UART. 
 Calibration is normal. The potentiometer modules vary from unit to unit, and Switch 1 non-Hall replacements are a designed target for the same UART protocol. Do not treat stock raw defaults as universal, and do not assume four axes share one range.
 
 ```text
-persistent, per axis:  minimum and maximum
-boot, per axis:        a fresh center, if the stick is still
+persistent, independently per axis:  min, zero, and max
+boot:                                 a fresh center when the sticks are still
 ```
 
 Userspace owns the full-range procedure, the files under `/storage`, the UI, and restore/apply policy. The kernel owns UART decoding, the runtime transform, deadzone/noise handling, and standard `ABS_*` output. The kernel must not open persistent files. A small sysfs attribute is enough. Do not add a character device for calibration.
 
-Boot-center collection starts only after the input device exists. It uses an outlier-resistant estimate and accepts a center only from a stable cluster. If a stick is moving, keep the previous center and retry in the background or leave it to userspace. No infinite wait, no delayed probe, and no calibration loop inside `probe`. Buttons stay available if UART never produces a frame.
+Boot-center collection starts only after the input device exists. It uses an outlier-resistant estimate and accepts a center only from a stable cluster. An accepted center is used for that boot and must not rewrite the persistent file. If the samples are moving, keep the persisted zero. If no valid persisted calibration exists, keep a conservative compiled default zero. No infinite wait, no delayed probe, and no calibration loop inside `probe`. Buttons stay available if UART never produces a frame.
 
 The full calibration application still captures `x_min`, `x_zero`, `x_max`, `y_min`, `y_zero`, and `y_max` independently for each stick, including asymmetric travel. A narrow diagnostic report of raw bytes, observed extrema, center, active calibration, normalized axes, and frame errors is part of 3C/3D. It is not a permanent broad debug ABI.
 
@@ -538,7 +538,7 @@ Once the tracer is proven, complete the physical-device behavior:
 * full usable axis ranges;
 * deadzone/noise handling;
 * calibration mechanism;
-* persistent per-axis min/max through userspace;
+* persistent per-axis min, zero, and max through userspace;
 * non-blocking boot-time center calibration that rejects a moving stick;
 * full-range calibration of both sticks, including asymmetric travel;
 * a narrow raw/normalized diagnostic report;
@@ -590,7 +590,8 @@ Before Phase 4:
 * no unrelated controller identity is spoofed;
 * all built-in gamepad buttons work;
 * both analog sticks work across their usable ranges;
-* persistent per-axis min/max calibration works;
+* persistent per-axis min, zero, and max calibration works;
+* a boot-time center does not rewrite the persistent calibration file;
 * boot-time center calibration is non-blocking, rejects a moving stick, and does not delay buttons or NextUI;
 * original sticks are hardware-validated;
 * Switch 1 non-Hall replacement sticks are a designed compatibility target on the same UART protocol;

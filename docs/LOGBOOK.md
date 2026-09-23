@@ -27,7 +27,7 @@ The stick protocol is 9600 8N1, frame `FF YL XL YR XR FE`, on UART1. A 1.5 Mbaud
 
 Switch 1 non-Hall stick modules are a designed compatibility target for the same UART front-end, not a Nintendo HID device. `hid-nintendo` is the wrong transport. They are not hardware-validated on Zlyme until the Phase 3D community protocol passes.
 
-The physical device is one `input_dev` named `Miyoo Flip Gamepad` on `BUS_HOST`, with vendor, product, and version left at 0. Axes use `serdev`. Buttons use GPIO interrupts after tracer proof. Rumble stays `FF_RUMBLE` to PWM5. Persistent calibration is per-axis min/max. Boot measures a new center only from a stable cluster and must not block probe, buttons, NextUI, or suspend. UART CTS pinmux and DMA stay as they are for the tracer. SARADC is not removed in Phase 3.
+The physical device is one `input_dev` named `Miyoo Flip Gamepad` on `BUS_HOST`, with vendor, product, and version left at 0. Axes use `serdev`. Buttons use GPIO interrupts after tracer proof. Rumble stays `FF_RUMBLE` to PWM5. Persistent calibration is per-axis min, zero, and max. A trustworthy boot center replaces the running zero only and does not rewrite the saved file. If the boot samples are moving, the persisted zero stays. If nothing was saved, a compiled default zero is used. Boot measurement must not block probe, buttons, NextUI, or suspend. UART CTS pinmux and DMA stay as they are for the tracer. SARADC is not removed in Phase 3.
 
 Implementation has not started. Phase 3B has not started.
 

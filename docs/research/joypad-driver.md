@@ -196,11 +196,13 @@ The kernel must not open persistent files.
 `DESIGN DECISION`:
 
 ```text
-persistent, per axis:  minimum and maximum
-boot, per axis:        a fresh center, if the stick is still
+persistent, independently per axis:  min, zero, and max
+boot:                                 a fresh center when the sticks are still
 ```
 
-Do not assume one stored center stays valid forever. The usual boot pose is both sticks centered and still. That is a hint to the user, not a stall.
+The calibration application writes the persistent min, zero, and max. A boot measurement does not rewrite that file.
+
+Do not assume one stored zero stays valid forever. The usual boot pose is both sticks centered and still. That is a hint to the user, not a stall.
 
 ### Boot center — 3B/3C requirement, not final constants
 
@@ -215,13 +217,19 @@ accept only a stable cluster
 
 `N`, the spread limit, and the retry interval are implementation constants to pick in 3B/3C. They are not fixed here.
 
-If the samples move because a stick is held off-center:
+At boot:
 
 ```text
-do not install that center
-keep the previous persisted center, or the compiled default if none exists
-retry in the background, or leave a full recalibration to userspace
+attempt a fresh center from stable, untouched sticks
+if accepted:
+    use that center for this running boot only
+if rejected because the samples are moving or unstable:
+    use the persisted zero
+if there is no valid persisted calibration:
+    use a conservative compiled default zero
 ```
+
+A successful boot-center measurement must not rewrite the persistent calibration file. The calibration application remains responsible for deliberate persistent calibration. An unstable window may be retried in the background, or left for userspace. It must not install a bad center.
 
 No infinite wait. No 10-second startup delay. No calibration loop inside `probe`. Buttons stay live if UART never yields a valid frame.
 
