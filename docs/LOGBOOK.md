@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 3B gamepad tracer
+
+The Miyoo Flip gamepad tracer passed its hardware gate on the zlyme41 image. Phase 3C has not started.
+
+The live device is `miyoo_flip_gamepad` / `miyoo,flip-gamepad` / `Miyoo Flip Gamepad`, `BUS_HOST`, ids 0. `rocknix-singleadc-joypad.ko` stayed on disk and was not bound. UART frames ran at about 66.8 Hz with no bad frames in the final test. That rate is the analog sender, not a button poll. An untouched boot accepted YL 139, XL 103, YR 138, and XR 112. Directed original-stick extrema were YL 25/139/239, XL 2/103/223, YR 49/138/226, and XR 17/112/203. Fallback 85/200 does not fit them. Signs are negative for left/up and positive for right/down. All seventeen `BTN_*` lines passed press and release. Ten millisecond debounce kept extra edges out of evdev. Suspend/resume kept the same binding, one probe, an open port, and working stick and button input. NextUI opened the new event device directly.
+
+Not done: persistent calibration, rumble, Switch-stick validation, and userspace cutover. Apparent double actions in NextUI are a Phase 3D frontend question. The power/wakeup audit and a MIT-preserving adaptation of Joe's Calibrage (`205f662c`, Kevin Vranken) are Phase 3C. Removing the old ROCKNIX joypad package is Phase 3D. Broad emulator compatibility through InputPlumber is Phase 4.
+
 ## 2026-09-23 — Phase 3A gamepad research
 
 Research only. No driver, DTS, kernel patch, or userspace consumer changed. Notes are in `docs/research/joypad-driver.md`.

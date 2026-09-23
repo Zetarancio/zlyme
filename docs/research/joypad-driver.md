@@ -419,12 +419,52 @@ board/my355/linux/dts-overrides/rockchip/rk3566-powkiddy-rk2023.dtsi
 
 Kernel patches that exist only for the old module (`input-polldev`, `adc-keys` keycode 316) come off after cutover, when nothing links them. That is not a second general patch-cleanup pass. SARADC, UART1 CTS, and UART1 DMA stay as noted above.
 
+## Phase 3B hardware result
+
+Validated 2026-09-23 on the zlyme41 tracer. Phase 3C has not started.
+
+```text
+module:     miyoo_flip_gamepad
+compatible: miyoo,flip-gamepad
+name:       Miyoo Flip Gamepad
+bus:        BUS_HOST
+id:         0 / 0 / 0
+```
+
+`rocknix-singleadc-joypad.ko` remained installed and was not loaded or bound. UART was 9600 8N1, frame `FF YL XL YR XR FE`, about 66.8 valid frames per second, and 0 bad frames in the final test. That rate is the sender's frame cadence, not a 6 ms GPIO poll.
+
+Untouched boot centers, all accepted after the 1.5 s settle and two confirming windows: YL 139/139, XL 103/103, YR 138/138, XR 112/112. Resting normalized axes stayed at 0.
+
+Directed original-stick extrema, not installed as calibration:
+
+```text
+YL 25 / 139 / 239
+XL 2 / 103 / 223
+YR 49 / 138 / 226
+XR 17 / 112 / 203
+```
+
+Fallback 85/200 does not fit those ranges. Signs match Linux gamepad convention: negative is left/up, positive is right/down. All seventeen `BTN_*` lines passed press and release. No keyboard arrows and no autorepeat. Ten millisecond debounce kept extra GPIO edges out of evdev. Suspend/resume kept the same binding, probe count 1, the port open, frames running, and both stick and button input. NextUI opened the new event device directly.
+
+Not claimed: persistent calibration, rumble, Switch-stick hardware validation, userspace cutover, or emulator compatibility.
+
+## Ownership after 3B
+
+| Topic | Phase |
+| --- | --- |
+| Persistent calibration, `FF_RUMBLE`, power/wakeup audit, Joe's Calibrage adaptation | 3C |
+| NextUI double-action investigation, direct Zlyme name/hotkey/rumble/module cutover, old `rocknix-joypad` removal, old-driver-only `input-polldev` and `adc-keys` patches if they are proven unused | 3D |
+| Broad emulator compatibility through one InputPlumber virtual device | 4 |
+
+Joe's Calibrage reference: `Helaas/nextui-Joe-s-Calibrage-pak` `205f662c9ab7334229787e024e3556ee00272aad`, v0.2.0, MIT, Copyright (c) 2026 Kevin Vranken. Do not restore its `/dev/ttyS1` or `miyooio` backend. Copied UI keeps that MIT notice, copyright, attribution, and commit. Vendored dependencies are audited on their own.
+
+A restore must not overwrite a fresh accepted boot center with the persisted zero. Persistent min / saved zero / max stay distinct from the runtime center. Exact sysfs names wait for 3C.
+
+Some NextUI controls may act twice. The kernel emitted one press and one release on one device. Treat that as frontend routing until 3D instruments it. Do not change the physical button ABI to hide it, and do not use a later virtual device to hide it either.
+
 ## Open measurements
 
-These need a tracer or a scope. They do not need another stock boot. Stock artifacts already answer the protocol, the GPIO map, and the role of `miyooio`.
-
-- Which IC transmits the UART frame. Needs board photos or a continuity trace from the stick connector. A logic capture will only reconfirm `FF … FE`.
+- Which IC transmits the UART frame. Needs board photos or a continuity trace from the stick connector.
 - Whether `uart1m0_ctsn` is electrically tied to the sender. Remove it only on a unit where frames still arrive.
-- Per-line IRQ debounce, measured on the tracer.
-- Raw min, center, and max for an original pair, from the diagnostic interface, so the default range is measured on Zlyme rather than copied from stock's 85/130/200.
-- The same four numbers from a community Switch-style pair, using the protocol above.
+- Idle power cost of the UART frame stream versus reporting only when a published axis changes. Phase 3C.
+- The same four raw numbers from a community Switch-style pair, using the protocol above. Not hardware-validated.

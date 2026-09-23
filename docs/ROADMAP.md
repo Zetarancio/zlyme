@@ -430,7 +430,7 @@ One Linux input device for the physically integrated handheld gamepad is not inh
 
 The architectural question is whether one driver can own those resources with clear boundaries and lower complexity than exposing several physical input devices and relying on userspace aggregation before Phase 4.
 
-Phase 3A selected that shape. Linux 7.0.2 can model the analog path as a `serdev` child of UART1 at 9600 8N1. The seventeen gamepad GPIOs should be interrupt-driven once the Phase 3B tracer proves request, polarity, debounce, and press/release on each line. Until that pass, each line is unvalidated. Rockchip GPIO capability alone is not a hardware pass.
+Phase 3A selected that shape. Linux 7.0.2 models the analog path as a `serdev` child of UART1 at 9600 8N1. Phase 3B proved interrupt-driven GPIO on all seventeen gamepad lines, including press and release. The observed ~66.8 Hz rate is the analog sender delivering UART frames. It is not a button poll. The old driver polled GPIOs every 6 ms. Those are different mechanisms.
 
 The 3B tracer keeps the current UART1 pinmux, including `uart1m0_ctsn`, and the current DMA setup. Stock userspace disables hardware flow control, and the stock DTB still muxes CTS and describes DMA. Those are not the same fact. Dropping either is a later experiment, not part of the driver replacement.
 
@@ -489,7 +489,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ### Status
 
-Phase 3A complete, 2026-09-23. Phase 3B has not started. No implementation branch.
+Phase 3A complete, 2026-09-23. Phase 3B complete, 2026-09-23, on `phase-3-gamepad`. Phase 3C has not started.
 
 ### 3B — Minimal new-driver tracer
 
@@ -528,6 +528,25 @@ Keep the existing driver available as a **mutually exclusive build-time fallback
 
 Never bind the old and new drivers to the same UART, GPIO, or PWM resources simultaneously.
 
+#### 3B result
+
+Hardware-validated on the zlyme41 tracer image. The module is `miyoo_flip_gamepad`, compatible `miyoo,flip-gamepad`, input name `Miyoo Flip Gamepad`, `BUS_HOST`, vendor/product/version 0. The old `rocknix-singleadc-joypad` module stayed on disk and was not loaded or bound.
+
+UART was 9600 8N1, frame `FF YL XL YR XR FE`, about 66.8 valid frames per second, and 0 bad frames in the final test. An untouched boot accepted centers YL 139, XL 103, YR 138, XR 112, each after the 1.5 s settle and two confirming windows. Resting normalized axes stayed at 0.
+
+Directed original-stick extrema, diagnostics only:
+
+```text
+YL 25 / 139 / 239
+XL 2 / 103 / 223
+YR 49 / 138 / 226
+XR 17 / 112 / 203
+```
+
+Fallback 85/200 does not describe those ranges. Signs match the Linux gamepad convention: negative is left/up, positive is right/down. All seventeen `BTN_*` lines, including `BTN_DPAD_*`, passed press and release. No keyboard arrows and no autorepeat. The 10 ms debounce kept extra GPIO edges out of evdev. Suspend/resume left the same driver bound, probe count 1, the port open, frames running, and both a stick and a button working. NextUI opened the new event device directly.
+
+Not done in 3B: persistent calibration, `FF_RUMBLE`, Switch-stick hardware validation, userspace name cutover, and emulator compatibility.
+
 ### 3C — Complete physical gamepad integration
 
 Once the tracer is proven, complete the physical-device behavior:
@@ -556,6 +575,19 @@ Do not emulate Xbox or Nintendo controller protocols in the physical driver.
 
 Application-specific mapping remains userspace policy.
 
+Phase 3C owns the input power and wakeup audit before the physical driver is called feature-complete. Measure UART/DMA interrupt rate, idle GPIO interrupt rate, CPU idle residency, idle CPU use, the evdev event rate, and battery current where that reading is reliable. The ~66.8 Hz figure is the UART frame rate. If `input_sync()` runs for every frame while no published axis value changed, synchronize only when a published value changes. Do not decimate real stick motion. Do not change the UART baud unless the sender protocol is shown to support it. The old 6 ms GPIO poll and this UART cadence are not the same loop.
+
+Phase 3C also replaces `Autocal.pak` and `zlyme-joypad-cal`. Those talk to the old ROCKNIX sysfs ABI. The selected UI/workflow reference is `Helaas/nextui-Joe-s-Calibrage-pak` at `205f662c9ab7334229787e024e3556ee00272aad` (v0.2.0), MIT, Copyright (c) 2026 Kevin Vranken. Its my355 backend is not usable as-is: it opens `/dev/ttyS1`, writes `/userdata` calibration files, and uses `miyooio` `joy_type`. UART1 stays owned by the serdev driver. The new app uses the driver's calibration and raw-diagnostic interface. Do not add a character device, and do not open files from the kernel. Copied or adapted code keeps the MIT text, Kevin Vranken's copyright, attribution to Joe's Calibrage, and that commit. Audit vendored dependencies separately from the repository MIT license.
+
+Suggested attribution:
+
+```text
+Calibration UI/workflow based in part on Joe's Calibrage
+by Kevin Vranken (Helaas), used under the MIT License.
+```
+
+The runtime model must keep persistent min / saved zero / max distinct from a fresh accepted boot center. A later restore must not overwrite that fresh runtime center with the persisted zero. Exact sysfs names are chosen when 3C starts. The interface stays small.
+
 ### 3D — Cutover and hardware validation
 
 After the replacement has feature parity, switch Zlyme to the new driver.
@@ -575,11 +607,13 @@ Original Flip sticks are the hardware-validation target for this cutover.
 
 Switch 1 non-Hall replacement sticks stay a designed compatibility target. They use the same driver and the same frame. Phase 3D may include the community protocol in `docs/research/joypad-driver.md` when a tester has those modules. Do not call that support validated until those tests pass. Do not block the original-stick cutover on them.
 
-Remove the old joypad package only after the replacement is proven.
+Phase 3D owns removal of `rocknix-joypad` from the normal product build, after 3C calibration and rumble have passed. Git history is the fallback. At that cutover, check whether `input-polldev` and the `adc-keys` / `joypad_input_g` patches exist only for the old driver. If they do, remove them as part of this migration, with a clean Linux re-extract and repatch. That is not the Phase 5 kernel cleanup.
 
-Remove obsolete direct coupling required solely by the old driver when the dependency is clearly part of the Phase 3 migration.
+Phase 3D owns direct Zlyme consumers required for the physical-driver cutover: NextUI lookup where it is required, `zlyme-keylidmon`, `zlyme-pak-hotkey`, rumble lookup, module loading, post-build checks, calibration boot restore, and the minimum mapping needed for the game-launch gate. Do not edit every emulator config here. Broad emulator compatibility is the Phase 4 virtual controller.
 
-Broader kernel-patch reduction remains Phase 5; do not turn the Phase 3 cutover into another general kernel cleanup.
+Some NextUI controls may perform the same action twice. The kernel reported one press and one release on one device, with the old driver unbound. Treat that as an application, SDL, or input-routing issue until evidence says otherwise. Instrument that path at the start of 3D. Do not change the physical button ABI in 3C to hide it. If Phase 4 later exposes both the physical device and an InputPlumber virtual device, exclusive grab owns that separate duplicate-device problem. Do not use Phase 4 to hide an existing NextUI bug.
+
+Broader kernel-patch reduction remains Phase 5.
 
 ### Phase 3 gate
 
@@ -610,7 +644,7 @@ Before Phase 4:
 * the known-good old implementation remains recoverable through Git history rather than parallel runtime ownership;
 * documentation reflects the implemented architecture.
 
-Only after this gate should Phase 4 decide whether InputPlumber creates a stable virtual controller and whether that virtual device should present an Xbox-compatible userspace ABI for selected software.
+Only after this gate should Phase 4 introduce InputPlumber as the stable virtual controller for broad emulator and application compatibility. That virtual device may present an Xbox-compatible userspace ABI for selected software. Phase 4 does not replace the Phase 3D NextUI duplicate-action investigation.
 
 ## 4 — Introduce InputPlumber as the input-policy layer
 
