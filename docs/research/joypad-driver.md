@@ -504,6 +504,8 @@ Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That 
 
 `restore` updates min, saved zero, and max. A `default` or `persisted` source adopts the saved zero and becomes `persisted`. A `boot` or `apply` runtime zero stays. Boot center sets runtime zero and source `boot` only. `apply` sets all four values and source `apply`, and cancels unfinished boot acquisition on those axes. An apply during `settling` became source `apply` and boot state `cancelled`, and was unchanged 8 seconds later.
 
+The runtime zero must remain strictly inside the active min/max, with both sides longer than the deadband. Checked on `zlyme43 (2026-09-23)`. A `restore` that would leave a `boot` or `apply` center outside the new ends returns `-ERANGE` and changes neither axis. A stable boot median outside the active range is not installed: runtime zero and source stay as they are, and the tracer shows terminal `range-rejected`. A stale right X range of 140/170/230 restored, the sampler found XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted. The measured files then booted with runtime zeros 104/137/114/138, source `boot`, axes 0, the port open, and bad frames 0.
+
 Attributes `calibration_left` and `calibration_right` are mode `0644`. The tracer remains read-only. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. Boot runs `zlyme-gamepad-cal restore` immediately and does not load the ROCKNIX module.
 
 Measured files, hashes unchanged through the gate:

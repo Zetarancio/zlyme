@@ -602,6 +602,8 @@ Uncalibrated fallback is the UART byte domain, not measured travel: min 0, saved
 
 `restore` always updates min, saved zero, and max. If the source is `default` or `persisted`, runtime zero becomes the saved zero and the source becomes `persisted`. A `boot` or `apply` runtime zero is kept. A successful boot center sets runtime zero to that center and source to `boot`, and does not change min, saved zero, or max. `apply` sets all four values and source `apply`, and cancels unfinished boot-center acquisition on those axes. An apply written while the tracer was still settling stayed `apply` / `cancelled` eight seconds later. Boot center did not replace it.
 
+The active center must satisfy `min < runtime_zero < max` with both sides longer than the deadband. That was closed on `zlyme43 (2026-09-23)`. A `restore` whose proposed ends do not fit a preserved `boot` or `apply` center returns `-ERANGE` and changes neither axis of the stick. A malformed write is still `-EINVAL`. A stable boot median that does not fit the active min/max is not installed. The axis keeps its current runtime zero and source, and the tracer shows the terminal state `range-rejected`. Persistence is not rewritten. A stale right X range of 140/170/230 left resting XR 114 rejected, with runtime zero 170 and source `persisted`. The measured files then booted normally.
+
 Userspace files, which the kernel does not open:
 
 ```text

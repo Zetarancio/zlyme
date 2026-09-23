@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-24 — Phase 3C2a calibration range invariant
+
+Hardened on `zlyme43 (2026-09-23)`. The runtime zero must stay strictly inside the active min/max, with both sides longer than the deadband of 2. A `restore` that would leave a `boot` or `apply` center outside the new range returns `-ERANGE` and changes neither axis. A stable boot median that does not fit the active range is not installed. That axis stays on its current center and source, and the tracer shows `range-rejected`. The state is terminal. Persistent files are not rewritten.
+
+Checked on the live image: `restore 120 130 200 140 160 220` against boot centers 104/137 failed with the stick unchanged. After `apply 4 110 220 30 150 230`, `restore 140 160 220 170 190 240` failed and the source stayed `apply`. A stale right X range of 140/170/230 restored, the sampler found resting XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted normally. The measured files were restored and a fresh boot accepted 104/137/114/138, source `boot`, axes 0, port open, bad frames 0. The file hashes are still `f28facba…` and `74ece9a2…`.
+
+Phase 3C2a is complete. Phase 3C2b and Phase 3C3 have not started.
+
 ## 2026-09-24 — Phase 3C2a gamepad calibration
 
 Persistent calibration passed on `zlyme42 (2026-09-23)`. Phase 3C2b has not started. Rumble has not started. The old ROCKNIX joypad package is still installed and was not bound.
