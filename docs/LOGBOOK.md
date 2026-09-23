@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2C inert initramfs warning patch
+
+Removed `40-kernel-7.0/linux/9998-silence-initramfs-unpack-warn.patch`. It only downgrades an initramfs unpack `printk` in the `#else` of `CONFIG_BLK_DEV_RAM`. The my355 kernel has `CONFIG_BLK_DEV_RAM=y`, so that line is not compiled. Zlyme's embedded initramfs is unchanged: `CONFIG_INITRAMFS_SOURCE="/zlyme/output/images/initramfs"`, and the linked cpio contains `/init`. Active Linux patches went from 21 to 20. The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. OTA: `output/images/zlyme-my355-20260923-34a6114552cf-dirty.tar`, sha256 `446e7c7b7e3e5eb93d1fcc5d74743160d577d096fd5b4f70a35ec274d16652a7`. No Flip test. OTP remains open.
+
 ## 2026-09-23 — Phase 2C Group 3 perf Rust target patch
 
 Removed `40-kernel-7.0/linux/9999-fix-rust-build-error.patch`. It only changed Rust triples in Linux `tools/perf/Makefile.config`. Zlyme does not build that tool. `CONFIG_PERF_EVENTS=y` stayed on, and `CONFIG_RUST` stayed off. Active Linux patches went from 22 to 21. The clean rebuild applied 21 patches, produced no `tools/perf` objects, and left the Flip DTB at `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. OTA: `output/images/zlyme-my355-20260923-19aebc095a6f-dirty.tar`, sha256 `7f967dfea75966ff0290f90aa63c3ee92e32160ca7c4de9a88b2c0b6c9a87d7e`. No Flip test: nothing on the runtime path changed. OTP and `9998` were not touched.
