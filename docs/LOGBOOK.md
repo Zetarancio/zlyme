@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2C OTP candidate
+
+The earlier image's RK3568 OTP provider probed and read 128 nonzero bytes, and nothing consumed those cells. Removed `0022` and `0023`. Active Linux patches went from 20 to 18. The new Flip DTB is `056f5f7a554a363b55ec95dd3c1d280075a9e9fd6601e5ee79ee285656bf35ce`; the only decompiled change from `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4` is deletion of `otp@fe38c000` and its cells. OTA: `output/images/zlyme-my355-20260923-000c8b1ae9d1-dirty.tar`, sha256 `7bd23b856bf5d910f45f8476c1ed9e19ecb53ff17ca0c5392f74fc22b5345486`.
+
+That image booted as `Linux 7.0.2 #1 SMP PREEMPT Wed Sep 23 12:49:33 UTC 2026` with no OTP provider and no `otp@fe38c000` node. CPU, GPU, DMC, and thermal policy were still present. NextUI, the joypad, RK817 audio, Wi-Fi, and `/storage` were healthy. Physical boot, display, controls, audio, Wi-Fi, and standard suspend/resume passed. Phase 2 kernel-patch work ends here. Joypad architecture stays in Phase 3. DFI stays in Phase 6. DMC stays in Phase 7.
+
 ## 2026-09-23 — Phase 2C inert initramfs warning patch
 
 Removed `40-kernel-7.0/linux/9998-silence-initramfs-unpack-warn.patch`. It only downgrades an initramfs unpack `printk` in the `#else` of `CONFIG_BLK_DEV_RAM`. The my355 kernel has `CONFIG_BLK_DEV_RAM=y`, so that line is not compiled. Zlyme's embedded initramfs is unchanged: `CONFIG_INITRAMFS_SOURCE="/zlyme/output/images/initramfs"`, and the linked cpio contains `/init`. Active Linux patches went from 21 to 20. The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. OTA: `output/images/zlyme-my355-20260923-34a6114552cf-dirty.tar`, sha256 `446e7c7b7e3e5eb93d1fcc5d74743160d577d096fd5b4f70a35ec274d16652a7`. No Flip test. OTP remains open.

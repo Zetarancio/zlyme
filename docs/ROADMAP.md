@@ -311,7 +311,7 @@ The result should be a cleaner kernel baseline, not the smallest possible patch 
 
 ### Status
 
-2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is recorded in `docs/research/kernel-patch-audit.md`. 2C Groups 1, 2A, 2B, and 3 are complete, and the inert initramfs warning patch `9998` is removed. The remaining Phase 2 kernel-patch decision is OTP `0022`/`0023`. DFI stays in Phase 6. DMC stays in Phase 7. Phase 2 is not finished.
+Complete, 2026-09-23. 2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is in `docs/research/kernel-patch-audit.md`. 2C removed the foreign-board, unused-driver, perf-Rust, inert-initramfs, and unused RK3568 OTP patches. The OTP-removal image booted on the Flip: NextUI, display, controls, audio, Wi-Fi, and standard suspend/resume passed, with no OTP provider left. Eighteen Linux patches remain. Joypad architecture stays in Phase 3. DFI `1010` stays in Phase 6. DMC `1012a`/`1012b` stays in Phase 7.
 
 ## 3 — Rewrite the Miyoo Flip joypad driver as an out-of-tree module
 
