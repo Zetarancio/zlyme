@@ -13,8 +13,11 @@
  * min/max and saved_zero are the persistent travel and center.
  * runtime_zero is what scaling uses. Its source is default,
  * persisted, boot, or apply. A boot center replaces a default or
- * persisted runtime center only. Apply is authoritative for this
- * boot and stops further boot-center acquisition on those axes.
+ * persisted runtime center only when that center still fits the
+ * active min/max. Apply is authoritative for this boot and stops
+ * further boot-center acquisition on those axes. A restore that
+ * would leave a preserved runtime center outside the new range
+ * is rejected and changes nothing.
  * 0/128/255 is the uncalibrated protocol-byte fallback, not a
  * measured stick range.
  *
@@ -82,6 +85,7 @@ enum mf_boot_state {
 	MF_BOOT_ACCEPTED,
 	MF_BOOT_TIMEOUT,
 	MF_BOOT_CANCELLED,
+	MF_BOOT_RANGE_REJECTED,
 };
 
 enum mf_zero_source {
@@ -273,7 +277,22 @@ static bool mf_window_stable(const u8 *samples, int n, u8 *median_out)
 static bool mf_boot_finished(u8 state)
 {
 	return state == MF_BOOT_ACCEPTED || state == MF_BOOT_TIMEOUT ||
-	       state == MF_BOOT_CANCELLED;
+	       state == MF_BOOT_CANCELLED || state == MF_BOOT_RANGE_REJECTED;
+}
+
+/*
+ * Active span used for scaling. -EINVAL means the center is not
+ * strictly inside the ends. -ERANGE means a side is not longer than
+ * the deadband, so that side would not move. Callers reject the
+ * whole stick write on either result.
+ */
+static int mf_center_in_range(int min, int zero, int max)
+{
+	if (min >= zero || zero >= max)
+		return -EINVAL;
+	if ((zero - min) <= MF_RAW_DEADBAND || (max - zero) <= MF_RAW_DEADBAND)
+		return -ERANGE;
+	return 0;
 }
 
 /*
@@ -352,6 +371,12 @@ static void mf_boot_note(struct mf_pad *pad, const u8 raw[MF_AXES])
 		}
 
 		if (abs(med - ax->candidate) <= MF_BOOT_MATCH) {
+			if (mf_center_in_range(ax->min, med, ax->max)) {
+				ax->settled = true;
+				ax->accepted = false;
+				ax->boot_state = MF_BOOT_RANGE_REJECTED;
+				continue;
+			}
 			ax->runtime_zero = med;
 			ax->zero_source = MF_ZERO_BOOT;
 			ax->accepted = true;
@@ -622,6 +647,8 @@ static const char *mf_boot_word(u8 state)
 		return "timeout";
 	case MF_BOOT_CANCELLED:
 		return "cancelled";
+	case MF_BOOT_RANGE_REJECTED:
+		return "range-rejected";
 	default:
 		return "unknown";
 	}
@@ -755,12 +782,18 @@ static int mf_token_u8(const char **pp, int *out)
 	return 0;
 }
 
-static int mf_side_ok(int min, int zero, int max)
+/* Caller holds pad->lock. 0, or the errno for a rejected stick. */
+static int mf_preflight_axis(const struct mf_axis *ax, bool apply,
+			     int min, int zero, int max)
 {
-	if (min >= zero || zero >= max)
-		return -EINVAL;
-	if ((zero - min) <= MF_RAW_DEADBAND || (max - zero) <= MF_RAW_DEADBAND)
-		return -EINVAL;
+	/*
+	 * apply, and a restore that adopts the supplied zero, were
+	 * already checked against that zero. A preserved boot or
+	 * apply center must also fit the proposed ends.
+	 */
+	if (!apply && (ax->zero_source == MF_ZERO_BOOT ||
+		       ax->zero_source == MF_ZERO_APPLY))
+		return mf_center_in_range(min, ax->runtime_zero, max);
 	return 0;
 }
 
@@ -799,7 +832,8 @@ static int mf_parse_cal(const char *buf, bool *apply,
 		s++;
 	if (*s != '\0')
 		return -EINVAL;
-	if (mf_side_ok(*xmin, *xzero, *xmax) || mf_side_ok(*ymin, *yzero, *ymax))
+	if (mf_center_in_range(*xmin, *xzero, *xmax) ||
+	    mf_center_in_range(*ymin, *yzero, *ymax))
 		return -EINVAL;
 	return 0;
 }
@@ -877,6 +911,11 @@ static ssize_t mf_cal_store(struct mf_pad *pad, int x_id, int y_id,
 		return -EINVAL;
 
 	spin_lock_irqsave(&pad->lock, flags);
+	if (mf_preflight_axis(&pad->axis[x_id], apply, xmin, xzero, xmax) ||
+	    mf_preflight_axis(&pad->axis[y_id], apply, ymin, yzero, ymax)) {
+		spin_unlock_irqrestore(&pad->lock, flags);
+		return -ERANGE;
+	}
 	mf_install_axis(&pad->axis[x_id], xmin, xzero, xmax, apply);
 	mf_install_axis(&pad->axis[y_id], ymin, yzero, ymax, apply);
 	if (pad->boot_started) {

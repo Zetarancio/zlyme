@@ -14,6 +14,11 @@
 # Each side of the center must be longer than the kernel deadband
 # of 2, so the scale divisor stays positive. Travel-quality checks
 # belong in the calibration UI. 3C2b owns that UI.
+#
+# The kernel also rejects a restore when a preserved boot or apply
+# center would fall outside the new range. This script does not
+# predict that. A failed write leaves that stick unchanged, and
+# boot continues if restore fails.
 
 CAL_DIR=/storage/.config/zlyme/miyoo-flip-gamepad
 LEFT_FILE=$CAL_DIR/joypad.config
