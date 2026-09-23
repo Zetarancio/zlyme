@@ -438,3 +438,21 @@ None. Do not replace `0007`. Do not import the RK817 fuel-gauge series, the GPU 
 ### Appendix: not in the 45
 
 `linux.config` says the `1013a/b` rk3568-suspend patches are `.testing-disabled`. Those files are not in `board/my355/linux/patches/`. The Flip DTS deep-suspend node is commented out. Status: disabled, not applied, owner Phase 6. Do not reactivate them in Phase 2.
+
+## Phase 2C Group 1 execution
+
+Group 1 passed the Miyoo Flip smoke. Group 2 has not started. The 45-row classification above stays the Phase 2B input. This section records what was removed from that inventory.
+
+Fifteen foreign-board DTS patches were removed. Each diff touched only Anbernic or Powkiddy `.dts`/`.dtsi` files. None modified `rk356x-base.dtsi`, `rk3566.dtsi`, `rk3566-miyoo-flip.dts`, C source, Kconfig, or a Makefile. Remaining patch files were not renumbered or edited. `board/my355/linux/dts-overrides/` was left as it was.
+
+Active Linux patches: 45 before, 30 after, counted from `10-mainline`, `20-rk3566`, `30-default`, and `40-kernel-7.0`.
+
+The applied tree `output/build/linux-7.0.2` was removed with `./build.sh --config zlyme_my355_defconfig linux-dirclean`. The product build extracted pristine Linux 7.0.2 again (`linux-7.0.2.tar.xz` sha256 `53591a03294527a48ccb0b9e559e922df8a38554745a1206827ca751d2ca7662`) and applied 30 patches. The deleted filenames were not in that patch phase.
+
+`zlyme_my355_defconfig` built successfully and produced `Image.gz`, `rk3566-miyoo-flip.dtb`, and `output/images/zlyme-my355-20260923-68f6ca0dea6d-dirty.tar` (sha256 `629b3fe6962c6535e2b4fa3d367f5bad0f13c1d533cd7f91369656b2eedfb54c`). The `-dirty` suffix is because that tar was packed before this commit. `zlyme_my355_minimal_defconfig` configured successfully afterward, and the output tree was returned to `zlyme_my355_defconfig`.
+
+Flip DTB before, saved at `/tmp/rk3566-miyoo-flip.dtb.group1-before` from both `output/images` and the previous kernel build tree: `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. The rebuilt `output/images/rk3566-miyoo-flip.dtb` and the new kernel-tree DTB have the same hash. `cmp` reports them byte-identical.
+
+This kernel build warned twice, both in the still-present adc-keys patch: missing prototypes for `rk_send_key_f_key_up` and `rk_send_key_f_key_down`. Those warnings were not introduced by deleting the foreign DTS files. They stay with the current joypad and input patches. They were not fixed here.
+
+The validated card booted Linux 7.0.2 built 2026-09-23 01:18:48 UTC. `dmesg` had no err, crit, alert, or emerg lines. NextUI reached the first frame, the built-in controls worked, audio worked, `/storage` was mounted, and standard suspend/resume returned. A mali regulator warning and RTL8733BU C2H messages were also in that log. They are outside this DTS deletion and were not changed.

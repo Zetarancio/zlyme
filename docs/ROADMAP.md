@@ -311,7 +311,7 @@ The result should be a cleaner kernel baseline, not the smallest possible patch 
 
 ### Status
 
-2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is recorded in `docs/research/kernel-patch-audit.md`. 2C has not started.
+2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is recorded in `docs/research/kernel-patch-audit.md`. 2C Group 1, the foreign-board DTS removal, passed the Miyoo Flip smoke. Group 2 has not started.
 
 ## 3 — Rewrite the Miyoo Flip joypad driver as an out-of-tree module
 

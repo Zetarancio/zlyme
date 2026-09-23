@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2C Group 1 foreign DTS patches
+
+Removed 15 Anbernic/Powkiddy DTS patches. Active Linux patches went from 45 to 30. No shared RK3566 source, Flip DTS, kernel config, or runtime file changed. Linux was rebuilt from a clean 7.0.2 extract. The Flip DTB stayed byte-identical (`3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`). Full build passed. Product OTA: `output/images/zlyme-my355-20260923-68f6ca0dea6d-dirty.tar`, sha256 `629b3fe6962c6535e2b4fa3d367f5bad0f13c1d533cd7f91369656b2eedfb54c`.
+
+Miyoo Flip smoke passed: NextUI first frame, built-in controls, audio, `/storage`, and standard suspend/resume. Post-boot `dmesg` had no err, crit, alert, or emerg lines. The kernel build's missing prototypes for `rk_send_key_f_key_up` and `rk_send_key_f_key_down` come from the remaining adc-keys patch. They were not introduced here and stay with the joypad work. Group 2 was not started.
+
 ## 2026-09-23 — Phase 2B kernel patch classification
 
 Classification only. No kernel, DTS, config, or runtime change.
