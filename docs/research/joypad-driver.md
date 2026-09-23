@@ -452,13 +452,13 @@ Not claimed: persistent calibration, rumble, Switch-stick hardware validation, u
 
 | Topic | Phase |
 | --- | --- |
-| Persistent calibration, `FF_RUMBLE`, power/wakeup audit, Joe's Calibrage adaptation | 3C |
+| Power audit (done, no driver change), persistent calibration ABI (done in 3C2a), Joe's Calibrage UI | 3C2b for the UI; 3C3 for `FF_RUMBLE` |
 | NextUI double-action investigation, direct Zlyme name/hotkey/rumble/module cutover, old `rocknix-joypad` removal, old-driver-only `input-polldev` and `adc-keys` patches if they are proven unused | 3D |
 | Broad emulator compatibility through one InputPlumber virtual device | 4 |
 
 Joe's Calibrage reference: `Helaas/nextui-Joe-s-Calibrage-pak` `205f662c9ab7334229787e024e3556ee00272aad`, v0.2.0, MIT, Copyright (c) 2026 Kevin Vranken. Do not restore its `/dev/ttyS1` or `miyooio` backend. Copied UI keeps that MIT notice, copyright, attribution, and commit. Vendored dependencies are audited on their own.
 
-A restore must not overwrite a fresh accepted boot center with the persisted zero. Persistent min / saved zero / max stay distinct from the runtime center. Exact sysfs names wait for 3C.
+A `boot` or `apply` runtime zero is not replaced by a later restore. The attributes are `calibration_left` and `calibration_right`.
 
 Some NextUI controls may act twice. The kernel emitted one press and one release on one device. Treat that as frontend routing until 3D instruments it. Do not change the physical button ABI to hide it, and do not use a later virtual device to hide it either.
 
@@ -495,6 +495,33 @@ The old Flip node used `poll-interval = <6>`, about 167 GPIO poll opportunities 
 Phase 3C1 recommendation:
 NO DRIVER CHANGE
 ```
+
+## Phase 3C2a calibration
+
+Validated 2026-09-24 on `zlyme42 (2026-09-23)`. Phase 3C2b and Phase 3C3 have not started. Rumble, the calibration UI, old-driver removal, and Switch-stick hardware validation are not done.
+
+Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That is the UART byte, not measured travel. Each axis has min, saved zero, runtime zero, and max. Source is `default`, `persisted`, `boot`, or `apply`. Deadband stays 2. A write must use 0..255, `min < zero < max`, and both sides longer than the deadband. There is no 40-count kernel rule.
+
+`restore` updates min, saved zero, and max. A `default` or `persisted` source adopts the saved zero and becomes `persisted`. A `boot` or `apply` runtime zero stays. Boot center sets runtime zero and source `boot` only. `apply` sets all four values and source `apply`, and cancels unfinished boot acquisition on those axes. An apply during `settling` became source `apply` and boot state `cancelled`, and was unchanged 8 seconds later.
+
+Attributes `calibration_left` and `calibration_right` are mode `0644`. The tracer remains read-only. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. Boot runs `zlyme-gamepad-cal restore` immediately and does not load the ROCKNIX module.
+
+Measured files, hashes unchanged through the gate:
+
+```text
+joypad.config        f28facbac93ae154072493da44d676a2e20ba459e5fa3a50a32dca2e3d4d347b
+                     XL 2/103/223  YL 25/139/239
+joypad_right.config  74ece9a20fcc5c45d35265c0ab943f2dcc63542ddafeb87540fa189803c63206
+                     XR 17/112/203 YR 49/138/226
+```
+
+Passed: no-file fallback, boot-center ownership, persistent restore, late restore keeping `boot`, early apply, restore keeping `apply`, atomic rejection of value >255, `min == zero`, `zero == max`, a side no longer than the deadband, a missing argument, an extra argument, an unknown command, and a non-integer token, live apply, UART continuity, both calibrated ranges, return to center, deep suspend/resume, and post-resume stick and `BTN_WEST` input.
+
+Left reached raw 2 and 223 at ABS_X −32767 and +32767, and raw YL 25 at ABS_Y −32767. Raw YL 237 reached +32130 against stored max 239. Right reached raw XR 18 and 203 at ABS_RX −32418 and +32767, and raw YR 49 and 226 at ABS_RY −32767 and +32767. Held up moved ABS_RX about 0..−697. Held down moved ABS_RX about 0..+1117. No correction curve. After release, all four axes were 0 for about 20 seconds. A later 3-count rest offset produced about ±318. Deadband was not changed.
+
+A lid close did not enter kernel suspend. The later deep suspend did, and the calibration survived. Probe count stayed 1, the port stayed open, and bad frames stayed 0. The Mali regulator warning is unrelated.
+
+Next is 3C2b, the Zlyme calibration UI adapted from Joe's Calibrage (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken), then 3C3 rumble. No Joe source is in this checkpoint.
 
 ## Open measurements
 

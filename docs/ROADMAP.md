@@ -489,7 +489,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ### Status
 
-Phase 3A complete, 2026-09-23. Phase 3B complete, 2026-09-23, on `phase-3-gamepad`. Phase 3C has not started.
+Phase 3A complete, 2026-09-23. Phase 3B complete, 2026-09-23. Phase 3C1 and Phase 3C2a complete, 2026-09-24, on `phase-3-gamepad`. Phase 3C2b and Phase 3C3 have not started.
 
 ### 3B — Minimal new-driver tracer
 
@@ -586,7 +586,53 @@ Calibration UI/workflow based in part on Joe's Calibrage
 by Kevin Vranken (Helaas), used under the MIT License.
 ```
 
-The runtime model must keep persistent min / saved zero / max distinct from a fresh accepted boot center. A later restore must not overwrite that fresh runtime center with the persisted zero. Exact sysfs names are chosen when 3C starts. The interface stays small.
+The runtime model keeps persistent min / saved zero / max distinct from the runtime center. Source is `default`, `persisted`, `boot`, or `apply`.
+
+#### 3C1 result
+
+Measured on zlyme41. Idle UART was 66.91 frames/s, 6 bytes/frame, 0 bad frames, and the UART IRQ matched that rate. Gamepad GPIO IRQs were 0. Evdev showed 0 `EV_ABS`, 0 `SYN_REPORT`, and 0 `EV_KEY`. CPU0 idle residency was about 83.7% and CPU1 about 84.9%; both still entered `cpu-sleep`. Linux 7.0.2 already drops unchanged absolute values and does not deliver an empty sync. Recommendation: no driver change. RK817 current was not trustworthy, so this is not a battery result. The old 6 ms GPIO poll is not the same mechanism as the UART frame cadence.
+
+#### 3C2a result
+
+Hardware-validated on `zlyme42 (2026-09-23)`, NextUI `ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme42`.
+
+Uncalibrated fallback is the UART byte domain, not measured travel: min 0, saved zero 128, runtime zero 128, max 255. Each axis keeps min, saved zero, runtime zero, and max. Scaling uses runtime zero and a raw deadband of 2. A write must be in 0..255, with `min < zero < max`, and both sides longer than the deadband. There is no 40-count kernel policy. Invalid writes change nothing.
+
+`calibration_left` and `calibration_right` are mode `0644`. Commands are `restore` and `apply`, each with `x_min x_zero x_max y_min y_zero y_max`. Reads show saved zero, runtime zero, and source. The read-only tracer remains for this phase.
+
+`restore` always updates min, saved zero, and max. If the source is `default` or `persisted`, runtime zero becomes the saved zero and the source becomes `persisted`. A `boot` or `apply` runtime zero is kept. A successful boot center sets runtime zero to that center and source to `boot`, and does not change min, saved zero, or max. `apply` sets all four values and source `apply`, and cancels unfinished boot-center acquisition on those axes. An apply written while the tracer was still settling stayed `apply` / `cancelled` eight seconds later. Boot center did not replace it.
+
+Userspace files, which the kernel does not open:
+
+```text
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config
+```
+
+Fields are `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. `S26joypadcal` modprobes `miyoo-flip-gamepad` and runs `zlyme-gamepad-cal restore` immediately. The old ROCKNIX helper remains on disk for Autocal until 3C2b. It is not used at boot.
+
+The measured original-stick files stayed intact. Left is XL 2/103/223 and YL 25/139/239. Right is XR 17/112/203 and YR 49/138/226. SHA256 `f28facbac93ae154072493da44d676a2e20ba459e5fa3a50a32dca2e3d4d347b` and `74ece9a20fcc5c45d35265c0ab943f2dcc63542ddafeb87540fa189803c63206`.
+
+Passed: no-file fallback, fresh boot-center ownership, persistent restore, late restore keeping a `boot` runtime zero, early apply cancelling boot center, restore keeping an `apply` runtime zero, atomic invalid writes, live apply, UART continuity during apply, calibrated left and right ranges, return to center, deep suspend/resume, and post-resume stick and button input.
+
+Left reached raw 2 and 223 at ABS_X −32767 and +32767. Raw YL 25 reached ABS_Y −32767. Raw YL 237 reached +32130; the stored max is 239. Right reached raw XR 18 and 203 at ABS_RX −32418 and +32767; the stored min is 17. Raw YR 49 and 226 reached ABS_RY −32767 and +32767. Signs stayed negative for left/up and positive for right/down. Held up moved ABS_RX only about 0..−697 while ABS_RY was −32767. Held down moved ABS_RX about 0..+1117. No correction curve was added. After release, all four axes sat at 0 for about 20 seconds. A later rest 3 counts outside center produced about ±318 because the deadband is still 2. That is not a 3C2a failure and the deadband was not retuned.
+
+A lid close did not enter kernel suspend. A later deep suspend did, from `PM: suspend entry (deep)` to `PM: suspend exit`. The same driver stayed bound, probe count stayed 1, the port stayed open, frames continued, bad frames stayed 0, and the calibration including source `boot` was preserved. Stick input and a `BTN_WEST` press/release worked. No gamepad, UART, or GPIO error. The Mali regulator warning is unrelated.
+
+Not done: Joe's calibration UI, `FF_RUMBLE`, old-driver removal, the NextUI duplicate-action investigation, emulator migration, and Switch-stick hardware validation.
+
+Remaining sequence:
+
+```text
+3C2b  Zlyme calibration UI adapted from Joe's Calibrage, replacing Autocal
+3C3   FF_RUMBLE and the final physical-driver feature check
+3D    frontend cutover, NextUI duplicate-action investigation,
+      direct Zlyme consumer migration, old ROCKNIX driver removal,
+      and old-driver-only kernel coupling if that removal is proven safe
+4     InputPlumber virtual controller and broad emulator compatibility
+```
+
+Joe's Calibrage reference for 3C2b remains `Helaas/nextui-Joe-s-Calibrage-pak` commit `205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken. No Joe source is in 3C2a.
 
 ### 3D — Cutover and hardware validation
 

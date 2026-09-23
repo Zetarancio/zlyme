@@ -19,6 +19,20 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-24 — Phase 3C2a gamepad calibration
+
+Persistent calibration passed on `zlyme42 (2026-09-23)`. Phase 3C2b has not started. Rumble has not started. The old ROCKNIX joypad package is still installed and was not bound.
+
+The uncalibrated range is 0/128/255, the UART byte, not measured travel. Source is `default`, `persisted`, `boot`, or `apply`. Writes must stay in 0..255 with the center strictly inside and both sides longer than the deadband of 2. `restore` updates the saved range and adopts that center only when the source is `default` or `persisted`. Boot center and `apply` keep their runtime zero. Apply also cancels an unfinished boot center. That race was checked while the tracer was still settling: eight seconds later the applied zeros were unchanged and the boot state was `cancelled`.
+
+`S26joypadcal` modprobes the new module and runs `zlyme-gamepad-cal restore` immediately. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`. The kernel does not open them. The measured originals stayed in place: left XL 2/103/223 and YL 25/139/239, right XR 17/112/203 and YR 49/138/226, SHA256 `f28facba…` and `74ece9a2…`.
+
+Left reached ABS_X ±32767 at raw 2 and 223. ABS_Y reached −32767 at raw 25 and +32130 at raw 237, two counts short of stored max 239. Right reached ABS_RX −32418 at raw 18 and +32767 at raw 203, and ABS_RY ±32767 at raw 49 and 226. Held up moved ABS_RX only about 0..−697. After release, all four axes were 0 for about 20 seconds. A later 3-count offset produced about ±318. Deadband was not changed.
+
+A lid close did not enter kernel suspend. The later deep suspend kept the driver bound, probe count 1, the port open, frames running, bad frames at 0, and source `boot`. Stick input and `BTN_WEST` worked after resume. No gamepad, UART, or GPIO error. The Mali regulator warning is unrelated.
+
+Next is the calibration UI in 3C2b, then rumble in 3C3. Joe's Calibrage was not copied.
+
 ## 2026-09-23 — Phase 3C1 gamepad input power audit
 
 Measurement only, on the zlyme41 tracer image. No driver change.
