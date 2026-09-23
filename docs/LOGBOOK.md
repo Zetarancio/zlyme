@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2A kernel evidence
+
+Research only. No kernel, DTS, config, or runtime change.
+
+Phase 2 branch `phase-2-kernel-audit` is based on `56cc4c38c5189b96e724c9227d69e6b92203339d`. The selected kernel is Linux 7.0.2. Official ROCKNIX `next` was read at `3993c6bb666022c3f10b7adbc27862103dfa959f`; its handheld RK3566 kernel is also 7.0.2. The hardware wiki pin is `b08e335d31fca41383e01176390914c3d4550ec5`. Notes are in `docs/research/kernel-patch-audit.md`. Forty-five Linux patches are inventoried. None of the symbols checked in the pristine 7.0.2 tarball are already upstream. RK817 fuel-gauge work, GPU clock ownership, and a newer `rocknix-joypad` pin are recorded for later comparison. Joypad rewrite, deep suspend, and DMC extraction stay in Phases 3, 6, and 7.
+
 ## 2026-09-23 — Phase 1 Weston compatibility
 
 Normal graphics stay NextUI to direct DRM/KMS. There is no permanent compositor.
