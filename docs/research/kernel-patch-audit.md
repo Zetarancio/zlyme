@@ -507,3 +507,13 @@ The kernel build again warned only about the deferred adc-keys prototypes. Rebui
 The Flip booted that kernel. `dmesg` had no emerg, alert, crit, or err lines, and no `WARNING:`. The live panel is `rocknix,generic-dsi` on `card0-DSI-1`, connected, mode `640x480`. Backlight was 32 of 263 and unblanked. No live ST7701, ST7703, NV3051D, Goodix, or AW87391 device. Audio cards are HDMI and `rk817_ext`. `libmali` was selected; `mali_kbase` was loaded with vermagic `7.0.2 SMP preempt mod_unload aarch64`, and Panfrost was not loaded. The joypad, `8733bu`, and `rtl8733bu_power` modules had the same vermagic and were loaded. `wlan0` was up at `192.168.0.108`. `/storage` is exFAT and a temporary write/read/delete under `/storage/.tmp` succeeded. No Weston, Xwayland, Wine, or `seatd` process was left running. NextUI was the frontend. Physical checks passed for the LCD, backlight, controls, speaker, headphones, and NextUI suspend/resume.
 
 An in-game power-key suspend loop was seen on this image. It is a pre-existing `zlyme-keylidmon` bug, not caused by these six patches. The fix is on `main` at `11aecdc2aa3b429e3321c43fb00c86e0c0425d23` and is not part of this checkpoint.
+
+## Phase 2C Group 3 execution
+
+Removed `40-kernel-7.0/linux/9999-fix-rust-build-error.patch`. It only rewrote Rust cross-target strings in `tools/perf/Makefile.config` to `*-rocknix-linux-gnu`. OTP `0022`/`0023` and `9998` were not touched. Group 3 does not finish Phase 2.
+
+Zlyme does not select Buildroot `linux-tools` or `tools/perf`. No package or build hook runs `make perf` or `make -C tools/perf`. `CONFIG_PERF_EVENTS=y` stayed set in the generated kernel config. `CONFIG_RUST=y` is absent. The `.config` still has `CONFIG_RUSTC_*` capability lines, which do not enable Rust kernel code.
+
+`linux-dirclean` removed the applied tree. The product build extracted pristine Linux 7.0.2 and applied 21 patches. `9999` was not among them. The build log has no `tools/perf` or `Makefile.perf` compile, and `tools/perf` has no object files. `post-build.sh` reported no module ABI mismatch. `zlyme_my355_minimal_defconfig` configured, and the output tree was returned to `zlyme_my355_defconfig`.
+
+The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. The only kernel warnings were the existing adc-keys prototype warnings. No Flip test was required: the deleted patch is not on a my355 runtime path. OTA: `output/images/zlyme-my355-20260923-19aebc095a6f-dirty.tar`, sha256 `7f967dfea75966ff0290f90aa63c3ee92e32160ca7c4de9a88b2c0b6c9a87d7e`. Active Linux patches: 22 before, 21 after.
