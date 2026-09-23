@@ -456,3 +456,19 @@ Flip DTB before, saved at `/tmp/rk3566-miyoo-flip.dtb.group1-before` from both `
 This kernel build warned twice, both in the still-present adc-keys patch: missing prototypes for `rk_send_key_f_key_up` and `rk_send_key_f_key_down`. Those warnings were not introduced by deleting the foreign DTS files. They stay with the current joypad and input patches. They were not fixed here.
 
 The validated card booted Linux 7.0.2 built 2026-09-23 01:18:48 UTC. `dmesg` had no err, crit, alert, or emerg lines. NextUI reached the first frame, the built-in controls worked, audio worked, `/storage` was mounted, and standard suspend/resume returned. A mali regulator warning and RTL8733BU C2H messages were also in that log. They are outside this DTS deletion and were not changed.
+
+## Phase 2C Group 2A execution
+
+Removed two patches that are not on the my355 runtime path. Group 2B has not started. The Phase 2B classification table is unchanged.
+
+`10-mainline/linux/0003-pwm-add-pwm_set_period.patch` only added `pwm_set_period()` to `include/linux/pwm.h`. The Zlyme tree, the patched Linux 7.0.2 sources, and `rocknix-joypad` `3bc3ef644` (`rocknix-joypad.c`, `rocknix-joypad.h`, `rocknix-singleadc-joypad.c`) have no caller. After the clean rebuild the symbol is absent from `include/linux/pwm.h`.
+
+`40-kernel-7.0/linux/0010-msm-resource-cleanup.patch` has nine hunks, all under `drivers/gpu/drm/msm/disp/dpu1/`. The generated kernel config still has `# CONFIG_ARCH_QCOM is not set` and `CONFIG_ARCH_ROCKCHIP=y`. No `dpu_*.o` objects were built. Qualcomm was not enabled to test this.
+
+Active Linux patches: 30 before, 28 after. `linux-dirclean` removed the applied tree. The product build extracted pristine 7.0.2 and applied 28 patches. Neither deleted filename was in that patch phase. `zlyme_my355_defconfig` built successfully. `zlyme_my355_minimal_defconfig` configured, and the output tree was returned to the product defconfig.
+
+The product build did not rebuild `rocknix-joypad`, because that package was already installed and does not call the removed helper. An explicit `rocknix-joypad-rebuild` afterward compiled `rocknix-singleadc-joypad.ko` against this kernel with no warning. That module rebuild is not inside the tar below.
+
+Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`, byte-identical to the Group 1 DTB. OTA: `output/images/zlyme-my355-20260923-c66fb88b954f-dirty.tar`, sha256 `ffdb36a316a231e313a5003613e345f3327340131da60ea78e465c6161617199`. The `-dirty` suffix is this deletion, packed before the commit.
+
+The kernel build again warned about missing prototypes for `rk_send_key_f_key_up` and `rk_send_key_f_key_down` in the remaining adc-keys patch. Those warnings are unchanged and were not fixed. No my355 runtime path changed, so this subgroup did not get a separate Flip test.

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2C Group 2A unused non-my355 patches
+
+Removed the unused `pwm_set_period` helper and the Qualcomm MSM DPU series. Active Linux patches went from 30 to 28. No config, Flip DTS, or runtime file changed. Linux was rebuilt from a clean 7.0.2 extract. `CONFIG_ARCH_QCOM` stayed unset and no DPU objects were built. `rocknix-joypad` `3bc3ef644` compiled afterward. The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. OTA: `output/images/zlyme-my355-20260923-c66fb88b954f-dirty.tar`, sha256 `ffdb36a316a231e313a5003613e345f3327340131da60ea78e465c6161617199`. No separate Flip test: nothing on the my355 runtime path changed. The adc-keys prototype warnings remain and were not fixed. Group 2B was not started.
+
 ## 2026-09-23 — Phase 2C Group 1 foreign DTS patches
 
 Removed 15 Anbernic/Powkiddy DTS patches. Active Linux patches went from 45 to 30. No shared RK3566 source, Flip DTS, kernel config, or runtime file changed. Linux was rebuilt from a clean 7.0.2 extract. The Flip DTB stayed byte-identical (`3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`). Full build passed. Product OTA: `output/images/zlyme-my355-20260923-68f6ca0dea6d-dirty.tar`, sha256 `629b3fe6962c6535e2b4fa3d367f5bad0f13c1d533cd7f91369656b2eedfb54c`.
