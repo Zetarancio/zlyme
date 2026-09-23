@@ -32,6 +32,9 @@ else
 PPSSPP_CONF_OPTS += -DVULKAN=OFF
 endif
 PPSSPP_CONF_OPTS += -DUSING_X11_VULKAN=OFF
+# Weston makes Wayland libraries available in staging, but Zlyme's SDL2
+# frontend remains KMSDRM-only. Do not auto-enable PPSSPP Wayland Vulkan WSI.
+PPSSPP_CONF_OPTS += -DUSE_WAYLAND_WSI=OFF
 # Staging sdl2_ttf-config.cmake sets FOUND but looks for /usr/lib/libSDL2_ttf.so
 # (host path) and never creates SDL2_ttf::SDL2_ttf. Use pkg-config instead.
 PPSSPP_CONF_OPTS += -DCMAKE_DISABLE_FIND_PACKAGE_SDL2_ttf=ON
