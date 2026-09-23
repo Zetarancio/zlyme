@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 2C Group 2B foreign driver patches
+
+Removed six inherited driver patches: two ST7703 edits, NV3051D timings, ST7701 timings, the AW87391 codec, and the Goodix probe tweak. Active Linux patches went from 28 to 22. `CONFIG_SND_SOC_AW87391=y` was removed. The upstream ST7701, ST7703, NV3051D, and Goodix options stayed on. Linux and the four out-of-tree modules were rebuilt before the image was packed. The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. Kernel build time is `Wed Sep 23 02:17:38 UTC 2026`. OTA: `output/images/zlyme-my355-20260923-c528362a7a6e-dirty.tar`, sha256 `35a58f850a8a90d611406b057ebf1c3a3f9d8c2b40531a4d8f26da141d2571df`.
+
+SSH and physical checks on that image passed. The live panel is `rocknix,generic-dsi` at 640x480. No Goodix or AW87391 device appeared. RK817 audio, the joypad, Wi-Fi, libmali, and `/storage` were healthy. The loaded out-of-tree modules matched vermagic `7.0.2 SMP preempt mod_unload aarch64`.
+
+An in-game power-key suspend loop showed up during this test. It comes from `zlyme-keylidmon` treating the wake press as a new suspend, and it predates these patch deletions. The fix is on `main` at `11aecdc2aa3b429e3321c43fb00c86e0c0425d23`, not in this checkpoint. Group 3 was not started.
+
 ## 2026-09-23 — Phase 2C Group 2A unused non-my355 patches
 
 Removed the unused `pwm_set_period` helper and the Qualcomm MSM DPU series. Active Linux patches went from 30 to 28. No config, Flip DTS, or runtime file changed. Linux was rebuilt from a clean 7.0.2 extract. `CONFIG_ARCH_QCOM` stayed unset and no DPU objects were built. `rocknix-joypad` `3bc3ef644` compiled afterward. The Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`. OTA: `output/images/zlyme-my355-20260923-c66fb88b954f-dirty.tar`, sha256 `ffdb36a316a231e313a5003613e345f3327340131da60ea78e465c6161617199`. No separate Flip test: nothing on the my355 runtime path changed. The adc-keys prototype warnings remain and were not fixed. Group 2B was not started.

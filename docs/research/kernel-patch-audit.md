@@ -472,3 +472,38 @@ The product build did not rebuild `rocknix-joypad`, because that package was alr
 Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`, byte-identical to the Group 1 DTB. OTA: `output/images/zlyme-my355-20260923-c66fb88b954f-dirty.tar`, sha256 `ffdb36a316a231e313a5003613e345f3327340131da60ea78e465c6161617199`. The `-dirty` suffix is this deletion, packed before the commit.
 
 The kernel build again warned about missing prototypes for `rk_send_key_f_key_up` and `rk_send_key_f_key_down` in the remaining adc-keys patch. Those warnings are unchanged and were not fixed. No my355 runtime path changed, so this subgroup did not get a separate Flip test.
+
+## Phase 2C Group 2B execution
+
+Group 2B is complete. SSH and physical checks passed on the candidate below. Group 3 has not started. The Phase 2B classification table is unchanged.
+
+Removed six inherited driver patches. None of them edit `rk356x-base.dtsi`, `rk3566.dtsi`, `rk3566-miyoo-flip.dts`, VOP2, `panel-generic-dsi.c`, the RK817 audio path, or `rocknix-joypad`:
+
+- `0003` and `0010` edit `panel-sitronix-st7703.c`
+- `0006` edits `panel-newvision-nv3051d.c`
+- `0014` edits `panel-sitronix-st7701.c`
+- `0026` adds the AW87391 codec, its Kconfig entry, and its Makefile line
+- `1011` edits `drivers/input/touchscreen/goodix.c`
+
+`CONFIG_SND_SOC_AW87391=y` was removed from `board/my355/linux/linux.config`. The upstream panel and Goodix options stayed enabled. After `olddefconfig`, the generated kernel config has `CONFIG_DRM_PANEL_SITRONIX_ST7701=y`, `CONFIG_DRM_PANEL_SITRONIX_ST7703=y`, `CONFIG_DRM_PANEL_NEWVISION_NV3051D=y`, `CONFIG_TOUCHSCREEN_GOODIX=y`, and `CONFIG_ARCH_ROCKCHIP=y`. `CONFIG_SND_SOC_AW87391` is absent.
+
+Active Linux patches: 28 before, 22 after. The clean build applied those 22 global Linux patches. The six deleted names were not among them.
+
+`linux-dirclean` plus `rocknix-joypad-dirclean`, `rtl8733bu-dirclean`, `rtl8733bu-power-dirclean`, and `mali-kbase-dirclean` ran before the product build. The OTA squashfs was created at 2026-09-23 02:20:54 UTC, after those modules were compiled. The four modules inside `output/images/zlyme-my355-20260923-c528362a7a6e-dirty.tar` match the target tree byte for byte. Vermagic for all four, and for in-tree Panfrost, is `7.0.2 SMP preempt mod_unload aarch64`. `.gnu.linkonce.this_module` is `0x480` for each, and `post-build.sh` reported no ABI mismatch.
+
+| Module | SHA256 |
+| --- | --- |
+| `rocknix-singleadc-joypad.ko` | `0136341e6f4d548e983f60c6ca21707c7b595321f1ddde79963aac2f9010311f` |
+| `8733bu.ko` | `d6c2b7545b751aa6eeff6fb1e36424d2b1f2b11bfa998c60d7651908fead075e` |
+| `rtl8733bu_power.ko` | `a37507221d54465a31afc6dcd2e61e2650c11fc9e8ee287dc986038f3d280b53` |
+| `mali_kbase.ko` | `4301f6eda7ad9762fdb6bc85db9ac209c08237ab749b18d847f00fd52d1e2236` |
+
+The product build passed. `zlyme_my355_minimal_defconfig` configured, and the output tree was returned to `zlyme_my355_defconfig`. Flip DTB stayed `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4`, byte-identical to Group 1 and Group 2A. Kernel version string: `Linux version 7.0.2 #1 SMP PREEMPT Wed Sep 23 02:17:38 UTC 2026`. OTA sha256 `35a58f850a8a90d611406b057ebf1c3a3f9d8c2b40531a4d8f26da141d2571df`. The `-dirty` suffix is this uncommitted change.
+
+The Flip DTS still uses `rocknix,generic-dsi` and `panel-generic-dsi.c` was compiled. The audio card is still `simple-audio-amplifier` plus RK817. The Flip DTS has no Goodix node and no AW87391 compatible.
+
+The kernel build again warned only about the deferred adc-keys prototypes. Rebuilding `rtl8733bu` and `mali-kbase` printed that vendor code's existing missing-prototype and unused-result warnings. Those packages were not edited, and the warnings are not from the six removed patches.
+
+The Flip booted that kernel. `dmesg` had no emerg, alert, crit, or err lines, and no `WARNING:`. The live panel is `rocknix,generic-dsi` on `card0-DSI-1`, connected, mode `640x480`. Backlight was 32 of 263 and unblanked. No live ST7701, ST7703, NV3051D, Goodix, or AW87391 device. Audio cards are HDMI and `rk817_ext`. `libmali` was selected; `mali_kbase` was loaded with vermagic `7.0.2 SMP preempt mod_unload aarch64`, and Panfrost was not loaded. The joypad, `8733bu`, and `rtl8733bu_power` modules had the same vermagic and were loaded. `wlan0` was up at `192.168.0.108`. `/storage` is exFAT and a temporary write/read/delete under `/storage/.tmp` succeeded. No Weston, Xwayland, Wine, or `seatd` process was left running. NextUI was the frontend. Physical checks passed for the LCD, backlight, controls, speaker, headphones, and NextUI suspend/resume.
+
+An in-game power-key suspend loop was seen on this image. It is a pre-existing `zlyme-keylidmon` bug, not caused by these six patches. The fix is on `main` at `11aecdc2aa3b429e3321c43fb00c86e0c0425d23` and is not part of this checkpoint.
