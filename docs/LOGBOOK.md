@@ -19,6 +19,18 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 3A gamepad research
+
+Research only. No driver, DTS, kernel patch, or userspace consumer changed. Notes are in `docs/research/joypad-driver.md`.
+
+The stick protocol is 9600 8N1, frame `FF YL XL YR XR FE`, on UART1. A 1.5 Mbaud 8250 figure is the divisor base, not the line rate. Stock `/dev/miyooio` is the vendor button path: a `gpio-keys-polled` node plus a 128-byte char device. Its GPIOs match Zlyme's seventeen gamepad lines. `joy_type` is stored and printed (`-1` none, `0` miyoo, `1` xbox) and is not read by the button path in the May 2025 stock image. No public `miyooio.c` was found. The new driver does not need that char device.
+
+Switch 1 non-Hall stick modules are a designed compatibility target for the same UART front-end, not a Nintendo HID device. `hid-nintendo` is the wrong transport. They are not hardware-validated on Zlyme until the Phase 3D community protocol passes.
+
+The physical device is one `input_dev` named `Miyoo Flip Gamepad` on `BUS_HOST`, with vendor, product, and version left at 0. Axes use `serdev`. Buttons use GPIO interrupts after tracer proof. Rumble stays `FF_RUMBLE` to PWM5. Persistent calibration is per-axis min/max. Boot measures a new center only from a stable cluster and must not block probe, buttons, NextUI, or suspend. UART CTS pinmux and DMA stay as they are for the tracer. SARADC is not removed in Phase 3.
+
+Implementation has not started. Phase 3B has not started.
+
 ## 2026-09-23 — Phase 2C OTP candidate
 
 The earlier image's RK3568 OTP provider probed and read 128 nonzero bytes, and nothing consumed those cells. Removed `0022` and `0023`. Active Linux patches went from 20 to 18. The new Flip DTB is `056f5f7a554a363b55ec95dd3c1d280075a9e9fd6601e5ee79ee285656bf35ce`; the only decompiled change from `3197ed1b9f39d368689359e8a852e3169bc09253b8c379e72344fcc3a4bf10d4` is deletion of `otp@fe38c000` and its cells. OTA: `output/images/zlyme-my355-20260923-000c8b1ae9d1-dirty.tar`, sha256 `7bd23b856bf5d910f45f8476c1ed9e19ecb53ff17ca0c5392f74fc22b5345486`.
