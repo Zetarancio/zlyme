@@ -19,6 +19,18 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-23 — Phase 3C1 gamepad input power audit
+
+Measurement only, on the zlyme41 tracer image. No driver change.
+
+Over 60.95 s with the sticks untouched, UART delivered 4078 valid frames (66.91/s), exactly 6 bytes each, and 0 bad frames. The `ttyS1` interrupt rose by the same 4078. All seventeen gamepad GPIO interrupts stayed at 0. A separate 20 s read of the gamepad evdev device counted 0 `EV_ABS`, 0 `SYN_REPORT`, and 0 `EV_KEY`.
+
+Linux 7.0.2 `input_handle_abs_event()` drops an absolute report whose value did not change. An empty `SYN_REPORT` flush does not call `input_pass_values()`. The driver still calls `input_report_abs()` and `input_sync()` once per frame. Those calls do not become userspace wakeups while the published axes stay the same.
+
+CPU0 idle residency was about 83.7% and CPU1 about 84.9%. Both online CPUs still entered `cpu-sleep`. RK817 current readings were not trustworthy, so this is not a battery-power result. The old 6 ms GPIO poll and this UART frame cadence are different mechanisms.
+
+Phase 3C1 recommendation: no driver change.
+
 ## 2026-09-23 — Phase 3B gamepad tracer
 
 The Miyoo Flip gamepad tracer passed its hardware gate on the zlyme41 image. Phase 3C has not started.

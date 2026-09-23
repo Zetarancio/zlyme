@@ -421,7 +421,7 @@ Kernel patches that exist only for the old module (`input-polldev`, `adc-keys` k
 
 ## Phase 3B hardware result
 
-Validated 2026-09-23 on the zlyme41 tracer. Phase 3C has not started.
+Validated 2026-09-23 on the zlyme41 tracer. Calibration was not implemented in this checkpoint.
 
 ```text
 module:     miyoo_flip_gamepad
@@ -462,9 +462,42 @@ A restore must not overwrite a fresh accepted boot center with the persisted zer
 
 Some NextUI controls may act twice. The kernel emitted one press and one release on one device. Treat that as frontend routing until 3D instruments it. Do not change the physical button ABI to hide it, and do not use a later virtual device to hide it either.
 
+## Phase 3C1 input power audit
+
+Measured 2026-09-23 on the running zlyme41 tracer. No source change.
+
+Idle UART, sticks untouched, 60.95 s:
+
+```text
+4078 valid frames
+66.91 frames/sec
+6 bytes/frame
+0 bad frames
+```
+
+`ttyS1` increased by 4078, the same count as valid frames. UART1 has RX/TX DMA channels on `fe530000`, and that controller's GIC count stayed 0. The per-frame wakeup is the UART interrupt: Linux 7.0.2 flushes 8250 RX DMA from `UART_IIR_RX_TIMEOUT`. Gamepad GPIO interrupts were 0 on all seventeen lines.
+
+Evdev over a separate 20.013 s, with NextUI holding the device open:
+
+```text
+EV_ABS      0
+SYN_REPORT  0
+EV_KEY      0
+```
+
+Linux 7.0.2 already suppresses an unchanged `EV_ABS` value (`INPUT_IGNORE_EVENT` when fuzz is 0 and the value matches) and does not pass an empty synchronization packet to handlers (`input_pass_values()` runs only when the packet contains at least two values).
+
+CPU0 spent about 83.7% of the window in cpuidle and CPU1 about 84.9%. Both still entered `cpu-sleep`. RK817 exposed `current_avg` but no `current_now` or `power_now`. The charger supply was online while the battery status was Discharging, and the current magnitude was not a plausible whole-device draw. No battery-power improvement is claimed.
+
+The old Flip node used `poll-interval = <6>`, about 167 GPIO poll opportunities per second. That is not the same mechanism as this UART receive cadence. There is no controlled old-versus-new battery measurement.
+
+```text
+Phase 3C1 recommendation:
+NO DRIVER CHANGE
+```
+
 ## Open measurements
 
 - Which IC transmits the UART frame. Needs board photos or a continuity trace from the stick connector.
 - Whether `uart1m0_ctsn` is electrically tied to the sender. Remove it only on a unit where frames still arrive.
-- Idle power cost of the UART frame stream versus reporting only when a published axis changes. Phase 3C.
 - The same four raw numbers from a community Switch-style pair, using the protocol above. Not hardware-validated.
