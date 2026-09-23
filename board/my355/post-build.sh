@@ -17,7 +17,7 @@ if [ ${#moddirs[@]} -ne 1 ]; then
 	note "expected exactly one /lib/modules/<release>, found ${#moddirs[@]}"
 else
 	moddir="${moddirs[0]}"
-	# miyoo-flip-gamepad is the Phase 3B tracer. rocknix-singleadc-joypad
+	# miyoo-flip-gamepad is the Flip gamepad. rocknix-singleadc-joypad
 	# stays in the image for rollback and must not be bound by the DTS.
 	for m in 8733bu rtl8733bu_power rocknix-singleadc-joypad miyoo-flip-gamepad; do
 		found=$(find "${moddir}" -name "${m}.ko" -print -quit)
@@ -90,6 +90,7 @@ chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage-udev" \
 	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
 	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
+	"${TARGET_DIR}/usr/sbin/zlyme-gamepad-cal" \
 	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
 	"${TARGET_DIR}/etc/init.d/S25jackd" \
 	"${TARGET_DIR}/etc/init.d/S26keylidmon" \

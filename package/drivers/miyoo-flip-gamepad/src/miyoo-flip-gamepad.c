@@ -1,26 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Miyoo Flip gamepad tracer.
+ * Miyoo Flip gamepad.
  *
  * Copyright (c) 2026 Zlyme contributors
  *
- * Phase 3B only. One input device:
+ * One input device:
  *   UART1 serdev, 9600 8N1, frames FF YL XL YR XR FE
  *   seventeen GPIO buttons, interrupt plus software debounce
  *   PWM5 claimed and held off (FF_RUMBLE playback is later)
  *
- * No persistent files. A boot-center sample may replace the running
- * zero. It does not change min/max and it does not write storage.
+ * Calibration lives in userspace files. This driver never opens them.
+ * min/max and saved_zero are the persistent travel and center.
+ * runtime_zero is what scaling uses. Its source is default,
+ * persisted, boot, or apply. A boot center replaces a default or
+ * persisted runtime center only. Apply is authoritative for this
+ * boot and stops further boot-center acquisition on those axes.
+ * 0/128/255 is the uncalibrated protocol-byte fallback, not a
+ * measured stick range.
  *
- * Provisional constants below are tracer defaults from the stock
- * userspace range. They are not universal stick limits.
- *
- * Tracer-only boot plumbing that 3C/3D must replace or remove:
- *   board/my355/fsoverlay/etc/modules-load.d/joypad.conf
- *   board/my355/fsoverlay/etc/init.d/S26joypadcal
- *   board/my355/post-build.sh (extra module name check)
- *   configs/zlyme_my355_defconfig (this package enabled)
- *   the read-only "tracer" sysfs attribute in this file
+ * The read-only tracer attribute remains for Phase 3C validation.
  */
 
 #include <linux/device.h>
@@ -29,6 +27,7 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/jiffies.h>
+#include <linux/kernel.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/pm.h>
@@ -46,14 +45,21 @@
 #define MF_FRAME_END		0xfe
 
 /*
- * Provisional. Stock miyoo_inputd defaults were about 85 / 130 / 200.
- * Phase 3C replaces these once original sticks are measured.
+ * Uncalibrated fallback across the whole unsigned UART byte.
+ * Not measured physical travel. Original sticks reached 2..239;
+ * replacement-stick extrema are still unknown. 0..255 avoids
+ * clipping a stick whose real ends are outside an old guess.
  */
-#define MF_DEFAULT_MIN		85
-#define MF_DEFAULT_ZERO		130
-#define MF_DEFAULT_MAX		200
+#define MF_DEFAULT_MIN		0
+#define MF_DEFAULT_ZERO		128
+#define MF_DEFAULT_MAX		255
 #define MF_ABS_RANGE		32767
 #define MF_RAW_DEADBAND		2
+/*
+ * A written center only has to leave a positive divisor after the
+ * deadband is removed. Narrow or asymmetric sticks are valid.
+ * Travel-quality checks belong in the calibration UI.
+ */
 /*
  * Phase 3B boot-center tuning, not a stable ABI.
  * The first tracer accepted 15 frames (~225 ms) and locked XR on a
@@ -75,6 +81,14 @@ enum mf_boot_state {
 	MF_BOOT_CONFIRM,
 	MF_BOOT_ACCEPTED,
 	MF_BOOT_TIMEOUT,
+	MF_BOOT_CANCELLED,
+};
+
+enum mf_zero_source {
+	MF_ZERO_DEFAULT = 0,
+	MF_ZERO_PERSISTED,
+	MF_ZERO_BOOT,
+	MF_ZERO_APPLY,
 };
 
 enum mf_settle_phase {
@@ -106,7 +120,8 @@ struct mf_btn {
 
 struct mf_axis {
 	int min;
-	int zero;
+	int saved_zero;
+	int runtime_zero;
 	int max;
 	int abs_code;
 	u8 latest;
@@ -117,6 +132,7 @@ struct mf_axis {
 	int n;
 	int candidate;
 	u8 boot_state;
+	u8 zero_source;
 	bool settled;
 	bool accepted;
 	int attempts;
@@ -148,12 +164,14 @@ struct mf_pad {
 static void mf_axis_defaults(struct mf_axis *ax, int abs_code)
 {
 	ax->min = MF_DEFAULT_MIN;
-	ax->zero = MF_DEFAULT_ZERO;
+	ax->saved_zero = MF_DEFAULT_ZERO;
+	ax->runtime_zero = MF_DEFAULT_ZERO;
 	ax->max = MF_DEFAULT_MAX;
 	ax->abs_code = abs_code;
 	ax->latest = MF_DEFAULT_ZERO;
 	ax->candidate = -1;
 	ax->boot_state = MF_BOOT_WAIT;
+	ax->zero_source = MF_ZERO_DEFAULT;
 }
 
 static u8 mf_median(const u8 *src, int n)
@@ -199,9 +217,11 @@ static int mf_scale_side(int delta, int span)
 
 static int mf_scale(int raw, const struct mf_axis *ax)
 {
-	if (raw >= ax->zero)
-		return mf_scale_side(raw - ax->zero, ax->max - ax->zero);
-	return -mf_scale_side(ax->zero - raw, ax->zero - ax->min);
+	if (raw >= ax->runtime_zero)
+		return mf_scale_side(raw - ax->runtime_zero,
+				     ax->max - ax->runtime_zero);
+	return -mf_scale_side(ax->runtime_zero - raw,
+			      ax->runtime_zero - ax->min);
 }
 
 /* Caller holds pad->lock. */
@@ -252,7 +272,8 @@ static bool mf_window_stable(const u8 *samples, int n, u8 *median_out)
 
 static bool mf_boot_finished(u8 state)
 {
-	return state == MF_BOOT_ACCEPTED || state == MF_BOOT_TIMEOUT;
+	return state == MF_BOOT_ACCEPTED || state == MF_BOOT_TIMEOUT ||
+	       state == MF_BOOT_CANCELLED;
 }
 
 /*
@@ -275,8 +296,11 @@ static void mf_boot_note(struct mf_pad *pad, const u8 raw[MF_AXES])
 		pad->boot_started = true;
 		pad->boot_first_jiffies = now;
 		pad->settle_phase = MF_SETTLE_HW;
-		for (i = 0; i < MF_AXES; i++)
+		for (i = 0; i < MF_AXES; i++) {
+			if (pad->axis[i].zero_source == MF_ZERO_APPLY)
+				continue;
 			pad->axis[i].boot_state = MF_BOOT_SETTLE;
+		}
 	}
 
 	if (pad->settle_phase == MF_SETTLE_HW) {
@@ -328,7 +352,8 @@ static void mf_boot_note(struct mf_pad *pad, const u8 raw[MF_AXES])
 		}
 
 		if (abs(med - ax->candidate) <= MF_BOOT_MATCH) {
-			ax->zero = med;
+			ax->runtime_zero = med;
+			ax->zero_source = MF_ZERO_BOOT;
 			ax->accepted = true;
 			ax->settled = true;
 			ax->boot_state = MF_BOOT_ACCEPTED;
@@ -595,6 +620,24 @@ static const char *mf_boot_word(u8 state)
 		return "accepted";
 	case MF_BOOT_TIMEOUT:
 		return "timeout";
+	case MF_BOOT_CANCELLED:
+		return "cancelled";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *mf_zero_word(u8 source)
+{
+	switch (source) {
+	case MF_ZERO_DEFAULT:
+		return "default";
+	case MF_ZERO_PERSISTED:
+		return "persisted";
+	case MF_ZERO_BOOT:
+		return "boot";
+	case MF_ZERO_APPLY:
+		return "apply";
 	default:
 		return "unknown";
 	}
@@ -645,7 +688,9 @@ static ssize_t tracer_show(struct device *dev, struct device_attribute *attr,
 		"raw YL=%u XL=%u YR=%u XR=%u\n"
 		"seen_min YL=%u XL=%u YR=%u XR=%u\n"
 		"seen_max YL=%u XL=%u YR=%u XR=%u\n"
-		"zero YL=%d XL=%d YR=%d XR=%d\n"
+		"runtime_zero YL=%d XL=%d YR=%d XR=%d\n"
+		"source YL=%s XL=%s YR=%s XR=%s\n"
+		"saved_zero YL=%d XL=%d YR=%d XR=%d\n"
 		"min YL=%d XL=%d YR=%d XR=%d\n"
 		"max YL=%d XL=%d YR=%d XR=%d\n"
 		"abs X=%d Y=%d RX=%d RY=%d\n"
@@ -661,7 +706,14 @@ static ssize_t tracer_show(struct device *dev, struct device_attribute *attr,
 		ax[MF_YR].seen_min, ax[MF_XR].seen_min,
 		ax[MF_YL].seen_max, ax[MF_XL].seen_max,
 		ax[MF_YR].seen_max, ax[MF_XR].seen_max,
-		ax[MF_YL].zero, ax[MF_XL].zero, ax[MF_YR].zero, ax[MF_XR].zero,
+		ax[MF_YL].runtime_zero, ax[MF_XL].runtime_zero,
+		ax[MF_YR].runtime_zero, ax[MF_XR].runtime_zero,
+		mf_zero_word(ax[MF_YL].zero_source),
+		mf_zero_word(ax[MF_XL].zero_source),
+		mf_zero_word(ax[MF_YR].zero_source),
+		mf_zero_word(ax[MF_XR].zero_source),
+		ax[MF_YL].saved_zero, ax[MF_XL].saved_zero,
+		ax[MF_YR].saved_zero, ax[MF_XR].saved_zero,
 		ax[MF_YL].min, ax[MF_XL].min, ax[MF_YR].min, ax[MF_XR].min,
 		ax[MF_YL].max, ax[MF_XL].max, ax[MF_YR].max, ax[MF_XR].max,
 		last[MF_XL], last[MF_YL], last[MF_XR], last[MF_YR],
@@ -678,6 +730,216 @@ static ssize_t tracer_show(struct device *dev, struct device_attribute *attr,
 		nbuttons, open ? "open" : "closed", err);
 }
 static DEVICE_ATTR_RO(tracer);
+
+static int mf_token_u8(const char **pp, int *out)
+{
+	const char *s = *pp;
+	unsigned int v = 0;
+	int digits = 0;
+
+	while (*s == ' ' || *s == '\t')
+		s++;
+	if (*s < '0' || *s > '9')
+		return -EINVAL;
+	while (*s >= '0' && *s <= '9') {
+		digits++;
+		if (digits > 3)
+			return -EINVAL;
+		v = v * 10u + (unsigned int)(*s - '0');
+		if (v > 255)
+			return -EINVAL;
+		s++;
+	}
+	*out = (int)v;
+	*pp = s;
+	return 0;
+}
+
+static int mf_side_ok(int min, int zero, int max)
+{
+	if (min >= zero || zero >= max)
+		return -EINVAL;
+	if ((zero - min) <= MF_RAW_DEADBAND || (max - zero) <= MF_RAW_DEADBAND)
+		return -EINVAL;
+	return 0;
+}
+
+/*
+ * Both axes are parsed and checked before either one is installed.
+ * A rejected write leaves the stick unchanged.
+ */
+static int mf_parse_cal(const char *buf, bool *apply,
+			int *xmin, int *xzero, int *xmax,
+			int *ymin, int *yzero, int *ymax)
+{
+	const char *s = buf;
+	char cmd[16];
+	int n = 0;
+
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+	while (*s && *s != ' ' && *s != '\t' && *s != '\n' && *s != '\r') {
+		if (n >= 15)
+			return -EINVAL;
+		cmd[n++] = *s++;
+	}
+	cmd[n] = '\0';
+	if (!strcmp(cmd, "restore"))
+		*apply = false;
+	else if (!strcmp(cmd, "apply"))
+		*apply = true;
+	else
+		return -EINVAL;
+
+	if (mf_token_u8(&s, xmin) || mf_token_u8(&s, xzero) ||
+	    mf_token_u8(&s, xmax) || mf_token_u8(&s, ymin) ||
+	    mf_token_u8(&s, yzero) || mf_token_u8(&s, ymax))
+		return -EINVAL;
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+	if (*s != '\0')
+		return -EINVAL;
+	if (mf_side_ok(*xmin, *xzero, *xmax) || mf_side_ok(*ymin, *yzero, *ymax))
+		return -EINVAL;
+	return 0;
+}
+
+/* Caller holds pad->lock. */
+static void mf_install_axis(struct mf_axis *ax, int min, int zero, int max,
+			    bool apply)
+{
+	ax->min = min;
+	ax->saved_zero = zero;
+	ax->max = max;
+	if (apply) {
+		ax->runtime_zero = zero;
+		ax->zero_source = MF_ZERO_APPLY;
+		if (!mf_boot_finished(ax->boot_state))
+			ax->boot_state = MF_BOOT_CANCELLED;
+		return;
+	}
+	if (ax->zero_source == MF_ZERO_DEFAULT ||
+	    ax->zero_source == MF_ZERO_PERSISTED) {
+		ax->runtime_zero = zero;
+		ax->zero_source = MF_ZERO_PERSISTED;
+	}
+}
+
+/* Caller holds pad->lock. */
+static void mf_publish_stick(struct mf_pad *pad, int x_id, int y_id)
+{
+	int ids[2] = { x_id, y_id };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		struct mf_axis *ax = &pad->axis[ids[i]];
+
+		pad->last_abs[ids[i]] = mf_scale(ax->latest, ax);
+		input_report_abs(pad->input, ax->abs_code, pad->last_abs[ids[i]]);
+	}
+	input_sync(pad->input);
+}
+
+static ssize_t mf_cal_show(struct mf_pad *pad, int x_id, int y_id, char *buf)
+{
+	struct mf_axis x, y;
+	unsigned long flags;
+
+	spin_lock_irqsave(&pad->lock, flags);
+	x = pad->axis[x_id];
+	y = pad->axis[y_id];
+	spin_unlock_irqrestore(&pad->lock, flags);
+
+	return sysfs_emit(buf,
+		"x_min=%d\n"
+		"x_saved_zero=%d\n"
+		"x_runtime_zero=%d\n"
+		"x_max=%d\n"
+		"x_source=%s\n"
+		"y_min=%d\n"
+		"y_saved_zero=%d\n"
+		"y_runtime_zero=%d\n"
+		"y_max=%d\n"
+		"y_source=%s\n",
+		x.min, x.saved_zero, x.runtime_zero, x.max, mf_zero_word(x.zero_source),
+		y.min, y.saved_zero, y.runtime_zero, y.max, mf_zero_word(y.zero_source));
+}
+
+static ssize_t mf_cal_store(struct mf_pad *pad, int x_id, int y_id,
+			    const char *buf, size_t count)
+{
+	bool apply;
+	int xmin, xzero, xmax, ymin, yzero, ymax;
+	unsigned long flags;
+
+	if (mf_parse_cal(buf, &apply, &xmin, &xzero, &xmax,
+			 &ymin, &yzero, &ymax))
+		return -EINVAL;
+
+	spin_lock_irqsave(&pad->lock, flags);
+	mf_install_axis(&pad->axis[x_id], xmin, xzero, xmax, apply);
+	mf_install_axis(&pad->axis[y_id], ymin, yzero, ymax, apply);
+	if (pad->boot_started) {
+		int i;
+
+		for (i = 0; i < MF_AXES; i++) {
+			if (!mf_boot_finished(pad->axis[i].boot_state))
+				break;
+		}
+		if (i == MF_AXES)
+			pad->settle_phase = MF_SETTLE_DONE;
+	}
+	mf_publish_stick(pad, x_id, y_id);
+	spin_unlock_irqrestore(&pad->lock, flags);
+	return count;
+}
+
+static ssize_t calibration_left_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	struct mf_pad *pad = dev_get_drvdata(dev);
+
+	return mf_cal_show(pad, MF_XL, MF_YL, buf);
+}
+
+static ssize_t calibration_left_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct mf_pad *pad = dev_get_drvdata(dev);
+
+	return mf_cal_store(pad, MF_XL, MF_YL, buf, count);
+}
+static DEVICE_ATTR_RW(calibration_left);
+
+static ssize_t calibration_right_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct mf_pad *pad = dev_get_drvdata(dev);
+
+	return mf_cal_show(pad, MF_XR, MF_YR, buf);
+}
+
+static ssize_t calibration_right_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t count)
+{
+	struct mf_pad *pad = dev_get_drvdata(dev);
+
+	return mf_cal_store(pad, MF_XR, MF_YR, buf, count);
+}
+static DEVICE_ATTR_RW(calibration_right);
+
+static struct attribute *mf_attrs[] = {
+	&dev_attr_tracer.attr,
+	&dev_attr_calibration_left.attr,
+	&dev_attr_calibration_right.attr,
+	NULL
+};
+
+static const struct attribute_group mf_attr_group = {
+	.attrs = mf_attrs,
+};
 
 static void mf_buttons_stop(struct mf_pad *pad)
 {
@@ -757,7 +1019,7 @@ static int mf_probe(struct serdev_device *serdev)
 
 	mf_pwm_hold_off(pad);
 
-	ret = device_create_file(dev, &dev_attr_tracer);
+	ret = device_add_group(dev, &mf_attr_group);
 	if (ret) {
 		mf_buttons_stop(pad);
 		return ret;
@@ -778,7 +1040,7 @@ static void mf_remove(struct serdev_device *serdev)
 {
 	struct mf_pad *pad = serdev_device_get_drvdata(serdev);
 
-	device_remove_file(&serdev->dev, &dev_attr_tracer);
+	device_remove_group(&serdev->dev, &mf_attr_group);
 	mf_port_close(pad);
 	mf_buttons_stop(pad);
 }
@@ -826,5 +1088,5 @@ static struct serdev_device_driver mf_driver = {
 module_serdev_device_driver(mf_driver);
 
 MODULE_AUTHOR("Zlyme contributors");
-MODULE_DESCRIPTION("Miyoo Flip gamepad tracer");
+MODULE_DESCRIPTION("Miyoo Flip gamepad");
 MODULE_LICENSE("GPL");

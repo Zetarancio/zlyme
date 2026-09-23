@@ -1,0 +1,194 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Restore or show Miyoo Flip gamepad calibration.
+#
+# The kernel never opens these files. A future calibration UI writes
+# each file by creating a temporary file, fsyncing it, and renaming it
+# into place. This helper only reads them.
+#
+#   /storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
+#   /storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config
+#
+# Keys, one per line: x_min x_max y_min y_max x_zero y_zero
+#
+# Each side of the center must be longer than the kernel deadband
+# of 2, so the scale divisor stays positive. Travel-quality checks
+# belong in the calibration UI. 3C2b owns that UI.
+
+CAL_DIR=/storage/.config/zlyme/miyoo-flip-gamepad
+LEFT_FILE=$CAL_DIR/joypad.config
+RIGHT_FILE=$CAL_DIR/joypad_right.config
+DEADBAND=2
+
+find_dev() {
+	for d in /sys/bus/serial/drivers/miyoo-flip-gamepad/*; do
+		[ -e "$d/calibration_left" ] && [ -e "$d/calibration_right" ] || continue
+		printf '%s\n' "$d"
+		return 0
+	done
+	echo "miyoo-flip-gamepad calibration sysfs is absent" >&2
+	return 1
+}
+
+# Prints: x_min x_zero x_max y_min y_zero y_max
+parse_cal() {
+	file=$1
+	xmin= xmax= ymin= ymax= xzero= yzero=
+	seen_xmin=0 seen_xmax=0 seen_ymin=0 seen_ymax=0
+	seen_xzero=0 seen_yzero=0
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+		'' | '#'*) continue ;;
+		*=*) ;;
+		*)
+			echo "invalid line in $file" >&2
+			return 1
+			;;
+		esac
+		key=${line%%=*}
+		val=${line#*=}
+		case "$val" in
+		'' | *[!0-9]*)
+			echo "invalid value for $key in $file" >&2
+			return 1
+			;;
+		esac
+		if [ "${#val}" -gt 3 ]; then
+			echo "value out of range for $key in $file" >&2
+			return 1
+		fi
+		n=$((10#$val))
+		if [ "$n" -gt 255 ]; then
+			echo "value out of range for $key in $file" >&2
+			return 1
+		fi
+		case "$key" in
+		x_min)
+			[ "$seen_xmin" -eq 1 ] && return 1
+			xmin=$n
+			seen_xmin=1
+			;;
+		x_max)
+			[ "$seen_xmax" -eq 1 ] && return 1
+			xmax=$n
+			seen_xmax=1
+			;;
+		y_min)
+			[ "$seen_ymin" -eq 1 ] && return 1
+			ymin=$n
+			seen_ymin=1
+			;;
+		y_max)
+			[ "$seen_ymax" -eq 1 ] && return 1
+			ymax=$n
+			seen_ymax=1
+			;;
+		x_zero)
+			[ "$seen_xzero" -eq 1 ] && return 1
+			xzero=$n
+			seen_xzero=1
+			;;
+		y_zero)
+			[ "$seen_yzero" -eq 1 ] && return 1
+			yzero=$n
+			seen_yzero=1
+			;;
+		*)
+			echo "unknown key $key in $file" >&2
+			return 1
+			;;
+		esac
+	done <"$file"
+
+	if [ "$seen_xmin" -ne 1 ] || [ "$seen_xmax" -ne 1 ] ||
+		[ "$seen_ymin" -ne 1 ] || [ "$seen_ymax" -ne 1 ] ||
+		[ "$seen_xzero" -ne 1 ] || [ "$seen_yzero" -ne 1 ]; then
+		echo "missing field in $file" >&2
+		return 1
+	fi
+	if [ "$xmin" -ge "$xzero" ] || [ "$xzero" -ge "$xmax" ] ||
+		[ "$ymin" -ge "$yzero" ] || [ "$yzero" -ge "$ymax" ]; then
+		echo "center is not strictly inside min/max in $file" >&2
+		return 1
+	fi
+	if [ $((xzero - xmin)) -le "$DEADBAND" ] ||
+		[ $((xmax - xzero)) -le "$DEADBAND" ] ||
+		[ $((yzero - ymin)) -le "$DEADBAND" ] ||
+		[ $((ymax - yzero)) -le "$DEADBAND" ]; then
+		echo "side is not longer than deadband $DEADBAND in $file" >&2
+		return 1
+	fi
+	printf '%s %s %s %s %s %s\n' "$xmin" "$xzero" "$xmax" "$ymin" "$yzero" "$ymax"
+}
+
+write_restore() {
+	dev=$1
+	attr=$2
+	line=$3
+	# shellcheck disable=SC2086
+	set -- $line
+	if [ "$#" -ne 6 ]; then
+		echo "internal parse error" >&2
+		return 1
+	fi
+	printf 'restore %s %s %s %s %s %s\n' "$1" "$2" "$3" "$4" "$5" "$6" \
+		>"$dev/$attr"
+}
+
+restore() {
+	dev=$(find_dev) || return 1
+	do_left=0
+	do_right=0
+	left_line=
+	right_line=
+	if [ -f "$LEFT_FILE" ]; then
+		left_line=$(parse_cal "$LEFT_FILE") || return 1
+		do_left=1
+	fi
+	if [ -f "$RIGHT_FILE" ]; then
+		right_line=$(parse_cal "$RIGHT_FILE") || return 1
+		do_right=1
+	fi
+	if [ "$do_left" -eq 0 ] && [ "$do_right" -eq 0 ]; then
+		return 0
+	fi
+	if [ "$do_left" -eq 1 ]; then
+		write_restore "$dev" calibration_left "$left_line" || return 1
+	fi
+	if [ "$do_right" -eq 1 ]; then
+		write_restore "$dev" calibration_right "$right_line" || return 1
+	fi
+	return 0
+}
+
+show_file() {
+	label=$1
+	file=$2
+	echo "$label $file"
+	if [ -f "$file" ]; then
+		cat "$file"
+	else
+		echo "(none)"
+	fi
+}
+
+show() {
+	dev=$(find_dev) || return 1
+	echo "driver $dev"
+	show_file persistent-left "$LEFT_FILE"
+	echo "active-left"
+	cat "$dev/calibration_left"
+	show_file persistent-right "$RIGHT_FILE"
+	echo "active-right"
+	cat "$dev/calibration_right"
+}
+
+case "${1:-}" in
+restore) restore ;;
+show) show ;;
+*)
+	echo "usage: $0 {restore|show}" >&2
+	exit 1
+	;;
+esac

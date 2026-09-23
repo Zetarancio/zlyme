@@ -1,6 +1,8 @@
 #!/bin/sh
 # Persist / restore Miyoo serial stick calibration (ROCKNIX sysfs).
 # Files: /storage/.config/miyoo-serial-joypad/cal_{left,right}
+# Boot uses zlyme-gamepad-cal for the new driver. This helper remains
+# only until the old Autocal.pak path is replaced.
 
 SYSFS_DIR=/sys/devices/platform/rocknix-singleadc-joypad
 CAL_DIR=/storage/.config/miyoo-serial-joypad

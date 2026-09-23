@@ -2,7 +2,7 @@
 #
 # miyoo-flip-gamepad
 #
-# Phase 3B tracer. Local source. The old rocknix-joypad package stays
+# Local source. The old rocknix-joypad package stays
 # buildable for rollback and must not bind: the Flip DTS no longer has
 # a rocknix-singleadc-joypad node.
 #
