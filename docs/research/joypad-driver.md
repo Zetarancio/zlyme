@@ -217,25 +217,28 @@ accept only a stable cluster
 
 `N`, the spread limit, and the retry interval are implementation constants to pick in 3B/3C. They are not fixed here.
 
-At boot:
+The driver loads early from the protocol fallback `0/128/255`. Boot runtime recenter then runs asynchronously and may change only `runtime_zero`. It never learns min/max and never writes persistence.
 
 ```text
-attempt a fresh center from stable, untouched sticks
-if accepted:
-    use that center for this running boot only
-if rejected because the samples are moving or unstable:
-    use the persisted zero
-if there is no valid persisted calibration:
-    use a conservative compiled default zero
+if runtime recenter accepts:
+    runtime_zero becomes the fresh boot center
+if it rejects or times out:
+    the current runtime source stays
+after the existing frontend first-frame wait:
+    userspace restores saved min / saved zero / max
+if the runtime source is still default or persisted:
+    restore may install the saved zero as the runtime zero
+if the runtime source is boot:
+    restore keeps the accepted fresh runtime zero
 ```
 
-A successful boot-center measurement must not rewrite the persistent calibration file. The calibration application remains responsible for deliberate persistent calibration. An unstable window may be retried in the background, or left for userspace. It must not install a bad center.
+The kernel never opens the persistent files. Full min/zero/max calibration is manual only. An unstable or out-of-range sample must not install a bad center. There is no infinite wait and no calibration loop inside `probe`.
 
 No infinite wait. No 10-second startup delay. No calibration loop inside `probe`. Buttons stay live if UART never yields a valid frame.
 
 ### Full-range application
 
-Boot calibration does not learn the ends of travel. The calibration application must still capture, independently for each stick:
+Boot runtime recenter does not learn the ends of travel. Manual calibration must still capture, independently for each stick:
 
 ```text
 x_min  x_zero  x_max
@@ -364,17 +367,24 @@ Pass means the same driver and the same frame format work, and the calibration i
 
 ## Phase 3D cutover checklist
 
-Do not edit these in 3A. When the new device name and sysfs exist, update the live consumers together.
+The Flip DTS already binds `miyoo,flip-gamepad`. 3D finishes direct consumers and removes the old driver. It does not own the calibration UI, Autocal replacement, or the restore lifecycle.
 
-Must change a hardcoded name, id, or sysfs path:
+3C2b replaces these:
+
+| Consumer | What changes |
+| --- | --- |
+| `board/my355/fsoverlay/etc/init.d/S26joypadcal` | stop owning persistent restore; remove it if nothing else remains |
+| `board/my355/fsoverlay/usr/sbin/zlyme-joypad-cal` | old ROCKNIX sysfs helper, replaced by the new lifecycle |
+| `package/system/nextui/paks/Tools/Autocal.pak/` | replaced by `Joystick Calibration.pak` |
+| `scripts/pak-live-test.sh` | still launches `/storage/Tools/my355/Autocal.pak/launch.sh`; follow the rename |
+
+Also audit repository license and example mentions of `Autocal.pak` in 3C2b. Do not rewrite historical provenance just to remove the name. The OTA removes the card copy of `Autocal.pak`. It does not delete `/storage/.config/miyoo-serial-joypad/`.
+
+3D still changes a hardcoded name, id, or sysfs path:
 
 | Consumer | What it matches |
 | --- | --- |
-| `board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts` | node `rocknix-singleadc-joypad`, `joypad-name`, `0x484B`, `0x1101`, `0x0100` |
-| `board/my355/fsoverlay/etc/modules-load.d/joypad.conf` | `rocknix-singleadc-joypad` |
-| `board/my355/fsoverlay/etc/init.d/S26joypadcal` | module name, `/sys/devices/platform/rocknix-singleadc-joypad`, hotplug `.ko` path |
-| `board/my355/fsoverlay/usr/sbin/zlyme-joypad-cal` | `miyoo_cal_left` / `miyoo_cal_right` and that sysfs directory |
-| `package/system/nextui/paks/Tools/Autocal.pak/launch.sh` | same sysfs path; calls `zlyme-joypad-cal` |
+| `board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts` | already switched; do not treat the old node as remaining Flip work |
 | `package/system/zlyme-keylidmon/zlyme-keylidmon.c` | `PAD_NAME` `retrogame_joypad` |
 | `package/system/nextui/zlyme/zlyme-pak-hotkey.c` | `PAD_NAME` `retrogame_joypad` |
 | `package/system/nextui/src/workspace/my355/platform/platform.c` | rumble looks for `retrogame` in the evdev name |
@@ -452,7 +462,8 @@ Not claimed: persistent calibration, rumble, Switch-stick hardware validation, u
 
 | Topic | Phase |
 | --- | --- |
-| Power audit (done, no driver change), persistent calibration ABI (done in 3C2a), Joe's Calibrage UI | 3C2b for the UI; 3C3 for `FF_RUMBLE` |
+| `Joystick Calibration.pak`, post-first-frame restore, Autocal migration, per-stick restore isolation | 3C2b |
+| `FF_RUMBLE` | 3C3 |
 | NextUI double-action investigation, direct Zlyme name/hotkey/rumble/module cutover, old `rocknix-joypad` removal, old-driver-only `input-polldev` and `adc-keys` patches if they are proven unused | 3D |
 | Broad emulator compatibility through one InputPlumber virtual device | 4 |
 
@@ -506,7 +517,7 @@ Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That 
 
 The runtime zero must remain strictly inside the active min/max, with both sides longer than the deadband. Checked on `zlyme43 (2026-09-23)`. A `restore` that would leave a `boot` or `apply` center outside the new ends returns `-ERANGE` and changes neither axis. A stable boot median outside the active range is not installed: runtime zero and source stay as they are, and the tracer shows terminal `range-rejected`. A stale right X range of 140/170/230 restored, the sampler found XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted. The measured files then booted with runtime zeros 104/137/114/138, source `boot`, axes 0, the port open, and bad frames 0.
 
-Attributes `calibration_left` and `calibration_right` are mode `0644`. The tracer remains read-only. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. Boot runs `zlyme-gamepad-cal restore` immediately and does not load the ROCKNIX module.
+Attributes `calibration_left` and `calibration_right` are mode `0644`. The tracer remains read-only. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. That validated checkpoint ran `zlyme-gamepad-cal restore` immediately from `S26joypadcal` and did not load the ROCKNIX module. 3C2b moves that restore to after the existing first-frame gate and replaces Autocal with `Joystick Calibration.pak`.
 
 Measured files, hashes unchanged through the gate:
 

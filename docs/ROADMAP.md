@@ -447,7 +447,7 @@ boot:                                 a fresh center when the sticks are still
 
 Userspace owns the full-range procedure, the files under `/storage`, the UI, and restore/apply policy. The kernel owns UART decoding, the runtime transform, deadzone/noise handling, and standard `ABS_*` output. The kernel must not open persistent files. A small sysfs attribute is enough. Do not add a character device for calibration.
 
-Boot-center collection starts only after the input device exists. It uses an outlier-resistant estimate and accepts a center only from a stable cluster. An accepted center is used for that boot and must not rewrite the persistent file. If the samples are moving, keep the persisted zero. If no valid persisted calibration exists, keep a conservative compiled default zero. No infinite wait, no delayed probe, and no calibration loop inside `probe`. Buttons stay available if UART never produces a frame.
+The driver loads early and starts from the protocol fallback `0/128/255`. Its bounded boot runtime recenter then runs asynchronously. It may update only `runtime_zero`. It never learns min/max and never writes persistence. If that recenter accepts, the fresh center becomes the runtime zero. If it rejects or times out, the current runtime source stays. After the existing frontend first-frame wait, userspace restores saved min, saved zero, and max. A restore may install the saved zero as the runtime zero only while the source is still `default` or `persisted`. A source of `boot` keeps the accepted fresh runtime zero. The kernel never opens the persistent files. Full min/zero/max calibration is manual only. No infinite wait, no delayed probe, and no calibration loop inside `probe`. Buttons stay available if UART never produces a frame.
 
 The full calibration application still captures `x_min`, `x_zero`, `x_max`, `y_min`, `y_zero`, and `y_max` independently for each stick, including asymmetric travel. A narrow diagnostic report of raw bytes, observed extrema, center, active calibration, normalized axes, and frame errors is part of 3C/3D. It is not a permanent broad debug ABI.
 
@@ -804,7 +804,7 @@ zlyme-gamepad-cal restore
 
 out of `S26joypadcal`.
 
-Run the restore from `rc.late` only after `nextui-first-flip` has been observed.
+`rc.late` calls `zlyme-gamepad-cal restore` immediately after the existing `wait_boot_list` / first-frame gate returns, and before the normal Class-B background workload. `wait_boot_list` waits for `nextui-first-flip` and has a bounded 20-second timeout, so a frontend that never flips does not hold late services forever. Do not add another calibration-specific wait. On a normal boot, restore occurs after `nextui-first-flip`. If the frontend never reaches that mark, the existing timeout expires and restore still proceeds. Persistent restore stays off the NextUI first-frame path. Do not delay NextUI because runtime recenter has not finished, and do not assume the usual ~2.5 s recenter window.
 
 The intended sequence is:
 
@@ -846,13 +846,13 @@ Do not remove it from `pre-update.sh`, because that runs before the new squashfs
 
 Do not add a permanent every-boot Autocal deletion workaround to `nextui-session`.
 
-Legacy old-format calibration data remains intact during the OTA migration. It is inert under the new driver and can provide rollback/migration evidence.
-
-Do not delete legacy calibration data merely because `Autocal.pak` was removed.
-
-It may be removed after the user has successfully saved a new-format calibration, or later with the old-driver cleanup when its remaining references are proven obsolete.
+Legacy old-format calibration data remains at `/storage/.config/miyoo-serial-joypad/`. The OTA hook removes the obsolete card PAK, not that directory. Leave deletion of the legacy directory to later old-driver cleanup unless a later review decides otherwise. Calibrating one stick must not erase legacy data for the other stick. The data is inert under the new driver and can provide rollback evidence.
 
 ##### 3C2b gate
+
+Left and right persistence restore independently. A missing, malformed, or rejected left file must not block a valid right restore, and the reverse. Restore may report an aggregate failure, and it must keep the stick that restored successfully.
+
+A save must not claim that both the live kernel apply and the persistent file replacement succeeded when one of them failed. The minimum file contract stays temporary file, `fsync`, and `rename`. Decide and test that ordering in 3C2b. Do not add a kernel persistence layer or a large transaction framework.
 
 Before 3C2b is complete, prove:
 
@@ -863,6 +863,8 @@ right-stick manual calibration works
 range and center capture are validated
 live apply uses the production sysfs ABI
 persistence uses temporary-file + fsync + rename semantics
+a failed apply or file replacement is not reported as a full success
+left and right restore independently
 new files survive reboot
 post-first-frame restore works
 restore does not delay NextUI first frame
@@ -870,9 +872,11 @@ boot runtime recenter still works independently
 no automatic full calibration occurs at boot
 Autocal.pak is absent from a fresh image
 OTA migration removes an old card copy of Autocal.pak
-legacy calibration data survives that migration
+legacy /storage/.config/miyoo-serial-joypad/ survives that migration
 Joe-derived attribution/license is correct
 ```
+
+Hardware evidence for ordering must include driver/module available, first valid UART frames, the boot runtime-recenter result, `nextui-first-flip`, and persistent restore start and end. Restore begins after the existing first-frame gate and does not move `nextui-first-flip` later. A normal centered boot reaches NextUI with stable controls. Do not treat the usual ~2.5 s recenter as proof of that order.
 
 Do not remove the old ROCKNIX driver in 3C2b.
 
@@ -918,18 +922,25 @@ Remaining sequence:
 
 ### 3D — Cutover and hardware validation
 
-After the replacement has feature parity, switch Zlyme to the new driver.
+After 3C feature parity, complete the userspace and direct-consumer cutover and remove the migration fallback. The physical driver is already the normal bound Flip gamepad. The DTS already uses `miyoo,flip-gamepad`.
 
-Update direct dependencies such as:
+3D owns:
 
 ```text
-DTS binding
-module loading
-calibration tooling
-NextUI device lookup where necessary
-RetroArch/SDL mappings where necessary
-post-build module checks
+NextUI direct device lookup and routing
+the known duplicate-action investigation
+zlyme-keylidmon
+zlyme-pak-hotkey
+NextUI rumble lookup
+SDL and gamecontrollerdb mapping required for cutover
+RetroArch and direct-launch mapping required for the game-launch gate
+PICO and other direct Zlyme consumers where required
+post-build removal of old-module requirements
+removal of rocknix-joypad from the product
+old-driver-only input-polldev and adc-keys coupling if proven unused
 ```
+
+3D does not own the manual calibration UI, Autocal replacement, `S26joypadcal` removal for the new restore lifecycle, or persistent calibration boot restore. Those are 3C2b.
 
 Original Flip sticks are the hardware-validation target for this cutover.
 
@@ -937,7 +948,7 @@ Switch 1 non-Hall replacement sticks stay a designed compatibility target. They 
 
 Phase 3D owns removal of `rocknix-joypad` from the normal product build, after 3C calibration and rumble have passed. Git history is the fallback. At that cutover, check whether `input-polldev` and the `adc-keys` / `joypad_input_g` patches exist only for the old driver. If they do, remove them as part of this migration, with a clean Linux re-extract and repatch. That is not the Phase 5 kernel cleanup.
 
-Phase 3D owns direct Zlyme consumers required for the physical-driver cutover: NextUI lookup where it is required, `zlyme-keylidmon`, `zlyme-pak-hotkey`, rumble lookup, module loading, post-build checks, calibration boot restore, and the minimum mapping needed for the game-launch gate. Do not edit every emulator config here. Broad emulator compatibility is the Phase 4 virtual controller.
+Do not edit every emulator configuration here. Broad emulator compatibility is the Phase 4 virtual controller. Module loading of the new gamepad stays with the existing early boot path.
 
 Some NextUI controls may perform the same action twice. The kernel reported one press and one release on one device, with the old driver unbound. Treat that as an application, SDL, or input-routing issue until evidence says otherwise. Instrument that path at the start of 3D. Do not change the physical button ABI in 3C to hide it. If Phase 4 later exposes both the physical device and an InputPlumber virtual device, exclusive grab owns that separate duplicate-device problem. Do not use Phase 4 to hide an existing NextUI bug.
 
@@ -953,8 +964,10 @@ Before Phase 4:
 * all built-in gamepad buttons work;
 * both analog sticks work across their usable ranges;
 * persistent per-axis min, zero, and max calibration works;
-* a boot-time center does not rewrite the persistent calibration file;
-* boot-time center calibration is non-blocking, rejects a moving stick, and does not delay buttons or NextUI;
+* boot runtime recenter changes only runtime zero and never persistence;
+* boot runtime recenter is bounded and non-blocking, and rejects an unstable or out-of-range center;
+* full min/zero/max calibration occurs only through an explicit userspace action;
+* persistent saved calibration restore is outside the frontend first-frame critical path;
 * original sticks are hardware-validated;
 * Switch 1 non-Hall replacement sticks are a designed compatibility target on the same UART protocol;
 * replacement-stick support is not called validated until the community hardware tests pass;
