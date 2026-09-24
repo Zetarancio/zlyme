@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-24 — initramfs grep applet
+
+The tiny embedded initramfs `/init` calls `grep -q` to see whether `/boot_root` and `/storage_root` are already mounted. Its own BusyBox config had `# CONFIG_GREP is not set` while `CONFIG_EGREP` and `CONFIG_FGREP` were enabled, so those checks could not execute `grep`. The fix enables the normal `grep` applet. The script was not rewritten around `fgrep`.
+
+Host `dash -n` accepted `package/boot/zlyme-initramfs/init` as a syntax check only. `./build.sh --minimal zlyme-initramfs-dirclean`, `zlyme-initramfs`, `linux-rebuild`, and a complete `./build.sh --minimal` succeeded. The generated initramfs `.config` has `CONFIG_GREP=y`, `CONFIG_EGREP=y`, and `CONFIG_FGREP=y`. `output/images/initramfs/bin/grep` links to that static BusyBox, the packed cpio contains `bin/grep` and `init`, and `CONFIG_INITRAMFS_SOURCE` is `/zlyme/output/images/initramfs`. No Miyoo Flip boot was tested.
+
 ## 2026-09-24 — Phase 3C2a calibration range invariant
 
 Hardened on `zlyme43 (2026-09-23)`. The runtime zero must stay strictly inside the active min/max, with both sides longer than the deadband of 2. A `restore` that would leave a `boot` or `apply` center outside the new range returns `-ERANGE` and changes neither axis. A stable boot median that does not fit the active range is not installed. That axis stays on its current center and source, and the tracer shows `range-rejected`. The state is terminal. Persistent files are not rewritten.
