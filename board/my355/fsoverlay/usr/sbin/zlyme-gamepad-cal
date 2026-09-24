@@ -63,7 +63,13 @@ parse_cal() {
 			echo "value out of range for $key in $file" >&2
 			return 1
 		fi
-		n=$((10#$val))
+		# Strip leading zeros in POSIX sh. $((10#n)) is not POSIX,
+		# and a leading zero would make $((n)) octal.
+		n=$val
+		while [ "${n#0}" != "$n" ]; do
+			n=${n#0}
+		done
+		[ -n "$n" ] || n=0
 		if [ "$n" -gt 255 ]; then
 			echo "value out of range for $key in $file" >&2
 			return 1
