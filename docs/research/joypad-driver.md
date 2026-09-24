@@ -462,7 +462,7 @@ Not claimed: persistent calibration, rumble, Switch-stick hardware validation, u
 
 | Topic | Phase |
 | --- | --- |
-| `Joystick Calibration.pak`, post-first-frame restore, Autocal migration, per-stick restore isolation | 3C2b |
+| Settings joystick calibration and live deadzone, post-first-frame restore, Autocal migration | 3C2b |
 | `FF_RUMBLE` | 3C3 |
 | NextUI double-action investigation, direct Zlyme name/hotkey/rumble/module cutover, old `rocknix-joypad` removal, old-driver-only `input-polldev` and `adc-keys` patches if they are proven unused | 3D |
 | Broad emulator compatibility through one InputPlumber virtual device | 4 |
@@ -517,7 +517,7 @@ Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That 
 
 The runtime zero must remain strictly inside the active min/max, with both sides longer than the deadband. Checked on `zlyme43 (2026-09-23)`. A `restore` that would leave a `boot` or `apply` center outside the new ends returns `-ERANGE` and changes neither axis. A stable boot median outside the active range is not installed: runtime zero and source stay as they are, and the tracer shows terminal `range-rejected`. A stale right X range of 140/170/230 restored, the sampler found XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted. The measured files then booted with runtime zeros 104/137/114/138, source `boot`, axes 0, the port open, and bad frames 0.
 
-Attributes `calibration_left` and `calibration_right` are mode `0644`. `raw_axes` is the read-only production sample, mode `0444`, one line `YL=<n> XL=<n> YR=<n> XR=<n>`. The tracer remains a diagnostic and is not parsed by Joystick Calibration. This `raw_axes` addition is not device-validated. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. That validated checkpoint ran `zlyme-gamepad-cal restore` immediately from `S26joypadcal` and did not load the ROCKNIX module. The current tree moves that restore to `rc.late` after `wait_boot_list`, removes `S26joypadcal`, and adds `Joystick Calibration.pak`. That change is not device-validated.
+Attributes `calibration_left` and `calibration_right` are mode `0644`. `raw_axes` is the read-only production sample, mode `0444`, one line `YL=<n> XL=<n> YR=<n> XR=<n>`. The tracer remains a diagnostic. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. Deadzone persistence is `deadzone.config` with `left` and `right` percentages, default 0 when the file is absent. The kernel does not open them. The 3C2a checkpoint ran restore from `S26joypadcal`. The current tree restores calibration and deadzone from `rc.late` after `wait_boot_list`, and the UI is Settings → System → Joysticks. `deadzone_left` and `deadzone_right` are runtime percentages 0..30 applied as a scaled radial deadzone after normalization. That Settings and deadzone path is implemented, hardware validation pending. It was not part of the 3C2a device tests.
 
 Measured files, hashes unchanged through the gate:
 
@@ -534,7 +534,7 @@ Left reached raw 2 and 223 at ABS_X −32767 and +32767, and raw YL 25 at ABS_Y 
 
 A lid close did not enter kernel suspend. The later deep suspend did, and the calibration survived. Probe count stayed 1, the port stayed open, and bad frames stayed 0. The Mali regulator warning is unrelated.
 
-Next is 3C2b, the Zlyme calibration UI adapted from Joe's Calibrage (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken), then 3C3 rumble. No Joe source is in this checkpoint.
+The Settings joystick UI adapts the Joe's Calibrage workflow (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken). It does not use Joe's UART backend. 3C3 rumble has not started. The integrated UI and radial deadzone are implemented, hardware validation pending.
 
 ## Open measurements
 
