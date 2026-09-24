@@ -23,6 +23,7 @@
 CAL_DIR=${ZLYME_CAL_DIR:-/storage/.config/zlyme/miyoo-flip-gamepad}
 LEFT_FILE=$CAL_DIR/joypad.config
 RIGHT_FILE=$CAL_DIR/joypad_right.config
+DZ_FILE=$CAL_DIR/deadzone.config
 GAMEPAD_SYS=${ZLYME_GAMEPAD_SYS:-/sys/bus/serial/drivers/miyoo-flip-gamepad}
 DEADBAND=2
 
@@ -167,14 +168,113 @@ restore_side() {
 	return 0
 }
 
+# Prints: apply_left pct_left apply_right pct_right
+# A missing key applies 0. A bad or duplicate key is not applied.
+parse_deadzone() {
+	file=$1
+	left=0
+	right=0
+	apply_l=1
+	apply_r=1
+	seen_l=0
+	seen_r=0
+	bad=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+		'' | '#'*) continue ;;
+		left=* | right=*) ;;
+		*)
+			echo "unknown deadzone line in $file" >&2
+			bad=1
+			continue
+			;;
+		esac
+		key=${line%%=*}
+		val=${line#*=}
+		ok=1
+		case "$val" in
+		'' | *[!0-9]*) ok=0 ;;
+		esac
+		n=$val
+		if [ "$ok" -eq 1 ]; then
+			while [ "${n#0}" != "$n" ]; do
+				n=${n#0}
+			done
+			[ -n "$n" ] || n=0
+			if [ "$n" -gt 30 ]; then
+				ok=0
+			fi
+		fi
+		case "$key" in
+		left)
+			if [ "$seen_l" -eq 1 ] || [ "$ok" -eq 0 ]; then
+				echo "left: malformed deadzone in $file" >&2
+				apply_l=0
+				bad=1
+				seen_l=1
+				continue
+			fi
+			left=$n
+			seen_l=1
+			;;
+		right)
+			if [ "$seen_r" -eq 1 ] || [ "$ok" -eq 0 ]; then
+				echo "right: malformed deadzone in $file" >&2
+				apply_r=0
+				bad=1
+				seen_r=1
+				continue
+			fi
+			right=$n
+			seen_r=1
+			;;
+		esac
+	done <"$file"
+	printf '%s %s %s %s\n' "$apply_l" "$left" "$apply_r" "$right"
+	return "$bad"
+}
+
+write_deadzone() {
+	dev=$1
+	side=$2
+	pct=$3
+	attr=deadzone_left
+	[ "$side" = right ] && attr=deadzone_right
+	if ! printf '%s\n' "$pct" >"$dev/$attr"; then
+		echo "$side: kernel rejected deadzone" >&2
+		return 1
+	fi
+	return 0
+}
+
+restore_deadzone() {
+	dev=$1
+	if [ ! -f "$DZ_FILE" ]; then
+		return 0
+	fi
+	line=$(parse_deadzone "$DZ_FILE") || bad=1
+	# shellcheck disable=SC2086
+	set -- $line
+	fail=0
+	[ "${bad:-0}" -eq 0 ] || fail=1
+	if [ "${1:-0}" -eq 1 ]; then
+		write_deadzone "$dev" left "${2:-0}" || fail=1
+	fi
+	if [ "${3:-0}" -eq 1 ]; then
+		write_deadzone "$dev" right "${4:-0}" || fail=1
+	fi
+	return "$fail"
+}
+
 restore() {
-	if [ ! -f "$LEFT_FILE" ] && [ ! -f "$RIGHT_FILE" ]; then
+	if [ ! -f "$LEFT_FILE" ] && [ ! -f "$RIGHT_FILE" ] && [ ! -f "$DZ_FILE" ]; then
 		return 0
 	fi
 	dev=$(find_dev) || return 1
 	fail=0
 	restore_side "$dev" "$LEFT_FILE" calibration_left left || fail=1
 	restore_side "$dev" "$RIGHT_FILE" calibration_right right || fail=1
+	restore_deadzone "$dev" || fail=1
 	return "$fail"
 }
 
@@ -198,6 +298,11 @@ show() {
 	show_file persistent-right "$RIGHT_FILE"
 	echo "active-right"
 	cat "$dev/calibration_right"
+	show_file persistent-deadzone "$DZ_FILE"
+	echo "active-deadzone-left"
+	cat "$dev/deadzone_left"
+	echo "active-deadzone-right"
+	cat "$dev/deadzone_right"
 }
 
 case "${1:-}" in

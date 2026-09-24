@@ -10,6 +10,8 @@ sys=$root/sys/dev
 mkdir -p "$cal" "$sys"
 : >"$sys/calibration_left"
 : >"$sys/calibration_right"
+: >"$sys/deadzone_left"
+: >"$sys/deadzone_right"
 export ZLYME_CAL_DIR=$cal
 export ZLYME_GAMEPAD_SYS=$root/sys
 
@@ -83,5 +85,39 @@ printf '%s' "$good" >"$cal/joypad_right.config"
 "$helper" restore
 check $? 1 "right reject"
 test -s "$sys/calibration_left" || { echo "FAIL left stays" >&2; fail=1; }
+
+rm -f "$cal/joypad.config" "$cal/joypad_right.config" "$cal/deadzone.config"
+: >"$sys/deadzone_left"
+: >"$sys/deadzone_right"
+"$helper" restore
+check $? 0 "no files including deadzone"
+
+printf 'left=12\n' >"$cal/deadzone.config"
+"$helper" restore
+check $? 0 "left deadzone only"
+check "$(cat "$sys/deadzone_left")" "12" "left pct"
+check "$(cat "$sys/deadzone_right")" "0" "right default"
+
+printf 'right=30\n' >"$cal/deadzone.config"
+: >"$sys/deadzone_left"
+"$helper" restore
+check $? 0 "right deadzone only"
+check "$(cat "$sys/deadzone_right")" "30" "right pct"
+check "$(cat "$sys/deadzone_left")" "0" "left default"
+
+printf 'left=40\nright=7\n' >"$cal/deadzone.config"
+: >"$sys/deadzone_left"
+: >"$sys/deadzone_right"
+"$helper" restore
+check $? 1 "left out of range"
+check "$(cat "$sys/deadzone_right")" "7" "right after bad left"
+check "$(cat "$sys/deadzone_left")" "" "left not written"
+
+printf 'left=4\nright=abc\n' >"$cal/deadzone.config"
+: >"$sys/deadzone_left"
+: >"$sys/deadzone_right"
+"$helper" restore
+check $? 1 "right nonnumeric"
+check "$(cat "$sys/deadzone_left")" "4" "left after bad right"
 
 exit "$fail"
