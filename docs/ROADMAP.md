@@ -848,39 +848,738 @@ Do not add a permanent every-boot Autocal deletion workaround to `nextui-session
 
 Legacy old-format calibration data remains at `/storage/.config/miyoo-serial-joypad/`. The OTA hook removes the obsolete card PAK, not that directory. Leave deletion of the legacy directory to later old-driver cleanup unless a later review decides otherwise. Calibrating one stick must not erase legacy data for the other stick. The data is inert under the new driver and can provide rollback evidence.
 
-##### 3C2b gate
+#### 3C2b — Integrated joystick calibration and live deadzone tuning
 
-Left and right persistence restore independently. A missing, malformed, or rejected left file must not block a valid right restore, and the reverse. Restore may report an aggregate failure, and it must keep the stick that restored successfully.
-
-A save must not claim that both the live kernel apply and the persistent file replacement succeeded when one of them failed. The minimum file contract stays temporary file, `fsync`, and `rename`. Decide and test that ordering in 3C2b. Do not add a kernel persistence layer or a large transaction framework.
-
-Before 3C2b is complete, prove:
+Phase 3C2a established the production calibration mechanism:
 
 ```text
-Joystick Calibration.pak launches and exits cleanly
-left-stick manual calibration works
-right-stick manual calibration works
-range and center capture are validated
-live apply uses the production sysfs ABI
-persistence uses temporary-file + fsync + rename semantics
-a failed apply or file replacement is not reported as a full success
-left and right restore independently
-new files survive reboot
-post-first-frame restore works
-restore does not delay NextUI first frame
-boot runtime recenter still works independently
-no automatic full calibration occurs at boot
-Autocal.pak is absent from a fresh image
-OTA migration removes an old card copy of Autocal.pak
-legacy /storage/.config/miyoo-serial-joypad/ survives that migration
-Joe-derived attribution/license is correct
+raw UART
+    ->
+per-axis min / saved zero / runtime zero / max
+    ->
+normalized ABS_X / ABS_Y / ABS_RX / ABS_RY
 ```
 
-Hardware evidence for ordering must include driver/module available, first valid UART frames, the boot runtime-recenter result, `nextui-first-flip`, and persistent restore start and end. Restore begins after the existing first-frame gate and does not move `nextui-first-flip` later. A normal centered boot reaches NextUI with stable controls. Do not treat the usual ~2.5 s recenter as proof of that order.
+3C2b completes the user-facing calibration and tuning lifecycle.
+
+Do not introduce InputPlumber in this phase.
+
+The user-facing implementation belongs inside the existing NextUI Settings application rather than as a permanent standalone Tool PAK.
+
+The target UI is:
+
+```text
+Settings
+    -> System
+        -> Joysticks
+```
+
+This follows the same architectural direction as Zlyme Update: device/system configuration that is part of the OS belongs in Settings rather than requiring a separate Tool PAK.
+
+The standalone `Joystick Calibration.pak` in checkpoint `3ef5bcad68783751f3e654e381bac267afa2ef44` is a functional integration checkpoint, not the final UI architecture.
+
+##### Upstream input model
+
+Use established Linux controller practice as guidance, but preserve Zlyme's actual hardware requirements.
+
+Reference review:
+
+```text
+Linux:
+    torvalds/linux
+    master reviewed at ee9c669f9bf5fd2c24206746ded9382fe810df89
+
+Relevant drivers:
+    drivers/hid/hid-nintendo.c
+    drivers/hid/hid-steam.c
+
+Linux input semantics:
+    include/uapi/linux/input.h
+    drivers/input/input.c
+
+InputPlumber:
+    ShadowBlip/InputPlumber
+    v0.81.0
+    ea60d873cca17edd1cb655ede26f557108135252
+```
+
+`hid-nintendo` provides a useful calibration model:
+
+* independent calibration for each stick axis;
+* explicit min, center, and max;
+* validation that `min < center < max`;
+* asymmetric scaling on either side of center;
+* safe defaults when calibration cannot be read;
+* standard normalized Linux axis output.
+
+It does not implement a user-adjustable analog-stick deadzone in the axis mapping function.
+
+`hid-nintendo` instead advertises nonzero Linux `fuzz` and `flat` values.
+
+`hid-steam` exposes its joystick axes with zero `fuzz` and zero `flat`, while configurable controller behavior is normally handled by the higher userspace Steam Input layer.
+
+Those two models establish an important distinction:
+
+```text
+hardware calibration / normalization
+        !=
+user-selected gameplay deadzone
+```
+
+Linux `fuzz` is an input-core noise filter. It can suppress or smooth small changes anywhere on an absolute axis.
+
+Linux `flat` is axis metadata used by consumers such as the legacy joydev interface to define a central flat region. It is not guaranteed to transform the evdev values seen by every application.
+
+SDL may return Linux joystick values without applying `flat`.
+
+Therefore Zlyme must not depend on `flat` alone for a deadzone that is intended to affect all consumers of the built-in physical controller.
+
+##### Zlyme ownership
+
+Preserve mechanism/policy separation:
+
+```text
+kernel driver:
+    UART decode
+    raw hardware sample
+    min / center / max transform
+    fixed minimal hardware-noise floor
+    configurable deadzone mechanism
+    standard ABS_* output
+
+userspace:
+    calibration procedure
+    deadzone choice
+    live tuning UI
+    persistence
+    boot restore policy
+```
+
+The driver's deadzone parameter is a mechanism.
+
+Settings chooses the value and persists it.
+
+The kernel must not open persistent files.
+
+InputPlumber remains Phase 4 policy for controller composition, virtual P1, hotplug, grabs, and broad application compatibility. It must not become necessary for built-in-stick calibration or deadzone tuning in 3C2b.
+
+##### Hardware noise floor versus user deadzone
+
+Keep these as separate concepts.
+
+The existing:
+
+```text
+MF_RAW_DEADBAND = 2
+```
+
+is a small hardware/noise floor around the active runtime center.
+
+It remains an internal driver correctness mechanism unless hardware measurements justify changing it.
+
+It is not the user-visible deadzone setting.
+
+Add a separate user-adjustable deadzone after per-axis calibration/normalization.
+
+Conceptually:
+
+```text
+UART raw values
+    ->
+fixed minimal raw noise floor
+    ->
+asymmetric min / runtime-zero / max normalization
+    ->
+per-stick configurable deadzone
+    ->
+ABS_X / ABS_Y / ABS_RX / ABS_RY
+```
+
+The default user deadzone is:
+
+```text
+0%
+```
+
+so upgrading preserves the currently validated stick behavior apart from the existing fixed raw noise floor.
+
+The first UI range is:
+
+```text
+0% .. 30%
+```
+
+in 1% steps.
+
+Do not add response curves, outer deadzones, anti-deadzones, acceleration, sensitivity, or per-axis user tuning in 3C2b.
+
+Those are separate policy features and require separate evidence.
+
+##### Deadzone shape
+
+The user setting is per physical stick:
+
+```text
+left deadzone
+right deadzone
+```
+
+not four independent X/Y settings.
+
+Use a scaled radial inner deadzone after the X/Y axes have been independently calibrated and normalized.
+
+Required behavior:
+
+```text
+inside radius:
+    X = 0
+    Y = 0
+
+outside radius:
+    preserve stick direction
+    transition continuously away from zero
+    rescale remaining travel so full cardinal travel can still reach full scale
+```
+
+There must not be a discontinuous jump from zero to the deadzone percentage at the boundary.
+
+Test diagonal behavior explicitly. Do not silently introduce severe corner clipping or unexpected early saturation.
+
+The exact integer implementation belongs in the driver and must avoid floating-point kernel code.
+
+##### Linux ABS metadata
+
+Do not use Linux `flat` as the implementation of the configurable deadzone.
+
+Because the driver itself will emit zero inside the selected deadzone, advertising the same region again as nonzero `flat` can cause consumers that honor `flat` to apply a second deadzone.
+
+Keep:
+
+```text
+flat = 0
+```
+
+for the built-in stick axes unless later measurements and consumer testing justify another value.
+
+Likewise do not add nonzero `fuzz` merely because `hid-nintendo` uses it. Linux input core actively filters absolute-axis changes using `fuzz`, including away from center.
+
+Keep:
+
+```text
+fuzz = 0
+```
+
+unless measured Miyoo Flip noise demonstrates that whole-axis input-core filtering improves behavior without harming latency or precision.
+
+The existing fixed center noise floor remains the current noise mechanism.
+
+##### Runtime deadzone ABI
+
+Expose a narrow runtime interface on the same gamepad device as the calibration attributes.
+
+Use one value per stick, for example:
+
+```text
+deadzone_left
+deadzone_right
+```
+
+The stable value is an integer percentage:
+
+```text
+0 .. 30
+```
+
+Writes outside the supported range fail without changing the active value.
+
+A successful write changes the running transform immediately.
+
+Changing deadzone must not alter:
+
+```text
+min
+saved_zero
+runtime_zero
+max
+boot-center state
+```
+
+and must not restart or reprobe the input device.
+
+Updating a deadzone must immediately re-report the latest stick position through the new transform so the Settings UI can preview the result without waiting for physical movement.
+
+Do not overload `calibration_left` or `calibration_right` with deadzone syntax. Preserve the already validated calibration ABI.
+
+##### Persistence
+
+Keep physical calibration files unchanged:
+
+```text
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config
+```
+
+Do not append deadzone fields to those files.
+
+That preserves the existing calibration format and improves rollback compatibility.
+
+Persist user deadzones separately:
+
+```text
+/storage/.config/zlyme/miyoo-flip-gamepad/deadzone.config
+```
+
+with a small explicit format such as:
+
+```text
+left=0
+right=0
+```
+
+Each value is validated independently.
+
+A missing file means the default user deadzone of `0%`.
+
+A missing or invalid left value must not prevent a valid right value from being restored, and the reverse.
+
+Persistent replacement uses the same minimum durability contract as calibration:
+
+```text
+temporary file
+    -> fsync file
+    -> close
+    -> rename
+```
+
+Do not write the persistent file on every D-pad adjustment.
+
+Live preview changes runtime state only.
+
+Persistence happens only when the user explicitly saves.
+
+##### Boot lifecycle
+
+Keep the existing 3C2b boot architecture.
+
+Do not move calibration or deadzone persistence into the kernel.
+
+Do not add another Class-A operation before the NextUI first frame.
+
+The intended boot sequence remains:
+
+```text
+module loading
+    -> Miyoo Flip Gamepad available
+    -> asynchronous boot runtime recenter
+    -> fixed raw noise floor active
+    -> default user deadzone active
+
+NextUI
+    -> first frame/list
+
+rc.late
+    -> restore saved min / saved zero / max
+    -> restore saved left/right deadzone
+    -> Class-B background work
+```
+
+`zlyme-gamepad-cal restore` remains the userspace restore owner and should restore both calibration and deadzone state.
+
+A missing calibration or deadzone file is a successful no-op for that state.
+
+Restoring deadzone must not replace a boot-selected runtime center.
+
+Do not add a second wait around deadzone restore.
+
+##### Settings integration
+
+Replace the standalone calibration PAK with a native Settings implementation after the integrated version is proven.
+
+The target submenu is:
+
+```text
+Settings
+    -> System
+        -> Joysticks
+            Test Sticks
+            Calibrate Left
+            Calibrate Right
+            Tune Left Deadzone
+            Tune Right Deadzone
+            Values
+```
+
+Use the existing Settings rendering/input lifecycle rather than embedding a second UI framework into `settings.elf`.
+
+Keep gamepad-specific code isolated in a dedicated Zlyme joystick/settings module rather than scattering sysfs discovery and calibration parsing through generic Settings code.
+
+Do not add a daemon.
+
+Raw polling is allowed only while a live joystick/calibration screen is visible, because the calibration ABI is a snapshot sysfs interface rather than an event stream. Keep that polling bounded and stop it immediately when the screen closes.
+
+##### Test Sticks
+
+`Test Sticks` shows both sticks simultaneously using the actual post-driver Linux input values that applications receive.
+
+It is a final-output test, not a calibration source.
+
+Each stick should have a clear center marker and live position marker.
+
+This screen verifies:
+
+```text
+center
+deadzone
+direction
+full travel
+return to center
+```
+
+without changing configuration.
+
+##### Manual calibration UI
+
+Calibration itself uses `raw_axes`, not already transformed SDL axes.
+
+For the selected stick show:
+
+```text
+raw physical position
+captured range
+current min/max
+capture progress
+```
+
+with a realtime stick visualization.
+
+Range capture begins immediately when the calibration screen opens.
+
+The instruction is conceptually:
+
+```text
+Rotate the stick fully around the edge.
+Press A when finished.
+```
+
+The user does not hold A while moving the stick.
+
+When A ends the range phase:
+
+```text
+stop updating captured extrema
+    ->
+ask the user to release the stick
+    ->
+automatically collect center samples
+```
+
+Do not make the button press itself create the center measurement.
+
+The center phase continuously measures the released stick until the existing stability requirement is satisfied.
+
+Only after a stable center is available should the UI enable/offer:
+
+```text
+A  Save
+```
+
+A successful save performs:
+
+```text
+validate candidate
+    ->
+live kernel apply
+    ->
+atomic persistent replacement
+```
+
+and must distinguish:
+
+```text
+apply failed
+apply succeeded but persistence failed
+full success
+```
+
+`B` cancels without modifying persistence.
+
+Provide a restart/reset action for the current capture where useful.
+
+##### Travel-quality validation
+
+The kernel's raw deadband invariant is not sufficient evidence of a good manual full-range calibration.
+
+Do not use:
+
+```text
+captured span > MF_RAW_DEADBAND
+```
+
+as the only full-travel quality test.
+
+The kernel should continue accepting any structurally safe calibration that satisfies its invariant.
+
+Travel-quality policy belongs in the calibration UI.
+
+Joe's Calibrage used a 40-count minimum span for my355, but do not copy that number blindly as a new kernel invariant.
+
+Use the original-stick measurements and replacement-stick compatibility goal to choose and document a conservative UI quality threshold.
+
+The UI may warn/reject obviously incomplete range capture, but it must continue supporting asymmetric axes and must not assume all four axes have the same range.
+
+##### Live deadzone tuning UI
+
+`Tune Left Deadzone` and `Tune Right Deadzone` are realtime screens.
+
+Show:
+
+```text
+outer calibrated stick area
+current deadzone as an inner circle
+physical/raw-position marker
+effective post-deadzone output marker
+deadzone percentage
+```
+
+The raw marker allows the user to see physical center drift.
+
+The output marker shows what applications actually receive.
+
+When the physical marker is inside the deadzone, the effective output marker remains centered.
+
+Controls:
+
+```text
+D-pad Left   decrease deadzone
+D-pad Right  increase deadzone
+A            save
+B            cancel
+```
+
+Adjustments apply to the driver immediately for preview.
+
+They do not write persistent storage on each step.
+
+On `A`:
+
+```text
+apply final runtime value
+    ->
+atomically persist
+```
+
+On `B`:
+
+```text
+restore the runtime deadzone that was active when the screen opened
+    ->
+leave persistence unchanged
+```
+
+A crash during preview may leave a temporary runtime value for the current boot, but it must never corrupt persistent calibration or persistent deadzone state. Reboot restore returns to the saved value.
+
+##### Values screen
+
+Replace the current large text-message dump with a compact diagnostic screen.
+
+Show left and right sticks side by side where practical.
+
+Include at least:
+
+```text
+min
+saved center
+runtime center
+max
+center source
+deadzone %
+current raw X/Y
+current final/output X/Y
+persistent calibration present/valid
+persistent deadzone present/valid
+```
+
+This screen is read-only.
+
+It should make the important distinction between saved center and boot/runtime center visible without requiring SSH.
+
+##### Backup behavior
+
+Remove the calibration-specific `.bak` mechanism and the separate:
+
+```text
+Restore Left Backup
+Restore Right Backup
+```
+
+UI.
+
+The calibration save transaction already keeps the old persistent file when replacement fails.
+
+Zlyme Settings also already provides the broader `/storage/.config` backup facility.
+
+Do not maintain a second calibration-only backup lifecycle without a demonstrated need.
+
+##### Standalone PAK migration
+
+After the integrated Settings implementation is built and validated:
+
+* stop building `calibrate.elf` as a standalone PAK executable;
+* remove `Joystick Calibration.pak` from the new image;
+* remove PAK-specific smoke-test assumptions;
+* keep calibration logic/tests that still exercise the production backend;
+* do not remove Apostrophe or unrelated code merely because this PAK no longer uses it.
+
+Existing cards may already contain the checkpoint PAK.
+
+Use the existing post-update migration boundary to remove:
+
+```text
+/storage_root/Tools/my355/Joystick Calibration.pak
+```
+
+only after the new squashfs has been successfully committed.
+
+Continue removing the older:
+
+```text
+/storage_root/Tools/my355/Autocal.pak
+```
+
+through the same post-update boundary.
+
+Do not add permanent every-boot deletion workarounds.
+
+Legacy calibration evidence under:
+
+```text
+/storage/.config/miyoo-serial-joypad/
+```
+
+still survives until the later old-driver cleanup.
+
+##### Attribution
+
+Moving the UI into Settings must not lose upstream attribution.
+
+The workflow reference remains:
+
+```text
+Helaas/nextui-Joe-s-Calibrage-pak
+205f662c9ab7334229787e024e3556ee00272aad
+v0.2.0
+MIT
+Copyright (c) 2026 Kevin Vranken
+```
+
+Retain the applicable MIT license, copyright, upstream commit, and attribution in the repository and installed license/credits material even after the standalone PAK directory disappears.
+
+Do not copy Joe's old my355 hardware backend.
+
+In particular, do not reintroduce:
+
+```text
+/dev/ttyS1
+userspace termios ownership
+/userdata calibration files
+/tmp/miyoo_inputd
+/tmp/joypad_calibrating
+/sys/class/miyooio_chr_dev/joy_type
+```
+
+UART1 remains owned by the kernel serdev driver.
+
+##### InputPlumber boundary
+
+InputPlumber remains Phase 4.
+
+Current InputPlumber v0.81.0 has a `deadzone` property used for threshold-style mappings such as axis-to-button translation, but the reviewed analog axis-to-axis path does not provide the system-wide adjustable analog deadzone required here.
+
+Do not introduce InputPlumber into 3C2b solely for deadzone tuning.
+
+When Phase 4 later routes the built-in controller through a virtual device, preserve the deadzone already applied by the physical Miyoo Flip driver.
+
+Do not silently apply a second default deadzone in InputPlumber.
+
+If InputPlumber later gains a suitable analog deadzone transform and Zlyme considers moving policy there, that is a separate measured migration. It must compare direct-input behavior, latency, boot ordering, external-controller policy, and double-deadzone risk before ownership changes.
+
+##### 3C2b gate
+
+Before 3C2b is complete, prove on the Miyoo Flip:
+
+```text
+Settings -> System -> Joysticks opens and exits cleanly
+standalone Joystick Calibration.pak is no longer required
+Test Sticks shows both final output sticks in realtime
+
+left-stick manual calibration works
+right-stick manual calibration works
+calibration visualization is driven by raw_axes
+range capture begins automatically
+A ends range capture but does not itself measure center
+center capture occurs after release and rejects unstable center
+incomplete travel is rejected by documented UI quality policy
+asymmetric calibration remains supported
+
+live apply uses the production calibration sysfs ABI
+persistent calibration remains atomic
+failed live apply is not reported as saved
+failed persistent replacement is not reported as full success
+
+left deadzone adjusts live
+right deadzone adjusts live
+deadzone 0% preserves the current validated behavior
+inside the configured deadzone final X/Y are exactly zero
+movement immediately outside the deadzone is continuous
+full cardinal travel can still reach full scale
+diagonal movement does not show unacceptable clipping or early saturation
+deadzone tuning does not alter calibration min/zero/max
+deadzone tuning does not alter boot-center ownership
+
+D-pad adjustment performs no persistent write
+A saves the selected deadzone
+B restores the pre-preview runtime value
+left and right deadzone persistence restore independently
+missing deadzone persistence defaults safely
+existing six-field calibration files remain valid without migration
+deadzone survives reboot
+
+Linux flat remains zero unless later evidence changes the design
+Linux fuzz remains zero unless later measurement justifies filtering
+SDL/direct evdev consumers observe the effective driver deadzone without requiring a special SDL deadzone hint
+
+post-first-frame calibration/deadzone restore works
+restore does not delay NextUI first frame
+boot runtime recenter remains independent
+no automatic full calibration occurs at boot
+
+Autocal.pak is absent
+old Joystick Calibration.pak is absent after the integrated Settings migration
+OTA removes old card copies only after successful squashfs commit
+legacy /storage/.config/miyoo-serial-joypad/ survives
+
+general System backup includes the new persistent deadzone file
+no calibration-specific .bak lifecycle remains
+Joe-derived attribution/license remains correct
+no InputPlumber dependency is introduced
+```
+
+Hardware timing evidence must continue to include:
+
+```text
+driver/module available
+first valid UART frames
+boot runtime-recenter result
+nextui-first-flip
+persistent calibration/deadzone restore start
+persistent calibration/deadzone restore end
+```
+
+Restore begins after the existing first-frame gate and must not move `nextui-first-flip` later.
 
 Do not remove the old ROCKNIX driver in 3C2b.
 
-Do not start InputPlumber.
+Do not start Phase 3C3, Phase 3D, or Phase 4 while implementing this work.
 
 #### 3C3 — FF_RUMBLE and final physical-driver feature gate
 
