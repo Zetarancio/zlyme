@@ -726,128 +726,6 @@ YR 49 / 138 / 226
 XR 17 / 112 / 203
 ```
 
-#### 3C2b — Joystick Calibration PAK and calibration lifecycle
-
-Replace the obsolete `Autocal.pak` workflow with a new user-facing tool named:
-
-```text
-Joystick Calibration.pak
-```
-
-The PAK performs **manual calibration only**.
-
-It must provide the useful workflow of:
-
-```text
-live stick visualization
-left-stick calibration
-right-stick calibration
-full-range capture
-explicit center capture
-validation before save
-live apply
-atomic persistence
-backup/restore where useful
-```
-
-The selected UI/workflow reference is:
-
-```text
-Helaas/nextui-Joe-s-Calibrage-pak
-commit 205f662c9ab7334229787e024e3556ee00272aad
-v0.2.0
-MIT
-Copyright (c) 2026 Kevin Vranken
-```
-
-Its old my355 backend must not be retained. In particular, do not use:
-
-```text
-/dev/ttyS1
-userspace termios ownership
-/userdata calibration files
-/tmp/miyoo_inputd
-/tmp/joypad_calibrating
-/sys/class/miyooio_chr_dev/joy_type
-```
-
-UART1 remains owned by the kernel serdev driver.
-
-`Joystick Calibration.pak` uses the Zlyme gamepad calibration/raw-diagnostic interface and persists through the Zlyme-owned calibration files.
-
-If substantial Joe's Calibrage source or workflow code is reused, preserve the MIT license, Kevin Vranken's copyright, the exact upstream commit, and visible attribution.
-
-Suggested attribution:
-
-```text
-Calibration UI/workflow based in part on Joe's Calibrage
-by Kevin Vranken (Helaas), used under the MIT License.
-```
-
-Audit bundled third-party dependencies separately.
-
-##### Boot lifecycle
-
-Do not perform full min/zero/max calibration automatically at boot.
-
-The gamepad module remains loaded through the normal module-loading mechanism.
-
-The driver's bounded boot runtime recenter remains asynchronous and must not delay the frontend.
-
-Persistent saved calibration restore must not be part of the Class-A path before NextUI.
-
-Move:
-
-```text
-zlyme-gamepad-cal restore
-```
-
-out of `S26joypadcal`. This tree does that and deletes `S26joypadcal`. It is not device-validated.
-
-`rc.late` calls `zlyme-gamepad-cal restore` immediately after the existing `wait_boot_list` / first-frame gate returns, and before the normal Class-B background workload. `wait_boot_list` waits for `nextui-first-flip` and has a bounded 20-second timeout, so a frontend that never flips does not hold late services forever. Do not add another calibration-specific wait. On a normal boot, restore occurs after `nextui-first-flip`. If the frontend never reaches that mark, the existing timeout expires and restore still proceeds. Persistent restore stays off the NextUI first-frame path. Do not delay NextUI because runtime recenter has not finished, and do not assume the usual ~2.5 s recenter window.
-
-The intended sequence is:
-
-```text
-module loading
-    -> Miyoo Flip Gamepad available
-    -> asynchronous boot runtime recenter begins
-
-NextUI
-    -> first frame/list
-
-rc.late
-    -> restore saved min / saved zero / max
-```
-
-If boot runtime recenter has already accepted a fresh center, restore preserves that runtime center while installing the saved extrema and saved zero.
-
-If no persistent calibration exists, restore is a no-op.
-
-Do not delay NextUI to wait for calibration restore.
-
-`S26joypadcal` should not remain as a shallow duplicate owner once module loading and post-first-frame restore have explicit owners. Remove it in 3C2b if reference/build/init auditing confirms it has no remaining responsibility.
-
-##### Autocal migration
-
-Remove `Autocal.pak` from the new image.
-
-Existing cards retain PAK names that no longer exist in the image, so removing it from the Buildroot source alone is insufficient.
-
-Use the existing board OTA migration boundary.
-
-`post-update.sh`, which runs from initramfs after the new squashfs has successfully been committed, removes:
-
-```text
-/storage_root/Tools/my355/Autocal.pak
-```
-
-Do not remove it from `pre-update.sh`, because that runs before the new squashfs commit has succeeded.
-
-Do not add a permanent every-boot Autocal deletion workaround to `nextui-session`.
-
-Legacy old-format calibration data remains at `/storage/.config/miyoo-serial-joypad/`. The OTA hook removes the obsolete card PAK, not that directory. Leave deletion of the legacy directory to later old-driver cleanup unless a later review decides otherwise. Calibrating one stick must not erase legacy data for the other stick. The data is inert under the new driver and can provide rollback evidence.
-
 #### 3C2b — Integrated joystick calibration and live deadzone tuning
 
 Phase 3C2a established the production calibration mechanism:
@@ -876,7 +754,7 @@ Settings
 
 This follows the same architectural direction as Zlyme Update: device/system configuration that is part of the OS belongs in Settings rather than requiring a separate Tool PAK.
 
-The standalone `Joystick Calibration.pak` in checkpoint `3ef5bcad68783751f3e654e381bac267afa2ef44` is a functional integration checkpoint, not the final UI architecture.
+Checkpoint `3ef5bca` built a standalone `Joystick Calibration.pak` as an integration experiment. That PAK was never released. It is not the product UI, and it is not an OTA migration target. Fresh images omit it. A copy left on a developer test card is removed by hand.
 
 ##### Upstream input model
 
@@ -1183,13 +1061,13 @@ rc.late
     -> Class-B background work
 ```
 
-`zlyme-gamepad-cal restore` remains the userspace restore owner and should restore both calibration and deadzone state.
+`S26joypadcal` is already removed. Module loading stays with `modules-load.d`, and `rc.late` is the only boot restore owner. That move is not device-validated.
 
-A missing calibration or deadzone file is a successful no-op for that state.
+`rc.late` calls `zlyme-gamepad-cal restore` once, immediately after the existing `wait_boot_list` gate returns and before Class-B `start_bg`. `wait_boot_list` returns on `nextui-first-flip` or after its existing ~20-second timeout. Do not add another calibration or deadzone wait. Restore is outside the first-frame path. If the frontend never flips, the existing timeout still lets late work proceed. Do not delay NextUI because boot runtime recenter has not finished, and do not assume the usual recenter duration.
 
-Restoring deadzone must not replace a boot-selected runtime center.
+`zlyme-gamepad-cal restore` restores both calibration and deadzone. A missing file is a successful no-op for that state. If boot runtime recenter has already accepted a center, later calibration restore keeps that runtime center while installing saved extrema and saved zero. Restoring deadzone must not replace a boot-selected runtime center.
 
-Do not add a second wait around deadzone restore.
+Do not perform full min/zero/max calibration automatically at boot.
 
 ##### Settings integration
 
@@ -1420,35 +1298,19 @@ Zlyme Settings also already provides the broader `/storage/.config` backup facil
 
 Do not maintain a second calibration-only backup lifecycle without a demonstrated need.
 
-##### Standalone PAK migration
+##### Released Autocal migration
 
-After the integrated Settings implementation is built and validated:
+Fresh images contain neither `Autocal.pak` nor the unreleased checkpoint `Joystick Calibration.pak`.
 
-* stop building `calibrate.elf` as a standalone PAK executable;
-* remove `Joystick Calibration.pak` from the new image;
-* remove PAK-specific smoke-test assumptions;
-* keep calibration logic/tests that still exercise the production backend;
-* do not remove Apostrophe or unrelated code merely because this PAK no longer uses it.
-
-Existing cards may already contain the checkpoint PAK.
-
-Use the existing post-update migration boundary to remove:
-
-```text
-/storage_root/Tools/my355/Joystick Calibration.pak
-```
-
-only after the new squashfs has been successfully committed.
-
-Continue removing the older:
+`Joystick Calibration.pak` from `3ef5bca` was never shipped. Do not add an OTA deletion for it. `post-update.sh` removes only the released obsolete tool:
 
 ```text
 /storage_root/Tools/my355/Autocal.pak
 ```
 
-through the same post-update boundary.
+That hook runs from initramfs after the new squashfs has been committed. Do not put the deletion in `pre-update.sh`. Do not add an every-boot Autocal deletion to `nextui-session`.
 
-Do not add permanent every-boot deletion workarounds.
+Stop building the standalone `calibrate.elf` once Settings owns the UI. Keep calibration logic and tests that exercise the production backend. Do not remove Apostrophe merely because the checkpoint PAK used it.
 
 Legacy calibration evidence under:
 
@@ -1509,7 +1371,7 @@ Before 3C2b is complete, prove on the Miyoo Flip:
 
 ```text
 Settings -> System -> Joysticks opens and exits cleanly
-standalone Joystick Calibration.pak is no longer required
+fresh images contain no Joystick Calibration.pak
 Test Sticks shows both final output sticks in realtime
 
 left-stick manual calibration works
@@ -1553,9 +1415,9 @@ restore does not delay NextUI first frame
 boot runtime recenter remains independent
 no automatic full calibration occurs at boot
 
-Autocal.pak is absent
-old Joystick Calibration.pak is absent after the integrated Settings migration
-OTA removes old card copies only after successful squashfs commit
+Autocal.pak is absent from a fresh image
+OTA removes a released card copy of Autocal.pak after the squashfs commit
+the unreleased Joystick Calibration.pak has no OTA cleanup
 legacy /storage/.config/miyoo-serial-joypad/ survives
 
 general System backup includes the new persistent deadzone file
@@ -1611,7 +1473,7 @@ After calibration and rumble feature parity are complete, Phase 3D owns the fina
 Remaining sequence:
 
 ```text
-3C2b  Joystick Calibration.pak, post-first-frame restore, Autocal migration
+3C2b  Settings joystick calibration and live deadzone, post-first-frame restore, Autocal migration
 3C3   FF_RUMBLE and final physical-driver feature gate
 3D    frontend cutover, duplicate-action investigation,
       direct Zlyme consumer migration, old ROCKNIX driver removal,
@@ -1639,7 +1501,7 @@ removal of rocknix-joypad from the product
 old-driver-only input-polldev and adc-keys coupling if proven unused
 ```
 
-3D does not own the manual calibration UI, Autocal replacement, `S26joypadcal` removal for the new restore lifecycle, or persistent calibration boot restore. Those are 3C2b.
+3D does not own the integrated Settings joystick calibration and deadzone UI, the released Autocal migration, or persistent calibration and deadzone boot restore. Those are 3C2b.
 
 Original Flip sticks are the hardware-validation target for this cutover.
 
