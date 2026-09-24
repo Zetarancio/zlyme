@@ -556,10 +556,9 @@ Once the tracer is proven, complete the physical-device behavior:
 * correct axis orientation;
 * full usable axis ranges;
 * deadzone/noise handling;
-* calibration mechanism;
-* persistent per-axis min, zero, and max through userspace;
-* non-blocking boot-time center calibration that rejects a moving stick;
-* full-range calibration of both sticks, including asymmetric travel;
+* persistent per-axis min, saved zero, and max through userspace;
+* bounded non-blocking boot runtime recentering that rejects a moving or out-of-range stick;
+* manual full-range calibration of both sticks, including asymmetric travel;
 * a narrow raw/normalized diagnostic report;
 * L3/R3;
 * MENU;
@@ -575,9 +574,208 @@ Do not emulate Xbox or Nintendo controller protocols in the physical driver.
 
 Application-specific mapping remains userspace policy.
 
-Phase 3C owns the input power and wakeup audit before the physical driver is called feature-complete. Measure UART/DMA interrupt rate, idle GPIO interrupt rate, CPU idle residency, idle CPU use, the evdev event rate, and battery current where that reading is reliable. The ~66.8 Hz figure is the UART frame rate. If `input_sync()` runs for every frame while no published axis value changed, synchronize only when a published value changes. Do not decimate real stick motion. Do not change the UART baud unless the sender protocol is shown to support it. The old 6 ms GPIO poll and this UART cadence are not the same loop.
+Calibration mechanism and calibration policy are deliberately separate:
 
-Phase 3C also replaces `Autocal.pak` and `zlyme-joypad-cal`. Those talk to the old ROCKNIX sysfs ABI. The selected UI/workflow reference is `Helaas/nextui-Joe-s-Calibrage-pak` at `205f662c9ab7334229787e024e3556ee00272aad` (v0.2.0), MIT, Copyright (c) 2026 Kevin Vranken. Its my355 backend is not usable as-is: it opens `/dev/ttyS1`, writes `/userdata` calibration files, and uses `miyooio` `joy_type`. UART1 stays owned by the serdev driver. The new app uses the driver's calibration and raw-diagnostic interface. Do not add a character device, and do not open files from the kernel. Copied or adapted code keeps the MIT text, Kevin Vranken's copyright, attribution to Joe's Calibrage, and that commit. Audit vendored dependencies separately from the repository MIT license.
+```text
+kernel:
+    UART decode
+    runtime transform
+    deadzone/noise handling
+    bounded boot runtime recenter
+    calibration sysfs mechanism
+    standard ABS_* output
+
+userspace:
+    manual calibration procedure
+    persistent files under /storage
+    calibration UI
+    persistent restore/apply policy
+```
+
+The kernel never opens persistent calibration files.
+
+A **manual calibration** is an explicit user action that measures and saves per-axis min, zero, and max.
+
+A **boot runtime recenter** is not a full calibration. It may refine only the running center for the current boot. It never learns min/max and never rewrites persistence.
+
+The normal model is:
+
+```text
+persistent:
+    min
+    saved zero
+    max
+
+per boot:
+    runtime zero
+```
+
+The driver may asynchronously accept a fresh stable center for the current boot. If accepted, that center becomes the runtime zero only. If the samples are moving, unstable, or outside the active calibrated range, they are rejected. Boot, buttons, and NextUI must never wait for this measurement.
+
+Full min/zero/max calibration is manual through the user-facing calibration PAK only.
+
+Phase 3C owns the input power and wakeup audit before the physical driver is called feature-complete. Measure UART/DMA interrupt rate, idle GPIO interrupt rate, CPU idle residency, idle CPU use, the evdev event rate, and battery current where that reading is reliable. The ~66.8 Hz figure is the UART frame rate. Do not decimate real stick motion or change the UART baud without protocol evidence. The old 6 ms GPIO poll and the UART cadence are different mechanisms.
+
+#### 3C1 result — power and wakeup audit
+
+Measured on zlyme41.
+
+Idle UART was 66.91 frames/s, 6 bytes/frame, with 0 bad frames. The UART IRQ matched that rate. Gamepad GPIO IRQs were 0.
+
+Idle evdev delivered:
+
+```text
+0 EV_ABS
+0 SYN_REPORT
+0 EV_KEY
+```
+
+Linux 7.0.2 already drops unchanged absolute values and does not deliver an empty synchronization packet. CPU0 idle residency was about 83.7% and CPU1 about 84.9%; both continued to enter `cpu-sleep`.
+
+Recommendation: **no driver-side duplicate-report filter**.
+
+RK817 current reporting was not trustworthy enough for a battery result.
+
+#### 3C2a result — production calibration mechanism
+
+Complete and hardware-validated through zlyme43.
+
+The production uncalibrated fallback is the UART byte domain:
+
+```text
+min          0
+saved_zero   128
+runtime_zero 128
+max          255
+```
+
+These are protocol-domain fallbacks, not measured physical travel.
+
+Each axis tracks:
+
+```text
+min
+saved_zero
+runtime_zero
+max
+```
+
+Runtime-zero provenance is explicit:
+
+```text
+default
+persisted
+boot
+apply
+```
+
+Calibration attributes are:
+
+```text
+calibration_left
+calibration_right
+```
+
+Writes are:
+
+```text
+restore x_min x_zero x_max y_min y_zero y_max
+apply   x_min x_zero x_max y_min y_zero y_max
+```
+
+The kernel validates that the active center is strictly inside min/max and that both usable spans are longer than the raw deadband.
+
+`restore` updates persistent min, saved zero, and max. A runtime center originating from `boot` or `apply` remains authoritative if it still fits the proposed range.
+
+`apply` is a deliberate live calibration operation. It installs min, saved zero, runtime zero, and max and becomes source `apply`.
+
+A successful boot runtime recenter installs only a fresh `runtime_zero` and source `boot`.
+
+A stable boot center outside the active calibrated range is not installed. The existing center/source remain active and the diagnostic state becomes terminal `range-rejected`.
+
+Invalid writes are atomic.
+
+Persistent userspace files are:
+
+```text
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
+/storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config
+```
+
+with:
+
+```text
+x_min
+x_max
+y_min
+y_max
+x_zero
+y_zero
+```
+
+The kernel never opens these files.
+
+Hardware validation covered fallback behavior, persistent restore, early and late restore/apply ordering, stale calibration rejection, asymmetric full-range scaling, return to center, UART continuity, deep suspend/resume, and post-resume input.
+
+Measured original-stick calibration remains diagnostic hardware evidence, not compiled defaults:
+
+```text
+YL 25 / 139 / 239
+XL 2  / 103 / 223
+YR 49 / 138 / 226
+XR 17 / 112 / 203
+```
+
+#### 3C2b — Joystick Calibration PAK and calibration lifecycle
+
+Replace the obsolete `Autocal.pak` workflow with a new user-facing tool named:
+
+```text
+Joystick Calibration.pak
+```
+
+The PAK performs **manual calibration only**.
+
+It must provide the useful workflow of:
+
+```text
+live stick visualization
+left-stick calibration
+right-stick calibration
+full-range capture
+explicit center capture
+validation before save
+live apply
+atomic persistence
+backup/restore where useful
+```
+
+The selected UI/workflow reference is:
+
+```text
+Helaas/nextui-Joe-s-Calibrage-pak
+commit 205f662c9ab7334229787e024e3556ee00272aad
+v0.2.0
+MIT
+Copyright (c) 2026 Kevin Vranken
+```
+
+Its old my355 backend must not be retained. In particular, do not use:
+
+```text
+/dev/ttyS1
+userspace termios ownership
+/userdata calibration files
+/tmp/miyoo_inputd
+/tmp/joypad_calibrating
+/sys/class/miyooio_chr_dev/joy_type
+```
+
+UART1 remains owned by the kernel serdev driver.
+
+`Joystick Calibration.pak` uses the Zlyme gamepad calibration/raw-diagnostic interface and persists through the Zlyme-owned calibration files.
+
+If substantial Joe's Calibrage source or workflow code is reused, preserve the MIT license, Kevin Vranken's copyright, the exact upstream commit, and visible attribution.
 
 Suggested attribution:
 
@@ -586,55 +784,137 @@ Calibration UI/workflow based in part on Joe's Calibrage
 by Kevin Vranken (Helaas), used under the MIT License.
 ```
 
-The runtime model keeps persistent min / saved zero / max distinct from the runtime center. Source is `default`, `persisted`, `boot`, or `apply`.
+Audit bundled third-party dependencies separately.
 
-#### 3C1 result
+##### Boot lifecycle
 
-Measured on zlyme41. Idle UART was 66.91 frames/s, 6 bytes/frame, 0 bad frames, and the UART IRQ matched that rate. Gamepad GPIO IRQs were 0. Evdev showed 0 `EV_ABS`, 0 `SYN_REPORT`, and 0 `EV_KEY`. CPU0 idle residency was about 83.7% and CPU1 about 84.9%; both still entered `cpu-sleep`. Linux 7.0.2 already drops unchanged absolute values and does not deliver an empty sync. Recommendation: no driver change. RK817 current was not trustworthy, so this is not a battery result. The old 6 ms GPIO poll is not the same mechanism as the UART frame cadence.
+Do not perform full min/zero/max calibration automatically at boot.
 
-#### 3C2a result
+The gamepad module remains loaded through the normal module-loading mechanism.
 
-Hardware-validated on `zlyme42 (2026-09-23)`, NextUI `ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme42`.
+The driver's bounded boot runtime recenter remains asynchronous and must not delay the frontend.
 
-Uncalibrated fallback is the UART byte domain, not measured travel: min 0, saved zero 128, runtime zero 128, max 255. Each axis keeps min, saved zero, runtime zero, and max. Scaling uses runtime zero and a raw deadband of 2. A write must be in 0..255, with `min < zero < max`, and both sides longer than the deadband. There is no 40-count kernel policy. Invalid writes change nothing.
+Persistent saved calibration restore must not be part of the Class-A path before NextUI.
 
-`calibration_left` and `calibration_right` are mode `0644`. Commands are `restore` and `apply`, each with `x_min x_zero x_max y_min y_zero y_max`. Reads show saved zero, runtime zero, and source. The read-only tracer remains for this phase.
-
-`restore` always updates min, saved zero, and max. If the source is `default` or `persisted`, runtime zero becomes the saved zero and the source becomes `persisted`. A `boot` or `apply` runtime zero is kept. A successful boot center sets runtime zero to that center and source to `boot`, and does not change min, saved zero, or max. `apply` sets all four values and source `apply`, and cancels unfinished boot-center acquisition on those axes. An apply written while the tracer was still settling stayed `apply` / `cancelled` eight seconds later. Boot center did not replace it.
-
-The active center must satisfy `min < runtime_zero < max` with both sides longer than the deadband. That was closed on `zlyme43 (2026-09-23)`. A `restore` whose proposed ends do not fit a preserved `boot` or `apply` center returns `-ERANGE` and changes neither axis of the stick. A malformed write is still `-EINVAL`. A stable boot median that does not fit the active min/max is not installed. The axis keeps its current runtime zero and source, and the tracer shows the terminal state `range-rejected`. Persistence is not rewritten. A stale right X range of 140/170/230 left resting XR 114 rejected, with runtime zero 170 and source `persisted`. The measured files then booted normally.
-
-Userspace files, which the kernel does not open:
+Move:
 
 ```text
-/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
-/storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config
+zlyme-gamepad-cal restore
 ```
 
-Fields are `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. `S26joypadcal` modprobes `miyoo-flip-gamepad` and runs `zlyme-gamepad-cal restore` immediately. The old ROCKNIX helper remains on disk for Autocal until 3C2b. It is not used at boot.
+out of `S26joypadcal`.
 
-The measured original-stick files stayed intact. Left is XL 2/103/223 and YL 25/139/239. Right is XR 17/112/203 and YR 49/138/226. SHA256 `f28facbac93ae154072493da44d676a2e20ba459e5fa3a50a32dca2e3d4d347b` and `74ece9a20fcc5c45d35265c0ab943f2dcc63542ddafeb87540fa189803c63206`.
+Run the restore from `rc.late` only after `nextui-first-flip` has been observed.
 
-Passed: no-file fallback, fresh boot-center ownership, persistent restore, late restore keeping a `boot` runtime zero, early apply cancelling boot center, restore keeping an `apply` runtime zero, atomic invalid writes, live apply, UART continuity during apply, calibrated left and right ranges, return to center, deep suspend/resume, and post-resume stick and button input.
+The intended sequence is:
 
-Left reached raw 2 and 223 at ABS_X −32767 and +32767. Raw YL 25 reached ABS_Y −32767. Raw YL 237 reached +32130; the stored max is 239. Right reached raw XR 18 and 203 at ABS_RX −32418 and +32767; the stored min is 17. Raw YR 49 and 226 reached ABS_RY −32767 and +32767. Signs stayed negative for left/up and positive for right/down. Held up moved ABS_RX only about 0..−697 while ABS_RY was −32767. Held down moved ABS_RX about 0..+1117. No correction curve was added. After release, all four axes sat at 0 for about 20 seconds. A later rest 3 counts outside center produced about ±318 because the deadband is still 2. That is not a 3C2a failure and the deadband was not retuned.
+```text
+module loading
+    -> Miyoo Flip Gamepad available
+    -> asynchronous boot runtime recenter begins
 
-A lid close did not enter kernel suspend. A later deep suspend did, from `PM: suspend entry (deep)` to `PM: suspend exit`. The same driver stayed bound, probe count stayed 1, the port stayed open, frames continued, bad frames stayed 0, and the calibration including source `boot` was preserved. Stick input and a `BTN_WEST` press/release worked. No gamepad, UART, or GPIO error. The Mali regulator warning is unrelated.
+NextUI
+    -> first frame/list
 
-Not done: Joe's calibration UI, `FF_RUMBLE`, old-driver removal, the NextUI duplicate-action investigation, emulator migration, and Switch-stick hardware validation.
+rc.late
+    -> restore saved min / saved zero / max
+```
+
+If boot runtime recenter has already accepted a fresh center, restore preserves that runtime center while installing the saved extrema and saved zero.
+
+If no persistent calibration exists, restore is a no-op.
+
+Do not delay NextUI to wait for calibration restore.
+
+`S26joypadcal` should not remain as a shallow duplicate owner once module loading and post-first-frame restore have explicit owners. Remove it in 3C2b if reference/build/init auditing confirms it has no remaining responsibility.
+
+##### Autocal migration
+
+Remove `Autocal.pak` from the new image.
+
+Existing cards retain PAK names that no longer exist in the image, so removing it from the Buildroot source alone is insufficient.
+
+Use the existing board OTA migration boundary.
+
+`post-update.sh`, which runs from initramfs after the new squashfs has successfully been committed, removes:
+
+```text
+/storage_root/Tools/my355/Autocal.pak
+```
+
+Do not remove it from `pre-update.sh`, because that runs before the new squashfs commit has succeeded.
+
+Do not add a permanent every-boot Autocal deletion workaround to `nextui-session`.
+
+Legacy old-format calibration data remains intact during the OTA migration. It is inert under the new driver and can provide rollback/migration evidence.
+
+Do not delete legacy calibration data merely because `Autocal.pak` was removed.
+
+It may be removed after the user has successfully saved a new-format calibration, or later with the old-driver cleanup when its remaining references are proven obsolete.
+
+##### 3C2b gate
+
+Before 3C2b is complete, prove:
+
+```text
+Joystick Calibration.pak launches and exits cleanly
+left-stick manual calibration works
+right-stick manual calibration works
+range and center capture are validated
+live apply uses the production sysfs ABI
+persistence uses temporary-file + fsync + rename semantics
+new files survive reboot
+post-first-frame restore works
+restore does not delay NextUI first frame
+boot runtime recenter still works independently
+no automatic full calibration occurs at boot
+Autocal.pak is absent from a fresh image
+OTA migration removes an old card copy of Autocal.pak
+legacy calibration data survives that migration
+Joe-derived attribution/license is correct
+```
+
+Do not remove the old ROCKNIX driver in 3C2b.
+
+Do not start InputPlumber.
+
+#### 3C3 — FF_RUMBLE and final physical-driver feature gate
+
+Implement standard Linux:
+
+```text
+FF_RUMBLE
+```
+
+through PWM5 on the physical `Miyoo Flip Gamepad`.
+
+Keep force-feedback mechanism in the kernel and application policy in userspace.
+
+Validate:
+
+```text
+weak rumble
+strong rumble
+stop
+repeated playback
+game/application request path
+suspend/resume
+no stuck PWM
+clean driver removal/error recovery
+```
+
+After calibration and rumble feature parity are complete, Phase 3D owns the final frontend/cutover work and removal of the old ROCKNIX implementation.
 
 Remaining sequence:
 
 ```text
-3C2b  Zlyme calibration UI adapted from Joe's Calibrage, replacing Autocal
-3C3   FF_RUMBLE and the final physical-driver feature check
-3D    frontend cutover, NextUI duplicate-action investigation,
+3C2b  Joystick Calibration.pak, post-first-frame restore, Autocal migration
+3C3   FF_RUMBLE and final physical-driver feature gate
+3D    frontend cutover, duplicate-action investigation,
       direct Zlyme consumer migration, old ROCKNIX driver removal,
-      and old-driver-only kernel coupling if that removal is proven safe
-4     InputPlumber virtual controller and broad emulator compatibility
+      and removal of old-driver-only kernel coupling if proven safe
+4     InputPlumber virtual controller and broad application compatibility
 ```
-
-Joe's Calibrage reference for 3C2b remains `Helaas/nextui-Joe-s-Calibrage-pak` commit `205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken. No Joe source is in 3C2a.
 
 ### 3D — Cutover and hardware validation
 
