@@ -5,7 +5,7 @@
 # until crng init (~9 s). BlueZ starts dbus in rc.late.
 #
 # S11modules must run before the list: joypad.conf loads
-# rocknix-singleadc-joypad. Deferring that left NextUI with no A/B/dpad
+# miyoo-flip-gamepad. Deferring that left NextUI with no A/B/dpad
 # (2026-09-20). S10udevd can start here too so /dev/input nodes exist
 # before SDL opens. S29udevtrigger stays after first-flip so USB
 # MODALIAS (8733bu) does not fight nextui.elf.
@@ -21,7 +21,7 @@ boot_mark() {
 # (not waited). zlyme-storage mounts SD2/USB and writes /run/zlyme/libraries.
 is_class_a() {
 	case "$1" in
-		S10udevd|S11modules|S12bootfs|S12splash|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26joypadcal|S26keylidmon|S28minui)
+		S10udevd|S11modules|S12bootfs|S12splash|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26keylidmon|S28minui)
 			return 0
 			;;
 	esac

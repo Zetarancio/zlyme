@@ -186,7 +186,7 @@ run ArtworkScraper "'/storage/Tools/my355/Artwork Scraper.pak/launch.sh'" 20
 run Overlays "'/storage/Tools/my355/Overlays.pak/launch.sh'" 25
 run Settings "'/storage/Tools/my355/Settings.pak/launch.sh'" 20
 run Files "'/storage/Tools/my355/Files.pak/launch.sh'" 20
-run Autocal "'/storage/Tools/my355/Autocal.pak/launch.sh'" 20
+run JoystickCalibration "'/storage/Tools/my355/Joystick Calibration.pak/launch.sh'" 20
 run PortMaster "'/storage/Tools/my355/PortMaster.pak/launch.sh'" 25
 
 # OS-card test files only.

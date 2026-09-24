@@ -89,9 +89,7 @@ chmod 0755 \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage" \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage-udev" \
 	"${TARGET_DIR}/usr/sbin/zlyme-halt" \
-	"${TARGET_DIR}/usr/sbin/zlyme-joypad-cal" \
 	"${TARGET_DIR}/usr/sbin/zlyme-gamepad-cal" \
-	"${TARGET_DIR}/etc/init.d/S26joypadcal" \
 	"${TARGET_DIR}/etc/init.d/S25jackd" \
 	"${TARGET_DIR}/etc/init.d/S26keylidmon" \
 	"${TARGET_DIR}/etc/init.d/S27led" \
@@ -295,5 +293,13 @@ if [ -f "${TARGET_DIR}/etc/inittab" ]; then
 		fi
 	fi
 fi
+
+# nextui.mk hashes the PAK tree when calibrate.elf is installed.
+# Target finalize strips that ELF afterward, so recompute the stamp
+# from the binaries that actually ship.
+paks_ver="$(cd "$(dirname "$0")/../../package/system/nextui" && pwd)/paks-version.sh"
+sh "$paks_ver" \
+	"${TARGET_DIR}/usr/share/nextui/paks" \
+	"${TARGET_DIR}/usr/share/nextui/paks-version.txt"
 
 exit "${fail}"

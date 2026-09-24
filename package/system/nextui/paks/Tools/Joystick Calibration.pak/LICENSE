@@ -1,13 +1,6 @@
-Autocal.pak
-===========
-
-Original Zlyme launch.sh. It is not MinUI/NextUI source.
-It calls /usr/sbin/zlyme-joypad-cal and ROCKNIX joypad sysfs.
-The joypad driver is GPL-2.0 (package/drivers/rocknix-joypad).
-
 MIT License
 
-Copyright (c) 2026 Zlyme contributors
+Copyright (c) 2026 Kevin Vranken
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

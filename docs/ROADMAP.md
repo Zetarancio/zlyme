@@ -802,7 +802,7 @@ Move:
 zlyme-gamepad-cal restore
 ```
 
-out of `S26joypadcal`.
+out of `S26joypadcal`. This tree does that and deletes `S26joypadcal`. It is not device-validated.
 
 `rc.late` calls `zlyme-gamepad-cal restore` immediately after the existing `wait_boot_list` / first-frame gate returns, and before the normal Class-B background workload. `wait_boot_list` waits for `nextui-first-flip` and has a bounded 20-second timeout, so a frontend that never flips does not hold late services forever. Do not add another calibration-specific wait. On a normal boot, restore occurs after `nextui-first-flip`. If the frontend never reaches that mark, the existing timeout expires and restore still proceeds. Persistent restore stays off the NextUI first-frame path. Do not delay NextUI because runtime recenter has not finished, and do not assume the usual ~2.5 s recenter window.
 

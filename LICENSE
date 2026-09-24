@@ -11,8 +11,9 @@ Original Zlyme code
 -------------------
 
 Unless a file or directory says otherwise, original Zlyme sources
-(board glue, local drivers and helpers such as zlyme-jackd and
-rtl8733bu-power, Autocal.pak, Files.pak launch.sh, pico8 launcher)
+(board glue, local drivers and helpers such as zlyme-jackd,
+rtl8733bu-power, zlyme-gamepad-cal, Files.pak launch.sh, and the
+pico8 launcher)
 are licensed under the MIT License:
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

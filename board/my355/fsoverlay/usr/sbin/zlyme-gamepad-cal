@@ -20,13 +20,14 @@
 # predict that. A failed write leaves that stick unchanged, and
 # boot continues if restore fails.
 
-CAL_DIR=/storage/.config/zlyme/miyoo-flip-gamepad
+CAL_DIR=${ZLYME_CAL_DIR:-/storage/.config/zlyme/miyoo-flip-gamepad}
 LEFT_FILE=$CAL_DIR/joypad.config
 RIGHT_FILE=$CAL_DIR/joypad_right.config
+GAMEPAD_SYS=${ZLYME_GAMEPAD_SYS:-/sys/bus/serial/drivers/miyoo-flip-gamepad}
 DEADBAND=2
 
 find_dev() {
-	for d in /sys/bus/serial/drivers/miyoo-flip-gamepad/*; do
+	for d in "$GAMEPAD_SYS"/*; do
 		[ -e "$d/calibration_left" ] && [ -e "$d/calibration_right" ] || continue
 		printf '%s\n' "$d"
 		return 0
@@ -147,30 +148,34 @@ write_restore() {
 		>"$dev/$attr"
 }
 
-restore() {
-	dev=$(find_dev) || return 1
-	do_left=0
-	do_right=0
-	left_line=
-	right_line=
-	if [ -f "$LEFT_FILE" ]; then
-		left_line=$(parse_cal "$LEFT_FILE") || return 1
-		do_left=1
-	fi
-	if [ -f "$RIGHT_FILE" ]; then
-		right_line=$(parse_cal "$RIGHT_FILE") || return 1
-		do_right=1
-	fi
-	if [ "$do_left" -eq 0 ] && [ "$do_right" -eq 0 ]; then
+restore_side() {
+	dev=$1
+	file=$2
+	attr=$3
+	side=$4
+	if [ ! -f "$file" ]; then
 		return 0
 	fi
-	if [ "$do_left" -eq 1 ]; then
-		write_restore "$dev" calibration_left "$left_line" || return 1
-	fi
-	if [ "$do_right" -eq 1 ]; then
-		write_restore "$dev" calibration_right "$right_line" || return 1
+	line=$(parse_cal "$file") || {
+		echo "$side: malformed $file" >&2
+		return 1
+	}
+	if ! write_restore "$dev" "$attr" "$line"; then
+		echo "$side: kernel rejected restore" >&2
+		return 1
 	fi
 	return 0
+}
+
+restore() {
+	if [ ! -f "$LEFT_FILE" ] && [ ! -f "$RIGHT_FILE" ]; then
+		return 0
+	fi
+	dev=$(find_dev) || return 1
+	fail=0
+	restore_side "$dev" "$LEFT_FILE" calibration_left left || fail=1
+	restore_side "$dev" "$RIGHT_FILE" calibration_right right || fail=1
+	return "$fail"
 }
 
 show_file() {

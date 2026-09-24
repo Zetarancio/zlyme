@@ -21,7 +21,9 @@
  * 0/128/255 is the uncalibrated protocol-byte fallback, not a
  * measured stick range.
  *
- * The read-only tracer attribute remains for Phase 3C validation.
+ * raw_axes is the stable read-only sample for manual calibration:
+ * one locked snapshot, "YL=<n> XL=<n> YR=<n> XR=<n>".
+ * The tracer attribute remains a diagnostic and is not a calibration ABI.
  */
 
 #include <linux/device.h>
@@ -758,6 +760,24 @@ static ssize_t tracer_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(tracer);
 
+static ssize_t raw_axes_show(struct device *dev,
+			     struct device_attribute *attr, char *buf)
+{
+	struct mf_pad *pad = dev_get_drvdata(dev);
+	u8 yl, xl, yr, xr;
+	unsigned long flags;
+
+	spin_lock_irqsave(&pad->lock, flags);
+	yl = pad->axis[MF_YL].latest;
+	xl = pad->axis[MF_XL].latest;
+	yr = pad->axis[MF_YR].latest;
+	xr = pad->axis[MF_XR].latest;
+	spin_unlock_irqrestore(&pad->lock, flags);
+
+	return sysfs_emit(buf, "YL=%u XL=%u YR=%u XR=%u\n", yl, xl, yr, xr);
+}
+static DEVICE_ATTR_RO(raw_axes);
+
 static int mf_token_u8(const char **pp, int *out)
 {
 	const char *s = *pp;
@@ -971,6 +991,7 @@ static DEVICE_ATTR_RW(calibration_right);
 
 static struct attribute *mf_attrs[] = {
 	&dev_attr_tracer.attr,
+	&dev_attr_raw_axes.attr,
 	&dev_attr_calibration_left.attr,
 	&dev_attr_calibration_right.attr,
 	NULL

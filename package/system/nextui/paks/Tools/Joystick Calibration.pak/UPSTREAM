@@ -1,0 +1,7 @@
+https://github.com/Helaas/nextui-Joe-s-Calibrage-pak
+205f662c9ab7334229787e024e3556ee00272aad
+v0.2.0
+MIT
+Copyright (c) 2026 Kevin Vranken
+Workflow adapted for the Zlyme sysfs calibration ABI.
+Apostrophe: package/system/nextui/apostrophe (Zlyme tree, not Joe's submodule).

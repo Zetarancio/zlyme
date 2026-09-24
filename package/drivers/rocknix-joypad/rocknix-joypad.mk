@@ -14,8 +14,9 @@ ROCKNIX_JOYPAD_LICENSE = GPL-2.0
 # Their Makefile: empty DEVICE matches the first ifeq (empty == empty) and
 # builds only rocknix-joypad.o. The Flip DTS compatible is
 # rocknix-singleadc-joypad. Command-line obj-m wins over the Makefile.
-# 0002/0003 next to this .mk: DTS deadzone + sysfs miyoo_cal_{left,right}
-# so Autocal can save and S26 can restore at boot.
+# 0002/0003 next to this .mk: DTS deadzone + sysfs miyoo_cal_{left,right}.
+# That sysfs belongs to this unbound module. Production calibration does
+# not use it.
 ROCKNIX_JOYPAD_MODULE_MAKE_OPTS = obj-m=rocknix-singleadc-joypad.o
 
 $(eval $(kernel-module))

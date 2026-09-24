@@ -374,9 +374,9 @@ The Flip DTS already binds `miyoo,flip-gamepad`. 3D finishes direct consumers an
 | Consumer | What changes |
 | --- | --- |
 | `board/my355/fsoverlay/etc/init.d/S26joypadcal` | stop owning persistent restore; remove it if nothing else remains |
-| `board/my355/fsoverlay/usr/sbin/zlyme-joypad-cal` | old ROCKNIX sysfs helper, replaced by the new lifecycle |
+| `board/my355/fsoverlay/usr/sbin/zlyme-joypad-cal` | removed in this tree; no production caller remains |
 | `package/system/nextui/paks/Tools/Autocal.pak/` | replaced by `Joystick Calibration.pak` |
-| `scripts/pak-live-test.sh` | still launches `/storage/Tools/my355/Autocal.pak/launch.sh`; follow the rename |
+| `scripts/pak-live-test.sh` | launches `Joystick Calibration.pak` for a smoke start/stop only |
 
 Also audit repository license and example mentions of `Autocal.pak` in 3C2b. Do not rewrite historical provenance just to remove the name. The OTA removes the card copy of `Autocal.pak`. It does not delete `/storage/.config/miyoo-serial-joypad/`.
 
@@ -399,7 +399,7 @@ Also audit repository license and example mentions of `Autocal.pak` in 3C2b. Do 
 | `package/emulators/pico8/start_pico8.sh` | `grep retrogame_joypad` in the SDL db |
 | `package/emulators/pico8/pico8-splore-pad.c` | opens the evdev name |
 | `package/drivers/rocknix-joypad/` | package, `Config.in`, `0002`, `0003`. Remove only after the new module is the normal build |
-| `board/my355/post-build.sh` | requires `rocknix-singleadc-joypad.ko`, deletes a leftover `rocknix-joypad.ko`, chmods `zlyme-joypad-cal` and `S26joypadcal` |
+| `board/my355/post-build.sh` | requires `rocknix-singleadc-joypad.ko`, deletes a leftover `rocknix-joypad.ko`. This tree no longer chmods `zlyme-joypad-cal` or `S26joypadcal` |
 | `package/drivers/Config.in` | sources the old package |
 
 Follow the SDL database once its lines change. They do not hardcode the old name:
@@ -517,7 +517,7 @@ Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That 
 
 The runtime zero must remain strictly inside the active min/max, with both sides longer than the deadband. Checked on `zlyme43 (2026-09-23)`. A `restore` that would leave a `boot` or `apply` center outside the new ends returns `-ERANGE` and changes neither axis. A stable boot median outside the active range is not installed: runtime zero and source stay as they are, and the tracer shows terminal `range-rejected`. A stale right X range of 140/170/230 restored, the sampler found XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted. The measured files then booted with runtime zeros 104/137/114/138, source `boot`, axes 0, the port open, and bad frames 0.
 
-Attributes `calibration_left` and `calibration_right` are mode `0644`. The tracer remains read-only. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. That validated checkpoint ran `zlyme-gamepad-cal restore` immediately from `S26joypadcal` and did not load the ROCKNIX module. 3C2b moves that restore to after the existing first-frame gate and replaces Autocal with `Joystick Calibration.pak`.
+Attributes `calibration_left` and `calibration_right` are mode `0644`. `raw_axes` is the read-only production sample, mode `0444`, one line `YL=<n> XL=<n> YR=<n> XR=<n>`. The tracer remains a diagnostic and is not parsed by Joystick Calibration. This `raw_axes` addition is not device-validated. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. The kernel does not open them. That validated checkpoint ran `zlyme-gamepad-cal restore` immediately from `S26joypadcal` and did not load the ROCKNIX module. The current tree moves that restore to `rc.late` after `wait_boot_list`, removes `S26joypadcal`, and adds `Joystick Calibration.pak`. That change is not device-validated.
 
 Measured files, hashes unchanged through the gate:
 
