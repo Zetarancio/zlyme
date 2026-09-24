@@ -33,6 +33,7 @@
 #include <linux/interrupt.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
+#include <linux/math64.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/pm.h>
@@ -60,6 +61,7 @@
 #define MF_DEFAULT_MAX		255
 #define MF_ABS_RANGE		32767
 #define MF_RAW_DEADBAND		2
+#define MF_DZ_MAX_PERCENT	30
 /*
  * A written center only has to leave a positive divisor after the
  * deadband is removed. Narrow or asymmetric sticks are valid.
@@ -153,6 +155,8 @@ struct mf_pad {
 	unsigned int nbuttons;
 	struct mf_axis axis[MF_AXES];
 	int last_abs[MF_AXES];
+	u8 deadzone_left;
+	u8 deadzone_right;
 	u8 frame[MF_FRAME_LEN];
 	u8 frame_len;
 	unsigned long boot_first_jiffies;
@@ -230,17 +234,71 @@ static int mf_scale(int raw, const struct mf_axis *ax)
 			      ax->runtime_zero - ax->min);
 }
 
-/* Caller holds pad->lock. */
+/*
+ * Scaled radial deadzone after independent axis normalization.
+ * pct 0 returns the vector unchanged. Inside D both axes are 0.
+ * Outside, ((r-D)*M)/(r*(M-D)) remaps the remainder to full travel.
+ */
+static void mf_radial(int pct, int *x, int *y)
+{
+	s64 xs, ys, num, den, d;
+	u64 r;
+	int ox, oy;
+
+	if (pct <= 0)
+		return;
+	xs = *x;
+	ys = *y;
+	if (xs == 0 && ys == 0)
+		return;
+	r = int_sqrt64((u64)(xs * xs + ys * ys));
+	if (r == 0)
+		return;
+	d = (s64)MF_ABS_RANGE * pct / 100;
+	if ((s64)r <= d) {
+		*x = 0;
+		*y = 0;
+		return;
+	}
+	num = ((s64)r - d) * MF_ABS_RANGE;
+	den = (s64)r * (MF_ABS_RANGE - d);
+	ox = (int)div_s64(xs * num, den);
+	oy = (int)div_s64(ys * num, den);
+	if (ox > MF_ABS_RANGE)
+		ox = MF_ABS_RANGE;
+	if (ox < -MF_ABS_RANGE)
+		ox = -MF_ABS_RANGE;
+	if (oy > MF_ABS_RANGE)
+		oy = MF_ABS_RANGE;
+	if (oy < -MF_ABS_RANGE)
+		oy = -MF_ABS_RANGE;
+	*x = ox;
+	*y = oy;
+}
+
+/* Caller holds pad->lock. Both axes of the stick are current. */
+static void mf_emit_stick(struct mf_pad *pad, int x_id, int y_id, int pct)
+{
+	int x, y;
+
+	x = mf_scale(pad->axis[x_id].latest, &pad->axis[x_id]);
+	y = mf_scale(pad->axis[y_id].latest, &pad->axis[y_id]);
+	mf_radial(pct, &x, &y);
+	pad->last_abs[x_id] = x;
+	pad->last_abs[y_id] = y;
+	input_report_abs(pad->input, pad->axis[x_id].abs_code, x);
+	input_report_abs(pad->input, pad->axis[y_id].abs_code, y);
+}
+
+/* Caller holds pad->lock. raw[] is one complete UART frame. */
 static void mf_report_axes(struct mf_pad *pad, const u8 raw[MF_AXES])
 {
 	int i;
 
-	for (i = 0; i < MF_AXES; i++) {
+	for (i = 0; i < MF_AXES; i++)
 		pad->axis[i].latest = raw[i];
-		pad->last_abs[i] = mf_scale(raw[i], &pad->axis[i]);
-		input_report_abs(pad->input, pad->axis[i].abs_code,
-				 pad->last_abs[i]);
-	}
+	mf_emit_stick(pad, MF_XL, MF_YL, pad->deadzone_left);
+	mf_emit_stick(pad, MF_XR, MF_YR, pad->deadzone_right);
 	input_sync(pad->input);
 }
 
@@ -879,18 +937,12 @@ static void mf_install_axis(struct mf_axis *ax, int min, int zero, int max,
 	}
 }
 
-/* Caller holds pad->lock. */
+/* Caller holds pad->lock. Republish the latest raw pair for this stick. */
 static void mf_publish_stick(struct mf_pad *pad, int x_id, int y_id)
 {
-	int ids[2] = { x_id, y_id };
-	int i;
+	int pct = (x_id == MF_XL) ? pad->deadzone_left : pad->deadzone_right;
 
-	for (i = 0; i < 2; i++) {
-		struct mf_axis *ax = &pad->axis[ids[i]];
-
-		pad->last_abs[ids[i]] = mf_scale(ax->latest, ax);
-		input_report_abs(pad->input, ax->abs_code, pad->last_abs[ids[i]]);
-	}
+	mf_emit_stick(pad, x_id, y_id, pct);
 	input_sync(pad->input);
 }
 
@@ -989,9 +1041,78 @@ static ssize_t calibration_right_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(calibration_right);
 
+static int mf_dz_pct(struct mf_pad *pad, bool right)
+{
+	return right ? pad->deadzone_right : pad->deadzone_left;
+}
+
+static ssize_t mf_dz_show(struct mf_pad *pad, bool right, char *buf)
+{
+	unsigned long flags;
+	int pct;
+
+	spin_lock_irqsave(&pad->lock, flags);
+	pct = mf_dz_pct(pad, right);
+	spin_unlock_irqrestore(&pad->lock, flags);
+	return sysfs_emit(buf, "%d\n", pct);
+}
+
+static ssize_t mf_dz_store(struct mf_pad *pad, bool right, const char *buf,
+			   size_t count)
+{
+	unsigned int pct;
+	unsigned long flags;
+	int x_id, y_id;
+
+	while (*buf == ' ' || *buf == '\t')
+		buf++;
+	if (kstrtouint(buf, 10, &pct) || pct > MF_DZ_MAX_PERCENT)
+		return -EINVAL;
+	x_id = right ? MF_XR : MF_XL;
+	y_id = right ? MF_YR : MF_YL;
+	spin_lock_irqsave(&pad->lock, flags);
+	if (right)
+		pad->deadzone_right = pct;
+	else
+		pad->deadzone_left = pct;
+	mf_publish_stick(pad, x_id, y_id);
+	spin_unlock_irqrestore(&pad->lock, flags);
+	return count;
+}
+
+static ssize_t deadzone_left_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	return mf_dz_show(dev_get_drvdata(dev), false, buf);
+}
+
+static ssize_t deadzone_left_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	return mf_dz_store(dev_get_drvdata(dev), false, buf, count);
+}
+static DEVICE_ATTR_RW(deadzone_left);
+
+static ssize_t deadzone_right_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	return mf_dz_show(dev_get_drvdata(dev), true, buf);
+}
+
+static ssize_t deadzone_right_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	return mf_dz_store(dev_get_drvdata(dev), true, buf, count);
+}
+static DEVICE_ATTR_RW(deadzone_right);
+
 static struct attribute *mf_attrs[] = {
 	&dev_attr_tracer.attr,
 	&dev_attr_raw_axes.attr,
+	&dev_attr_deadzone_left.attr,
+	&dev_attr_deadzone_right.attr,
 	&dev_attr_calibration_left.attr,
 	&dev_attr_calibration_right.attr,
 	NULL
