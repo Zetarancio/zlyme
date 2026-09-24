@@ -31,6 +31,7 @@ extern "C"
 #include "palettemenu.hpp"
 #include "fnbuttonmenu.hpp"
 #include "zlymemenu.hpp"
+#include "zlymejoystick.hpp"
 
 #define BUSYBOX_STOCK_VERSION "1.27.2"
 
@@ -370,6 +371,7 @@ int main(int argc, char *argv[])
         ctx.dirty = 1;
         ctx.show_setting = 0;
         ctx.screen = GFX_init(MODE_MAIN);
+        ZlymeJoystick_setScreen(ctx.screen);
         PAD_init();
         PWR_init();
 
@@ -641,6 +643,7 @@ int main(int argc, char *argv[])
         }
 
         Zlyme_appendSystemItems(systemItems);
+        Zlyme_appendJoystickItem(systemItems);
         Zlyme_appendStorageItems(systemItems);
         Zlyme_appendBackupItem(systemItems);
         Zlyme_appendFactoryResetItem(systemItems);

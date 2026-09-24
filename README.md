@@ -47,7 +47,7 @@ Each community pak below was ported (paths, Flip joystick, this image’s binari
 - **Moonlight** — stream a PC game to the Flip. From [nextui-moonlight-pak](https://github.com/richieszemeredi/nextui-moonlight-pak).
 - **PortMaster** — install game ports. From [PortMaster-GUI](https://github.com/PortsMaster/PortMaster-GUI).
 - **Files** — browse the card.  [vtree](https://github.com/MustardOS/vtree).
-- **Joystick Calibration** — manual analog-stick calibration. The workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
+- **Settings → System → Joysticks** — stick test, manual calibration, and live deadzone. The workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 
 **Settings → Update** pulls a GitHub release (or prerelease) tar, shows notes, draws a progress bar, and only queues the file after sha256 matches.
 

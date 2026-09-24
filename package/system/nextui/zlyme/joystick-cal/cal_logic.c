@@ -274,6 +274,36 @@ void cal_cap_add_center(cal_cap *cap, int x, int y)
 	cap->zero_n++;
 }
 
+void cal_center_window_reset(cal_cap *cap)
+{
+	cap->zx_sum = cap->zy_sum = 0;
+	cap->zero_n = 0;
+	cap->zx_lo = cap->zy_lo = 255;
+	cap->zx_hi = cap->zy_hi = 0;
+}
+
+int cal_range_ready(const cal_cap *cap)
+{
+	if (!cap || cap->range_n < 20)
+		return 0;
+	if ((cap->x_max - cap->x_min) < CAL_MIN_SPAN)
+		return 0;
+	if ((cap->y_max - cap->y_min) < CAL_MIN_SPAN)
+		return 0;
+	return 1;
+}
+
+int cal_center_window_stable(const cal_cap *cap)
+{
+	if (!cap || cap->zero_n < CAL_CENTER_SAMPLES)
+		return 0;
+	if ((cap->zx_hi - cap->zx_lo) > CAL_CENTER_SPREAD)
+		return 0;
+	if ((cap->zy_hi - cap->zy_lo) > CAL_CENTER_SPREAD)
+		return 0;
+	return 1;
+}
+
 int cal_cap_finish(const cal_cap *cap, cal_cfg *cfg, const char **err)
 {
 	int zx, zy;
@@ -282,16 +312,17 @@ int cal_cap_finish(const cal_cap *cap, cal_cfg *cfg, const char **err)
 		*err = "Not enough movement";
 		return -1;
 	}
-	if ((cap->x_max - cap->x_min) <= CAL_DEADBAND ||
-	    (cap->y_max - cap->y_min) <= CAL_DEADBAND) {
+	if ((cap->x_max - cap->x_min) < CAL_MIN_SPAN ||
+	    (cap->y_max - cap->y_min) < CAL_MIN_SPAN) {
 		*err = "Insufficient movement";
 		return -1;
 	}
-	if (cap->zero_n < 8) {
+	if (cap->zero_n < CAL_CENTER_SAMPLES) {
 		*err = "Not enough center samples";
 		return -1;
 	}
-	if ((cap->zx_hi - cap->zx_lo) > 3 || (cap->zy_hi - cap->zy_lo) > 3) {
+	if ((cap->zx_hi - cap->zx_lo) > CAL_CENTER_SPREAD ||
+	    (cap->zy_hi - cap->zy_lo) > CAL_CENTER_SPREAD) {
 		*err = "Unstable center";
 		return -1;
 	}
@@ -376,25 +407,6 @@ int cal_commit(const cal_cfg *cfg, cal_apply_fn apply, void *ud,
 	if (!apply || apply(line, ud) != 0) {
 		snprintf(msg, msg_len, "Apply failed");
 		return 1;
-	}
-	{
-		char bak[512];
-		int n = snprintf(bak, sizeof(bak), "%s.bak", path);
-		if (n > 0 && (size_t)n < sizeof(bak) &&
-		    access(path, F_OK) == 0 && access(bak, F_OK) != 0) {
-			FILE *in = fopen(path, "r");
-			FILE *out = fopen(bak, "w");
-			char buf[256];
-			size_t got;
-			if (in && out) {
-				while ((got = fread(buf, 1, sizeof(buf), in)) > 0)
-					fwrite(buf, 1, got, out);
-			}
-			if (in)
-				fclose(in);
-			if (out)
-				fclose(out);
-		}
 	}
 	if (cal_write_atomic(path, cfg) != 0) {
 		snprintf(msg, msg_len, "Applied for this boot but save failed");

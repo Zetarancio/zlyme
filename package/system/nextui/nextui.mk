@@ -54,13 +54,6 @@ define NEXTUI_BUILD_CMDS
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
-	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra -DPLATFORM_MY355 \
-		-I$(NEXTUI_PKGDIR)/apostrophe/include \
-		-I$(NEXTUI_PKGDIR)/zlyme/joystick-cal \
-		-o $(@D)/calibrate.elf \
-		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/joystick_cal.c \
-		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/cal_logic.c \
-		$(TARGET_LDFLAGS) -lSDL2 -lSDL2_ttf -lSDL2_image -lpthread -lm
 	$(foreach src,scaler utils config api palette,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
@@ -82,6 +75,7 @@ define NEXTUI_BUILD_CMDS
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
 	$(TARGET_CXX) $(NEXTUI_CXXFLAGS) $(NEXTUI_INCLUDES) \
+		-I$(NEXTUI_PKGDIR)/zlyme/joystick-cal \
 		-o $(@D)/settings.elf \
 		$(@D)/workspace/all/settings/settings.cpp \
 		$(@D)/workspace/all/settings/menu.cpp \
@@ -93,6 +87,8 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/keyboardprompt.cpp \
 		$(@D)/workspace/all/settings/zlymemenu.cpp \
 		$(@D)/workspace/all/settings/zlymeupdate.cpp \
+		$(@D)/workspace/all/settings/zlymejoystick.cpp \
+		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/cal_logic.c \
 		$(@D)/utils.o $(@D)/api.o $(@D)/config.o $(@D)/scaler.o \
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
 		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o \
@@ -130,9 +126,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
 	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/Tools/Update.pak \
-		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Autocal.pak
-	$(INSTALL) -D -m 0755 $(@D)/calibrate.elf \
-		"$(TARGET_DIR)/usr/share/nextui/paks/Tools/Joystick Calibration.pak/calibrate.elf"
+		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Autocal.pak \
+		"$(TARGET_DIR)/usr/share/nextui/paks/Tools/Joystick Calibration.pak"
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-dirs.txt \
 		$(TARGET_DIR)/usr/share/nextui/rom-dirs.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-exts.txt \
@@ -157,6 +152,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/NOTICE
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/CREDITS \
 		$(TARGET_DIR)/usr/share/nextui/CREDITS
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/joystick-cal/LICENSE \
+		$(TARGET_DIR)/usr/share/nextui/joystick-calibration-LICENSE
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/../../../scripts/fetch-test-roms.sh \
 		$(TARGET_DIR)/usr/sbin/fetch-test-roms
 	printf '%s\n' $(NEXTUI_VERSION) > $(TARGET_DIR)/usr/share/nextui/version.txt

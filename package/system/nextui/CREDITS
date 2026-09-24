@@ -62,3 +62,11 @@ PICO.pak Splore cart
   not shipped (user-supplied pico8_64).
 
 
+
+Joystick calibration (Settings -> System -> Joysticks)
+  Workflow based in part on Joe's Calibrage
+  Kevin Vranken (Helaas), MIT
+  https://github.com/Helaas/nextui-Joe-s-Calibrage-pak
+  205f662c9ab7334229787e024e3556ee00272aad
+  v0.2.0
+  License text: /usr/share/nextui/joystick-calibration-LICENSE

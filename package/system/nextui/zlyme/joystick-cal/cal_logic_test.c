@@ -54,15 +54,24 @@ int main(void)
 	cal_cap_reset(&cap);
 	for (i = 0; i < 25; i++)
 		cal_cap_add_range(&cap, i < 12 ? 2 : 223, i < 12 ? 25 : 239);
-	for (i = 0; i < 8; i++)
-		cal_cap_add_center(&cap, 103 + (i == 7 ? 8 : 0), 139);
-	expect(cal_cap_finish(&cap, &cfg, &err) != 0, "unstable center");
+	for (i = 0; i < 12; i++)
+		cal_cap_add_center(&cap, 103 + (i == 11 ? 8 : 0), 139);
+	expect(cal_center_window_stable(&cap) == 0, "unstable window");
+	cal_center_window_reset(&cap);
+	expect(cap.range_n == 25, "reset keeps range");
+	expect(cap.zero_n == 0, "reset clears center");
+	for (i = 0; i < 12; i++)
+		cal_cap_add_center(&cap, 103, 139);
+	expect(cal_center_window_stable(&cap) == 1, "stable window");
+	expect(cal_cap_finish(&cap, &cfg, &err) == 0, "valid capture");
 	cal_cap_reset(&cap);
 	for (i = 0; i < 25; i++)
-		cal_cap_add_range(&cap, i < 12 ? 2 : 223, i < 12 ? 25 : 239);
-	for (i = 0; i < 8; i++)
-		cal_cap_add_center(&cap, 103, 139);
-	expect(cal_cap_finish(&cap, &cfg, &err) == 0, "valid capture");
+		cal_cap_add_range(&cap, i < 12 ? 10 : 49, i < 12 ? 10 : 49);
+	expect(cal_range_ready(&cap) == 0, "span 39 rejected");
+	cal_cap_reset(&cap);
+	for (i = 0; i < 25; i++)
+		cal_cap_add_range(&cap, i < 12 ? 10 : 50, i < 12 ? 10 : 50);
+	expect(cal_range_ready(&cap) == 1, "span 40 accepted");
 
 	unlink(path);
 	expect(cal_commit(&cfg, apply_no, NULL, path, msg, sizeof(msg)) == 1,
@@ -166,53 +175,8 @@ int main(void)
 
 	{
 		char bak[512];
-		char first[] = "/tmp/zlyme-cal-bak.cfg";
-		FILE *f;
-		char got[256] = {0};
-
-		unlink(first);
-		snprintf(bak, sizeof(bak), "%s.bak", first);
-		unlink(bak);
-		cfg.x_min = 2;
-		cfg.x_max = 223;
-		cfg.x_zero = 103;
-		cfg.y_min = 25;
-		cfg.y_max = 239;
-		cfg.y_zero = 139;
-		f = fopen(first, "w");
-		expect(f != NULL, "seed file");
-		if (f) {
-			fputs("x_min=1\nx_max=200\ny_min=1\ny_max=200\n"
-			      "x_zero=100\ny_zero=100\n", f);
-			fclose(f);
-		}
-		expect(cal_commit(&cfg, apply_ok, (void *)1, first, msg,
-				  sizeof(msg)) == 0, "backup commit");
-		f = fopen(bak, "r");
-		expect(f != NULL, "bak created");
-		if (f) {
-			size_t n = fread(got, 1, sizeof(got) - 1, f);
-			got[n] = 0;
-			fclose(f);
-		}
-		expect(strcmp(got, "x_min=1\nx_max=200\ny_min=1\ny_max=200\n"
-				   "x_zero=100\ny_zero=100\n") == 0,
-		       "bak is first file");
-		cfg.x_zero = 110;
-		expect(cal_commit(&cfg, apply_ok, (void *)1, first, msg,
-				  sizeof(msg)) == 0, "second save");
-		got[0] = 0;
-		f = fopen(bak, "r");
-		if (f) {
-			size_t n = fread(got, 1, sizeof(got) - 1, f);
-			got[n] = 0;
-			fclose(f);
-		}
-		expect(strstr(got, "x_zero=100") != NULL, "bak not overwritten");
-		expect(cal_parse("not a backup\n", &cfg, &err) != 0,
-		       "bad backup rejected");
-		unlink(first);
-		unlink(bak);
+		snprintf(bak, sizeof(bak), "%s.bak", path);
+		expect(access(bak, F_OK) != 0, "no bak");
 	}
 
 	unlink(path);

@@ -4,6 +4,9 @@
 #include <stddef.h>
 
 #define CAL_DEADBAND 2
+#define CAL_MIN_SPAN 40
+#define CAL_CENTER_SAMPLES 12
+#define CAL_CENTER_SPREAD 3
 
 typedef struct {
 	int x_min, x_max, x_zero;
@@ -33,6 +36,9 @@ void cal_map_stick(int right, int yl, int xl, int yr, int xr, int *x, int *y);
 void cal_cap_reset(cal_cap *cap);
 void cal_cap_add_range(cal_cap *cap, int x, int y);
 void cal_cap_add_center(cal_cap *cap, int x, int y);
+void cal_center_window_reset(cal_cap *cap);
+int cal_center_window_stable(const cal_cap *cap);
+int cal_range_ready(const cal_cap *cap);
 /* 0 and fills cfg. Nonzero sets *err to a stable short reason. */
 int cal_cap_finish(const cal_cap *cap, cal_cfg *cfg, const char **err);
 
