@@ -523,7 +523,8 @@ static int rumble_open(void)
 		}
 		memset(name, 0, sizeof(name));
 		named = ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0 &&
-			strstr(name, "retrogame") != NULL;
+			(strcmp(name, "Miyoo Flip Gamepad") == 0 ||
+			 strstr(name, "retrogame") != NULL);
 		if (named) {
 			if (best >= 0)
 				close(best);

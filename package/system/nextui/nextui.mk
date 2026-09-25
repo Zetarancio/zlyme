@@ -54,6 +54,11 @@ define NEXTUI_BUILD_CMDS
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra \
+		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
+		-o $(@D)/zlyme-gamepad-ff \
+		$(NEXTUI_PKGDIR)/zlyme/gamepad-ff/zlyme-gamepad-ff.c \
+		$(NEXTUI_PKGDIR)/zlyme/gamepad-ff/ff_gain.c
 	$(foreach src,scaler utils config api palette,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
@@ -76,6 +81,7 @@ define NEXTUI_BUILD_CMDS
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
 	$(TARGET_CXX) $(NEXTUI_CXXFLAGS) $(NEXTUI_INCLUDES) \
 		-I$(NEXTUI_PKGDIR)/zlyme/joystick-cal \
+		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
 		-o $(@D)/settings.elf \
 		$(@D)/workspace/all/settings/settings.cpp \
 		$(@D)/workspace/all/settings/menu.cpp \
@@ -89,6 +95,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/zlymeupdate.cpp \
 		$(@D)/workspace/all/settings/zlymejoystick.cpp \
 		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/cal_logic.c \
+		$(NEXTUI_PKGDIR)/zlyme/gamepad-ff/ff_gain.c \
 		$(@D)/utils.o $(@D)/api.o $(@D)/config.o $(@D)/scaler.o \
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
 		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o \
@@ -111,6 +118,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(TARGET_DIR)/usr/lib/libmsettings.so
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-bcsh $(TARGET_DIR)/usr/sbin/zlyme-bcsh
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-hotkey $(TARGET_DIR)/usr/sbin/zlyme-pak-hotkey
+	$(INSTALL) -D -m 0755 $(@D)/zlyme-gamepad-ff $(TARGET_DIR)/usr/sbin/zlyme-gamepad-ff
 	rm -f $(TARGET_DIR)/usr/bin/keymon.elf \
 		$(TARGET_DIR)/usr/bin/minarch.elf \
 		$(TARGET_DIR)/usr/bin/gametimectl.elf

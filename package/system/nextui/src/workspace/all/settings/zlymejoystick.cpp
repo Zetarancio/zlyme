@@ -5,8 +5,10 @@ extern "C" {
 #include "api.h"
 }
 #include "cal_logic.h"
+#include "ff_gain.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <string>
@@ -637,6 +639,122 @@ static void screen_values(void)
 		SDL_JoystickClose(joy);
 }
 
+static int saved_gain(void)
+{
+	FILE *f = fopen("/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config", "r");
+	char body[128];
+	int pct = 100;
+	size_t n;
+
+	if (!f)
+		return 100;
+	n = fread(body, 1, sizeof(body) - 1, f);
+	body[n] = 0;
+	fclose(f);
+	if (ff_parse_gain(body, &pct))
+		return 100;
+	return pct;
+}
+
+static bool apply_gain(int pct)
+{
+	char cmd[64];
+	snprintf(cmd, sizeof(cmd), "/usr/sbin/zlyme-gamepad-ff gain %d", pct);
+	return system(cmd) == 0;
+}
+
+static bool save_gain_file(int pct)
+{
+	char body[32];
+	char tmp[] = "/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config.tmp";
+	char finalp[] = "/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config";
+	int fd;
+
+	snprintf(body, sizeof(body), "gain=%d\n", pct);
+	mkdir("/storage/.config", 0755);
+	mkdir("/storage/.config/zlyme", 0755);
+	mkdir("/storage/.config/zlyme/miyoo-flip-gamepad", 0755);
+	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd < 0)
+		return false;
+	if (write(fd, body, strlen(body)) != (ssize_t)strlen(body) || fsync(fd) != 0) {
+		close(fd);
+		unlink(tmp);
+		return false;
+	}
+	if (close(fd) != 0) {
+		unlink(tmp);
+		return false;
+	}
+	if (rename(tmp, finalp) != 0) {
+		unlink(tmp);
+		return false;
+	}
+	return true;
+}
+
+static void screen_rumble(void)
+{
+	int start = saved_gain();
+	int pct = start;
+	char line[32];
+
+	if (!apply_gain(pct)) {
+		ack("Rumble is not available.");
+		return;
+	}
+	while (g_screen) {
+		frame_begin();
+		text_at("Rumble Strength", 24, 16);
+		snprintf(line, sizeof(line), "%d%%", pct);
+		text_at(line, 24, 64);
+		hint_left("B", "CANCEL");
+		hint_right("A", "SAVE");
+		GFX_flip(g_screen);
+		if (PAD_justRepeated(BTN_DPAD_LEFT) && pct >= 10) {
+			if (apply_gain(pct - 10))
+				pct -= 10;
+			else
+				ack("Could not apply rumble gain.");
+		}
+		if (PAD_justRepeated(BTN_DPAD_RIGHT) && pct <= 90) {
+			if (apply_gain(pct + 10))
+				pct += 10;
+			else
+				ack("Could not apply rumble gain.");
+		}
+		if (PAD_justPressed(BTN_A)) {
+			if (!apply_gain(pct)) {
+				ack("Could not apply rumble gain. Not saved.");
+				continue;
+			}
+			if (!save_gain_file(pct))
+				ack("Applied for this boot but save failed.");
+			else
+				ack("Rumble gain saved.");
+			break;
+		}
+		if (PAD_justPressed(BTN_B)) {
+			if (!apply_gain(start))
+				ack("Could not restore the previous rumble gain.");
+			break;
+		}
+	}
+}
+
+static InputReactionHint go_rumble(AbstractMenuItem &)
+{
+	screen_rumble();
+	return NoOp;
+}
+
+static InputReactionHint go_rumble_test(AbstractMenuItem &)
+{
+	if (system("/usr/sbin/zlyme-gamepad-ff test") != 0)
+		ack("Rumble is not available.");
+	return NoOp;
+}
+
 static InputReactionHint go_test(AbstractMenuItem &)
 {
 	screen_test();
@@ -679,6 +797,8 @@ void Zlyme_appendJoystickItem(std::vector<AbstractMenuItem *> &items)
 		new MenuItem{ListItemType::Button, "Tune Left Deadzone", "Live preview.", go_dzl},
 		new MenuItem{ListItemType::Button, "Tune Right Deadzone", "Live preview.", go_dzr},
 		new MenuItem{ListItemType::Button, "Values", "Raw, output, and saved state.", go_values},
+		new MenuItem{ListItemType::Button, "Rumble Strength", "Global motor gain.", go_rumble},
+		new MenuItem{ListItemType::Button, "Test Rumble", "Short motor pulse.", go_rumble_test},
 	};
 	items.push_back(new MenuItem{ListItemType::Generic, "Joysticks",
 		"Calibration and deadzone.", {}, {}, nullptr, nullptr, DeferToSubmenu,

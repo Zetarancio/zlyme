@@ -35,6 +35,9 @@ fi
 _up=0
 read -r _up _rest < /proc/uptime || true
 echo "$_up joypad-restore-end" >> /tmp/boot-timing
+if [ -x /usr/sbin/zlyme-gamepad-ff ]; then
+	/usr/sbin/zlyme-gamepad-ff restore || echo "zlyme-gamepad-ff restore failed" >&2
+fi
 
 start_bg() {
 	[ -x "$1" ] || return 0
