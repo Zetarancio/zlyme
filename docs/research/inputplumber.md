@@ -56,6 +56,10 @@ Potential latency work, in order:
 
 The physical driver already exposes standard evdev and force feedback. Do not change it merely to suit InputPlumber. Rumble Strength stays a physical-device setting, not an InputPlumber policy.
 
+## Phase 4B runtime
+
+`S31inputplumber` starts in `rc.late` after system D-Bus and after `nextui-first-flip`. It is not a first-frame service. Normal environment is `INSECURE_DISABLE_POLKIT=1` and `HIDE_DEVICES_FROM_ROOT=0`, with metrics unset. The Flip profile still has `auto_manage: false`, so boot does not grab the pad. Zlyme does not ship polkit. The installed D-Bus policy allows only root to own or call `org.shadowblip.InputPlumber`. NextUI, Settings, and SSH run as root. `devices manage-all --enable` sets manage-all; the same command without `--enable` stops composites that are not auto-managed, which releases the physical pad without unloading the driver. That live check has not been run.
+
 ## Historical recommendation — 2026-09-15
 
 Do not package InputPlumber merely for the Switch Pro. hid-nintendo is the driver for that pad. The notes below are that study. They are not the current Phase 4 decision.

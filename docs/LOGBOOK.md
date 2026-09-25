@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-25 — Phase 4B InputPlumber service
+
+`S31inputplumber` starts after D-Bus in the `rc.late` block that already waits for `nextui-first-flip`. It is not in the Class A list. The daemon is backgrounded, logs to `/tmp/inputplumber.log`, and does not set `ENABLE_METRICS`. `auto_manage` is still false, so it owns no controller at boot. NextUI still opens the physical pad. Polkit is not installed. Root is the only D-Bus client allowed to manage the service. Device routing and latency measurement have not been run.
+
 ## 2026-09-25 — Phase 4A InputPlumber package
 
 InputPlumber v0.81.0, commit `ea60d873cca17edd1cb655ede26f557108135252`, is built with Buildroot `cargo-package` and Rust 1.88. The binary links libudev and libiio. host-clang supplies libclang for the uhidrs-sys bindgen step. The IIO daemon is not enabled. Installed files are the binary, `org.shadowblip.InputPlumber.conf`, upstream `profiles/default.yaml`, and `devices/20-zlyme_miyoo_flip.yaml`. That composite device matches the evdev name Miyoo Flip Gamepad, does not auto-manage, does not persist, and targets `xb360`. Init, udev autostart, NextUI, and the gamepad driver were not changed. Phase 4B has not started.
