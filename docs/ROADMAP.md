@@ -495,7 +495,7 @@ Phase 3C3 COMPLETE — 2026-09-25
 Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
-Phase 4B DEVICE VALIDATION COMPLETE — LATENCY REVIEW PENDING
+Phase 4B NOT COMPLETE — D-pad map proven, L2/R2 axes not proven
 Phase 4C NOT STARTED
 Phase 4D NOT STARTED
 ```
@@ -1602,7 +1602,7 @@ Complete. Buildroot `cargo-package` builds pinned v0.81.0 (`ea60d873cca17edd1cb6
 
 ### 4B — Built-in controller integration and latency
 
-Implemented. The 2026-09-26 SSH check on `root@192.168.0.108` is in `docs/research/inputplumber.md`. Boot order, grab, virtual `xb360` events, virtual rumble upload, and release all worked. Internal latency numbers were not emitted. Do not change the driver or the 2.5 ms poll until that review.
+Implemented, not complete. The D-pad capability map was proven on a temporary bind mount: all four directions become `ABS_HAT0X`/`ABS_HAT0Y` and return to 0. L2/R2 are seen as trigger buttons and do not appear as `ABS_Z`/`ABS_RZ`, so that gate is still open. Root processing over 2322 events was about 202 to 7014 µs, average about 560 µs, excluding the 0 to 2.5 ms source-poll wait. Details are in `docs/research/inputplumber.md`. Do not change the driver or shorten the poll yet.
 
 ### 4C — NextUI handoff and player policy
 

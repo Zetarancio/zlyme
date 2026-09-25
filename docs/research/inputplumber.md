@@ -84,6 +84,20 @@ UART `valid` moved from 9822 to 34993 during the routed exercise and to 40920 af
 
 No driver, debounce, or poll-rate change follows from this run. The first software candidate, if a later review wants less routing delay, is InputPlumber's 2.5 ms evdev poll. The 10 ms button debounce and the about 15 ms stick sample period stay as they are until there is separate evidence.
 
+## D-pad map and latency — 2026-09-26
+
+v0.81.0 `evdev.rs` maps face buttons, bumpers, `BTN_TL2`/`BTN_TR2`, start, select, mode, and stick clicks. It does not map `BTN_DPAD_*`. Upstream AYN and Retroid maps send those keys to `DPadUp`/`DPadDown`/`DPadLeft`/`DPadRight`, and the Xbox target writes them as `ABS_HAT0Y`/`ABS_HAT0X`. Events absent from a capability map still use the generic translator (`gamepad.rs`).
+
+A temporary bind mount of `/usr/share/inputplumber` added only those four mappings, id `zlyme_miyoo_flip`, with `auto_manage: false`, `persist: false`, and target `xb360`. The virtual capture then showed `ABS_HAT0X` -1 then 0 and +1 then 0, and `ABS_HAT0Y` -1 then 0 and +1 then 0. That is left/right and up/down. `BTN_EAST` (A) still appeared. The same map is now the packaged file.
+
+L2/R2 did not appear as `ABS_Z` or `ABS_RZ`. Metrics recorded two `Gamepad(Button(LeftTrigger))` events and two `Gamepad(Button(RightTrigger))` events, so the generic translator saw the physical trigger buttons. The Xbox target turns that button capability into `KEY` `BTN_TL2`/`BTN_TR2`, and the virtual `xb360` device does not include those keys, so the writes are not visible. They were not added to the capability map.
+
+Metrics were collected only after `Properties.Set` of `org.shadowblip.Input.Metrics.Enabled` to true on `/org/shadowblip/InputPlumber/devices/target/gamepad0`, with `ENABLE_METRICS=1`. `EventMetrics` count was 2322. Root span, microseconds: min 202, median 488, average 560, p95 877, max 7014. Subspans, same units, min/median/average/p95/max: `source_poll` 25/58/63/103/205, `source_send` 44/198/248/392/6416, `target_send` 13/107/121/242/2494, `target_write` 7/27/37/86/2445. The root span starts inside a source poll, after `fetch_events()`. It does not include time a kernel event waited for the next 2.5 ms loop. That wait is 0 to 2.5 ms, about 1.25 ms on average if arrivals are uniform, and it is an inference. Do not add it into the measured root number.
+
+Managed idle cost from the earlier window remains about 1.5% of one CPU and 13320 kB RSS. Shortening the poll to 1 ms would buy latency with more wakeups. An event-driven source is the first candidate if routing delay or that idle cost needs to come down. It is not required before Phase 4C, and it is not implemented here. The stick path and the 10 ms debounce stay unchanged.
+
+The temporary mount was removed. `S31inputplumber` is running with metrics unset and zero composites. The physical pad is `event4`. Phase 4B is not complete, because L2/R2 were not proven on `ABS_Z`/`ABS_RZ`.
+
 ## Historical recommendation — 2026-09-15
 
 Do not package InputPlumber merely for the Switch Pro. hid-nintendo is the driver for that pad. The notes below are that study. They are not the current Phase 4 decision.

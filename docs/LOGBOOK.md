@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4B D-pad map and latency
+
+A temporary capability map for the four `BTN_DPAD_*` keys was bind-mounted over `/usr/share/inputplumber`. The virtual Xbox pad then reported hat X and hat Y for all four directions, returning to 0, and A still arrived. L2 and R2 were seen internally as trigger buttons and did not appear as `ABS_Z` or `ABS_RZ`. Metrics, after the Enabled property was set, were 2322 events. Root processing was about 202 µs minimum, 560 µs average, 877 µs p95, and 7014 µs maximum. That span does not include the 0 to 2.5 ms wait for the next source poll. The test mount was removed. The daemon is running with nothing managed. Phase 4B is not complete.
+
 ## 2026-09-26 — Phase 4B device check
 
 On `root@192.168.0.108`, `nextui-first-flip` was 11.00 s and `inputplumber-start` was 13.21 s. InputPlumber 0.81.0 was one process, metrics off, and `devices list` was empty. NextUI held the physical `event4`. After `manage-all --enable` there was one Miyoo Flip Gamepad composite and an `xb360` node, `event5`. An independent read of the physical node during the grab saw no events. The virtual node saw both sticks, A, B, MENU, L3, and R3. D-pad was not in that virtual capture. A full-magnitude `FF_RUMBLE` upload on `event5` succeeded. `event5` also advertises `FF_GAIN`. Disabling manage-all removed the virtual node. A later physical read saw A and D-pad. UART `bad` stayed 0. No `rumble.config` existed before or after, because this was a freshly written card. `EventMetrics` did not fire: the D-Bus metrics property stays off unless a client enables it. The 2.5 ms poll was not measured. Phase 4B is not closed. No driver change.
