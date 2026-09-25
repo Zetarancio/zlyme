@@ -58,7 +58,31 @@ The physical driver already exposes standard evdev and force feedback. Do not ch
 
 ## Phase 4B runtime
 
-`S31inputplumber` starts in `rc.late` after system D-Bus and after `nextui-first-flip`. It is not a first-frame service. Normal environment is `INSECURE_DISABLE_POLKIT=1` and `HIDE_DEVICES_FROM_ROOT=0`, with metrics unset. The Flip profile still has `auto_manage: false`, so boot does not grab the pad. Zlyme does not ship polkit. The installed D-Bus policy allows only root to own or call `org.shadowblip.InputPlumber`. NextUI, Settings, and SSH run as root. `devices manage-all --enable` sets manage-all; the same command without `--enable` stops composites that are not auto-managed, which releases the physical pad without unloading the driver. That live check has not been run.
+`S31inputplumber` starts in `rc.late` after system D-Bus and after `nextui-first-flip`. It is not a first-frame service. Normal environment is `INSECURE_DISABLE_POLKIT=1` and `HIDE_DEVICES_FROM_ROOT=0`, with metrics unset. The Flip profile still has `auto_manage: false`, so boot does not grab the pad. Zlyme does not ship polkit. The installed D-Bus policy allows only root to own or call `org.shadowblip.InputPlumber`. NextUI, Settings, and SSH run as root. `devices manage-all --enable` sets manage-all; the same command without `--enable` stops composites that are not auto-managed, which releases the physical pad without unloading the driver.
+
+## Device check — 2026-09-26
+
+SSH `root@192.168.0.108`, image `zlyme-my355-20260925-99e05660f792`. InputPlumber 0.81.0. `/tmp/boot-timing`: `nextui-first-flip` at 11.00 s, `inputplumber-start` at 13.21 s. One daemon. Environment was `INSECURE_DISABLE_POLKIT=1` and `HIDE_DEVICES_FROM_ROOT=0`, with `ENABLE_METRICS` unset. The log was empty. `devices list` reported 0 composites. NextUI had `/dev/input/event4` (`Miyoo Flip Gamepad`) open. This card had no `/storage/.config/zlyme/miyoo-flip-gamepad/` directory. Deadzone sysfs was 0 and 0. UART `bad=0`, port open.
+
+Stopping the service removed the D-Bus name (`InputPlumber daemon is not currently running`). The next `S31inputplumber start` was ready at the first 20 ms poll. Uptime went from 184.80 s to 184.98 s, so the start call plus D-Bus readiness was about 0.18 s. Composites stayed at 0.
+
+With zero composites, over about 10 s: VmRSS 11676 kB, utime+stime unchanged (0 jiffies), voluntary context switches 54 and nonvoluntary 434, both unchanged. `CONFIG_HZ=250`.
+
+`devices manage-all --enable` created one composite, id 0, name Miyoo Flip Gamepad, source `/dev/input/event4`, profile Default, target `xb360` / `Microsoft X-Box 360 pad` on `event5`. Bus/vendor/product/version `0003/045e/028e/0001`. The virtual node advertised face buttons, bumpers, select, start, guide, both stick clicks, sticks, hat axes, `FF_RUMBLE`, and `FF_GAIN`. It did not advertise `BTN_TL2`/`BTN_TR2`. InputPlumber held `event4` and `/dev/uinput`. NextUI still held `event4` and also opened `event5`. An independent read of `event4` during the grab counted 0 keys, 0 absolute events, and 0 syncs.
+
+The virtual capture in that window: 10 key reports, 717 absolute reports, 727 syncs. Presses: `BTN_SOUTH` 304, `BTN_EAST` 305, `BTN_MODE` 316, `BTN_THUMBL` 317, `BTN_THUMBR` 318, one press each. Nonzero absolute activity on `ABS_X`, `ABS_Y`, `ABS_RX`, and `ABS_RY`. No hat and no D-pad codes were in that file. A later physical read, after release, did see D-pad up, down, and right.
+
+Managed and idle, over about 10 s, still with metrics off: VmRSS 13320 kB, utime 122 to 131 and stime 252 to 280 (37 jiffies, about 0.15 s at 250 Hz), voluntary context switches 97 and nonvoluntary 73, both unchanged.
+
+`ENABLE_METRICS=1` was used for a later restart. `dbus-monitor` on `org.shadowblip.Input.Metrics` recorded no `EventMetrics` signals. v0.81.0 only emits those after a client sets the metrics interface `Enabled` property; the environment variable creates the interface and the spans, and the performance screen is what sets the property. Internal min/average/max were therefore not measured. The 2.5 ms source poll remains source review, not a measurement. Do not treat a missing root span as a latency result. The unmeasured poll wait is still 0 to 2.5 ms, about 1.25 ms if the phase is uniform, and it is not included in any root span.
+
+A temporary helper uploaded `FF_RUMBLE` on `event5` at full strong and weak magnitude, 250 ms, played, stopped, and erased it. Every ioctl and write succeeded. Both `FF_RUMBLE` and `FF_GAIN` were present on that node. `rumble.config` was absent before and after. PWM debugfs was not used.
+
+`devices manage-all` with no `--enable` removed the composite and `event5`. The service was then restarted through `S31inputplumber` with metrics unset. A following physical read of `event4` saw `BTN_DPAD_UP` 544, `BTN_DPAD_DOWN` 545, `BTN_DPAD_RIGHT` 547, and `BTN_EAST` 305. NextUI was still running and still held `event4`. Final state: daemon up, metrics off, zero composites.
+
+UART `valid` moved from 9822 to 34993 during the routed exercise and to 40920 after release. `bad` stayed 0. The gamepad config directory was absent at the start and at the end.
+
+No driver, debounce, or poll-rate change follows from this run. The first software candidate, if a later review wants less routing delay, is InputPlumber's 2.5 ms evdev poll. The 10 ms button debounce and the about 15 ms stick sample period stay as they are until there is separate evidence.
 
 ## Historical recommendation — 2026-09-15
 

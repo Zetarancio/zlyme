@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4B device check
+
+On `root@192.168.0.108`, `nextui-first-flip` was 11.00 s and `inputplumber-start` was 13.21 s. InputPlumber 0.81.0 was one process, metrics off, and `devices list` was empty. NextUI held the physical `event4`. After `manage-all --enable` there was one Miyoo Flip Gamepad composite and an `xb360` node, `event5`. An independent read of the physical node during the grab saw no events. The virtual node saw both sticks, A, B, MENU, L3, and R3. D-pad was not in that virtual capture. A full-magnitude `FF_RUMBLE` upload on `event5` succeeded. `event5` also advertises `FF_GAIN`. Disabling manage-all removed the virtual node. A later physical read saw A and D-pad. UART `bad` stayed 0. No `rumble.config` existed before or after, because this was a freshly written card. `EventMetrics` did not fire: the D-Bus metrics property stays off unless a client enables it. The 2.5 ms poll was not measured. Phase 4B is not closed. No driver change.
+
 ## 2026-09-25 — Phase 4B InputPlumber service
 
 `S31inputplumber` starts after D-Bus in the `rc.late` block that already waits for `nextui-first-flip`. It is not in the Class A list. The daemon is backgrounded, logs to `/tmp/inputplumber.log`, and does not set `ENABLE_METRICS`. `auto_manage` is still false, so it owns no controller at boot. NextUI still opens the physical pad. Polkit is not installed. Root is the only D-Bus client allowed to manage the service. Device routing and latency measurement have not been run.

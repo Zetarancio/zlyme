@@ -495,7 +495,7 @@ Phase 3C3 COMPLETE — 2026-09-25
 Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
-Phase 4B IMPLEMENTED — DEVICE VALIDATION PENDING
+Phase 4B DEVICE VALIDATION COMPLETE — LATENCY REVIEW PENDING
 Phase 4C NOT STARTED
 Phase 4D NOT STARTED
 ```
@@ -1602,7 +1602,7 @@ Complete. Buildroot `cargo-package` builds pinned v0.81.0 (`ea60d873cca17edd1cb6
 
 ### 4B — Built-in controller integration and latency
 
-Implemented, not device-validated. After `nextui-first-flip`, `rc.late` starts D-Bus and then `S31inputplumber`. The daemon runs with `INSECURE_DISABLE_POLKIT=1` and `HIDE_DEVICES_FROM_ROOT=0`. Metrics stay off. `auto_manage` stays false, so a normal boot still leaves NextUI on the physical pad. Zlyme does not ship polkit. The D-Bus policy allows only root to own or call the service. `devices manage-all --enable` is the later SSH control that grabs the pad; without `--enable` it stops composites that are not auto-managed. The live routing and latency check is still open.
+Implemented. The 2026-09-26 SSH check on `root@192.168.0.108` is in `docs/research/inputplumber.md`. Boot order, grab, virtual `xb360` events, virtual rumble upload, and release all worked. Internal latency numbers were not emitted. Do not change the driver or the 2.5 ms poll until that review.
 
 ### 4C — NextUI handoff and player policy
 
