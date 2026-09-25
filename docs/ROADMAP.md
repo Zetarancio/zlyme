@@ -494,7 +494,10 @@ Phase 3C2b COMPLETE — 2026-09-25
 Phase 3C3 COMPLETE — 2026-09-25
 Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
-Phase 4 / InputPlumber NOT STARTED
+Phase 4A COMPLETE — InputPlumber packaged, not yet active
+Phase 4B NOT STARTED
+Phase 4C NOT STARTED
+Phase 4D NOT STARTED
 ```
 
 Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
@@ -1595,7 +1598,7 @@ Adopt InputPlumber for the application-policy goal:
 
 ### 4A — Package InputPlumber
 
-Package pinned InputPlumber and install the binary, the D-Bus policy, `default.yaml`, and the Flip composite-device file. Do not start it. Do not change NextUI, RetroArch, standalones, or the physical driver. Completion is a successful package build and a rootfs that contains those files. No device test.
+Complete. Buildroot `cargo-package` builds pinned v0.81.0 (`ea60d873cca17edd1cb655ede26f557108135252`). The image contains `/usr/bin/inputplumber`, the D-Bus policy, upstream `default.yaml`, and `20-zlyme_miyoo_flip.yaml`. That file is a CompositeDevice named Miyoo Flip Gamepad, matched by evdev name, `maximum_sources: 1`, `auto_manage: false`, `persist: false`, target `xb360`. Nothing starts it. No device test.
 
 ### 4B — Built-in controller integration and latency
 
