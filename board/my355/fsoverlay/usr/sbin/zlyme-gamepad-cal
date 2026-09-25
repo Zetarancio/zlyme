@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Restore or show Miyoo Flip gamepad calibration.
 #
-# The kernel never opens these files. A future calibration UI writes
-# each file by creating a temporary file, fsyncing it, and renaming it
-# into place. This helper only reads them.
+# The kernel never opens these files. Settings writes each file by
+# creating a temporary file, fsyncing it, and renaming it into place.
+# This helper only reads them and restores them after the first frame.
 #
 #   /storage/.config/zlyme/miyoo-flip-gamepad/joypad.config
 #   /storage/.config/zlyme/miyoo-flip-gamepad/joypad_right.config

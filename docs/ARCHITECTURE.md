@@ -305,8 +305,9 @@ A future board may expose the same `zlyme-audio` interface using completely diff
 
 The Miyoo Flip uses board-specific input integration:
 
-- ROCKNIX-derived joypad driver;
-- Miyoo serial controller protocol;
+- `miyoo-flip-gamepad`: UART sticks, GPIO buttons, calibration transform, fixed raw noise floor, live radial deadzone, and standard Linux input output;
+- Settings owns manual calibration, deadzone choice, persistence, and restore;
+- Phase 4 may later add InputPlumber as virtual-controller policy;
 - lid switch;
 - power key;
 - volume/brightness handling;

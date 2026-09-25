@@ -489,7 +489,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ### Status
 
-Phase 3A complete, 2026-09-23. Phase 3B complete, 2026-09-23. Phase 3C1 and Phase 3C2a complete, 2026-09-24, on `phase-3-gamepad`. Phase 3C2b and Phase 3C3 have not started.
+Phase 3A complete — 2026-09-23. Phase 3B complete — 2026-09-23. Phase 3C1 complete — 2026-09-24. Phase 3C2a complete — 2026-09-24. Phase 3C2b complete — 2026-09-25. Phase 3C3 has not started.
 
 ### 3B — Minimal new-driver tracer
 
@@ -857,7 +857,7 @@ It remains an internal driver correctness mechanism unless hardware measurements
 
 It is not the user-visible deadzone setting.
 
-Add a separate user-adjustable deadzone after per-axis calibration/normalization.
+The driver applies a separate user-adjustable deadzone after per-axis calibration/normalization.
 
 Conceptually:
 
@@ -921,9 +921,17 @@ outside radius:
 
 There must not be a discontinuous jump from zero to the deadzone percentage at the boundary.
 
-Test diagonal behavior explicitly. Do not silently introduce severe corner clipping or unexpected early saturation.
+The integer implementation uses no kernel floating point. Independent axis normalization can produce a vector whose radius is greater than `M` (32767), up to about `sqrt(2) * M`. Scaling that region with the circular formula makes the factor greater than 1 and can clamp a component before that axis has reached its own end.
 
-The exact integer implementation belongs in the driver and must avoid floating-point kernel code.
+The shipped transform is:
+
+```text
+r <= D:     output = 0
+D < r < M:  scaled radial remap
+r >= M:     input vector unchanged
+```
+
+It does not amplify `r >= M`. A circular stick near 45 degrees, about `0.707 M` on each axis, still uses the scaled remap. This outer-radius identity is a host math invariant, not a separate physical diagonal test.
 
 ##### Linux ABS metadata
 
@@ -1061,7 +1069,7 @@ rc.late
     -> Class-B background work
 ```
 
-`S26joypadcal` is already removed. Module loading stays with `modules-load.d`, and `rc.late` is the only boot restore owner. That move is not device-validated.
+`S26joypadcal` is removed. Module loading stays with `modules-load.d`, and `rc.late` is the only boot restore owner. On the 2026-09-25 validation boot, `nextui-first-flip` was 10.93 s, restore started at 10.95 s, and restore ended at 11.07 s, about 0.12 s. Restore stayed after the first-frame gate.
 
 `rc.late` calls `zlyme-gamepad-cal restore` once, immediately after the existing `wait_boot_list` gate returns and before Class-B `start_bg`. `wait_boot_list` returns on `nextui-first-flip` or after its existing ~20-second timeout. Do not add another calibration or deadzone wait. Restore is outside the first-frame path. If the frontend never flips, the existing timeout still lets late work proceed. Do not delay NextUI because boot runtime recenter has not finished, and do not assume the usual recenter duration.
 
@@ -1071,9 +1079,7 @@ Do not perform full min/zero/max calibration automatically at boot.
 
 ##### Settings integration
 
-Replace the standalone calibration PAK with a native Settings implementation after the integrated version is proven.
-
-The target submenu is:
+The product UI is Settings, not a Tool PAK. The submenu is:
 
 ```text
 Settings
@@ -1199,11 +1205,7 @@ The kernel should continue accepting any structurally safe calibration that sati
 
 Travel-quality policy belongs in the calibration UI.
 
-Joe's Calibrage used a 40-count minimum span for my355, but do not copy that number blindly as a new kernel invariant.
-
-Use the original-stick measurements and replacement-stick compatibility goal to choose and document a conservative UI quality threshold.
-
-The UI may warn/reject obviously incomplete range capture, but it must continue supporting asymmetric axes and must not assume all four axes have the same range.
+The implemented userspace travel-quality threshold is `CAL_MIN_SPAN = 40` raw counts on both axes. It is not a kernel invariant. Measured original-stick spans are about 177..221 counts, so 40 only rejects an obviously incomplete sweep. Asymmetric axes remain valid.
 
 ##### Live deadzone tuning UI
 
@@ -1439,9 +1441,15 @@ persistent calibration/deadzone restore end
 
 Restore begins after the existing first-frame gate and must not move `nextui-first-flip` later.
 
-Do not remove the old ROCKNIX driver in 3C2b.
+##### 3C2b closure — 2026-09-25
 
-Do not start Phase 3C3, Phase 3D, or Phase 4 while implementing this work.
+The gate above is complete. Closure uses the device checks, the user's end-to-end acceptance of the UI OTA at `25b34fd7ac8660e642eed7e470a5d28325f10e1d`, code review, host tests, and the image build. The diagonal-saturation correction is `8e288dc790bbbb02b8e3efba666f7e756774bb30` and is host-validated only.
+
+On that boot, `miyoo_flip_gamepad` was the only gamepad module, the UART port was open, `bad=0`, valid frames were increasing, and boot recenter had accepted all four axes. Saved six-field calibration survived the OTA. Resting output was `X=0 Y=0 RX=0 RY=0`. A runtime-only 30% deadzone on each stick kept the other stick at zero, moved the tested axis in the correct direction, and returned to zero on release. The saved `deadzone.config` checksum did not change during those sysfs writes. Settings save and cancel for both sticks matched the file. Restore ran from 10.95 s to 11.07 s, after `nextui-first-flip` at 10.93 s.
+
+`Autocal.pak` was absent from the card and the image. The unreleased Joystick Calibration PAK was absent from both. `/storage/.config/miyoo-serial-joypad/` was not on the validation card. Source audit shows neither restore nor `post-update.sh` deletes that directory. Settings backup runs `tar -acf /storage/zlyme-backup.tar.gz -C /storage .config`, so the gamepad files under `/storage/.config` are inside the general backup. There is no calibration `.bak` writer in the current UI.
+
+Do not remove the old ROCKNIX driver in 3C2b. Phase 3C3, Phase 3D, and Phase 4 have not started.
 
 #### 3C3 — FF_RUMBLE and final physical-driver feature gate
 

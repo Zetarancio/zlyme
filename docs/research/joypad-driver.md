@@ -1,6 +1,6 @@
-# Miyoo Flip gamepad — Phase 3A
+# Miyoo Flip gamepad
 
-Date: 2026-09-23. Research only. No driver, DTS, or kernel patch was changed.
+The original 2026-09-23 Phase 3A section was research-only. No driver, DTS, or kernel patch was changed for that entry. Later sections append implementation and physical validation for Phase 3B and Phase 3C.
 
 This document replaces the 2026-09-14 note that said to keep the ROCKNIX serial module. That recommendation is obsolete. The target is a Zlyme driver for the Flip's actual hardware.
 
@@ -375,8 +375,8 @@ The Flip DTS already binds `miyoo,flip-gamepad`. 3D finishes direct consumers an
 | --- | --- |
 | `board/my355/fsoverlay/etc/init.d/S26joypadcal` | stop owning persistent restore; remove it if nothing else remains |
 | `board/my355/fsoverlay/usr/sbin/zlyme-joypad-cal` | removed in this tree; no production caller remains |
-| `package/system/nextui/paks/Tools/Autocal.pak/` | replaced by `Joystick Calibration.pak` |
-| `scripts/pak-live-test.sh` | launches `Joystick Calibration.pak` for a smoke start/stop only |
+| `package/system/nextui/paks/Tools/Autocal.pak/` | replaced by Settings → System → Joysticks |
+| `scripts/pak-live-test.sh` | no Joystick Calibration PAK smoke test |
 
 Also audit repository license and example mentions of `Autocal.pak` in 3C2b. Do not rewrite historical provenance just to remove the name. The OTA removes the card copy of `Autocal.pak`. It does not delete `/storage/.config/miyoo-serial-joypad/`.
 
@@ -517,7 +517,7 @@ Uncalibrated fallback is min 0, saved zero 128, runtime zero 128, max 255. That 
 
 The runtime zero must remain strictly inside the active min/max, with both sides longer than the deadband. Checked on `zlyme43 (2026-09-23)`. A `restore` that would leave a `boot` or `apply` center outside the new ends returns `-ERANGE` and changes neither axis. A stable boot median outside the active range is not installed: runtime zero and source stay as they are, and the tracer shows terminal `range-rejected`. A stale right X range of 140/170/230 restored, the sampler found XR 114, and that center was rejected. XR stayed at 170 with source `persisted`. YR and the left stick accepted. The measured files then booted with runtime zeros 104/137/114/138, source `boot`, axes 0, the port open, and bad frames 0.
 
-Attributes `calibration_left` and `calibration_right` are mode `0644`. `raw_axes` is the read-only production sample, mode `0444`, one line `YL=<n> XL=<n> YR=<n> XR=<n>`. The tracer remains a diagnostic. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. Deadzone persistence is `deadzone.config` with `left` and `right` percentages, default 0 when the file is absent. The kernel does not open them. The 3C2a checkpoint ran restore from `S26joypadcal`. The current tree restores calibration and deadzone from `rc.late` after `wait_boot_list`, and the UI is Settings → System → Joysticks. `deadzone_left` and `deadzone_right` are runtime percentages 0..30 applied as a scaled radial deadzone after normalization. That Settings and deadzone path is implemented, hardware validation pending. It was not part of the 3C2a device tests.
+Attributes `calibration_left` and `calibration_right` are mode `0644`. `raw_axes` is the read-only production sample, mode `0444`, one line `YL=<n> XL=<n> YR=<n> XR=<n>`. The tracer remains a diagnostic. Files are `/storage/.config/zlyme/miyoo-flip-gamepad/joypad.config` and `joypad_right.config`, with `x_min`, `x_max`, `y_min`, `y_max`, `x_zero`, and `y_zero`. Deadzone persistence is `deadzone.config` with `left` and `right` percentages, default 0 when the file is absent. The kernel does not open them. The 3C2a checkpoint ran restore from `S26joypadcal`. The current tree restores calibration and deadzone from `rc.late` after `wait_boot_list`, and the UI is Settings → System → Joysticks. `deadzone_left` and `deadzone_right` are runtime percentages 0..30 applied as a scaled radial deadzone after normalization. Phase 3C2b closed that path on 2026-09-25. It was not part of the 3C2a device tests.
 
 Measured files, hashes unchanged through the gate:
 
@@ -534,7 +534,21 @@ Left reached raw 2 and 223 at ABS_X −32767 and +32767, and raw YL 25 at ABS_Y 
 
 A lid close did not enter kernel suspend. The later deep suspend did, and the calibration survived. Probe count stayed 1, the port stayed open, and bad frames stayed 0. The Mali regulator warning is unrelated.
 
-The Settings joystick UI adapts the Joe's Calibrage workflow (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken). It does not use Joe's UART backend. 3C3 rumble has not started. The integrated UI and radial deadzone are implemented, hardware validation pending.
+The Settings joystick UI adapts the Joe's Calibrage workflow (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken). It does not use Joe's UART backend. Checkpoint `3ef5bca` built an unreleased standalone Joystick Calibration PAK; that PAK is superseded and is not in the product image. FF_RUMBLE remains Phase 3C3 and has not started.
+
+## Phase 3C2b — integrated calibration and deadzone
+
+Complete 2026-09-25.
+
+Final UI revision: `25b34fd7ac8660e642eed7e470a5d28325f10e1d`.
+
+Diagonal-saturation correction: `8e288dc790bbbb02b8e3efba666f7e756774bb30`. Independent axis normalization can produce `r > 32767`. The earlier circular scale amplified that region and could clamp a component early. The shipped transform leaves `r >= 32767` unchanged and scales only `D < r < 32767`. That invariant is host-tested. There was no separate physical diagonal test after the correction.
+
+Physical evidence on the installed OTA, accepted as the end-to-end gate: only `miyoo_flip_gamepad` loaded, UART open, `bad=0`, valid frames increasing, boot recenter accepted all four axes, saved six-field calibration survived. Resting raw was XL 110, YL 133, XR 113..114, YR 138, matching runtime centers 110, 133, 113, 138, source `boot`, final output all zero. Saved deadzones were left 16% and right 10%. A runtime-only 30% test on each stick kept the other stick at zero, produced a same-direction axis reading while held out, and returned to zero on release. `deadzone.config` stayed checksum `3187357485 17` through those sysfs writes. Settings save and cancel then matched: left 5% with right 10% (`2988165557 16`), cancel from 20% restored 5%; right 8% with left 5% (`542019427 15`), cancel from 1% restored 8%. `nextui-first-flip` was 10.93 s, restore 10.95 s to 11.07 s. Autocal and the unreleased Joystick Calibration PAK were absent from the card and the image. `/storage/.config/miyoo-serial-joypad/` was not on that card; neither restore nor the OTA hook deletes it.
+
+The user accepted the UI OTA at `25b34fd` as satisfactory end to end: launch and exit, held D-pad repeat, centered calibration dot, readable calibration text, and NextUI A/B hints.
+
+Still outside 3C2b: FF_RUMBLE is 3C3, old ROCKNIX driver removal is 3D, Switch replacement-stick hardware validation is still open, and InputPlumber is Phase 4.
 
 ## Open measurements
 
