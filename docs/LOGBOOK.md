@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-25 — Phase 4A InputPlumber package
+
+InputPlumber v0.81.0, commit `ea60d873cca17edd1cb655ede26f557108135252`, is built with Buildroot `cargo-package` and Rust 1.88. The binary links libudev and libiio. host-clang supplies libclang for the uhidrs-sys bindgen step. The IIO daemon is not enabled. Installed files are the binary, `org.shadowblip.InputPlumber.conf`, upstream `profiles/default.yaml`, and `devices/20-zlyme_miyoo_flip.yaml`. That composite device matches the evdev name Miyoo Flip Gamepad, does not auto-manage, does not persist, and targets `xb360`. Init, udev autostart, NextUI, and the gamepad driver were not changed. Phase 4B has not started.
+
 ## 2026-09-25 — Phase 4 InputPlumber architecture
 
 InputPlumber is the application-facing controller layer. That is a project decision, not a trial against a no-InputPlumber design. `hid-nintendo` remains the Switch Pro report-mode fix. Batocera and KNULLI, as inspected on this date, do not package InputPlumber; they generate per-emulator controller config instead. Zlyme uses InputPlumber for normalization, exclusive ownership, virtual identity, hotplug, and player order.
