@@ -305,7 +305,7 @@ A future board may expose the same `zlyme-audio` interface using completely diff
 
 The Miyoo Flip uses board-specific input integration:
 
-- `miyoo-flip-gamepad`: UART sticks, GPIO buttons, calibration transform, fixed raw noise floor, live radial deadzone, and standard Linux input output;
+- `miyoo-flip-gamepad`: UART sticks, GPIO buttons, calibration transform, fixed raw noise floor, live radial deadzone, standard Linux input output, and `FF_RUMBLE` on PWM5 through ff-memless `FF_GAIN`;
 - Settings owns manual calibration, deadzone choice, persistence, and restore;
 - Phase 4 may later add InputPlumber as virtual-controller policy;
 - lid switch;

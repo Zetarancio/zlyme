@@ -489,7 +489,14 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ### Status
 
-Phase 3A complete — 2026-09-23. Phase 3B complete — 2026-09-23. Phase 3C1 complete — 2026-09-24. Phase 3C2a complete — 2026-09-24. Phase 3C2b complete — 2026-09-25. Phase 3C3 is implemented and waiting on physical validation. Phase 3D and Phase 4 have not started.
+```text
+Phase 3C2b COMPLETE — 2026-09-25
+Phase 3C3 IMPLEMENTED — HARDWARE VALIDATION PENDING
+Phase 3D NOT STARTED
+Phase 4 / InputPlumber NOT STARTED
+```
+
+Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
 
 ### 3B — Minimal new-driver tracer
 
@@ -1449,34 +1456,29 @@ On that boot, `miyoo_flip_gamepad` was the only gamepad module, the UART port wa
 
 `Autocal.pak` was absent from the card and the image. The unreleased Joystick Calibration PAK was absent from both. `/storage/.config/miyoo-serial-joypad/` was not on the validation card. Source audit shows neither restore nor `post-update.sh` deletes that directory. Settings backup runs `tar -acf /storage/zlyme-backup.tar.gz -C /storage .config`, so the gamepad files under `/storage/.config` are inside the general backup. There is no calibration `.bak` writer in the current UI.
 
-Do not remove the old ROCKNIX driver in 3C2b. Phase 3C3, Phase 3D, and Phase 4 have not started.
+Do not remove the old ROCKNIX driver in 3C2b. Phase 3D and Phase 4 have not started. Phase 3C3 is implemented and still needs a physical motor test.
 
 #### 3C3 — FF_RUMBLE and final physical-driver feature gate
 
-Implement standard Linux:
+Implemented. Hardware validation is still open. Do not treat 3C3 as complete.
 
 ```text
 FF_RUMBLE
+    ->
+ff-memless / standard FF_GAIN
+    ->
+single PWM5 motor
+Settings:
+    persisted global gain
+InputPlumber:
+    later routing only
 ```
 
-through PWM5 on the physical `Miyoo Flip Gamepad`.
+The kernel driver owns the physical mechanism on the existing `Miyoo Flip Gamepad` device. PWM5 comes from the Flip DTS (`pwms = <&pwm5 0 10000000 0>`, consumer `enable`, period 10 ms, normal polarity). `input_ff_create_memless()` advertises `FF_GAIN`, defaults it to `0xffff`, and applies that gain before the play callback. The callback does not sleep: it caches strong-if-nonzero else weak, then schedules work. The worker maps `0x0000..0xffff` to PWM duty with `pwm_set_relative_duty_cycle()` and does not change the period. Level 0 disables PWM. Close, remove, and probe failure leave the motor off. Suspend cancels the worker and disables PWM but keeps the cached level; resume restarts that level, matching `pwm-vibra`. A permanent PWM claim failure leaves buttons and sticks up and does not advertise `FF_RUMBLE`. `-EPROBE_DEFER` still defers probe. There is no custom `rumble_strength` sysfs and no rumble daemon.
 
-Keep force-feedback mechanism in the kernel and application policy in userspace.
+Userspace gain is `gain=N` (`N` 0..100) in `/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config`. A missing file means 100% and is not created at boot. An invalid file is reported and stays at 100%. Settings → System → Joysticks has Rumble Strength (10% steps, live apply, A saves, B restores the value from screen open) and Test Rumble (about 250 ms, full effect magnitude, so `FF_GAIN` still scales it). `rc.late` runs `zlyme-gamepad-ff restore` after calibration restore and after `nextui-first-flip`. `PLAT_setRumble()` can open `Miyoo Flip Gamepad` and still accepts the legacy `retrogame` name. `VIB_doublePulse` / `VIB_triplePulse` scale twice if called, but nothing calls them.
 
-Validate:
-
-```text
-weak rumble
-strong rumble
-stop
-repeated playback
-game/application request path
-suspend/resume
-no stuck PWM
-clean driver removal/error recovery
-```
-
-After calibration and rumble feature parity are complete, Phase 3D owns the final frontend/cutover work and removal of the old ROCKNIX implementation.
+Physical validation still has to prove motor strength, duration, gain, persistence, boot restore, suspend/resume, and no stuck PWM. Weak, strong, and full-scale behavior are not claimed. Phase 3D still owns the broad name cutover and old ROCKNIX driver removal.
 
 Remaining sequence:
 

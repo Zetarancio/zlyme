@@ -548,7 +548,21 @@ Physical evidence on the installed OTA, accepted as the end-to-end gate: only `m
 
 The user accepted the UI OTA at `25b34fd` as satisfactory end to end: launch and exit, held D-pad repeat, centered calibration dot, readable calibration text, and NextUI A/B hints.
 
-Still outside 3C2b: FF_RUMBLE is 3C3, old ROCKNIX driver removal is 3D, Switch replacement-stick hardware validation is still open, and InputPlumber is Phase 4.
+Still outside 3C2b: old ROCKNIX driver removal is 3D, Switch replacement-stick hardware validation is still open, and InputPlumber is Phase 4. FF_RUMBLE is implemented in 3C3 and is not hardware-validated.
+
+## Phase 3C3 — FF_RUMBLE
+
+Implemented. Physical motor behavior is not validated.
+
+Linux 7.0.2 `input_ff_create_memless()` sets `FF_GAIN`, defaults gain to `0xffff`, and scales `FF_RUMBLE` magnitudes by that gain before the play callback. The callback runs under `input_dev->event_lock` (`ml_effect_timer` uses `spinlock_irqsave`; `ml_ff_set_gain` and `ml_ff_playback` are called with that lock held). It must not sleep. Memless also sets `FF_PERIODIC` and the sine/triangle/square bits when `FF_RUMBLE` is present. That is upstream emulation, not a second motor.
+
+PWM5 is the Flip DTS consumer `enable`: `pwms = <&pwm5 0 10000000 0>`, period 10 ms, polarity 0. The driver does not pick a new period. One motor uses the `pwm-vibra` rule: strong magnitude if it is nonzero, otherwise weak. Duty is `pwm_set_relative_duty_cycle(level, 0xffff)`. Level 0 disables PWM. The worker calls `pwm_apply_might_sleep`. Suspend cancels that work and turns PWM off without clearing the cached level. Resume applies the cached level again, then reopens UART. Close and remove clear the level and turn PWM off. If PWM cannot be claimed, except `-EPROBE_DEFER`, the pad stays up and `FF_RUMBLE` is not advertised.
+
+`/usr/sbin/zlyme-gamepad-ff` writes `EV_FF` / `FF_GAIN` and uploads a short `FF_RUMBLE` test. It opens the device named exactly `Miyoo Flip Gamepad` only when both `FF_RUMBLE` and `FF_GAIN` are present. Persistence is `gain=0..100` in `rumble.config`, same temp/fsync/rename contract as the other gamepad files. Missing means 100% and does not create the file. `rc.late` restores it after calibration restore. Settings owns the 0–100% choice. `PLAT_setRumble()` prefers that exact name and still falls back to a name containing `retrogame`. InputPlumber does not own this gain.
+
+`VIB_doublePulse` and `VIB_triplePulse` pass an already scaled strength into `VIB_singlePulse`, which scales again. No caller uses those two helpers. `VIB_singlePulse` itself is used and was left alone.
+
+Not claimed until a Flip test: weak versus strong versus 100% duty, Test Rumble following the saved gain, save/cancel, reboot restore after first frame, effect stop, repeated and rapid changes, suspend while rumbling, resume, idle suspend, teardown with the motor off, and UART `bad=0` through that test.
 
 ## Open measurements
 
