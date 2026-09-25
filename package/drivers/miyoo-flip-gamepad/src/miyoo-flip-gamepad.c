@@ -236,8 +236,10 @@ static int mf_scale(int raw, const struct mf_axis *ax)
 
 /*
  * Scaled radial deadzone after independent axis normalization.
- * pct 0 returns the vector unchanged. Inside D both axes are 0.
- * Outside, ((r-D)*M)/(r*(M-D)) remaps the remainder to full travel.
+ * pct 0 returns the vector unchanged. r <= D is 0,0.
+ * D < r < M uses ((r-D)*M)/(r*(M-D)).
+ * r >= M is unchanged: independent axes can form a vector
+ * longer than M, and scaling that region would amplify it.
  */
 static void mf_radial(int pct, int *x, int *y)
 {
@@ -260,6 +262,8 @@ static void mf_radial(int pct, int *x, int *y)
 		*y = 0;
 		return;
 	}
+	if ((s64)r >= MF_ABS_RANGE)
+		return;
 	num = ((s64)r - d) * MF_ABS_RANGE;
 	den = (s64)r * (MF_ABS_RANGE - d);
 	ox = (int)div_s64(xs * num, den);
