@@ -307,7 +307,7 @@ The Miyoo Flip uses board-specific input integration:
 
 - `miyoo-flip-gamepad` is the physical layer: UART sticks, GPIO buttons, calibration transform, radial deadzone, and `FF_RUMBLE` on PWM5 through ff-memless `FF_GAIN`;
 - Settings owns calibration, deadzone, and displayed Rumble Strength. The product default is displayed 30%, mapped to `FF_GAIN` by the userspace curve. A saved `rumble.config` is kept. Fresh Haptic feedback is on. An existing `haptics=` value is kept. Haptic feedback only gates NextUI's own pulses;
-- Phase 4 InputPlumber is the planned virtual P1 for emulators and standalones. They should not bind to the physical `Miyoo Flip Gamepad` name. NextUI may keep the physical path until that design says otherwise;
+- The retired ROCKNIX gamepad package is not part of the product. Phase 4 InputPlumber is the planned virtual controller for NextUI, emulators, and standalones. Settings → Joysticks stays on the physical pad. NextUI uses the physical device until that handoff is ready;
 - lid switch;
 - power key;
 - volume/brightness handling;

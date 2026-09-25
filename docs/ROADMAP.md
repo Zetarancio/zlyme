@@ -492,7 +492,8 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 ```text
 Phase 3C2b COMPLETE — 2026-09-25
 Phase 3C3 COMPLETE — 2026-09-25
-Phase 3D NOT STARTED
+Phase 3D COMPLETE — 2026-09-25
+Phase 3 COMPLETE — 2026-09-25
 Phase 4 / InputPlumber NOT STARTED
 ```
 
@@ -1491,7 +1492,11 @@ Remaining sequence:
 
 ### 3D — Physical-input cutover and legacy cleanup
 
-After 3C, remove the old ROCKNIX gamepad from the normal product and drop migration fallbacks that still look for it. The physical driver, calibration, deadzone, and rumble are already accepted. Do not repeat those hardware tests here.
+Complete 2026-09-25. The old ROCKNIX package is not in the tree. The image must not contain `rocknix-singleadc-joypad.ko`. OTA deletes Autocal, the old serial-joypad config directory, and a hot-copied copy of that module. Current settings stay in `/storage/.config/zlyme/miyoo-flip-gamepad/`.
+
+`CONFIG_KEYBOARD_GPIO_POLLED=y` still needs the `input-polldev` patch, so that patch stays. The adc-keys keycode redirect is unused on the Flip, which has no `adc-keys` node, and remains for Phase 5 rather than a kernel re-extract in this cutover. Non-Flip dts-overrides that still mention the old compatible are not the product image.
+
+After 3C, the physical driver, calibration, deadzone, and rumble are already accepted. Do not repeat those hardware tests here.
 
 3D owns:
 
@@ -1566,7 +1571,13 @@ stable virtual P1
         +-> native and PAK applications that need a controller
 ```
 
-Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns virtual identity, P1 assignment, built-in and external composition, exclusive grabs, consistent mapping, hotplug, and the application-facing ABI. NextUI may keep using the physical device until a later Phase 4 design says otherwise. Do not decide that here.
+Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns the physical sources, then exposes virtual controllers. After the handoff, NextUI, RetroArch, standalones, and PAK applications that need a controller use that virtual device. Settings → System → Joysticks stays on the physical built-in pad and its sysfs for calibration, deadzone, and rumble. Entering that screen should unmanage only the internal source. Leaving it restores InputPlumber. Do not stop every controller to calibrate one stick if a per-device control exists.
+
+P1 is a Zlyme policy, not an event-number accident. With no external controller, the built-in pad is P1. If any external controller is connected, external controllers come first, in connection order unless InputPlumber has a stronger stable order, and the built-in pad is last. Do not use `/dev/input/eventN` as priority. HDMI does not change this. An HDMI cable with no external controller leaves the built-in pad as P1.
+
+Do not require a Switch Pro, DualShock, DualSense, or hotplug test on this unit. Match external devices through InputPlumber's own interfaces and say they are not physically validated here. The device test is the built-in pad: InputPlumber sees it, the virtual target appears, normal consumers do not also see the physical source, buttons and sticks match, rumble returns to the motor if the target supports it, and a supported unmanage/manage of the internal source drops and restores virtual input. Do not unload `miyoo-flip-gamepad` to simulate that.
+
+InputPlumber starts after the current first frame. NextUI keeps the physical path until the virtual controller is ready, then closes that handle and uses the virtual device. One owner at a time. Measure startup, time to a usable virtual pad, RSS, and wakeups before making InputPlumber block the first frame.
 
 This is an intentional Zlyme design choice relative to historical implementations. Do not infer the current official ROCKNIX state without fresh research.
 

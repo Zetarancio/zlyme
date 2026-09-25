@@ -49,6 +49,8 @@ Each community pak below was ported (paths, Flip joystick, this image’s binari
 - **Files** — browse the card.  [vtree](https://github.com/MustardOS/vtree).
 - **Settings → System → Joysticks** — stick test, manual calibration, live deadzone, and Rumble Strength. A fresh install uses displayed 30% motor gain. A saved value is kept. **Settings → System → Haptic feedback** defaults to on and only turns NextUI's own pulses on or off. The calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 
+Zlyme uses its own Miyoo Flip gamepad driver. Buttons are GPIO-backed. The two analog sticks use the Flip UART protocol. Settings provides stick testing, calibration, a deadzone for each stick, Rumble Strength, and Test Rumble. Rumble is standard Linux force feedback. Switch replacement sticks are not called physically validated.
+
 **Settings → Update** pulls a GitHub release (or prerelease) tar, shows notes, draws a progress bar, and only queues the file after sha256 matches.
 
 ### Install

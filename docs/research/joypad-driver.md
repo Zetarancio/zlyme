@@ -534,7 +534,7 @@ Left reached raw 2 and 223 at ABS_X −32767 and +32767, and raw YL 25 at ABS_Y 
 
 A lid close did not enter kernel suspend. The later deep suspend did, and the calibration survived. Probe count stayed 1, the port stayed open, and bad frames stayed 0. The Mali regulator warning is unrelated.
 
-The Settings joystick UI adapts the Joe's Calibrage workflow (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken). It does not use Joe's UART backend. Checkpoint `3ef5bca` built an unreleased standalone Joystick Calibration PAK; that PAK is superseded and is not in the product image. FF_RUMBLE is implemented on `miyoo-flip-gamepad` through ff-memless and PWM5. `FF_GAIN` is the user strength control. Physical motor behavior is not yet validated. Phase 3D and InputPlumber have not started.
+The Settings joystick UI adapts the Joe's Calibrage workflow (`205f662c9ab7334229787e024e3556ee00272aad`, MIT, Copyright (c) 2026 Kevin Vranken). It does not use Joe's UART backend. Checkpoint `3ef5bca` built an unreleased standalone Joystick Calibration PAK; that PAK is superseded and is not in the product image. FF_RUMBLE is implemented on `miyoo-flip-gamepad` through ff-memless and PWM5. `FF_GAIN` is the user strength control. Physical motor behavior was validated in Phase 3C3. Phase 3D removed the old ROCKNIX driver from the product. InputPlumber has not started.
 
 ## Phase 3C2b — integrated calibration and deadzone
 

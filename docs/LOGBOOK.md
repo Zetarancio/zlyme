@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-25 — Phase 3D and Phase 3 closure
+
+Phase 3 is complete. The built-in gamepad is `miyoo-flip-gamepad` / `Miyoo Flip Gamepad`. The ROCKNIX package is gone from the tree and is not a product module. OTA removes Autocal.pak, `/storage/.config/miyoo-serial-joypad/`, and a hot-copied `rocknix-singleadc-joypad.ko`. It does not touch `/storage/.config/zlyme/miyoo-flip-gamepad/`. `zlyme-gamepad-ff gain` accepts only an integer 0..100. Direct lid and pak-hotkey lookups use the Flip name. Rumble prefers that name and keeps a generic `FF_RUMBLE` fallback that is not the retired driver.
+
+`input-polldev` stays because `CONFIG_KEYBOARD_GPIO_POLLED` is still enabled. The adc-keys redirect toward the old joypad stays in the tree as dead code on this board: the Flip has no `adc-keys` node. Both are Phase 5 kernel cleanup, not a reason to keep the old module. RetroArch and PICO files that still mention `retrogame_joypad` are application mappings for Phase 4, not the kernel driver.
+
+No new Flip test was run for this cutover. The physical gate is the evidence from Phase 3B through 3C3. Phase 4 has not started.
+
 ## 2026-09-25 — Phase 3C3 rumble closure
 
 Phase 3C3 is complete. The physical Flip tests accepted `FF_RUMBLE` and `FF_GAIN` on `Miyoo Flip Gamepad`, Settings Rumble Strength, Test Rumble, save, reboot persistence, 0% silent, compensated 10% weak but perceptible, and 50% then 100% stronger. UART `bad` stayed 0, sticks stayed centered, and calibration and deadzone files were unchanged. Standard gamepad suspend/resume had already passed earlier in Phase 3. Suspend while an effect was playing, and forced module removal while rumbling, were not repeated. Source review shows suspend and remove cancel the rumble worker and turn PWM off. Those cases are not closure blockers.
