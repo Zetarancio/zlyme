@@ -47,11 +47,30 @@ int ff_parse_gain(const char *text, int *pct)
 	return bad ? -1 : 0;
 }
 
+int ff_effective_gain_percent(int user)
+{
+	int num, rounded;
+
+	if (user < 0 || user > 100)
+		return -1;
+	if (user == 0)
+		return 0;
+	/* 15 + (user-10)*85/90, nearest integer. 10 -> 15, 100 -> 100. */
+	num = (user - 10) * 85;
+	if (num >= 0)
+		rounded = (num + 45) / 90;
+	else
+		rounded = -(((-num) + 45) / 90);
+	return 15 + rounded;
+}
+
 int ff_gain_value(int pct)
 {
-	if (pct < 0 || pct > 100)
+	int effective = ff_effective_gain_percent(pct);
+
+	if (effective < 0)
 		return -1;
-	return (int)((unsigned)0xffff * (unsigned)pct / 100);
+	return (int)((unsigned)0xffff * (unsigned)effective / 100);
 }
 
 unsigned ff_motor_level(unsigned strong, unsigned weak)

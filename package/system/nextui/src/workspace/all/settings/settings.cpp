@@ -602,7 +602,7 @@ int main(int argc, char *argv[])
             [](const std::any &value)
             { CFG_setClock24H(std::any_cast<bool>(value)); },
             []() { CFG_setClock24H(CFG_DEFAULT_CLOCK24H);}},
-            new MenuItem{ListItemType::Generic, "Haptic feedback", "Enable or disable haptic feedback on certain actions in the OS", {false, true}, on_off, []() -> std::any
+            new MenuItem{ListItemType::Generic, "Haptic feedback", "Enable or disable NextUI haptic feedback. Strength follows Joysticks > Rumble Strength.", {false, true}, on_off, []() -> std::any
             { return CFG_getHaptics(); }, [](const std::any &value)
             { CFG_setHaptics(std::any_cast<bool>(value)); },
             []() { CFG_setHaptics(CFG_DEFAULT_HAPTICS);}},
