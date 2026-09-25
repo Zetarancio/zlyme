@@ -731,12 +731,26 @@ static int mf_rumble_play(struct input_dev *dev, void *data,
 	return 0;
 }
 
+/* Drop a requested level and force PWM off. Used when the device closes
+ * or the driver goes away, not across suspend.
+ */
 static void mf_rumble_stop(struct mf_pad *pad)
 {
 	if (!pad->rumble_ok)
 		return;
 	cancel_work_sync(&pad->rumble_work);
 	WRITE_ONCE(pad->rumble_level, 0);
+	mf_pwm_off(pad);
+}
+
+/* Same as pwm-vibra: cancel the worker and disable PWM, but keep the
+ * cached level so resume can restart a still-active effect.
+ */
+static void mf_rumble_quiesce(struct mf_pad *pad)
+{
+	if (!pad->rumble_ok)
+		return;
+	cancel_work_sync(&pad->rumble_work);
 	mf_pwm_off(pad);
 }
 
@@ -1328,7 +1342,7 @@ static int mf_suspend(struct device *dev)
 {
 	struct mf_pad *pad = serdev_device_get_drvdata(to_serdev_device(dev));
 
-	mf_rumble_stop(pad);
+	mf_rumble_quiesce(pad);
 	mf_port_close(pad);
 	return 0;
 }
