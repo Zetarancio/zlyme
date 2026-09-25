@@ -7,7 +7,7 @@
  * One input device:
  *   UART1 serdev, 9600 8N1, frames FF YL XL YR XR FE
  *   seventeen GPIO buttons, interrupt plus software debounce
- *   PWM5 claimed and held off (FF_RUMBLE playback is later)
+ *   PWM5 FF_RUMBLE through ff-memless (FF_GAIN is the memless gain)
  *
  * Calibration lives in userspace files. This driver never opens them.
  * min/max and saved_zero are the persistent travel and center.
@@ -151,6 +151,9 @@ struct mf_pad {
 	struct serdev_device *serdev;
 	struct input_dev *input;
 	struct pwm_device *pwm;
+	struct work_struct rumble_work;
+	u16 rumble_level;
+	bool rumble_ok;
 	struct mf_btn buttons[MF_MAX_BUTTONS];
 	unsigned int nbuttons;
 	struct mf_axis axis[MF_AXES];
@@ -673,25 +676,104 @@ static int mf_buttons_irqs(struct mf_pad *pad)
 	return 0;
 }
 
-static void mf_pwm_hold_off(struct mf_pad *pad)
+static int mf_pwm_off(struct mf_pad *pad)
+{
+	struct pwm_state state;
+
+	if (!pad->pwm)
+		return 0;
+	pwm_get_state(pad->pwm, &state);
+	state.enabled = false;
+	state.duty_cycle = 0;
+	return pwm_apply_might_sleep(pad->pwm, &state);
+}
+
+static int mf_pwm_level(struct mf_pad *pad, u16 level)
+{
+	struct pwm_state state;
+	int ret;
+
+	if (!pad->pwm)
+		return -ENODEV;
+	if (!level)
+		return mf_pwm_off(pad);
+	pwm_get_state(pad->pwm, &state);
+	ret = pwm_set_relative_duty_cycle(&state, level, 0xffff);
+	if (ret)
+		return ret;
+	state.enabled = true;
+	return pwm_apply_might_sleep(pad->pwm, &state);
+}
+
+static void mf_rumble_work(struct work_struct *work)
+{
+	struct mf_pad *pad = container_of(work, struct mf_pad, rumble_work);
+
+	if (mf_pwm_level(pad, READ_ONCE(pad->rumble_level)))
+		dev_warn(pad->dev, "pwm5 rumble apply failed\n");
+}
+
+/*
+ * ff-memless calls this under event_lock. PWM apply sleeps, so only
+ * cache the already gain-adjusted magnitude and wake the worker.
+ * One motor: strong if set, otherwise weak. Same rule as pwm-vibra.
+ */
+static int mf_rumble_play(struct input_dev *dev, void *data,
+			  struct ff_effect *effect)
+{
+	struct mf_pad *pad = input_get_drvdata(dev);
+	u16 level = effect->u.rumble.strong_magnitude;
+
+	if (!level)
+		level = effect->u.rumble.weak_magnitude;
+	WRITE_ONCE(pad->rumble_level, level);
+	schedule_work(&pad->rumble_work);
+	return 0;
+}
+
+static void mf_rumble_stop(struct mf_pad *pad)
+{
+	if (!pad->rumble_ok)
+		return;
+	cancel_work_sync(&pad->rumble_work);
+	WRITE_ONCE(pad->rumble_level, 0);
+	mf_pwm_off(pad);
+}
+
+static void mf_input_close(struct input_dev *dev)
+{
+	mf_rumble_stop(input_get_drvdata(dev));
+}
+
+/* Claim PWM5 and leave it off. -EPROBE_DEFER propagates. Other errors
+ * keep the pad without advertising FF_RUMBLE.
+ */
+static int mf_pwm_prepare(struct mf_pad *pad)
 {
 	struct pwm_state state;
 	int ret;
 
 	pad->pwm = devm_pwm_get(pad->dev, "enable");
 	if (IS_ERR(pad->pwm)) {
-		dev_warn(pad->dev, "pwm5 not claimed: %ld\n",
-			 PTR_ERR(pad->pwm));
+		ret = PTR_ERR(pad->pwm);
 		pad->pwm = NULL;
-		return;
+		if (ret == -EPROBE_DEFER)
+			return ret;
+		dev_warn(pad->dev, "pwm5 not claimed: %d; no rumble\n", ret);
+		return 0;
 	}
-
 	pwm_init_state(pad->pwm, &state);
 	state.enabled = false;
 	state.duty_cycle = 0;
 	ret = pwm_apply_might_sleep(pad->pwm, &state);
-	if (ret)
-		dev_warn(pad->dev, "pwm5 off failed: %d\n", ret);
+	if (ret) {
+		dev_warn(pad->dev, "pwm5 off failed: %d; no rumble\n", ret);
+		pad->pwm = NULL;
+		return 0;
+	}
+	INIT_WORK(&pad->rumble_work, mf_rumble_work);
+	pad->rumble_ok = true;
+	return 0;
 }
 
 static const char *mf_boot_word(u8 state)
@@ -1184,6 +1266,19 @@ static int mf_probe(struct serdev_device *serdev)
 	if (ret)
 		dev_warn(dev, "some buttons failed to request\n");
 
+	ret = mf_pwm_prepare(pad);
+	if (ret)
+		return ret;
+	if (pad->rumble_ok) {
+		input_set_capability(pad->input, EV_FF, FF_RUMBLE);
+		pad->input->close = mf_input_close;
+		ret = input_ff_create_memless(pad->input, NULL, mf_rumble_play);
+		if (ret) {
+			dev_warn(dev, "ff-memless failed: %d; no rumble\n", ret);
+			pad->rumble_ok = false;
+		}
+	}
+
 	ret = input_register_device(pad->input);
 	if (ret)
 		return ret;
@@ -1201,8 +1296,6 @@ static int mf_probe(struct serdev_device *serdev)
 		mf_buttons_stop(pad);
 		return ret;
 	}
-
-	mf_pwm_hold_off(pad);
 
 	ret = device_add_group(dev, &mf_attr_group);
 	if (ret) {
@@ -1227,6 +1320,7 @@ static void mf_remove(struct serdev_device *serdev)
 
 	device_remove_group(&serdev->dev, &mf_attr_group);
 	mf_port_close(pad);
+	mf_rumble_stop(pad);
 	mf_buttons_stop(pad);
 }
 
@@ -1234,6 +1328,7 @@ static int mf_suspend(struct device *dev)
 {
 	struct mf_pad *pad = serdev_device_get_drvdata(to_serdev_device(dev));
 
+	mf_rumble_stop(pad);
 	mf_port_close(pad);
 	return 0;
 }
@@ -1243,6 +1338,8 @@ static int mf_resume(struct device *dev)
 	struct mf_pad *pad = serdev_device_get_drvdata(to_serdev_device(dev));
 	int ret;
 
+	if (pad->rumble_ok && READ_ONCE(pad->rumble_level))
+		mf_pwm_level(pad, pad->rumble_level);
 	ret = mf_port_open(pad);
 	if (ret)
 		dev_err(dev, "resume serdev open failed: %d; buttons stay available\n",
