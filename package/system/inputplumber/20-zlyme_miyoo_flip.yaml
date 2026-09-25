@@ -8,6 +8,7 @@ options:
   persist: false
 source_devices:
   - group: gamepad
+    capability_map_id: zlyme_miyoo_flip
     evdev:
       name: Miyoo Flip Gamepad
 target_devices:
