@@ -489,7 +489,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ### Status
 
-Phase 3A complete — 2026-09-23. Phase 3B complete — 2026-09-23. Phase 3C1 complete — 2026-09-24. Phase 3C2a complete — 2026-09-24. Phase 3C2b complete — 2026-09-25. Phase 3C3 has not started.
+Phase 3A complete — 2026-09-23. Phase 3B complete — 2026-09-23. Phase 3C1 complete — 2026-09-24. Phase 3C2a complete — 2026-09-24. Phase 3C2b complete — 2026-09-25. Phase 3C3 is implemented and waiting on physical validation. Phase 3D and Phase 4 have not started.
 
 ### 3B — Minimal new-driver tracer
 
