@@ -1,0 +1,14 @@
+version: 1
+kind: CompositeDevice
+name: Miyoo Flip Gamepad
+matches: []
+maximum_sources: 1
+options:
+  auto_manage: false
+  persist: false
+source_devices:
+  - group: gamepad
+    evdev:
+      name: Miyoo Flip Gamepad
+target_devices:
+  - xb360

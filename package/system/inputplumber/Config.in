@@ -1,0 +1,15 @@
+config BR2_PACKAGE_INPUTPLUMBER
+	bool "inputplumber"
+	depends on BR2_PACKAGE_HOST_RUSTC_TARGET_ARCH_SUPPORTS
+	select BR2_PACKAGE_HOST_RUSTC
+	select BR2_PACKAGE_EUDEV
+	select BR2_PACKAGE_LIBIIO
+	select BR2_PACKAGE_DBUS
+	help
+	  InputPlumber v0.81.0, packaged for later built-in controller
+	  integration. The image does not start it.
+
+	  https://github.com/ShadowBlip/InputPlumber
+
+comment "inputplumber needs a Rust-supported target"
+	depends on !BR2_PACKAGE_HOST_RUSTC_TARGET_ARCH_SUPPORTS
