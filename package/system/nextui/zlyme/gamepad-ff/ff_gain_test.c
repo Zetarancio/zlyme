@@ -22,6 +22,14 @@ int main(void)
 	expect(ff_parse_gain("gain=10\n", &pct) == 0 && pct == 10, "ten");
 	expect(ff_parse_gain("gain=30\n", &pct) == 0 && pct == 30, "thirty");
 	expect(ff_parse_gain("gain=100\n", &pct) == 0 && pct == 100, "full");
+	expect(ff_parse_percent_token("0", &pct) == 0 && pct == 0, "tok 0");
+	expect(ff_parse_percent_token("10", &pct) == 0 && pct == 10, "tok 10");
+	expect(ff_parse_percent_token("30", &pct) == 0 && pct == 30, "tok 30");
+	expect(ff_parse_percent_token("100", &pct) == 0 && pct == 100, "tok 100");
+	expect(ff_parse_percent_token("abc", &pct) != 0, "tok abc");
+	expect(ff_parse_percent_token("10x", &pct) != 0, "tok 10x");
+	expect(ff_parse_percent_token("-1", &pct) != 0, "tok neg");
+	expect(ff_parse_percent_token("101", &pct) != 0, "tok 101");
 	expect(ff_parse_gain("gain=101\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "101");
 	expect(ff_parse_gain("gain=-1\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "negative");
 	expect(ff_parse_gain("gain=abc\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "junk");

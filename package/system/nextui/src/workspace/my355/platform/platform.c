@@ -145,8 +145,8 @@ void PLAT_initInput(void) {
 	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0)
 		LOG_error("Failed initializing joysticks: %s\n", SDL_GetError());
 	SDL_JoystickEventState(SDL_ENABLE);
-	/* Open on SDL_JOYDEVICEADDED only. Opening here AND on ADDED
-	 * duplicated retrogame_joypad (init + hotplug) in the log. */
+	/* Open on SDL_JOYDEVICEADDED only. Opening here and on ADDED
+	 * duplicated the gamepad in the log. */
 }
 
 void PLAT_quitInput(void) {
@@ -479,7 +479,7 @@ void PLAT_setCPUSpeed(int speed) {
 }
 
 
-/* FF rumble on the built-in Miyoo Flip Gamepad, with legacy retrogame compatibility fallback. */
+/* FF rumble on Miyoo Flip Gamepad. Any other FF_RUMBLE device is only a generic fallback. */
 static int rumble_fd = -1;
 static int rumble_id = -1;
 
@@ -499,7 +499,6 @@ static int rumble_open(void)
 	DIR *dir;
 	struct dirent *de;
 	int exact = -1;
-	int legacy = -1;
 	int generic = -1;
 	char name[256];
 
@@ -530,11 +529,6 @@ static int rumble_open(void)
 				exact = fd;
 			else
 				close(fd);
-		} else if (got_name && strstr(name, "retrogame") != NULL) {
-			if (legacy < 0)
-				legacy = fd;
-			else
-				close(fd);
 		} else if (generic < 0) {
 			generic = fd;
 		} else {
@@ -544,15 +538,9 @@ static int rumble_open(void)
 	closedir(dir);
 
 	if (exact >= 0) {
-		if (legacy >= 0)
-			close(legacy);
 		if (generic >= 0)
 			close(generic);
 		rumble_fd = exact;
-	} else if (legacy >= 0) {
-		if (generic >= 0)
-			close(generic);
-		rumble_fd = legacy;
 	} else if (generic >= 0) {
 		rumble_fd = generic;
 	} else {

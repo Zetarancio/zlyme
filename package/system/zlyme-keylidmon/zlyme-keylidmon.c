@@ -20,7 +20,7 @@
 
 #define VOL_NAME "gpio-keys-volume"
 #define HALL_NAME "gpio-keys-hall"
-#define PAD_NAME "retrogame_joypad"
+#define PAD_NAME "Miyoo Flip Gamepad"
 #define PWR_NAME "rk805 pwrkey"
 #define BLANK_PATH "/sys/class/backlight/backlight/bl_power"
 #define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"

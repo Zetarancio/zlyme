@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <linux/input.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -132,7 +131,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	if (strcmp(argv[1], "gain") == 0 && argc == 3) {
-		pct = atoi(argv[2]);
+		if (ff_parse_percent_token(argv[2], &pct)) {
+			fprintf(stderr, "gain must be an integer 0..100\n");
+			close(fd);
+			return 1;
+		}
 		rc = set_gain(fd, pct);
 	} else if (strcmp(argv[1], "restore") == 0) {
 		rc = do_restore(fd);

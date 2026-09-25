@@ -8,6 +8,8 @@
  * text is missing or not a single gain=0..100. Nonzero means invalid text.
  */
 int ff_parse_gain(const char *text, int *pct);
+/* One decimal token, 0..100, with nothing after it. */
+int ff_parse_percent_token(const char *text, int *pct);
 /* Displayed 0..100 -> effective percent. 0 stays 0; 10 maps to 15; 100 stays 100. */
 int ff_effective_gain_percent(int user);
 /* Displayed 0..100 -> FF_GAIN. Out of range returns -1. */

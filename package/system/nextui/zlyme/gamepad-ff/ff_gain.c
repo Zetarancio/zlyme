@@ -47,6 +47,23 @@ int ff_parse_gain(const char *text, int *pct)
 	return bad ? -1 : 0;
 }
 
+int ff_parse_percent_token(const char *text, int *pct)
+{
+	char *end;
+	long v;
+
+	if (!pct)
+		return -1;
+	if (!text || !*text)
+		return -1;
+	errno = 0;
+	v = strtol(text, &end, 10);
+	if (errno || end == text || *end || v < 0 || v > 100)
+		return -1;
+	*pct = (int)v;
+	return 0;
+}
+
 int ff_effective_gain_percent(int user)
 {
 	int num, rounded;

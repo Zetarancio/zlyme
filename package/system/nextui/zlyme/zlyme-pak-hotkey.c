@@ -3,7 +3,7 @@
  * nextui-session passes the setsid child pid (also the pgid). SIGTERM the
  * group, then SIGKILL after a short grace. Do not touch nextui.elf.
  *
- * js0 buttons 9/10 match platform.h. Also watch retrogame_joypad evdev
+ * js0 buttons 9/10 match platform.h. Also watch Miyoo Flip Gamepad evdev
  * (BTN_MODE + BTN_START) if joydev is busy or missing.
  */
 #include <dirent.h>
@@ -22,7 +22,7 @@
 #define JOY_START 9
 #define JOY_MENU 10
 #define GRACE_US 1500000
-#define PAD_NAME "retrogame_joypad"
+#define PAD_NAME "Miyoo Flip Gamepad"
 
 static int open_js(void)
 {
