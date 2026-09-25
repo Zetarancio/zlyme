@@ -306,7 +306,7 @@ A future board may expose the same `zlyme-audio` interface using completely diff
 The Miyoo Flip uses board-specific input integration:
 
 - `miyoo-flip-gamepad`: UART sticks, GPIO buttons, calibration transform, fixed raw noise floor, live radial deadzone, standard Linux input output, and `FF_RUMBLE` on PWM5 through ff-memless `FF_GAIN`;
-- Settings owns manual calibration, deadzone choice, persistence, and restore;
+- Settings owns manual calibration, deadzone choice, persistence, restore, and the displayed Rumble Strength percentage. Userspace maps that percentage onto standard `FF_GAIN` (displayed 10% becomes 15%). Haptic feedback is a separate NextUI on/off switch and does not own the physical gain;
 - Phase 4 may later add InputPlumber as virtual-controller policy;
 - lid switch;
 - power key;

@@ -491,7 +491,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ```text
 Phase 3C2b COMPLETE — 2026-09-25
-Phase 3C3 IMPLEMENTED — HARDWARE VALIDATION PENDING
+Phase 3C3 IMPLEMENTED — SUSPEND/TEARDOWN VALIDATION PENDING
 Phase 3D NOT STARTED
 Phase 4 / InputPlumber NOT STARTED
 ```
@@ -1456,11 +1456,11 @@ On that boot, `miyoo_flip_gamepad` was the only gamepad module, the UART port wa
 
 `Autocal.pak` was absent from the card and the image. The unreleased Joystick Calibration PAK was absent from both. `/storage/.config/miyoo-serial-joypad/` was not on the validation card. Source audit shows neither restore nor `post-update.sh` deletes that directory. Settings backup runs `tar -acf /storage/zlyme-backup.tar.gz -C /storage .config`, so the gamepad files under `/storage/.config` are inside the general backup. There is no calibration `.bak` writer in the current UI.
 
-Do not remove the old ROCKNIX driver in 3C2b. Phase 3D and Phase 4 have not started. Phase 3C3 is implemented and still needs a physical motor test.
+Do not remove the old ROCKNIX driver in 3C2b. Phase 3D and Phase 4 have not started. Phase 3C3 motor behavior is physically tested. Suspend while rumbling and controlled driver teardown are not.
 
 #### 3C3 — FF_RUMBLE and final physical-driver feature gate
 
-Implemented. Hardware validation is still open. Do not treat 3C3 as complete.
+Motor, gain, and persistence are physically tested on 2026-09-25. Do not treat 3C3 as complete: suspend/resume with the motor and controlled driver teardown are still open.
 
 ```text
 FF_RUMBLE
@@ -1476,9 +1476,9 @@ InputPlumber:
 
 The kernel driver owns the physical mechanism on the existing `Miyoo Flip Gamepad` device. PWM5 comes from the Flip DTS (`pwms = <&pwm5 0 10000000 0>`, consumer `enable`, period 10 ms, normal polarity). `input_ff_create_memless()` advertises `FF_GAIN`, defaults it to `0xffff`, and applies that gain before the play callback. The callback does not sleep: it caches strong-if-nonzero else weak, then schedules work. The worker maps `0x0000..0xffff` to PWM duty with `pwm_set_relative_duty_cycle()` and does not change the period. Level 0 disables PWM. Close, remove, and probe failure leave the motor off. Suspend cancels the worker and disables PWM but keeps the cached level; resume restarts that level, matching `pwm-vibra`. A permanent PWM claim failure leaves buttons and sticks up and does not advertise `FF_RUMBLE`. `-EPROBE_DEFER` still defers probe. There is no custom `rumble_strength` sysfs and no rumble daemon.
 
-Userspace gain is `gain=N` (`N` 0..100) in `/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config`. A missing file means 100% and is not created at boot. An invalid file is reported and stays at 100%. Settings → System → Joysticks has Rumble Strength (10% steps, live apply, A saves, B restores the value from screen open) and Test Rumble (about 250 ms, full effect magnitude, so `FF_GAIN` still scales it). `rc.late` runs `zlyme-gamepad-ff restore` after calibration restore and after `nextui-first-flip`. `PLAT_setRumble()` can open `Miyoo Flip Gamepad` and still accepts the legacy `retrogame` name. `VIB_doublePulse` / `VIB_triplePulse` scale twice if called, but nothing calls them.
+Userspace stores the displayed percentage as `gain=N` (`N` 0..100) in `/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config`. A missing file means 100% and is not created at boot. An invalid file is reported and stays at 100%. Conversion to `FF_GAIN` is the only Flip motor compensation: displayed 0 stays 0, displayed 10 becomes 15, displayed 100 stays 100, and the steps between are nearest-integer. Settings → System → Joysticks has Rumble Strength (10% steps, live apply, A saves, B restores the value from screen open) and Test Rumble (about 250 ms, full effect magnitude, so `FF_GAIN` still scales it). `rc.late` runs `zlyme-gamepad-ff restore` after calibration restore and after `nextui-first-flip`. `PLAT_setRumble()` prefers the exact name `Miyoo Flip Gamepad`, then a name containing `retrogame`, then any other `FF_RUMBLE` device. Settings → System → Haptic feedback only enables or disables NextUI's own pulses. Those pulses still go through `PLAT_setRumble()` and are scaled by Rumble Strength. `VIB_doublePulse` / `VIB_triplePulse` scale twice if called, but nothing calls them.
 
-Physical validation still has to prove motor strength, duration, gain, persistence, boot restore, suspend/resume, and no stuck PWM. Weak, strong, and full-scale behavior are not claimed. Phase 3D still owns the broad name cutover and old ROCKNIX driver removal.
+On `zlyme-my355-20260925-4d1c1d44d2a2.tar` (`root@192.168.0.108`, kernel 7.0.2 #5), `event4` was `Miyoo Flip Gamepad` and advertised `FF_RUMBLE` and `FF_GAIN`. Only `miyoo_flip_gamepad` was loaded. Saved `gain=10` (checksum `3682488949 8`) survived runtime-only 0/10/50/100 tests and `restore`. The user confirmed 0% silent, 10% weak but perceptible, and 50% then 100% progressively stronger. Earlier on the previous OTA, Settings save, Test Rumble, and reboot restore of Rumble Strength passed. UART stayed open with `bad=0` and valid frames increasing. Resting axes stayed at zero. Calibration and deadzone files were unchanged. `/sys/kernel/debug/pwm` was not mounted, so PWM-off was not read back. `nextui.elf` held `event4` read-write, but `haptics=0`, so that descriptor was not a confirmed `rumble_open()` result. Suspend while rumbling, idle suspend of the motor, and driver removal were not exercised. Source review covers cancel-work, PWM off, resume of a cached level, and removal. That is not physical evidence. Phase 3D still owns the broad name cutover and old ROCKNIX driver removal.
 
 Remaining sequence:
 

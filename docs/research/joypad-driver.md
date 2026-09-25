@@ -548,21 +548,23 @@ Physical evidence on the installed OTA, accepted as the end-to-end gate: only `m
 
 The user accepted the UI OTA at `25b34fd` as satisfactory end to end: launch and exit, held D-pad repeat, centered calibration dot, readable calibration text, and NextUI A/B hints.
 
-Still outside 3C2b: old ROCKNIX driver removal is 3D, Switch replacement-stick hardware validation is still open, and InputPlumber is Phase 4. FF_RUMBLE is implemented in 3C3 and is not hardware-validated.
+Still outside 3C2b: old ROCKNIX driver removal is 3D, Switch replacement-stick hardware validation is still open, and InputPlumber is Phase 4. FF_RUMBLE motor strength is physically tested in 3C3. Suspend and driver teardown are not.
 
 ## Phase 3C3 — FF_RUMBLE
 
-Implemented. Physical motor behavior is not validated.
+Motor behavior was tested on 2026-09-25. Suspend and driver teardown were not.
 
 Linux 7.0.2 `input_ff_create_memless()` sets `FF_GAIN`, defaults gain to `0xffff`, and scales `FF_RUMBLE` magnitudes by that gain before the play callback. The callback runs under `input_dev->event_lock` (`ml_effect_timer` uses `spinlock_irqsave`; `ml_ff_set_gain` and `ml_ff_playback` are called with that lock held). It must not sleep. Memless also sets `FF_PERIODIC` and the sine/triangle/square bits when `FF_RUMBLE` is present. That is upstream emulation, not a second motor.
 
 PWM5 is the Flip DTS consumer `enable`: `pwms = <&pwm5 0 10000000 0>`, period 10 ms, polarity 0. The driver does not pick a new period. One motor uses the `pwm-vibra` rule: strong magnitude if it is nonzero, otherwise weak. Duty is `pwm_set_relative_duty_cycle(level, 0xffff)`. Level 0 disables PWM. The worker calls `pwm_apply_might_sleep`. Suspend cancels that work and turns PWM off without clearing the cached level. Resume applies the cached level again, then reopens UART. Close and remove clear the level and turn PWM off. If PWM cannot be claimed, except `-EPROBE_DEFER`, the pad stays up and `FF_RUMBLE` is not advertised.
 
-`/usr/sbin/zlyme-gamepad-ff` writes `EV_FF` / `FF_GAIN` and uploads a short `FF_RUMBLE` test. It opens the device named exactly `Miyoo Flip Gamepad` only when both `FF_RUMBLE` and `FF_GAIN` are present. Persistence is `gain=0..100` in `rumble.config`, same temp/fsync/rename contract as the other gamepad files. Missing means 100% and does not create the file. `rc.late` restores it after calibration restore. Settings owns the 0–100% choice. `PLAT_setRumble()` prefers that exact name and still falls back to a name containing `retrogame`. InputPlumber does not own this gain.
+`/usr/sbin/zlyme-gamepad-ff` writes `EV_FF` / `FF_GAIN` and uploads a short `FF_RUMBLE` test. It opens the device named exactly `Miyoo Flip Gamepad` only when both `FF_RUMBLE` and `FF_GAIN` are present. Persistence is the displayed `gain=0..100` in `rumble.config`, same temp/fsync/rename contract as the other gamepad files. Missing means 100% and is not created at boot. `ff_effective_gain_percent()` maps that displayed value onto `FF_GAIN`: 0 stays 0, 10 becomes 15, 100 stays 100. `rc.late` restores it after calibration restore. Settings owns the displayed 0–100% choice. `PLAT_setRumble()` prefers `Miyoo Flip Gamepad`, then a name containing `retrogame`, then any other `FF_RUMBLE` device. Haptic feedback is `haptics=` in the NextUI settings file. It only gates NextUI's own pulses. InputPlumber does not own either setting.
 
 `VIB_doublePulse` and `VIB_triplePulse` pass an already scaled strength into `VIB_singlePulse`, which scales again. No caller uses those two helpers. `VIB_singlePulse` itself is used and was left alone.
 
-Not claimed until a Flip test: weak versus strong versus 100% duty, Test Rumble following the saved gain, save/cancel, reboot restore after first frame, effect stop, repeated and rapid changes, suspend while rumbling, resume, idle suspend, teardown with the motor off, and UART `bad=0` through that test.
+Physical evidence on `zlyme-my355-20260925-4d1c1d44d2a2.tar`, SSH `root@192.168.0.108`: `event4` name `Miyoo Flip Gamepad`, `FF_RUMBLE` and `FF_GAIN` set, only `miyoo_flip_gamepad` loaded, `rocknix-singleadc-joypad.ko` present but not loaded. Saved file stayed `gain=10`, checksum `3682488949 8`, through runtime 0/10/50/100 gain and test plus `restore`. The user confirmed 0% silent, compensated 10% weak but perceptible, and 50% then 100% stronger. An earlier OTA already proved Settings save, Test Rumble, and reboot restore. UART `bad` stayed 0 while valid frames rose from 28092 to 28909. Resting output stayed `X=0 Y=0 RX=0 RY=0`. `joypad.config`, `joypad_right.config`, and `deadzone.config` checksums were unchanged; active deadzones were left 18 and right 22. `haptics=0`. PWM debugfs was not mounted. `nextui.elf` had a read-write fd on `event4`, which is the gamepad node, but that was not isolated as the rumble fd.
+
+Still unproven on hardware: suspend while rumbling, resume, idle suspend, and driver removal with the motor forced off. The driver source cancels rumble work and turns PWM off on suspend and removal, and restores a cached level on resume. That is code evidence only.
 
 ## Open measurements
 
