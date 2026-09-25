@@ -643,16 +643,16 @@ static int saved_gain(void)
 {
 	FILE *f = fopen("/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config", "r");
 	char body[128];
-	int pct = 100;
+	int pct = FF_DEFAULT_GAIN_PERCENT;
 	size_t n;
 
 	if (!f)
-		return 100;
+		return FF_DEFAULT_GAIN_PERCENT;
 	n = fread(body, 1, sizeof(body) - 1, f);
 	body[n] = 0;
 	fclose(f);
 	if (ff_parse_gain(body, &pct))
-		return 100;
+		return FF_DEFAULT_GAIN_PERCENT;
 	return pct;
 }
 

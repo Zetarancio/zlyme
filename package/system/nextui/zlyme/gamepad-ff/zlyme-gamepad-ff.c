@@ -72,17 +72,18 @@ static int do_restore(int fd)
 {
 	FILE *f = fopen(GAIN_FILE, "r");
 	char body[128];
-	int pct = 100;
+	int pct = FF_DEFAULT_GAIN_PERCENT;
 	size_t n;
 
 	if (!f)
-		return 0;
+		return set_gain(fd, FF_DEFAULT_GAIN_PERCENT);
 	n = fread(body, 1, sizeof(body) - 1, f);
 	body[n] = 0;
 	fclose(f);
 	if (ff_parse_gain(body, &pct)) {
-		fprintf(stderr, "rumble.config invalid; using 100\n");
-		pct = 100;
+		fprintf(stderr, "rumble.config invalid; using %d\n",
+			FF_DEFAULT_GAIN_PERCENT);
+		pct = FF_DEFAULT_GAIN_PERCENT;
 	}
 	return set_gain(fd, pct);
 }

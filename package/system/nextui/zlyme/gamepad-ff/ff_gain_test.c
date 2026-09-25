@@ -16,13 +16,18 @@ int main(void)
 {
 	int pct = 0;
 
-	expect(ff_parse_gain(NULL, &pct) == 0 && pct == 100, "missing");
+	expect(FF_DEFAULT_GAIN_PERCENT == 30, "default");
+	expect(ff_parse_gain(NULL, &pct) == 0 && pct == FF_DEFAULT_GAIN_PERCENT, "missing");
 	expect(ff_parse_gain("gain=0\n", &pct) == 0 && pct == 0, "zero");
+	expect(ff_parse_gain("gain=10\n", &pct) == 0 && pct == 10, "ten");
+	expect(ff_parse_gain("gain=30\n", &pct) == 0 && pct == 30, "thirty");
 	expect(ff_parse_gain("gain=100\n", &pct) == 0 && pct == 100, "full");
-	expect(ff_parse_gain("gain=101\n", &pct) != 0 && pct == 100, "101");
-	expect(ff_parse_gain("gain=-1\n", &pct) != 0 && pct == 100, "negative");
-	expect(ff_parse_gain("gain=abc\n", &pct) != 0 && pct == 100, "junk");
-	expect(ff_parse_gain("gain=10\ngain=20\n", &pct) != 0 && pct == 100, "dup");
+	expect(ff_parse_gain("gain=101\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "101");
+	expect(ff_parse_gain("gain=-1\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "negative");
+	expect(ff_parse_gain("gain=abc\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "junk");
+	expect(ff_parse_gain("gain=10\ngain=20\n", &pct) != 0 && pct == FF_DEFAULT_GAIN_PERCENT, "dup");
+	expect(ff_effective_gain_percent(30) == 34, "eff 30");
+	expect(ff_gain_value(30) == (int)(0xffffu * 34u / 100u), "gain 30");
 	expect(ff_effective_gain_percent(0) == 0, "eff 0");
 	expect(ff_effective_gain_percent(10) == 15, "eff 10");
 	expect(ff_effective_gain_percent(20) == 24, "eff 20");

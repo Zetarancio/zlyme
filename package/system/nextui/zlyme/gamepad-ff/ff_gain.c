@@ -7,7 +7,7 @@
 int ff_parse_gain(const char *text, int *pct)
 {
 	const char *p = text ? text : "";
-	int seen = 0, value = 100, bad = 0;
+	int seen = 0, value = FF_DEFAULT_GAIN_PERCENT, bad = 0;
 
 	if (!pct)
 		return -1;
@@ -36,14 +36,14 @@ int ff_parse_gain(const char *text, int *pct)
 		v = strtol(eq + 1, &end, 10);
 		if (seen || errno || end == eq + 1 || *end || v < 0 || v > 100) {
 			bad = 1;
-			value = 100;
+			value = FF_DEFAULT_GAIN_PERCENT;
 			seen = 1;
 			continue;
 		}
 		value = (int)v;
 		seen = 1;
 	}
-	*pct = bad ? 100 : value;
+	*pct = bad ? FF_DEFAULT_GAIN_PERCENT : value;
 	return bad ? -1 : 0;
 }
 
