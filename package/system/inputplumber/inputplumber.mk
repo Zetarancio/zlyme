@@ -27,7 +27,7 @@ define INPUTPLUMBER_INSTALL_TARGET_CMDS
 		$(@D)/target/$(RUSTC_TARGET_NAME)/$(INPUTPLUMBER_CARGO_PROFILE)/inputplumber \
 		$(TARGET_DIR)/usr/bin/inputplumber
 	$(INSTALL) -D -m 0644 \
-		$(@D)/rootfs/usr/share/dbus-1/system.d/org.shadowblip.InputPlumber.conf \
+		$(INPUTPLUMBER_PKGDIR)/org.shadowblip.InputPlumber.conf \
 		$(TARGET_DIR)/usr/share/dbus-1/system.d/org.shadowblip.InputPlumber.conf
 	$(INSTALL) -D -m 0644 \
 		$(@D)/rootfs/usr/share/inputplumber/profiles/default.yaml \
@@ -35,6 +35,9 @@ define INPUTPLUMBER_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 \
 		$(INPUTPLUMBER_PKGDIR)/20-zlyme_miyoo_flip.yaml \
 		$(TARGET_DIR)/usr/share/inputplumber/devices/20-zlyme_miyoo_flip.yaml
+	$(INSTALL) -D -m 0755 \
+		$(INPUTPLUMBER_PKGDIR)/S31inputplumber \
+		$(TARGET_DIR)/etc/init.d/S31inputplumber
 endef
 
 $(eval $(cargo-package))
