@@ -17,9 +17,8 @@ if [ ${#moddirs[@]} -ne 1 ]; then
 	note "expected exactly one /lib/modules/<release>, found ${#moddirs[@]}"
 else
 	moddir="${moddirs[0]}"
-	# miyoo-flip-gamepad is the Flip gamepad. rocknix-singleadc-joypad
-	# stays in the image for rollback and must not be bound by the DTS.
-	for m in 8733bu rtl8733bu_power rocknix-singleadc-joypad miyoo-flip-gamepad; do
+	# miyoo-flip-gamepad is the Flip gamepad.
+	for m in 8733bu rtl8733bu_power miyoo-flip-gamepad; do
 		found=$(find "${moddir}" -name "${m}.ko" -print -quit)
 		[ -n "${found}" ] || note "kernel module ${m}.ko is missing"
 	done
@@ -54,7 +53,8 @@ for f in etc/init.d/S00vardirs; do
 done
 
 shopt -s nullglob
-for f in "${TARGET_DIR}"/lib/modules/*/updates/rocknix-joypad.ko; do
+for f in "${TARGET_DIR}"/lib/modules/*/updates/rocknix-joypad.ko \
+	"${TARGET_DIR}"/lib/modules/*/updates/rocknix-singleadc-joypad.ko; do
 	info "removing leftover ${f#"${TARGET_DIR}"/}"
 	rm -f "${f}"
 done

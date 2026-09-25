@@ -192,10 +192,8 @@ BR2_PACKAGE_RETROARCH=y
 BR2_PACKAGE_LIBRETRO_GAMBATTE=y
 BR2_PACKAGE_LIBRETRO_GENESISPLUSGX=y
 
-# Phase 3B tracer. The old module stays built for rollback. The Flip DTS
-# binds only miyoo,flip-gamepad, so the old module has nothing to attach to.
+# Flip gamepad. The retired ROCKNIX module is not built.
 BR2_PACKAGE_MIYOO_FLIP_GAMEPAD=y
-BR2_PACKAGE_ROCKNIX_JOYPAD=y
 
 # NextUI (my355). Not in the minimal image.
 
