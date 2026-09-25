@@ -479,7 +479,7 @@ void PLAT_setCPUSpeed(int speed) {
 }
 
 
-/* ff-memless rumble on retrogame_joypad (PWM5). Stock wrote gpio20. */
+/* FF rumble on the built-in Miyoo Flip Gamepad, with legacy retrogame compatibility fallback. */
 static int rumble_fd = -1;
 static int rumble_id = -1;
 
@@ -498,7 +498,10 @@ static int rumble_open(void)
 {
 	DIR *dir;
 	struct dirent *de;
-	int best = -1;
+	int exact = -1;
+	int legacy = -1;
+	int generic = -1;
+	char name[256];
 
 	if (rumble_fd >= 0)
 		return 0;
@@ -507,9 +510,8 @@ static int rumble_open(void)
 		return -1;
 	while ((de = readdir(dir))) {
 		char path[64];
-		char name[256];
 		int fd;
-		int named;
+		int got_name;
 
 		if (strncmp(de->d_name, "event", 5) != 0)
 			continue;
@@ -522,25 +524,46 @@ static int rumble_open(void)
 			continue;
 		}
 		memset(name, 0, sizeof(name));
-		named = ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0 &&
-			(strcmp(name, "Miyoo Flip Gamepad") == 0 ||
-			 strstr(name, "retrogame") != NULL);
-		if (named) {
-			if (best >= 0)
-				close(best);
-			best = fd;
-			break;
-		}
-		if (best < 0)
-			best = fd;
-		else
+		got_name = ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0;
+		if (got_name && strcmp(name, "Miyoo Flip Gamepad") == 0) {
+			if (exact < 0)
+				exact = fd;
+			else
+				close(fd);
+		} else if (got_name && strstr(name, "retrogame") != NULL) {
+			if (legacy < 0)
+				legacy = fd;
+			else
+				close(fd);
+		} else if (generic < 0) {
+			generic = fd;
+		} else {
 			close(fd);
+		}
 	}
 	closedir(dir);
-	if (best < 0)
+
+	if (exact >= 0) {
+		if (legacy >= 0)
+			close(legacy);
+		if (generic >= 0)
+			close(generic);
+		rumble_fd = exact;
+	} else if (legacy >= 0) {
+		if (generic >= 0)
+			close(generic);
+		rumble_fd = legacy;
+	} else if (generic >= 0) {
+		rumble_fd = generic;
+	} else {
 		return -1;
-	rumble_fd = best;
+	}
+
 	rumble_id = -1;
+	memset(name, 0, sizeof(name));
+	if (ioctl(rumble_fd, EVIOCGNAME(sizeof(name) - 1), name) < 0 || name[0] == '\0')
+		snprintf(name, sizeof(name), "unknown");
+	LOG_info("rumble: using %s\n", name);
 	return 0;
 }
 
