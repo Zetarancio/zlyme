@@ -491,7 +491,7 @@ It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`inpu
 
 ```text
 Phase 3C2b COMPLETE — 2026-09-25
-Phase 3C3 IMPLEMENTED — SUSPEND/TEARDOWN VALIDATION PENDING
+Phase 3C3 COMPLETE — 2026-09-25
 Phase 3D NOT STARTED
 Phase 4 / InputPlumber NOT STARTED
 ```
@@ -1456,11 +1456,11 @@ On that boot, `miyoo_flip_gamepad` was the only gamepad module, the UART port wa
 
 `Autocal.pak` was absent from the card and the image. The unreleased Joystick Calibration PAK was absent from both. `/storage/.config/miyoo-serial-joypad/` was not on the validation card. Source audit shows neither restore nor `post-update.sh` deletes that directory. Settings backup runs `tar -acf /storage/zlyme-backup.tar.gz -C /storage .config`, so the gamepad files under `/storage/.config` are inside the general backup. There is no calibration `.bak` writer in the current UI.
 
-Do not remove the old ROCKNIX driver in 3C2b. Phase 3D and Phase 4 have not started. Phase 3C3 motor behavior is physically tested. Suspend while rumbling and controlled driver teardown are not.
+Do not remove the old ROCKNIX driver in 3C2b. Phase 3D and Phase 4 have not started. Phase 3C3 is complete.
 
 #### 3C3 — FF_RUMBLE and final physical-driver feature gate
 
-Motor, gain, and persistence are physically tested on 2026-09-25. Do not treat 3C3 as complete: suspend/resume with the motor and controlled driver teardown are still open.
+Complete 2026-09-25. The accepted evidence is the physical motor, gain, save, and reboot tests plus the SSH capability and UART checks. Suspend while an effect was playing, and forced module removal while rumbling, were not run. They are not closure blockers: teardown is not a normal product lifecycle, and rumble suspend safety is the driver's cancel-work and PWM-off path plus the earlier physical suspend/resume of this same gamepad.
 
 ```text
 FF_RUMBLE
@@ -1476,54 +1476,43 @@ InputPlumber:
 
 The kernel driver owns the physical mechanism on the existing `Miyoo Flip Gamepad` device. PWM5 comes from the Flip DTS (`pwms = <&pwm5 0 10000000 0>`, consumer `enable`, period 10 ms, normal polarity). `input_ff_create_memless()` advertises `FF_GAIN`, defaults it to `0xffff`, and applies that gain before the play callback. The callback does not sleep: it caches strong-if-nonzero else weak, then schedules work. The worker maps `0x0000..0xffff` to PWM duty with `pwm_set_relative_duty_cycle()` and does not change the period. Level 0 disables PWM. Close, remove, and probe failure leave the motor off. Suspend cancels the worker and disables PWM but keeps the cached level; resume restarts that level, matching `pwm-vibra`. A permanent PWM claim failure leaves buttons and sticks up and does not advertise `FF_RUMBLE`. `-EPROBE_DEFER` still defers probe. There is no custom `rumble_strength` sysfs and no rumble daemon.
 
-Userspace stores the displayed percentage as `gain=N` (`N` 0..100) in `/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config`. A missing file means 100% and is not created at boot. An invalid file is reported and stays at 100%. Conversion to `FF_GAIN` is the only Flip motor compensation: displayed 0 stays 0, displayed 10 becomes 15, displayed 100 stays 100, and the steps between are nearest-integer. Settings → System → Joysticks has Rumble Strength (10% steps, live apply, A saves, B restores the value from screen open) and Test Rumble (about 250 ms, full effect magnitude, so `FF_GAIN` still scales it). `rc.late` runs `zlyme-gamepad-ff restore` after calibration restore and after `nextui-first-flip`. `PLAT_setRumble()` prefers the exact name `Miyoo Flip Gamepad`, then a name containing `retrogame`, then any other `FF_RUMBLE` device. Settings → System → Haptic feedback only enables or disables NextUI's own pulses. Those pulses still go through `PLAT_setRumble()` and are scaled by Rumble Strength. `VIB_doublePulse` / `VIB_triplePulse` scale twice if called, but nothing calls them.
+Userspace stores the displayed percentage as `gain=N` (`N` 0..100) in `/storage/.config/zlyme/miyoo-flip-gamepad/rumble.config`. A missing file means displayed 30% and is not created by restore. `zlyme-gamepad-ff restore` still applies that 30%. An invalid file is reported, applied as displayed 30%, and is not rewritten. A saved file stays authoritative. Conversion to `FF_GAIN` is the only Flip motor compensation: displayed 0 stays 0, displayed 10 becomes 15, displayed 30 becomes 34, and displayed 100 stays 100. Fresh Haptic feedback is enabled. An existing `haptics=` value is left alone. A haptic before `rc.late` can still see the kernel's 100% `FF_GAIN`. That stays behind the first-frame gate. Settings → System → Joysticks has Rumble Strength (10% steps, live apply, A saves, B restores the value from screen open) and Test Rumble (about 250 ms, full effect magnitude, so `FF_GAIN` still scales it). `rc.late` runs `zlyme-gamepad-ff restore` after calibration restore and after `nextui-first-flip`. `PLAT_setRumble()` prefers the exact name `Miyoo Flip Gamepad`, then a name containing `retrogame`, then any other `FF_RUMBLE` device. Settings → System → Haptic feedback only enables or disables NextUI's own pulses. Those pulses still go through `PLAT_setRumble()` and are scaled by Rumble Strength. `VIB_doublePulse` / `VIB_triplePulse` scale twice if called, but nothing calls them.
 
-On `zlyme-my355-20260925-4d1c1d44d2a2.tar` (`root@192.168.0.108`, kernel 7.0.2 #5), `event4` was `Miyoo Flip Gamepad` and advertised `FF_RUMBLE` and `FF_GAIN`. Only `miyoo_flip_gamepad` was loaded. Saved `gain=10` (checksum `3682488949 8`) survived runtime-only 0/10/50/100 tests and `restore`. The user confirmed 0% silent, 10% weak but perceptible, and 50% then 100% progressively stronger. Earlier on the previous OTA, Settings save, Test Rumble, and reboot restore of Rumble Strength passed. UART stayed open with `bad=0` and valid frames increasing. Resting axes stayed at zero. Calibration and deadzone files were unchanged. `/sys/kernel/debug/pwm` was not mounted, so PWM-off was not read back. `nextui.elf` held `event4` read-write, but `haptics=0`, so that descriptor was not a confirmed `rumble_open()` result. Suspend while rumbling, idle suspend of the motor, and driver removal were not exercised. Source review covers cancel-work, PWM off, resume of a cached level, and removal. That is not physical evidence. Phase 3D still owns the broad name cutover and old ROCKNIX driver removal.
+On `zlyme-my355-20260925-4d1c1d44d2a2.tar` (`root@192.168.0.108`, kernel 7.0.2 #5), `event4` was `Miyoo Flip Gamepad` and advertised `FF_RUMBLE` and `FF_GAIN`. Only `miyoo_flip_gamepad` was loaded. Saved `gain=10` (checksum `3682488949 8`) survived runtime-only 0/10/50/100 tests and `restore`. The user confirmed 0% silent, 10% weak but perceptible, and 50% then 100% progressively stronger. Earlier on the previous OTA, Settings save, Test Rumble, and reboot restore of Rumble Strength passed. UART stayed open with `bad=0` and valid frames increasing. Resting axes stayed at zero. Calibration and deadzone files were unchanged. `/sys/kernel/debug/pwm` was not mounted, so PWM-off was not read back. `nextui.elf` held `event4` read-write, but `haptics=0`, so that descriptor was not a confirmed `rumble_open()` result. Suspend while an effect was playing and forced driver removal were not exercised. Source review covers cancel-work and PWM off. Those cases are recorded and are not 3C3 blockers. Phase 3D owns physical-driver cutover and old ROCKNIX removal, not emulator mappings.
 
 Remaining sequence:
 
 ```text
 3C2b  Settings joystick calibration and live deadzone, post-first-frame restore, Autocal migration
-3C3   FF_RUMBLE and final physical-driver feature gate
-3D    frontend cutover, duplicate-action investigation,
-      direct Zlyme consumer migration, old ROCKNIX driver removal,
-      and removal of old-driver-only kernel coupling if proven safe
-4     InputPlumber virtual controller and broad application compatibility
+3C3   FF_RUMBLE and physical gain, complete
+3D    physical-driver cutover and legacy ROCKNIX cleanup
+4     InputPlumber virtual P1 for emulators and standalone applications
 ```
 
-### 3D — Cutover and hardware validation
+### 3D — Physical-input cutover and legacy cleanup
 
-After 3C feature parity, complete the userspace and direct-consumer cutover and remove the migration fallback. The physical driver is already the normal bound Flip gamepad. The DTS already uses `miyoo,flip-gamepad`.
+After 3C, remove the old ROCKNIX gamepad from the normal product and drop migration fallbacks that still look for it. The physical driver, calibration, deadzone, and rumble are already accepted. Do not repeat those hardware tests here.
 
 3D owns:
 
 ```text
-NextUI direct device lookup and routing
-the known duplicate-action investigation
-zlyme-keylidmon
-zlyme-pak-hotkey
-NextUI rumble lookup
-SDL and gamecontrollerdb mapping required for cutover
-RetroArch and direct-launch mapping required for the game-launch gate
-PICO and other direct Zlyme consumers where required
-post-build removal of old-module requirements
-removal of rocknix-joypad from the product
-old-driver-only input-polldev and adc-keys coupling if proven unused
+NextUI and direct platform code that still need the name Miyoo Flip Gamepad
+removal of retrogame and old-driver fallbacks once that path is safe
+current NextUI device lookup still tied to the old identity
+a check that the physical device is not itself emitting duplicate events
+removal of rocknix-singleadc-joypad from the normal product
+old-driver-only package and build dependencies
+input-polldev, adc-keys, and joypad_input_g only where they exist solely for the old driver
+clean build and image inspection
 ```
 
-3D does not own the integrated Settings joystick calibration and deadzone UI, the released Autocal migration, or persistent calibration and deadzone boot restore. Those are 3C2b.
+3D does not own per-emulator mappings, standalone controller configuration, RetroArch ABI validation, external-controller composition, stable P1, hotplug, connect and disconnect during games, or making every emulator bind to `Miyoo Flip Gamepad`. Those are Phase 4.
 
-Original Flip sticks are the hardware-validation target for this cutover.
+Switch 1 non-Hall replacement sticks stay a designed compatibility target on the same UART frame. Community validation is not a Phase 3 blocker, and they are not called physically validated.
 
-Switch 1 non-Hall replacement sticks stay a designed compatibility target. They use the same driver and the same frame. Phase 3D may include the community protocol in `docs/research/joypad-driver.md` when a tester has those modules. Do not call that support validated until those tests pass. Do not block the original-stick cutover on them.
+Git history remains the fallback for the old driver. Broader kernel-patch reduction remains Phase 5. Module loading of the new gamepad stays on the existing early boot path.
 
-Phase 3D owns removal of `rocknix-joypad` from the normal product build, after 3C calibration and rumble have passed. Git history is the fallback. At that cutover, check whether `input-polldev` and the `adc-keys` / `joypad_input_g` patches exist only for the old driver. If they do, remove them as part of this migration, with a clean Linux re-extract and repatch. That is not the Phase 5 kernel cleanup.
-
-Do not edit every emulator configuration here. Broad emulator compatibility is the Phase 4 virtual controller. Module loading of the new gamepad stays with the existing early boot path.
-
-Some NextUI controls may perform the same action twice. The kernel reported one press and one release on one device, with the old driver unbound. Treat that as an application, SDL, or input-routing issue until evidence says otherwise. Instrument that path at the start of 3D. Do not change the physical button ABI in 3C to hide it. If Phase 4 later exposes both the physical device and an InputPlumber virtual device, exclusive grab owns that separate duplicate-device problem. Do not use Phase 4 to hide an existing NextUI bug.
-
-Broader kernel-patch reduction remains Phase 5.
+Some NextUI controls may act twice. The kernel reported one press and one release on one device. 3D only has to show the physical device is not the source. Do not change the button ABI to hide an application bug. If Phase 4 later exposes both the physical device and a virtual device, exclusive grab owns that separate problem.
 
 ### Phase 3 gate
 
@@ -1549,29 +1538,49 @@ Before Phase 4:
 * GPIO handling does not retain unnecessary polling where interrupts are suitable;
 * UART ownership and recovery are deterministic;
 * malformed/missing UART data cannot block boot or frontend startup;
-* standard suspend/resume works repeatedly;
-* game launch/exit works;
-* external controller coexistence works;
-* the old driver is no longer required for the normal build;
+* standard suspend/resume of the physical gamepad works;
+* the old driver is no longer required for the normal build after 3D;
 * the known-good old implementation remains recoverable through Git history rather than parallel runtime ownership;
 * documentation reflects the implemented architecture.
 
-Only after this gate should Phase 4 introduce InputPlumber as the stable virtual controller for broad emulator and application compatibility. That virtual device may present an Xbox-compatible userspace ABI for selected software. Phase 4 does not replace the Phase 3D NextUI duplicate-action investigation.
+Game launch, external controllers, hotplug, and per-emulator mappings are Phase 4. They are not prerequisites for finishing the physical gamepad.
 
-## 4 — Introduce InputPlumber as the input-policy layer
+The physical hardware gate is the evidence from Phase 3B through Phase 3C3. Switch replacement sticks are not required to finish Phase 3.
+
+## 4 — Introduce InputPlumber as the application controller
+
+Phase 4 owns the stable controller that emulators and standalone applications see. The intended path is:
+
+```text
+physical Miyoo Flip Gamepad
+external controllers
+        |
+        v
+InputPlumber
+        |
+        v
+stable virtual P1
+        |
+        +-> RetroArch
+        +-> standalone emulators
+        +-> native and PAK applications that need a controller
+```
+
+Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns virtual identity, P1 assignment, built-in and external composition, exclusive grabs, consistent mapping, hotplug, and the application-facing ABI. NextUI may keep using the physical device until a later Phase 4 design says otherwise. Do not decide that here.
 
 This is an intentional Zlyme design choice relative to historical implementations. Do not infer the current official ROCKNIX state without fresh research.
 
 The previous Zlyme research correctly concluded that InputPlumber was unnecessary merely to fix Nintendo controller support. That remains true: vendor HID drivers such as `hid-nintendo` solve vendor report-mode problems.
 
-Adopt InputPlumber only for the larger policy goal:
+Adopt InputPlumber for the application-policy goal:
 
 - stable virtual P1;
 - built-in + external controller composition;
 - exclusive grabs when useful;
 - consistent mapping;
 - hotplug policy;
-- decoupling frontend/emulators from physical event ordering.
+- game launch and in-game controller behavior;
+- decoupling emulators and standalones from the physical Flip identity.
 
 ### Start optional
 

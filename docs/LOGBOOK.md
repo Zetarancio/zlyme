@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-25 — Phase 3C3 rumble closure
+
+Phase 3C3 is complete. The physical Flip tests accepted `FF_RUMBLE` and `FF_GAIN` on `Miyoo Flip Gamepad`, Settings Rumble Strength, Test Rumble, save, reboot persistence, 0% silent, compensated 10% weak but perceptible, and 50% then 100% stronger. UART `bad` stayed 0, sticks stayed centered, and calibration and deadzone files were unchanged. Standard gamepad suspend/resume had already passed earlier in Phase 3. Suspend while an effect was playing, and forced module removal while rumbling, were not repeated. Source review shows suspend and remove cancel the rumble worker and turn PWM off. Those cases are not closure blockers.
+
+Shipping defaults, not yet retested on a fresh card: displayed Rumble Strength 30%, and Haptic feedback on. A missing `rumble.config` is not created by restore, but restore applies displayed 30%. An existing `rumble.config` or `haptics=` value is left alone. The 30% default is userspace only. The kernel `FF_GAIN` default remains 100% until `rc.late` runs after the first frame.
+
+Phase 3D is only the physical-driver cutover and old ROCKNIX cleanup. Emulator mappings, external controllers, and the virtual P1 belong to Phase 4 InputPlumber. Neither phase has started.
+
 ## 2026-09-24 — initramfs grep applet
 
 The tiny embedded initramfs `/init` calls `grep -q` to see whether `/boot_root` and `/storage_root` are already mounted. Its own BusyBox config had `# CONFIG_GREP is not set` while `CONFIG_EGREP` and `CONFIG_FGREP` were enabled, so those checks could not execute `grep`. The fix enables the normal `grep` applet. The script was not rewritten around `fgrep`.
