@@ -179,6 +179,21 @@ int main(void)
 		expect(access(bak, F_OK) != 0, "no bak");
 	}
 
+	{
+		int l = 9, r = 9;
+		expect(cal_parse_deadzone("left=5\nright=7\n", &l, &r) == 0 &&
+		       l == 5 && r == 7, "dz both");
+		expect(cal_parse_deadzone("left=12\n", &l, &r) == 0 &&
+		       l == 12 && r == 0, "dz right missing");
+		expect(cal_parse_deadzone("right=30\n", &l, &r) == 0 &&
+		       l == 0 && r == 30, "dz left missing");
+		expect(cal_parse_deadzone("left=4\nright=99\n", &l, &r) != 0 &&
+		       l == 4 && r == 0, "dz right >30");
+		expect(cal_parse_deadzone("left=abc\nright=8\n", &l, &r) != 0 &&
+		       l == 0 && r == 8, "dz left nonnumeric");
+		expect(l >= 0 && l <= 30 && r >= 0 && r <= 30, "dz stays in range");
+	}
+
 	unlink(path);
 	return fail;
 }

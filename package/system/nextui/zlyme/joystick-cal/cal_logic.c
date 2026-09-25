@@ -233,6 +233,79 @@ int cal_parse_raw(const char *text, int *yl, int *xl, int *yr, int *xr,
 	return 0;
 }
 
+static int dz_num(const char *s, int *out)
+{
+	char *end;
+	long v;
+
+	if (!s || !*s)
+		return -1;
+	errno = 0;
+	v = strtol(s, &end, 10);
+	if (errno || end == s || *end || v < 0 || v > 30)
+		return -1;
+	*out = (int)v;
+	return 0;
+}
+
+int cal_parse_deadzone(const char *text, int *left, int *right)
+{
+	int l = 0, r = 0, seen_l = 0, seen_r = 0, bad = 0;
+	const char *p = text ? text : "";
+
+	while (*p) {
+		char line[64];
+		const char *nl = strchr(p, '\n');
+		size_t n = nl ? (size_t)(nl - p) : strlen(p);
+		char *eq;
+
+		if (n >= sizeof(line)) {
+			bad = 1;
+			p = nl ? nl + 1 : p + n;
+			continue;
+		}
+		memcpy(line, p, n);
+		line[n] = 0;
+		p = nl ? nl + 1 : p + n;
+		if (line[0] == 0 || line[0] == '#')
+			continue;
+		if (line[n > 0 ? n - 1 : 0] == '\r')
+			line[n - 1] = 0;
+		eq = strchr(line, '=');
+		if (!eq || eq == line) {
+			bad = 1;
+			continue;
+		}
+		*eq = 0;
+		if (strcmp(line, "left") == 0) {
+			int v;
+			if (seen_l || dz_num(eq + 1, &v)) {
+				l = 0;
+				bad = 1;
+			} else {
+				l = v;
+			}
+			seen_l = 1;
+		} else if (strcmp(line, "right") == 0) {
+			int v;
+			if (seen_r || dz_num(eq + 1, &v)) {
+				r = 0;
+				bad = 1;
+			} else {
+				r = v;
+			}
+			seen_r = 1;
+		} else {
+			bad = 1;
+		}
+	}
+	if (left)
+		*left = l;
+	if (right)
+		*right = r;
+	return bad ? -1 : 0;
+}
+
 void cal_cap_reset(cal_cap *cap)
 {
 	memset(cap, 0, sizeof(*cap));

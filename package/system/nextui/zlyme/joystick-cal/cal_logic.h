@@ -25,6 +25,12 @@ int cal_cfg_ok(const cal_cfg *cfg);
 /* 0 fills cfg. Nonzero sets *err: missing, duplicate, or invalid field. */
 int cal_parse(const char *text, cal_cfg *cfg, const char **err);
 /*
+ * left= / right= percentages. Missing key is 0.
+ * 0 means every present field is a single integer 0..30.
+ * Nonzero means the text is invalid; bad sides are 0 and valid sides stay.
+ */
+int cal_parse_deadzone(const char *text, int *left, int *right);
+/*
  * One snapshot: YL= XL= YR= XR=, any key order, values 0..255.
  * 0 fills the four outputs. Nonzero sets *err.
  */

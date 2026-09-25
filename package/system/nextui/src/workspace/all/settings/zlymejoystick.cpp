@@ -278,22 +278,34 @@ static bool save_deadzone_file(int left, int right)
 	return true;
 }
 
-static int other_pct(bool right)
+static void ack(const char *msg)
+{
+	for (;;) {
+		GFX_startFrame();
+		PAD_poll();
+		if (PAD_justPressed(BTN_A)) {
+			MenuList::hideOverlay();
+			return;
+		}
+		MenuList::showOverlay(msg, OverlayDismissMode::DismissOnA);
+		GFX_sync();
+	}
+}
+
+static int saved_other(bool saving_right)
 {
 	FILE *f = fopen("/storage/.config/zlyme/miyoo-flip-gamepad/deadzone.config", "r");
-	int left = 0, rightv = 0;
-	char line[64];
+	char body[256];
+	size_t n;
+	int left = 0, right = 0;
+
 	if (!f)
 		return 0;
-	while (fgets(line, sizeof(line), f)) {
-		int v;
-		if (sscanf(line, "left=%d", &v) == 1)
-			left = v;
-		if (sscanf(line, "right=%d", &v) == 1)
-			rightv = v;
-	}
+	n = fread(body, 1, sizeof(body) - 1, f);
+	body[n] = 0;
 	fclose(f);
-	return right ? left : rightv;
+	cal_parse_deadzone(body, &left, &right);
+	return saving_right ? left : right;
 }
 
 static void screen_tune(bool right)
@@ -340,30 +352,42 @@ static void screen_tune(bool right)
 			 SDL_MapRGB(g_screen->format, 240, 240, 240));
 		GFX_flip(g_screen);
 		if (PAD_justPressed(BTN_DPAD_LEFT) && pct > 0) {
-			pct--;
 			char buf[16];
-			snprintf(buf, sizeof(buf), "%d\n", pct);
-			write_text(attr, buf);
+			snprintf(buf, sizeof(buf), "%d\n", pct - 1);
+			if (write_text(attr, buf))
+				pct--;
+			else
+				ack("Could not apply deadzone.");
 		}
 		if (PAD_justPressed(BTN_DPAD_RIGHT) && pct < 30) {
-			pct++;
 			char buf[16];
-			snprintf(buf, sizeof(buf), "%d\n", pct);
-			write_text(attr, buf);
+			snprintf(buf, sizeof(buf), "%d\n", pct + 1);
+			if (write_text(attr, buf))
+				pct++;
+			else
+				ack("Could not apply deadzone.");
 		}
 		if (PAD_justPressed(BTN_A)) {
-			int keep = other_pct(right);
+			char buf[16];
+			int keep = saved_other(right);
 			int L = right ? keep : pct;
 			int R = right ? pct : keep;
+			snprintf(buf, sizeof(buf), "%d\n", pct);
+			if (!write_text(attr, buf)) {
+				ack("Could not apply deadzone. Not saved.");
+				continue;
+			}
 			if (!save_deadzone_file(L, R))
-				text_at("Save failed", 24, 90);
+				ack("Applied for this boot but save failed.");
 			else
-				break;
+				ack("Deadzone saved.");
+			break;
 		}
 		if (PAD_justPressed(BTN_B)) {
 			char buf[16];
 			snprintf(buf, sizeof(buf), "%d\n", start);
-			write_text(attr, buf);
+			if (!write_text(attr, buf))
+				ack("Could not restore the previous deadzone. It may stay changed until reboot.");
 			break;
 		}
 	}
@@ -450,13 +474,81 @@ static void screen_cal(bool right)
 				mkdir("/storage/.config/zlyme", 0755);
 				mkdir(kDir, 0755);
 				rc = cal_commit(&cfg, apply_sysfs, leaf, path, msg, sizeof(msg));
-				snprintf(status, sizeof(status), "%s", msg);
-				text_at(msg, 24, 150);
+				ack(msg);
 				if (rc == 0)
 					break;
+				snprintf(status, sizeof(status), "%s", msg);
 			}
 		}
 	}
+}
+
+struct stick_view {
+	int xmin, xsave, xrun, xmax;
+	int ymin, ysave, yrun, ymax;
+	char xsrc[16];
+	char ysrc[16];
+};
+
+static void load_stick_view(bool right, struct stick_view *v)
+{
+	char path[512];
+	char line[64];
+	FILE *f;
+
+	memset(v, 0, sizeof(*v));
+	snprintf(v->xsrc, sizeof(v->xsrc), "?");
+	snprintf(v->ysrc, sizeof(v->ysrc), "?");
+	if (!find_node(path, sizeof(path), right ? "calibration_right" : "calibration_left"))
+		return;
+	f = fopen(path, "r");
+	if (!f)
+		return;
+	while (fgets(line, sizeof(line), f)) {
+		int n;
+		char src[16];
+		if (sscanf(line, "x_min=%d", &n) == 1)
+			v->xmin = n;
+		else if (sscanf(line, "x_saved_zero=%d", &n) == 1)
+			v->xsave = n;
+		else if (sscanf(line, "x_runtime_zero=%d", &n) == 1)
+			v->xrun = n;
+		else if (sscanf(line, "x_max=%d", &n) == 1)
+			v->xmax = n;
+		else if (sscanf(line, "x_source=%15s", src) == 1)
+			snprintf(v->xsrc, sizeof(v->xsrc), "%s", src);
+		else if (sscanf(line, "y_min=%d", &n) == 1)
+			v->ymin = n;
+		else if (sscanf(line, "y_saved_zero=%d", &n) == 1)
+			v->ysave = n;
+		else if (sscanf(line, "y_runtime_zero=%d", &n) == 1)
+			v->yrun = n;
+		else if (sscanf(line, "y_max=%d", &n) == 1)
+			v->ymax = n;
+		else if (sscanf(line, "y_source=%15s", src) == 1)
+			snprintf(v->ysrc, sizeof(v->ysrc), "%s", src);
+	}
+	fclose(f);
+}
+
+static const char *file_state(const char *path, int deadzone)
+{
+	FILE *f;
+	char body[512];
+	size_t n;
+	const char *err = NULL;
+	cal_cfg cfg;
+	int left, right;
+
+	f = fopen(path, "r");
+	if (!f)
+		return "missing";
+	n = fread(body, 1, sizeof(body) - 1, f);
+	body[n] = 0;
+	fclose(f);
+	if (deadzone)
+		return cal_parse_deadzone(body, &left, &right) == 0 ? "OK" : "invalid";
+	return cal_parse(body, &cfg, &err) == 0 ? "OK" : "invalid";
 }
 
 static void screen_values(void)
@@ -465,37 +557,44 @@ static void screen_values(void)
 		return;
 	SDL_Joystick *joy = open_pad();
 	while (g_screen) {
-		int yl, xl, yr, xr;
-		char line[128];
+		struct stick_view L, R;
+		int yl = 0, xl = 0, yr = 0, xr = 0;
+		char line[160];
+		char lpath[128], rpath[128], dpath[128];
 		frame_begin();
-		text_at("Values   B back", 24, 16);
-		if (read_raw(&yl, &xl, &yr, &xr)) {
-			snprintf(line, sizeof(line), "raw L XL=%d YL=%d   R XR=%d YR=%d", xl, yl, xr, yr);
-			text_at(line, 24, 60);
-		}
-		snprintf(line, sizeof(line), "deadzone L %d%%  R %d%%", read_pct(false), read_pct(true));
-		text_at(line, 24, 100);
-		{
-			char path[512];
-			FILE *f;
-			int row = 180;
-			if (find_node(path, sizeof(path), "calibration_left") && (f = fopen(path, "r"))) {
-				text_at("Left calibration", 24, row);
-				row += 28;
-				while (fgets(line, sizeof(line), f) && row < 400) {
-					text_at(line, 24, row);
-					row += 22;
-				}
-				fclose(f);
-			}
-		}
+		load_stick_view(false, &L);
+		load_stick_view(true, &R);
+		read_raw(&yl, &xl, &yr, &xr);
+		text_at("Values   min/saved/runtime/max   B back", 16, 12);
+		snprintf(line, sizeof(line), "L X %d/%d/%d/%d %s",
+			 L.xmin, L.xsave, L.xrun, L.xmax, L.xsrc);
+		text_at(line, 16, 52);
+		snprintf(line, sizeof(line), "L Y %d/%d/%d/%d %s",
+			 L.ymin, L.ysave, L.yrun, L.ymax, L.ysrc);
+		text_at(line, 16, 84);
+		snprintf(line, sizeof(line), "R X %d/%d/%d/%d %s",
+			 R.xmin, R.xsave, R.xrun, R.xmax, R.xsrc);
+		text_at(line, 16, 124);
+		snprintf(line, sizeof(line), "R Y %d/%d/%d/%d %s",
+			 R.ymin, R.ysave, R.yrun, R.ymax, R.ysrc);
+		text_at(line, 16, 156);
+		snprintf(line, sizeof(line), "DZ  L %d%%   R %d%%", read_pct(false), read_pct(true));
+		text_at(line, 16, 204);
+		snprintf(line, sizeof(line), "RAW L %d,%d   R %d,%d", xl, yl, xr, yr);
+		text_at(line, 16, 244);
 		if (joy) {
 			SDL_JoystickUpdate();
-			snprintf(line, sizeof(line), "out L %d %d   R %d %d",
+			snprintf(line, sizeof(line), "OUT L %d,%d   R %d,%d",
 				 SDL_JoystickGetAxis(joy, 0), SDL_JoystickGetAxis(joy, 1),
 				 SDL_JoystickGetAxis(joy, 2), SDL_JoystickGetAxis(joy, 3));
-			text_at(line, 24, 140);
+			text_at(line, 16, 284);
 		}
+		snprintf(lpath, sizeof(lpath), "%s/joypad.config", kDir);
+		snprintf(rpath, sizeof(rpath), "%s/joypad_right.config", kDir);
+		snprintf(dpath, sizeof(dpath), "%s/deadzone.config", kDir);
+		snprintf(line, sizeof(line), "CFG L %s  R %s  DZ %s",
+			 file_state(lpath, 0), file_state(rpath, 0), file_state(dpath, 1));
+		text_at(line, 16, 340);
 		GFX_flip(g_screen);
 		if (PAD_justPressed(BTN_B))
 			break;
