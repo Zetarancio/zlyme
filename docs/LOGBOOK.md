@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-25 — Phase 4 InputPlumber architecture
+
+InputPlumber is the application-facing controller layer. That is a project decision, not a trial against a no-InputPlumber design. `hid-nintendo` remains the Switch Pro report-mode fix. Batocera and KNULLI, as inspected on this date, do not package InputPlumber; they generate per-emulator controller config instead. Zlyme uses InputPlumber for normalization, exclusive ownership, virtual identity, hotplug, and player order.
+
+Phase 4A packages it and does not start it. Phase 4B is the first built-in-controller test and the latency measurement. The v0.81.0 evdev source polls every 2.5 ms. The Flip stick path has no extra worker. Do not change the physical driver until a measurement says to.
+
 ## 2026-09-25 — Phase 3D and Phase 3 closure
 
 Phase 3 is complete. The built-in gamepad is `miyoo-flip-gamepad` / `Miyoo Flip Gamepad`. The ROCKNIX package is gone from the tree and is not a product module. OTA removes Autocal.pak, `/storage/.config/miyoo-serial-joypad/`, and a hot-copied `rocknix-singleadc-joypad.ko`. It does not touch `/storage/.config/zlyme/miyoo-flip-gamepad/`. `zlyme-gamepad-ff gain` accepts only an integer 0..100. Direct lid and pak-hotkey lookups use the Flip name. Rumble prefers that name and keeps a generic `FF_RUMBLE` fallback that is not the retired driver.

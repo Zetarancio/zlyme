@@ -1593,32 +1593,25 @@ Adopt InputPlumber for the application-policy goal:
 - game launch and in-game controller behavior;
 - decoupling emulators and standalones from the physical Flip identity.
 
+### 4A — Package InputPlumber
+
+Package pinned InputPlumber and install the binary, the D-Bus policy, `default.yaml`, and the Flip composite-device file. Do not start it. Do not change NextUI, RetroArch, standalones, or the physical driver. Completion is a successful package build and a rootfs that contains those files. No device test.
+
+### 4B — Built-in controller integration and latency
+
+First device test. Start InputPlumber after the first frame, manage the built-in pad explicitly, and measure the added delay. `ENABLE_METRICS=1` is available. Do not change the UART driver unless that measurement shows it is the problem. Verify virtual `FF_RUMBLE` reaches the physical motor, and how virtual `FF_GAIN` interacts with Rumble Strength.
+
+### 4C — NextUI handoff and player policy
+
+NextUI switches from the physical device to the virtual controller after InputPlumber is ready. Settings → Joysticks temporarily unmanages only the built-in source. Player order is external controllers first, built-in last, independent of HDMI and of `/dev/input/eventN`.
+
+### 4D — Application cutover
+
+Retarget RetroArch, standalones, and other controller applications to the virtual device. Remove leftover physical-name lookups that Phase 4 no longer needs. External controller models are not a completion test on this unit.
+
 ### Start optional
 
-First package it and run it experimentally.
-
-Do not immediately make it a hard first-frame dependency.
-
-Measure:
-- process RSS;
-- startup time;
-- CPU wakeups;
-- controller hotplug latency.
-
-If NextUI eventually consumes only the virtual InputPlumber controller, InputPlumber becomes Class A and must have a strict startup budget.
-
-### Gate
-
-Test:
-- built-in controller;
-- Switch Pro with `hid-nintendo`;
-- DualShock/DualSense if available;
-- controller connect/disconnect during frontend;
-- controller connect/disconnect during game;
-- suspend/resume;
-- hotkey ownership;
-- no duplicate inputs;
-- deterministic P1 assignment.
+The old "package it experimentally" step is Phase 4A. It is not optional, and it is not a first-frame service.
 
 ## 5 — Second kernel patch reduction pass
 
