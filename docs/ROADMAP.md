@@ -1617,7 +1617,7 @@ Complete — 2026-09-26. The persistent OTA `e911db674811` was installed and acc
 
 ### 4D — Application cutover
 
-In progress. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. RetroArch player 1 is that virtual pad, with an Xbox autoconfig and no second face-button swap. External models are not a completion test. Phase 4D is not accepted yet.
+In progress. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. Shipped controller consumers use that virtual xb360 pad (SDL filter, or an explicit Xbox config where the program keeps its own map). Hardware acceptance of the implementation candidate is still open. Phase 4D is not accepted yet.
 
 ### Start optional
 

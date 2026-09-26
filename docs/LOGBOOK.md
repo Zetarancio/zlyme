@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4D application maps
+
+ROCKNIX `next` `d519b223b994e0295a75727c67770f27b3ca78a7` supplied the PPSSPP InputPlumber control codes, Flycast joystick slots, AetherSX2 `SDL-0` pad, and Dolphin south-button GameCube map. Those were pointed at the virtual xb360 pad. DraStic's saved numeric map migrates off the physical button numbers once. `pico8-splore-pad` is gone. `pak-input.sh` is applied in the pak process, not the NextUI session shell. Phase 4D stays in progress until the candidate image is accepted on hardware.
+
 ## 2026-09-26 — Phase 4D Splore launch
 
 Splore's translator grabbed the virtual xb360 node. MENU opened Splore's menu, MENU+START did not exit, and MENU+Volume changed volume. ROCKNIX runs `pico8_64 -joystick 0` with no grabber. Zlyme now does that. The virtual pad is joystick 0 and its d-pad is a hat. A live pass accepted d-pad, A/B, the stick pointer, MENU as Splore's menu, START not exiting, MENU+START back to NextUI, volume, and MENU+Volume brightness. `pico8-splore-pad.c` was not changed. OpenBOR v7533 player 1 defaults were keyboard scancodes; the Linux SDL2 defaults now use the xb360 joystick slots. A saved `Saves/` file still overrides them. Phase 4D stays in progress.

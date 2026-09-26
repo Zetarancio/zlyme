@@ -204,32 +204,34 @@ A bind-mounted pair was tried in a RetroArch Game Boy pak. Volume alone changed 
 
 RetroArch's first log put Miyoo Flip Gamepad on port 1 and `Microsoft X-Box 360 pad` (1118/654) on port 2, both "not configured". After the Xbox autoconfig and `input_player1_joypad_index` for the virtual pad, a live Game Boy session accepted the d-pad, A/B/X/Y, Start, Select, L1/R1, MENU as the RetroArch menu, and MENU+START back to NextUI. The remaining startup banner is `notification_show_autoconfig_fails`: the saved config leaves that on, and the physical pad is still "not configured". `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` was checked on the device: SDL then reports one joystick, index 0, name `Xbox 360 Controller`. Paks export that hint, RetroArch player 1 is index 0, and the fail banner is forced off. NextUI does not get the hint.
 
-Paks export `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` from `pak-input.sh`, which `nextui-session` sources only inside `run_pak_cmd`, before the pak process starts. `nextui.elf` does not get that hint, so the frontend and Settings → Joysticks still see the physical pad. Every InputPlumber player target, built-in and external, is an xb360 pad with ids `045e:028e`, so the filter keeps those targets and drops the physical Flip pad. On the device, SDL then reported one joystick, index 0, name `Xbox 360 Controller`.
+Paks receive `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` from `pak-input.sh`. `nextui-session` applies that file inside the `setsid` child, not in the session shell, and skips it for `Settings.pak`. `nextui.elf` does not get that hint, so the frontend and Settings → Joysticks still see the physical pad. Every InputPlumber player target, built-in and external, is an xb360 pad with ids `045e:028e`, so the filter keeps every virtual target and drops the physical Flip pad. On the device, SDL then reported one joystick, index 0, name `Xbox 360 Controller`.
 
-Splore used to be started under `pico8-splore-pad`, which called `EVIOCGRAB` on that virtual node. While Splore was open, that process, `zlyme-pak-hotkey`, and `zlyme-keylidmon` all had the node open, and the log said the mapping was grabbed. MENU opened Splore's own menu, MENU+START did not leave Splore, and MENU+Volume changed volume. The grab hid Guide and Start from the session helpers. ROCKNIX launches Pico-8 directly (`pico8_64 -joystick 0`). Zlyme now does the same. The virtual pad's d-pad is a hat, so Splore reads it without a translator. A live pass then accepted d-pad, A/B, stick pointer, MENU as Splore's menu, START not exiting, MENU+START back to NextUI, volume, and MENU+Volume brightness. `pico8-splore-pad.c` was not changed.
+Splore used to be started under `pico8-splore-pad`, which called `EVIOCGRAB` on that virtual node. While Splore was open, that process, `zlyme-pak-hotkey`, and `zlyme-keylidmon` all had the node open, and the log said the mapping was grabbed. MENU opened Splore's own menu, MENU+START did not leave Splore, and MENU+Volume changed volume. The grab hid Guide and Start from the session helpers. ROCKNIX launches Pico-8 directly (`pico8_64 -joystick 0`). Zlyme now does the same. The virtual pad's d-pad is a hat, so Splore reads it without a translator. A live pass then accepted d-pad, A/B, stick pointer, MENU as Splore's menu, START not exiting, MENU+START back to NextUI, volume, and MENU+Volume brightness. The translator is no longer built or installed.
+
+ROCKNIX reference for this cutover is `ROCKNIX/distribution` branch `next` at `d519b223b994e0295a75727c67770f27b3ca78a7`. Adapted from that tree: PPSSPP `sources/InputPlumber/controls.ini` (device `10`, Xbox face codes, not the RK3566 Nintendo set); Flycast `maple_sdl_joystick_0 = 0` and a second slot at index 1; AetherSX2 `config/InputPlumber` `Pad1` `SDL-0/*` binds, without Guide chords; Dolphin `GCPadNew.ini.south.inline` face positions with `Device = SDL/0/Xbox 360 Controller`; Hypseus `-gamepad` plus the shipped `hypinput_gamepad.ini` `BUTTON_*` macros; Pico-8 `-joystick 0`. Physical-name maps from that tree (retrogame, per-SoC button numbers) were not copied.
 
 OpenBOR v7533 (`BUILD_LINUX=1`, SDL2) opens every SDL joystick with `SDL_JoystickOpen` and polls buttons, axes, and hats into `joysticks[].Data` on the non-Android path. `savedata.usejoy` defaults to 1. Player 1's default bindings in `engine/sdl/control.h` were keyboard scancodes (`SDL_SCANCODE_UP`, `SDL_SCANCODE_A`, and so on), so the opened joystick never drove a character until someone remapped in the menu. That is the pre-InputPlumber defect. The Phase 4 part is which device is index 0: the hint makes that the virtual xb360 pad. The Linux SDL2 defaults now use joystick slots for that pad's measured shape, 15 buttons and 6 axes plus hat 0. Button 0 is A. Hat up is `JOY_LIST_FIRST + 1 + 15 + 12` (628). A binary settings file already stored under `Saves/` next to a pak still overrides these defaults. The card was not readable for an existing file during this pass. OpenBOR was not physically tested.
 
-| Application | Launch | API | Old assumption | 4D change | Test |
-| --- | --- | --- | --- | --- | --- |
-| NextUI | nextui-session | SDL GameController | virtual pad after handoff | unchanged from 4C | live in 4C |
-| zlyme-pak-hotkey | session, per pak | evdev | js0 and physical name | virtual Guide+Start, same pad | live, exit count not recorded |
-| zlyme-keylidmon | S26 | evdev | physical BTN_MODE | virtual Guide; volume/power/lid unchanged | live volume and brightness |
-| RetroArch / libretro | ra-run | SDL2 joypad | retrogame profile, physical often port 1 | player 1 is SDL index 0 after the physical pad is hidden; Xbox autoconfig; fail banner off | live: buttons, menu, MENU+START |
-| PPSSPP | PSP.pak | SDL, seed ini has no device index | first SDL device | pak hint hides non-xb360 game controllers | static |
-| Flycast | DC.pak | SDL | no device index in the launcher | same hint | static |
-| ScummVM | SCUMMVM.pak | SDL2 `--joystick 0` | first device was the physical pad | hint makes index 0 the virtual pad | static |
-| Hypseus Singe | DAPHNE.pak `-gamepad` | SDL2 | first joystick | same hint | static |
-| Amiberry | AMIGA.pak | SDL2 GameController (`libSDL2-2.0.so.0`) | first controller | same hint; binary has no `/dev/input` strings | static |
-| OpenBOR | OPENBOR.pak | SDL2 joystick poll | keyboard scancode defaults; index 0 was physical | hint plus xb360 default slots in `control.h` | source review; not played |
-| Moonlight | Moonlight.pak | SDL2 (`platform = sdl`); libevdev is linked for other platforms | all evdev if not on the sdl platform | config selects sdl, so the hint applies | static |
-| GZDoom | DOOM.pak | SDL2 (`NO_SDL_JOYSTICK` off) | first joystick | same hint | static |
-| PICO-8 / Splore | `pico8` direct, like ROCKNIX | SDL2 `-joystick 0` | translator grabbed the virtual pad | no translator; hat d-pad on joystick 0 | live |
-| DraStic | start_drastic.sh | SDL2 `SDL_JoystickOpen` | first joystick | hint applies to joystick enumeration, not only GameController | static |
-| AetherSX2 | start_aethersx2.sh | SDL2 GameController | first controller | same hint | static |
-| Dolphin | start_dolphin.sh | SDL2 | first device | same hint | static |
-| PortMaster | portmaster | per-port SDL | ports pick their own device | hint is in the pak environment | not played yet |
-| Wine / Box64 | WINE.pak | guest via box64; `wine` is a shell wrapper | not host SDL | the hint is exported but Wine XInput/DInput does not use it; no guest mapping was added | static |
+| Application | Mechanism |
+| --- | --- |
+| NextUI | virtual evdev after the Phase 4C handoff; no pak SDL filter |
+| zlyme-pak-hotkey | virtual evdev, Guide+Start on one xb360 target |
+| zlyme-keylidmon | virtual evdev Guide; volume, power, and lid stay on their own devices |
+| RetroArch / libretro | SDL filtered virtual xb360; append config forces player 1 index 0 and the Xbox autoconfig |
+| PPSSPP | explicit Xbox controller config (`[ControlMapping]` device 10, seeded once) |
+| Flycast | explicit Xbox controller config (`maple_sdl_joystick_0 = 0`, second player index 1) |
+| ScummVM | SDL filtered virtual xb360 (`--joystick=0`) |
+| Hypseus Singe | SDL filtered virtual xb360 (`-gamepad`, `hypinput_gamepad.ini` `BUTTON_*`) |
+| Amiberry | SDL filtered virtual xb360 (first GameController; the binary has no `/dev/input` strings) |
+| OpenBOR | SDL filtered virtual xb360; v7533 defaults bind d-pad hat, A/B/X/Y, L1/R1, Select, Start. L2/R2 are axes and are not default buttons. A `Saves/` file still overrides |
+| Moonlight | SDL filtered virtual xb360 (`platform = sdl`, `SDL_GameControllerOpen`). The evdev `input =` line stays commented |
+| GZDoom | SDL filtered virtual xb360 (`NO_SDL_JOYSTICK` off, `+set use_joystick true`) |
+| PICO-8 / Splore | SDL filtered virtual xb360 (`pico8_64 -joystick 0`). No translator |
+| DraStic | explicit Xbox controller config. Joystick values are `0x400\|button` and hat 0 is `0x800\|SDL hat mask` (up 2049, right 2050, down 2052, left 2056). The old physical button numbers migrate once |
+| AetherSX2 | explicit Xbox controller config (`Pad1` `SDL-0/*`, seeded once; Guide is unbound) |
+| Dolphin | explicit Xbox controller config (`GCPadNew.ini` `SDL/0/Xbox 360 Controller`, created once) |
+| PortMaster / PORTS | SDL filtered virtual xb360. `control.txt` and `portmaster-launch` export the hint. `zlyme-portmaster-exec` does not `setsid` |
+| Wine / Box64 | Wine standard XInput/DInput from virtual evdev. `winebus.so` dlopens SDL2 and calls `SDL_GameControllerOpen`. hidraw does not see the uinput node. The pak hint hides the physical pad |
 
 Libretro cores ride RetroArch. The human test list for later passes is NextUI/PAK lifecycle (the hotkey and brightness path above), RetroArch, PortMaster, PICO-8 Splore, and PPSSPP. Other shipped consumers stay static until someone runs them. No external controller was required.
 
