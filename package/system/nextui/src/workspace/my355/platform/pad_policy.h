@@ -21,4 +21,16 @@ static inline int zlyme_builtin_duplicate(int maintenance, int physical_open,
 	return physical_open && any_virtual;
 }
 
+/* SDL keeps SDL_CONTROLLER_BUTTON_GUIDE down for at least
+ * SDL_MINIMUM_GUIDE_BUTTON_DELAY_MS (250). NextUI uses that same
+ * window to tell a menu tap from a brightness hold, so a short tap
+ * arrives as a hold. MENU follows the raw guide button. The delayed
+ * controller Guide event must not also change BTN_MENU. */
+static inline int zlyme_accept_menu_event(int from_controller_guide, int raw_is_guide)
+{
+	if (from_controller_guide)
+		return 0;
+	return raw_is_guide ? 1 : 0;
+}
+
 #endif

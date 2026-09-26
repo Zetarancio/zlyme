@@ -20,7 +20,7 @@ Keep three boundaries:
 
 `release` returns only after the built-in composite and its gamepad target are gone. `reclaim` returns only after that composite has a gamepad target. Both fail if InputPlumber is not running. `ensure` is the boot and crash-recovery command: it reclaims when InputPlumber is up and succeeds immediately when it is not.
 
-NextUI's normal path uses SDL GameController on the virtual target. SDL calls that pad `Xbox 360 Controller` even though the evdev name is `Microsoft X-Box 360 pad`. Both names are the same xb360 target, including an external one, so NextUI does not use the name to tell the built-in target from an external target. Settings → Joysticks sets an explicit physical-maintenance mode, calls `release`, uses the physical pad, clears that mode, then calls `reclaim`. `nextui-session` calls `ensure` before each frontend start.
+NextUI's normal path uses SDL GameController on the virtual target. MENU is the exception: SDL holds Guide for at least 250 ms, which is also the tap-versus-brightness window, so MENU follows the raw guide button and ignores the delayed Guide event. SDL calls that pad `Xbox 360 Controller` even though the evdev name is `Microsoft X-Box 360 pad`. Both names are the same xb360 target, including an external one, so NextUI does not use the name to tell the built-in target from an external target. Settings → Joysticks sets an explicit physical-maintenance mode, calls `release`, uses the physical pad, clears that mode, then calls `reclaim`. `nextui-session` calls `ensure` before each frontend start.
 
 HDMI, `/dev/input/eventN`, and `/dev/input/jsN` are not priority inputs.
 

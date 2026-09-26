@@ -3306,6 +3306,16 @@ __attribute__((weak)) int PLAT_suppressRawJoy(SDL_JoystickID id)
 	(void)id;
 	return 0;
 }
+__attribute__((weak)) int PLAT_rawButtonIsGuide(SDL_JoystickID id, Uint8 button)
+{
+	(void)id;
+	(void)button;
+	return 0;
+}
+__attribute__((weak)) int PLAT_ignoreControllerGuide(void)
+{
+	return 0;
+}
 
 FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 {
@@ -3472,7 +3482,12 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 			case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: btn = BTN_DPAD_RIGHT; id = BTN_ID_DPAD_RIGHT; break;
 			case SDL_CONTROLLER_BUTTON_START: btn = BTN_START; id = BTN_ID_START; break;
 			case SDL_CONTROLLER_BUTTON_BACK: btn = BTN_SELECT; id = BTN_ID_SELECT; break;
-			case SDL_CONTROLLER_BUTTON_GUIDE: btn = BTN_MENU; id = BTN_ID_MENU; break;
+			case SDL_CONTROLLER_BUTTON_GUIDE:
+				if (!PLAT_ignoreControllerGuide()) {
+					btn = BTN_MENU;
+					id = BTN_ID_MENU;
+				}
+				break;
 			case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: btn = BTN_L1; id = BTN_ID_L1; break;
 			case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: btn = BTN_R1; id = BTN_ID_R1; break;
 			case SDL_CONTROLLER_BUTTON_LEFTSTICK: btn = BTN_L3; id = BTN_ID_L3; break;
@@ -3511,12 +3526,21 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 		}
 		else if (event.type == SDL_JOYBUTTONDOWN || event.type == SDL_JOYBUTTONUP)
 		{
-			if (PLAT_suppressRawJoy(event.jbutton.which))
-				continue;
+			int raw_guide = 0;
+			if (PLAT_suppressRawJoy(event.jbutton.which)) {
+				if (!PLAT_rawButtonIsGuide(event.jbutton.which, event.jbutton.button))
+					continue;
+				raw_guide = 1;
+			}
 			uint8_t joy = event.jbutton.button;
 			pressed = event.type == SDL_JOYBUTTONDOWN;
 			// LOG_info("joy event: %i (%i)\n", joy,pressed);
-			if (joy == JOY_UP)
+			if (raw_guide)
+			{
+				btn = BTN_MENU;
+				id = BTN_ID_MENU;
+			}
+			else if (joy == JOY_UP)
 			{
 				btn = BTN_DPAD_UP;
 				id = BTN_ID_DPAD_UP;

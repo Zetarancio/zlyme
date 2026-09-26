@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4C MENU tap on the 7486688 image
+
+The persistent card matches `748668829772`: `zlyme-input`, InputPlumber, the capability map, and `nextui.elf` share that tree's SHA-256, with no bind mounts. `ManageAllDevices` was true, one Miyoo Flip Gamepad composite, and NextUI held the virtual pad. `zlyme-keylidmon` did not have the gamepad open. A 142 ms physical MENU tap produced a raw guide release at 142 ms and an SDL Guide release at 263 ms. SDL's 250 ms minimum Guide hold is the same window NextUI uses for a brightness hold, so quick and normal taps opened the brightness overlay. Longer holds and MENU+Volume still changed brightness. NextUI now takes MENU from the raw guide button and ignores the delayed Guide event. A bind-mounted build of that binary opened the Quick Menu on a quick tap and a normal press, showed the brightness overlay on a hold, changed brightness with MENU+Volume, and changed volume with Volume alone. Phase 4C stays in progress until that binary is on an installed image. Phase 4D has not started.
+
 ## 2026-09-26 — Phase 4C live checkpoint
 
 The installed OTA matches `602aa5275e80`. On that binary, `release` returned before the composite was gone, and `zlyme-input` did not re-enable management after an InputPlumber restart. SDL GUIDs matched the computed database. Printed A/B were correct; printed X/Y were swapped until `BTN_NORTH` mapped to `North` and `BTN_WEST` to `West`. A bind-mounted rebuild then finished release and reclaim only when the target state was ready, recovered two InputPlumber restarts, reclaimed after `nextui.elf` was killed, and played `FF_RUMBLE` on the virtual pad. The motor buzzed once. Settings cancellation and lid suspend were not run. Phase 4C stays in progress until a newer image is installed. Phase 4D has not started.

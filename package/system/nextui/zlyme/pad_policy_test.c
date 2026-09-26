@@ -20,6 +20,9 @@ int main(void)
 	failed += expect("normal duplicate", zlyme_builtin_duplicate(0, 1, 1), 1);
 	failed += expect("normal virtual only", zlyme_builtin_duplicate(0, 0, 1), 0);
 	failed += expect("maintenance external ok", zlyme_builtin_duplicate(1, 1, 1), 0);
+	failed += expect("controller guide", zlyme_accept_menu_event(1, 1), 0);
+	failed += expect("raw guide", zlyme_accept_menu_event(0, 1), 1);
+	failed += expect("raw other", zlyme_accept_menu_event(0, 0), 0);
 	if (failed) {
 		fprintf(stderr, "PAD_FAIL %d\n", failed);
 		return 1;

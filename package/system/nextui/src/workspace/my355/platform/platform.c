@@ -336,6 +336,29 @@ int PLAT_suppressRawJoy(SDL_JoystickID id)
 	return 0;
 }
 
+int PLAT_rawButtonIsGuide(SDL_JoystickID id, Uint8 button)
+{
+	int i;
+
+	for (i = 0; i < num_controllers; i++) {
+		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+		SDL_GameControllerButtonBind bind;
+
+		if (!joy || SDL_JoystickInstanceID(joy) != id)
+			continue;
+		bind = SDL_GameControllerGetBindForButton(controllers[i], SDL_CONTROLLER_BUTTON_GUIDE);
+		if (bind.bindType == SDL_CONTROLLER_BINDTYPE_BUTTON &&
+		    bind.value.button == button)
+			return zlyme_accept_menu_event(0, 1);
+	}
+	return 0;
+}
+
+int PLAT_ignoreControllerGuide(void)
+{
+	return !zlyme_accept_menu_event(1, 0);
+}
+
 void PLAT_initInput(void) {
 	const char *map = getenv("SDL_GAMECONTROLLERCONFIG_FILE");
 	if (!map || !map[0])
