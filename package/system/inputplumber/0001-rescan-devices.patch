@@ -1,0 +1,78 @@
+--- a/src/input/manager.rs	2026-09-14 21:42:51.000000000 +0200
++++ b/src/input/manager.rs	2026-09-26 11:52:46.732421802 +0200
+@@ -115,6 +115,8 @@
+         dbus_paths: Vec<String>,
+     },
+     GamepadReorderingFinished,
++    /// Discover source devices again without changing ManageAllDevices.
++    RescanDevices,
+ }
+ 
+ /// Manages input devices
+@@ -549,6 +551,19 @@
+                     log::info!("Finished reordering target devices");
+                     self.target_gamepad_order_changing = false;
+                 }
++                ManagerCommand::RescanDevices => {
++                    if !self.manage_all_devices {
++                        log::info!("Ignoring rescan while device management is disabled");
++                        continue;
++                    }
++                    log::info!("Rescanning source devices");
++                    let cmd_tx = self.tx.clone();
++                    tokio::task::spawn(async move {
++                        if let Err(e) = Manager::discover_all_devices(&cmd_tx).await {
++                            log::error!("Failed to rescan devices: {e:?}");
++                        }
++                    });
++                }
+             }
+         }
+ 
+--- a/src/dbus/interface/manager.rs	2026-09-14 21:42:51.000000000 +0200
++++ b/src/dbus/interface/manager.rs	2026-09-26 11:52:46.732509735 +0200
+@@ -187,6 +187,21 @@
+         Ok("".to_string())
+     }
+ 
++    /// Discover source devices again. Does not change ManageAllDevices.
++    /// Sources already owned by a composite stay attached.
++    async fn rescan_devices(
++        &self,
++        #[zbus(connection)] conn: &Connection,
++        #[zbus(header)] hdr: Header<'_>,
++    ) -> fdo::Result<()> {
++        check_polkit(conn, Some(hdr), "org.shadowblip.InputPlumber.RescanDevices").await?;
++        self.tx
++            .send_timeout(ManagerCommand::RescanDevices, Duration::from_millis(500))
++            .await
++            .map_err(|err| fdo::Error::Failed(err.to_string()))?;
++        Ok(())
++    }
++
+     /// Create a target device of the given type. Returns the DBus path to
+     /// the created target device.
+     async fn create_target_device(
+--- a/src/cli/device.rs	2026-09-14 21:42:51.000000000 +0200
++++ b/src/cli/device.rs	2026-09-26 11:52:46.732545601 +0200
+@@ -148,6 +148,8 @@
+         #[arg(long, action)]
+         enable: bool,
+     },
++    /// Discover source devices again without changing ManageAllDevices
++    Rescan,
+ }
+ 
+ #[derive(Tabled)]
+@@ -387,6 +389,11 @@
+             let verb = if enable { "Enabled" } else { "Disabled" };
+             println!("{verb} management of all supported devices");
+         }
++        DevicesCommand::Rescan => {
++            let manager = ManagerInterfaceProxy::builder(&conn).build().await?;
++            manager.rescan_devices().await?;
++            println!("Rescanned source devices");
++        }
+         DevicesCommand::Order { device_ids } => {
+             let manager = ManagerInterfaceProxy::builder(&conn).build().await?;
+             if let Some(ids) = device_ids {
