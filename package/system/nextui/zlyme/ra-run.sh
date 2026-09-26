@@ -232,27 +232,17 @@ fi
 RA_AC=/tmp/zlyme-ra-ac.cfg
 printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
 
-# sdl2 follows /dev/input/js* (IMU is event-only). Flip is js0; a
-# connected Switch Pro is otherwise P2, so GB/etc. ignore it. Prefer
-# it as P1 (same assignment ES/Knulli does). Last appendconfig wins
-# over a stale card ra-perf.cfg that still says udev.
 # RA 1.22's driver named "sdl" is SDL3 (libSDL3.so.0). We ship SDL2.
+# Player 1 is the InputPlumber virtual pad. The grabbed physical pad
+# is still enumerated and must not stay on port 1.
 printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
-pro_idx=
-idx=0
-for js in /dev/input/js*; do
-	[ -c "$js" ] || continue
-	sysname=$(cat /sys/class/input/${js##*/}/device/name 2>/dev/null) || continue
-	case "$sysname" in
-		*IMU*|*Accel*|*Gyro*) continue ;;
-		*Pro\ Controller*|Nintendo\ Switch\ Pro*|Nintendo\ Co.*)
-			pro_idx=$idx
-			;;
-	esac
-	idx=$((idx + 1))
-done
-if [ -n "$pro_idx" ]; then
-	printf 'input_player1_joypad_index = "%s"\n' "$pro_idx" >> "$RA_AC"
+if [ -r /usr/share/zlyme/virtpad-index.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/virtpad-index.sh
+	virt_idx=$(zlyme_virtpad_js_index)
+	if [ -n "$virt_idx" ]; then
+		printf 'input_player1_joypad_index = "%s"\n' "$virt_idx" >> "$RA_AC"
+	fi
 fi
 
 # RA 1.22 splits --appendconfig on '|', not comma.
