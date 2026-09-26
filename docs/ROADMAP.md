@@ -497,7 +497,7 @@ Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
 Phase 4B COMPLETE — 2026-09-26
 Phase 4C COMPLETE — 2026-09-26
-Phase 4D NOT STARTED
+Phase 4D IN PROGRESS — application cutover
 ```
 
 Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
@@ -1617,7 +1617,7 @@ Complete — 2026-09-26. The persistent OTA `e911db674811` was installed and acc
 
 ### 4D — Application cutover
 
-Retarget RetroArch, standalones, and other controller applications to the virtual device. Remove leftover physical-name lookups that Phase 4 no longer needs. External controller models are not a completion test on this unit.
+In progress. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. RetroArch player 1 is that virtual pad, with an Xbox autoconfig and no second face-button swap. External models are not a completion test. Phase 4D is not accepted yet.
 
 ### Start optional
 

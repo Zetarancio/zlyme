@@ -196,6 +196,41 @@ On that boot, S31 and S32 were running. `zlyme-input status` was `manage=1 built
 
 SDL 2.32.10 still delays `SDL_CONTROLLER_BUTTON_GUIDE` until at least `SDL_MINIMUM_GUIDE_BUTTON_DELAY_MS` (250). NextUI's tap and brightness windows are the same 250 ms, so my355 takes `BTN_MENU` from the raw joystick button bound to Guide and ignores the delayed controller Guide event. The InputPlumber mapping remains MENU to Guide. The live test of this installed image accepted a short or normal MENU press as the Quick Menu, a hold as the brightness modifier, MENU+Volume as brightness, and Volume alone as volume. The same test accepted A, B, X, Y, D-pad and diagonals, Start, Select, L1/R1, L2/R2, L3/R3, both sticks, and virtual `FF_RUMBLE`. Settings → Joysticks remains the physical-maintenance path: release, then the physical pad, then reclaim of only the built-in composite. Calibration files were not rewritten for this closure. External controllers stay one composite and one `xb360` target each, ordered ahead of the built-in pad, with relative order preserved. No external model was physically tested.
 
+## Phase 4D application cutover — 2026-09-26
+
+MENU+START stopped exiting paks because `zlyme-pak-hotkey` still opened `/dev/input/js0` (buttons 9 and 10) and the evdev node named Miyoo Flip Gamepad (`BTN_MODE` + `BTN_START`). InputPlumber grabs that physical pad, so those fds receive nothing. On the virtual target `Microsoft X-Box 360 pad` (`0003/045e/028e/0001`, sysfs under `/devices/virtual/`), a live capture showed MENU as evdev 316 (`BTN_MODE`) and START as 315 (`BTN_START`). The helper now watches each such virtual target, exits only when both are down on the same one, and rescans `/dev/input` with inotify. `zlyme-keylidmon` takes MENU from that same Guide button and still reads volume, power, and the lid from their own devices.
+
+A bind-mounted pair was tried in a RetroArch Game Boy pak. Volume alone changed volume. MENU+Volume changed brightness. MENU alone and START alone did not exit. MENU+START returned to NextUI. The user did not count the exits, so this is not recorded as three repetitions. An InputPlumber restart while a pak is running has not been repeated for the new helper.
+
+RetroArch's own log from that pak put Miyoo Flip Gamepad on port 1 and `Microsoft X-Box 360 pad` (1118/654) on port 2, both "not configured". Port 1 is the grabbed physical pad, which is why in-game buttons did nothing. `ra-run` now sets player 1 to the virtual pad's SDL index, computed from the js node name and `/devices/virtual/` rather than a fixed js number. The sdl2 autoconfig for that name uses Xbox button ids, with no second A/B swap. That RetroArch change is not live-proven yet.
+
+Paks export `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e`, so SDL game-controller scans keep InputPlumber's xb360 targets. NextUI itself is not given that hint. PICO-8's controller string and Splore's evdev reader follow the virtual pad, including hat d-pad. ScummVM's `--joystick` uses the same index helper. Those three are not live-proven.
+
+OpenBOR is separate. Its launcher is `exec OpenBOR` with no Zlyme control profile, which was already true before InputPlumber. It also opens SDL joysticks from index 0, which is now the grabbed physical pad. That second fact is the Phase 4D retarget, and it is not implemented. Do not treat a pre-existing missing profile as an InputPlumber regression.
+
+| Application | Launch | API | Old assumption | 4D change | Test |
+| --- | --- | --- | --- | --- | --- |
+| NextUI | nextui-session | SDL GameController | virtual pad after handoff | unchanged from 4C | live in 4C |
+| zlyme-pak-hotkey | session, per pak | evdev | js0 and physical name | virtual Guide+Start, same pad | live, exit count not recorded |
+| zlyme-keylidmon | S26 | evdev | physical BTN_MODE | virtual Guide; volume/power/lid unchanged | live volume and brightness |
+| RetroArch / libretro | ra-run | SDL2 joypad | retrogame profile, physical often port 1 | player 1 virtual index, Xbox autoconfig | static; live pending |
+| PPSSPP | PSP.pak | SDL, seed ini has no device index | first SDL device | pak hint hides non-xb360 game controllers | static |
+| Flycast | DC.pak | SDL | no device index in the launcher | same hint | static |
+| ScummVM | SCUMMVM.pak | SDL `--joystick` | hardcoded 0 | virtual js index | static |
+| Hypseus Singe | DAPHNE.pak `-gamepad` | SDL | first joystick | no profile yet | static |
+| Amiberry | AMIGA.pak | its own controller config | no Zlyme index | not retargeted | static |
+| OpenBOR | OPENBOR.pak | SDL, no control file | pre-existing missing profile; now also sees dead js0 | not retargeted | static |
+| Moonlight | Moonlight.pak | evdev, all devices by default | may open physical and virtual | not pinned | static |
+| GZDoom | DOOM.pak | SDL/internal | no js index in the launcher | same hint | static |
+| PICO-8 / Splore | start_pico8.sh | SDL plus evdev uinput for Splore | retrogame_joypad, joystick 0, button d-pad | virtual mapping, hat d-pad, js index | static |
+| DraStic | start_drastic.sh | bundled SDL, touch shim | no js index in the launcher | not retargeted | static |
+| AetherSX2 | start_aethersx2.sh | Qt/SDL | no js index in the launcher | not retargeted | static |
+| Dolphin | start_dolphin.sh | SDL | no js index in the launcher | same hint | static |
+| PortMaster | portmaster | per-port SDL | ports pick their own device | pak hint only | static |
+| Wine / Box64 | WINE.pak | guest input | not a Linux js index | not retargeted | static |
+
+Libretro cores ride RetroArch. The human test list for later passes is NextUI/PAK lifecycle (the hotkey and brightness path above), RetroArch, PortMaster, PICO-8 Splore, and PPSSPP. Other shipped consumers stay static until someone runs them. No external controller was required.
+
 ## Historical recommendation — 2026-09-15
 
 Do not package InputPlumber merely for the Switch Pro. hid-nintendo is the driver for that pad. The notes below are that study. They are not the current Phase 4 decision.

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4D started
+
+MENU+START died because `zlyme-pak-hotkey` still read js0 and the physical Miyoo Flip Gamepad, which InputPlumber grabs. The virtual pad reports MENU as `BTN_MODE` (316) and START as `BTN_START` (315). The helper and `zlyme-keylidmon` now use that virtual target. A bind-mounted test changed volume, changed brightness with MENU+Volume, left the pak running for MENU alone and START alone, and returned to NextUI on MENU+START. The exit count was not recorded. RetroArch had put the physical pad on port 1 and the virtual pad on port 2. Player 1 is being moved to the virtual pad. Phase 4D is in progress. Phase 4C stays complete.
+
 ## 2026-09-26 — Phase 4C complete
 
 The persistent OTA `zlyme-my355-20260926-e911db674811.tar` (SHA-256 `a9a298c1f6d59c13d1e750c8b9aa9043328a360016776dd96e137d62043eb015`) is the installed card. `inputplumber`, `zlyme-input`, `nextui.elf`, the capability map, and `gamecontrollerdb.txt` match that tree, with no bind mounts. `ManageAllDevices` stayed true through one release, one reclaim, and an InputPlumber restart that the same `zlyme-input` process recovered. The live test of this image accepted the built-in virtual path: A/B/X/Y, D-pad and diagonals, Start, Select, MENU, L1/R1, L2/R2, L3/R3, both sticks, and virtual rumble. A short or normal MENU press opens the Quick Menu, a hold shows the brightness modifier, MENU+Volume changes brightness, and Volume alone changes volume. Settings → Joysticks uses the physical-maintenance release/reclaim path. Volume, power, and the lid stay independent. Phase 4C is complete. Phase 4D has not started.

@@ -312,7 +312,8 @@ The Miyoo Flip uses board-specific input integration:
 - power key;
 - volume/brightness handling;
 - NextUI `my355` platform code;
-- `zlyme-keylidmon` while another application owns the screen.
+- `zlyme-keylidmon` while another application owns the screen. Its MENU state comes from the virtual Guide button. Volume, power, and the lid stay on their own devices;
+- `zlyme-pak-hotkey` exits a pak on MENU+START from one virtual controller. It does not combine those buttons across two controllers.
 
 These are board/platform responsibilities.
 
