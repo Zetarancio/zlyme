@@ -169,6 +169,33 @@ The installed `748668829772` image matches the target tree for `/usr/sbin/zlyme-
 
 SDL 2.32.10 `SDL_MINIMUM_GUIDE_BUTTON_DELAY_MS` is 250. A Guide release earlier than that is postponed until the 250 ms mark. NextUI's menu tap and brightness-modifier windows are also 250 ms. On the virtual pad, one quick MENU tap was raw button 8 down/up in 142 ms and `SDL_CONTROLLER_BUTTON_GUIDE` down/up in 263 ms. That stretched hold opened the brightness overlay. A 345 ms press and holds of about 1.1–1.8 s released Guide with the raw button, and MENU+Volume still changed brightness. The Guide mapping stays. NextUI accepts the raw guide button for `BTN_MENU` and ignores the delayed controller Guide event. A bind-mounted build of that binary opened the Quick Menu on a quick tap and a normal press, showed the brightness overlay on a hold, changed brightness with MENU+Volume, and changed volume with Volume alone. That binary is not in the installed squashfs yet.
 
+That last sentence belongs to this `748668829772` checkpoint. The installed image at closure is `e911db674811`, recorded below.
+
+## Phase 4C closure — 2026-09-26
+
+The persistent card is the OTA `zlyme-my355-20260926-e911db674811.tar`, SHA-256 `a9a298c1f6d59c13d1e750c8b9aa9043328a360016776dd96e137d62043eb015`. No bind mounts covered InputPlumber, `zlyme-input`, NextUI, or `/usr/share/inputplumber`. Installed SHA-256 values match the `e911db674811` target tree:
+
+```text
+/usr/bin/inputplumber
+  011eaea8530a2cae855bba493de6767af695b39b3bd41bba45812ffa93abc44f
+/usr/sbin/zlyme-input
+  f4afc9f21180531b822992655d861454721ef363c544607312a799115e943628
+/usr/bin/nextui.elf
+  3b010571adc1bc1731c4d34e546f1b6a526d68729dfdf9f60b7df58ee9184719
+capability map zlyme_miyoo_flip.yaml
+  72dd7b6450de0299d9a67666376228bfabadc97595bd53e82361127ff1064aef
+/usr/lib/gamecontrollerdb.txt
+  50aaf9334f09803cfcb2dc10b2b962817200cacf2675025b4e1a3e0e03b42eaf
+```
+
+`/boot/VERSION` was not on the FAT partition. `/usr/share/zlyme/version` remains the NextUI pin line `zlyme43 (2026-09-26)`, not the Zlyme git SHA. The capability map still sends `BTN_NORTH` to North and `BTN_WEST` to West.
+
+On that boot, S31 and S32 were running. `zlyme-input status` was `manage=1 builtin=virtual devices=Miyoo Flip Gamepad`. One composite, `GamepadOrder` that composite alone, source `Miyoo Flip Gamepad`, target node `Microsoft X-Box 360 pad`. InputPlumber held the physical pad. Volume was `gpio-keys-volume`, power was `rk805 pwrkey`, and the lid was `gpio-keys-hall`. `zlyme-keylidmon` held those three and not the gamepad. NextUI's log for this image showed the physical controller removed and `Microsoft X-Box 360 pad` added before a game launch. At the lifecycle check, NextUI was not the foreground process because RetroArch was running a Game Boy pak. RetroArch still had the physical node and the virtual node open. Application retargeting is Phase 4D. InputPlumber held the physical grab.
+
+`zlyme-input release` printed `built-in composite released` and returned 0 only after the composite list was empty and the virtual node was gone. `ManageAllDevices` stayed true. `zlyme-input reclaim` printed `built-in target ready` and returned 0 only after one Miyoo Flip Gamepad composite and the `Microsoft X-Box 360 pad` node were back. `GamepadOrder` was that composite. Uptime moved from 605 to 606 across reclaim. Restarting S31 changed the InputPlumber pid from 744 to 9025 and left `zlyme-input` pid 759 running. The first status poll was `unavailable`. The next poll was `manage=1 builtin=virtual devices=Miyoo Flip Gamepad`, with the composite, the virtual node, and the physical grab restored. S32 was not restarted.
+
+SDL 2.32.10 still delays `SDL_CONTROLLER_BUTTON_GUIDE` until at least `SDL_MINIMUM_GUIDE_BUTTON_DELAY_MS` (250). NextUI's tap and brightness windows are the same 250 ms, so my355 takes `BTN_MENU` from the raw joystick button bound to Guide and ignores the delayed controller Guide event. The InputPlumber mapping remains MENU to Guide. The live test of this installed image accepted a short or normal MENU press as the Quick Menu, a hold as the brightness modifier, MENU+Volume as brightness, and Volume alone as volume. The same test accepted A, B, X, Y, D-pad and diagonals, Start, Select, L1/R1, L2/R2, L3/R3, both sticks, and virtual `FF_RUMBLE`. Settings → Joysticks remains the physical-maintenance path: release, then the physical pad, then reclaim of only the built-in composite. Calibration files were not rewritten for this closure. External controllers stay one composite and one `xb360` target each, ordered ahead of the built-in pad, with relative order preserved. No external model was physically tested.
+
 ## Historical recommendation — 2026-09-15
 
 Do not package InputPlumber merely for the Switch Pro. hid-nintendo is the driver for that pad. The notes below are that study. They are not the current Phase 4 decision.

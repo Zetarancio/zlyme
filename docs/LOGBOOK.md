@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4C complete
+
+The persistent OTA `zlyme-my355-20260926-e911db674811.tar` (SHA-256 `a9a298c1f6d59c13d1e750c8b9aa9043328a360016776dd96e137d62043eb015`) is the installed card. `inputplumber`, `zlyme-input`, `nextui.elf`, the capability map, and `gamecontrollerdb.txt` match that tree, with no bind mounts. `ManageAllDevices` stayed true through one release, one reclaim, and an InputPlumber restart that the same `zlyme-input` process recovered. The live test of this image accepted the built-in virtual path: A/B/X/Y, D-pad and diagonals, Start, Select, MENU, L1/R1, L2/R2, L3/R3, both sticks, and virtual rumble. A short or normal MENU press opens the Quick Menu, a hold shows the brightness modifier, MENU+Volume changes brightness, and Volume alone changes volume. Settings → Joysticks uses the physical-maintenance release/reclaim path. Volume, power, and the lid stay independent. Phase 4C is complete. Phase 4D has not started.
+
 ## 2026-09-26 — Phase 4C MENU tap on the 7486688 image
 
 The persistent card matches `748668829772`: `zlyme-input`, InputPlumber, the capability map, and `nextui.elf` share that tree's SHA-256, with no bind mounts. `ManageAllDevices` was true, one Miyoo Flip Gamepad composite, and NextUI held the virtual pad. `zlyme-keylidmon` did not have the gamepad open. A 142 ms physical MENU tap produced a raw guide release at 142 ms and an SDL Guide release at 263 ms. SDL's 250 ms minimum Guide hold is the same window NextUI uses for a brightness hold, so quick and normal taps opened the brightness overlay. Longer holds and MENU+Volume still changed brightness. NextUI now takes MENU from the raw guide button and ignores the delayed Guide event. A bind-mounted build of that binary opened the Quick Menu on a quick tap and a normal press, showed the brightness overlay on a hold, changed brightness with MENU+Volume, and changed volume with Volume alone. Phase 4C stays in progress until that binary is on an installed image. Phase 4D has not started.

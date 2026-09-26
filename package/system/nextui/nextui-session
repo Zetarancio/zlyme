@@ -474,8 +474,8 @@ while [ -f "$EXEC_PATH" ]; do
 	boot_loop=0
 	boot_mark session-nextui
 	# A crash inside Joysticks can leave the built-in composite stopped.
-	# Reclaim is a no-op when InputPlumber is not up yet, so the first
-	# frame is not waiting on it.
+	# ensure repairs it when InputPlumber is available and is a no-op when
+	# InputPlumber is not up yet, so first-frame startup is not delayed.
 	if [ -x /usr/sbin/zlyme-input ]; then
 		/usr/sbin/zlyme-input ensure || echo "zlyme-input ensure failed" >> "$SESSION_LOG"
 	fi

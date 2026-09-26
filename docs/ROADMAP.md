@@ -496,7 +496,7 @@ Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
 Phase 4B COMPLETE — 2026-09-26
-Phase 4C IN PROGRESS — Guide timing fix not yet on an installed image
+Phase 4C COMPLETE — 2026-09-26
 Phase 4D NOT STARTED
 ```
 
@@ -1613,7 +1613,7 @@ Complete — 2026-09-26. The service starts after the first frame and owns zero 
 
 ### 4C — NextUI handoff and player policy
 
-In progress. The `748668829772` OTA is the persistent card. It has one built-in composite, one xb360 target, and NextUI gameplay on that virtual pad. A 142 ms MENU tap was delivered as a 263 ms Guide hold because SDL keeps Guide down for 250 ms, so every short tap opened the brightness overlay instead of the Quick Menu. MENU now follows the raw guide button. A bind-mounted build opened the Quick Menu on a tap, showed brightness on a hold, and kept MENU+Volume and Volume alone. That fix is not on the installed image yet. Settings cancellation and lid suspend are still open. Phase 4C is not accepted. Phase 4D has not started.
+Complete — 2026-09-26. The persistent OTA `e911db674811` was installed and accepted on the Miyoo Flip. InputPlumber starts after the first frame. There is one composite and one `xb360` target per player controller. External controllers stay ahead of the built-in pad, in their relative order, with the built-in pad last. `release` and `reclaim` return only when the built-in target state is ready, and the same `zlyme-input` process restores management after an InputPlumber restart. Settings → Joysticks is the physical-maintenance exception and releases only the built-in composite. Printed A/B/X/Y match Xbox A/B/X/Y, and digital L2/R2 are binary trigger axes. MENU remains Guide; NextUI takes `BTN_MENU` timing from the raw guide button because SDL holds Guide for 250 ms. Virtual `FF_RUMBLE` reaches the motor. Volume, power, and the lid switch stay outside InputPlumber. External-controller ordering is source policy; specific external models were not part of this acceptance.
 
 ### 4D — Application cutover
 
