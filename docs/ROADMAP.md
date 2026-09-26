@@ -496,7 +496,7 @@ Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
 Phase 4B COMPLETE — 2026-09-26
-Phase 4C NOT STARTED
+Phase 4C IN PROGRESS — implementation built; device validation pending
 Phase 4D NOT STARTED
 ```
 
@@ -1613,7 +1613,7 @@ Complete — 2026-09-26. The service starts after the first frame and owns zero 
 
 ### 4C — NextUI handoff and player policy
 
-NextUI switches from the physical device to the virtual controller after InputPlumber is ready. Settings → Joysticks temporarily unmanages only the built-in source. Player order is external controllers first, built-in last, independent of HDMI and of `/dev/input/eventN`.
+Implementation is built and is not accepted yet. `zlyme-input` waits for InputPlumber, enables management, and keeps external composites ahead of the built-in one through `GamepadOrder`. A `RescanDevices` patch recreates a stopped built-in composite without clearing `ManageAllDevices`. NextUI opens the virtual `xb360` target through SDL GameController and closes the physical handle. Settings → Joysticks releases only that composite. The flashed-device pass is still required. Phase 4D has not started.
 
 ### 4D — Application cutover
 

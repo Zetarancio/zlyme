@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4C implementation checkpoint
+
+`zlyme-input` enables InputPlumber after the first frame, orders external composites ahead of the built-in pad, and releases only that composite for Settings. InputPlumber gained `RescanDevices` so reclaim does not toggle `ManageAllDevices`. NextUI follows SDL GameController on the virtual `xb360` target and closes the physical handle. The card at `192.168.0.108` was not reachable, so this image is not hardware-validated. Phase 4C is not complete. Phase 4D has not started.
+
 ## 2026-09-26 — Phase 4B final audit
 
 The capability-map schema hint is pinned to InputPlumber `ea60d873cca17edd1cb655ede26f557108135252`. Buildroot hidapi is not an InputPlumber dependency: crate `hidapi` 2.6.4 uses `linux-static-hidraw`, compiles its own hidraw archive, and the binary needs `libudev` and `libiio`. Package help and the defconfig comment now say the daemon starts after the first frame and manages nothing. The Phase 4 diagram is one composite and one virtual controller per physical player controller. Phase 4C has not started.

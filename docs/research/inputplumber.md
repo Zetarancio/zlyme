@@ -112,6 +112,28 @@ Phase 4B is complete. The closure evidence is post-first-frame startup, a normal
 
 InputPlumber depends on crate `hidapi` 2.6.4 and does not select a feature, so the crate default applies. On Linux that default is `linux-static-hidraw`. The crate build script compiles `etc/hidapi/linux/hid.c` into a static archive and uses pkg-config to find `libudev`. The shared backends, which probe `hidapi-hidraw` or `hidapi-libusb`, are not enabled. The previous build script output recorded `cargo:rustc-link-lib=static=hidapi` and `cargo:rustc-link-lib=udev`. The installed binary's dynamic section needs `libudev.so.1` and `libiio.so.0`, plus `libgcc_s`, `libm`, and `libc`. It does not need `libhidapi`. Buildroot's hidapi package stays in the image because Dolphin selects it. It is not an InputPlumber build dependency. A package directory clean and rebuild, with Buildroot's `hidapi-hidraw.pc` and `hidapi-libusb.pc` moved aside, reproduced that same linkage. The fresh build script again compiled `linux/hid.c`, linked static `hidapi` plus `udev`, and did not probe the shared hidapi packages.
 
+## Phase 4C mechanism — 2026-09-26
+
+Pinned v0.81.0 behavior, read from the extracted tree:
+
+`devices manage-all --enable` sets `ManageAllDevices` and runs `discover_all_devices`. Setting it false stops composites that are not `auto_manage`. That would drop external controllers, so Settings does not use it.
+
+`CompositeDevice.Stop` stops that one composite. Source gamepads call `device.grab()` when they start; stopping the composite drops the source. `SystemSleep` only calls `suspend` on target devices, so suspend is not a physical release.
+
+`CreateCompositeDevice` sends `ManagerCommand::CreateCompositeDevice`, and `create_composite_device` ignores the config and returns `Ok(())`. It is not a recreate path.
+
+`GamepadOrder` is the native player list. `set_gamepad_order` suspends and resumes targets in the requested order. It does not rename event nodes.
+
+`RescanDevices` is a Zlyme patch. It calls `discover_all_devices` only while `ManageAllDevices` is already true. `on_source_device_added` skips ids already in `source_devices_used`. Virtual input nodes whose syspath contains `/devices/virtual` are not considered sources, so the `xb360` target is not grabbed again.
+
+Device configs load in filename order. `20-zlyme_miyoo_flip.yaml` matches the built-in name before `80-zlyme_external_gamepad.yaml` matches `ID_INPUT_JOYSTICK=1` on `event*`. The external file targets `xb360` only.
+
+`zlyme-input` is the caller boundary. `run` blocks on the bus until `org.shadowblip.InputPlumber` owns its name, then sets `ManageAllDevices`. On `InterfacesAdded`, `InterfacesRemoved`, and `PropertiesChanged` it stable-partitions the current order: externals keep their relative order, and the composite named Miyoo Flip Gamepad moves last. It does not write `GamepadOrder` when that sequence is already in place. `release` calls `Stop` on that composite only. `reclaim` calls `RescanDevices` and returns when the composite is back, or immediately if InputPlumber is not running.
+
+The live card at `192.168.0.108` had no route during this implementation, so there is no new SDL capture from the running image. The physical GUID below is computed from SDL 2.32.10 `SDL_CreateJoystickGUID` for `BUS_HOST`, vendor 0, product 0, and the name Miyoo Flip Gamepad: bus `0x0019`, `crc16` `0x5b7c`, then the first 11 name bytes. The Xbox target id from Phase 4B is bus `0x0003`, vendor `0x045e`, product `0x028e`, version `0x0001`. SDL clears the GUID crc when matching and keeps the first mapping unless the mapping string contains `crc:`. The builtin database's `030000005e0400008e02000001000000` entry is Steam's button d-pad map. Zlyme adds `crc:b881` (`crc16` of `Microsoft X-Box 360 pad`) with hat d-pad and trigger axes `a2`/`a5`.
+
+Printed labels are preserved by the capability map, not by per-application swaps. Physical A is `BTN_EAST` and physical B is `BTN_SOUTH`. The generic translator would expose those as Xbox B and Xbox A. The map sends East to `South`, South to `East`, North to `West`, and West to `North`. SDL then reports logical A/B/X/Y for the printed buttons. If the computed physical GUID is wrong on device, NextUI still opens that pad as a raw joystick and the existing `JOY_*` indices remain the pre-handoff path.
+
 ## Historical recommendation — 2026-09-15
 
 Do not package InputPlumber merely for the Switch Pro. hid-nintendo is the driver for that pad. The notes below are that study. They are not the current Phase 4 decision.
