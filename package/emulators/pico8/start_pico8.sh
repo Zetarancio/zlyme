@@ -75,6 +75,7 @@ if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	# shellcheck disable=SC1091
 	. /usr/share/zlyme/pak-input.sh
 fi
+export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 export SDL_GAMECONTROLLERCONFIG_FILE="$DB"
 if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ] && [ -f "$DB" ]; then
 	SDL_GAMECONTROLLERCONFIG=$(grep -v '^#' "$DB" | grep 'Microsoft X-Box 360 pad' | head -n 1)
@@ -101,12 +102,10 @@ fi
 export PATH="/usr/bin:/bin:${PATH:-/usr/bin}"
 
 cd "$LAUNCH_DIR" || exit 1
+# ROCKNIX runs the Pico-8 binary directly. The virtual xb360 pad is SDL
+# joystick 0 and its d-pad is a hat, so Splore does not need a translator
+# that grabs that pad.
 if echo "$ROM" | grep -qi splore; then
-	killall -9 pico8-splore-pad 2>/dev/null || true
-	if command -v pico8-splore-pad >/dev/null 2>&1; then
-		exec pico8-splore-pad "./${STATIC_BIN}" \
-			-home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -splore
-	fi
-	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -splore
+	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
 fi
 exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -run "$ROM"
