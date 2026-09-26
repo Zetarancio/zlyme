@@ -16,7 +16,9 @@ PICO8_LICENSE_FILES = LICENSE
 PICO8_DEPENDENCIES = sdl2
 
 define PICO8_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -o $(@D)/pico8-splore-pad \
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -Wall -Wextra -Werror \
+		-I$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-input \
+		-o $(@D)/pico8-splore-pad \
 		$(PICO8_PKGDIR)/pico8-splore-pad.c
 endef
 

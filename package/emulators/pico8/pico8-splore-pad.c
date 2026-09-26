@@ -1,6 +1,7 @@
 /* Splore is a mouse/keyboard UI. The Flip dpad is buttons, not a hat,
  * so PICO-8's joystick path does nothing in the BBS browser. Grab the
  * pad and emit keys + relative mouse (same idea as Knulli evmapy). */
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
@@ -14,6 +15,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "virtpad.h"
+
 static volatile sig_atomic_t running = 1;
 static pid_t child_pid;
 
@@ -24,30 +27,60 @@ static void on_sig(int sig)
 		kill(child_pid, sig == SIGINT ? SIGINT : SIGTERM);
 }
 
-static int find_event_by_name(const char *want, char *out, size_t outlen)
+static int find_virtpad(char *out, size_t outlen)
 {
-	FILE *f = fopen("/proc/bus/input/devices", "r");
-	char line[256];
-	int match = 0;
+	DIR *dir;
+	struct dirent *ent;
 
-	if (!f)
+	dir = opendir("/dev/input");
+	if (!dir)
 		return -1;
-	while (fgets(line, sizeof(line), f)) {
-		if (!strncmp(line, "N: Name=", 8))
-			match = (strstr(line, want) != NULL);
-		else if (match && !strncmp(line, "H: Handlers=", 12)) {
-			char *ev = strstr(line, "event");
-			unsigned n = 0;
+	while ((ent = readdir(dir))) {
+		char path[320];
+		int fd;
 
-			if (ev && sscanf(ev, "event%u", &n) == 1) {
-				snprintf(out, outlen, "/dev/input/event%u", n);
-				fclose(f);
-				return 0;
-			}
+		if (strncmp(ent->d_name, "event", 5) != 0)
+			continue;
+		if (strlen(ent->d_name) > 16)
+			continue;
+		snprintf(path, sizeof path, "/dev/input/%s", ent->d_name);
+		fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+		if (fd < 0)
+			continue;
+		if (!zlyme_is_virtpad(fd, ent->d_name)) {
+			close(fd);
+			continue;
 		}
+		close(fd);
+		snprintf(out, outlen, "%s", path);
+		closedir(dir);
+		return 0;
 	}
-	fclose(f);
+	closedir(dir);
 	return -1;
+}
+
+static void emit_key(int fd, int code, int value);
+
+static void set_hat(int dst, int *slot, int value, int neg_key, int pos_key)
+{
+	int v = 0;
+
+	if (value < 0)
+		v = -1;
+	else if (value > 0)
+		v = 1;
+	if (v == *slot)
+		return;
+	if (*slot < 0)
+		emit_key(dst, neg_key, 0);
+	if (*slot > 0)
+		emit_key(dst, pos_key, 0);
+	if (v < 0)
+		emit_key(dst, neg_key, 1);
+	if (v > 0)
+		emit_key(dst, pos_key, 1);
+	*slot = v;
 }
 
 static int setup_uinput(void)
@@ -198,20 +231,22 @@ static void release_pad(int src, int dst, int grabbed)
 
 int main(int argc, char **argv)
 {
-	char path[64];
+	char path[320];
 	int src = -1, dst = -1, grabbed = 0;
 	struct input_absinfo absx, absy, absrx, absry;
 	int have_x = 0, have_y = 0, have_rx = 0, have_ry = 0;
 	int vx = 0, vy = 0, vrx = 0, vry = 0;
 	int click_held = 0;
 	int child_rc = 0;
+	int hat_x = 0;
+	int hat_y = 0;
 
 	signal(SIGTERM, on_sig);
 	signal(SIGINT, on_sig);
 	signal(SIGHUP, on_sig);
 
-	if (find_event_by_name("retrogame_joypad", path, sizeof(path)) != 0) {
-		fprintf(stderr, "pico8-splore-pad: no retrogame_joypad\n");
+	if (find_virtpad(path, sizeof(path)) != 0) {
+		fprintf(stderr, "pico8-splore-pad: no virtual controller\n");
 		return 1;
 	}
 	src = open(path, O_RDONLY);
@@ -326,7 +361,11 @@ int main(int argc, char **argv)
 							emit_key(dst, key, ev.value);
 					}
 				} else if (ev.type == EV_ABS) {
-					if (ev.code == ABS_X && have_x)
+					if (ev.code == ABS_HAT0X)
+						set_hat(dst, &hat_x, ev.value, KEY_LEFT, KEY_RIGHT);
+					else if (ev.code == ABS_HAT0Y)
+						set_hat(dst, &hat_y, ev.value, KEY_UP, KEY_DOWN);
+					else if (ev.code == ABS_X && have_x)
 						vx = ev.value;
 					else if (ev.code == ABS_Y && have_y)
 						vy = ev.value;

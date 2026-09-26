@@ -11,9 +11,16 @@ if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
 mkdir -p "$SAVES_PATH/SCUMMVM"
+joy=0
+if [ -r /usr/share/zlyme/virtpad-index.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/virtpad-index.sh
+	joy=$(zlyme_virtpad_js_index)
+	[ -n "$joy" ] || joy=0
+fi
 if [ -d "$ROM" ]; then
-	exec scummvm --fullscreen --joystick=0 --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$ROM"
+	exec scummvm --fullscreen --joystick="$joy" --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$ROM"
 fi
 dir=$(dirname "$ROM")
 mkdir -p "$SAVES_PATH/SCUMMVM"
-exec scummvm --fullscreen --joystick=0 --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$dir"
+exec scummvm --fullscreen --joystick="$joy" --auto-detect --savepath="$SAVES_PATH/SCUMMVM" -p "$dir"

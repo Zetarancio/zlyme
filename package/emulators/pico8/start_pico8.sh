@@ -72,9 +72,17 @@ export XDG_DATA_HOME="$HOME_DIR/data"
 # (minui-pico-8-pak). An empty carts/ root broke BBS list update.
 
 export SDL_GAMECONTROLLERCONFIG_FILE="$DB"
+export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ] && [ -f "$DB" ]; then
-	SDL_GAMECONTROLLERCONFIG=$(grep -v '^#' "$DB" | grep 'retrogame_joypad' | head -n 1)
+	SDL_GAMECONTROLLERCONFIG=$(grep -v '^#' "$DB" | grep 'Microsoft X-Box 360 pad' | head -n 1)
 	export SDL_GAMECONTROLLERCONFIG
+fi
+joy=0
+if [ -r /usr/share/zlyme/virtpad-index.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/virtpad-index.sh
+	joy=$(zlyme_virtpad_js_index)
+	[ -n "$joy" ] || joy=0
 fi
 
 # ROCKNIX: pico8 reads sdl_controllers.txt next to the binary and under -home.
@@ -99,8 +107,8 @@ if echo "$ROM" | grep -qi splore; then
 	killall -9 pico8-splore-pad 2>/dev/null || true
 	if command -v pico8-splore-pad >/dev/null 2>&1; then
 		exec pico8-splore-pad "./${STATIC_BIN}" \
-			-home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
+			-home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -splore
 	fi
-	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
+	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -splore
 fi
-exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -run "$ROM"
+exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -run "$ROM"
