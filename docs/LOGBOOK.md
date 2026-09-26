@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4C live checkpoint
+
+The installed OTA matches `602aa5275e80`. On that binary, `release` returned before the composite was gone, and `zlyme-input` did not re-enable management after an InputPlumber restart. SDL GUIDs matched the computed database. Printed A/B were correct; printed X/Y were swapped until `BTN_NORTH` mapped to `North` and `BTN_WEST` to `West`. A bind-mounted rebuild then finished release and reclaim only when the target state was ready, recovered two InputPlumber restarts, reclaimed after `nextui.elf` was killed, and played `FF_RUMBLE` on the virtual pad. The motor buzzed once. Settings cancellation and lid suspend were not run. Phase 4C stays in progress until a newer image is installed. Phase 4D has not started.
+
 ## 2026-09-26 — Phase 4C implementation checkpoint
 
 `zlyme-input` enables InputPlumber after the first frame, orders external composites ahead of the built-in pad, and releases only that composite for Settings. InputPlumber gained `RescanDevices` so reclaim does not toggle `ManageAllDevices`. NextUI follows SDL GameController on the virtual `xb360` target and closes the physical handle. The card at `192.168.0.108` was not reachable, so this image is not hardware-validated. Phase 4C is not complete. Phase 4D has not started.

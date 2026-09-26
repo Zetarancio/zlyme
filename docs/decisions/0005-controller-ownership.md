@@ -18,7 +18,9 @@ Keep three boundaries:
 2. InputPlumber owns grabs, composites, and the virtual `xb360` targets. One physical player controller is one composite. A small upstream patch adds `RescanDevices`, which reruns discovery without changing `ManageAllDevices`.
 3. `zlyme-input` is the only Zlyme command that knows the InputPlumber bus. It enables management after the first frame, moves the built-in composite to the end of `GamepadOrder`, and can release or reclaim that composite alone.
 
-NextUI's normal path uses SDL GameController on the virtual target and drops its physical handle once that target is open. Settings → Joysticks calls `zlyme-input release` before using the physical pad and `zlyme-input reclaim` after it has closed that handle. `nextui-session` reclaims before each frontend start so a crash in that screen does not leave the pad unmanaged.
+`release` returns only after the built-in composite and its gamepad target are gone. `reclaim` returns only after that composite has a gamepad target. Both fail if InputPlumber is not running. `ensure` is the boot and crash-recovery command: it reclaims when InputPlumber is up and succeeds immediately when it is not.
+
+NextUI's normal path uses SDL GameController on the virtual target. SDL calls that pad `Xbox 360 Controller` even though the evdev name is `Microsoft X-Box 360 pad`. Both names are the same xb360 target, including an external one, so NextUI does not use the name to tell the built-in target from an external target. Settings → Joysticks sets an explicit physical-maintenance mode, calls `release`, uses the physical pad, clears that mode, then calls `reclaim`. `nextui-session` calls `ensure` before each frontend start.
 
 HDMI, `/dev/input/eventN`, and `/dev/input/jsN` are not priority inputs.
 
@@ -26,7 +28,7 @@ HDMI, `/dev/input/eventN`, and `/dev/input/jsN` are not priority inputs.
 
 Ordinary applications do not name `org.shadowblip.InputPlumber` or the Flip evdev device.
 
-The first frame still happens before management starts. If InputPlumber is absent, `zlyme-input reclaim` returns without blocking boot.
+The first frame still happens before management starts. If InputPlumber is absent, `ensure` returns without blocking boot. `reclaim` does not.
 
 External controllers are independent composites from a generic joystick rule. They are not physically validated on this unit.
 

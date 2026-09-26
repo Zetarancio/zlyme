@@ -1613,7 +1613,7 @@ Complete — 2026-09-26. The service starts after the first frame and owns zero 
 
 ### 4C — NextUI handoff and player policy
 
-Implementation is built and is not accepted yet. `zlyme-input` waits for InputPlumber, enables management, and keeps external composites ahead of the built-in one through `GamepadOrder`. A `RescanDevices` patch recreates a stopped built-in composite without clearing `ManageAllDevices`. NextUI opens the virtual `xb360` target through SDL GameController and closes the physical handle. Settings → Joysticks releases only that composite. The flashed-device pass is still required. Phase 4D has not started.
+In progress. The `602aa5275e80` OTA was installed and checked. `release` and `reclaim` now wait until the built-in target state is actually ready, and `zlyme-input` re-enables management after an InputPlumber restart. Printed X/Y needed `BTN_NORTH`→`North` and `BTN_WEST`→`West`. Settings cancellation and lid suspend are still open. Phase 4C is not accepted. Phase 4D has not started.
 
 ### 4D — Application cutover
 

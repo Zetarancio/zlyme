@@ -128,11 +128,40 @@ Pinned v0.81.0 behavior, read from the extracted tree:
 
 Device configs load in filename order. `20-zlyme_miyoo_flip.yaml` matches the built-in name before `80-zlyme_external_gamepad.yaml` matches `ID_INPUT_JOYSTICK=1` on `event*`. The external file targets `xb360` only.
 
-`zlyme-input` is the caller boundary. `run` blocks on the bus until `org.shadowblip.InputPlumber` owns its name, then sets `ManageAllDevices`. On `InterfacesAdded`, `InterfacesRemoved`, and `PropertiesChanged` it stable-partitions the current order: externals keep their relative order, and the composite named Miyoo Flip Gamepad moves last. It does not write `GamepadOrder` when that sequence is already in place. `release` calls `Stop` on that composite only. `reclaim` calls `RescanDevices` and returns when the composite is back, or immediately if InputPlumber is not running.
+`zlyme-input` is the caller boundary. `run` watches `NameOwnerChanged` for `org.shadowblip.InputPlumber`. When a new owner appears and the Manager interface answers, it sets `ManageAllDevices` and reconciles order. If the owner disappears, the daemon stays up and activates again on the next owner. On `InterfacesAdded`, `InterfacesRemoved`, and manager `PropertiesChanged` it stable-partitions the current order: externals keep their relative order, and the composite named Miyoo Flip Gamepad moves last. It does not write `GamepadOrder` when that sequence is already in place. `release` returns only after that composite and its gamepad target are gone. `reclaim` returns only after the composite's `TargetDevices` includes a gamepad target. `ensure` is the session command: it reclaims when InputPlumber is up and returns success when it is not, so the first frame does not wait.
 
-The live card at `192.168.0.108` had no route during this implementation, so there is no new SDL capture from the running image. The physical GUID below is computed from SDL 2.32.10 `SDL_CreateJoystickGUID` for `BUS_HOST`, vendor 0, product 0, and the name Miyoo Flip Gamepad: bus `0x0019`, `crc16` `0x5b7c`, then the first 11 name bytes. The Xbox target id from Phase 4B is bus `0x0003`, vendor `0x045e`, product `0x028e`, version `0x0001`. SDL clears the GUID crc when matching and keeps the first mapping unless the mapping string contains `crc:`. The builtin database's `030000005e0400008e02000001000000` entry is Steam's button d-pad map. Zlyme adds `crc:b881` (`crc16` of `Microsoft X-Box 360 pad`) with hat d-pad and trigger axes `a2`/`a5`.
+The first image was built before the card was reachable. The GUIDs below were computed from SDL 2.32.10 and then confirmed on the device. See the live check.
 
-Printed labels are preserved by the capability map, not by per-application swaps. Physical A is `BTN_EAST` and physical B is `BTN_SOUTH`. The generic translator would expose those as Xbox B and Xbox A. The map sends East to `South`, South to `East`, North to `West`, and West to `North`. SDL then reports logical A/B/X/Y for the printed buttons. If the computed physical GUID is wrong on device, NextUI still opens that pad as a raw joystick and the existing `JOY_*` indices remain the pre-handoff path.
+## Phase 4C live check — 2026-09-26
+
+The installed OTA matches the `602aa5275e80` target tree. `/usr/bin/inputplumber`, `/usr/sbin/zlyme-input`, the capability map, and `/usr/lib/gamecontrollerdb.txt` have the same SHA-256 as that build. `/boot/VERSION` was not left on the FAT partition. Boot timing on that image: `nextui-first-flip` at 54.74 s, `inputplumber-start` at 57.21 s. After boot, `ManageAllDevices` was true, one composite named Miyoo Flip Gamepad, `GamepadOrder` was that composite, source `/dev/input/event4`, target `gamepad0`, virtual node name `Microsoft X-Box 360 pad`, ids `0003/045e/028e/0001`. InputPlumber held the physical node.
+
+SDL 2.32.10 on the device, with `/usr/lib/gamecontrollerdb.txt`:
+
+```text
+physical Miyoo Flip Gamepad
+  guid 19007c5b4d69796f6f20466c69702000
+  gamecontroller=1
+  crc:5b7c
+  a:b1,b:b0,x:b2,y:b3
+virtual pad
+  SDL joystick name Xbox 360 Controller
+  evdev name Microsoft X-Box 360 pad
+  guid 030081b85e0400008e02000001000000
+  gamecontroller=1
+  crc:b881
+  a:b0,b:b1,x:b2,y:b3,dpup:h0.1,lefttrigger:a2,righttrigger:a5
+```
+
+The computed GUIDs matched. SDL renames the virtual joystick to `Xbox 360 Controller`, so NextUI treats both that string and the evdev name as the xb360 target. A maintenance flag, not the shared name, decides when the physical Flip may be open beside another virtual pad.
+
+On the installed map, printed A was virtual button 0 and printed B was button 1. Printed X was button 3 and printed Y was button 2. `GamepadButton::North` writes `BTN_NORTH` (SDL `x:b2`) and `West` writes `BTN_WEST` (SDL `y:b3`), so the first map's North→West and West→North swap was backwards. The corrected map sends `BTN_NORTH` to `North` and `BTN_WEST` to `West`. A second press of X then Y produced button 2 then button 3.
+
+The same capture: d-pad hats up/down/left/right, up-left and down-right diagonals, Start button 7, Select button 6, Guide button 8, L1 button 4, R1 button 5, L2 axis 2 and R2 axis 5 from the released value to full scale and back, L3 button 9, R3 button 10, left stick on axes 0 and 1, right stick on axes 3 and 4, with negative Y for up.
+
+On the installed `602aa52` binary, `release` returned in about 45–57 ms while the composite disappeared at about 244–282 ms and the virtual node about 10 ms later. `reclaim` returned about 120 ms before the target was ready. After `S31inputplumber restart`, `zlyme-input` stayed alive and left `ManageAllDevices` false until S32 was restarted.
+
+The hardened binary was bind-mounted, not written into the squashfs. Twenty release/reclaim cycles then returned only after the promised state. Release was 184–326 ms, median 232 ms. Reclaim was 366–547 ms, median 404 ms. Each cycle ended with `ManageAllDevices` true, one built-in composite, and one virtual pad. Two InputPlumber restarts were recovered by the same `zlyme-input` process. A daemon started while InputPlumber was stopped reported `unavailable`, then became `manage=1 builtin=virtual` after InputPlumber started. `FF_RUMBLE` on the virtual node played, and the motor buzzed once. Killing `nextui.elf` with the built-in composite released made `nextui-session` run `ensure`, which reclaimed the target, and the new frontend opened the virtual pad. Settings screen-by-screen cancellation and a lid suspend were not run on this temporary pair. The persistent card is still the `602aa52` OTA until a newer image is installed. Calibration files `joypad.config` and `joypad_right.config` were not rewritten. No `deadzone.config` or `rumble.config` was present.
 
 ## Historical recommendation — 2026-09-15
 

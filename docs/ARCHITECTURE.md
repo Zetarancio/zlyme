@@ -307,7 +307,7 @@ The Miyoo Flip uses board-specific input integration:
 
 - `miyoo-flip-gamepad` is the physical layer: UART sticks, GPIO buttons, calibration transform, radial deadzone, and `FF_RUMBLE` on PWM5 through ff-memless `FF_GAIN`;
 - Settings owns calibration, deadzone, and displayed Rumble Strength. The product default is displayed 30%, mapped to `FF_GAIN` by the userspace curve. A saved `rumble.config` is kept. Fresh Haptic feedback is on. An existing `haptics=` value is kept. Haptic feedback only gates NextUI's own pulses;
-- The retired ROCKNIX gamepad package is not part of the product. InputPlumber v0.81.0 starts after the first frame. `zlyme-input` then sets `ManageAllDevices` and keeps one composite per player controller. The built-in map sends D-pad buttons to hats, digital L2/R2 (`BTN_TL2`/`BTN_TR2`) to binary `ABS_Z`/`ABS_RZ`, and the printed face buttons to the Xbox positions on the `xb360` target. NextUI uses that virtual controller after it appears. Settings → Joysticks releases only the built-in composite, then reclaims it;
+- The retired ROCKNIX gamepad package is not part of the product. InputPlumber v0.81.0 starts after the first frame. `zlyme-input` then sets `ManageAllDevices` and keeps one composite per player controller. It re-enables management if InputPlumber restarts. The built-in map sends D-pad buttons to hats, digital L2/R2 (`BTN_TL2`/`BTN_TR2`) to binary `ABS_Z`/`ABS_RZ`, and the printed A/B/X/Y buttons to Xbox A/B/X/Y on the `xb360` target. NextUI uses that virtual controller after it appears. Settings → Joysticks releases only the built-in composite, uses the physical pad, then reclaims it;
 - lid switch;
 - power key;
 - volume/brightness handling;
