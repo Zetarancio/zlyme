@@ -30,6 +30,10 @@ echo "=== Launching $PAK_NAME ($APP_BIN) at $(date) ==="
 echo "platform=${PLATFORM:-unknown} device=${DEVICE:-unknown}"
 
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/pak-input.sh
+fi
 export SDL_GAMECONTROLLERCONFIG_FILE="${SDL_GAMECONTROLLERCONFIG_FILE:-/usr/lib/gamecontrollerdb.txt}"
 export PATH="/usr/bin:/usr/sbin:/bin:/sbin:${PATH:-}"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-/storage/.config}"

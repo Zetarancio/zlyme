@@ -202,7 +202,7 @@ MENU+START stopped exiting paks because `zlyme-pak-hotkey` still opened `/dev/in
 
 A bind-mounted pair was tried in a RetroArch Game Boy pak. Volume alone changed volume. MENU+Volume changed brightness. MENU alone and START alone did not exit. MENU+START returned to NextUI. The user did not count the exits, so this is not recorded as three repetitions. An InputPlumber restart while a pak is running has not been repeated for the new helper.
 
-RetroArch's own log from that pak put Miyoo Flip Gamepad on port 1 and `Microsoft X-Box 360 pad` (1118/654) on port 2, both "not configured". Port 1 is the grabbed physical pad, which is why in-game buttons did nothing. `ra-run` now sets player 1 to the virtual pad's SDL index, computed from the js node name and `/devices/virtual/` rather than a fixed js number. The sdl2 autoconfig for that name uses Xbox button ids, with no second A/B swap. That RetroArch change is not live-proven yet.
+RetroArch's first log put Miyoo Flip Gamepad on port 1 and `Microsoft X-Box 360 pad` (1118/654) on port 2, both "not configured". After the Xbox autoconfig and `input_player1_joypad_index` for the virtual pad, a live Game Boy session accepted the d-pad, A/B/X/Y, Start, Select, L1/R1, MENU as the RetroArch menu, and MENU+START back to NextUI. The remaining startup banner is `notification_show_autoconfig_fails`: the saved config leaves that on, and the physical pad is still "not configured". `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` was checked on the device: SDL then reports one joystick, index 0, name `Xbox 360 Controller`. Paks export that hint, RetroArch player 1 is index 0, and the fail banner is forced off. NextUI does not get the hint.
 
 Paks export `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e`, so SDL game-controller scans keep InputPlumber's xb360 targets. NextUI itself is not given that hint. PICO-8's controller string and Splore's evdev reader follow the virtual pad, including hat d-pad. ScummVM's `--joystick` uses the same index helper. Those three are not live-proven.
 
@@ -213,7 +213,7 @@ OpenBOR is separate. Its launcher is `exec OpenBOR` with no Zlyme control profil
 | NextUI | nextui-session | SDL GameController | virtual pad after handoff | unchanged from 4C | live in 4C |
 | zlyme-pak-hotkey | session, per pak | evdev | js0 and physical name | virtual Guide+Start, same pad | live, exit count not recorded |
 | zlyme-keylidmon | S26 | evdev | physical BTN_MODE | virtual Guide; volume/power/lid unchanged | live volume and brightness |
-| RetroArch / libretro | ra-run | SDL2 joypad | retrogame profile, physical often port 1 | player 1 virtual index, Xbox autoconfig | static; live pending |
+| RetroArch / libretro | ra-run | SDL2 joypad | retrogame profile, physical often port 1 | player 1 is SDL index 0 after the physical pad is hidden; Xbox autoconfig; fail banner off | live: buttons, menu, MENU+START |
 | PPSSPP | PSP.pak | SDL, seed ini has no device index | first SDL device | pak hint hides non-xb360 game controllers | static |
 | Flycast | DC.pak | SDL | no device index in the launcher | same hint | static |
 | ScummVM | SCUMMVM.pak | SDL `--joystick` | hardcoded 0 | virtual js index | static |

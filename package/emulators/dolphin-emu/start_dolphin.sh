@@ -14,6 +14,10 @@ export HOME="$USERDATA"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$USERDATA/.local/share}"
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/pak-input.sh
+fi
 export EGL_PLATFORM="${EGL_PLATFORM:-drm}"
 mkdir -p "$XDG_DATA_HOME/dolphin-emu" "$XDG_CONFIG_HOME/dolphin-emu" \
 	"$XDG_DATA_HOME/dolphin-emu/GC" "$XDG_DATA_HOME/dolphin-emu/Wii" \

@@ -71,19 +71,17 @@ export XDG_DATA_HOME="$HOME_DIR/data"
 # Dummy Splore.p8 stays in the rom folder; -root_path is that folder
 # (minui-pico-8-pak). An empty carts/ root broke BBS list update.
 
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/pak-input.sh
+fi
 export SDL_GAMECONTROLLERCONFIG_FILE="$DB"
-export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ] && [ -f "$DB" ]; then
 	SDL_GAMECONTROLLERCONFIG=$(grep -v '^#' "$DB" | grep 'Microsoft X-Box 360 pad' | head -n 1)
 	export SDL_GAMECONTROLLERCONFIG
 fi
+# pak-input.sh hides the physical pad, so the virtual target is index 0.
 joy=0
-if [ -r /usr/share/zlyme/virtpad-index.sh ]; then
-	# shellcheck disable=SC1091
-	. /usr/share/zlyme/virtpad-index.sh
-	joy=$(zlyme_virtpad_js_index)
-	[ -n "$joy" ] || joy=0
-fi
 
 # ROCKNIX: pico8 reads sdl_controllers.txt next to the binary and under -home.
 if [ -f "$DB" ]; then

@@ -17,6 +17,10 @@ fi
 export HOME="$USERDATA"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/pak-input.sh
+fi
 export QT_QPA_EGLFS_ALWAYS_SET_MODE=1
 export QT_PLUGIN_PATH="${QT_PLUGIN_PATH:-/usr/lib/qt6/plugins}"
 # Prebuilt binary needs libaio (and may grow more). Card extras win.

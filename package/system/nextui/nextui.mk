@@ -146,6 +146,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/ra-run
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/virtpad-index.sh \
 		$(TARGET_DIR)/usr/share/zlyme/virtpad-index.sh
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-input.sh \
+		$(TARGET_DIR)/usr/share/zlyme/pak-input.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/drm-release.py \
 		$(TARGET_DIR)/usr/bin/zlyme-drm-release
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/arcade-stage.sh \

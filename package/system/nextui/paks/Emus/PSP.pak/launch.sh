@@ -5,6 +5,7 @@ EMU_TAG=$(basename "$(dirname "$0")" .pak)
 ROM="$1"
 # Comment out to skip this pak's log (About → System logs).
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
+[ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
 USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD_PATH/.config}"

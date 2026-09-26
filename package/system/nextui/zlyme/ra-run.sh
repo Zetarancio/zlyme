@@ -233,17 +233,20 @@ RA_AC=/tmp/zlyme-ra-ac.cfg
 printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
 
 # RA 1.22's driver named "sdl" is SDL3 (libSDL3.so.0). We ship SDL2.
-# Player 1 is the InputPlumber virtual pad. The grabbed physical pad
-# is still enumerated and must not stay on port 1.
-printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
-if [ -r /usr/share/zlyme/virtpad-index.sh ]; then
+# pak-input.sh hides the physical pad. The virtual target is then SDL
+# index 0. A saved player index of 1 was the kernel js number and
+# pointed at nothing once the physical pad was hidden.
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	# shellcheck disable=SC1091
-	. /usr/share/zlyme/virtpad-index.sh
-	virt_idx=$(zlyme_virtpad_js_index)
-	if [ -n "$virt_idx" ]; then
-		printf 'input_player1_joypad_index = "%s"\n' "$virt_idx" >> "$RA_AC"
-	fi
+	. /usr/share/zlyme/pak-input.sh
+else
+	export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 fi
+printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\ninput_menu_toggle_btn = "5"\n' >> "$RA_AC"
+printf 'input_player1_joypad_index = "0"\n' >> "$RA_AC"
+# The physical pad used to log "not configured" and that string is the
+# on-screen banner when notification_show_autoconfig_fails is true.
+printf 'notification_show_autoconfig = "false"\nnotification_show_autoconfig_fails = "false"\n' >> "$RA_AC"
 
 # RA 1.22 splits --appendconfig on '|', not comma.
 APPEND="$ETC"

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4D RetroArch live, physical-pad banner
+
+A bind-mounted RetroArch launch accepted d-pad, face buttons, Start, Select, L1/R1, MENU as the RetroArch menu, and MENU+START back to NextUI. The startup line was `Miyoo Flip Gamepad not configured`, because `notification_show_autoconfig_fails` is true in the saved config and the physical pad is still enumerated. SDL with `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` keeps only the virtual pad, at index 0. Paks use that hint. NextUI does not. Phase 4D stays in progress.
+
 ## 2026-09-26 — Phase 4D started
 
 MENU+START died because `zlyme-pak-hotkey` still read js0 and the physical Miyoo Flip Gamepad, which InputPlumber grabs. The virtual pad reports MENU as `BTN_MODE` (316) and START as `BTN_START` (315). The helper and `zlyme-keylidmon` now use that virtual target. A bind-mounted test changed volume, changed brightness with MENU+Volume, left the pak running for MENU alone and START alone, and returned to NextUI on MENU+START. The exit count was not recorded. RetroArch had put the physical pad on port 1 and the virtual pad on port 2. Player 1 is being moved to the virtual pad. Phase 4D is in progress. Phase 4C stays complete.

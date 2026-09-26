@@ -3,6 +3,10 @@
 # Do not export LD_PRELOAD for mkdir/cp: libdrastouch needs SDL and
 # breaks BusyBox if it is loaded for the setup commands.
 export SDL_TOUCH_MOUSE_EVENTS="${SDL_TOUCH_MOUSE_EVENTS:-0}"
+if [ -r /usr/share/zlyme/pak-input.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/pak-input.sh
+fi
 
 SDCARD="${SDCARD_PATH:-/storage}"
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"

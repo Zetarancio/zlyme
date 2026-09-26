@@ -357,9 +357,10 @@ run_pak_cmd() {
 	if wine_pak_cmd "$1"; then
 		wine_prefix_cleanup
 	fi
-	# SDL game controllers in a pak should be InputPlumber xb360 targets.
-	# The physical Flip pad is not USB 045e:028e, so it is not included.
-	export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
+	if [ -r /usr/share/zlyme/pak-input.sh ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/zlyme/pak-input.sh
+	fi
 	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
 		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" &
 	else
