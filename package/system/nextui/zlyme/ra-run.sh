@@ -220,13 +220,9 @@ if [ -n "${ZLYME_EMU_CORE:-}" ] && [ "$1" = "-L" ] && [ -n "$2" ]; then
 fi
 
 AC=/usr/share/retroarch/autoconfig
-if [ ! -f "$AC/sdl2/retrogame_joypad.cfg" ]; then
-	if [ -f /usr/share/zlyme/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
+if [ ! -f "$AC/sdl2/Microsoft X-Box 360 pad.cfg" ]; then
+	if [ -f "/usr/share/zlyme/retroarch/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg" ]; then
 		AC=/usr/share/zlyme/retroarch/autoconfig
-	elif [ -f /storage/.config/retroarch/autoconfig/sdl2/retrogame_joypad.cfg ]; then
-		AC=/storage/.config/retroarch/autoconfig
-	elif [ -f /tmp/autoconfig/sdl2/retrogame_joypad.cfg ]; then
-		AC=/tmp/autoconfig
 	fi
 fi
 RA_AC=/tmp/zlyme-ra-ac.cfg

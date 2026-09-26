@@ -49,6 +49,90 @@ Renderer = 14
 upscale_multiplier = 1
 VsyncEnable = true
 AspectRatio = 4:3
+# zlyme-pad-abi=xb360
+[InputSources]
+SDL = true
+SDLControllerEnhancedMode = false
+XInput = false
+RawInput = false
+[Pad]
+MultitapPort1 = false
+MultitapPort2 = false
+[Pad1]
+Type = DualShock2
+Up = SDL-0/DPadUp
+Right = SDL-0/DPadRight
+Down = SDL-0/DPadDown
+Left = SDL-0/DPadLeft
+Triangle = SDL-0/Y
+Circle = SDL-0/B
+Cross = SDL-0/A
+Square = SDL-0/X
+Select = SDL-0/Back
+Start = SDL-0/Start
+L1 = SDL-0/LeftShoulder
+L2 = SDL-0/+LeftTrigger
+R1 = SDL-0/RightShoulder
+R2 = SDL-0/+RightTrigger
+L3 = SDL-0/LeftStick
+R3 = SDL-0/RightStick
+LUp = SDL-0/-LeftY
+LRight = SDL-0/+LeftX
+LDown = SDL-0/+LeftY
+LLeft = SDL-0/-LeftX
+RUp = SDL-0/-RightY
+RRight = SDL-0/+RightX
+RDown = SDL-0/+RightY
+RLeft = SDL-0/-RightX
+LargeMotor = SDL-0/LargeMotor
+SmallMotor = SDL-0/SmallMotor
+[Pad2]
+Type = None
+EOF
+fi
+# One-time. An ini that already has Pad1 keeps the user's binds.
+# Guide is not bound: MENU+START is the session hotkey.
+if [ -f "$INI" ] && ! grep -q '^\[Pad1\]' "$INI"; then
+	cat >> "$INI" <<'EOF'
+# zlyme-pad-abi=xb360
+[InputSources]
+SDL = true
+SDLControllerEnhancedMode = false
+XInput = false
+RawInput = false
+[Pad]
+MultitapPort1 = false
+MultitapPort2 = false
+[Pad1]
+Type = DualShock2
+Up = SDL-0/DPadUp
+Right = SDL-0/DPadRight
+Down = SDL-0/DPadDown
+Left = SDL-0/DPadLeft
+Triangle = SDL-0/Y
+Circle = SDL-0/B
+Cross = SDL-0/A
+Square = SDL-0/X
+Select = SDL-0/Back
+Start = SDL-0/Start
+L1 = SDL-0/LeftShoulder
+L2 = SDL-0/+LeftTrigger
+R1 = SDL-0/RightShoulder
+R2 = SDL-0/+RightTrigger
+L3 = SDL-0/LeftStick
+R3 = SDL-0/RightStick
+LUp = SDL-0/-LeftY
+LRight = SDL-0/+LeftX
+LDown = SDL-0/+LeftY
+LLeft = SDL-0/-LeftX
+RUp = SDL-0/-RightY
+RRight = SDL-0/+RightX
+RDown = SDL-0/+RightY
+RLeft = SDL-0/-RightX
+LargeMotor = SDL-0/LargeMotor
+SmallMotor = SDL-0/SmallMotor
+[Pad2]
+Type = None
 EOF
 fi
 

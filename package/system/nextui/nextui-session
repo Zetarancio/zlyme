@@ -357,14 +357,20 @@ run_pak_cmd() {
 	if wine_pak_cmd "$1"; then
 		wine_prefix_cleanup
 	fi
-	if [ -r /usr/share/zlyme/pak-input.sh ]; then
-		# shellcheck disable=SC1091
-		. /usr/share/zlyme/pak-input.sh
-	fi
+	# The SDL filter stays inside the pak process. Sourcing it here
+	# would export it into this shell, and the next nextui.elf would
+	# inherit it. Settings opens the physical pad after release.
+	pak_env=
+	case "$1" in
+		*Settings.pak*|*settings.elf*) ;;
+		*)
+			pak_env='[ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh; '
+			;;
+	esac
 	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
-		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" &
+		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" &
 	else
-		setsid sh -c '/usr/bin/zlyme-drm-release; eval "$1"' sh "$1" >> "$SESSION_LOG" 2>&1 &
+		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" >> "$SESSION_LOG" 2>&1 &
 	fi
 	_pak_pid=$!
 	_hk=
@@ -463,7 +469,7 @@ while [ -f "$EXEC_PATH" ]; do
 		printf '%s' "$last" > /tmp/last.txt
 	fi
 	if [ "$boot_loop" = 0 ]; then
-		killall -9 pico8-splore-pad pico8_64 2>/dev/null || true
+		killall -9 pico8_64 2>/dev/null || true
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi
@@ -520,7 +526,7 @@ while [ -f "$EXEC_PATH" ]; do
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 				;;
 		esac
-		killall -9 pico8-splore-pad pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
+		killall -9 pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
 		sleep 0.2
 		# Settings/paks use the same /tmp/reboot flag as nextui.elf.
 		# Honor it here; continue would restart NextUI with the panel off.

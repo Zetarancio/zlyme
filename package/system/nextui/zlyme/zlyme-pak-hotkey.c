@@ -5,7 +5,7 @@
  *
  * The chord is read from each InputPlumber xb360 target. MENU+START on
  * any one virtual controller exits. Buttons from two controllers do not
- * combine. js0 and the physical Miyoo Flip Gamepad are not sources.
+ * combine. The physical pad and js0 are not sources.
  */
 #include "hotkey_logic.h"
 #include "virtpad.h"

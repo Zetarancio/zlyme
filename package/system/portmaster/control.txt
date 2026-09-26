@@ -52,6 +52,9 @@ export ESUDO ESUDOKILL ESUDOKILL2
 export PM_CAN_MOUNT="${PM_CAN_MOUNT:-Y}"
 
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+# Same boundary as pak-input.sh. A port that re-sources this file
+# after clearing its environment still sees only xb360 targets.
+export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 if [ -z "${SDL_GAMECONTROLLERCONFIG_FILE:-}" ] || [ ! -f "${SDL_GAMECONTROLLERCONFIG_FILE:-}" ]; then
 	if [ -f /usr/lib/gamecontrollerdb.txt ]; then
 		export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
@@ -75,6 +78,7 @@ get_controls() {
 		SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
 	fi
 	export SDL_GAMECONTROLLERCONFIG_FILE
+	export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 	if [ -f "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
 		cp -f "$SDL_GAMECONTROLLERCONFIG_FILE" /tmp/gamecontrollerdb.txt 2>/dev/null || true
 		if [ -z "${SDL_GAMECONTROLLERCONFIG:-}" ]; then

@@ -16,6 +16,21 @@ if [ -n "$SEED" ] && [ ! -e "$CFG" ]; then
 	mkdir -p "$(dirname "$CFG")"
 	cp "$SEED" "$CFG"
 fi
+# One-time. A cfg that already names an SDL joystick keeps that choice.
+if [ -f "$CFG" ] && ! grep -q '^maple_sdl_joystick_0' "$CFG"; then
+	cat >> "$CFG" <<'EOF'
+; zlyme-pad-abi=xb360
+[input]
+device1 = 0
+device1.1 = 1
+device1.2 = 1
+device2 = 0
+device2.1 = 1
+device2.2 = 1
+maple_sdl_joystick_0 = 0
+maple_sdl_joystick_1 = 1
+EOF
+fi
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 mkdir -p "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast"
 for f in dc_boot.bin dc_flash.bin; do

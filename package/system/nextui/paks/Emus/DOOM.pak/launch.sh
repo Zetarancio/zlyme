@@ -13,6 +13,6 @@ command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1
 HOME="$USERDATA_PATH"
 cd "$HOME"
 case "$ROM" in
-	*.wad|*.WAD|*.pk3|*.PK3) exec gzdoom -savedir "$SAVES_PATH/DOOM" -iwad "$ROM" ;;
-	*) exec gzdoom -savedir "$SAVES_PATH/DOOM" "$ROM" ;;
+	*.wad|*.WAD|*.pk3|*.PK3) exec gzdoom +set use_joystick true -savedir "$SAVES_PATH/DOOM" -iwad "$ROM" ;;
+	*) exec gzdoom +set use_joystick true -savedir "$SAVES_PATH/DOOM" "$ROM" ;;
 esac

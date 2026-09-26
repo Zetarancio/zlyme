@@ -43,6 +43,44 @@ ini="$XDG_CONFIG_HOME/dolphin-emu/Dolphin.ini"
 if [ ! -f "$ini" ]; then
 	printf '%s\n' '[Core]' 'GFXBackend = OGL' > "$ini"
 fi
+# First-run GameCube port 1. A later edit of GCPadNew.ini is kept.
+# Names are Dolphin's SDL GameController face positions. On the
+# virtual xb360 pad, Button S is the south button (Xbox A).
+pad="$XDG_CONFIG_HOME/dolphin-emu/GCPadNew.ini"
+if [ ! -f "$pad" ]; then
+	cat > "$pad" <<'EOF'
+# zlyme-pad-abi=xb360
+[GCPad1]
+Device = SDL/0/Xbox 360 Controller
+Buttons/A = `Button S`
+Buttons/B = `Button W`
+Buttons/Start = `Start`
+Buttons/X = `Button E`
+Buttons/Y = `Button N`
+Buttons/Z = `Trigger R`
+D-Pad/Down = `Pad S`
+D-Pad/Left = `Pad W`
+D-Pad/Right = `Pad E`
+D-Pad/Up = `Pad N`
+Main Stick/Dead Zone = 25.0
+Main Stick/Down = `Left Y-`
+Main Stick/Left = `Left X-`
+Main Stick/Right = `Left X+`
+Main Stick/Up = `Left Y+`
+C-Stick/Dead Zone = 25.0
+C-Stick/Down = `Right Y-`
+C-Stick/Left = `Right X-`
+C-Stick/Right = `Right X+`
+C-Stick/Up = `Right Y+`
+Triggers/Dead Zone = 0.
+Triggers/Threshold = 90.
+Triggers/L = `Shoulder L`
+Triggers/R = `Shoulder R`
+Triggers/L-Analog = `Shoulder L`
+Triggers/R-Analog = `Shoulder R`
+Rumble/Motor = Motor
+EOF
+fi
 
 if [ -z "$ROM" ] || [ ! -e "$ROM" ]; then
 	echo "dolphin: missing ROM" >&2

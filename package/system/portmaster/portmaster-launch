@@ -101,6 +101,7 @@ export XDG_CONFIG_HOME="$HOME"
 export controlfolder="$root"
 export PYSDL2_DLL_PATH=/usr/lib
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
+export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
 export LD_LIBRARY_PATH="${SYSTEM_PATH:-/usr/share/nextui}/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 # pugwash calls pgrep/pkill; busybox here has neither. Overlay stubs live
