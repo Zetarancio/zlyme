@@ -16,6 +16,7 @@
 #include "defines.h"
 #include "platform.h"
 #include "api.h"
+#include "pad_policy.h"
 #include "utils.h"
 
 #include "scaler.h"
@@ -146,6 +147,7 @@ static SDL_Joystick **joysticks = NULL;
 static int num_joysticks = 0;
 static SDL_GameController **controllers = NULL;
 static int num_controllers = 0;
+static int maintenance = 0;
 
 static int name_is(SDL_Joystick *joy, const char *want)
 {
@@ -153,16 +155,49 @@ static int name_is(SDL_Joystick *joy, const char *want)
 	return name && strcmp(name, want) == 0;
 }
 
+/* SDL renames the uinput node to "Xbox 360 Controller". The evdev name
+ * stays "Microsoft X-Box 360 pad". Both are the same xb360 target,
+ * including an external one. */
+static int joy_is_xb360(SDL_Joystick *joy)
+{
+	char text[33];
+	SDL_JoystickGUID guid;
+	const char *name;
+
+	if (!joy)
+		return 0;
+	name = SDL_JoystickName(joy);
+	if (name && (strcmp(name, ZLYME_VIRT_PAD) == 0 ||
+		     strcmp(name, "Xbox 360 Controller") == 0))
+		return 1;
+	guid = SDL_JoystickGetGUID(joy);
+	SDL_JoystickGetGUIDString(guid, text, sizeof text);
+	return strcmp(text, "030081b85e0400008e02000001000000") == 0;
+}
+
+static int index_is_xb360(int device_index)
+{
+	char text[33];
+	SDL_JoystickGUID guid;
+	const char *name = SDL_JoystickNameForIndex(device_index);
+
+	if (name && (strcmp(name, ZLYME_VIRT_PAD) == 0 ||
+		     strcmp(name, "Xbox 360 Controller") == 0))
+		return 1;
+	guid = SDL_JoystickGetDeviceGUID(device_index);
+	SDL_JoystickGetGUIDString(guid, text, sizeof text);
+	return strcmp(text, "030081b85e0400008e02000001000000") == 0;
+}
+
 static int virtual_open(void)
 {
 	int i;
 	for (i = 0; i < num_controllers; i++) {
-		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
-		if (name_is(joy, ZLYME_VIRT_PAD))
+		if (joy_is_xb360(SDL_GameControllerGetJoystick(controllers[i])))
 			return 1;
 	}
 	for (i = 0; i < num_joysticks; i++) {
-		if (name_is(joysticks[i], ZLYME_VIRT_PAD))
+		if (joy_is_xb360(joysticks[i]))
 			return 1;
 	}
 	return 0;
@@ -237,7 +272,8 @@ static void open_index(int device_index)
 
 	if (!name)
 		return;
-	if (virtual_open() && strcmp(name, ZLYME_PHYS_PAD) == 0)
+	if (strcmp(name, ZLYME_PHYS_PAD) == 0 &&
+	    !zlyme_allow_physical(maintenance, virtual_open()))
 		return;
 	probe = SDL_JoystickOpen(device_index);
 	if (!probe)
@@ -254,7 +290,7 @@ static void open_index(int device_index)
 		}
 		remember_controller(ctrl);
 		LOG_info("Controller added: %s\n", SDL_GameControllerName(ctrl));
-		if (strcmp(name, ZLYME_VIRT_PAD) == 0)
+		if (index_is_xb360(device_index) && !maintenance)
 			close_named(ZLYME_PHYS_PAD);
 		return;
 	}
@@ -263,14 +299,14 @@ static void open_index(int device_index)
 		return;
 	remember_joystick(probe);
 	LOG_info("Joystick added: %s\n", SDL_JoystickName(probe));
-	if (strcmp(name, ZLYME_VIRT_PAD) == 0)
+	if (index_is_xb360(device_index) && !maintenance)
 		close_named(ZLYME_PHYS_PAD);
 }
 
 static void reopen_physical_if_needed(void)
 {
 	int i, n;
-	if (virtual_open())
+	if (!zlyme_allow_physical(maintenance, virtual_open()))
 		return;
 	n = SDL_NumJoysticks();
 	for (i = 0; i < n; i++) {
@@ -278,6 +314,15 @@ static void reopen_physical_if_needed(void)
 		if (name && strcmp(name, ZLYME_PHYS_PAD) == 0)
 			open_index(i);
 	}
+}
+
+void PLAT_setPhysicalMaintenance(int on)
+{
+	maintenance = on ? 1 : 0;
+	if (maintenance)
+		reopen_physical_if_needed();
+	else
+		close_named(ZLYME_PHYS_PAD);
 }
 
 int PLAT_suppressRawJoy(SDL_JoystickID id)

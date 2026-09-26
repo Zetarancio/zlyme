@@ -99,18 +99,26 @@ static int read_pct(bool right)
 
 static void ack(const char *msg);
 
+extern "C" void PLAT_setPhysicalMaintenance(int on);
+
 static bool physical_begin(void)
 {
-	int rc = system("/usr/sbin/zlyme-input release");
+	int rc;
+
+	/* Release first so the built-in virtual pad is gone, then allow
+	 * the physical pad even if an external virtual pad is still open. */
+	rc = system("/usr/sbin/zlyme-input release");
 	if (rc != 0) {
 		ack("Could not release the built-in controller.");
 		return false;
 	}
+	PLAT_setPhysicalMaintenance(1);
 	return true;
 }
 
 static void physical_end(void)
 {
+	PLAT_setPhysicalMaintenance(0);
 	if (system("/usr/sbin/zlyme-input reclaim") != 0)
 		ack("Could not restore the virtual controller.");
 }
