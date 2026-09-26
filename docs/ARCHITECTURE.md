@@ -307,7 +307,7 @@ The Miyoo Flip uses board-specific input integration:
 
 - `miyoo-flip-gamepad` is the physical layer: UART sticks, GPIO buttons, calibration transform, radial deadzone, and `FF_RUMBLE` on PWM5 through ff-memless `FF_GAIN`;
 - Settings owns calibration, deadzone, and displayed Rumble Strength. The product default is displayed 30%, mapped to `FF_GAIN` by the userspace curve. A saved `rumble.config` is kept. Fresh Haptic feedback is on. An existing `haptics=` value is kept. Haptic feedback only gates NextUI's own pulses;
-- The retired ROCKNIX gamepad package is not part of the product. InputPlumber v0.81.0 is packaged and not started. Its Flip composite device does not auto-manage the pad. Settings → Joysticks stays on the physical pad. NextUI keeps the physical device until the later handoff;
+- The retired ROCKNIX gamepad package is not part of the product. InputPlumber v0.81.0 starts after the first frame and does not auto-manage the pad, so boot owns zero controllers. Its Flip map sends the four D-pad buttons to hat axes and the digital L2/R2 buttons (`BTN_TL2`/`BTN_TR2`) to binary `ABS_Z`/`ABS_RZ` on the `xb360` target. Settings → Joysticks stays on the physical pad. NextUI keeps the physical device until the later handoff;
 - lid switch;
 - power key;
 - volume/brightness handling;

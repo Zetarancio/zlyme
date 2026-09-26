@@ -43,7 +43,7 @@ InputPlumber v0.81.0 generic evdev source:
     TODO upstream: replace polling with epoll/event-driven wakeup
 ```
 
-The first likely InputPlumber-added source delay is 0..2.5 ms, roughly 1.25 ms average, plus translation, scheduling, and uinput overhead. Do not claim total latency until it is measured on the Flip. InputPlumber supports `ENABLE_METRICS=1` for internal event-path timing.
+The first likely InputPlumber-added source delay is 0..2.5 ms, roughly 1.25 ms average, plus translation, scheduling, and uinput overhead. InputPlumber supports `ENABLE_METRICS=1` for internal event-path timing. Phase 4B measured that internal path. The about 1.8 ms typical routing estimate below adds the inferred poll wait to the measured average. It is not a direct end-to-end sample.
 
 Potential latency work, in order:
 
@@ -88,15 +88,25 @@ No driver, debounce, or poll-rate change follows from this run. The first softwa
 
 v0.81.0 `evdev.rs` maps face buttons, bumpers, `BTN_TL2`/`BTN_TR2`, start, select, mode, and stick clicks. It does not map `BTN_DPAD_*`. Upstream AYN and Retroid maps send those keys to `DPadUp`/`DPadDown`/`DPadLeft`/`DPadRight`, and the Xbox target writes them as `ABS_HAT0Y`/`ABS_HAT0X`. Events absent from a capability map still use the generic translator (`gamepad.rs`).
 
-A temporary bind mount of `/usr/share/inputplumber` added only those four mappings, id `zlyme_miyoo_flip`, with `auto_manage: false`, `persist: false`, and target `xb360`. The virtual capture then showed `ABS_HAT0X` -1 then 0 and +1 then 0, and `ABS_HAT0Y` -1 then 0 and +1 then 0. That is left/right and up/down. `BTN_EAST` (A) still appeared. The same map is now the packaged file.
+A temporary bind mount of `/usr/share/inputplumber` added only those four mappings, id `zlyme_miyoo_flip`, with `auto_manage: false`, `persist: false`, and target `xb360`. The virtual capture then showed `ABS_HAT0X` -1 then 0 and +1 then 0, and `ABS_HAT0Y` -1 then 0 and +1 then 0. That is left/right and up/down. `BTN_EAST` (A) still appeared. Those four entries remain in the packaged map.
 
-L2/R2 did not appear as `ABS_Z` or `ABS_RZ`. Metrics recorded two `Gamepad(Button(LeftTrigger))` events and two `Gamepad(Button(RightTrigger))` events, so the generic translator saw the physical trigger buttons. The Xbox target turns that button capability into `KEY` `BTN_TL2`/`BTN_TR2`, and the virtual `xb360` device does not include those keys, so the writes are not visible. They were not added to the capability map.
+The Flip L2 and R2 controls are digital GPIO buttons. The Phase 3 device reports them as `BTN_TL2` and `BTN_TR2`. They are not analog axes. In the first managed capture they did not appear as `ABS_Z` or `ABS_RZ`. Metrics recorded two `Gamepad(Button(LeftTrigger))` events and two `Gamepad(Button(RightTrigger))` events, so the generic translator saw those keys. The Xbox target turns that button capability into `KEY` `BTN_TL2`/`BTN_TR2`, and the virtual `xb360` device does not include those keys, so the writes are not visible. The same target does expose `ABS_Z` and `ABS_RZ`, range 0..255, for `GamepadTrigger::LeftTrigger` and `GamepadTrigger::RightTrigger`.
 
 Metrics were collected only after `Properties.Set` of `org.shadowblip.Input.Metrics.Enabled` to true on `/org/shadowblip/InputPlumber/devices/target/gamepad0`, with `ENABLE_METRICS=1`. `EventMetrics` count was 2322. Root span, microseconds: min 202, median 488, average 560, p95 877, max 7014. Subspans, same units, min/median/average/p95/max: `source_poll` 25/58/63/103/205, `source_send` 44/198/248/392/6416, `target_send` 13/107/121/242/2494, `target_write` 7/27/37/86/2445. The root span starts inside a source poll, after `fetch_events()`. It does not include time a kernel event waited for the next 2.5 ms loop. That wait is 0 to 2.5 ms, about 1.25 ms on average if arrivals are uniform, and it is an inference. Do not add it into the measured root number.
 
 Managed idle cost from the earlier window remains about 1.5% of one CPU and 13320 kB RSS. Shortening the poll to 1 ms would buy latency with more wakeups. An event-driven source is the first candidate if routing delay or that idle cost needs to come down. It is not required before Phase 4C, and it is not implemented here. The stick path and the 10 ms debounce stay unchanged.
 
-The temporary mount was removed. `S31inputplumber` is running with metrics unset and zero composites. The physical pad is `event4`. Phase 4B is not complete, because L2/R2 were not proven on `ABS_Z`/`ABS_RZ`.
+The temporary mount was removed after that D-pad run. `S31inputplumber` was left running with metrics unset and zero composites.
+
+## Digital L2/R2 to xb360 axes — 2026-09-26
+
+The adaptation is only at the virtual ABI. A temporary capability map kept the four D-pad entries and added `BTN_TL2` and `BTN_TR2` with `value_type: trigger`, targeting `GamepadTrigger` `LeftTrigger` and `RightTrigger`. For a key, InputPlumber sees 0 or 1. That trigger value is a float, and the Xbox axis scales it to its declared maximum. `EVIOCGABS` on the live virtual pad reported 0..255 for both `ABS_Z` and `ABS_RZ`.
+
+The map was bind-mounted over `/usr/share/inputplumber` on the still-unflashed card, with metrics unset, `maximum_sources: 1`, `auto_manage: false`, `persist: false`, and target `xb360`. One composite and one `Microsoft X-Box 360 pad` appeared. The virtual node was discovered by name. Three L2 press/release pairs wrote `ABS_Z` 255 then 0 every time. Three R2 press/release pairs wrote `ABS_RZ` 255 then 0 every time. A still arrived as key 305, press and release. The four D-pad entries were unchanged, so the earlier hat validation still stands. The mount was removed. The service was restarted through `S31inputplumber` with metrics unset and zero composites. The physical pad remained `Miyoo Flip Gamepad`.
+
+A reasonable typical routing estimate is about 1.8 ms: about 1.25 ms expected poll wait plus about 0.56 ms measured average internal work. That 1.8 ms is partly inferred. It is not a direct end-to-end measurement. The measured internal cost is small enough that functional integration is more useful than a driver or poll change. Do not change the Phase 3 driver. Do not reduce the 10 ms button debounce. Do not alter the about 66.8 Hz UART path. Do not fork InputPlumber for `epoll` before Phase 4C, and do not shorten the polling interval. Event-driven evdev, readiness instead of 400 Hz polling, stays a later candidate because it could cut both the poll-phase wait and idle wakeups without changing the physical device ABI.
+
+Phase 4B is complete. The closure evidence is post-first-frame startup, a normal zero-composite state, exclusive grab of the physical pad, one `xb360` target, face buttons, sticks, MENU/Guide, L3/R3, D-pad as `ABS_HAT0X`/`ABS_HAT0Y`, digital L2/R2 as binary `ABS_Z`/`ABS_RZ`, virtual `FF_RUMBLE` reaching the physical motor, manage/unmanage recovery, UART health, the internal latency above, and the managed-idle cost. Nothing in that evidence requires a Phase 3 driver change.
 
 ## Historical recommendation — 2026-09-15
 

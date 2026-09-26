@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4B complete
+
+Physical L2 and R2 are digital GPIO buttons, `BTN_TL2` and `BTN_TR2`. The generic InputPlumber path turns them into button capabilities, and the `xb360` target does not emit those keys, which is why an earlier virtual capture showed nothing for them. A capability map with `value_type: trigger` sends them to `LeftTrigger` and `RightTrigger`. On the live virtual pad, three L2 presses wrote `ABS_Z` 255 and released to 0, three R2 presses wrote `ABS_RZ` 255 and released to 0, and A still arrived. The four D-pad entries were not changed. The test mount was removed. The daemon is running with metrics off and nothing managed.
+
+Measured internal `root` processing over 2322 samples was 202 µs minimum, 488 µs median, 560 µs average, 877 µs p95, and 7014 µs maximum. Adding the inferred 0..2.5 ms poll wait, about 1.25 ms if arrival phase is uniform, gives about 1.8 ms typical software routing. That 1.8 ms is not a direct end-to-end measurement. Managed idle cost stays about 13.0 MiB RSS and about 1.5% of one core. The Phase 3 driver, the 10 ms debounce, and the UART path are unchanged. Event-driven evdev remains a later candidate. Phase 4B is complete. Phase 4C has not started.
+
 ## 2026-09-26 — Phase 4B D-pad map and latency
 
 A temporary capability map for the four `BTN_DPAD_*` keys was bind-mounted over `/usr/share/inputplumber`. The virtual Xbox pad then reported hat X and hat Y for all four directions, returning to 0, and A still arrived. L2 and R2 were seen internally as trigger buttons and did not appear as `ABS_Z` or `ABS_RZ`. Metrics, after the Enabled property was set, were 2322 events. Root processing was about 202 µs minimum, 560 µs average, 877 µs p95, and 7014 µs maximum. That span does not include the 0 to 2.5 ms wait for the next source poll. The test mount was removed. The daemon is running with nothing managed. Phase 4B is not complete.

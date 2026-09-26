@@ -495,7 +495,7 @@ Phase 3C3 COMPLETE — 2026-09-25
 Phase 3D COMPLETE — 2026-09-25
 Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
-Phase 4B NOT COMPLETE — D-pad map proven, L2/R2 axes not proven
+Phase 4B COMPLETE — 2026-09-26
 Phase 4C NOT STARTED
 Phase 4D NOT STARTED
 ```
@@ -1602,7 +1602,7 @@ Complete. Buildroot `cargo-package` builds pinned v0.81.0 (`ea60d873cca17edd1cb6
 
 ### 4B — Built-in controller integration and latency
 
-Implemented, not complete. The D-pad capability map was proven on a temporary bind mount: all four directions become `ABS_HAT0X`/`ABS_HAT0Y` and return to 0. L2/R2 are seen as trigger buttons and do not appear as `ABS_Z`/`ABS_RZ`, so that gate is still open. Root processing over 2322 events was about 202 to 7014 µs, average about 560 µs, excluding the 0 to 2.5 ms source-poll wait. Details are in `docs/research/inputplumber.md`. Do not change the driver or shorten the poll yet.
+Complete — 2026-09-26. The service starts after the first frame and owns zero controllers until management is enabled. Live checks covered exclusive grab, one `xb360` target, face buttons, sticks, MENU/Guide, L3/R3, D-pad as `ABS_HAT0X`/`ABS_HAT0Y`, virtual `FF_RUMBLE`, manage/unmanage recovery, and UART health. Physical L2 and R2 are digital GPIO buttons, `BTN_TL2` and `BTN_TR2`. The capability map sends them as trigger values, so the virtual pad writes binary `ABS_Z` and `ABS_RZ`: 255 pressed and 0 released, matching the axis maximum from `EVIOCGABS`. A typical routing estimate is about 1.8 ms: about 1.25 ms expected poll wait plus about 0.56 ms measured average internal work. The 1.8 ms figure is partly inferred. Managed idle cost was about 13.0 MiB RSS and about 1.5% of one core. The Phase 3 driver, the 10 ms debounce, and the UART path stay as they are. Event-driven InputPlumber evdev is a later candidate. Details are in `docs/research/inputplumber.md`.
 
 ### 4C — NextUI handoff and player policy
 
