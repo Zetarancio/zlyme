@@ -4,6 +4,8 @@ ROM="$1"
 # Comment out to skip this pak's log (About → System logs).
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 [ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh
+# Player 1 defaults are the virtual xb360 pad. A binary file already
+# written under Saves/ next to the pak still overrides those defaults.
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 	"$USERDATA_PATH/OpenBOR/Paks"
 HOME="$USERDATA_PATH"
