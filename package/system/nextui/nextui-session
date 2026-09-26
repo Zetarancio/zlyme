@@ -477,7 +477,7 @@ while [ -f "$EXEC_PATH" ]; do
 	# Reclaim is a no-op when InputPlumber is not up yet, so the first
 	# frame is not waiting on it.
 	if [ -x /usr/sbin/zlyme-input ]; then
-		/usr/sbin/zlyme-input reclaim || echo "zlyme-input reclaim failed" >> "$SESSION_LOG"
+		/usr/sbin/zlyme-input ensure || echo "zlyme-input ensure failed" >> "$SESSION_LOG"
 	fi
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.

@@ -1,3 +1,4 @@
+#include "lifecycle.h"
 #include "order.h"
 
 #include <dbus/dbus.h>
@@ -16,6 +17,7 @@
 struct device {
 	char *path;
 	char *name;
+	int has_gamepad;
 };
 
 static void log_msg(const char *text)
@@ -164,9 +166,30 @@ static char *dup_basic_string(DBusMessageIter *iter)
 	return strdup(s);
 }
 
-/* Walk a{sa{sv}} for one object and return the composite Name, if any. */
-static char *composite_name(DBusMessageIter *ifaces)
+static int array_has_gamepad_target(DBusMessageIter *variant)
 {
+	DBusMessageIter arr;
+
+	if (dbus_message_iter_get_arg_type(variant) != DBUS_TYPE_ARRAY)
+		return 0;
+	dbus_message_iter_recurse(variant, &arr);
+	while (dbus_message_iter_get_arg_type(&arr) == DBUS_TYPE_STRING) {
+		const char *s = "";
+
+		dbus_message_iter_get_basic(&arr, &s);
+		if (strstr(s, "/devices/target/gamepad"))
+			return 1;
+		dbus_message_iter_next(&arr);
+	}
+	return 0;
+}
+
+/* Walk a{sa{sv}} for one object. Returns the composite Name, if any. */
+static char *composite_fields(DBusMessageIter *ifaces, int *has_gamepad)
+{
+	char *name = NULL;
+
+	*has_gamepad = 0;
 	while (dbus_message_iter_get_arg_type(ifaces) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, props;
 		const char *iface = "";
@@ -186,16 +209,17 @@ static char *composite_name(DBusMessageIter *ifaces)
 					dbus_message_iter_get_basic(&prop, &key);
 				dbus_message_iter_next(&prop);
 				dbus_message_iter_recurse(&prop, &variant);
-				if (strcmp(key, "Name") == 0) {
-					char *name = dup_basic_string(&variant);
-					return name;
-				}
+				if (strcmp(key, "Name") == 0 && !name)
+					name = dup_basic_string(&variant);
+				if (strcmp(key, "TargetDevices") == 0 &&
+				    array_has_gamepad_target(&variant))
+					*has_gamepad = 1;
 				dbus_message_iter_next(&props);
 			}
 		}
 		dbus_message_iter_next(ifaces);
 	}
-	return NULL;
+	return name;
 }
 
 static int list_composites(DBusConnection *conn, struct device **out, int *n_out)
@@ -224,13 +248,14 @@ static int list_composites(DBusConnection *conn, struct device **out, int *n_out
 		DBusMessageIter entry, ifaces;
 		const char *path = "";
 		char *name;
+		int has_gamepad = 0;
 
 		dbus_message_iter_recurse(&objects, &entry);
 		if (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_OBJECT_PATH)
 			dbus_message_iter_get_basic(&entry, &path);
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &ifaces);
-		name = composite_name(&ifaces);
+		name = composite_fields(&ifaces, &has_gamepad);
 		if (name && strstr(path, "/CompositeDevice")) {
 			struct device *grown = realloc(list, (size_t)(n + 1) * sizeof(*list));
 			if (!grown) {
@@ -242,6 +267,7 @@ static int list_composites(DBusConnection *conn, struct device **out, int *n_out
 			list = grown;
 			list[n].path = NULL;
 			list[n].name = name;
+			list[n].has_gamepad = has_gamepad;
 			list[n].path = strdup(path);
 			if (!list[n].path) {
 				free_devices(list, n + 1);
@@ -432,10 +458,55 @@ static int reconcile(DBusConnection *conn)
 	return rc;
 }
 
+static long mono_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static void builtin_state(struct device *devs, int n, int *present, int *gamepad)
+{
+	int idx = find_builtin(devs, n);
+
+	*present = idx >= 0;
+	*gamepad = idx >= 0 && devs[idx].has_gamepad;
+}
+
+static int wait_until(DBusConnection *conn, int want_ready, const char *fail)
+{
+	long deadline = mono_ms() + 3000;
+
+	for (;;) {
+		struct device *devs = NULL;
+		int n = 0, present = 0, gamepad = 0, done, slice;
+		long now;
+
+		if (list_composites(conn, &devs, &n) != 0)
+			return 1;
+		builtin_state(devs, n, &present, &gamepad);
+		free_devices(devs, n);
+		done = want_ready ? zlyme_reclaim_done(present, gamepad)
+				  : zlyme_release_done(present, gamepad);
+		if (done)
+			return 0;
+		now = mono_ms();
+		if (now >= deadline) {
+			log_msg(fail);
+			return 1;
+		}
+		slice = (int)(deadline - now);
+		if (slice > 200)
+			slice = 200;
+		dbus_connection_read_write(conn, slice);
+	}
+}
+
 static int cmd_release(DBusConnection *conn)
 {
 	struct device *devs = NULL;
-	int n = 0, idx;
+	int n = 0, idx, present = 0, gamepad = 0;
 
 	if (!name_up(conn)) {
 		log_msg("InputPlumber is not running");
@@ -443,69 +514,60 @@ static int cmd_release(DBusConnection *conn)
 	}
 	if (list_composites(conn, &devs, &n) != 0)
 		return 1;
+	builtin_state(devs, n, &present, &gamepad);
 	idx = find_builtin(devs, n);
-	if (idx < 0) {
+	if (zlyme_release_done(present, gamepad)) {
 		free_devices(devs, n);
 		log_msg("built-in composite already released");
 		return 0;
 	}
-	if (stop_path(conn, devs[idx].path) != 0) {
+	if (idx < 0 || stop_path(conn, devs[idx].path) != 0) {
 		free_devices(devs, n);
 		return 1;
 	}
 	free_devices(devs, n);
+	if (wait_until(conn, 0, "built-in release did not finish") != 0)
+		return 1;
+	log_msg("built-in composite released");
 	return 0;
-}
-
-static int builtin_present(DBusConnection *conn)
-{
-	struct device *devs = NULL;
-	int n = 0, idx;
-
-	if (list_composites(conn, &devs, &n) != 0)
-		return 0;
-	idx = find_builtin(devs, n);
-	free_devices(devs, n);
-	return idx >= 0;
 }
 
 static int cmd_reclaim(DBusConnection *conn)
 {
-	long deadline;
-	struct timespec ts;
+	struct device *devs = NULL;
+	int n = 0, present = 0, gamepad = 0;
 
 	if (!name_up(conn)) {
-		log_msg("InputPlumber is not running; reclaim skipped");
-		return 0;
+		log_msg("InputPlumber is not running");
+		return 1;
 	}
-	if (builtin_present(conn)) {
+	if (list_composites(conn, &devs, &n) != 0)
+		return 1;
+	builtin_state(devs, n, &present, &gamepad);
+	free_devices(devs, n);
+	if (zlyme_reclaim_done(present, gamepad)) {
 		reconcile(conn);
-		log_msg("built-in composite already present");
+		log_msg("built-in target already ready");
 		return 0;
 	}
 	if (rescan(conn) != 0)
 		return 1;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	deadline = ts.tv_sec * 1000 + ts.tv_nsec / 1000000 + 3000;
-	while (!builtin_present(conn)) {
-		long now;
-		int slice;
-
-		clock_gettime(CLOCK_MONOTONIC, &ts);
-		now = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-		if (now >= deadline) {
-			log_msg("built-in composite did not return");
-			return 1;
-		}
-		slice = (int)(deadline - now);
-		if (slice > 250)
-			slice = 250;
-		dbus_connection_read_write(conn, slice);
-	}
+	if (wait_until(conn, 1, "built-in target did not become ready") != 0)
+		return 1;
 	if (reconcile(conn) != 0)
 		return 1;
-	log_msg("built-in composite reclaimed");
+	log_msg("built-in target ready");
 	return 0;
+}
+
+/* First-boot recovery: absent InputPlumber is not a failure. */
+static int cmd_ensure(DBusConnection *conn)
+{
+	if (!name_up(conn)) {
+		log_msg("InputPlumber is not running; ensure skipped");
+		return 0;
+	}
+	return cmd_reclaim(conn);
 }
 
 static int cmd_status(DBusConnection *conn)
@@ -531,11 +593,41 @@ static int cmd_status(DBusConnection *conn)
 	return 0;
 }
 
+static int manager_ready(DBusConnection *conn)
+{
+	int manage = 0;
+
+	if (!name_up(conn))
+		return 0;
+	return get_manage_all(conn, &manage) == 0;
+}
+
+static int activate(DBusConnection *conn)
+{
+	if (!zlyme_should_activate(name_up(conn), manager_ready(conn)))
+		return 1;
+	if (set_manage_all(conn, 1) != 0)
+		return 1;
+	if (reconcile(conn) != 0)
+		log_msg("player order was not applied");
+	log_msg("management active");
+	return 0;
+}
+
 static int cmd_run(DBusConnection *conn)
 {
 	DBusError err;
+	int active = 0;
 
 	dbus_error_init(&err);
+	dbus_bus_add_match(conn,
+			   "type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged'",
+			   &err);
+	if (dbus_error_is_set(&err)) {
+		log_msg(err.message);
+		dbus_error_free(&err);
+		return 1;
+	}
 	dbus_bus_add_match(conn,
 			   "type='signal',sender='" BUS_NAME "',interface='org.freedesktop.DBus.ObjectManager'",
 			   &err);
@@ -553,13 +645,8 @@ static int cmd_run(DBusConnection *conn)
 		return 1;
 	}
 	log_msg("waiting for InputPlumber");
-	while (!name_up(conn))
-		dbus_connection_read_write(conn, -1);
-	log_msg("InputPlumber is ready");
-	if (set_manage_all(conn, 1) != 0)
-		return 1;
-	if (reconcile(conn) != 0)
-		log_msg("initial player order was not applied");
+	if (activate(conn) == 0)
+		active = 1;
 	for (;;) {
 		DBusMessage *msg;
 
@@ -567,8 +654,34 @@ static int cmd_run(DBusConnection *conn)
 		while ((msg = dbus_connection_pop_message(conn)) != NULL) {
 			int is_signal = dbus_message_get_type(msg) == DBUS_MESSAGE_TYPE_SIGNAL;
 			const char *member = dbus_message_get_member(msg);
+			int owner_event = 0;
 			int interesting = 0;
 
+			if (is_signal && member && strcmp(member, "NameOwnerChanged") == 0) {
+				DBusMessageIter iter;
+				const char *name = "";
+				const char *old_owner = "";
+				const char *new_owner = "";
+
+				if (dbus_message_iter_init(msg, &iter) &&
+				    dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_STRING) {
+					dbus_message_iter_get_basic(&iter, &name);
+					if (dbus_message_iter_next(&iter))
+						dbus_message_iter_get_basic(&iter, &old_owner);
+					if (dbus_message_iter_next(&iter))
+						dbus_message_iter_get_basic(&iter, &new_owner);
+				}
+				if (strcmp(name, BUS_NAME) == 0) {
+					owner_event = 1;
+					if (new_owner[0] == '\0') {
+						active = 0;
+						log_msg("InputPlumber owner lost");
+					} else {
+						log_msg("InputPlumber owner appeared");
+					}
+				}
+				(void)old_owner;
+			}
 			if (is_signal && member &&
 			    (strcmp(member, "InterfacesAdded") == 0 ||
 			     strcmp(member, "InterfacesRemoved") == 0))
@@ -584,7 +697,16 @@ static int cmd_run(DBusConnection *conn)
 					interesting = 1;
 			}
 			dbus_message_unref(msg);
-			if (interesting && name_up(conn))
+			if (zlyme_should_deactivate(name_up(conn))) {
+				active = 0;
+				continue;
+			}
+			if (!active || owner_event) {
+				if (activate(conn) == 0)
+					active = 1;
+				continue;
+			}
+			if (interesting)
 				reconcile(conn);
 		}
 	}
@@ -596,7 +718,7 @@ int main(int argc, char **argv)
 	const char *cmd;
 
 	if (argc != 2) {
-		fprintf(stderr, "usage: zlyme-input run|release|reclaim|status\n");
+		fprintf(stderr, "usage: zlyme-input run|release|reclaim|ensure|status\n");
 		return 2;
 	}
 	cmd = argv[1];
@@ -609,8 +731,10 @@ int main(int argc, char **argv)
 		return cmd_release(conn);
 	if (strcmp(cmd, "reclaim") == 0)
 		return cmd_reclaim(conn);
+	if (strcmp(cmd, "ensure") == 0)
+		return cmd_ensure(conn);
 	if (strcmp(cmd, "status") == 0)
 		return cmd_status(conn);
-	fprintf(stderr, "usage: zlyme-input run|release|reclaim|status\n");
+	fprintf(stderr, "usage: zlyme-input run|release|reclaim|ensure|status\n");
 	return 2;
 }

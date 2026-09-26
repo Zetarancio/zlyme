@@ -16,7 +16,7 @@ ZLYME_INPUT_DEPENDENCIES = host-pkgconf dbus inputplumber
 define ZLYME_INPUT_BUILD_CMDS
 	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra \
 		$$($(PKG_CONFIG_HOST_BINARY) --cflags dbus-1) \
-		-o $(@D)/zlyme-input $(@D)/zlyme-input.c $(@D)/order.c \
+		-o $(@D)/zlyme-input $(@D)/zlyme-input.c $(@D)/order.c $(@D)/lifecycle.c \
 		$(TARGET_LDFLAGS) $$($(PKG_CONFIG_HOST_BINARY) --libs dbus-1)
 endef
 
