@@ -11,8 +11,10 @@ INPUTPLUMBER_LICENSE = GPL-3.0-or-later
 INPUTPLUMBER_LICENSE_FILES = LICENSE
 
 # uhidrs-sys runs bindgen, which loads host libclang.
-# libudev, hidapi, and libiio are the native libraries the crates link.
-INPUTPLUMBER_DEPENDENCIES = eudev hidapi libiio host-clang
+# The binary links libudev (eudev) and libiio. The hidapi crate's
+# default linux-static-hidraw backend compiles its own C archive and
+# probes libudev. It does not use Buildroot's hidapi package.
+INPUTPLUMBER_DEPENDENCIES = eudev libiio host-clang
 
 INPUTPLUMBER_CARGO_ENV = LIBCLANG_PATH=$(HOST_DIR)/lib
 

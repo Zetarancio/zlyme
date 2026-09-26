@@ -850,7 +850,7 @@ Settings chooses the value and persists it.
 
 The kernel must not open persistent files.
 
-InputPlumber remains Phase 4 policy for controller composition, virtual P1, hotplug, grabs, and broad application compatibility. It must not become necessary for built-in-stick calibration or deadzone tuning in 3C2b.
+InputPlumber remains Phase 4 policy for one composite per player controller, player order, hotplug, grabs, and broad application compatibility. It must not become necessary for built-in-stick calibration or deadzone tuning in 3C2b.
 
 ##### Hardware noise floor versus user deadzone
 
@@ -1514,7 +1514,7 @@ input-polldev, adc-keys, and joypad_input_g only where they exist solely for the
 clean build and image inspection
 ```
 
-3D does not own per-emulator mappings, standalone controller configuration, RetroArch ABI validation, external-controller composition, stable P1, hotplug, connect and disconnect during games, or making every emulator bind to `Miyoo Flip Gamepad`. Those are Phase 4.
+3D does not own per-emulator mappings, standalone controller configuration, RetroArch ABI validation, independent virtual controllers, player order, hotplug, connect and disconnect during games, or making every emulator bind to `Miyoo Flip Gamepad`. Those are Phase 4.
 
 Switch 1 non-Hall replacement sticks stay a designed compatibility target on the same UART frame. Community validation is not a Phase 3 blocker, and they are not called physically validated.
 
@@ -1557,26 +1557,33 @@ The physical hardware gate is the evidence from Phase 3B through Phase 3C3. Swit
 
 ## 4 — Introduce InputPlumber as the application controller
 
-Phase 4 owns the stable controller that emulators and standalone applications see. The intended path is:
+Phase 4 owns the controllers that emulators and standalone applications see. Each physical player controller stays independent:
 
 ```text
-physical Miyoo Flip Gamepad
-external controllers
-        |
-        v
-InputPlumber
-        |
-        v
-stable virtual P1
+one physical player controller
+        ->
+one InputPlumber composite
+        ->
+one virtual controller
         |
         +-> RetroArch
         +-> standalone emulators
         +-> native and PAK applications that need a controller
 ```
 
-Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns the physical sources, then exposes virtual controllers. After the handoff, NextUI, RetroArch, standalones, and PAK applications that need a controller use that virtual device. Settings → System → Joysticks stays on the physical built-in pad and its sysfs for calibration, deadzone, and rumble. Entering that screen should unmanage only the internal source. Leaving it restores InputPlumber. Do not stop every controller to calibrate one stick if a per-device control exists.
+Several physical player controllers stay several composites:
 
-P1 is a Zlyme policy, not an event-number accident. With no external controller, the built-in pad is P1. If any external controller is connected, external controllers come first, in connection order unless InputPlumber has a stronger stable order, and the built-in pad is last. Do not use `/dev/input/eventN` as priority. HDMI does not change this. An HDMI cable with no external controller leaves the built-in pad as P1.
+```text
+multiple physical player controllers
+        ->
+multiple independent InputPlumber composites
+        ->
+multiple ordered application-facing virtual controllers
+```
+
+Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns each physical player controller as its own composite and exposes one virtual controller for that composite. After the handoff, NextUI, RetroArch, standalones, and PAK applications that need a controller use those virtual devices. Settings → System → Joysticks stays on the physical built-in pad and its sysfs for calibration, deadzone, and rumble. Entering that screen should unmanage only the internal source. Leaving it restores InputPlumber. Do not stop every controller to calibrate one stick if a per-device control exists.
+
+P1 is the first position among those independent virtual controllers. With no external controller, the built-in pad is P1. If any external controller is connected, external controllers come first, in connection order unless InputPlumber has a stronger stable order, and the built-in pad is last. Do not use `/dev/input/eventN` as priority. HDMI does not change this. An HDMI cable with no external controller leaves the built-in pad as P1.
 
 Do not require a Switch Pro, DualShock, DualSense, or hotplug test on this unit. Match external devices through InputPlumber's own interfaces and say they are not physically validated here. The device test is the built-in pad: InputPlumber sees it, the virtual target appears, normal consumers do not also see the physical source, buttons and sticks match, rumble returns to the motor if the target supports it, and a supported unmanage/manage of the internal source drops and restores virtual input. Do not unload `miyoo-flip-gamepad` to simulate that.
 
@@ -1588,8 +1595,8 @@ The previous Zlyme research correctly concluded that InputPlumber was unnecessar
 
 Adopt InputPlumber for the application-policy goal:
 
-- stable virtual P1;
-- built-in + external controller composition;
+- one virtual controller per physical player controller;
+- player order, with the built-in pad first when it is alone and external controllers first when any external is connected;
 - exclusive grabs when useful;
 - consistent mapping;
 - hotplug policy;
@@ -1598,7 +1605,7 @@ Adopt InputPlumber for the application-policy goal:
 
 ### 4A — Package InputPlumber
 
-Complete. Buildroot `cargo-package` builds pinned v0.81.0 (`ea60d873cca17edd1cb655ede26f557108135252`). The image contains `/usr/bin/inputplumber`, the D-Bus policy, upstream `default.yaml`, and `20-zlyme_miyoo_flip.yaml`. That file is a CompositeDevice named Miyoo Flip Gamepad, matched by evdev name, `maximum_sources: 1`, `auto_manage: false`, `persist: false`, target `xb360`. Nothing starts it. No device test.
+Complete. At the 4A checkpoint, Buildroot `cargo-package` built pinned v0.81.0 (`ea60d873cca17edd1cb655ede26f557108135252`). The image contained `/usr/bin/inputplumber`, the D-Bus policy, upstream `default.yaml`, and `20-zlyme_miyoo_flip.yaml`. That file is a CompositeDevice named Miyoo Flip Gamepad, matched by evdev name, `maximum_sources: 1`, `auto_manage: false`, `persist: false`, target `xb360`. At that checkpoint nothing started it, and there was no device test. Phase 4B added the init script, the capability map, post-first-frame startup, and live validation.
 
 ### 4B — Built-in controller integration and latency
 

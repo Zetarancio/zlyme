@@ -209,7 +209,7 @@ BR2_PACKAGE_JPEG=y
 BR2_PACKAGE_SDL2_IMAGE=y
 BR2_PACKAGE_SDL2_TTF=y
 BR2_PACKAGE_NEXTUI=y
-# Packaged only. Not started at boot. Phase 4B owns the first run.
+# Starts after the first frame. auto_manage=false, so it owns no controller.
 BR2_PACKAGE_INPUTPLUMBER=y
 BR2_PACKAGE_LIBIIO=y
 # BR2_PACKAGE_LIBIIO_XML_BACKEND is not set

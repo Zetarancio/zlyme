@@ -21,6 +21,11 @@ printf '%s\n' \
 	"BTN_TL2 trigger trigger LeftTrigger" \
 	"BTN_TR2 trigger trigger RightTrigger" >"$want"
 cmp -s "$want" "$got"
+grep -q 'ea60d873cca17edd1cb655ede26f557108135252/rootfs/usr/share/inputplumber/schema/capability_map_v2.json' "$map"
+if grep -q 'InputPlumber/main/' "$map"; then
+	echo "schema hint must stay pinned" >&2
+	exit 1
+fi
 grep -q 'id: zlyme_miyoo_flip' "$map"
 grep -q 'capability_map_id: zlyme_miyoo_flip' "$dev"
 grep -q 'auto_manage: false' "$dev"

@@ -1,6 +1,6 @@
 # InputPlumber
 
-Date of the original study: 2026-09-14 / 2026-09-15. Updated 2026-09-25.
+Date of the original study: 2026-09-14 / 2026-09-15. Updated 2026-09-26.
 
 ## Current decision
 
@@ -107,6 +107,10 @@ The map was bind-mounted over `/usr/share/inputplumber` on the still-unflashed c
 A reasonable typical routing estimate is about 1.8 ms: about 1.25 ms expected poll wait plus about 0.56 ms measured average internal work. That 1.8 ms is partly inferred. It is not a direct end-to-end measurement. The measured internal cost is small enough that functional integration is more useful than a driver or poll change. Do not change the Phase 3 driver. Do not reduce the 10 ms button debounce. Do not alter the about 66.8 Hz UART path. Do not fork InputPlumber for `epoll` before Phase 4C, and do not shorten the polling interval. Event-driven evdev, readiness instead of 400 Hz polling, stays a later candidate because it could cut both the poll-phase wait and idle wakeups without changing the physical device ABI.
 
 Phase 4B is complete. The closure evidence is post-first-frame startup, a normal zero-composite state, exclusive grab of the physical pad, one `xb360` target, face buttons, sticks, MENU/Guide, L3/R3, D-pad as `ABS_HAT0X`/`ABS_HAT0Y`, digital L2/R2 as binary `ABS_Z`/`ABS_RZ`, virtual `FF_RUMBLE` reaching the physical motor, manage/unmanage recovery, UART health, the internal latency above, and the managed-idle cost. Nothing in that evidence requires a Phase 3 driver change.
+
+## Native libraries — 2026-09-26
+
+InputPlumber depends on crate `hidapi` 2.6.4 and does not select a feature, so the crate default applies. On Linux that default is `linux-static-hidraw`. The crate build script compiles `etc/hidapi/linux/hid.c` into a static archive and uses pkg-config to find `libudev`. The shared backends, which probe `hidapi-hidraw` or `hidapi-libusb`, are not enabled. The previous build script output recorded `cargo:rustc-link-lib=static=hidapi` and `cargo:rustc-link-lib=udev`. The installed binary's dynamic section needs `libudev.so.1` and `libiio.so.0`, plus `libgcc_s`, `libm`, and `libc`. It does not need `libhidapi`. Buildroot's hidapi package stays in the image because Dolphin selects it. It is not an InputPlumber build dependency. A package directory clean and rebuild, with Buildroot's `hidapi-hidraw.pc` and `hidapi-libusb.pc` moved aside, reproduced that same linkage. The fresh build script again compiled `linux/hid.c`, linked static `hidapi` plus `udev`, and did not probe the shared hidapi packages.
 
 ## Historical recommendation — 2026-09-15
 

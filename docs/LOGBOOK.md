@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4B final audit
+
+The capability-map schema hint is pinned to InputPlumber `ea60d873cca17edd1cb655ede26f557108135252`. Buildroot hidapi is not an InputPlumber dependency: crate `hidapi` 2.6.4 uses `linux-static-hidraw`, compiles its own hidraw archive, and the binary needs `libudev` and `libiio`. Package help and the defconfig comment now say the daemon starts after the first frame and manages nothing. The Phase 4 diagram is one composite and one virtual controller per physical player controller. Phase 4C has not started.
+
 ## 2026-09-26 — Phase 4B complete
 
 Physical L2 and R2 are digital GPIO buttons, `BTN_TL2` and `BTN_TR2`. The generic InputPlumber path turns them into button capabilities, and the `xb360` target does not emit those keys, which is why an earlier virtual capture showed nothing for them. A capability map with `value_type: trigger` sends them to `LeftTrigger` and `RightTrigger`. On the live virtual pad, three L2 presses wrote `ABS_Z` 255 and released to 0, three R2 presses wrote `ABS_RZ` 255 and released to 0, and A still arrived. The four D-pad entries were not changed. The test mount was removed. The daemon is running with metrics off and nothing managed.

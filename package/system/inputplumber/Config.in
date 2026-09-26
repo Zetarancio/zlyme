@@ -6,8 +6,9 @@ config BR2_PACKAGE_INPUTPLUMBER
 	select BR2_PACKAGE_LIBIIO
 	select BR2_PACKAGE_DBUS
 	help
-	  InputPlumber v0.81.0, packaged for later built-in controller
-	  integration. The image does not start it.
+	  InputPlumber v0.81.0. The daemon starts after NextUI's
+	  first frame. auto_manage is false, so it manages no
+	  controller until something asks it to.
 
 	  https://github.com/ShadowBlip/InputPlumber
 
