@@ -1,80 +1,98 @@
 /*
- * Watch MENU+Start while one pak process group lives.
+ * Watch MENU+START while one pak process group lives.
  * nextui-session passes the setsid child pid (also the pgid). SIGTERM the
  * group, then SIGKILL after a short grace. Do not touch nextui.elf.
  *
- * js0 buttons 9/10 match platform.h. Also watch Miyoo Flip Gamepad evdev
- * (BTN_MODE + BTN_START) if joydev is busy or missing.
+ * The chord is read from each InputPlumber xb360 target. MENU+START on
+ * any one virtual controller exits. Buttons from two controllers do not
+ * combine. js0 and the physical Miyoo Flip Gamepad are not sources.
  */
+#include "hotkey_logic.h"
+#include "virtpad.h"
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/input.h>
-#include <linux/joystick.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
+#include <sys/inotify.h>
 #include <unistd.h>
 
-#define JOY_START 9
-#define JOY_MENU 10
 #define GRACE_US 1500000
-#define PAD_NAME "Miyoo Flip Gamepad"
+#define MAX_PADS 8
 
-static int open_js(void)
+struct app_pad {
+	int fd;
+	int menu;
+	int start;
+	char node[32];
+};
+
+static int pad_find(struct app_pad *pads, int n, const char *node)
 {
-	static const char *const cands[] = {
-		"/dev/input/js0",
-		"/dev/js0",
-		NULL,
-	};
-	int i, fd;
+	int i;
 
-	for (i = 0; cands[i]; i++) {
-		fd = open(cands[i], O_RDONLY | O_NONBLOCK);
-		if (fd >= 0)
-			return fd;
-	}
+	for (i = 0; i < n; i++)
+		if (strcmp(pads[i].node, node) == 0)
+			return i;
 	return -1;
 }
 
-static int open_pad_evdev(void)
+static void drop_fd(struct app_pad *pads, int *n, int fd)
+{
+	int i;
+
+	for (i = 0; i < *n; i++) {
+		if (pads[i].fd != fd)
+			continue;
+		zlyme_hotkey_reset(&pads[i].menu, &pads[i].start);
+		close(pads[i].fd);
+		pads[i] = pads[*n - 1];
+		(*n)--;
+		return;
+	}
+}
+
+static void scan_pads(struct app_pad *pads, int *n)
 {
 	DIR *dir;
 	struct dirent *ent;
-	int found = -1;
 
 	dir = opendir("/dev/input");
 	if (!dir)
-		return -1;
+		return;
 	while ((ent = readdir(dir))) {
-		char path[64];
-		char name[256];
+		char path[320];
 		int fd;
+
+		size_t len;
 
 		if (strncmp(ent->d_name, "event", 5) != 0)
 			continue;
-		snprintf(path, sizeof(path), "/dev/input/%s", ent->d_name);
+		len = strlen(ent->d_name);
+		if (len == 0 || len >= sizeof pads[0].node)
+			continue;
+		if (pad_find(pads, *n, ent->d_name) >= 0)
+			continue;
+		if (*n >= MAX_PADS)
+			break;
+		snprintf(path, sizeof path, "/dev/input/%s", ent->d_name);
 		fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
 		if (fd < 0)
 			continue;
-		memset(name, 0, sizeof(name));
-		if (ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
+		if (!zlyme_is_virtpad(fd, ent->d_name)) {
 			close(fd);
 			continue;
 		}
-		if (strcmp(name, PAD_NAME) != 0) {
-			close(fd);
-			continue;
-		}
-		found = fd;
-		break;
+		pads[*n].fd = fd;
+		zlyme_hotkey_reset(&pads[*n].menu, &pads[*n].start);
+		memcpy(pads[*n].node, ent->d_name, len + 1);
+		(*n)++;
 	}
 	closedir(dir);
-	return found;
 }
 
 static void kill_pak(pid_t pgid)
@@ -84,11 +102,33 @@ static void kill_pak(pid_t pgid)
 	kill(-pgid, SIGKILL);
 }
 
+static int read_pad(struct app_pad *pad)
+{
+	struct input_event ev;
+
+	while (read(pad->fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+		if (ev.type != EV_KEY)
+			continue;
+		if (zlyme_hotkey_apply(&pad->menu, &pad->start, ev.code, ev.value != 0))
+			return 1;
+	}
+	return 0;
+}
+
+static void drain_inotify(int fd)
+{
+	char buf[4096];
+
+	while (read(fd, buf, sizeof buf) > 0)
+		;
+}
+
 int main(int argc, char **argv)
 {
 	pid_t pgid;
-	int js_fd, ev_fd, menu = 0, start = 0, nfd = 0;
-	struct pollfd pf[2];
+	struct app_pad pads[MAX_PADS];
+	int npads = 0;
+	int ino;
 
 	if (argc < 2)
 		return 1;
@@ -96,64 +136,69 @@ int main(int argc, char **argv)
 	if (pgid <= 1)
 		return 1;
 
-	js_fd = open_js();
-	ev_fd = open_pad_evdev();
-	if (js_fd < 0 && ev_fd < 0)
+	ino = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+	scan_pads(pads, &npads);
+	if (ino >= 0) {
+		if (inotify_add_watch(ino, "/dev/input",
+				      IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO) < 0) {
+			close(ino);
+			ino = -1;
+		} else {
+			scan_pads(pads, &npads);
+		}
+	}
+	if (ino < 0 && npads == 0)
 		return 1;
 
-	if (js_fd >= 0) {
-		pf[nfd].fd = js_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-	if (ev_fd >= 0) {
-		pf[nfd].fd = ev_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-
-	while (poll(pf, (nfds_t)nfd, -1) >= 0) {
+	while (1) {
+		struct pollfd pf[MAX_PADS + 1];
+		int nfd = 0;
 		int i;
+		int fire = 0;
 
-		for (i = 0; i < nfd; i++) {
-			if (!(pf[i].revents & POLLIN))
+		if (ino >= 0) {
+			pf[nfd].fd = ino;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		for (i = 0; i < npads; i++) {
+			pf[nfd].fd = pads[i].fd;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (nfd == 0)
+			break;
+		if (poll(pf, (nfds_t)nfd, -1) < 0) {
+			if (errno == EINTR)
 				continue;
-			if (pf[i].fd == js_fd) {
-				struct js_event e;
+			break;
+		}
+		for (i = 0; i < nfd; i++) {
+			int j;
 
-				while (read(js_fd, &e, sizeof(e)) == (ssize_t)sizeof(e)) {
-					if (e.type & JS_EVENT_INIT)
-						continue;
-					if ((e.type & ~JS_EVENT_INIT) != JS_EVENT_BUTTON)
-						continue;
-					if (e.number == JOY_MENU)
-						menu = e.value;
-					else if (e.number == JOY_START)
-						start = e.value;
-				}
-			} else if (pf[i].fd == ev_fd) {
-				struct input_event ev;
-
-				while (read(ev_fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
-					if (ev.type != EV_KEY)
-						continue;
-					if (ev.code == BTN_MODE)
-						menu = ev.value != 0;
-					else if (ev.code == BTN_START)
-						start = ev.value != 0;
-				}
+			if (pf[i].fd == ino && (pf[i].revents & POLLIN)) {
+				drain_inotify(ino);
+				scan_pads(pads, &npads);
+			}
+			for (j = 0; j < npads; j++) {
+				if (pads[j].fd != pf[i].fd)
+					continue;
+				if (pf[i].revents & POLLIN && read_pad(&pads[j]))
+					fire = 1;
+				if (pf[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+					drop_fd(pads, &npads, pf[i].fd);
+				break;
 			}
 		}
-		if (menu && start) {
+		if (fire) {
 			kill_pak(pgid);
 			break;
 		}
 	}
 
-	if (js_fd >= 0)
-		close(js_fd);
-	if (ev_fd >= 0)
-		close(ev_fd);
-	(void)errno;
+	while (npads > 0)
+		drop_fd(pads, &npads, pads[0].fd);
+	if (ino >= 0)
+		close(ino);
 	return 0;
 }

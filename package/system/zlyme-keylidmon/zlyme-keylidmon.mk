@@ -13,8 +13,9 @@ ZLYME_KEYLIDMON_LICENSE_FILES = LICENSE
 ZLYME_KEYLIDMON_DEPENDENCIES = nextui libdrm
 
 define ZLYME_KEYLIDMON_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) \
+	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra -Werror \
 		-I$(STAGING_DIR)/usr/include \
+		-I$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-input \
 		-o $(@D)/zlyme-keylidmon $(@D)/zlyme-keylidmon.c \
 		-L$(STAGING_DIR)/usr/lib -lmsettings -lrt -ldrm
 endef

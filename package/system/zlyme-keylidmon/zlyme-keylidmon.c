@@ -12,16 +12,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/inotify.h>
 #include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "msettings.h"
+#include "virtpad.h"
 
 #define VOL_NAME "gpio-keys-volume"
 #define HALL_NAME "gpio-keys-hall"
-#define PAD_NAME "Miyoo Flip Gamepad"
 #define PWR_NAME "rk805 pwrkey"
+#define MAX_PADS 8
 #define BLANK_PATH "/sys/class/backlight/backlight/bl_power"
 #define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
 #define VOLUME_MAX 20
@@ -62,7 +64,7 @@ static int menu_owns_keys(void)
 	if (!dir)
 		return 0;
 	while ((ent = readdir(dir))) {
-		char path[64];
+		char path[320];
 		char comm[64];
 		FILE *f;
 
@@ -96,7 +98,7 @@ static int open_by_name(const char *want)
 	if (!dir)
 		return -1;
 	while ((ent = readdir(dir))) {
-		char path[64];
+		char path[320];
 		char name[256];
 		int fd;
 
@@ -219,6 +221,95 @@ static void apply_bri(int up)
 		SetBrightness(v - 1);
 }
 
+struct menu_pad {
+	int fd;
+	int down;
+	char node[32];
+};
+
+static int pad_find(struct menu_pad *pads, int n, const char *node)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (strcmp(pads[i].node, node) == 0)
+			return i;
+	return -1;
+}
+
+static int any_menu(struct menu_pad *pads, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (pads[i].down)
+			return 1;
+	return 0;
+}
+
+static void drop_menu_fd(struct menu_pad *pads, int *n, int fd)
+{
+	int i;
+
+	for (i = 0; i < *n; i++) {
+		if (pads[i].fd != fd)
+			continue;
+		close(pads[i].fd);
+		pads[i] = pads[*n - 1];
+		(*n)--;
+		return;
+	}
+}
+
+/* MENU for brightness comes from each virtual xb360 target. Volume,
+ * power, and the lid stay on their own devices. */
+static void scan_menu_pads(struct menu_pad *pads, int *n)
+{
+	DIR *dir;
+	struct dirent *ent;
+
+	dir = opendir("/dev/input");
+	if (!dir)
+		return;
+	while ((ent = readdir(dir))) {
+		char path[320];
+		int fd;
+
+		size_t len;
+
+		if (strncmp(ent->d_name, "event", 5) != 0)
+			continue;
+		len = strlen(ent->d_name);
+		if (len == 0 || len >= sizeof pads[0].node)
+			continue;
+		if (pad_find(pads, *n, ent->d_name) >= 0)
+			continue;
+		if (*n >= MAX_PADS)
+			break;
+		snprintf(path, sizeof path, "/dev/input/%s", ent->d_name);
+		fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+		if (fd < 0)
+			continue;
+		if (!zlyme_is_virtpad(fd, ent->d_name)) {
+			close(fd);
+			continue;
+		}
+		pads[*n].fd = fd;
+		pads[*n].down = 0;
+		memcpy(pads[*n].node, ent->d_name, len + 1);
+		(*n)++;
+	}
+	closedir(dir);
+}
+
+static void drain_inotify(int fd)
+{
+	char buf[4096];
+
+	while (read(fd, buf, sizeof buf) > 0)
+		;
+}
+
 /* Platform directory is ZLYME_NEXTUI_PLATFORM. my355 remains the
  * fallback when device.conf is missing. */
 static void zlyme_set_userdata_path(void)
@@ -258,11 +349,11 @@ static void zlyme_set_userdata_path(void)
 
 int main(void)
 {
-	struct pollfd pf[4];
-	int vol_fd, hall_fd, pad_fd, pwr_fd;
+	struct menu_pad pads[MAX_PADS];
+	int npads = 0;
+	int vol_fd, hall_fd, pwr_fd, ino;
 	int grabbed = 0;
 	int menu = 0;
-	int nfd;
 	struct sigaction sa = {0};
 
 	sa.sa_handler = on_term;
@@ -274,34 +365,24 @@ int main(void)
 
 	vol_fd = open_by_name(VOL_NAME);
 	hall_fd = open_by_name(HALL_NAME);
-	pad_fd = open_by_name(PAD_NAME);
 	pwr_fd = open_by_name(PWR_NAME);
+	ino = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+	scan_menu_pads(pads, &npads);
+	if (ino >= 0) {
+		if (inotify_add_watch(ino, "/dev/input",
+				      IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO) < 0) {
+			close(ino);
+			ino = -1;
+		} else {
+			scan_menu_pads(pads, &npads);
+		}
+	}
 	if (vol_fd < 0 && hall_fd < 0 && pwr_fd < 0)
 		return 1;
 
-	nfd = 0;
-	if (vol_fd >= 0) {
-		pf[nfd].fd = vol_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-	if (hall_fd >= 0) {
-		pf[nfd].fd = hall_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-	if (pad_fd >= 0) {
-		pf[nfd].fd = pad_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-	if (pwr_fd >= 0) {
-		pf[nfd].fd = pwr_fd;
-		pf[nfd].events = POLLIN;
-		nfd++;
-	}
-
 	while (!quit) {
+		struct pollfd pf[MAX_PADS + 4];
+		int nfd = 0;
 		int in_game = !menu_owns_keys();
 		int i;
 
@@ -311,6 +392,34 @@ int main(void)
 			grabbed = in_game;
 		}
 
+		for (i = 0; i < npads; i++) {
+			pf[nfd].fd = pads[i].fd;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (vol_fd >= 0) {
+			pf[nfd].fd = vol_fd;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (hall_fd >= 0) {
+			pf[nfd].fd = hall_fd;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (pwr_fd >= 0) {
+			pf[nfd].fd = pwr_fd;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (ino >= 0) {
+			pf[nfd].fd = ino;
+			pf[nfd].events = POLLIN;
+			nfd++;
+		}
+		if (nfd == 0)
+			break;
+
 		if (poll(pf, (nfds_t)nfd, 300) < 0) {
 			if (errno == EINTR)
 				continue;
@@ -319,8 +428,31 @@ int main(void)
 
 		for (i = 0; i < nfd; i++) {
 			struct input_event ev;
+			int j;
 
+			if (ino >= 0 && pf[i].fd == ino && (pf[i].revents & POLLIN)) {
+				drain_inotify(ino);
+				scan_menu_pads(pads, &npads);
+			}
+			for (j = 0; j < npads; j++) {
+				if (pads[j].fd != pf[i].fd)
+					continue;
+				if (pf[i].revents & POLLIN) {
+					while (read(pads[j].fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+						if (ev.type == EV_KEY && ev.code == BTN_MODE)
+							pads[j].down = ev.value != 0;
+					}
+					menu = any_menu(pads, npads);
+				}
+				if (pf[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+					drop_menu_fd(pads, &npads, pf[i].fd);
+					menu = any_menu(pads, npads);
+				}
+				break;
+			}
 			if (!(pf[i].revents & POLLIN))
+				continue;
+			if (pf[i].fd != hall_fd && pf[i].fd != pwr_fd && pf[i].fd != vol_fd)
 				continue;
 			while (read(pf[i].fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
 				if (pf[i].fd == hall_fd && ev.type == EV_SW &&
@@ -334,9 +466,6 @@ int main(void)
 					    now >= power_ignore_until_ms)
 						do_mem_sleep();
 				}
-				if (pf[i].fd == pad_fd && ev.type == EV_KEY &&
-				    ev.code == BTN_MODE)
-					menu = ev.value != 0;
 				if (pf[i].fd == vol_fd && ev.type == EV_KEY &&
 				    (ev.value == 1 || ev.value == 2) &&
 				    (ev.code == KEY_VOLUMEUP || ev.code == KEY_VOLUMEDOWN)) {
@@ -357,9 +486,11 @@ int main(void)
 	}
 	if (hall_fd >= 0)
 		close(hall_fd);
-	if (pad_fd >= 0)
-		close(pad_fd);
 	if (pwr_fd >= 0)
 		close(pwr_fd);
+	while (npads > 0)
+		drop_menu_fd(pads, &npads, pads[0].fd);
+	if (ino >= 0)
+		close(ino);
 	return 0;
 }

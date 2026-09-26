@@ -52,7 +52,9 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/zlyme-bcsh \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-bcsh.c \
 		-L$(@D) -lmsettings $(TARGET_LDFLAGS) -lrt -ldrm
-	$(TARGET_CC) $(NEXTUI_CFLAGS) -o $(@D)/zlyme-pak-hotkey \
+	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra -Werror -std=gnu99 \
+		-I$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-input \
+		-o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra \
 		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
@@ -142,6 +144,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/rom-exts.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/ra-run.sh \
 		$(TARGET_DIR)/usr/bin/ra-run
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/virtpad-index.sh \
+		$(TARGET_DIR)/usr/share/zlyme/virtpad-index.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/drm-release.py \
 		$(TARGET_DIR)/usr/bin/zlyme-drm-release
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/arcade-stage.sh \
