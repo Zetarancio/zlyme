@@ -1,0 +1,12 @@
+config BR2_PACKAGE_ZLYME_INPUT
+	bool "zlyme-input"
+	depends on BR2_ZLYME_DEVICE_MY355
+	depends on BR2_PACKAGE_INPUTPLUMBER
+	select BR2_PACKAGE_DBUS
+	help
+	  Enables InputPlumber after the first frame, keeps external
+	  controllers ahead of the built-in pad, and releases only
+	  the built-in composite for Settings.
+
+comment "zlyme-input needs the Miyoo Flip target and InputPlumber"
+	depends on !BR2_ZLYME_DEVICE_MY355 || !BR2_PACKAGE_INPUTPLUMBER

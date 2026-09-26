@@ -38,6 +38,9 @@ define INPUTPLUMBER_INSTALL_TARGET_CMDS
 		$(INPUTPLUMBER_PKGDIR)/20-zlyme_miyoo_flip.yaml \
 		$(TARGET_DIR)/usr/share/inputplumber/devices/20-zlyme_miyoo_flip.yaml
 	$(INSTALL) -D -m 0644 \
+		$(INPUTPLUMBER_PKGDIR)/80-zlyme_external_gamepad.yaml \
+		$(TARGET_DIR)/usr/share/inputplumber/devices/80-zlyme_external_gamepad.yaml
+	$(INSTALL) -D -m 0644 \
 		$(INPUTPLUMBER_PKGDIR)/zlyme_miyoo_flip.yaml \
 		$(TARGET_DIR)/usr/share/inputplumber/capability_maps/zlyme_miyoo_flip.yaml
 	$(INSTALL) -D -m 0755 \
