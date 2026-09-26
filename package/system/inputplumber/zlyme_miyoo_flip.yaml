@@ -40,3 +40,23 @@ mapping:
     target_event:
       gamepad:
         button: DPadRight
+  - name: L2
+    source_events:
+      - evdev:
+          event_type: KEY
+          event_code: BTN_TL2
+          value_type: trigger
+    target_event:
+      gamepad:
+        trigger:
+          name: LeftTrigger
+  - name: R2
+    source_events:
+      - evdev:
+          event_type: KEY
+          event_code: BTN_TR2
+          value_type: trigger
+    target_event:
+      gamepad:
+        trigger:
+          name: RightTrigger
