@@ -22,8 +22,8 @@ printf '%s\n' \
 	"BTN_TR2 trigger trigger RightTrigger" \
 	"BTN_EAST button button South" \
 	"BTN_SOUTH button button East" \
-	"BTN_NORTH button button West" \
-	"BTN_WEST button button North" >"$want"
+	"BTN_NORTH button button North" \
+	"BTN_WEST button button West" >"$want"
 cmp -s "$want" "$got"
 grep -q 'ea60d873cca17edd1cb655ede26f557108135252/rootfs/usr/share/inputplumber/schema/capability_map_v2.json' "$map"
 if grep -q 'InputPlumber/main/' "$map"; then

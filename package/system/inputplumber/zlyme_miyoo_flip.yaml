@@ -86,7 +86,7 @@ mapping:
           value_type: button
     target_event:
       gamepad:
-        button: West
+        button: North
   - name: Y
     source_events:
       - evdev:
@@ -95,4 +95,4 @@ mapping:
           value_type: button
     target_event:
       gamepad:
-        button: North
+        button: West
