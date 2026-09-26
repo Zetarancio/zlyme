@@ -139,85 +139,235 @@ int PLAT_shouldWake(void)
 
 ///////////////////////////////
 
+#define ZLYME_PHYS_PAD "Miyoo Flip Gamepad"
+#define ZLYME_VIRT_PAD "Microsoft X-Box 360 pad"
+
 static SDL_Joystick **joysticks = NULL;
 static int num_joysticks = 0;
+static SDL_GameController **controllers = NULL;
+static int num_controllers = 0;
+
+static int name_is(SDL_Joystick *joy, const char *want)
+{
+	const char *name = joy ? SDL_JoystickName(joy) : NULL;
+	return name && strcmp(name, want) == 0;
+}
+
+static int virtual_open(void)
+{
+	int i;
+	for (i = 0; i < num_controllers; i++) {
+		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if (name_is(joy, ZLYME_VIRT_PAD))
+			return 1;
+	}
+	for (i = 0; i < num_joysticks; i++) {
+		if (name_is(joysticks[i], ZLYME_VIRT_PAD))
+			return 1;
+	}
+	return 0;
+}
+
+static void close_named(const char *want)
+{
+	int i;
+	for (i = 0; i < num_controllers; ) {
+		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if (!name_is(joy, want)) {
+			i++;
+			continue;
+		}
+		SDL_GameControllerClose(controllers[i]);
+		for (int j = i; j < num_controllers - 1; j++)
+			controllers[j] = controllers[j + 1];
+		num_controllers--;
+	}
+	for (i = 0; i < num_joysticks; ) {
+		if (!name_is(joysticks[i], want)) {
+			i++;
+			continue;
+		}
+		SDL_JoystickClose(joysticks[i]);
+		for (int j = i; j < num_joysticks - 1; j++)
+			joysticks[j] = joysticks[j + 1];
+		num_joysticks--;
+	}
+	if (num_controllers == 0) {
+		free(controllers);
+		controllers = NULL;
+	}
+	if (num_joysticks == 0) {
+		free(joysticks);
+		joysticks = NULL;
+	}
+}
+
+static int already_open(SDL_JoystickID iid)
+{
+	int i;
+	for (i = 0; i < num_controllers; i++) {
+		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if (joy && SDL_JoystickInstanceID(joy) == iid)
+			return 1;
+	}
+	for (i = 0; i < num_joysticks; i++) {
+		if (joysticks[i] && SDL_JoystickInstanceID(joysticks[i]) == iid)
+			return 1;
+	}
+	return 0;
+}
+
+static void remember_joystick(SDL_Joystick *joy)
+{
+	joysticks = realloc(joysticks, sizeof(SDL_Joystick *) * (num_joysticks + 1));
+	joysticks[num_joysticks++] = joy;
+}
+
+static void remember_controller(SDL_GameController *ctrl)
+{
+	controllers = realloc(controllers, sizeof(SDL_GameController *) * (num_controllers + 1));
+	controllers[num_controllers++] = ctrl;
+}
+
+static void open_index(int device_index)
+{
+	const char *name = SDL_JoystickNameForIndex(device_index);
+	SDL_Joystick *probe;
+	SDL_JoystickID iid;
+
+	if (!name)
+		return;
+	if (virtual_open() && strcmp(name, ZLYME_PHYS_PAD) == 0)
+		return;
+	probe = SDL_JoystickOpen(device_index);
+	if (!probe)
+		return;
+	iid = SDL_JoystickInstanceID(probe);
+	SDL_JoystickClose(probe);
+	if (already_open(iid))
+		return;
+	if (SDL_IsGameController(device_index)) {
+		SDL_GameController *ctrl = SDL_GameControllerOpen(device_index);
+		if (!ctrl) {
+			LOG_error("GameController open failed: %s\n", SDL_GetError());
+			return;
+		}
+		remember_controller(ctrl);
+		LOG_info("Controller added: %s\n", SDL_GameControllerName(ctrl));
+		if (strcmp(name, ZLYME_VIRT_PAD) == 0)
+			close_named(ZLYME_PHYS_PAD);
+		return;
+	}
+	probe = SDL_JoystickOpen(device_index);
+	if (!probe)
+		return;
+	remember_joystick(probe);
+	LOG_info("Joystick added: %s\n", SDL_JoystickName(probe));
+	if (strcmp(name, ZLYME_VIRT_PAD) == 0)
+		close_named(ZLYME_PHYS_PAD);
+}
+
+static void reopen_physical_if_needed(void)
+{
+	int i, n;
+	if (virtual_open())
+		return;
+	n = SDL_NumJoysticks();
+	for (i = 0; i < n; i++) {
+		const char *name = SDL_JoystickNameForIndex(i);
+		if (name && strcmp(name, ZLYME_PHYS_PAD) == 0)
+			open_index(i);
+	}
+}
+
+int PLAT_suppressRawJoy(SDL_JoystickID id)
+{
+	int i;
+	for (i = 0; i < num_controllers; i++) {
+		SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if (joy && SDL_JoystickInstanceID(joy) == id)
+			return 1;
+	}
+	return 0;
+}
+
 void PLAT_initInput(void) {
-	if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0)
+	const char *map = getenv("SDL_GAMECONTROLLERCONFIG_FILE");
+	if (!map || !map[0])
+		map = "/usr/lib/gamecontrollerdb.txt";
+	if (SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
 		LOG_error("Failed initializing joysticks: %s\n", SDL_GetError());
+	if (SDL_GameControllerAddMappingsFromFile(map) < 0)
+		LOG_info("Controller mappings not loaded from %s: %s\n", map, SDL_GetError());
 	SDL_JoystickEventState(SDL_ENABLE);
-	/* Open on SDL_JOYDEVICEADDED only. Opening here and on ADDED
-	 * duplicated the gamepad in the log. */
+	SDL_GameControllerEventState(SDL_ENABLE);
+	/* Open on device-added only. Opening here and on ADDED duplicated
+	 * the gamepad in the log. */
 }
 
 void PLAT_quitInput(void) {
-	if (joysticks) {
-        for (int i = 0; i < num_joysticks; i++) {
-            if (SDL_JoystickGetAttached(joysticks[i])) {
-				LOG_info("Closing joystick %d: %s\n", i, SDL_JoystickName(joysticks[i]));
-				SDL_JoystickClose(joysticks[i]);
-			}
-        }
-        free(joysticks);
-        joysticks = NULL;
-        num_joysticks = 0;
-    }
-	SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
+	int i;
+	for (i = 0; i < num_controllers; i++)
+		SDL_GameControllerClose(controllers[i]);
+	free(controllers);
+	controllers = NULL;
+	num_controllers = 0;
+	for (i = 0; i < num_joysticks; i++) {
+		if (SDL_JoystickGetAttached(joysticks[i]))
+			SDL_JoystickClose(joysticks[i]);
+	}
+	free(joysticks);
+	joysticks = NULL;
+	num_joysticks = 0;
+	SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 }
 
 void PLAT_updateInput(const SDL_Event *event) {
 	switch (event->type) {
-    case SDL_JOYDEVICEADDED: {
-        int device_index = event->jdevice.which;
-        SDL_Joystick *new_joy = SDL_JoystickOpen(device_index);
-        SDL_JoystickID iid;
-        int i;
-        if (!new_joy) {
-            LOG_error("Failed to open added joystick at index %d: %s\n", device_index, SDL_GetError());
-            break;
-        }
-        iid = SDL_JoystickInstanceID(new_joy);
-        for (i = 0; i < num_joysticks; i++) {
-            if (joysticks[i] && SDL_JoystickInstanceID(joysticks[i]) == iid) {
-                SDL_JoystickClose(new_joy);
-                new_joy = NULL;
-                break;
-            }
-        }
-        if (!new_joy)
-            break;
-        joysticks = realloc(joysticks, sizeof(SDL_Joystick *) * (num_joysticks + 1));
-        joysticks[num_joysticks++] = new_joy;
-        LOG_info("Joystick added at index %d: %s\n", device_index, SDL_JoystickName(new_joy));
-        break;
-    }
-
-    case SDL_JOYDEVICEREMOVED: {
-        SDL_JoystickID removed_id = event->jdevice.which;
-        for (int i = 0; i < num_joysticks; ++i) {
-            if (SDL_JoystickInstanceID(joysticks[i]) == removed_id) {
-                LOG_info("Joystick removed: %s\n", SDL_JoystickName(joysticks[i]));
-                SDL_JoystickClose(joysticks[i]);
-
-                // Shift down the remaining entries
-                for (int j = i; j < num_joysticks - 1; ++j)
-                    joysticks[j] = joysticks[j + 1];
-                num_joysticks--;
-
-                if (num_joysticks == 0) {
-                    free(joysticks);
-                    joysticks = NULL;
-                } else {
-                    joysticks = realloc(joysticks, sizeof(SDL_Joystick *) * num_joysticks);
-                }
-                break;
-            }
-        }
-        break;
-    }
-
-    default:
-        break;
-    }
+	case SDL_JOYDEVICEADDED:
+	case SDL_CONTROLLERDEVICEADDED:
+		open_index(event->jdevice.which);
+		break;
+	case SDL_JOYDEVICEREMOVED:
+	case SDL_CONTROLLERDEVICEREMOVED: {
+		SDL_JoystickID removed_id = event->jdevice.which;
+		int i;
+		for (i = 0; i < num_controllers; i++) {
+			SDL_Joystick *joy = SDL_GameControllerGetJoystick(controllers[i]);
+			if (joy && SDL_JoystickInstanceID(joy) == removed_id) {
+				LOG_info("Controller removed: %s\n", SDL_GameControllerName(controllers[i]));
+				SDL_GameControllerClose(controllers[i]);
+				for (int j = i; j < num_controllers - 1; j++)
+					controllers[j] = controllers[j + 1];
+				num_controllers--;
+				if (num_controllers == 0) {
+					free(controllers);
+					controllers = NULL;
+				}
+				reopen_physical_if_needed();
+				return;
+			}
+		}
+		for (i = 0; i < num_joysticks; i++) {
+			if (joysticks[i] && SDL_JoystickInstanceID(joysticks[i]) == removed_id) {
+				LOG_info("Joystick removed: %s\n", SDL_JoystickName(joysticks[i]));
+				SDL_JoystickClose(joysticks[i]);
+				for (int j = i; j < num_joysticks - 1; j++)
+					joysticks[j] = joysticks[j + 1];
+				num_joysticks--;
+				if (num_joysticks == 0) {
+					free(joysticks);
+					joysticks = NULL;
+				}
+				reopen_physical_if_needed();
+				return;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 void PLAT_getBatteryStatus(int* is_charging, int* charge) {

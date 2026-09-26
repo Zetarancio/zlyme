@@ -3301,6 +3301,12 @@ void PAD_reset(void)
 	pad.just_released = BTN_NONE;
 	pad.just_repeated = BTN_NONE;
 }
+__attribute__((weak)) int PLAT_suppressRawJoy(SDL_JoystickID id)
+{
+	(void)id;
+	return 0;
+}
+
 FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 {
 	// reset transient state
@@ -3452,8 +3458,61 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 				id = BTN_ID_POWEROFF;
 			} // nano-only
 		}
+		else if (event.type == SDL_CONTROLLERBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONUP)
+		{
+			pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
+			switch (event.cbutton.button) {
+			case SDL_CONTROLLER_BUTTON_A: btn = BTN_A; id = BTN_ID_A; break;
+			case SDL_CONTROLLER_BUTTON_B: btn = BTN_B; id = BTN_ID_B; break;
+			case SDL_CONTROLLER_BUTTON_X: btn = BTN_X; id = BTN_ID_X; break;
+			case SDL_CONTROLLER_BUTTON_Y: btn = BTN_Y; id = BTN_ID_Y; break;
+			case SDL_CONTROLLER_BUTTON_DPAD_UP: btn = BTN_DPAD_UP; id = BTN_ID_DPAD_UP; break;
+			case SDL_CONTROLLER_BUTTON_DPAD_DOWN: btn = BTN_DPAD_DOWN; id = BTN_ID_DPAD_DOWN; break;
+			case SDL_CONTROLLER_BUTTON_DPAD_LEFT: btn = BTN_DPAD_LEFT; id = BTN_ID_DPAD_LEFT; break;
+			case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: btn = BTN_DPAD_RIGHT; id = BTN_ID_DPAD_RIGHT; break;
+			case SDL_CONTROLLER_BUTTON_START: btn = BTN_START; id = BTN_ID_START; break;
+			case SDL_CONTROLLER_BUTTON_BACK: btn = BTN_SELECT; id = BTN_ID_SELECT; break;
+			case SDL_CONTROLLER_BUTTON_GUIDE: btn = BTN_MENU; id = BTN_ID_MENU; break;
+			case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: btn = BTN_L1; id = BTN_ID_L1; break;
+			case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: btn = BTN_R1; id = BTN_ID_R1; break;
+			case SDL_CONTROLLER_BUTTON_LEFTSTICK: btn = BTN_L3; id = BTN_ID_L3; break;
+			case SDL_CONTROLLER_BUTTON_RIGHTSTICK: btn = BTN_R3; id = BTN_ID_R3; break;
+			default: break;
+			}
+		}
+		else if (event.type == SDL_CONTROLLERAXISMOTION)
+		{
+			int axis = event.caxis.axis;
+			int val = event.caxis.value;
+			if (axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+				btn = BTN_L2;
+				id = BTN_ID_L2;
+				pressed = val > 16000;
+			}
+			else if (axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
+				btn = BTN_R2;
+				id = BTN_ID_R2;
+				pressed = val > 16000;
+			}
+			else if (axis == SDL_CONTROLLER_AXIS_LEFTX) {
+				pad.laxis.x = val;
+				PAD_setAnalog(BTN_ID_ANALOG_LEFT, BTN_ID_ANALOG_RIGHT, val, tick + PAD_REPEAT_DELAY);
+			}
+			else if (axis == SDL_CONTROLLER_AXIS_LEFTY) {
+				pad.laxis.y = val;
+				PAD_setAnalog(BTN_ID_ANALOG_UP, BTN_ID_ANALOG_DOWN, val, tick + PAD_REPEAT_DELAY);
+			}
+			else if (axis == SDL_CONTROLLER_AXIS_RIGHTX)
+				pad.raxis.x = val;
+			else if (axis == SDL_CONTROLLER_AXIS_RIGHTY)
+				pad.raxis.y = val;
+			if (!pressed && btn != BTN_NONE && !(pad.is_pressed & btn))
+				btn = BTN_NONE;
+		}
 		else if (event.type == SDL_JOYBUTTONDOWN || event.type == SDL_JOYBUTTONUP)
 		{
+			if (PLAT_suppressRawJoy(event.jbutton.which))
+				continue;
 			uint8_t joy = event.jbutton.button;
 			pressed = event.type == SDL_JOYBUTTONDOWN;
 			// LOG_info("joy event: %i (%i)\n", joy,pressed);
@@ -3580,6 +3639,8 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 		}
 		else if (event.type == SDL_JOYHATMOTION)
 		{
+			if (PLAT_suppressRawJoy(event.jhat.which))
+				continue;
 			int hats[4] = {-1, -1, -1, -1}; // -1=no change,0=up,1=down,2=left,3=right btn_ids
 			int hat = event.jhat.value;
 			// LOG_info("hat event: %i\n", hat);
@@ -3667,6 +3728,8 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 		}
 		else if (event.type == SDL_JOYAXISMOTION)
 		{
+			if (PLAT_suppressRawJoy(event.jaxis.which))
+				continue;
 			int axis = event.jaxis.axis;
 			int val = event.jaxis.value;
 			// LOG_info("axis: %i (%i)\n", axis,val);
@@ -3714,7 +3777,8 @@ FALLBACK_IMPLEMENTATION void PLAT_pollInput(void)
 			/* SIGTERM becomes SDL_QUIT. PWR_powerOff here made
 			 * killall nextui.elf shut the handheld down. */
 		}
-		else if (event.type == SDL_JOYDEVICEADDED || event.type == SDL_JOYDEVICEREMOVED)
+		else if (event.type == SDL_JOYDEVICEADDED || event.type == SDL_JOYDEVICEREMOVED ||
+			 event.type == SDL_CONTROLLERDEVICEADDED || event.type == SDL_CONTROLLERDEVICEREMOVED)
 		{
 			PAD_update(&event);
 		}
