@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-26 — Phase 4D Splore launch
+
+Splore's translator grabbed the virtual xb360 node. MENU opened Splore's menu, MENU+START did not exit, and MENU+Volume changed volume. ROCKNIX runs `pico8_64 -joystick 0` with no grabber. Zlyme now does that. The virtual pad is joystick 0 and its d-pad is a hat. A live pass accepted d-pad, A/B, the stick pointer, MENU as Splore's menu, START not exiting, MENU+START back to NextUI, volume, and MENU+Volume brightness. `pico8-splore-pad.c` was not changed. OpenBOR v7533 player 1 defaults were keyboard scancodes; the Linux SDL2 defaults now use the xb360 joystick slots. A saved `Saves/` file still overrides them. Phase 4D stays in progress.
+
 ## 2026-09-26 — Phase 4D RetroArch live, physical-pad banner
 
 A bind-mounted RetroArch launch accepted d-pad, face buttons, Start, Select, L1/R1, MENU as the RetroArch menu, and MENU+START back to NextUI. The startup line was `Miyoo Flip Gamepad not configured`, because `notification_show_autoconfig_fails` is true in the saved config and the physical pad is still enumerated. SDL with `SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT=0x045e/0x028e` keeps only the virtual pad, at index 0. Paks use that hint. NextUI does not. Phase 4D stays in progress.
