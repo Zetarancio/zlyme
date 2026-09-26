@@ -97,6 +97,24 @@ static int read_pct(bool right)
 	return n;
 }
 
+static void ack(const char *msg);
+
+static bool physical_begin(void)
+{
+	int rc = system("/usr/sbin/zlyme-input release");
+	if (rc != 0) {
+		ack("Could not release the built-in controller.");
+		return false;
+	}
+	return true;
+}
+
+static void physical_end(void)
+{
+	if (system("/usr/sbin/zlyme-input reclaim") != 0)
+		ack("Could not restore the virtual controller.");
+}
+
 static SDL_Joystick *open_pad(void)
 {
 	int i, n;
@@ -742,48 +760,58 @@ static void screen_rumble(void)
 	}
 }
 
+static InputReactionHint with_physical(void (*screen)(void))
+{
+	if (!physical_begin())
+		return NoOp;
+	screen();
+	physical_end();
+	return NoOp;
+}
+
+static void screen_cal_left(void) { screen_cal(false); }
+static void screen_cal_right(void) { screen_cal(true); }
+static void screen_tune_left(void) { screen_tune(false); }
+static void screen_tune_right(void) { screen_tune(true); }
+
 static InputReactionHint go_rumble(AbstractMenuItem &)
 {
-	screen_rumble();
-	return NoOp;
+	return with_physical(screen_rumble);
 }
 
 static InputReactionHint go_rumble_test(AbstractMenuItem &)
 {
+	if (!physical_begin())
+		return NoOp;
 	if (system("/usr/sbin/zlyme-gamepad-ff test") != 0)
 		ack("Rumble is not available.");
+	physical_end();
 	return NoOp;
 }
 
 static InputReactionHint go_test(AbstractMenuItem &)
 {
-	screen_test();
-	return NoOp;
+	return with_physical(screen_test);
 }
 static InputReactionHint go_left(AbstractMenuItem &)
 {
-	screen_cal(false);
-	return NoOp;
+	return with_physical(screen_cal_left);
 }
 static InputReactionHint go_right(AbstractMenuItem &)
 {
-	screen_cal(true);
-	return NoOp;
+	return with_physical(screen_cal_right);
 }
 static InputReactionHint go_dzl(AbstractMenuItem &)
 {
-	screen_tune(false);
-	return NoOp;
+	return with_physical(screen_tune_left);
 }
 static InputReactionHint go_dzr(AbstractMenuItem &)
 {
-	screen_tune(true);
-	return NoOp;
+	return with_physical(screen_tune_right);
 }
 static InputReactionHint go_values(AbstractMenuItem &)
 {
-	screen_values();
-	return NoOp;
+	return with_physical(screen_values);
 }
 
 void Zlyme_appendJoystickItem(std::vector<AbstractMenuItem *> &items)
