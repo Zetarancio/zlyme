@@ -336,6 +336,7 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
         package/system/zlyme-keylidmon package/system/zlyme-input/virtpad.h \
         package/system/nextui/src/workspace/my355/libmsettings/msettings.h
     refresh_compiled_package openbor BR2_PACKAGE_OPENBOR package/emulators/openbor
+    refresh_compiled_package ppsspp BR2_PACKAGE_PPSSPP package/emulators/ppsspp
     say "building ${ZLYME_DEFCONFIG}"
     logged_make
     say "images in ${ZLYME_OUTPUT}/images"

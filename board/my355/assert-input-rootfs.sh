@@ -19,6 +19,7 @@ files=(
 	usr/bin/pico8
 	usr/bin/start_drastic
 	usr/bin/start_dolphin
+	usr/bin/PPSSPPSDL
 	usr/bin/aethersx2
 	usr/share/drastic/config/drastic.cfg
 	usr/share/zlyme/emu-defaults/ppsspp.ini
@@ -56,6 +57,17 @@ check_copy package/system/nextui/paks/Emus/DC.pak/launch.sh usr/share/nextui/pak
 check_copy package/system/nextui/paks/Emus/OPENBOR.pak/launch.sh usr/share/nextui/paks/Emus/OPENBOR.pak/launch.sh
 check_copy package/system/nextui/paks/Emus/PORTS.pak/launch.sh usr/share/nextui/paks/Emus/PORTS.pak/launch.sh
 check_copy package/system/nextui/paks/Emus/WINE.pak/launch.sh usr/share/nextui/paks/Emus/WINE.pak/launch.sh
+
+# USING_EGL plus USING_FBDEV swaps a null native window. The packed
+# binary must be the SDL KMSDRM build, and it must match this target tree.
+if grep -aqF 'Unable to create EGL surface' "$tmp/usr/bin/PPSSPPSDL"; then
+	echo "input-rootfs: PPSSPPSDL still contains the separate EGL swap path" >&2
+	exit 1
+fi
+if ! cmp -s "$tmp/usr/bin/PPSSPPSDL" "${TARGET_DIR:?}/usr/bin/PPSSPPSDL"; then
+	echo "input-rootfs: stale or missing usr/bin/PPSSPPSDL" >&2
+	exit 1
+fi
 
 for binary in zlyme-pak-hotkey zlyme-keylidmon; do
 	file="$tmp/usr/sbin/$binary"

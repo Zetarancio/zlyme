@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — PPSSPP presents through SDL
+
+On the installed `715fa110ecd4` image, PPSSPP starts, plays audio, and MENU+START returns to NextUI, with a blank panel. `GraphicsBackend` stays `0 (OPENGL)`. The binary is the same as the `8ca4ee3` image and was built with `USING_EGL` and `USING_FBDEV`. That path sets the native window to null and swaps that surface instead of the SDL KMSDRM window. A null-window rejection then failed `eglCreateWindowSurface`. `USING_EGL` is now off, which is also what the Knulli 1.19.3 recipe does for aarch64, so present goes through `SDL_GL_SwapWindow`. InputPlumber and the hotkey were not changed. Phase 4D stays in progress until the panel shows the game.
+
 ## 2026-09-27 — Phase 4D build and packed-image correction
 
 GitHub Actions Build run 19 failed in the Stage A image build at `8ca4ee35154b`. A local clean `zlyme-keylidmon` package rebuild reproduced `-Werror=unused-result` on unchecked `write()` and `system()` calls; those return values are now handled, and the package rebuilds cleanly. The hosted job log could not be retrieved, so this is the locally reproduced clean-build failure, not a claim to have read its first error line. An incremental image build had passed by reusing package output.
