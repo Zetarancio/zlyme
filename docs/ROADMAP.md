@@ -497,7 +497,8 @@ Phase 3 COMPLETE — 2026-09-25
 Phase 4A COMPLETE
 Phase 4B COMPLETE — 2026-09-26
 Phase 4C COMPLETE — 2026-09-26
-Phase 4D IN PROGRESS — application cutover
+Phase 4D COMPLETE — 2026-09-28
+Phase 4 COMPLETE — 2026-09-28
 ```
 
 Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
@@ -1617,7 +1618,9 @@ Complete — 2026-09-26. The persistent OTA `e911db674811` was installed and acc
 
 ### 4D — Application cutover
 
-In progress. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. Shipped controller consumers use that virtual xb360 pad (SDL filter, or an explicit Xbox config where the program keeps its own map). Hardware acceptance of the implementation candidate is still open. Phase 4D is not accepted yet.
+Complete — 2026-09-28. The accepted image is `zlyme-my355-20260927-0b139e9099ee.tar` from `0b139e9099eec699e31d1cb5313998f57f387e12`, SHA-256 `9bedb4874f8a834c362fc9cccbd61aaece882595ac221865128ae6a3a4f3437e`. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. Shipped controller consumers use that virtual xb360 pad. On that installed image, PPSSPP showed a picture with working audio and controls, MENU+Volume changed brightness in a pak, and RetroArch, PICO-8 Splore, and PortMaster launched, took the controller, and returned to NextUI on MENU+START. PPSSPP 1.19.3 presents through the SDL KMSDRM window (`USING_EGL` off). Details are in `docs/research/inputplumber.md`.
+
+Phase 4 is complete. 4A through 4D are accepted. Phase 5 is the next sequencing step and is not started.
 
 ### Start optional
 

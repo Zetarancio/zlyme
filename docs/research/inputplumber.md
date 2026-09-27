@@ -220,7 +220,7 @@ OpenBOR v7533 (`BUILD_LINUX=1`, SDL2) opens every SDL joystick with `SDL_Joystic
 | zlyme-pak-hotkey | virtual evdev, Guide+Start on one xb360 target |
 | zlyme-keylidmon | virtual evdev Guide; volume, power, and lid stay on their own devices |
 | RetroArch / libretro | SDL filtered virtual xb360; append config forces player 1 index 0 and the Xbox autoconfig |
-| PPSSPP | explicit Xbox controller config (`[ControlMapping]` device 10, seeded once) |
+| PPSSPP | explicit Xbox controller config (`[ControlMapping]` device 10, seeded once). GLES present is the SDL KMSDRM window (`USING_EGL` off) |
 | Flycast | SDL filtered virtual xb360; SDL enumeration order assigns Maple ports. Known old Zlyme instance-ID keys are removed from saved config |
 | ScummVM | SDL filtered virtual xb360 (`--joystick=0`) |
 | Hypseus Singe | SDL filtered virtual xb360 (`-gamepad`, `hypinput_gamepad.ini` `BUTTON_*`) |
@@ -235,7 +235,23 @@ OpenBOR v7533 (`BUILD_LINUX=1`, SDL2) opens every SDL joystick with `SDL_Joystic
 | PortMaster / PORTS | SDL filtered virtual xb360. `control.txt` and `portmaster-launch` export the hint. `zlyme-portmaster-exec` does not `setsid` |
 | Wine / Box64 | Wine standard XInput/DInput from virtual evdev. `winebus.so` dlopens SDL2 and calls `SDL_GameControllerOpen`. hidraw does not see the uinput node. The pak hint hides the physical pad |
 
-Libretro cores ride RetroArch. The human test list for later passes is NextUI/PAK lifecycle (the hotkey and brightness path above), RetroArch, PortMaster, PICO-8 Splore, and PPSSPP. Other shipped consumers stay static until someone runs them. No external controller was required.
+Libretro cores ride RetroArch. Other shipped consumers stay on the mechanisms above until someone runs them. No external controller was required for this acceptance.
+
+## Phase 4D closure — 2026-09-28
+
+The accepted card is OTA `zlyme-my355-20260927-0b139e9099ee.tar`, commit `0b139e9099eec699e31d1cb5313998f57f387e12`, SHA-256 `9bedb4874f8a834c362fc9cccbd61aaece882595ac221865128ae6a3a4f3437e`.
+
+On that image:
+
+- PPSSPP: picture visible, audio works, controls work, MENU+START returns to NextUI.
+- MENU+Volume: brightness changes inside a pak.
+- RetroArch: a game launches, basic controls work, MENU+START exits.
+- PICO-8 Splore: launches, the controller works, MENU+START exits.
+- PortMaster: the frontend and a port launch, the controller path works, MENU+START exits.
+
+PPSSPP 1.19.3 had been built with `USING_EGL` and `USING_FBDEV`. That path set the native window to null and swapped that surface while SDL KMSDRM already had the window, so the game ran with audio and a blank panel. `USING_EGL` is off. Presentation goes through `SDL_GL_SwapWindow`.
+
+Phase 4D is complete. Phase 4A through 4D are accepted, so Phase 4 is complete.
 
 ## Historical recommendation — 2026-09-15
 

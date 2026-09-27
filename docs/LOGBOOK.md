@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 4D and Phase 4 complete
+
+The installed OTA `zlyme-my355-20260927-0b139e9099ee.tar` (commit `0b139e9099eec699e31d1cb5313998f57f387e12`, SHA-256 `9bedb4874f8a834c362fc9cccbd61aaece882595ac221865128ae6a3a4f3437e`) passed the short hardware list. PPSSPP showed a picture, played audio, took controls, and MENU+START returned to NextUI. MENU+Volume changed brightness inside a pak. RetroArch launched a game, took basic controls, and exited on MENU+START. PICO-8 Splore launched, took the controller, and exited on MENU+START. PortMaster’s frontend and port path launched, took the controller, and exited on MENU+START.
+
+PPSSPP 1.19.3 is built with `USING_EGL` off. Its separate EGL/FBDEV path created and presented a null native EGL surface while SDL KMSDRM already owned the window. Presentation now goes through that SDL window.
+
+Phase 4D is complete. Phase 4A through 4D are accepted, so Phase 4 is complete. Phase 5 was not started.
+
 ## 2026-09-28 — PPSSPP presents through SDL
 
 On the installed `715fa110ecd4` image, PPSSPP starts, plays audio, and MENU+START returns to NextUI, with a blank panel. `GraphicsBackend` stays `0 (OPENGL)`. The binary is the same as the `8ca4ee3` image and was built with `USING_EGL` and `USING_FBDEV`. That path sets the native window to null and swaps that surface instead of the SDL KMSDRM window. A null-window rejection then failed `eglCreateWindowSurface`. `USING_EGL` is now off, which is also what the Knulli 1.19.3 recipe does for aarch64, so present goes through `SDL_GL_SwapWindow`. InputPlumber and the hotkey were not changed. Phase 4D stays in progress until the panel shows the game.
