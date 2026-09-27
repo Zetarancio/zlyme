@@ -130,12 +130,26 @@ static void write_int(const char *path, int v)
 	int n, fd;
 
 	fd = open(path, O_WRONLY | O_CLOEXEC);
-	if (fd < 0)
+	if (fd < 0) {
+		perror(path);
 		return;
+	}
 	n = snprintf(buf, sizeof(buf), "%d\n", v);
-	if (n > 0)
-		write(fd, buf, (size_t)n);
-	close(fd);
+	if (n <= 0 || (size_t)n >= sizeof buf)
+		fprintf(stderr, "zlyme-keylidmon: invalid value for %s\n", path);
+	else if (write(fd, buf, (size_t)n) != n)
+		perror(path);
+	if (close(fd) < 0)
+		perror(path);
+}
+
+static void run_command(const char *command)
+{
+	int status = system(command);
+
+	if (status != 0)
+		fprintf(stderr, "zlyme-keylidmon: command failed (%d): %s\n",
+			status, command);
 }
 
 static void screen_off(void)
@@ -158,7 +172,7 @@ static void do_lid_sleep(int hall_fd)
 
 	if (menu_owns_keys() || hall_fd < 0)
 		return;
-	system("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
+	run_command("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 	screen_off();
 	while (!quit) {
 		if (poll(&p, 1, 300) < 0) {
@@ -175,19 +189,19 @@ static void do_lid_sleep(int hall_fd)
 	}
 wake:
 	screen_on();
-	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
+	run_command("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
 }
 
 static void do_mem_sleep(void)
 {
 	if (menu_owns_keys())
 		return;
-	system("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
+	run_command("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 	if (access("/usr/share/nextui/bin/suspend", X_OK) == 0)
-		system("/usr/share/nextui/bin/suspend");
+		run_command("/usr/share/nextui/bin/suspend");
 	else
-		system("echo mem > /sys/power/state");
-	system("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
+		run_command("echo mem > /sys/power/state");
+	run_command("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
 	/*
 	 * The wake press is delivered as KEY_POWER=1 after mem returns.
 	 * Arm the ignore window only once radio recovery has finished,
