@@ -1,0 +1,56 @@
+--- a/engine/openbor.c
++++ b/engine/openbor.c
+@@ -2683,6 +2683,31 @@
+ }
+ 
+ 
++/* Old Zlyme images wrote the upstream Linux SDL keyboard defaults into
++ * per-pak Saves files. Replace only that exact set; any remap stays. */
++static void migrate_legacy_sdl_keys(void)
++{
++#ifdef SDL2
++    const int *keys = savedata.keys[0];
++
++    if(keys[SDID_MOVEUP] == SDL_SCANCODE_UP &&
++       keys[SDID_MOVEDOWN] == SDL_SCANCODE_DOWN &&
++       keys[SDID_MOVELEFT] == SDL_SCANCODE_LEFT &&
++       keys[SDID_MOVERIGHT] == SDL_SCANCODE_RIGHT &&
++       keys[SDID_ATTACK] == SDL_SCANCODE_A &&
++       keys[SDID_ATTACK2] == SDL_SCANCODE_S &&
++       keys[SDID_ATTACK3] == SDL_SCANCODE_Z &&
++       keys[SDID_ATTACK4] == SDL_SCANCODE_X &&
++       keys[SDID_JUMP] == SDL_SCANCODE_D &&
++       keys[SDID_SPECIAL] == SDL_SCANCODE_F &&
++       keys[SDID_START] == SDL_SCANCODE_RETURN &&
++       keys[SDID_SCREENSHOT] == SDL_SCANCODE_F12)
++    {
++        clearbuttons(0);
++    }
++#endif
++}
++
+ void loadsettings()
+ {
+ #ifndef DC
+@@ -2709,6 +2734,10 @@
+     {
+         clearsettings();
+     }
++    else
++    {
++        migrate_legacy_sdl_keys();
++    }
+ #else
+     clearsettings();
+ #endif
+@@ -2732,6 +2761,10 @@
+     if(savedata.compatibleversion != COMPATIBLEVERSION)
+     {
+         clearsettings();
++    }
++    else
++    {
++        migrate_legacy_sdl_keys();
+     }
+ #else
+     clearsettings();
