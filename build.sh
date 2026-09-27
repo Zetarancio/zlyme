@@ -305,10 +305,38 @@ Each was dropped because a dependency is unmet. Run 'build.sh menuconfig' and
 search for one with '/' to see what it needs."
 }
 
+# Buildroot snapshots local packages and applies external patches only once.
+# A later source edit otherwise leaves a compiled helper or patched emulator
+# stale while a full build still succeeds. Refresh only packages whose source
+# inputs changed; downloads, toolchain, and unrelated package builds stay.
+refresh_compiled_package() {
+    local package=$1 option=$2 fingerprint state old=""
+    shift 2
+    grep -qx "${option}=y" "${ZLYME_OUTPUT}/.config" || return 0
+    fingerprint=$(
+        cd "${REPO}"
+        for path in "$@"; do
+            find "${path}" -type f -print0
+        done | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1
+    )
+    state="${ZLYME_OUTPUT}/.zlyme-source-${package}"
+    [ ! -f "${state}" ] || old=$(cat "${state}")
+    [ "${old}" != "${fingerprint}" ] || return 0
+    say "source changed: refreshing ${package}"
+    logged_make "${package}-dirclean"
+    printf '%s\n' "${fingerprint}" > "${state}"
+}
+
 if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     assert_defconfig_survived
-    say "building ${ZLYME_DEFCONFIG}"
     start_build_log
+    refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
+        package/system/nextui package/system/zlyme-input/virtpad.h
+    refresh_compiled_package zlyme-keylidmon BR2_PACKAGE_ZLYME_KEYLIDMON \
+        package/system/zlyme-keylidmon package/system/zlyme-input/virtpad.h \
+        package/system/nextui/src/workspace/my355/libmsettings/msettings.h
+    refresh_compiled_package openbor BR2_PACKAGE_OPENBOR package/emulators/openbor
+    say "building ${ZLYME_DEFCONFIG}"
     logged_make
     say "images in ${ZLYME_OUTPUT}/images"
 else

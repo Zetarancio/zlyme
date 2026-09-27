@@ -45,6 +45,10 @@ gzip -9 -n -c "${BINARIES_DIR}/Image" > "${BINARIES_DIR}/Image.gz"
 	{ echo "post-image: rootfs.squashfs is missing" >&2
 	  exit 1; }
 
+if [ -f "${TARGET_DIR}/usr/sbin/nextui-session" ]; then
+	"${BOARD_DIR}/assert-input-rootfs.sh" "${BINARIES_DIR}/rootfs.squashfs"
+fi
+
 # Squashfs lives on FAT as "zlyme" (ROCKNIX SYSTEM / Knulli knulli).
 ln -f "${BINARIES_DIR}/rootfs.squashfs" "${BINARIES_DIR}/zlyme"
 
