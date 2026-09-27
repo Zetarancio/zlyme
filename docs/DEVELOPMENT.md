@@ -61,6 +61,20 @@ Typical operations:
 
 Do not run two builds against the same output tree simultaneously.
 
+A full product-image invocation fingerprints the local `nextui`,
+`zlyme-keylidmon`, and OpenBOR package inputs. When one changes, `build.sh`
+uses that package's Buildroot `-dirclean` target before building the image.
+Buildroot's ordinary `-reinstall` target copies scripts but can leave a
+previously compiled C binary in the package build directory. Use the normal
+full image invocation after source edits; package-only targets remain useful
+for diagnosis and do not run this source refresh.
+
+The my355 post-image hook extracts the application input path from the newly
+packed squashfs and compares scripts, configuration seeds, and the controller
+database with source. It also rejects a hotkey or keylidmon binary with the
+old physical-controller identity. A successful package build or a populated
+`output/target` alone does not establish the contents of an OTA.
+
 ## Build output and caches
 
 Keep:

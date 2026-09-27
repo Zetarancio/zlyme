@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-27 — Phase 4D build and packed-image correction
+
+GitHub Actions Build run 19 failed in the Stage A image build at `8ca4ee35154b`. A local clean `zlyme-keylidmon` package rebuild reproduced `-Werror=unused-result` on unchecked `write()` and `system()` calls; those return values are now handled, and the package rebuilds cleanly. The hosted job log could not be retrieved, so this is the locally reproduced clean-build failure, not a claim to have read its first error line. An incremental image build had passed by reusing package output.
+
+The installed `8ca4ee3` hotkey binary had the old physical/js0 strings even though its source had changed to the virtual Xbox path. The stale binary was also in the local package and target trees. `nextui-dirclean` rebuilt the current binary. A full image invocation now fingerprints changed compiled local packages and cleans those packages before rebuilding. The post-image hook checks the packed squashfs scripts, seeds, and binary controller identity before making an OTA. The old squashfs failed that check; a coherent image build passed it. This accounts for the global MENU+START failure on the installed candidate; final hardware acceptance of the new image is pending. BusyBox `setsid` was checked with a harmless process: the background child's PID was its PGID and SID, consistent with the hotkey's `kill(-pgid, SIGTERM)` contract.
+
+Flycast v2.5 uses SDL instance IDs in `maple_sdl_joystick_*` keys, so the two old Zlyme fixed-number keys were removed from the seed and migrated narrowly from saved configs. OpenBOR now migrates only the exact old player 1 scancode defaults to its virtual-pad defaults; a clean package build passed. The remaining application paths were checked against their source, launchers, or configs. The host input tests and one full local image build passed. ROCKNIX comparison remains `next` at `d519b223b994e0295a75727c67770f27b3ca78a7`. Phase 4D remains in progress until the new OTA is installed and the short hardware acceptance list passes; Phase 4C remains complete.
+
 ## 2026-09-26 — Phase 4D application maps
 
 ROCKNIX `next` `d519b223b994e0295a75727c67770f27b3ca78a7` supplied the PPSSPP InputPlumber control codes, Flycast joystick slots, AetherSX2 `SDL-0` pad, and Dolphin south-button GameCube map. Those were pointed at the virtual xb360 pad. DraStic's saved numeric map migrates off the physical button numbers once. `pico8-splore-pad` is gone. `pak-input.sh` is applied in the pak process, not the NextUI session shell. Phase 4D stays in progress until the candidate image is accepted on hardware.
@@ -2813,5 +2821,4 @@ still goes to `.update/failed/`; the next download deletes that leftover.
 respawns). A after queue calls `zlyme-halt reboot` instead. Session
 honors `/tmp/reboot` after a pak, and never recopies `Update.pak` from
 an old squashfs.
-
 
