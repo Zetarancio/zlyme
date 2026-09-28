@@ -308,4 +308,37 @@ Next step: **A. No implementation yet.** Repeat the unplugged power-off only if 
 
 Phase 5B said **D**: no gauge change until a long power-off is captured. Phase 5C did that capture and the counter stayed at 0, so the outcome is now **A**: no implementation yet.
 
-`001` alone does not change today's displayed percentage. `002` mixes a saved-SoC fallback that would make `001` reachable with a 5% relax reseed that the Flip BSP source, which is missing from this checkout, does not justify. The next evidence step is a controlled power-off long enough for `OFF_CNT` to pass 3, then one boot, comparing percentage with voltage. Do not reset `BAT_CON` or clear NVRAM to manufacture that. Do not apply `001`, `002`, `005`, or `008` until that capture is reviewed. `0007` stays as it is.
+`001` alone does not change today's displayed percentage. `002` mixes a saved-SoC fallback that would make `001` reachable with a 5% relax reseed that the Flip BSP source, which is missing from this checkout, does not justify. Do not reset `BAT_CON` or clear NVRAM to manufacture a test. `0007` stays as it is.
+
+## Overnight power-off — 2026-09-28
+
+The Phase 5A image was shut down in software, left off at least 6 hours with the charger unplugged and the battery connected, then started from the power button still unplugged. Capture was `2026-09-28T09:04:46Z`, `/proc/uptime` `127.08` seconds. Kernel is still `7.0.2 #1 SMP PREEMPT Mon Sep 28 00:23:23 UTC 2026`. Charger `online=0`. No register was written.
+
+`OFF_CNT` is `0x32` = 50. The 7.0.2 comment treats that register as decaminutes, so 50 counts are 500 minutes (8.3 hours), which matches an overnight off. `GG_STS` is `0x41`: `BAT_CON` (bit 4) is clear, `RELAX_STS` (bit 1) is clear. `0xe6` is `0x40`: `SYS_CAN_SD` is clear. Linux 7.0.2 only reads `OFF_CNT`. Zlyme's board tree does not write it. The stock U-Boot `fg_rk817.c` does clear `OFF_CNT` after reading it; this boot did not, because the register is still 50. The earlier 40–45 minute off that read 0 was a real zero at that time, not a Linux clear. A uniform 10-minute tick would have made 45 minutes about 4 counts, so that short off did not run the same counter. This overnight did.
+
+Voltage calibration from `VCALIB0` `0x8007` and `VCALIB1` `0xdfd3`, using the driver's integer formulas:
+
+```text
+voltage_k = (4025 - 2300) * 1000 / (57299 - 32775) = 70
+voltage_b = 4025 - (70 * 57299) / 1000 = 15
+PWRON_VOL raw = 0xdb77 = 56183
+PWRON uV = 70 * 56183 + 1000 * 15 = 3947810
+```
+
+`power_supply_ocv2cap_simple()` on the Flip 20 °C table interpolates 3947810 µV between 3967000 µV / 85% and 3930000 µV / 80%:
+
+```text
+80 + (5 * 17810) / 37000 = 82
+internal SoC = 82000
+boot_charge_mah = 82000 * 3000 / 100 / 1000 = 2460
+```
+
+`Q_INIT` `03 11 a5 00` converts to 2459944 µAh, and `charge_now_uah * 100 / fcc_mah` is 81998. That is the 82% seed, not the pre-off 2396 mAh. Visible capacity is 81. `Q_PRES` `03 07 ee c0` is 2429500 µAh. Saved SoC `6e 3c 01` is 81006 (81.006%). Saved remaining `7e 09 00` is 2430 mAh. FCC is still 3000 mAh. At the measured −850884 µA, 127 seconds is about 30 mAh, 1.0% of 3000 mAh. 82% at probe minus that load is 81%. The post-boot gauge matches the `PWRON_VOL` reseed plus the consumption since boot.
+
+Against the pre-off reference (79.876%, 2396 mAh, loaded `voltage_avg` 3606280 µV at about −1.03 A): the boot seed is +2.1 percentage points and +64 mAh. Displayed change after the SSH delay is 81 − 80 = +1 percentage point. Prediction error versus the visible 81% is 1 point, accounted for by the measured current. This is **REPRODUCED**. It is not a wild percentage collapse, and it is not physical drain. Six hours at the cleared-`SYS_CAN_SD` current is a fraction of a milliamp-hour. The pre-off 3.606 V reading was under about 1 A of load; `PWRON_VOL` at 3.948 V is the unloaded boot sample the table maps to 82%.
+
+`001` stays latent on this branch too: the `>= 3` path replaces SoC from `PWRON_VOL` after the 10000 clamp. The saved 81006 is the post-boot writeback. No `001`-only image.
+
+Of `002`, this run supports only the observation that 7.0.2 discards the previous coulomb boot state when `OFF_CNT >= 3` and writes `Q_INIT` from OCV. Keeping that counter would have stayed near 80% instead of 82%. That 2-point difference is the existing policy working, not a conversion bug. The saved-SoC fallback, `voltage_boot`, `voltage_ocv`, and the 5% relax loop are not justified by this capture. The pre-reinit hardware counter was overwritten by probe; the pre-off userspace value 2396 mAh is the comparison, not a register read from before `Q_INIT` was rewritten.
+
+Next direction: do not implement a boot-gauge change. The overnight branch fired and landed on the OCV table. Do not apply `001`, `002`, `005`, or `008` from this result. `0007` stays.

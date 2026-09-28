@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — RK817 overnight off did reseed from PWRON_VOL
+
+After at least 6 hours unplugged, with the battery still connected, `OFF_CNT` was `0x32` (50; the 7.0.2 comment calls that decaminutes, 8.3 hours). The charger was offline, `BAT_CON` was clear, and `SYS_CAN_SD` was clear. Uptime at the read was 127 seconds. `PWRON_VOL` converts to 3947810 µV with `voltage_k` 70 and `voltage_b` 15. The Flip OCV table returns 82% (SoC 82000, 2460 mAh). `Q_INIT` is that seed. Visible capacity was 81% after about 30 mAh of the measured 0.85 A load. The pre-off coulomb state was 79.876% / 2396 mAh. The reseed is reproduced and matches the table; it is not the ~8 mA drain. No gauge patch was applied.
+
 ## 2026-09-28 — RK817 long power-off did not set OFF_CNT
 
 After the Phase 5B snapshot (88%, saved SoC 87324, `OFF_CNT` 0), the Flip was shut down, left off about 40–45 minutes with the charger unplugged and the battery connected, then booted still unplugged. At 2338 seconds of uptime, `OFF_CNT` was still 0, `BAT_CON` was clear, the charger was offline, and `SYS_CAN_SD` was still clear. Linux 7.0.2 only reads `OFF_CNT`. The `PWRON_VOL` reseed did not run. Visible capacity was 80% on the coulomb counter. That is not an OCV-reseed result and not a physical-drain measurement. No gauge patch and no register write. Phase 5 stays in progress.
