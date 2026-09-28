@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 5 kernel-patch research started
+
+Phase 4 is on `main` at `04442328d42191a6d77eb0dcbabeb163f2244297`. Phase 5 research is on `phase-5-kernel-reduction`. The selected kernel is still Linux 7.0.2. Official ROCKNIX `next` is still `46eeb493a7532bec24b86dcd33bda3d87d463672`, 241 commits ahead of the archived fork's last official commit and 19 commits ahead of the Phase 2 pin. The note is `docs/research/kernel-patch-audit-phase5.md`. No kernel patch was added or removed.
+
 ## 2026-09-28 — Phase 4D and Phase 4 complete
 
 The installed OTA `zlyme-my355-20260927-0b139e9099ee.tar` (commit `0b139e9099eec699e31d1cb5313998f57f387e12`, SHA-256 `9bedb4874f8a834c362fc9cccbd61aaece882595ac221865128ae6a3a4f3437e`) passed the short hardware list. PPSSPP showed a picture, played audio, took controls, and MENU+START returned to NextUI. MENU+Volume changed brightness inside a pak. RetroArch launched a game, took basic controls, and exited on MENU+START. PICO-8 Splore launched, took the controller, and exited on MENU+START. PortMaster’s frontend and port path launched, took the controller, and exited on MENU+START.
