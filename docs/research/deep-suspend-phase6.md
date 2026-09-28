@@ -392,6 +392,23 @@ The first image changes only that driver and the DTS node. It does not change `1
 
 6B logs belong to that image: SMC id, subcommand, two arguments, `res.a0`, the Linux sleep state, and the mode and wake masks. One line per call. Drop them to `dev_dbg` or a Kconfig debug option before a release image. Do not leave `dev_info` on the success path forever.
 
+## Phase 6B implementation
+
+Built, not hardware-accepted. The active node is `rockchip-suspend` / `rockchip,pm-rk3568` with `rockchip,sleep-mode-config` `0x5ec`, `rockchip,wakeup-config` `0x10`, and `rockchip,sleep-debug-en` 0. `vdd_logic` remains `regulator-on-in-suspend`.
+
+The driver is `drivers/soc/rockchip/rockchip-pm-config.c`, `CONFIG_ROCKCHIP_PM_CONFIG=y`, registered with `builtin_platform_driver`. It reuses `ROCKCHIP_SIP_SUSPEND_MODE` and adds:
+
+```text
+ROCKCHIP_SIP_SUSPEND_MODE_CONFIG      0x01
+ROCKCHIP_SIP_SUSPEND_WKUP_SOURCE      0x02
+ROCKCHIP_SIP_SUSPEND_DEBUG_ENABLE     0x05
+ROCKCHIP_SIP_SUSPEND_LINUX_PM_STATE   0x09
+```
+
+Probe checks `arm_smccc_1_1_get_conduit()` and fails before any call when the conduit is none. It then sends mode, wake, and debug. A rejected required call stays bound. `.prepare` retries `LINUX_PM_STATE`, mode, and wake, and returns `-EIO` if any raw `res.a0` is non-zero. Debug is not resent from `.prepare` and does not fail suspend. There is no resume callback and no RK817 SLPPIN write.
+
+BL31 acceptance is not known until the device log shows the raw `res.a0` values. `vdd_logic` off-in-suspend is not enabled. Phase 6C and 6D have not started.
+
 ## Open items
 
 - The recovered `1013b` driver logs a non-zero `res.a0` and then continues. Whether v1.44 uses `0` for success is still an assumption taken from that driver's comment, not from a Flip SMC trace.

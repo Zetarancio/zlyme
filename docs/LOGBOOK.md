@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 6B suspend firmware driver built
+
+A built-in driver programs the RK3568 BL31 suspend ABI from a `rockchip,pm-rk3568` node. The Flip node uses sleep mask `0x5ec`, wake mask `0x10`, and debug 0. `vdd_logic` stays `regulator-on-in-suspend`. Probe sends mode, wake, and debug. Every suspend `.prepare` sends `LINUX_PM_STATE`, then mode, then wake, and aborts that suspend if firmware returns non-zero. RK817 `005`, DFI, DMC, GPU, async suspend, and BL31 v1.44 were not changed. The image is waiting for hardware logs. Phase 6 is not complete.
+
 ## 2026-09-28 — Phase 6A deep-suspend research
 
 Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` files are not in this git tree. They are in the local archived ROCKNIX checkout as `.testing-disabled` patches. That driver already sends mode, wake, and `LINUX_PM_STATE` from `.prepare`, and it uses `rockchip,rk3568-suspend` rather than the stock `rockchip,pm-rk3568`. The stock DTB uses sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/deep-suspend-phase6.md`.
