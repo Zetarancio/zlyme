@@ -29,12 +29,12 @@ The 19 commits after the Phase 2 pin are mostly other SoCs and frontends (H700, 
 
 ## Current Zlyme Linux patches
 
-Eighteen patches, applied from `board/my355/linux/patches/` in directory order. The Phase 2 inventory had 45. The extras were other-board DTS and drivers removed in later cutovers. This list is the Phase 5 starting tree.
+The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Fifteen remain. The Phase 2 inventory had 45. This table is that starting list with the Phase 5A disposition.
 
 | Path | Subject | Provenance | Files | Flip use | 7.0.2 | Upstream `7.3-rc5` | Proposed disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `10-mainline/linux/0002-input-add-input-polldev-driver.patch` | restore `input-polldev` | brooksytech | `input-polldev.c`, Kconfig | No remaining caller. `gpio_keys_polled.c` in 7.0.2 does not include `input-polldev.h`. Flip volume and hall nodes are `gpio-keys`, not `gpio-keys-polled`. | Symbol absent until this patch. `linux.config` sets `CONFIG_INPUT_POLLDEV=y` and `CONFIG_KEYBOARD_GPIO_POLLED=y`. | Same absence of the old helper. | DROP candidate, together with `CONFIG_INPUT_POLLDEV` if nothing else selects it. Do not drop in the same commit as a gauge change. |
-| `10-mainline/linux/0004-input-adc-keys-redirect-keycode-316-to-rocknix-joypa.patch` | export `joypad_input_g` from adc-keys | spycat88 | `adc-keys.c` | No `adc-keys` node on the Flip (`rk3566-miyoo-flip.dts` says saradc ch0 belongs to the joypad). No C consumer of `joypad_input_g` outside the patch. The old ROCKNIX joypad module is gone. | adc-keys exists; the export does not. | Not re-checked line by line; the symbol is a ROCKNIX joypad hook. | Strong DROP candidate. |
+| `10-mainline/linux/0002-input-add-input-polldev-driver.patch` | restore `input-polldev` | brooksytech | `input-polldev.c`, Kconfig | No remaining caller. `gpio_keys_polled.c` in 7.0.2 does not include `input-polldev.h`. Flip volume and hall nodes are `gpio-keys`. `miyoo-flip-gamepad` does not use the helper. `KEYBOARD_GPIO_POLLED` does not depend on `INPUT_POLLDEV`. | Symbol existed only because of this patch. | Same. | DROP. Removed in Phase 5A. `CONFIG_INPUT_POLLDEV=y` was removed from `linux.config`. |
+| `10-mainline/linux/0004-input-adc-keys-redirect-keycode-316-to-rocknix-joypa.patch` | export `joypad_input_g` from adc-keys | spycat88 | `adc-keys.c` | No Flip `adc-keys` node. No C consumer of `joypad_input_g`. The Phase 3 driver does not reference it. | adc-keys exists; the export does not. | Not an upstream symbol. | DROP. Removed in Phase 5A. Nothing replaced the symbol; the Flip gamepad is `miyoo,flip-gamepad`. |
 | `10-mainline/linux/0005-Bluetooth-btrtl-Add-the-support-for-RTL8733BU.patch` | RTL8733BU firmware table | spycat88, `656d871541b3` | `btrtl.c`, `btusb.c` | Flip DTS has `rockchip,rtl8733bu-power`. | `8733` is absent from pristine `btrtl.c`. | Still absent from `7.3-rc5` `btrtl.c`. | KEEP. Not upstream. |
 | `20-rk3566/linux/0001-arm64-dts-rockchip-rk356x-add-1992mhz-cpu-opp-with-t.patch` | 1992 MHz OPP at 1.15 V, `turbo-mode` | sydarn | `rk3566.dtsi` | Flip includes that dtsi and does not delete the OPP. `zlyme-governor` `profile_overclock` sets `408000..1992000` when boost is on. Undervolt overlays `rk3566-undervolt-cpu-l1/l2/l3.dts` each contain `opp-1992000000`. | Not in the stock dtsi; this patch adds it. | Not treated as upstream. | KEEP. Optional boost, not the 1.8 GHz path. Removing it changes a live policy and the undervolt overlays. |
 | `20-rk3566/linux/0002-power-supply-rk817-update-battery-and-charger-name-s.patch` | `rk817-battery` to `battery`, charger name to `charger` | ab0tj | `rk817_charger.c` | Live. Apostrophe reads `/sys/class/power_supply/battery/capacity`. `PLAT_getBatteryStatusFine` also reads that path and comments that the charger class may still be `rk817-charger`. | Stock names are the `rk817-*` strings. | Not re-checked; the rename is a Zlyme userspace ABI. | KEEP. A rename back would be a separate userspace migration, not a patch deletion. |
@@ -42,7 +42,7 @@ Eighteen patches, applied from `board/my355/linux/patches/` in directory order. 
 | `20-rk3566/linux/0008-arm64-dts-rockchip-add-support-for-mali-bifrost-driv.patch` | Mali resets and power model on `&gpu` | Danil Zagoskin | `rk356x-base.dtsi` | Flip enables `&gpu`. | Phase 2: not in 7.0.2. Not re-diffed this pass. | Unknown this pass. | KEEP until a hunk diff shows the dtsi already has it. Not the ROCKNIX pmdomain clock patch. |
 | `20-rk3566/linux/0013-Bluetooth-Check-key-sizes-only-when-Secure-Simple-Pa.patch` | key-size check only when SSP is on | Marcel Holtmann, 2019, `cce32250027f` | `hci_conn.c` | Generic Bluetooth. Helps legacy devices. Not Flip-specific. | `hci_conn_check_link_mode` still uses `if (hci_conn_ssp_enabled(conn) && !encrypt) return 0`. | `7.3-rc5` still has that combined test, not the early `!ssp` return. | KEEP. Downstream relative to 7.0.2 and 7.3-rc5. |
 | `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | `dma-names` on a shared SoC node | spycat88 | `rk356x-base.dtsi` | Flip includes that dtsi. | Phase 2: carried because the hunk was not already pristine. Not re-diffed this pass. | Unknown this pass. | KEEP until a pristine diff says the names exist. |
-| `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | `dev_info` of ON/OFF source | Zetarancio | `rk8xx-core.c` | No `docs/OPERATIONS.md` procedure reads this log. No userspace parser. | Phase 2: string absent from pristine `rk8xx-core.c`. | Not re-checked. | DROP candidate, or DEBUG if a power-cycle log is still wanted. Not a product behavior dependency. |
+| `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | `dev_info` of ON/OFF source | Zetarancio | `rk8xx-core.c` | No current procedure in `docs/OPERATIONS.md`, `board/`, `package/`, or `scripts/` reads `ON_SOURCE` / `OFF_SOURCE`. Historical notes are not a runtime contract. The off-state drain fix remains patch `0007`. | The log was not in pristine 7.0.2. | Not re-checked after removal. | DROP. Removed in Phase 5A. |
 | `20-rk3566/linux/0666-cma-region.patch` | CMA region | historical | CMA | Flip display/GPU allocations. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Do not resize memory in this phase. |
 | `20-rk3566/linux/1001-arm64-dts-rockchip-Add-idle-states-for-rk356x.patch` | CPU idle states | historical | `rk356x` dts | Flip CPUs. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Idle behavior is not a deletion target without a measurement. |
 | `20-rk3566/linux/1010-devfreq-event-rockchip-dfi-add-pm-suspend-resume.patch` | DFI suspend/resume | historical | DFI driver | Used with the DMC node. | Not re-diffed. | Unknown. | Leave for Phase 6. Do not delete as "unused" from a Phase 5 cleanup. |
@@ -146,6 +146,18 @@ Linux 7.0.2
     -> RK817 008 only after Flip evidence
 005 stays on the Phase 6 side of that line
 ```
+
+## Phase 5A result
+
+Phase 5A removed three patches and did not change battery-gauge behavior. `0007` is untouched. ROCKNIX `001`/`002`/`005`/`008` were not applied.
+
+Removed:
+
+- `0002` input-polldev. Safe because no selected driver calls `input_*_polled_device`, 7.0.2 `gpio_keys_polled.c` does not include that header, and `KEYBOARD_GPIO_POLLED` does not select `INPUT_POLLDEV`. `CONFIG_INPUT_POLLDEV=y` was deleted from `linux.config`. It cannot be re-selected: the symbol is not in pristine 7.0.2 Kconfig.
+- `0004` adc-keys `joypad_input_g` export. Safe because the Flip DTS has no `adc-keys` node, volume and lid are `gpio-keys`, and `miyoo-flip-gamepad` does not reference the symbol. The old ROCKNIX joypad module is not built.
+- `0030` RK817 ON/OFF `dev_info`. Safe because nothing in the current operational docs or userspace parses that line. The physical off-state fix stays `0007`.
+
+Fifteen Linux patches remain, in application order: `0005`, `0001`, `0002` (supply names), `0007`, `0008`, `0013`, `0021`, `0666`, `1001`, `1010`, `1012a`, `1012b`, `1013`, `9901`, `0006`. Number gaps are the removed files. Retained names were not renumbered. Later retained patches do not touch `input-polldev.c`, `adc-keys.c`, or the `0030` hunk in `rk8xx-core.c`.
 
 ## Proposed implementation sequence
 

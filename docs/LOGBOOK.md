@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 5A dead kernel delta removed
+
+The Flip DTS has no `adc-keys` node. Volume and the lid are `gpio-keys`. `miyoo-flip-gamepad` does not use `input-polldev` or `joypad_input_g`. Linux 7.0.2 `KEYBOARD_GPIO_POLLED` does not depend on `INPUT_POLLDEV`, and that symbol exists only in the removed patch, so `CONFIG_INPUT_POLLDEV=y` was deleted and cannot come back through a dependency. The RK817 ON/OFF `dev_info` patch had no current operational consumer. `0007` (`SYS_CAN_SD`) was not edited. No fuel-gauge patch was added. Fifteen Linux patches remain. Phase 5 stays in progress.
+
 ## 2026-09-28 — Phase 5 kernel-patch research started
 
 Phase 4 is on `main` at `04442328d42191a6d77eb0dcbabeb163f2244297`. Phase 5 research is on `phase-5-kernel-reduction`. The selected kernel is still Linux 7.0.2. Official ROCKNIX `next` is still `46eeb493a7532bec24b86dcd33bda3d87d463672`, 241 commits ahead of the archived fork's last official commit and 19 commits ahead of the Phase 2 pin. The note is `docs/research/kernel-patch-audit-phase5.md`. No kernel patch was added or removed.
