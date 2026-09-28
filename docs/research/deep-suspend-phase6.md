@@ -427,19 +427,29 @@ The later power-button session left eight `.prepare` triplets in the kernel log,
 
 `vdd_logic` was not switched to off-in-suspend in that test.
 
-## Phase 6D image
+## Phase 6D hardware result
 
-Built, not hardware-accepted. The only functional difference from the Phase 6C tree is `vdd_logic` / RK817 `DCDC_REG1`: `regulator-on-in-suspend` became `regulator-off-in-suspend`. `regulator-always-on` and `regulator-boot-on` remain. No suspend microvolt was added. Stock `miyoo355_20250527_0.dts` has the same three properties on DCDC1 and no suspend microvolt. Its suspend node is `rockchip,pm-rk3568`, sleep `0x5ec`, wake `0x10`, and `sleep-debug-en` 1. Zlyme keeps debug at 0.
+Hardware-accepted. Image `zlyme-my355-20260928-b709719aac5c.tar`, runtime `b709719aac5c5540394d0369e5e06981b8aa00bc`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`. Kernel `Linux zlyme 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. The only functional difference from Phase 6C is `vdd_logic` / RK817 `DCDC_REG1` `regulator-off-in-suspend`. `regulator-always-on` and `regulator-boot-on` remain. No suspend microvolt was added. Stock `miyoo355_20250527_0.dts` matches that DCDC1 suspend policy. Its suspend node is `rockchip,pm-rk3568`, sleep `0x5ec`, wake `0x10`, and `sleep-debug-en` 1. Zlyme keeps debug at 0.
 
-`dmc` still has `center-supply = <&vdd_logic>`. DCDC1 powers the center domain while the system is running. BL31 `ARMOFF_LOGOFF` is what has to restore that domain after mem suspend. The DMC driver was not changed.
+The first unplugged power-button cycle on that kernel had one `.prepare` at 174.07 seconds and no second `.prepare`:
 
-Sleep mask, wake mask, debug, BL31 v1.44, the 18 Linux patches, and the userspace suspend path are unchanged. Phase 6D is awaiting a physical power-button test. Phase 6 is not complete.
+```text
+LINUX_PM_STATE ctrl=0x9 cfg1=0x3 sleep_state=3 res.a0=0
+MODE           ctrl=0x1 cfg1=0x5ec            res.a0=0
+WAKE           ctrl=0x2 cfg1=0x10             res.a0=0
+```
+
+The maintainer repeated physical power-button suspend/resume after that and reports that those cycles worked. A later awake boot of the same kernel, uptime about 249 seconds, still showed the probe trio at `res.a0=0` and zero `.prepare` lines. The ring buffer therefore does not hold a total cycle count. On that boot `/storage` was mounted, `/sys/class/devfreq/dmc` was `powersave` at 324 MHz, `mali_kbase` was loaded, Wi-Fi was associated to `TP-Link_E44F`, and both `Miyoo Flip Gamepad` and `Microsoft X-Box 360 pad` were present. Battery was discharging at 68%. No standby current was measured. No `Oops`, `BUG`, panic, or filesystem I/O error was in that buffer. The `xHC error in resume, USBSTS 0x401, Reinit` line from Phase 6C is a recovering USB reinit, not by itself a 6D regression.
+
+`dmc` still has `center-supply = <&vdd_logic>`. DCDC1 powers the center domain while the system is running. BL31 `ARMOFF_LOGOFF` restored it across these mem suspends. The DMC driver was not changed. Phase 6 is not complete.
 
 ## Open items
 
-- The recovered `1013b` driver logs a non-zero `res.a0` and then continues. Whether v1.44 uses `0` for success is still an assumption taken from that driver's comment, not from a Flip SMC trace.
 - `System.map-5.10` and the 2025-05-27 DTB are not proven to be one image.
-- BL31 v1.44 return codes for `0x01`, `0x02`, `0x05`, and `0x09` are unknown until 6C logs them.
-- Whether `PMIC_LP` and rk8xx `SLPPIN_SLP_FUN` double-program the RK817, or whether both are required, is unknown. Stock shipped both the mask bit and a kernel that has the usual RK817 sleep-pin code, but this checkout does not contain that PMIC sleep function to compare.
+- Whether `PMIC_LP` and rk8xx `SLPPIN_SLP_FUN` double-program the RK817, or whether both are required, is unknown.
 - The "vcc_3v3 off is confirmed" DTS comment was not re-measured here.
 - UART2's role in Zlyme resume, as opposed to debug output, is not established. Stock leaves it disabled.
+- Subcommand `0x05` (`SUSPEND_DEBUG_ENABLE`) returned `res.a0=0` at probe with value 0. A non-zero debug enable has not been tested.
+- Standby current with `vdd_logic` off has not been measured.
+
+BL31 v1.44 on this Flip accepts subcommands `0x01`, `0x02`, and `0x09`. Success on those calls was raw `res.a0=0`. `vdd_logic` off in mem suspend resumed.

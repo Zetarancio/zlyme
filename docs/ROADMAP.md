@@ -1662,7 +1662,7 @@ This should leave a small explainable my355 kernel delta.
 
 ## 6 — Deep suspend bring-up
 
-Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. Phase 6B is hardware-accepted on `zlyme-my355-20260928-ff92191bb51c.tar`: BL31 v1.44 accepts sleep mask `0x5ec`, wake mask `0x10`, and `LINUX_PM_STATE` 3, all with `res.a0=0`. Phase 6C passed on the normal power button with `vdd_logic` still on. Phase 6D builds the same stack with DCDC1 off in mem suspend. That image is awaiting hardware acceptance. RK817 `005` is not applied. Phase 6 is not complete.
+Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. Phase 6B is hardware-accepted on `zlyme-my355-20260928-ff92191bb51c.tar`: BL31 v1.44 accepts sleep mask `0x5ec`, wake mask `0x10`, and `LINUX_PM_STATE` 3, all with `res.a0=0`. Phase 6C passed on the normal power button with `vdd_logic` still on. Phase 6D is hardware-accepted on `zlyme-my355-20260928-b709719aac5c.tar`: the same BL31 calls still return `res.a0=0` with `vdd_logic` off in mem suspend, and repeated power-button cycles resume. RK817 `005` is under evaluation and is not applied. Phase 6 is not complete.
 
 The device wiki establishes:
 

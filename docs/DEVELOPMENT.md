@@ -176,6 +176,24 @@ Do not move board-specific kernel/U-Boot mutation back into global code after it
 
 When reconfiguring the kernel, remember that out-of-tree modules may require rebuild/dirclean if the module ABI changes.
 
+A change that touches only the board DTS, and does not change kernel source, kernel config, modules, or the root filesystem, does not need a full image or a new OTA for the experiment. The boot volume is the vfat labeled `ZLYMEBOOT`, mounted at `/boot` by `S12bootfs`. Extlinux loads `FDT /rk3566-miyoo-flip.dtb` from that volume, so the live file is `/boot/rk3566-miyoo-flip.dtb`.
+
+1. Rebuild only that DTB in the existing Buildroot kernel tree.
+2. Decompile it and confirm the intended property change, and that nothing else in the suspend node moved.
+3. Copy it to `/boot/rk3566-miyoo-flip.dtb` on the Flip. Leave the previous file aside as `/boot/rk3566-miyoo-flip.dtb.bak` first.
+4. Compare SHA-256 of the built file and `/boot/rk3566-miyoo-flip.dtb`.
+5. Reboot.
+6. Test.
+
+```sh
+./build.sh --config zlyme_my355_defconfig linux-rebuild
+sha256sum output/images/rk3566-miyoo-flip.dtb
+scp output/images/rk3566-miyoo-flip.dtb root@192.168.0.108:/tmp/rk3566-miyoo-flip.dtb
+ssh root@192.168.0.108 'cp -a /boot/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb.bak && cp -a /tmp/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb && sha256sum /boot/rk3566-miyoo-flip.dtb && reboot'
+```
+
+`linux-rebuild` is the supported entry that recompiles this DTB in the existing tree and installs it to `output/images/`. It can also relink `Image`. If `Image` was not part of the experiment, do not copy it. A later accepted release can still be a normal full image.
+
 ## Image safety
 
 Image-generation code may manipulate image files and loop devices.

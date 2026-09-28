@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-29 — Phase 6D accepted; RK817 sleep gauge not patched
+
+`zlyme-my355-20260928-b709719aac5c.tar` is hardware-accepted. The only functional change from Phase 6C is `vdd_logic` off in mem suspend. The first unplugged power-button cycle on kernel `#2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026` had one `.prepare`: `LINUX_PM_STATE` `cfg1=0x3` `res.a0=0`, mode `0x5ec` `res.a0=0`, wake `0x10` `res.a0=0`, and no second prepare. The maintainer then repeated physical power-button cycles and reports that they kept working. A later awake boot of that same kernel still had the probe calls at `res.a0=0` and no `.prepare` left in the ring buffer, so that boot does not supply a cycle count. Storage was mounted, DMC was `powersave` at 324 MHz, `mali_kbase` was loaded, Wi-Fi was associated, and both the Flip gamepad and the virtual Xbox pad were present. No standby current was measured.
+
 ## 2026-09-28 — Phase 6D vdd_logic-off image built
 
 The only functional change from the accepted Phase 6C tree is `vdd_logic` (`RK817` `DCDC_REG1`) `regulator-state-mem`: on-in-suspend becomes off-in-suspend. `regulator-always-on` and `regulator-boot-on` stay. The suspend node is still `rockchip,pm-rk3568` with mask `0x5ec`, wake `0x10`, and debug 0. Stock's shipped DTB uses the same compatible, the same masks, and also turns DCDC1 off, and that node is `regulator-always-on` and `regulator-boot-on` with no suspend microvolt. The DMC node still uses `vdd_logic` as `center-supply`. No other rail, patch, firmware, or userspace suspend path changed. This image is not hardware-accepted. Phase 6 is not complete.
