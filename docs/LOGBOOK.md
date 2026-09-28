@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 5A accepted; RK817 gauge read only
+
+The Etcher install of `zlyme-my355-20260928-b0594dc35ee5.tar` passed boot, built-in controls, one emulator with MENU+START, volume, suspend/resume, and shutdown. The running kernel timestamp is `Mon Sep 28 00:23:23 UTC 2026`. A read-only regmap dump showed saved SoC 87324 (87.3%), FCC 3000 mAh, `OFF_CNT` 0, `BAT_CON` clear, and `SYS_CAN_SD` clear. Displayed capacity was 88% from the live counter. Linux 7.0.2 clamps a saved SoC above 10000 and then replaces that value from the coulomb counter or `PWRON_VOL` before programming the gauge, so ROCKNIX patch `001` does not change the visible percentage by itself. The local 5.10 tree has the BSP symbols in `System.map-5.10` but not `rk817_battery.c`. No gauge patch was added and no RK817 register was written. Phase 5 stays in progress.
+
 ## 2026-09-28 — Phase 5A dead kernel delta removed
 
 The Flip DTS has no `adc-keys` node. Volume and the lid are `gpio-keys`. `miyoo-flip-gamepad` does not use `input-polldev` or `joypad_input_g`. Linux 7.0.2 `KEYBOARD_GPIO_POLLED` does not depend on `INPUT_POLLDEV`, and that symbol exists only in the removed patch, so `CONFIG_INPUT_POLLDEV=y` was deleted and cannot come back through a dependency. The RK817 ON/OFF `dev_info` patch had no current operational consumer. `0007` (`SYS_CAN_SD`) was not edited. No fuel-gauge patch was added. Fifteen Linux patches remain. Phase 5 stays in progress.

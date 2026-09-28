@@ -1629,7 +1629,7 @@ The old "package it experimentally" step is Phase 4A. It is not optional, and it
 
 ## 5 — Second kernel patch reduction pass
 
-Research is in progress on `phase-5-kernel-reduction`. The evidence note is `docs/research/kernel-patch-audit-phase5.md`. Phase 5A removed the obsolete `input-polldev` and adc-keys joypad export, and the RK817 ON/OFF probe log. `SYS_CAN_SD` and the fuel-gauge algorithm are unchanged. Phase 5 is not complete.
+Research is in progress on `phase-5-kernel-reduction`. The evidence note is `docs/research/kernel-patch-audit-phase5.md`. Phase 5A is accepted on the Miyoo Flip. The fuel-gauge algorithm is still unchanged: the Linux 7.0.2 boot path overwrites the saved SoC before display, so the NVRAM ceiling fix is not the next patch by itself. Phase 5 is not complete.
 
 After the input transition, remove patches made obsolete by:
 - the new joypad module;

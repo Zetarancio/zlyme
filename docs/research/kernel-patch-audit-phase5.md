@@ -192,3 +192,106 @@ Capture, when the sysfs or debug files exist:
 - `RK817_GAS_GAUGE_OFF_CNT` and the NVRAM SoC before the clamp, if a temporary debug print is used for the test build
 
 Pass condition for `001` alone: a saved SoC above 10% is no longer forced to 10% across reboot, and a value above 100% is still rejected. Pass condition for `002` is a separate image: a powered-off period that previously reseeds from `PWRON_VOL` no longer jumps the displayed percentage without a matching voltage change, and a charger-plug boot does not report a voltage above `voltage-max-design`.
+
+## Phase 5A hardware acceptance — 2026-09-28
+
+The image `zlyme-my355-20260928-b0594dc35ee5.tar` (SHA-256 `64d3c391f2f9edb0141b1878ca135139855769b3e40c4bec80a2567c13eea6a4`) was installed with Etcher and accepted on the Miyoo Flip: boot to NextUI, built-in d-pad / ABXY / sticks / MENU, one emulator with controls and MENU+START, volume buttons, lid or power suspend and resume, and a clean shutdown. Phase 5A is accepted. Phase 5 is not complete.
+
+## Phase 5B — BSP fuel gauge versus Linux 7.0.2
+
+No kernel patch was added or removed. No RK817 register was written. `0007` was not edited.
+
+### Local evidence
+
+| Tree | What it is |
+| --- | --- |
+| `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/Steward-fu-FLIP` | Hardware wiki. Git `main` `b08e335d31fca41383e01176390914c3d4550ec5`, remote `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`, clean relative to `origin/main`. |
+| `Extra/linux-5.10.y-3b916183b455b56c966bc7c19c3f772d258dc583` | Linux 5.10 tree sitting inside that wiki checkout. It is not its own git repository. `drivers/power/supply` has no `rk817_battery.c` or `rk817_charger.c`. `drivers/mfd/rk808.c` is present. `include/linux/mfd/rk808.h` in that tree has no `RK817_GAS_GAUGE_*` block. |
+| `Extra/kernel_config` | `CONFIG_BATTERY_RK817=y` and `CONFIG_CHARGER_RK817=y`. |
+| `Extra/System.map-5.10` | The built 5.10 image contained `rk817_bat_init_coulomb_cap`, `rk817_bat_save_dsoc`, `rk817_bat_save_data`, `rk817_bat_get_pwron_voltage`, `rk817_bat_get_ocv_voltage`, `rk817_bat_get_relax_voltage`, `is_rk817_bat_relax_mode`, `rk817_bat_pm_suspend`, `rk817_bat_pm_resume`. It does not contain `rk817_bat_not_first_pwron`, `is_rk817_bat_last_halt`, `rk817_bat_rsoc_init`, or `max_soc_offset`. |
+
+The C implementation of those symbols is not in the supplied tree, so the BSP halt test and the relax threshold were not reconstructed from source. The wiki quotes only the `SYS_CAN_SD` helper from `rk3568_linux-rosa1337`: clear the bit unless `gate_function_disable` is set. That is the behavior Zlyme `0007` already implements unconditionally. The wiki also separates the two bugs: physical off current is `SYS_CAN_SD` (~8 mA with the bit set, ~0.05 mA cleared, true POR reads `0xe6 = 0xc5`); an earlier large percentage drop was fuel-gauge OCV reseed when `OFF_CNT >= 3`, with terminal voltage matching to 140 µV over 5.7 h and the percentage unchanged after ~20 h off.
+
+No Miyoo Flip battery DTS was found in that 5.10 tree. Zlyme's current node remains the comparison target: 3 Ah, 4.25 V, 1.5 A, 150 mA termination, OCV 3.2–4.25 V at 20 °C from the 2025 firmware, sense resistor 10000 µΩ, sleep-enter 150 mA, sleep-filter 100 mA, `factory-internal-resistance-micro-ohms = <100000>`. Mainline `rk817_charger.c` does not read that resistance property. Relax OCV does not need it. A loaded terminal-voltage bound (`008`) does: 0.1 Ω at 1 A is 100 mV, which moves the Flip OCV curve by several percent. `008` stays deferred.
+
+### Linux 7.0.2 boot path
+
+Pristine `rk817_charger.c` from `linux-7.0.2`. Registers, from `rk808.h`:
+
+| Field | Address | Encoding |
+| --- | --- | --- |
+| `GG_STS` | `0x57` | `BAT_CON` is bit 4. Set means uninitialized. The driver clears it after first setup. `RELAX_STS` is bit 1. |
+| `OFF_CNT` | `0x6f` | One byte. Mainline comment: decaminutes, saturates at 255. |
+| `Q_INIT` | `0x70`–`0x73` | Big-endian 32-bit coulomb ADC. |
+| `Q_PRES` | `0x74`–`0x77` | Big-endian 32-bit live coulomb ADC. |
+| `PWRON_VOL` | `0x6b`–`0x6c` | Big-endian 16-bit. |
+| `OCV_VOL` | `0x63`–`0x64` | Big-endian 16-bit. |
+| Saved SoC (BSP DSOC area) | `0x9a`–`0x9c` | Little-endian 24-bit. `0` = 0%, `100000` = 100%. |
+| Saved remaining mAh | `0x9d`–`0x9f` | Little-endian 24-bit mAh. |
+| Saved FCC mAh | `0xa0`–`0xa2` | Little-endian 24-bit mAh. |
+
+`rk817_read_battery_nvram_values()` loads FCC, replaces an impossible FCC with the design capacity, then loads SoC and clamps `soc > 10000` to `10000`.
+
+`rk817_read_or_set_full_charge_on_boot()` then:
+
+- If `BAT_CON` is set (first init): SoC comes from `PWRON_VOL` through the OCV table at 20 °C, FCC is the design capacity, `BAT_CON` is cleared, and NVRAM is saved. The clamped NVRAM SoC is not read.
+- Otherwise it reads NVRAM (including the clamp) and then **replaces** `charger->soc` before the coulomb counter is rewritten:
+  - `OFF_CNT >= 3`: SoC from `PWRON_VOL` and the OCV table.
+  - else: SoC from `Q_PRES` converted to mAh, times `100000 / fcc_mah`.
+
+The value used to program `Q_INIT` is that replaced SoC, not the clamped NVRAM value. Later updates in `rk817_read_props()` set SoC from the live counter (`charge_now_uah * 100 / fcc_mah`) and `rk817_bat_calib_cap()` writes that live SoC back to NVRAM. Displayed capacity is `(soc + 500) / 1000`.
+
+So patch `001` corrects a real ceiling bug, but on the current 7.0.2 normal-boot path the clamped value is overwritten before it becomes the visible percentage or the counter seed. `001` alone is **correct and currently latent**. It becomes reachable if a later change keeps the saved SoC when the counter is rejected. That is what ROCKNIX `002` does for a non-positive counter. `001` is a prerequisite for that fallback, not a user-visible fix by itself.
+
+`002` items against this driver and the missing BSP C file:
+
+| `002` item | Match |
+| --- | --- |
+| `PWRON_VOL` only on first init | Already what 7.0.2 does when `BAT_CON` is set. BSP function `rk817_bat_get_pwron_voltage` exists in System.map; the condition was not readable. |
+| Normal boot uses the coulomb counter | Already what 7.0.2 does when `OFF_CNT < 3`. |
+| Non-positive counter keeps saved SoC | Not in 7.0.2. 7.0.2 clamps a negative ADC to 0 and then derives SoC from that. This is the part of `002` that would make `001` matter. BSP source for the rule was not in the tree. |
+| Keep the battery-info OCV table | Both already use it. |
+| Expose `voltage_boot` and `voltage_ocv` | Not in 7.0.2. Observability, not a gauge algorithm. |
+| Periodic relax pair, re-init counter if it differs by more than 5% | Not in 7.0.2. No `max_soc_offset` in the local wiki or in `System.map-5.10`. The 5% figure is ROCKNIX policy from other handhelds, not a proven Flip threshold. |
+
+`005` remains Phase 6. `008` stays deferred: it treats loaded terminal voltage as an OCV bound, and the unused 0.1 Ω resistance property is exactly why that is less safe than a rested relax voltage.
+
+### Live device, read only
+
+Kernel `Linux version 7.0.2 ... #1 SMP PREEMPT Mon Sep 28 00:23:23 UTC 2026`. That is the Phase 5A rebuild. `/usr/share/zlyme/version` is still the NextUI pin `zlyme43 (2026-09-27)`, not the git SHA. `/storage/.update` was empty because the image was written with Etcher, not the OTA applicator. No reboot, power-off, or register write was done. debugfs was mounted and `regmap/0-0020/registers` was read.
+
+`battery` (discharging, not charging):
+
+| Property | Value |
+| --- | --- |
+| capacity | 88 |
+| voltage_now | ABSENT |
+| voltage_avg | 3649470 µV |
+| current_now | ABSENT |
+| current_avg | -1085148 µA |
+| charge_now | 2626784 µAh |
+| charge_full | 3000000 µAh |
+| charge_full_design | 3000000 µAh |
+
+`charger` (`type=USB`, `online=0`). `0xe6 = 0x40`: bit 7, `SYS_CAN_SD`, is clear.
+
+Decoded NVRAM and counters (`res_div = 1` for the 10000 µΩ sense resistor):
+
+| Field | Raw | Decoded |
+| --- | --- | --- |
+| Saved SoC `0x9a`–`0x9c` LE | `1c 55 01` | 87324 = 87.324%. Greater than 10000. |
+| Saved remaining `0x9d`–`0x9f` LE | `3b 0a 00` | 2619 mAh. Equals `87324 * 3000 / 100000`. |
+| Saved FCC `0xa0`–`0xa2` LE | `b8 0b 00` | 3000 mAh. |
+| `Q_PRES` BE | `03 44 42 03` | ADC 54808579. `ADC_TO_CHARGE_UAH` ≈ 2619 mAh at the moment of the register read. Sysfs `charge_now` a moment earlier was 2627 mAh. |
+| `OFF_CNT` | `0x00` | 0. Below the mainline reseed threshold of 3. |
+| `GG_STS` | `0x49` | `BAT_CON` (bit 4) is clear. Not a first-init boot. `RELAX_STS` (bit 1) is clear. |
+
+On the next boot, `rk817_read_battery_nvram_values()` would clamp 87324 to 10000 and then `rk817_read_or_set_full_charge_on_boot()` would discard that clamp and take the coulomb counter, because `OFF_CNT` is 0. The displayed 88% is the live counter, not the clamped NVRAM value.
+
+The local BSP halt rule was not available to apply. The common `abs(live - saved) > FCC/10` test, which this tree does **not** confirm, would be about 8 mAh versus 300 mAh and would not call this a halt. That is an illustration, not a BSP result.
+
+### Recommendation
+
+**D. No gauge change yet.**
+
+`001` alone does not change today's displayed percentage. `002` mixes a saved-SoC fallback that would make `001` reachable with a 5% relax reseed that the Flip BSP source, which is missing from this checkout, does not justify. The next evidence step is a controlled power-off long enough for `OFF_CNT` to pass 3, then one boot, comparing percentage with voltage. Do not reset `BAT_CON` or clear NVRAM to manufacture that. Do not apply `001`, `002`, `005`, or `008` until that capture is reviewed. `0007` stays as it is.
