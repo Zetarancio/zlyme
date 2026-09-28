@@ -499,7 +499,7 @@ Phase 4B COMPLETE — 2026-09-26
 Phase 4C COMPLETE — 2026-09-26
 Phase 4D COMPLETE — 2026-09-28
 Phase 4 COMPLETE — 2026-09-28
-Phase 5 IN PROGRESS — research only; no kernel patch changes yet
+Phase 5 COMPLETE — 2026-09-28
 ```
 
 Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
@@ -1629,7 +1629,13 @@ The old "package it experimentally" step is Phase 4A. It is not optional, and it
 
 ## 5 — Second kernel patch reduction pass
 
-Research is in progress on `phase-5-kernel-reduction`. The evidence note is `docs/research/kernel-patch-audit-phase5.md`. Phase 5A is accepted on the Miyoo Flip. The fuel-gauge algorithm is still unchanged. An overnight unplugged power-off left `OFF_CNT` at 50 and the gauge matched the `PWRON_VOL` OCV value. That reseed is not a defect to patch. Phase 5D drops the redundant UART `dma-names` patch and the redundant Bluetooth SSP patch. Phase 5 is not complete until that image is accepted.
+Complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. On the Miyoo Flip that image booted to NextUI. Built-in d-pad, ABXY, both sticks, and MENU worked. One emulator took those controls and MENU+START returned to NextUI. Bluetooth could be enabled and scanning worked. Volume, one suspend/resume cycle, and a clean shutdown passed. Controller pairing was not part of the gate.
+
+Phase 5 started from eighteen Linux patches on Linux 7.0.2. Phase 5A removed the `input-polldev` restoration, the adc-keys joypad export, and the RK817 ON/OFF diagnostic log. Phase 5D removed the shared UART1 `dma-names` patch and the historical Bluetooth SSP patch. Thirteen patches remain, in application order: `0005`, `0001`, `0002`, `0007`, `0008`, `0666`, `1001`, `1010`, `1012a`, `1012b`, `1013`, `9901`, `0006`. Retained filenames were not renumbered.
+
+`0007` still clears `SYS_CAN_SD`. With that bit set the off current is about 8 mA. With it clear, about 0.05 mA. An overnight unplugged power-off left `OFF_CNT` at 50, `BAT_CON` clear, and `SYS_CAN_SD` clear. `PWRON_VOL` was 3.947810 V. The Flip OCV table returned 82%. `Q_INIT` was about 2.460 Ah. The visible gauge was about 81% after the measured runtime load. That `OFF_CNT >= 3` reseed was reproduced and matched the table. Phase 5 did not adopt RK817 `001`, `002`, or `008`. Patch `001` corrects a saved-SoC ceiling. On the reachable 7.0.2 boot paths that were observed, that corrected value is overwritten before display, so an `001`-only image was not justified. `005` stays with Phase 6.
+
+`1010`, `9901`, and the GPU suspend/power-domain question stay with Phase 6. `1012a` and `1012b` stay with Phase 7. Phase 6 has not started. The evidence note is `docs/research/kernel-patch-audit-phase5.md`.
 
 After the input transition, remove patches made obsolete by:
 - the new joypad module;

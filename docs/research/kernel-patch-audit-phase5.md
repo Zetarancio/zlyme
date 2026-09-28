@@ -1,6 +1,6 @@
-# Kernel patch audit — Phase 5 research
+# Kernel patch audit — Phase 5
 
-Research only. This note does not add, delete, or replace a kernel patch. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
+Phase 5 is complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. The sections below are the evidence for that result. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
 
 Date: 2026-09-28.
 
@@ -29,9 +29,9 @@ The 19 commits after the Phase 2 pin are mostly other SoCs and frontends (H700, 
 
 ## Current Zlyme Linux patches
 
-The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Fifteen remain. The Phase 2 inventory had 45. This table is that starting list with the Phase 5A disposition.
+The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Phase 5D dropped two. Thirteen remain. The Phase 2 inventory had 45. This table is the starting list with the final disposition. Retained filenames were not renumbered.
 
-| Path | Subject | Provenance | Files | Flip use | 7.0.2 | Upstream `7.3-rc5` | Proposed disposition |
+| Path | Subject | Provenance | Files | Flip use | 7.0.2 | Upstream `7.3-rc5` | Disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `10-mainline/linux/0002-input-add-input-polldev-driver.patch` | restore `input-polldev` | brooksytech | `input-polldev.c`, Kconfig | No remaining caller. `gpio_keys_polled.c` in 7.0.2 does not include `input-polldev.h`. Flip volume and hall nodes are `gpio-keys`. `miyoo-flip-gamepad` does not use the helper. `KEYBOARD_GPIO_POLLED` does not depend on `INPUT_POLLDEV`. | Symbol existed only because of this patch. | Same. | DROP. Removed in Phase 5A. `CONFIG_INPUT_POLLDEV=y` was removed from `linux.config`. |
 | `10-mainline/linux/0004-input-adc-keys-redirect-keycode-316-to-rocknix-joypa.patch` | export `joypad_input_g` from adc-keys | spycat88 | `adc-keys.c` | No Flip `adc-keys` node. No C consumer of `joypad_input_g`. The Phase 3 driver does not reference it. | adc-keys exists; the export does not. | Not an upstream symbol. | DROP. Removed in Phase 5A. Nothing replaced the symbol; the Flip gamepad is `miyoo,flip-gamepad`. |
@@ -362,4 +362,45 @@ SSP off returns 1. SSP on without encryption returns 0. SSP on with encryption r
 
 `0006` stays. Linux 7.0.2 `hid-playstation.c` has no Edge paddle decode. `7.3-rc5` has `BTN_TRIGGER_HAPPY1`–`4` for product `0x0df2`. The selected kernel is still 7.0.2.
 
-No RK817 gauge patch was added. `0007` is unchanged. Thirteen Linux patches remain. Phase 5 stays open until the Phase 5D image is accepted on the Flip.
+No RK817 gauge patch was added. `0007` is unchanged. Thirteen Linux patches remain.
+
+## Phase 5 closure — 2026-09-28
+
+The Miyoo Flip accepted `zlyme-my355-20260928-7eaecf794830.tar` from `7eaecf794830a15c53f6b417a1b408dd31ceee53`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`.
+
+Passed: boot to NextUI; built-in d-pad, ABXY, both sticks, and MENU; one emulator with working controls and MENU+START back to NextUI; Bluetooth enable and scan; volume; one suspend/resume; clean shutdown. Controller pairing was not required. The overnight RK817 measurement was not repeated for this gate.
+
+Final application order, verified from the tree:
+
+1. `0005` Bluetooth RTL8733BU
+2. `0001` RK356x 1992 MHz OPP
+3. `0002` RK817 power-supply names
+4. `0007` RK817 `SYS_CAN_SD`
+5. `0008` Mali Bifrost DT additions
+6. `0666` CMA region
+7. `1001` RK356x idle states
+8. `1010` DFI suspend/resume
+9. `1012a` RK3568 DMC binding
+10. `1012b` RK3568 DMC driver
+11. `1013` VOP2 BCSH properties
+12. `9901` disable async PM by default
+13. `0006` DualSense Edge extra buttons
+
+DROP:
+
+- `input-polldev`. Obsolete after the Phase 3 gamepad driver. Removed in Phase 5A.
+- adc-keys joypad export. The Flip has no adc-keys gamepad path and no consumer. Removed in Phase 5A.
+- RK817 ON/OFF probe log. No operational dependency. Removed in Phase 5A.
+- UART1 shared `dma-names` patch. The Flip DTS already supplies `dma-names`, and the effective UART1 node is unchanged. Removed in Phase 5D.
+- Bluetooth SSP patch. On Linux 7.0.2 the old and patched endings of `hci_conn_check_link_mode()` return the same results. Removed in Phase 5D. Not labeled `UPSTREAMED`.
+
+KEEP: the thirteen patches above. `0007` is the physical off-current fix. `0008` still supplies the downstream GPU reset and Mali power-model nodes used by the supported Panfrost and `mali_kbase` paths. `0006` supplies DualSense Edge buttons that Linux 7.0.2 does not have.
+
+DEFER:
+
+- `1010`, `9901`, and the GPU suspend/power-domain investigation stay with Phase 6.
+- `1012a` and `1012b` stay with Phase 7.
+
+RK817. `SYS_CAN_SD` set is about 8 mA off. Cleared, about 0.05 mA. `0007` is unchanged and remains the fix. The overnight test reproduced the `OFF_CNT >= 3` path: `OFF_CNT` 50, `BAT_CON` clear, `SYS_CAN_SD` clear, `PWRON_VOL` 3.947810 V, Flip OCV table 82%, `Q_INIT` about 2.460 Ah, visible gauge about 81% after the measured runtime consumption. That reseed was quantitatively consistent. Phase 5 did not adopt `001`, `002`, or `008`. Patch `001` is a real numeric ceiling fix, and the corrected saved value is overwritten on the reachable 7.0.2 boot paths that were observed, so an `001`-only image was not justified. `005` stays with Phase 6.
+
+Phase 6 was not started.

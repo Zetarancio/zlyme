@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 5 complete
+
+The installed image `zlyme-my355-20260928-7eaecf794830.tar` (commit `7eaecf794830a15c53f6b417a1b408dd31ceee53`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`) passed the Phase 5 gate on the Miyoo Flip: boot to NextUI, built-in d-pad, ABXY, both sticks, and MENU, one emulator with working controls and MENU+START, Bluetooth enable and scan, volume, one suspend/resume, and a clean shutdown.
+
+Phase 5 started from eighteen Linux 7.0.2 patches. It removed `input-polldev`, the adc-keys joypad export, the RK817 ON/OFF probe log, the shared UART1 `dma-names` patch, and the historical Bluetooth SSP patch. Thirteen remain. `0007` still clears `SYS_CAN_SD` (about 8 mA with the bit set, about 0.05 mA cleared). The overnight off left `OFF_CNT` at 50 and the gauge matched `PWRON_VOL` 3.947810 V: OCV 82%, `Q_INIT` about 2.460 Ah, visible about 81% after the measured load. RK817 `001`, `002`, and `008` were not adopted. `001` fixes a saved-SoC ceiling that the observed 7.0.2 boot paths overwrite before display. `005`, DFI `1010`, async suspend `9901`, and the GPU power-domain question stay with Phase 6. DMC `1012a` and `1012b` stay with Phase 7. Phase 6 was not started.
+
 ## 2026-09-28 — Phase 5D redundant kernel patches dropped
 
 The Flip UART1 node already sets `dma-names`. Compiling the DTS with and without the shared SoC line kept DMA, CTS, 9600, and the gamepad child. The Bluetooth SSP patch does not change `hci_conn_check_link_mode()` on Linux 7.0.2: SSP off already returns success, and the function ends there. Both patches are dropped. The Mali GPU DT additions and the DualSense Edge buttons stay. No fuel-gauge patch. `SYS_CAN_SD` stays. Phase 5 stays open until this image is accepted.
