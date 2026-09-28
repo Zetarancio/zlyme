@@ -1637,6 +1637,8 @@ Phase 5 started from eighteen Linux patches on Linux 7.0.2. Phase 5A removed the
 
 `1010`, `9901`, and the GPU suspend/power-domain question stay with Phase 6. `1012a` and `1012b` stay with Phase 7. Phase 6 has not started. The evidence note is `docs/research/kernel-patch-audit-phase5.md`.
 
+After that hardware closure the maintainer corrected the retained kernel-delta policy. The image above remains the tested Phase 5 result and is no longer the intended final patch stack. The correction applies sixteen Linux patches: those thirteen, plus `0021`, `0030`, and local `0003`. `0021` keeps `dma-names` beside the RK356x UART1 DMA descriptors. The Flip DTS enables UART1, selects the CTS pinmux, and owns the gamepad child; it does not repeat `dma-names`. The effective Flip UART1 node is unchanged. `0030` is a DEBUG probe log of the ON and OFF source registers. It only reads those registers. `0003` is ROCKNIX patch `001` and changes the NVRAM SoC ceiling from `10000` to `100000`. That bounds check was objectively wrong. On the observed Linux 7.0.2 boot paths the saved value is still replaced by the coulomb counter or the `PWRON_VOL` OCV result before it is displayed, so `0003` does not fix the overnight reseed. ROCKNIX `002` and `008` stay disabled. `005` remains a Phase 6 evaluation. `0007` stays as it was. The Bluetooth SSP patch, `input-polldev`, and the adc-keys joypad export stay removed.
+
 After the input transition, remove patches made obsolete by:
 - the new joypad module;
 - newer upstream kernel code discovered since Phase 2;

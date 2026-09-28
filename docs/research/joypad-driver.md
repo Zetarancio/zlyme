@@ -82,9 +82,9 @@ Zlyme already reports positional `BTN_*` codes. That is the Linux gamepad ABI to
 
 ### UART1 pinmux and DMA — PROVEN present, not proven removable
 
-Stock `serial@fe650000` (UART1) is `status = "okay"`, has `dmas`, and `pinctrl-0` references both `uart1m0-xfer` (`0xdb`) and `uart1m0-ctsn` (`0xdc`). The decompiled node has no `dma-names` property. Zlyme's UART1 node adds `dma-names = "tx", "rx"` and the same two pin groups.
+Stock `serial@fe650000` (UART1) is `status = "okay"`, has `dmas`, and `pinctrl-0` references both `uart1m0-xfer` (`0xdb`) and `uart1m0-ctsn` (`0xdc`). The decompiled stock node has no `dma-names` property. Zlyme keeps `dma-names = "tx", "rx"` beside those DMA descriptors in the shared RK356x DTS. The Flip node enables UART1, selects `uart1m0_xfer` and `uart1m0_ctsn`, and adds the `miyoo,flip-gamepad` child. It does not repeat `dma-names`.
 
-Stock userspace disables hardware flow control. That does not prove the CTS pinmux or the DMA descriptors can be dropped. The 3B tracer keeps the current known-good UART pin and DMA setup. Removing `uart1m0_ctsn` or `dma-names` is a later, separate experiment.
+Stock userspace disables hardware flow control. That does not prove the CTS pinmux or the DMA descriptors can be dropped. The 3B tracer keeps the current known-good UART pin and DMA setup. Removing `uart1m0_ctsn` or the SoC `dma-names` is a later, separate experiment.
 
 ### Rumble — STRONGLY SUPPORTED
 

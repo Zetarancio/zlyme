@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — post-Phase-5 kernel dispositions corrected
+
+After the Phase 5 hardware closure, the maintainer changed the retained kernel delta. The accepted image `zlyme-my355-20260928-7eaecf794830.tar` stays that hardware result. It is no longer the intended patch stack. `0030` is restored as a DEBUG read of the RK817/RK809 ON and OFF source registers. `0021` is restored so `dma-names` sits beside the RK356x UART1 DMA descriptors, and the Flip DTS no longer repeats that property. Local `0003` is ROCKNIX `001`: the NVRAM SoC ceiling moves from `10000` (10%) to `100000` (100%). On the observed 7.0.2 boot paths that saved value is still replaced before display, so this does not change the overnight OCV reseed. ROCKNIX `002` and `008` stay disabled. `005` stays a Phase 6 evaluation. `0007` is unchanged. The Bluetooth SSP patch, `input-polldev`, and the adc-keys export stay removed. Sixteen Linux patches are the intended stack. Phase 6 was not started.
+
 ## 2026-09-28 — Phase 5 complete
 
 The installed image `zlyme-my355-20260928-7eaecf794830.tar` (commit `7eaecf794830a15c53f6b417a1b408dd31ceee53`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`) passed the Phase 5 gate on the Miyoo Flip: boot to NextUI, built-in d-pad, ABXY, both sticks, and MENU, one emulator with working controls and MENU+START, Bluetooth enable and scan, volume, one suspend/resume, and a clean shutdown.

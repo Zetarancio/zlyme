@@ -213,6 +213,14 @@ Do not regress these while pruning kernel patches:
 - upper USB-C host needs `usb2phy1_otg`, EHCI, OHCI, `vcc5v0_host`, and the OHCI PHY clock;
 - both SD slots share `vqmmc`, so mixed 1.8 V / 3.3 V operation is not a supported assumption;
 - RK817 off-state drain requires the current `SYS_CAN_SD` handling;
+
+The RK817/RK809 MFD probe also prints a diagnostic line:
+
+```sh
+dmesg | grep -E 'ON_SOURCE|OFF_SOURCE'
+```
+
+That line is emitted at probe and is only a read of the ON and OFF source registers. It helps distinguish boot and shutdown histories. No runtime policy parses it. It does not write a PMIC register, and it does not change shutdown or `SYS_CAN_SD`. Treat the register values as diagnostic evidence. They do not replace a direct physical-current measurement.
 - VDD_CPU is RK8600 on current retail hardware;
 - DMC devfreq uses the out-of-tree RK3568 V2 SIP implementation;
 - standard suspend works independently of deep suspend.

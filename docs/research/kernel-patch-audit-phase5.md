@@ -1,6 +1,6 @@
 # Kernel patch audit — Phase 5
 
-Phase 5 is complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. The sections below are the evidence for that result. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
+Phase 5 is complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. That image remains the tested Phase 5 result. The post-closure section is the retained kernel stack after the maintainer corrected `0030`, `0021`, and RK817 `001`. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
 
 Date: 2026-09-28.
 
@@ -29,7 +29,7 @@ The 19 commits after the Phase 2 pin are mostly other SoCs and frontends (H700, 
 
 ## Current Zlyme Linux patches
 
-The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Phase 5D dropped two. Thirteen remain. The Phase 2 inventory had 45. This table is the starting list with the final disposition. Retained filenames were not renumbered.
+The Phase 5 starting tree had eighteen patches. Phase 5A dropped three and Phase 5D dropped two, leaving thirteen at hardware closure. A post-closure correction then restored `0021` and `0030` and added local `0003` (ROCKNIX `001`). Sixteen patches are the intended stack. The disposition column is that correction. The Phase 5A, Phase 5D, and closure sections record what those passes did. Retained filenames were not renumbered. The Phase 2 inventory had 45.
 
 | Path | Subject | Provenance | Files | Flip use | 7.0.2 | Upstream `7.3-rc5` | Disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -38,11 +38,12 @@ The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Phase 5D
 | `10-mainline/linux/0005-Bluetooth-btrtl-Add-the-support-for-RTL8733BU.patch` | RTL8733BU firmware table | spycat88, `656d871541b3` | `btrtl.c`, `btusb.c` | Flip DTS has `rockchip,rtl8733bu-power`. | `8733` is absent from pristine `btrtl.c`. | Still absent from `7.3-rc5` `btrtl.c`. | KEEP. Not upstream. |
 | `20-rk3566/linux/0001-arm64-dts-rockchip-rk356x-add-1992mhz-cpu-opp-with-t.patch` | 1992 MHz OPP at 1.15 V, `turbo-mode` | sydarn | `rk3566.dtsi` | Flip includes that dtsi and does not delete the OPP. `zlyme-governor` `profile_overclock` sets `408000..1992000` when boost is on. Undervolt overlays `rk3566-undervolt-cpu-l1/l2/l3.dts` each contain `opp-1992000000`. | Not in the stock dtsi; this patch adds it. | Not treated as upstream. | KEEP. Optional boost, not the 1.8 GHz path. Removing it changes a live policy and the undervolt overlays. |
 | `20-rk3566/linux/0002-power-supply-rk817-update-battery-and-charger-name-s.patch` | `rk817-battery` to `battery`, charger name to `charger` | ab0tj | `rk817_charger.c` | Live. Apostrophe reads `/sys/class/power_supply/battery/capacity`. `PLAT_getBatteryStatusFine` also reads that path and comments that the charger class may still be `rk817-charger`. | Stock names are the `rk817-*` strings. | Not re-checked; the rename is a Zlyme userspace ABI. | KEEP. A rename back would be a separate userspace migration, not a patch deletion. |
+| `20-rk3566/linux/0003-power-supply-rk817-charger-Fix-NVRAM-SoC-Value.patch` | NVRAM SoC ceiling `10000` to `100000` | Chris Morgan, `d6bc8b45fe18`, ROCKNIX `001` at `fe127fad01f6` | `rk817_charger.c` | Saved SoC is 0..100000. Linux 7.0.2 clamps above 10000. | The `10000` clamp is in pristine 7.0.2. | Still `10000` in 7.3-rc5. | KEEP. Applied. Local filename `0003` is ROCKNIX `001`. Behaviorally latent on the observed boot paths because later logic replaces `charger->soc`. |
 | `20-rk3566/linux/0007-power-supply-rk817-clear-sys-can-sd-fix-drain.patch` | clear `SYS_CAN_SD` | Zetarancio, 2026-04-05 | `rk817_charger.c`, `rk808.h` | Flip hardware. Wiki and `docs/OPERATIONS.md` / `ARCHITECTURE.md` require it. True POR leaves register `0xe6` at `0xc5` (bit set): about 8 mA off, about 0.05 mA with the bit clear. | `RK817_SYS_CAN_SD` is absent. | Still absent from `7.3-rc5`. | KEEP. See the comparison below. Do not stack ROCKNIX `007` on top. |
 | `20-rk3566/linux/0008-arm64-dts-rockchip-add-support-for-mali-bifrost-driv.patch` | Mali resets and power model on `&gpu` | Danil Zagoskin | `rk356x-base.dtsi` | Flip enables `&gpu` for Panfrost and mali_kbase. | Pristine 7.0.2 GPU node has clocks and a power domain, and not `resets`, `power_policy`, or the two `power_model` nodes. | Not the same downstream nodes. | KEEP. Those properties are the kbase power model and the GPU reset. Not proven unused on both GPU paths. |
 | `20-rk3566/linux/0013-Bluetooth-Check-key-sizes-only-when-Secure-Simple-Pa.patch` | historical SSP early return | Marcel Holtmann, 2019, `cce32250027f` | `hci_conn.c` | Generic Bluetooth. | The 7.0.2 function already returns 1 when SSP is off. The patch does not skip any later key-size check; the function ends at `return 1`. | Same combined test, not this early return. | DROP. Behaviorally redundant on 7.0.2. Not labeled UPSTREAMED. Removed in Phase 5D. |
-| `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | `dma-names` on shared UART1 | spycat88 | `rk356x-base.dtsi` | Flip `&uart1` already sets `dma-names = "tx", "rx"`. | Pristine UART1 has `dmas` and no `dma-names`. | Not re-checked upstream. | DROP. Final Flip UART1 keeps DMA, CTS, 9600, and the gamepad child. Removed in Phase 5D. |
-| `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | `dev_info` of ON/OFF source | Zetarancio | `rk8xx-core.c` | No current procedure in `docs/OPERATIONS.md`, `board/`, `package/`, or `scripts/` reads `ON_SOURCE` / `OFF_SOURCE`. Historical notes are not a runtime contract. The off-state drain fix remains patch `0007`. | The log was not in pristine 7.0.2. | Not re-checked after removal. | DROP. Removed in Phase 5A. |
+| `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | `dma-names` beside UART1 `dmas` | spycat88 | `rk356x-base.dtsi` | Flip UART1 is the gamepad serdev port. | Pristine UART1 has `dmas` and no `dma-names`. | Not proven as this exact line in upstream. | KEEP. Applied. The SoC DTS owns the names. The Flip DTS does not repeat them. Effective UART1 DMA, CTS, 9600, and the gamepad child stay. |
+| `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | `dev_info` of ON/OFF source | Zetarancio | `rk8xx-core.c` | Maintainer hardware debugging. `docs/OPERATIONS.md` shows `dmesg` for the line. No service parses it. | The log is not in pristine 7.0.2. | Not an upstream behavior change. | DEBUG. Applied. Reads `ON_SOURCE` and `OFF_SOURCE` only. No PMIC write, no shutdown change, and no effect on `0007`. |
 | `20-rk3566/linux/0666-cma-region.patch` | CMA region | historical | CMA | Flip display/GPU allocations. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Do not resize memory in this phase. |
 | `20-rk3566/linux/1001-arm64-dts-rockchip-Add-idle-states-for-rk356x.patch` | CPU idle states | historical | `rk356x` dts | Flip CPUs. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Idle behavior is not a deletion target without a measurement. |
 | `20-rk3566/linux/1010-devfreq-event-rockchip-dfi-add-pm-suspend-resume.patch` | DFI suspend/resume | historical | DFI driver | Used with the DMC node. | Not re-diffed. | Unknown. | Leave for Phase 6. Do not delete as "unused" from a Phase 5 cleanup. |
@@ -79,7 +80,7 @@ ROCKNIX commit `f03ec1352010cda78e0541429b3ef275b0f65977`. Patch `001-power-supp
 
 The Flip uses this driver and a 3 Ah `simple-battery` (`charge-full-design-microamp-hours = <3000000>`, OCV 3.2–4.25 V, 20 °C table from the 2025 firmware). A saved NVRAM SoC above 10% is therefore forced to 10% on every boot that takes that path, until a later full-charge or empty correction. That is a real correctness bug on this hardware, independent of the ~8 mA drain. It does not change the OCV table or the 3 Ah capacity.
 
-Proposed disposition: **ADOPT CANDIDATE**, alone, with the validation plan below. Not implemented in this commit. Upstream status: posted downstream, not in 7.0.2 or 7.3-rc5.
+Post-closure disposition: **KEEP / applied** as local `0003`. The `10000` ceiling is an objective scale bug: saved SoC uses 0..100000. On the observed Linux 7.0.2 boot paths the value is still replaced by `Q_PRES` or `PWRON_VOL` before it becomes the visible boot state, so the fix is behaviorally latent and does not change the overnight OCV reseed. Adopting it corrects the stored-value check whether or not `002` is enabled later. Upstream status: posted downstream, not in 7.0.2 or 7.3-rc5.
 
 ### 002 — boot SoC from the coulomb counter
 
@@ -91,7 +92,7 @@ This matches the wiki's separate bug: a large powered-off percentage drop that w
 
 Dry-run of `002` on pristine 7.0.2 succeeded, so it does not strictly need `001` to apply. Semantically it should still follow `001`, because a counter-derived SoC above 10% would otherwise be clamped by the old NVRAM bound on the next save/read. `VOLTAGE_BOOT` / `VOLTAGE_OCV` are absent from 7.0.2 and 7.3-rc5.
 
-Proposed disposition: **ADOPT CANDIDATE only after 001**, and only as its own change with the validation plan. Do not import it because another handheld saw the bug. Upstream status: downstream only.
+Post-closure disposition: **DISABLED**. It changes boot and gauge policy, not only a numeric bound. The Flip overnight test reproduced the current `OFF_CNT >= 3` `PWRON_VOL` path and the result matched the OCV table. The 5% relax threshold is ROCKNIX policy and was not validated on this Flip. It is not in an active patch directory. Upstream status: downstream only.
 
 ### 008 — bound boot SoC with the OCV table
 
@@ -99,7 +100,7 @@ ROCKNIX `f79ac0182f367049802815680014f16fe8d322a8`. Patch `008`, Jacob Cook. It 
 
 Dry-run on pristine 7.0.2 failed both hunks. It depends on `002`'s boot log and counter assignment. The Flip OCV table is a firmware curve, not a measured rested pack on this unit, so it is not yet evidence that a 10% bound is right for a degraded or replacement cell.
 
-Proposed disposition: **DEFER** until `001` and `002` have Flip measurements. Not an automatic third patch. Upstream status: downstream only.
+Post-closure disposition: **DISABLED**. `008` bounds a counter-first boot SoC with battery voltage and the OCV table, and the ROCKNIX patch is written on top of `002`. Zlyme is leaving `002` disabled, so this algorithm is not imported and is not being rebased onto vanilla 7.0.2 plus `001`. It does not conflict with `0007`. There is no current reason to adapt it on its own. Upstream status: downstream only.
 
 ### 005 — gauge across sleep
 
@@ -107,7 +108,7 @@ Patch `005`, Jacob Cook, in the same ROCKNIX series. Suspend stamps boot time, c
 
 Phase 2 left suspend gauge behavior to Phase 6. Dry-run on pristine 7.0.2 failed 2 of 6 hunks. It belongs after the boot-SoC series, and the roadmap owner is still Phase 6.
 
-Proposed disposition: **DEFER TO PHASE 6**. Do not start deep-suspend work from this research.
+Post-closure disposition: **EVALUATE IN PHASE 6**. Do not apply it with this correction, and do not start that evaluation here.
 
 ### Fuel-gauge reset helper
 
@@ -366,6 +367,8 @@ No RK817 gauge patch was added. `0007` is unchanged. Thirteen Linux patches rema
 
 ## Phase 5 closure — 2026-09-28
 
+This section records the hardware closure. It is not the post-closure patch stack.
+
 The Miyoo Flip accepted `zlyme-my355-20260928-7eaecf794830.tar` from `7eaecf794830a15c53f6b417a1b408dd31ceee53`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`.
 
 Passed: boot to NextUI; built-in d-pad, ABXY, both sticks, and MENU; one emulator with working controls and MENU+START back to NextUI; Bluetooth enable and scan; volume; one suspend/resume; clean shutdown. Controller pairing was not required. The overnight RK817 measurement was not repeated for this gate.
@@ -404,3 +407,23 @@ DEFER:
 RK817. `SYS_CAN_SD` set is about 8 mA off. Cleared, about 0.05 mA. `0007` is unchanged and remains the fix. The overnight test reproduced the `OFF_CNT >= 3` path: `OFF_CNT` 50, `BAT_CON` clear, `SYS_CAN_SD` clear, `PWRON_VOL` 3.947810 V, Flip OCV table 82%, `Q_INIT` about 2.460 Ah, visible gauge about 81% after the measured runtime consumption. That reseed was quantitatively consistent. Phase 5 did not adopt `001`, `002`, or `008`. Patch `001` is a real numeric ceiling fix, and the corrected saved value is overwritten on the reachable 7.0.2 boot paths that were observed, so an `001`-only image was not justified. `005` stays with Phase 6.
 
 Phase 6 was not started.
+
+## Post-closure correction
+
+After the hardware closure the maintainer changed three dispositions. The tested image stays valid history. The intended applied stack is sixteen patches.
+
+Current dispositions:
+
+- `0030` DEBUG, applied. The probe reads `RK817_ON_SOURCE_REG` and `RK817_OFF_SOURCE_REG` and logs them with `dev_info`. It writes no PMIC register. Shutdown and `SYS_CAN_SD` are unchanged. No userspace service parses the line. Removing the line would not change normal operation. The maintainer uses the line while debugging hardware, so it stays `dev_info`.
+- `0021` KEEP, applied in `rk356x-base.dtsi` beside `dmas = <&dmac0 2>, <&dmac0 3>`. The Flip DTS no longer sets `dma-names`. It still enables UART1, selects `uart1m0_xfer` and `uart1m0_ctsn`, and owns the `miyoo,flip-gamepad` child at 9600. This is an ownership choice. The effective Flip UART1 DMA and serdev child stay. It is not recorded here as an upstream Linux fix.
+- `0003` KEEP, applied. The file is ROCKNIX `001-power-supply-rk817-charger-Fix-NVRAM-SoC-Value.patch` from `ROCKNIX/distribution` `fe127fad01f6006bea1734ebde87d1c02cc6d256`, commit `d6bc8b45fe18b1c8fdd7e4b8d5fa6f10d0eda4cd`, Chris Morgan, 2026-08-24. The local name is `0003` because Zlyme already uses `0001` for the 1992 MHz OPP. The only functional change is `charger->soc > 10000` / `= 10000` becoming `> 100000` / `= 100000`. Saved SoC is 0..100000. The old clamp treated everything above 10% as 10%. On the observed 7.0.2 boot paths that saved value is then replaced by the `Q_PRES` SoC or the `PWRON_VOL` OCV SoC, so the patch is behaviorally latent and does not fix the overnight reseed.
+- `002` DISABLED. Not applied. It would change boot policy: counter-first boot, saved-SoC fallback, `VOLTAGE_BOOT`, `VOLTAGE_OCV`, and a 5% relax recalibration. The overnight `OFF_CNT >= 3` path already produced a coherent OCV result. The 5% threshold was not validated on this Flip.
+- `008` DISABLED. Not applied, and not rebased onto 7.0.2 plus `0003`. It bounds the `002` counter-first path. It does not conflict with `0007`.
+- `005` EVALUATE IN PHASE 6. Not applied.
+- `0007` KEEP, applied, unchanged. Physical off current is about 8 mA with `SYS_CAN_SD` set and about 0.05 mA with it clear.
+
+Still dropped: `input-polldev`, the adc-keys joypad export, and the Bluetooth SSP patch.
+
+`0007`, `0003`, `002`/`008`, `005`, and `0030` are separate mechanisms: off current, saved-SoC validation, alternative gauge policy, suspend gauge behavior, and a debug log.
+
+Phase 6 implementation was not started.
