@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 6D vdd_logic-off image built
+
+The only functional change from the accepted Phase 6C tree is `vdd_logic` (`RK817` `DCDC_REG1`) `regulator-state-mem`: on-in-suspend becomes off-in-suspend. `regulator-always-on` and `regulator-boot-on` stay. The suspend node is still `rockchip,pm-rk3568` with mask `0x5ec`, wake `0x10`, and debug 0. Stock's shipped DTB uses the same compatible, the same masks, and also turns DCDC1 off, and that node is `regulator-always-on` and `regulator-boot-on` with no suspend microvolt. The DMC node still uses `vdd_logic` as `center-supply`. No other rail, patch, firmware, or userspace suspend path changed. This image is not hardware-accepted. Phase 6 is not complete.
+
 ## 2026-09-28 — Phase 6C normal suspend path passed
 
 On `zlyme-my355-20260928-ff92191bb51c.tar` the power button was used for the suspends. An earlier SSH call to `/usr/share/nextui/bin/suspend` slept at 13:51:10 UTC and resumed at 13:52:32 UTC. BL31 returned `res.a0=0` for `LINUX_PM_STATE` (`cfg1=0x3`), mode `0x5ec`, and wake `0x10`. That path never entered `PWR_sleepNow()`, so `pwr.resume_tick` was not set. The wake press was then a new NextUI power press and the device slept again about four seconds later, also with `res.a0=0`. That second sleep is the missing userspace guard, not a BL31 or kernel failure. `zlyme-keylidmon` has its own 1000 ms guard and was not the sleeper for that SSH cycle.

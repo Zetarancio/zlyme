@@ -425,7 +425,15 @@ The later power-button session left eight `.prepare` triplets in the kernel log,
 
 `/storage` (`mmcblk0p3`, exFAT) took a temporary file, read it back, and the file was removed. `/sys/class/devfreq/dmc` stayed `powersave` at 324 MHz before and after. `mali_kbase` stayed loaded and NextUI still reported `opengles2`. Wi-Fi reassociated to `TP-Link_E44F` and SSH returned. Each resume reinitialized the Realtek USB device after `xHC error in resume, USBSTS 0x401, Reinit`, and the MMC hosts retuned. Those lines are resume traffic, not a stuck fault. No `Oops`, `Call Trace`, hung task, or filesystem I/O error remained in the buffer. The Flip gamepad and the virtual `Microsoft X-Box 360 pad` were both present. Battery while charging moved from capacity 9 / `charge_now` 284832 to capacity 13 / `charge_now` 377024. That is the charger, not an RK817 `005` result.
 
-`vdd_logic` was not switched to off-in-suspend. Phase 6D has not started. Phase 6 is not complete.
+`vdd_logic` was not switched to off-in-suspend in that test.
+
+## Phase 6D image
+
+Built, not hardware-accepted. The only functional difference from the Phase 6C tree is `vdd_logic` / RK817 `DCDC_REG1`: `regulator-on-in-suspend` became `regulator-off-in-suspend`. `regulator-always-on` and `regulator-boot-on` remain. No suspend microvolt was added. Stock `miyoo355_20250527_0.dts` has the same three properties on DCDC1 and no suspend microvolt. Its suspend node is `rockchip,pm-rk3568`, sleep `0x5ec`, wake `0x10`, and `sleep-debug-en` 1. Zlyme keeps debug at 0.
+
+`dmc` still has `center-supply = <&vdd_logic>`. DCDC1 powers the center domain while the system is running. BL31 `ARMOFF_LOGOFF` is what has to restore that domain after mem suspend. The DMC driver was not changed.
+
+Sleep mask, wake mask, debug, BL31 v1.44, the 18 Linux patches, and the userspace suspend path are unchanged. Phase 6D is awaiting a physical power-button test. Phase 6 is not complete.
 
 ## Open items
 
