@@ -630,7 +630,7 @@
 			status = "okay";
 		};
 
-		/* Regulators: DCDC1–4, LDO1–9, BOOST. Suspend state per rail (logic/gpu/ddr off, PMU/always-on on). */
+		/* Regulators: DCDC1–4, LDO1–9, BOOST. In mem suspend, logic and GPU are off, DDR stays on, and the PMU rails stay on. */
 		regulators {
 			vdd_logic: DCDC_REG1 {
 				regulator-always-on;
@@ -642,13 +642,13 @@
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_logic";
 				/*
-				 * Stay on while the BL31 suspend mode is first
-				 * programmed. Stock turns this rail off only with
-				 * a resume path that already has ARMOFF_LOGOFF.
-				 * That combination is not this image.
+				 * BL31 v1.44 accepted the stock 0x5ec suspend mode,
+				 * including ARMOFF_LOGOFF, during Phase 6B/6C hardware
+				 * validation. Match the stock Flip suspend policy by
+				 * switching DCDC1 off in mem suspend.
 				 */
 				regulator-state-mem {
-					regulator-on-in-suspend;
+					regulator-off-in-suspend;
 				};
 			};
 
