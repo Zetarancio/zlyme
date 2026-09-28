@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — RK817 long power-off did not set OFF_CNT
+
+After the Phase 5B snapshot (88%, saved SoC 87324, `OFF_CNT` 0), the Flip was shut down, left off about 40–45 minutes with the charger unplugged and the battery connected, then booted still unplugged. At 2338 seconds of uptime, `OFF_CNT` was still 0, `BAT_CON` was clear, the charger was offline, and `SYS_CAN_SD` was still clear. Linux 7.0.2 only reads `OFF_CNT`. The `PWRON_VOL` reseed did not run. Visible capacity was 80% on the coulomb counter. That is not an OCV-reseed result and not a physical-drain measurement. No gauge patch and no register write. Phase 5 stays in progress.
+
 ## 2026-09-28 — Phase 5A accepted; RK817 gauge read only
 
 The Etcher install of `zlyme-my355-20260928-b0594dc35ee5.tar` passed boot, built-in controls, one emulator with MENU+START, volume, suspend/resume, and shutdown. The running kernel timestamp is `Mon Sep 28 00:23:23 UTC 2026`. A read-only regmap dump showed saved SoC 87324 (87.3%), FCC 3000 mAh, `OFF_CNT` 0, `BAT_CON` clear, and `SYS_CAN_SD` clear. Displayed capacity was 88% from the live counter. Linux 7.0.2 clamps a saved SoC above 10000 and then replaces that value from the coulomb counter or `PWRON_VOL` before programming the gauge, so ROCKNIX patch `001` does not change the visible percentage by itself. The local 5.10 tree has the BSP symbols in `System.map-5.10` but not `rk817_battery.c`. No gauge patch was added and no RK817 register was written. Phase 5 stays in progress.

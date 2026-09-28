@@ -290,8 +290,22 @@ On the next boot, `rk817_read_battery_nvram_values()` would clamp 87324 to 10000
 
 The local BSP halt rule was not available to apply. The common `abs(live - saved) > FCC/10` test, which this tree does **not** confirm, would be about 8 mAh versus 300 mAh and would not call this a halt. That is an illustration, not a BSP result.
 
+## Phase 5C — long power-off, 2026-09-28
+
+Result: **INSUFFICIENT LONG-OFF INTERVAL**.
+
+The Phase 5A image was shut down cleanly, left off about 40–45 minutes with the charger unplugged and the battery connected, then booted still unplugged. Capture was at `2026-09-28T01:15:43Z`. `/proc/uptime` was `2337.78` seconds (38.96 minutes after boot). Kernel is still `7.0.2 #1 SMP PREEMPT Mon Sep 28 00:23:23 UTC 2026`. Charger `online=0`. No register was written and the machine was not rebooted for this capture.
+
+`OFF_CNT` (`0x6f`) read `0x00`. `GG_STS` is `0x49`, so `BAT_CON` (bit 4) is clear. `0xe6` is `0x40`, so `SYS_CAN_SD` is still clear. Linux 7.0.2 only reads `OFF_CNT`; it does not write it. Nothing under `board/my355` writes that register. The live value is therefore the hardware value, and it is below 3. The `PWRON_VOL` reseed branch was not taken. This run does not test that branch.
+
+Post-boot `battery`, for the record, not as a reseed result: capacity 80, `voltage_avg` 3606280 µV, `voltage_now` ABSENT, `current_avg` -1034064 µA, `current_now` ABSENT, `charge_now` 2396304 µAh, `charge_full` 3000000 µAh. Saved SoC `04 38 01` = 79876 (79.876%). Saved remaining `5c 09 00` = 2396 mAh. FCC still 3000 mAh. `Q_PRES` `02 fd 41 71` converts to about 2394 mAh. Those numbers sit on the coulomb path, about 8 percentage points below the Phase 5B 88% / 87.324% snapshot, after the off interval plus 39 minutes powered on. That is not evidence of an OCV reseed, and it is not evidence of physical milliamp drain. The ~8 mA / ~0.05 mA `SYS_CAN_SD` result is unchanged.
+
+`001` is still latent on both boot branches in the source: the `>= 3` branch replaces SoC from `PWRON_VOL` after the clamp, and this run did not enter that branch. No `001` image. The 5% relax loop in `002` is still unproven. The pre-reinit coulomb counter is not observable here because `OFF_CNT` never showed that the reseed ran. No temporary boot log is required until a later off interval actually leaves `OFF_CNT >= 3`.
+
+Next step: **A. No implementation yet.** Repeat the unplugged power-off only if a future read shows `OFF_CNT >= 3` without writing the register. Do not apply `001`, `002`, `005`, or `008` from this run.
+
 ### Recommendation
 
-**D. No gauge change yet.**
+Phase 5B said **D**: no gauge change until a long power-off is captured. Phase 5C did that capture and the counter stayed at 0, so the outcome is now **A**: no implementation yet.
 
 `001` alone does not change today's displayed percentage. `002` mixes a saved-SoC fallback that would make `001` reachable with a 5% relax reseed that the Flip BSP source, which is missing from this checkout, does not justify. The next evidence step is a controlled power-off long enough for `OFF_CNT` to pass 3, then one boot, comparing percentage with voltage. Do not reset `BAT_CON` or clear NVRAM to manufacture that. Do not apply `001`, `002`, `005`, or `008` until that capture is reviewed. `0007` stays as it is.
