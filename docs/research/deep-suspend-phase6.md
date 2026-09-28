@@ -407,7 +407,25 @@ ROCKCHIP_SIP_SUSPEND_LINUX_PM_STATE   0x09
 
 Probe checks `arm_smccc_1_1_get_conduit()` and fails before any call when the conduit is none. It then sends mode, wake, and debug. A rejected required call stays bound. `.prepare` retries `LINUX_PM_STATE`, mode, and wake, and returns `-EIO` if any raw `res.a0` is non-zero. Debug is not resent from `.prepare` and does not fail suspend. There is no resume callback and no RK817 SLPPIN write.
 
-BL31 acceptance is not known until the device log shows the raw `res.a0` values. `vdd_logic` off-in-suspend is not enabled. Phase 6C and 6D have not started.
+## Phase 6B hardware result and Phase 6C
+
+Hardware-accepted on the installed image `zlyme-my355-20260928-ff92191bb51c.tar`, runtime `ff92191bb51c09174b42b7660e94f0f652bf6241`, kernel `Linux 7.0.2 #1 SMP PREEMPT Mon Sep 28 13:11:00 UTC 2026`. `/sys/power/mem_sleep` stayed `s2idle [deep]`.
+
+The SSH-started suspend at 13:51:10 UTC resumed at 13:52:32 UTC. `.prepare` was:
+
+```text
+LINUX_PM_STATE ctrl=0x9 cfg1=0x3 sleep_state=3 res.a0=0
+MODE           ctrl=0x1 cfg1=0x5ec            res.a0=0
+WAKE           ctrl=0x2 cfg1=0x10             res.a0=0
+```
+
+A second `.prepare` about four seconds later returned the same three zeros. That suspend was `/usr/share/nextui/bin/suspend` from SSH. It did not run `PWR_sleepNow()`, so `pwr.resume_tick` stayed unset. NextUI treats a power press within 1000 ms of that timestamp as the wake press and ignores it. Without the timestamp, the wake press was a new power press and NextUI slept again. `zlyme-keylidmon` uses `POWER_RESUME_GUARD_MS` 1000 for the in-game path only. This duplicate is a test-method and userspace event-handling artifact. It is not a BL31 rejection, a kernel PM retry, or a firmware wake failure. Neither program was changed.
+
+The later power-button session left eight `.prepare` triplets in the kernel log, at 442.61, 484.94, 504.56, 535.89, 552.28, 578.65, 602.24, and 616.25 seconds. Every one is `LINUX_PM_STATE` `cfg1=0x3` `res.a0=0`, mode `0x5ec` `res.a0=0`, and wake `0x10` `res.a0=0`. The shortest gap is 14.0 seconds. NextUI's log has six `Entering mem sleep` lines. Each says the platform suspend executable exited 0, then reinitializes audio. It does not contain `ignoring spurious power button press`. The log order is two menu sleeps, Doom, four menu sleeps, then Game Boy Color. The two kernel suspends that are not in that log sit in the Doom gap, which is the in-game path. There is no four-second pair like the SSH duplicate.
+
+`/storage` (`mmcblk0p3`, exFAT) took a temporary file, read it back, and the file was removed. `/sys/class/devfreq/dmc` stayed `powersave` at 324 MHz before and after. `mali_kbase` stayed loaded and NextUI still reported `opengles2`. Wi-Fi reassociated to `TP-Link_E44F` and SSH returned. Each resume reinitialized the Realtek USB device after `xHC error in resume, USBSTS 0x401, Reinit`, and the MMC hosts retuned. Those lines are resume traffic, not a stuck fault. No `Oops`, `Call Trace`, hung task, or filesystem I/O error remained in the buffer. The Flip gamepad and the virtual `Microsoft X-Box 360 pad` were both present. Battery while charging moved from capacity 9 / `charge_now` 284832 to capacity 13 / `charge_now` 377024. That is the charger, not an RK817 `005` result.
+
+`vdd_logic` was not switched to off-in-suspend. Phase 6D has not started. Phase 6 is not complete.
 
 ## Open items
 

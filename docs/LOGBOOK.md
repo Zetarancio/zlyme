@@ -19,9 +19,15 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 6C normal suspend path passed
+
+On `zlyme-my355-20260928-ff92191bb51c.tar` the power button was used for the suspends. An earlier SSH call to `/usr/share/nextui/bin/suspend` slept at 13:51:10 UTC and resumed at 13:52:32 UTC. BL31 returned `res.a0=0` for `LINUX_PM_STATE` (`cfg1=0x3`), mode `0x5ec`, and wake `0x10`. That path never entered `PWR_sleepNow()`, so `pwr.resume_tick` was not set. The wake press was then a new NextUI power press and the device slept again about four seconds later, also with `res.a0=0`. That second sleep is the missing userspace guard, not a BL31 or kernel failure. `zlyme-keylidmon` has its own 1000 ms guard and was not the sleeper for that SSH cycle.
+
+On the later boot the maintainer ran the power-button cycles. The retained kernel log has eight `.prepare` triplets, every one `res.a0=0` with the same three values. The closest pair is 14 seconds apart, not the four-second SSH duplicate. NextUI logged six `Entering mem sleep` lines and each platform suspend exited 0. It never logged `ignoring spurious power button press`. Two kernel suspends are absent from that log and match the in-game path. `/storage` accepted a temporary write. DMC stayed at 324 MHz on `powersave`. `mali_kbase` stayed loaded. Wi-Fi returned and SSH reconnected. The Xbox virtual pad and the Flip gamepad were both present. Battery went from 9% to 13% while charging. `vdd_logic` was not turned off. Phase 6D was not started.
+
 ## 2026-09-28 — Phase 6B suspend firmware driver built
 
-A built-in driver programs the RK3568 BL31 suspend ABI from a `rockchip,pm-rk3568` node. The Flip node uses sleep mask `0x5ec`, wake mask `0x10`, and debug 0. `vdd_logic` stays `regulator-on-in-suspend`. Probe sends mode, wake, and debug. Every suspend `.prepare` sends `LINUX_PM_STATE`, then mode, then wake, and aborts that suspend if firmware returns non-zero. RK817 `005`, DFI, DMC, GPU, async suspend, and BL31 v1.44 were not changed. The image is waiting for hardware logs. Phase 6 is not complete.
+A built-in driver programs the RK3568 BL31 suspend ABI from a `rockchip,pm-rk3568` node. The Flip node uses sleep mask `0x5ec`, wake mask `0x10`, and debug 0. `vdd_logic` stays `regulator-on-in-suspend`. Probe sends mode, wake, and debug. Every suspend `.prepare` sends `LINUX_PM_STATE`, then mode, then wake, and aborts that suspend if firmware returns non-zero. RK817 `005`, DFI, DMC, GPU, async suspend, and BL31 v1.44 were not changed. The image was later accepted in the Phase 6C entry above. Phase 6 is not complete.
 
 ## 2026-09-28 — Phase 6A deep-suspend research
 

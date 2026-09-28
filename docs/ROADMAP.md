@@ -1662,7 +1662,7 @@ This should leave a small explainable my355 kernel delta.
 
 ## 6 — Deep suspend bring-up
 
-Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. Phase 6B adds a built-in `rockchip,pm-rk3568` driver with sleep mask `0x5ec`, wake mask `0x10`, and `sleep-debug-en` 0. `vdd_logic` stays on in suspend. That image is a diagnostic build and is not hardware-accepted. RK817 `005` is not applied. Phase 6 is not complete.
+Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. Phase 6B is hardware-accepted on `zlyme-my355-20260928-ff92191bb51c.tar`: BL31 v1.44 accepts sleep mask `0x5ec`, wake mask `0x10`, and `LINUX_PM_STATE` 3, all with `res.a0=0`. Phase 6C passed on the normal power button. NextUI and in-game suspend/resume returned the display, controls, storage, and Wi-Fi. `vdd_logic` stayed on. RK817 `005` is not applied. Phase 6 is not complete.
 
 The device wiki establishes:
 
