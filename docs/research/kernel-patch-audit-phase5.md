@@ -1,6 +1,6 @@
 # Kernel patch audit — Phase 5
 
-Phase 5 is complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. That image remains the tested Phase 5 result. The post-closure section is the retained kernel stack after the maintainer corrected `0030`, `0021`, and RK817 `001`. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
+Phase 5 is complete — 2026-09-28. The Phase 5 closure runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`, image `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. The maintainer then corrected `0030`, `0021`, and RK817 `001`. That 16-patch stack also passed on the Flip: runtime `8119387e0fdb729f1f013bed9dbc48c76e37a1df`, image `zlyme-my355-20260928-8119387e0fdb.tar`, SHA-256 `4b831245e8f25ba8f1f1960021917ad631f6df734cb83bc589aa73981da292ae`. `8119387e` supersedes `7eaecf7` as the intended baseline entering Phase 6. The Phase 2 record stays in `docs/research/kernel-patch-audit.md`. Current architecture stays in `docs/ARCHITECTURE.md`.
 
 Date: 2026-09-28.
 
@@ -427,3 +427,21 @@ Still dropped: `input-polldev`, the adc-keys joypad export, and the Bluetooth SS
 `0007`, `0003`, `002`/`008`, `005`, and `0030` are separate mechanisms: off current, saved-SoC validation, alternative gauge policy, suspend gauge behavior, and a debug log.
 
 Phase 6 implementation was not started.
+
+## Post-closure hardware acceptance — 2026-09-28
+
+The Miyoo Flip accepted `zlyme-my355-20260928-8119387e0fdb.tar` from runtime `8119387e0fdb729f1f013bed9dbc48c76e37a1df`, SHA-256 `4b831245e8f25ba8f1f1960021917ad631f6df734cb83bc589aa73981da292ae`. Archive `VERSION` is `8119387e0fdb` and `20260928`.
+
+Passed: boot to NextUI; built-in d-pad, ABXY, both sticks, and MENU; one game with working controls and MENU+START; volume up and down; Bluetooth enable and scan; one normal suspend/resume with display and controls afterward; a plausible battery percentage; clean shutdown.
+
+The probe line was:
+
+```text
+[    1.118675] rk8xx-i2c 0-0020: ON_SOURCE=0x02 OFF_SOURCE=0x08
+```
+
+`0030` is hardware-functional. The values are the raw registers. Normal runtime does not depend on the line, and no userspace parser was added.
+
+`0003` stays applied because the `10000` ceiling is wrong for a 0..100000 saved-SoC scale. On the observed Linux 7.0.2 boot paths that saved value is later replaced, so the patch stays behaviorally latent there. It does not change the tested `OFF_CNT >= 3` `PWRON_VOL`/OCV path. The overnight result remains `OFF_CNT` 50, `BAT_CON` clear, `SYS_CAN_SD` clear, `PWRON_VOL` 3.947810 V, OCV 82%, `Q_INIT` about 2.460 Ah, and visible about 81% after the measured load.
+
+`002` and `008` stay disabled. `005` stays a Phase 6 evaluation. `0007` is unchanged. Sixteen patches apply in this order: `0005`, `0001`, `0002`, `0003`, `0007`, `0008`, `0021`, `0030`, `0666`, `1001`, `1010`, `1012a`, `1012b`, `1013`, `9901`, `0006`. `input-polldev`, the adc-keys joypad export, and the Bluetooth SSP patch stay removed. `8119387e` is the intended baseline entering Phase 6. Phase 6 implementation was not started.
