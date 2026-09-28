@@ -32,23 +32,41 @@ UNKNOWN
 
 ## Old Zlyme `1013a/b`
 
-The files were not recovered.
-
-Searched: tracked files, ignored and untracked names, `git log --all -S'RK3568_SUSPEND_MODE'`, `git log --all -S'rockchip,rk3568-suspend'`, and local filenames under the repository and a shallow home search. The only hits are the current comment in `linux.config` and the commented node in `rk3566-miyoo-flip.dts`. Those comments are already present in the first board commit `d843dbecf314122605c1374e4fe5d98e1c09c06b`. The patch files were never committed here.
+They are not in the Zlyme git history. A later search of the local archived ROCKNIX checkout found them, renamed so the build does not apply them:
 
 ```text
-NOT RECOVERED
+/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX/distribution
+  revision d249b09bd95120c65555b0c56bc381f72ce073bc
+  projects/ROCKNIX/devices/RK3566/patches/linux/
+    1013a-dt-bindings-soc-rockchip-rk3568-suspend.patch.testing-disabled
+      SHA-256 0d66a61107c4878508e9b416ff682a967c3a0da5a322ec9609a37436a8e4d13c
+      Subject: dt-bindings: soc: rockchip: add rk3568 suspend configuration
+      From: Zetarancio, dated 2025-02-25 in the patch header
+      Adds Documentation/devicetree/bindings/soc/rockchip/rockchip,rk3568-suspend.yaml
+    1013b-soc-rockchip-add-rk3568-suspend-configuration.patch.testing-disabled
+      SHA-256 b96ec108a11db4ed0ccc68350de1356de60fc79fbd14ff689151b13f499b76f2
+      Subject: soc: rockchip: add rk3568 suspend mode configuration driver
+      Adds drivers/soc/rockchip/rk3568_suspend_config.c
+      Adds include/dt-bindings/suspend/rockchip-rk3568.h
+      Adds four subcommand macros to include/soc/rockchip/rockchip_sip.h
+      Kconfig: config RK3568_SUSPEND_MODE, bool, depends on HAVE_ARM_SMCCC && SUSPEND && ARCH_ROCKCHIP
+      Makefile: obj-$(CONFIG_RK3568_SUSPEND_MODE) += rk3568_suspend_config.o
 ```
 
-What survives, and what it is allowed to prove:
+The Zlyme tree still only has the config comment and the commented DTS node. Those comments were already in board commit `d843dbecf314122605c1374e4fe5d98e1c09c06b`. The `.testing-disabled` suffix is why they are not in an active patch directory.
 
-| Artifact | Text | Strength |
-| --- | --- | --- |
-| `board/my355/linux/linux.config` | `# 1013a/b rk3568-suspend patches are .testing-disabled` and `# CONFIG_RK3568_SUSPEND_MODE is not set` | The symbol name and the two-file split are recorded. The C source is not. |
-| Commented DTS node | compatible `rockchip,rk3568-suspend`, the flag list below, `sleep-debug-en = <0>` | This is a hypothesis left in a comment. It is not a driver. |
-| Comment above that node | "Sends sleep-mode-config and wakeup-config to BL31 via SIP_SUSPEND_MODE SMC at probe and before each suspend." | Untrusted. It names a lifecycle, but there is no source to check the SMC register order, return handling, or whether `LINUX_PM_STATE` was included. |
+What the recovered driver actually does:
 
-There is no SHA-256, subject line, Kconfig text, Makefile line, or new C file to inventory. This note does not reconstruct one.
+- Compatible `rockchip,rk3568-suspend`. The binding text says this is intentionally smaller than the vendor `rockchip-pm-config` node. The string itself is not the BSP or stock compatible.
+- `arm_smccc_smc(ROCKCHIP_SIP_SUSPEND_MODE, ctrl, cfg1, cfg2, 0, 0, 0, 0, &res)`. Argument order matches BSP `sip_smc_set_suspend_mode(ctrl, config1, config2)`.
+- Subcommands `0x01`, `0x02`, `0x05`, and `0x09`, under local names. Values match the BSP header.
+- Probe calls the apply helper: mode, wake, and debug if `rockchip,sleep-debug-en` is present.
+- `.prepare` sends `LINUX_PM_STATE` with `mem_sleep_current`, then calls the same apply helper again.
+- A non-zero `res.a0` is logged with `dev_warn` and turned into `-EIO`. Probe still returns 0 after that warning. `.prepare` ignores the apply result and returns 0, so a firmware rejection does not stop suspend.
+- There is no `arm_smccc_1_1_get_conduit()` check.
+- Kconfig is `bool`. The C file uses `module_platform_driver()`, `MODULE_LICENSE`, and `MODULE_DEVICE_TABLE`. It cannot be built as a module, but it is written like one. Registration is `device_initcall` via `module_init`, not the BSP `late_initcall_sync`.
+- The YAML binding names Heiko Stuebner as maintainer. That is not evidence of an upstream submission.
+- The new dt-bindings header copies the Rockchip sleep and wake bits as `(1 << n)` instead of `BIT()`. The values used by the Flip comment match the BSP header. The LDO-on bits from the BSP header are omitted.
 
 The commented node, for comparison only:
 
@@ -246,25 +264,23 @@ Those strings show this ELF knows an ARMOFF_LOGOFF mode and a suspend-mode confi
 
 Unknown until that log exists: whether v1.44 accepts `LINUX_PM_STATE`, whether a bad subcommand returns the 6.1 `SIP_RET_NOT_SUPPORTED` value, and whether `PMIC_LP` in the mask matches the RK817 sleep pin the kernel already programs.
 
-## Verdict on the surviving Zlyme comment
+## Verdict on the recovered `1013a/b`
 
-The C file is missing, so rows that need it are `UNKNOWN`.
-
-| Claim in the comment or node | BSP 5.10 | BSP 6.1 | Stock | Linux 7.0.2 | Verdict |
+| Old implementation | BSP 5.10 | BSP 6.1 | Stock | Linux 7.0.2 | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| Compatible `rockchip,rk3568-suspend` | Not a match string | Not a match string | DTB uses `rockchip,pm-rk3568` | No driver | AI-INVENTED / NO EVIDENCE |
-| Node name `rk3568-suspend` | `rockchip-suspend` | `rockchip-suspend` | `rockchip-suspend` | none | WRONG |
-| The seven sleep bits | Same set, `0x5ec` | Same set | DTB value `0x5ec` | no binding | CORRECT as a mask, not as a proven Flip requirement by itself |
+| Compatible `rockchip,rk3568-suspend` | Not a match string | Not a match string | DTB uses `rockchip,pm-rk3568` | No driver | AI-INVENTED / NO EVIDENCE. The binding comment knows the vendor node and still invents this string. |
+| Node name `rk3568-suspend` in the example and the Flip comment | `rockchip-suspend` | `rockchip-suspend` | `rockchip-suspend` | none | WRONG |
+| Seven sleep bits in the header and the Flip comment | Same set, `0x5ec` | Same set | DTB `0x5ec` | no binding | CORRECT as values. Not, by itself, a measured Flip requirement. |
 | Wake `RKPM_GPIO_WKUP_EN` | Default | Default | DTB `0x10` | none | CORRECT as the stock/BSP default |
-| `sleep-debug-en = <0>` | BSP dtsi uses `<1>` but `status = "disabled"` | Same | DTB `<1>` and `status = "okay"` | none | Differs from stock. Debug-off is a reasonable production default. Not proven required. |
-| SMC `0x82000003` | `SIP_SUSPEND_MODE` | Same | `sip_smc_set_suspend_mode` exists in System.map | `ROCKCHIP_SIP_SUSPEND_MODE` already `0x82000003` | CORRECT BUT SHOULD USE MAINLINE API |
-| Sent at probe and again before suspend | Probe plus `.prepare` | Probe plus `.prepare` | `pm_config_prepare` exists in System.map | no driver | The comment matches BSP. The missing C file cannot confirm the old patch did this. |
-| `LINUX_PM_STATE` each suspend | Yes, in `.prepare` | Yes | Not separable from the symbol `pm_config_prepare` | constant absent | UNKNOWN for the old patch. REQUIRED for a replacement, because BSP and the PX30S postmortem both treat a probe-only config as incomplete. |
-| Parallel `drivers/firmware/rockchip_sip.c` | BSP has one | BSP has one | exported `sip_smc_set_suspend_mode` implies some SIP wrapper in that image | mainline already has `arm_smccc_smc()` and the SIP header | CORRECT BUT SHOULD USE MAINLINE API. Do not add a second SIP framework. |
-| `CONFIG_RK3568_SUSPEND_MODE` | BSP does not use this symbol name | Same | unknown Kconfig text | symbol absent | UNKNOWN. A new option should not revive an unreviewed name just to match the comment. |
-| Module versus built-in | Prepare omitted if `MODULE` | Module probe skips the per-state parse | initcall is from `rockchip_pm_config` | n/a | UNKNOWN for the old patch. Replacement should be built-in. |
-| SMC return ignored | `.prepare` ignores `res.a0` | Same pattern | unknown | PM-domain path checks the conduit first | INCOMPLETE if copied. A Zlyme driver should check the conduit and `res.a0`. |
-| SLPPIN written by this driver | Not in the suspend-mode path | Same | unknown | rk8xx already does it | BSP FEATURE NOT NEEDED BY ZLYME as a second writer |
+| `sleep-debug-en` default 0 in the YAML | BSP dtsi uses `<1>` and `status = "disabled"` | Same | DTB `<1>` and `status = "okay"` | none | Differs from stock. Debug-off is a reasonable production default. |
+| SMC `0x82000003`, subcommands `0x01` `0x02` `0x05` `0x09`, `a0` = function, `a1` = subcommand, `a2` = value | Same | Same | `sip_smc_set_suspend_mode` is in System.map | `ROCKCHIP_SIP_SUSPEND_MODE` exists; the four subcommands do not | CORRECT BUT SHOULD USE MAINLINE API |
+| Probe sends mode, wake, and debug | Probe does this, plus extra optional calls | Probe does this | `pm_config_probe` exists | no driver | CORRECT for those three. The extra BSP calls are absent, which is appropriate. |
+| `.prepare` sends `LINUX_PM_STATE` then resends mode, wake, and debug | `.prepare` sends state, then mode and wake. Debug is probe-only. | Same as 5.10 | `pm_config_prepare` exists; late callbacks do not | no driver | CORRECT for state, mode, and wake. Resending debug every time is extra, not wrong. |
+| No second `rockchip_sip.c` | BSP has one | BSP has one | that image exports `sip_smc_set_suspend_mode` | `arm_smccc_smc()` already exists | CORRECT BUT SHOULD USE MAINLINE API |
+| `bool` Kconfig, `module_platform_driver()` in the C file | `.prepare` omitted if `MODULE` | Module probe skips the per-state parse | initcall comes from `rockchip_pm_config` | n/a | INCOMPLETE. The intent is built-in, and the file is written as a module. `device_initcall` is earlier than BSP `late_initcall_sync`. |
+| `res.a0` logged; probe returns 0 anyway; `.prepare` always returns 0 | `.prepare` ignores the return | Same pattern | unknown | PM-domain path checks the conduit first | INCOMPLETE. A rejection is visible and does not stop suspend. No conduit check. |
+| No SLPPIN writes | Not in this path | Same | unknown | rk8xx already does it | CORRECT. Do not add a second writer. |
+| YAML names an upstream maintainer and a placeholder example index `111111111111` | BSP binding is a `.txt` file | Same | DTB uses the vendor compatible | no YAML | AI-INVENTED / NO EVIDENCE as an upstream binding |
 
 ## Binding, placement, and build
 
@@ -344,7 +360,7 @@ RK817 `005` (`fe127fad`, Jacob Cook) restamps the gauge across system sleep beca
 
 ## Recommended shape
 
-One new patch, not a revival of unrecovered `1013a/b`.
+One new patch. Do not re-enable `1013a/b` as they stand. The recovered driver already has the right SMC values, the right argument order, a probe send, and a `.prepare` resend that includes `LINUX_PM_STATE`. What it should not keep is the invented compatible, the module-shaped registration, the missing conduit check, and a `.prepare` that returns success after firmware rejects the call.
 
 ```text
 drivers/soc/rockchip/rockchip-pm-config.c
@@ -378,7 +394,7 @@ The first image changes only that driver and the DTS node. It does not change `1
 
 ## Open items
 
-- The old `1013a/b` C source is gone. Any claim about its SMC order or return checks would be an invention.
+- The recovered `1013b` driver logs a non-zero `res.a0` and then continues. Whether v1.44 uses `0` for success is still an assumption taken from that driver's comment, not from a Flip SMC trace.
 - `System.map-5.10` and the 2025-05-27 DTB are not proven to be one image.
 - BL31 v1.44 return codes for `0x01`, `0x02`, `0x05`, and `0x09` are unknown until 6C logs them.
 - Whether `PMIC_LP` and rk8xx `SLPPIN_SLP_FUN` double-program the RK817, or whether both are required, is unknown. Stock shipped both the mask bit and a kernel that has the usual RK817 sleep-pin code, but this checkout does not contain that PMIC sleep function to compare.

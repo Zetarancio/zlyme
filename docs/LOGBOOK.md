@@ -21,7 +21,7 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ## 2026-09-28 — Phase 6A deep-suspend research
 
-Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` patch files are not in this repository and were not reconstructed. The stock DTB uses `rockchip,pm-rk3568` with sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme's commented node uses a different compatible string and leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/deep-suspend-phase6.md`.
+Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` files are not in this git tree. They are in the local archived ROCKNIX checkout as `.testing-disabled` patches. That driver already sends mode, wake, and `LINUX_PM_STATE` from `.prepare`, and it uses `rockchip,rk3568-suspend` rather than the stock `rockchip,pm-rk3568`. The stock DTB uses sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/deep-suspend-phase6.md`.
 
 ## 2026-09-28 — post-Phase-5 correction image accepted
 
