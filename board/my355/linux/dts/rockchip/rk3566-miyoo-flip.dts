@@ -1124,7 +1124,6 @@
  */
 &uart1 {
 	status = "okay";
-	dma-names = "tx", "rx";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>;
 
