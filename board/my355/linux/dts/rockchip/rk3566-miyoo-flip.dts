@@ -15,7 +15,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/soc/rockchip,vop2.h>
-/* #include <dt-bindings/suspend/rockchip-rk3568.h> -- disabled while 1013 patches are out for testing */
+#include <dt-bindings/suspend/rockchip-rk3568.h>
 #include "rk3566.dtsi"
 
 / {
@@ -327,17 +327,12 @@
 	};
 
 	/*
-	 * BL31 deep-sleep configuration (patch 1013).  Sends sleep-mode-config
-	 * and wakeup-config to BL31 via SIP_SUSPEND_MODE SMC at probe and
-	 * before each suspend.  SLPPIN register writes are handled separately
-	 * by vanilla rk8xx-core (SLPPIN_SLP_FUN on suspend, NULL_FUN on resume).
-	 * Currently disabled.
+	 * BL31 suspend ABI. The mask matches the stock firmware DTB (0x5ec / 0x10).
+	 * rk8xx-core still owns the RK817 sleep pin. vdd_logic stays on in this image.
 	 */
-	/*
-	rk3568-suspend {
-		compatible = "rockchip,rk3568-suspend";
+	rockchip_suspend: rockchip-suspend {
+		compatible = "rockchip,pm-rk3568";
 		status = "okay";
-		// Set sleep-debug-en to 1 + no_console_suspend in cmdline for serial across suspend
 		rockchip,sleep-debug-en = <0>;
 		rockchip,sleep-mode-config = <
 			(0
@@ -356,7 +351,6 @@
 			)
 		>;
 	};
-	*/
 
 	/* DMC devfreq: DDR frequency scaling via ATF SIP. DFI provides load; governor scales 324–1056 MHz. Stock uses same SIP. */
 	dmc: dmc {
@@ -648,11 +642,10 @@
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_logic";
 				/*
-				 * Without the rk3568-suspend driver (1013 patches),
-				 * vdd_logic must stay on — BL31 defaults don't
-				 * expect ARMOFF_LOGOFF and can't restore the logic
-				 * domain.  Re-enable off-in-suspend when the 1013
-				 * patches are active again.
+				 * Stay on while the BL31 suspend mode is first
+				 * programmed. Stock turns this rail off only with
+				 * a resume path that already has ARMOFF_LOGOFF.
+				 * That combination is not this image.
 				 */
 				regulator-state-mem {
 					regulator-on-in-suspend;
@@ -1245,8 +1238,8 @@
 	};
 };
 
-/* UART2 (debug serial): must stay enabled for deep sleep resume to work.
- * For serial across suspend: no_console_suspend in cmdline + sleep-debug-en=1. */
+/* UART2 is the debug console. Stock leaves it disabled while the
+ * suspend node is enabled, so it is not a resume dependency. */
 &uart2 {
 	status = "okay";
 };
