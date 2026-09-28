@@ -1629,7 +1629,7 @@ The old "package it experimentally" step is Phase 4A. It is not optional, and it
 
 ## 5 — Second kernel patch reduction pass
 
-Research is in progress on `phase-5-kernel-reduction`. The evidence note is `docs/research/kernel-patch-audit-phase5.md`. Phase 5A is accepted on the Miyoo Flip. The fuel-gauge algorithm is still unchanged. An overnight unplugged power-off left `OFF_CNT` at 50 and the gauge matched the `PWRON_VOL` OCV value. That reseed is not a defect to patch yet. Phase 5 is not complete.
+Research is in progress on `phase-5-kernel-reduction`. The evidence note is `docs/research/kernel-patch-audit-phase5.md`. Phase 5A is accepted on the Miyoo Flip. The fuel-gauge algorithm is still unchanged. An overnight unplugged power-off left `OFF_CNT` at 50 and the gauge matched the `PWRON_VOL` OCV value. That reseed is not a defect to patch. Phase 5D drops the redundant UART `dma-names` patch and the redundant Bluetooth SSP patch. Phase 5 is not complete until that image is accepted.
 
 After the input transition, remove patches made obsolete by:
 - the new joypad module;

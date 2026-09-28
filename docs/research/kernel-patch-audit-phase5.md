@@ -39,9 +39,9 @@ The Phase 5 starting tree had eighteen patches. Phase 5A dropped three. Fifteen 
 | `20-rk3566/linux/0001-arm64-dts-rockchip-rk356x-add-1992mhz-cpu-opp-with-t.patch` | 1992 MHz OPP at 1.15 V, `turbo-mode` | sydarn | `rk3566.dtsi` | Flip includes that dtsi and does not delete the OPP. `zlyme-governor` `profile_overclock` sets `408000..1992000` when boost is on. Undervolt overlays `rk3566-undervolt-cpu-l1/l2/l3.dts` each contain `opp-1992000000`. | Not in the stock dtsi; this patch adds it. | Not treated as upstream. | KEEP. Optional boost, not the 1.8 GHz path. Removing it changes a live policy and the undervolt overlays. |
 | `20-rk3566/linux/0002-power-supply-rk817-update-battery-and-charger-name-s.patch` | `rk817-battery` to `battery`, charger name to `charger` | ab0tj | `rk817_charger.c` | Live. Apostrophe reads `/sys/class/power_supply/battery/capacity`. `PLAT_getBatteryStatusFine` also reads that path and comments that the charger class may still be `rk817-charger`. | Stock names are the `rk817-*` strings. | Not re-checked; the rename is a Zlyme userspace ABI. | KEEP. A rename back would be a separate userspace migration, not a patch deletion. |
 | `20-rk3566/linux/0007-power-supply-rk817-clear-sys-can-sd-fix-drain.patch` | clear `SYS_CAN_SD` | Zetarancio, 2026-04-05 | `rk817_charger.c`, `rk808.h` | Flip hardware. Wiki and `docs/OPERATIONS.md` / `ARCHITECTURE.md` require it. True POR leaves register `0xe6` at `0xc5` (bit set): about 8 mA off, about 0.05 mA with the bit clear. | `RK817_SYS_CAN_SD` is absent. | Still absent from `7.3-rc5`. | KEEP. See the comparison below. Do not stack ROCKNIX `007` on top. |
-| `20-rk3566/linux/0008-arm64-dts-rockchip-add-support-for-mali-bifrost-driv.patch` | Mali resets and power model on `&gpu` | Danil Zagoskin | `rk356x-base.dtsi` | Flip enables `&gpu`. | Phase 2: not in 7.0.2. Not re-diffed this pass. | Unknown this pass. | KEEP until a hunk diff shows the dtsi already has it. Not the ROCKNIX pmdomain clock patch. |
-| `20-rk3566/linux/0013-Bluetooth-Check-key-sizes-only-when-Secure-Simple-Pa.patch` | key-size check only when SSP is on | Marcel Holtmann, 2019, `cce32250027f` | `hci_conn.c` | Generic Bluetooth. Helps legacy devices. Not Flip-specific. | `hci_conn_check_link_mode` still uses `if (hci_conn_ssp_enabled(conn) && !encrypt) return 0`. | `7.3-rc5` still has that combined test, not the early `!ssp` return. | KEEP. Downstream relative to 7.0.2 and 7.3-rc5. |
-| `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | `dma-names` on a shared SoC node | spycat88 | `rk356x-base.dtsi` | Flip includes that dtsi. | Phase 2: carried because the hunk was not already pristine. Not re-diffed this pass. | Unknown this pass. | KEEP until a pristine diff says the names exist. |
+| `20-rk3566/linux/0008-arm64-dts-rockchip-add-support-for-mali-bifrost-driv.patch` | Mali resets and power model on `&gpu` | Danil Zagoskin | `rk356x-base.dtsi` | Flip enables `&gpu` for Panfrost and mali_kbase. | Pristine 7.0.2 GPU node has clocks and a power domain, and not `resets`, `power_policy`, or the two `power_model` nodes. | Not the same downstream nodes. | KEEP. Those properties are the kbase power model and the GPU reset. Not proven unused on both GPU paths. |
+| `20-rk3566/linux/0013-Bluetooth-Check-key-sizes-only-when-Secure-Simple-Pa.patch` | historical SSP early return | Marcel Holtmann, 2019, `cce32250027f` | `hci_conn.c` | Generic Bluetooth. | The 7.0.2 function already returns 1 when SSP is off. The patch does not skip any later key-size check; the function ends at `return 1`. | Same combined test, not this early return. | DROP. Behaviorally redundant on 7.0.2. Not labeled UPSTREAMED. Removed in Phase 5D. |
+| `20-rk3566/linux/0021-arm64-dts-rockchip-fix-missing-dma-names.patch` | `dma-names` on shared UART1 | spycat88 | `rk356x-base.dtsi` | Flip `&uart1` already sets `dma-names = "tx", "rx"`. | Pristine UART1 has `dmas` and no `dma-names`. | Not re-checked upstream. | DROP. Final Flip UART1 keeps DMA, CTS, 9600, and the gamepad child. Removed in Phase 5D. |
 | `20-rk3566/linux/0030-mfd-rk8xx-log-on-off-source-for-RK817-RK809.patch` | `dev_info` of ON/OFF source | Zetarancio | `rk8xx-core.c` | No current procedure in `docs/OPERATIONS.md`, `board/`, `package/`, or `scripts/` reads `ON_SOURCE` / `OFF_SOURCE`. Historical notes are not a runtime contract. The off-state drain fix remains patch `0007`. | The log was not in pristine 7.0.2. | Not re-checked after removal. | DROP. Removed in Phase 5A. |
 | `20-rk3566/linux/0666-cma-region.patch` | CMA region | historical | CMA | Flip display/GPU allocations. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Do not resize memory in this phase. |
 | `20-rk3566/linux/1001-arm64-dts-rockchip-Add-idle-states-for-rk356x.patch` | CPU idle states | historical | `rk356x` dts | Flip CPUs. Phase 2 KEEP. | Not re-diffed. | Unknown. | KEEP. Idle behavior is not a deletion target without a measurement. |
@@ -342,3 +342,24 @@ Against the pre-off reference (79.876%, 2396 mAh, loaded `voltage_avg` 3606280 Â
 Of `002`, this run supports only the observation that 7.0.2 discards the previous coulomb boot state when `OFF_CNT >= 3` and writes `Q_INIT` from OCV. Keeping that counter would have stayed near 80% instead of 82%. That 2-point difference is the existing policy working, not a conversion bug. The saved-SoC fallback, `voltage_boot`, `voltage_ocv`, and the 5% relax loop are not justified by this capture. The pre-reinit hardware counter was overwritten by probe; the pre-off userspace value 2396 mAh is the comparison, not a register read from before `Q_INIT` was rewritten.
 
 Next direction: do not implement a boot-gauge change. The overnight branch fired and landed on the OCV table. Do not apply `001`, `002`, `005`, or `008` from this result. `0007` stays.
+
+## Phase 5D
+
+`0021` is dropped. Pristine UART1 has `dmas` and no `dma-names`. The Flip node sets `dma-names = "tx", "rx"`, `pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>`, and a `miyoo,flip-gamepad` child at `current-speed = <9600>`. Compiling that DTS against the patched includes with and without the base `dma-names` line produced the same `dmas`, the same `dma-names`, the same pinctrl phandles, `status = "okay"`, and the same gamepad child. Property order differed. Semantics did not. DMA and CTS stay.
+
+`0013` is dropped. In Linux 7.0.2, `hci_conn_check_link_mode()` handles SC-only and FIPS before the SSP test, then:
+
+```c
+if (hci_conn_ssp_enabled(conn) &&
+    !test_bit(HCI_CONN_ENCRYPT, &conn->flags))
+	return 0;
+return 1;
+```
+
+SSP off returns 1. SSP on without encryption returns 0. SSP on with encryption returns 1. The historical patch's early return has the same three results and does not skip a later key-size check, because this function ends there. The target GCC 14.3 `-O2` assembly of that tail is the same either way. This is not `UPSTREAMED`: 7.0.2 and 7.3-rc5 still use the combined test. The 2019 patch is empty on this function shape.
+
+`0008` stays. Pristine 7.0.2 `&gpu` has no `resets`, `power_policy`, or the Mali power-model nodes. The Flip uses that node for Panfrost and mali_kbase. Those extra properties are not proven unused.
+
+`0006` stays. Linux 7.0.2 `hid-playstation.c` has no Edge paddle decode. `7.3-rc5` has `BTN_TRIGGER_HAPPY1`â€“`4` for product `0x0df2`. The selected kernel is still 7.0.2.
+
+No RK817 gauge patch was added. `0007` is unchanged. Thirteen Linux patches remain. Phase 5 stays open until the Phase 5D image is accepted on the Flip.

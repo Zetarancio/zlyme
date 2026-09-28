@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 5D redundant kernel patches dropped
+
+The Flip UART1 node already sets `dma-names`. Compiling the DTS with and without the shared SoC line kept DMA, CTS, 9600, and the gamepad child. The Bluetooth SSP patch does not change `hci_conn_check_link_mode()` on Linux 7.0.2: SSP off already returns success, and the function ends there. Both patches are dropped. The Mali GPU DT additions and the DualSense Edge buttons stay. No fuel-gauge patch. `SYS_CAN_SD` stays. Phase 5 stays open until this image is accepted.
+
 ## 2026-09-28 — RK817 overnight off did reseed from PWRON_VOL
 
 After at least 6 hours unplugged, with the battery still connected, `OFF_CNT` was `0x32` (50; the 7.0.2 comment calls that decaminutes, 8.3 hours). The charger was offline, `BAT_CON` was clear, and `SYS_CAN_SD` was clear. Uptime at the read was 127 seconds. `PWRON_VOL` converts to 3947810 µV with `voltage_k` 70 and `voltage_b` 15. The Flip OCV table returns 82% (SoC 82000, 2460 mAh). `Q_INIT` is that seed. Visible capacity was 81% after about 30 mAh of the measured 0.85 A load. The pre-off coulomb state was 79.876% / 2396 mAh. The reseed is reproduced and matches the table; it is not the ~8 mA drain. No gauge patch was applied.
