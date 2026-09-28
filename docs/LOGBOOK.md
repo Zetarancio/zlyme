@@ -19,7 +19,11 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
-## 2026-09-29 — Phase 6D accepted; RK817 sleep gauge not patched
+## 2026-09-29 — RK817 sleep-gauge patch left unapplied
+
+ROCKNIX `005` at `fe127fad01f6006bea1734ebde87d1c02cc6d256` does not apply to Linux 7.0.2. Its resume helper calls `rk817_bat_relax_voltage_uv()`, `rk817_bat_ocv_recalibrate()`, and `rk817_bat_voltage_uv()`, and it uses `charger->bat_info` and `charger->relax_voltage_uv`. Those come from ROCKNIX `002`, which stays disabled. `008` stays disabled. `001` stays applied as Zlyme `0003` and does not provide those helpers. The published error is an RG353M charging-sleep observation, not a Flip measurement. Two 15-minute power-button baselines, first unplugged and then charging, are defined and have not been run. No kernel, DTS, or OTA change.
+
+## 2026-09-29 — Phase 6D accepted
 
 `zlyme-my355-20260928-b709719aac5c.tar` is hardware-accepted. The only functional change from Phase 6C is `vdd_logic` off in mem suspend. The first unplugged power-button cycle on kernel `#2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026` had one `.prepare`: `LINUX_PM_STATE` `cfg1=0x3` `res.a0=0`, mode `0x5ec` `res.a0=0`, wake `0x10` `res.a0=0`, and no second prepare. The maintainer then repeated physical power-button cycles and reports that they kept working. A later awake boot of that same kernel still had the probe calls at `res.a0=0` and no `.prepare` left in the ring buffer, so that boot does not supply a cycle count. Storage was mounted, DMC was `powersave` at 324 MHz, `mali_kbase` was loaded, Wi-Fi was associated, and both the Flip gamepad and the virtual Xbox pad were present. No standby current was measured.
 

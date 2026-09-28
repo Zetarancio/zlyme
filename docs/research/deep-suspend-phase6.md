@@ -453,3 +453,45 @@ The maintainer repeated physical power-button suspend/resume after that and repo
 - Standby current with `vdd_logic` off has not been measured.
 
 BL31 v1.44 on this Flip accepts subcommands `0x01`, `0x02`, and `0x09`. Success on those calls was raw `res.a0=0`. `vdd_logic` off in mem suspend resumed.
+
+## RK817 sleep gauge — `005` not applied
+
+Source: `ROCKNIX/distribution` `fe127fad01f6006bea1734ebde87d1c02cc6d256`, `projects/ROCKNIX/packages/linux/patches/mainline-rockchip/005-power-supply-rk817-charger-correct-gauge-across-sleep.patch`, Jacob Cook, 2026-09-03. Disposition: evaluation in progress. Not applied. `002` and `008` stay disabled. `001` stays applied as Zlyme `0003`.
+
+The patch does not apply to Zlyme's tree. Its context edits `rk817_bat_relax_voltage_uv()`, which vanilla Linux 7.0.2 does not have. That function, `rk817_bat_ocv_recalibrate()`, `rk817_bat_voltage_uv()`, the `charger->bat_info` and `charger->relax_voltage_uv` fields, and `RK817_GAS_GAUGE_RELAX_VOL1_H` (`0x5a`) / `RELAX_VOL2_H` (`0x5c`) are added by ROCKNIX `002` at the same revision. `001` only changes the NVRAM ceiling from `10000` to `100000`.
+
+| `005` name | Linux 7.0.2 | ROCKNIX `001` | ROCKNIX `002` |
+| --- | --- | --- | --- |
+| `charger->bat_info` | absent | no | adds the field |
+| `rk817_bat_relax_voltage_uv()` | absent | no | adds it, one argument |
+| `rk817_bat_ocv_recalibrate()` | absent | no | adds it |
+| `charger->relax_voltage_uv` | absent | no | adds it |
+| `rk817_bat_voltage_uv()` | absent | no | adds it |
+| relax voltage register macros | absent | no | `0x5a` and `0x5c` |
+| `slp_boottime`, `slp_charge_uah`, `slp_cur_ua`, `slp_charging` | absent | no | absent; `005` adds them |
+| `rk817_bat_sleep_adjust()` | absent | no | absent; `005` adds it |
+| `ADC_TO_CHARGE_UAH`, `CHARGE_TO_ADC`, `rk817_record_battery_nvram_values` | present | no | uses them |
+
+Adopting `005` as published would require importing those `002` helpers. That is not "only `005`". `002`'s boot policy, 5% relax loop, and `VOLTAGE_BOOT` / `VOLTAGE_OCV` properties stay out unless a later task reviews them on their own.
+
+What `005` is trying to do, from its own RG353M notes, not from a Flip trace: the coulomb counter was erratic across sleep while charging at about 1.4 A. One 15-minute sleep counted about 69% of a simple elapsed-current estimate, another about 139%, and a charge that finished during sleep could still show the pre-sleep percentage. At suspend it stores boottime, `charge_now_uah`, the absolute average current, and whether the charger was in CC/CV or trickle, and it clears `RK817_RELAX_VOL_UPD`. At resume it reads `Q_PRES`, derives SoC, and if a relax pair is latched it OCV-recalibrates and returns. Otherwise, if it slept while charging and is still plugged in, it treats `elapsed * pre-sleep current` as the expected charge, credits any shortfall, caps at full, writes `Q_INIT`, and saves NVRAM.
+
+Risks if that idea is retargeted at the Flip:
+
+- One pre-sleep current is not the current for the whole sleep. CV taper makes a constant-current estimate high. The patch says so and caps at full.
+- A counter that over-counts is left alone (`credit_uah <= 0` returns). Only a shortfall is corrected, and only while charging.
+- Relax-pair correction depends on `002`'s voltage read and OCV helper. Zlyme does not have those.
+- Writing `Q_INIT` and NVRAM on resume is a gauge state change. The following `rk817_read_props()` reads `Q_PRES`, not `Q_INIT`. If the gauge has not copied `Q_INIT` into `Q_PRES` before that read, the in-memory SoC written by `005` is replaced by the uncorrected counter.
+- `001` clamps a saved SoC above 100000 on the next NVRAM read. It does not stop `005` from writing NVRAM.
+- With `002` disabled, a later cold boot still follows vanilla `OFF_CNT >= 3`: SoC is replaced from `PWRON_VOL` and the OCV table. A resume NVRAM write does not change that boot path.
+- The published ratios are RG353M charging sleeps. They are not Flip measurements, and they are not a discharging-sleep result.
+
+Current Zlyme behavior is vanilla 7.0.2 plus `0002`, `0003`, and `0007`. None of those patches edit `rk817_suspend()` or `rk817_resume()`. Suspend cancels `rk817_charging_monitor`. It does not write `GG_STS`, `Q_INIT`, or NVRAM, and it does not clear relax flags. Resume queues that monitor immediately. The monitor reads `Q_PRES` into `charge_now_uah`, sets `soc` from that charge and `fcc_mah`, and updates voltage and current. It does not recompute an OCV SoC. The next monitor is 8 seconds later. The driver does not say whether the silicon coulomb counter keeps integrating while the system is suspended.
+
+Baseline, not run, on the installed 6D image. No patch, no register write, no SSH suspend. Capture power-supply fields and, after `mount -t debugfs none /sys/kernel/debug`, the read-only regmap `/sys/kernel/debug/regmap/0-0020/registers` lines `57` (`GG_STS`), `5a`–`5d` (relax voltages), `70`–`73` (`Q_INIT`), `74`–`77` (`Q_PRES`), and `f0` (`SYS_STS`, plug-in is bit 6). The maintainer sleeps and wakes with the power button only, about 15 minutes.
+
+Test A is unplugged and discharging. Compare `Q_PRES` and visible SoC with elapsed time. Pre-sleep `current_avg` is not suspend current, so only an obvious jump is evidence.
+
+Test B is after A, on a settled charger. Compare `Q_PRES` movement with `elapsed * pre-sleep current`. That ratio is not ground truth in CV. Record whether charging finished while asleep.
+
+Until those two captures exist, `005` stays evaluation in progress and unapplied. If the Flip shows no implausible jump, leave it unapplied. If it does, a later fix has to be written against 7.0.2 plus `0003`, without `002`'s boot policy or `008`. That fix is not designed as a patch in this note.
