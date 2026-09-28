@@ -1662,6 +1662,8 @@ This should leave a small explainable my355 kernel delta.
 
 ## 6 — Deep suspend bring-up
 
+Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. No deep-suspend driver is enabled. `vdd_logic` stays on in suspend. RK817 `005` is not applied. Phase 6 is not complete.
+
 The device wiki establishes:
 
 - standard suspend already works;

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-28 — Phase 6A deep-suspend research
+
+Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` patch files are not in this repository and were not reconstructed. The stock DTB uses `rockchip,pm-rk3568` with sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme's commented node uses a different compatible string and leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/deep-suspend-phase6.md`.
+
 ## 2026-09-28 — post-Phase-5 correction image accepted
 
 The installed image `zlyme-my355-20260928-8119387e0fdb.tar` (runtime `8119387e0fdb729f1f013bed9dbc48c76e37a1df`, SHA-256 `4b831245e8f25ba8f1f1960021917ad631f6df734cb83bc589aa73981da292ae`) passed on the Miyoo Flip: boot to NextUI, built-in d-pad, ABXY, both sticks, and MENU, one game with working controls and MENU+START, volume, Bluetooth enable and scan, one suspend/resume with display and controls afterward, a plausible battery percentage, and a clean shutdown. The RK817 probe line was `[    1.118675] rk8xx-i2c 0-0020: ON_SOURCE=0x02 OFF_SOURCE=0x08`. That shows the restored DEBUG log is present. Normal operation does not depend on it, and nothing parses the values. The earlier Phase 5 image `7eaecf794830` remains that closure result. `8119387e` is the intended baseline entering Phase 6. Sixteen Linux 7.0.2 patches are applied. Phase 6 was not started.
