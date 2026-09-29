@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 7 complete
+
+Phase 7 is complete. The hardware-validated normal path is runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`, image `zlyme-my355-20260929-21de8081d6e6.tar`, module SHA-256 `f0b8739266ad67d9ba94ebecb5a874603e7d6773ecbbfda42cb085035633715d`. That image autoloaded `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, held Smart at 324/324/324 MHz, changed rate under Play, and resumed from one physical deep suspend with `res.a0=0` for state `0x3`, mode `0x5ec`, and wake `0x10`. Storage, both pads, Wi-Fi, and `mali_kbase` returned. The Mali `_regulator_disable` warning is separate from DMC. After wake, Play left 324 MHz and Smart restored it.
+
+Commit `70acb1d27443447df84903e2043a2af05dbd9ee3` keeps the raised center voltage when `DRAM_SET_RATE` has already been issued and then fails. Source review, `git diff --check`, and a clean module rebuild accepted it. The rebuilt module SHA-256 is `0a6ace5494d1b2cae787a58a556170bd3c6d8dbcc224a2ad710ea85fd8440016`. It was not hardware-tested on its own. The DMC driver stays the external package. `1012a` and `1012b` stay removed. `1010` stays. The DT contract stays in `package/drivers/rk3568-dmc/README.md`.
+
 ## 2026-09-30 — Phase 7C DMC hardening image built
 
 The external DMC driver now returns failure from the MCU completion path. `MCU_START` returns `-EIO`. A missed completion IRQ returns `-ETIMEDOUT` after the existing `POST_SET_RATE` cleanup. An IRQ whose `POST_SET_RATE` fails stores `-EIO` for the waiter. A successful firmware transition still has to match `clk_get_rate()`. A regulator failure does not update the cached voltage. Suspend aborts if the boot-rate OPP, the voltage raise, or the DDR restore fails, and it does not set `sr_idle_en` on that path. `1012a` is removed. Sixteen patches remain, and `1010` is unchanged. OTA `zlyme-my355-20260929-21de8081d6e6.tar`, SHA-256 `ecd2d58a3b6060c8aed320ca411c742138649d8f0c13c00eba81c292c7b87f5a`, runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`. Module `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, SHA-256 `f0b8739266ad67d9ba94ebecb5a874603e7d6773ecbbfda42cb085035633715d`. Kernel `#1 SMP PREEMPT Tue Sep 29 23:00:46 UTC 2026`. Built with `./build.sh --config zlyme_my355_defconfig`. Hardware acceptance is pending. Phase 7 is not complete.
