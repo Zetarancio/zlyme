@@ -1,0 +1,11 @@
+config BR2_PACKAGE_RK3568_DMC
+	bool "rk3568-dmc"
+	depends on BR2_ZLYME_DEVICE_MY355
+	depends on BR2_LINUX_KERNEL
+	help
+	  RK3566/RK3568 DMC devfreq module for the Miyoo Flip.
+	  DDR scaling uses the ATF shared-memory SIP protocol.
+	  The Flip DTS compatible rockchip,rk3568-dmc autoloads it.
+
+comment "rk3568-dmc needs the Miyoo Flip target and a kernel"
+	depends on !BR2_ZLYME_DEVICE_MY355 || !BR2_LINUX_KERNEL

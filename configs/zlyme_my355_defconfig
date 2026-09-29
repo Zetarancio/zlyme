@@ -194,6 +194,7 @@ BR2_PACKAGE_LIBRETRO_GENESISPLUSGX=y
 
 # Flip gamepad. The retired ROCKNIX module is not built.
 BR2_PACKAGE_MIYOO_FLIP_GAMEPAD=y
+BR2_PACKAGE_RK3568_DMC=y
 
 # NextUI (my355). Not in the minimal image.
 
