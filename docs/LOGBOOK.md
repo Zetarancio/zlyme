@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-29 — RK817 sleep-gauge evaluation closed
+
+Three read-only power-button sleeps on the installed Phase 6D image, kernel `#2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. No register write and no remote suspend. Unplugged, uptime advanced 1002.97 s and `Q_PRES` fell 31648 µAh, from 65% to 64%. That is not a jump. The first charging interval, near 1.02 A, advanced 1014.25 s and `Q_PRES` rose 352256 µAh against a simple estimate of 287941 µAh, ratio 1.22. Charging stayed near 1.01 A. The repeat, near 1.08 A, advanced 963.90 s and `Q_PRES` rose 282424 µAh against 289167 µAh, ratio 0.98. Charging stayed near 0.98 A, so that interval did not finish. `Q_INIT` did not change. No full relax pair appeared. The 1.22 ratio did not repeat. ROCKNIX `005` stays unapplied. Its elapsed-current fallback credits only a shortfall, so it would not correct the 1.22 direction, and it still depends on disabled `002`. `008` stays disabled. No Zlyme gauge change.
+
 ## 2026-09-29 — RK817 sleep-gauge patch left unapplied
 
 ROCKNIX `005` at `fe127fad01f6006bea1734ebde87d1c02cc6d256` does not apply to Linux 7.0.2. Its resume helper calls `rk817_bat_relax_voltage_uv()`, `rk817_bat_ocv_recalibrate()`, and `rk817_bat_voltage_uv()`, and it uses `charger->bat_info` and `charger->relax_voltage_uv`. Those come from ROCKNIX `002`, which stays disabled. `008` stays disabled. `001` stays applied as Zlyme `0003` and does not provide those helpers. The published error is an RG353M charging-sleep observation, not a Flip measurement. Two 15-minute power-button baselines, first unplugged and then charging, are defined and have not been run. No kernel, DTS, or OTA change.

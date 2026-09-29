@@ -356,7 +356,7 @@ UART2 is `disabled` in the stock firmware DTB while `sleep-debug-en` is 1 and th
 
 `0008` stays the Mali DT addition from Phase 5. The ROCKNIX GPU power-domain clock-ownership change is not required to find out whether BL31 accepts the suspend SMC. It is a later resume test if Panfrost or `mali_kbase` fails to come back after `vdd_logic` is allowed to drop. Do not apply it in the first image.
 
-RK817 `005` (`fe127fad`, Jacob Cook) restamps the gauge across system sleep because the coulomb counter was wrong on an RG353M during charge. Those numbers are not Flip measurements. Ordinary `mem` on the Flip has not been shown to need it, and a deeper BL31 mode might change the error. It stays `EVALUATE IN PHASE 6`, after the firmware path resumes, and it stays out of the BL31 bring-up image.
+RK817 `005` (`fe127fad`, Jacob Cook) restamps the gauge across system sleep because the coulomb counter was wrong on an RG353M during charge. Those numbers are not Flip measurements. The Flip baseline is in the sleep-gauge section below. One charging interval counted about 22% more than a simple elapsed-current estimate, and the repeat did not. `005` stays unapplied.
 
 ## Recommended shape
 
@@ -456,7 +456,7 @@ BL31 v1.44 on this Flip accepts subcommands `0x01`, `0x02`, and `0x09`. Success 
 
 ## RK817 sleep gauge — `005` not applied
 
-Source: `ROCKNIX/distribution` `fe127fad01f6006bea1734ebde87d1c02cc6d256`, `projects/ROCKNIX/packages/linux/patches/mainline-rockchip/005-power-supply-rk817-charger-correct-gauge-across-sleep.patch`, Jacob Cook, 2026-09-03. Disposition: evaluation in progress. Not applied. `002` and `008` stay disabled. `001` stays applied as Zlyme `0003`.
+Source: `ROCKNIX/distribution` `fe127fad01f6006bea1734ebde87d1c02cc6d256`, `projects/ROCKNIX/packages/linux/patches/mainline-rockchip/005-power-supply-rk817-charger-correct-gauge-across-sleep.patch`, Jacob Cook, 2026-09-03. Disposition: no actionable Flip problem demonstrated. Not applied. `002` and `008` stay disabled. `001` stays applied as Zlyme `0003`.
 
 The patch does not apply to Zlyme's tree. Its context edits `rk817_bat_relax_voltage_uv()`, which vanilla Linux 7.0.2 does not have. That function, `rk817_bat_ocv_recalibrate()`, `rk817_bat_voltage_uv()`, the `charger->bat_info` and `charger->relax_voltage_uv` fields, and `RK817_GAS_GAUGE_RELAX_VOL1_H` (`0x5a`) / `RELAX_VOL2_H` (`0x5c`) are added by ROCKNIX `002` at the same revision. `001` only changes the NVRAM ceiling from `10000` to `100000`.
 
@@ -479,7 +479,7 @@ What `005` is trying to do, from its own RG353M notes, not from a Flip trace: th
 Risks if that idea is retargeted at the Flip:
 
 - One pre-sleep current is not the current for the whole sleep. CV taper makes a constant-current estimate high. The patch says so and caps at full.
-- A counter that over-counts is left alone (`credit_uah <= 0` returns). Only a shortfall is corrected, and only while charging.
+- A counter that over-counts is left alone (`expected_uah - moved_uah > 0` is the only elapsed-current credit). Only a shortfall is corrected, and only while charging. That fallback would not correct a charging-sleep over-count.
 - Relax-pair correction depends on `002`'s voltage read and OCV helper. Zlyme does not have those.
 - Writing `Q_INIT` and NVRAM on resume is a gauge state change. The following `rk817_read_props()` reads `Q_PRES`, not `Q_INIT`. If the gauge has not copied `Q_INIT` into `Q_PRES` before that read, the in-memory SoC written by `005` is replaced by the uncorrected counter.
 - `001` clamps a saved SoC above 100000 on the next NVRAM read. It does not stop `005` from writing NVRAM.
@@ -488,10 +488,85 @@ Risks if that idea is retargeted at the Flip:
 
 Current Zlyme behavior is vanilla 7.0.2 plus `0002`, `0003`, and `0007`. None of those patches edit `rk817_suspend()` or `rk817_resume()`. Suspend cancels `rk817_charging_monitor`. It does not write `GG_STS`, `Q_INIT`, or NVRAM, and it does not clear relax flags. Resume queues that monitor immediately. The monitor reads `Q_PRES` into `charge_now_uah`, sets `soc` from that charge and `fcc_mah`, and updates voltage and current. It does not recompute an OCV SoC. The next monitor is 8 seconds later. The driver does not say whether the silicon coulomb counter keeps integrating while the system is suspended.
 
-Baseline, not run, on the installed 6D image. No patch, no register write, no SSH suspend. Capture power-supply fields and, after `mount -t debugfs none /sys/kernel/debug`, the read-only regmap `/sys/kernel/debug/regmap/0-0020/registers` lines `57` (`GG_STS`), `5a`–`5d` (relax voltages), `70`–`73` (`Q_INIT`), `74`–`77` (`Q_PRES`), and `f0` (`SYS_STS`, plug-in is bit 6). The maintainer sleeps and wakes with the power button only, about 15 minutes.
+Baseline, run read-only on the installed Phase 6D image. Kernel `Linux zlyme 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. No patch, no register write, no SSH suspend. The maintainer slept and woke with the power button. Times are monotonic `/proc/uptime`, because the RTC was wrong. Coulomb values use the driver's integer `ADC_TO_CHARGE_UAH` with `res_div = 1`: `adc / 3600 * 172`. `GG_STS` `RELAX_STS` is bit 1. `RK817_RELAX_VOL_UPD` is both bits of the field at `0x3 << 2`. Plug-in is `SYS_STS` bit 6.
 
-Test A is unplugged and discharging. Compare `Q_PRES` and visible SoC with elapsed time. Pre-sleep `current_avg` is not suspend current, so only an obvious jump is evidence.
+Test A, unplugged. Uptime 709.80 s to 1712.77 s, **1002.97 s** between snapshots. That includes the awake moments around the button presses.
 
-Test B is after A, on a settled charger. Compare `Q_PRES` movement with `elapsed * pre-sleep current`. That ratio is not ground truth in CV. Record whether charging finished while asleep.
+| Field | Before | After |
+| --- | --- | --- |
+| capacity | 65 | 64 |
+| status | Discharging | Discharging |
+| charge_now | 1946180 µAh | 1913672 µAh |
+| voltage_avg | 3717090 µV | 3722760 µV |
+| current_avg | −826116 µA | −851056 µA |
+| GG_STS `0x57` | `01` | `0b` |
+| RELAX_VOL1 / VOL2 | `00 00` / `00 00` | `d6 13` / `00 00` |
+| Q_INIT `0x70–0x73` | `02 a1 db d0` | unchanged, 2109924 µAh |
+| Q_PRES `0x74–0x77` | `02 6d 34 8d` | `02 63 1c 35` |
+| SYS_STS `0xf0` | `82` | `82` |
 
-Until those two captures exist, `005` stays evaluation in progress and unapplied. If the Flip shows no implausible jump, leave it unapplied. If it does, a later fix has to be written against 7.0.2 plus `0003`, without `002`'s boot policy or `008`. That fix is not designed as a patch in this note.
+`Q_PRES` went from 1944976 µAh to 1913328 µAh, **−31648 µAh**. `charge_now` fell 32508 µAh. Capacity fell one point. `Q_INIT` did not change. The plug-in bit stayed clear. `RELAX_STS` became set and the update field became 2, so only bit 3 is set. `RELAX_VOL2` stayed zero. That is not the full pair `RK817_RELAX_VOL_UPD` requires. Awake current was not used as expected sleep drain. The same 1003 seconds at the pre-sleep awake current would have been about 230 mAh. The counter moved about 32 mAh, in the discharge direction, with the visible percentage. That is not an implausible jump.
+
+Test B, after A, charger connected and current settled near 1.02 A while capacity was 64% and terminal voltage was 4.004 V. Uptime 2002.04 s to 3016.29 s, **1014.25 s**.
+
+| Field | Before | After |
+| --- | --- | --- |
+| capacity | 64 | 75 |
+| status | Charging | Charging |
+| charge_now | 1906620 µAh | 2259048 µAh |
+| voltage_avg | 4003690 µV | 4171970 µV |
+| current_avg | +1022024 µA | +1007920 µA |
+| GG_STS `0x57` | `0b` | `09` |
+| RELAX_VOL1 / VOL2 | `d6 13` / `00 00` | unchanged |
+| Q_INIT | `02 a1 db d0` | unchanged |
+| Q_PRES | `02 61 47 a3` | `02 d1 c2 67` |
+| SYS_STS | `c0` | `c0` |
+
+`Q_PRES` went from 1907652 µAh to 2259908 µAh, **+352256 µAh**. `charge_now` rose 352428 µAh. The plug-in bit stayed set. Status stayed `Charging`. Post-wake current was still about 1.01 A, so charging did not finish and did not fall into a deep taper. `RELAX_STS` cleared. The update field stayed 2, and no new relax pair appeared.
+
+The constant-current comparison is diagnostic, not ground truth:
+
+```text
+expected = 1022024 µA * 1014.25 s / 3600 = 287941 µAh
+ratio    = 352256 / 287941 = 1.22
+```
+
+The counter counted about 64 mAh more than that estimate, and the visible capacity rose 11 points against about 9.6 points on the same estimate. A taper would make this estimate high and the ratio low. This ratio is high while the current did not fall, so taper does not explain B1. Published `005` would not have changed this sample: its elapsed-current fallback credits only `expected_uah - moved_uah > 0`, and here the counter moved more than the estimate.
+
+Test B2 is the repeat, on a later boot of the same kernel. Pre-sleep uptime was 128.99 s. Current had settled near 1.07 A at 71% and 4.172 V, still well above 0.8 A. Uptime 128.99 s to 1092.89 s, **963.90 s**.
+
+| Field | Before | After |
+| --- | --- | --- |
+| capacity | 71 | 80 |
+| status | Charging | Charging |
+| charge_now | 2129876 µAh | 2412644 µAh |
+| voltage_avg | 4172090 µV | 4227230 µV |
+| current_avg | +1079988 µA | +979540 µA |
+| GG_STS `0x57` | `01` | `01` |
+| RELAX_VOL1 / VOL2 | `00 00` / `00 00` | unchanged |
+| Q_INIT `0x70–0x73` | `02 a8 40 88` | unchanged, 2129876 µAh |
+| Q_PRES `0x74–0x77` | `02 a8 b6 f5` | `03 02 eb 31` |
+| SYS_STS `0xf0` | `c0` | `c0` |
+
+`Q_PRES` went from 2131424 µAh to 2413848 µAh, **+282424 µAh**. `charge_now` rose 282768 µAh. Capacity rose 9 points. `Q_INIT` did not change. The plug-in bit stayed set. Status stayed `Charging`. Post-wake current was 0.98 A, so charging did not finish. `GG_STS` stayed `01`. No relax voltage and no full relax pair appeared.
+
+```text
+expected = 1079988 µA * 963.90 s / 3600 = 289167 µAh
+ratio    = 282424 / 289167 = 0.98
+```
+
+| | B1 | B2 |
+| --- | --- | --- |
+| elapsed | 1014.25 s | 963.90 s |
+| pre current | +1022024 µA | +1079988 µA |
+| post current | +1007920 µA | +979540 µA |
+| Q_PRES movement | +352256 µAh | +282424 µAh |
+| simple estimate | +287941 µAh | +289167 µAh |
+| ratio | 1.22 | 0.98 |
+| capacity delta | +11 | +9 |
+| charging after wake | yes | yes |
+| full relax pair | no | no |
+
+The estimate is `pre-sleep current_avg * elapsed` over the whole snapshot interval. That interval includes awake time before the power press and after wake. It uses the gauge's own averaged current, not an external coulomb meter. Charger current can move, and a taper makes the estimate high. B2's terminal voltage rose from 4.172 V to 4.227 V and current fell about 9%, from 1.08 A to 0.98 A, so this interval had started toward the charge voltage. Current was still near 1 A and the charge did not complete. B2's ratio of 0.98 sits inside that current change. B1's ratio of 1.22 did not repeat, and B2 did not substantially under-count.
+
+Classification: **A. No actionable Flip problem demonstrated.** `005` stays unapplied. No Zlyme gauge change is justified. The published fallback still would not correct an over-count, and the patch still depends on helpers from disabled `002`.
