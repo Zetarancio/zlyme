@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 7B external DMC image built
+
+`1012b` is gone. The driver is `package/drivers/rk3568-dmc`, `BR2_PACKAGE_RK3568_DMC=y`. The six RK3568 V2 SIP values that `1012b` used to add to `rockchip_sip.h` are local to `rk3568_dmc.c`. `1012a` and `1010` are unchanged. Seventeen patches apply. `CONFIG_ARM_RK3568_DMC_DEVFREQ` is gone from the kernel. `drivers/devfreq/rk3568_dmc.c` is not in the patched tree. The module is built at `output/build/rk3568-dmc-local/rk3568_dmc.ko` and installed, stripped, at `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, SHA-256 `2a713b1bc0ce8f5ecf669319fa2000c7c486dcd5c8f4796bd182d82e9afc3e4c`. Vermagic `7.0.2 SMP preempt mod_unload aarch64`. Alias `rockchip,rk3568-dmc`. `modules.dep` and `modules.alias` name `updates/rk3568_dmc.ko`. It is not in `System.map`. `miyoo-flip-gamepad.ko` has the same vermagic. OTA `zlyme-my355-20260929-b3bb23748aa6.tar`, SHA-256 `53931e4f039ab01eecd9e1e838288969558b11ef144ad735e4ee6d1a0aed8527`, VERSION `b3bb23748aa6` / `20260929`. Kernel `#1 SMP PREEMPT Tue Sep 29 22:24:49 UTC 2026`. Built with `./build.sh --config zlyme_my355_defconfig`. Hardware acceptance is pending. Phase 7 is not complete.
+
 ## 2026-09-30 — Phase 7A DMC module accepted
 
 `zlyme-my355-20260929-81c7fc87331d.tar` is hardware-accepted. SHA-256 `ebec9766147adf6ef69d64240834f4510eca474a6586a39376aa73ee828669c3`. Runtime `81c7fc87331d5f4c8ab3d39d6da7e6b28dc06ffb`. Kernel `Linux zlyme 7.0.2 #1 SMP PREEMPT Tue Sep 29 23:34:11 CEST 2026`. The only kernel change was `CONFIG_ARM_RK3568_DMC_DEVFREQ=m`. `1012b` still supplied the source.
