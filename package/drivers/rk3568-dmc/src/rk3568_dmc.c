@@ -72,6 +72,7 @@ struct rk3568_wait_ctrl {
 	int			wait_en;
 	int			wait_timeout_ms;
 	int			complt_irq;
+	int			post_set_err;
 };
 
 struct rk3568_dmcfreq {
@@ -115,8 +116,12 @@ static irqreturn_t rk3568_dcf_complete_irq(int irqno, void *dev_id)
 
 	res = sip_smc_dram(RK3568_SIP_SHARE_PAGE_DDR, 0,
 			   RK3568_SIP_CONFIG_DRAM_POST_SET_RATE);
-	if (res.a0)
+	if (res.a0) {
 		dev_err(dmcfreq->dev, "POST_SET_RATE error: %lx\n", res.a0);
+		dmcfreq->wait_ctrl.post_set_err = -EIO;
+	} else {
+		dmcfreq->wait_ctrl.post_set_err = 0;
+	}
 
 	dmcfreq->wait_ctrl.wait_flag = 0;
 	wake_up(&dmcfreq->wait_ctrl.wait_wq);
@@ -127,10 +132,12 @@ static int rk3568_dmcfreq_wait_complete(struct rk3568_dmcfreq *dmcfreq)
 {
 	struct rk3568_wait_ctrl *wc = &dmcfreq->wait_ctrl;
 	struct arm_smccc_res res;
+	int ret = 0;
 
 	if (!wc->wait_en)
 		return 0;
 
+	wc->post_set_err = 0;
 	wc->wait_flag = -1;
 	enable_irq(wc->complt_irq);
 
@@ -139,6 +146,7 @@ static int rk3568_dmcfreq_wait_complete(struct rk3568_dmcfreq *dmcfreq)
 	res = sip_smc_dram(0, 0, RK3568_SIP_CONFIG_MCU_START);
 	if (res.a0) {
 		dev_err(dmcfreq->dev, "MCU_START error: %lx\n", res.a0);
+		ret = -EIO;
 		goto out;
 	}
 
@@ -153,14 +161,19 @@ static int rk3568_dmcfreq_wait_complete(struct rk3568_dmcfreq *dmcfreq)
 		if (res.a0)
 			dev_err(dmcfreq->dev, "POST_SET_RATE error: %lx\n",
 				res.a0);
+		/* Cleanup does not prove the requested rate completed. */
+		ret = -ETIMEDOUT;
+		goto out;
 	}
+
+	ret = wc->post_set_err;
 
 out:
 	cpu_latency_qos_update_request(&dmcfreq->pm_qos,
 				       PM_QOS_DEFAULT_VALUE);
 	disable_irq(wc->complt_irq);
 
-	return 0;
+	return ret;
 }
 
 /* ---- Rate setting ----------------------------------------------------- */
@@ -179,10 +192,29 @@ static int rk3568_dmc_set_rate(struct rk3568_dmcfreq *dmcfreq,
 	res = sip_smc_dram(RK3568_SIP_SHARE_PAGE_DDR, 0,
 			   ROCKCHIP_SIP_CONFIG_DRAM_SET_RATE);
 
-	if ((int)res.a1 == SIP_RET_SET_RATE_TIMEOUT)
-		rk3568_dmcfreq_wait_complete(dmcfreq);
+	if (res.a0) {
+		dev_err(dmcfreq->dev, "DRAM_SET_RATE failed: %lx\n", res.a0);
+		return -EIO;
+	}
 
-	return res.a0;
+	if ((int)res.a1 == SIP_RET_SET_RATE_TIMEOUT) {
+		int err = rk3568_dmcfreq_wait_complete(dmcfreq);
+
+		if (err)
+			return err;
+	}
+
+	{
+		unsigned long actual = clk_get_rate(dmcfreq->dmc_clk);
+
+		if (actual != target_rate) {
+			dev_err(dmcfreq->dev, "DDR rate %lu Hz, clock is %lu Hz\n",
+				target_rate, actual);
+			return -EIO;
+		}
+	}
+
+	return 0;
 }
 
 /* ---- devfreq callbacks ------------------------------------------------ */
@@ -232,9 +264,16 @@ static int rk3568_dmcfreq_target(struct device *dev, unsigned long *freq,
 	if (target_rate < old_rate) {
 		err = regulator_set_voltage(dmcfreq->vdd_center,
 					    target_volt, INT_MAX);
-		if (err)
+		if (err) {
 			dev_err(dev, "cannot set voltage %lu uV\n",
 				target_volt);
+			/*
+			 * DDR is already at the lower rate. Keep the higher
+			 * voltage that the regulator still has.
+			 */
+			dmcfreq->rate = target_rate;
+			goto unlock;
+		}
 	}
 
 	dmcfreq->rate = target_rate;
@@ -308,6 +347,8 @@ static int rk3568_dmcfreq_suspend(struct device *dev)
 	struct dev_pm_opp *opp;
 	unsigned long target_volt;
 	unsigned long freq;
+	int err = 0;
+	bool raised = false;
 
 	if (!dmcfreq->devfreq)
 		return 0;
@@ -315,25 +356,55 @@ static int rk3568_dmcfreq_suspend(struct device *dev)
 	/*
 	 * Force DDR to the boot frequency before suspend.  The ATF
 	 * resume path restores DDR from self-refresh expecting this
-	 * frequency.
+	 * frequency.  A failed restore aborts suspend.
 	 */
 	mutex_lock(&dmcfreq->lock);
 	if (dmcfreq->rate != dmcfreq->boot_rate) {
 		freq = dmcfreq->boot_rate;
 		opp = dev_pm_opp_find_freq_ceil(dev, &freq);
-		if (!IS_ERR(opp)) {
-			target_volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-			if (target_volt > dmcfreq->volt)
-				regulator_set_voltage(dmcfreq->vdd_center,
-						      target_volt, INT_MAX);
-			rk3568_dmc_set_rate(dmcfreq, dmcfreq->boot_rate);
-			if (target_volt < dmcfreq->volt)
-				regulator_set_voltage(dmcfreq->vdd_center,
-						      target_volt, INT_MAX);
-			dmcfreq->rate = dmcfreq->boot_rate;
-			dmcfreq->volt = target_volt;
+		if (IS_ERR(opp)) {
+			err = PTR_ERR(opp);
+			dev_err(dev, "cannot find boot-rate OPP %lu Hz: %d\n",
+				dmcfreq->boot_rate, err);
+			goto unlock;
 		}
+		target_volt = dev_pm_opp_get_voltage(opp);
+		dev_pm_opp_put(opp);
+
+		if (target_volt > dmcfreq->volt) {
+			err = regulator_set_voltage(dmcfreq->vdd_center,
+						    target_volt, INT_MAX);
+			if (err) {
+				dev_err(dev, "cannot set voltage %lu uV\n",
+					target_volt);
+				goto unlock;
+			}
+			raised = true;
+		}
+
+		err = rk3568_dmc_set_rate(dmcfreq, dmcfreq->boot_rate);
+		if (err) {
+			dev_err(dev, "cannot set DDR rate %lu Hz (%d)\n",
+				dmcfreq->boot_rate, err);
+			if (raised)
+				regulator_set_voltage(dmcfreq->vdd_center,
+						      dmcfreq->volt, INT_MAX);
+			goto unlock;
+		}
+
+		if (target_volt < dmcfreq->volt) {
+			err = regulator_set_voltage(dmcfreq->vdd_center,
+						    target_volt, INT_MAX);
+			if (err) {
+				dev_err(dev, "cannot set voltage %lu uV\n",
+					target_volt);
+				dmcfreq->rate = dmcfreq->boot_rate;
+				goto unlock;
+			}
+		}
+
+		dmcfreq->rate = dmcfreq->boot_rate;
+		dmcfreq->volt = target_volt;
 	}
 
 	if (p) {
@@ -342,9 +413,10 @@ static int rk3568_dmcfreq_suspend(struct device *dev)
 		writel_relaxed(0, &p->wait_flag1);
 		writel_relaxed(0, &p->wait_flag0);
 	}
+unlock:
 	mutex_unlock(&dmcfreq->lock);
 
-	return 0;
+	return err;
 }
 
 static int rk3568_dmcfreq_resume(struct device *dev)
