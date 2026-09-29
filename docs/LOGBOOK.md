@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 7C DMC hardening image built
+
+The external DMC driver now returns failure from the MCU completion path. `MCU_START` returns `-EIO`. A missed completion IRQ returns `-ETIMEDOUT` after the existing `POST_SET_RATE` cleanup. An IRQ whose `POST_SET_RATE` fails stores `-EIO` for the waiter. A successful firmware transition still has to match `clk_get_rate()`. A regulator failure does not update the cached voltage. Suspend aborts if the boot-rate OPP, the voltage raise, or the DDR restore fails, and it does not set `sr_idle_en` on that path. `1012a` is removed. Sixteen patches remain, and `1010` is unchanged. OTA `zlyme-my355-20260929-21de8081d6e6.tar`, SHA-256 `ecd2d58a3b6060c8aed320ca411c742138649d8f0c13c00eba81c292c7b87f5a`, runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`. Module `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, SHA-256 `f0b8739266ad67d9ba94ebecb5a874603e7d6773ecbbfda42cb085035633715d`. Kernel `#1 SMP PREEMPT Tue Sep 29 23:00:46 UTC 2026`. Built with `./build.sh --config zlyme_my355_defconfig`. Hardware acceptance is pending. Phase 7 is not complete.
+
 ## 2026-09-30 — Phase 7B external DMC module accepted
 
 `zlyme-my355-20260929-b3bb23748aa6.tar` is hardware-accepted. Runtime `b3bb23748aa64742416ac477dea620e7c72ee8e2`. SHA-256 `53931e4f039ab01eecd9e1e838288969558b11ef144ad735e4ee6d1a0aed8527`. Kernel `Linux zlyme 7.0.2 #1 SMP PREEMPT Tue Sep 29 22:24:49 UTC 2026`. The module is `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, SHA-256 `2a713b1bc0ce8f5ecf669319fa2000c7c486dcd5c8f4796bd182d82e9afc3e4c`. It was already live, marked out-of-tree, with alias `rockchip,rk3568-dmc`. Before any governor command the state was `powersave` at 324/324/324 MHz. The live node has `dmc_clk`, `complete`, `devfreq-events`, `center-supply`, and the OPP phandle. DFI is `rockchip,rk3568-dfi` at `fe230000`. Play set `simple_ondemand` 528–1056 MHz and current moved 324 → 528 MHz, then touched 1056 MHz and returned to 528. Smart restored 324/324/324.
