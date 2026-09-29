@@ -1724,6 +1724,8 @@ These are useful extended checks and are not closure blockers: dozens of cycles,
 
 ## 7 — DMC driver modularization / patch extraction
 
+Phase 7A is built and awaiting hardware acceptance. `CONFIG_ARM_RK3568_DMC_DEVFREQ=m`. The image is `zlyme-my355-20260929-81c7fc87331d.tar`, SHA-256 `ebec9766147adf6ef69d64240834f4510eca474a6586a39376aa73ee828669c3`, built from `81c7fc87331d5f4c8ab3d39d6da7e6b28dc06ffb`. `1012a`, `1012b`, and `1010` are unchanged. No autoload policy was added. Phase 7B has not started. Phase 7 is not complete.
+
 Phase 2 must first establish the current upstream/external state of the RK3568 DMC/DFI patches. This phase owns the architectural migration.
 
 Important: the current Zlyme `rk3568_dmc` patch defines:

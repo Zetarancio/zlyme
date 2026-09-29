@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-29 — Phase 7A DMC module image built
+
+`CONFIG_ARM_RK3568_DMC_DEVFREQ` is `m`. `1010`, `1012a`, and `1012b` are unchanged. Eighteen Linux patches remain. Upstream Linux `a243ede71846` has `rk3399_dmc` only. ROCKNIX `next` `9fd38fa87094` has no `rk3568_dmc` in the RK3566 device patches or `packages/linux`. Pristine Linux 7.0.2 has neither the driver nor the symbol. No autoload file was added. `rk3568_dmcfreq_probe` is absent from `System.map` and present in `rk3568_dmc.ko`. Vermagic is `7.0.2 SMP preempt mod_unload aarch64`, matching `miyoo-flip-gamepad.ko`. The OF alias is `rockchip,rk3568-dmc`. The module is in the squashfs at `/lib/modules/7.0.2/kernel/drivers/devfreq/rk3568_dmc.ko`, and `modules.dep` and `modules.alias` name it. OTA `zlyme-my355-20260929-81c7fc87331d.tar`, SHA-256 `ebec9766147adf6ef69d64240834f4510eca474a6586a39376aa73ee828669c3`, archive VERSION `81c7fc87331d` / `20260929`. Kernel banner `#1 SMP PREEMPT Tue Sep 29 23:34:11 CEST 2026`. Hardware acceptance is pending. Phase 7B has not started.
+
 ## 2026-09-29 — Phase 6 closed
 
 Phase 6 is complete. The accepted runtime remains `b709719aac5c5540394d0369e5e06981b8aa00bc`, image `zlyme-my355-20260928-b709719aac5c.tar`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`, kernel `Linux 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. Later branch commits are documentation. No new OTA was built for the close.
