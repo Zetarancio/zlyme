@@ -179,15 +179,27 @@ out:
 /* ---- Rate setting ----------------------------------------------------- */
 
 static int rk3568_dmc_set_rate(struct rk3568_dmcfreq *dmcfreq,
-			       unsigned long target_rate)
+			       unsigned long target_rate,
+			       bool *transition_started)
 {
 	struct rk3568_share_params __iomem *p = dmcfreq->share_params;
 	struct arm_smccc_res res;
+
+	if (transition_started)
+		*transition_started = false;
 
 	writel_relaxed(target_rate, &p->hz);
 	writel_relaxed(0, &p->lcdc_type);
 	writel_relaxed(1, &p->wait_flag1);
 	writel_relaxed(1, &p->wait_flag0);
+
+	/*
+	 * DRAM_SET_RATE is the call that asks ATF to change DDR.
+	 * Shared-memory writes above do not. After this point a
+	 * failure no longer proves the old rate is still in effect.
+	 */
+	if (transition_started)
+		*transition_started = true;
 
 	res = sip_smc_dram(RK3568_SIP_SHARE_PAGE_DDR, 0,
 			   ROCKCHIP_SIP_CONFIG_DRAM_SET_RATE);
@@ -225,6 +237,7 @@ static int rk3568_dmcfreq_target(struct device *dev, unsigned long *freq,
 	struct rk3568_dmcfreq *dmcfreq = dev_get_drvdata(dev);
 	struct dev_pm_opp *opp;
 	unsigned long target_rate, target_volt, old_rate;
+	bool started = false;
 	int err;
 
 	opp = devfreq_recommended_opp(dev, freq, flags);
@@ -251,13 +264,20 @@ static int rk3568_dmcfreq_target(struct device *dev, unsigned long *freq,
 		}
 	}
 
-	err = rk3568_dmc_set_rate(dmcfreq, target_rate);
+	err = rk3568_dmc_set_rate(dmcfreq, target_rate, &started);
 	if (err) {
 		dev_err(dev, "cannot set DDR rate %lu Hz (%d)\n",
 			target_rate, err);
-		if (target_rate > old_rate)
-			regulator_set_voltage(dmcfreq->vdd_center,
-					      dmcfreq->volt, INT_MAX);
+		if (target_rate > old_rate) {
+			if (!started) {
+				if (regulator_set_voltage(dmcfreq->vdd_center,
+							  dmcfreq->volt,
+							  INT_MAX))
+					dmcfreq->volt = target_volt;
+			} else {
+				dmcfreq->volt = target_volt;
+			}
+		}
 		goto unlock;
 	}
 
@@ -349,6 +369,7 @@ static int rk3568_dmcfreq_suspend(struct device *dev)
 	unsigned long freq;
 	int err = 0;
 	bool raised = false;
+	bool started = false;
 
 	if (!dmcfreq->devfreq)
 		return 0;
@@ -382,13 +403,21 @@ static int rk3568_dmcfreq_suspend(struct device *dev)
 			raised = true;
 		}
 
-		err = rk3568_dmc_set_rate(dmcfreq, dmcfreq->boot_rate);
+		err = rk3568_dmc_set_rate(dmcfreq, dmcfreq->boot_rate,
+					  &started);
 		if (err) {
 			dev_err(dev, "cannot set DDR rate %lu Hz (%d)\n",
 				dmcfreq->boot_rate, err);
-			if (raised)
-				regulator_set_voltage(dmcfreq->vdd_center,
-						      dmcfreq->volt, INT_MAX);
+			if (raised) {
+				if (!started) {
+					if (regulator_set_voltage(dmcfreq->vdd_center,
+								  dmcfreq->volt,
+								  INT_MAX))
+						dmcfreq->volt = target_volt;
+				} else {
+					dmcfreq->volt = target_volt;
+				}
+			}
 			goto unlock;
 		}
 
