@@ -425,6 +425,7 @@ Important current hardware facts that affect architecture:
 
 - standard suspend is known working;
 - deep suspend is a separate BL31/SIP feature and is not required for ordinary suspend;
+- Phase 6 enables that RK3568 BL31 path on the Flip, with `vdd_logic` off in mem suspend;
 - DMC runtime scaling and deep-suspend configuration are independent drivers/features;
 - the RK3568 DMC driver uses Rockchip's V2 SIP shared-memory/MCU/IRQ protocol;
 - the upper USB host requires EHCI + OHCI and the PHY clock used by OHCI;

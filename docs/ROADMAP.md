@@ -1662,7 +1662,17 @@ This should leave a small explainable my355 kernel delta.
 
 ## 6 — Deep suspend bring-up
 
-Phase 6A research is recorded in `docs/research/deep-suspend-phase6.md`. Phase 6B is hardware-accepted on `zlyme-my355-20260928-ff92191bb51c.tar`: BL31 v1.44 accepts sleep mask `0x5ec`, wake mask `0x10`, and `LINUX_PM_STATE` 3, all with `res.a0=0`. Phase 6C passed on the normal power button with `vdd_logic` still on. Phase 6D is hardware-accepted on `zlyme-my355-20260928-b709719aac5c.tar`: the same BL31 calls still return `res.a0=0` with `vdd_logic` off in mem suspend, and repeated power-button cycles resume. RK817 `005` is under evaluation and is not applied. Phase 6 is not complete.
+**Phase 6 — COMPLETE.** The accepted runtime is `b709719aac5c5540394d0369e5e06981b8aa00bc`, image `zlyme-my355-20260928-b709719aac5c.tar`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`, kernel `Linux 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. Later commits on `phase-6-deep-suspend` are documentation and research only. No replacement Phase 6 OTA was built to close the phase. Evidence is `docs/research/deep-suspend-phase6.md`.
+
+The shipped ABI is `compatible = "rockchip,pm-rk3568"`, `sleep-mode-config = 0x5ec`, `wakeup-config = 0x10`, `sleep-debug-en = 0`, BL31 `rk3568_bl31_v1.44.elf`. Linux mem sleep is `s2idle [deep]`. Firmware returned `res.a0=0` for `LINUX_PM_STATE` `cfg1=0x3`, mode `cfg1=0x5ec`, and wake `cfg1=0x10`. Phase 6D turns `vdd_logic` / RK817 `DCDC_REG1` off in mem suspend and keeps `regulator-always-on` and `regulator-boot-on`. The mask still includes `RKPM_SLP_ARMOFF_LOGOFF`. Repeated maintainer power-button cycles passed. The exact total is not in the ring buffer.
+
+Phase 6C covered the normal NextUI path and the in-game path. Display, audio, the built-in pad, and the virtual Xbox 360 pad returned. `/storage` stayed usable. Wi-Fi and SSH returned. DMC devfreq stayed present. `mali_kbase` stayed loaded. No filesystem corruption and no Oops, panic, or hung task attributable to deep suspend was observed. An SSH suspend that slept twice was a userspace artifact: it bypassed `PWR_sleepNow()`, so `pwr.resume_tick` was never armed. It was not a BL31 failure, a kernel retry, or a firmware wake failure. The `xHC error in resume, USBSTS 0x401, Reinit` line recovered with the USB radio. Lid policy was not given a separate deep-suspend test and is unchanged.
+
+`CONFIG_ROCKCHIP_PM_CONFIG=y` stays built-in. The per-suspend `.prepare` path is part of the firmware configuration, and that built-in driver is what the hardware test ran. The module question is closed: keep built-in. Successful `dev_info` lines at probe and suspend stay. They are low-frequency ABI diagnostics. Changing their level would be a new kernel runtime, so it is not part of this closure.
+
+DFI `1010` stays applied. Deep suspend did not show a fatal DFI or DMC resume failure. Dynamic DMC scaling is Phase 7, so `1010` is kept through Phase 6 and re-evaluated with the DMC module lifecycle in Phase 7. The deferred ROCKNIX GPU power-domain change was not imported. No GPU resume failure required it.
+
+RK817 `001` stays applied as local `0003`. `002` stays disabled. `005` stays unapplied: Test A showed no discharge jump, charging ratio 1.22 did not repeat at 0.98, and the published fallback only credits an under-count. `008` stays disabled. `0007` is unchanged. Phase 7 does not reopen those gauge decisions.
 
 The device wiki establishes:
 
@@ -1689,25 +1699,28 @@ Prove deep suspend first.
 
 ### Module question
 
-If the selected suspend implementation is built-in or relies on early/late kernel init integration, converting it into an external loadable module is a separate refactor.
-
-After built-in deep suspend is proven on Zlyme, evaluate whether module semantics are safe and worthwhile.
+Closed: **keep built-in**. `CONFIG_ROCKCHIP_PM_CONFIG=y`. The hardware-proven driver registers with `builtin_platform_driver` and reprograms BL31 from `.prepare` on every suspend. Turning that into a loadable module is not part of Phase 6.
 
 ### Gate
 
-Test:
-- power-button/lid policy;
-- at least dozens of suspend/resume cycles;
-- USB host attached/unattached;
-- Wi-Fi/BT on/off;
-- audio after resume;
-- input after resume;
-- DMC scaling after resume;
-- NextUI first frame after resume;
-- standby current;
-- no filesystem corruption.
+Phase 6 is complete when:
 
-Only enable `vdd_logic` off-in-suspend together with the correct BL31 `ARMOFF_LOGOFF` configuration.
+- the stock/BSP-compatible RK3568 suspend configuration is implemented;
+- BL31 accepts the required SMC calls;
+- Linux deep mem suspend enters and resumes;
+- `vdd_logic` off-in-suspend works with `ARMOFF_LOGOFF`;
+- repeated physical power-button suspend/resume works;
+- normal NextUI suspend/resume works;
+- in-game suspend/resume works;
+- display, audio, and input recover;
+- persistent storage remains healthy;
+- normal networking can recover;
+- no serious kernel or filesystem failure attributable to deep suspend remains;
+- RK817 sleep-gauge behavior has been evaluated and given an explicit disposition.
+
+These are useful extended checks and are not closure blockers: dozens of cycles, every USB-host attached and unattached combination, a full Wi-Fi/BT on/off matrix, a quantitative standby-current measurement, and DMC dynamic-scaling validation. DMC scaling and the DMC module lifecycle are Phase 7. Standby current characterizes power. It does not prove that the suspend architecture resumes. USB and Bluetooth combinatorial stress is extended regression coverage, not a prerequisite for accepting the proven BL31 and `vdd_logic` design. Those extended checks were not claimed as done. Lid behavior keeps the existing userspace policy and was not a separate deep-suspend closure test.
+
+`vdd_logic` off-in-suspend was enabled together with BL31 `ARMOFF_LOGOFF` (`0x5ec`) and resumed.
 
 ## 7 — DMC driver modularization / patch extraction
 

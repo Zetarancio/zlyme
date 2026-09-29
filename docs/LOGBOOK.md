@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-29 — Phase 6 closed
+
+Phase 6 is complete. The accepted runtime remains `b709719aac5c5540394d0369e5e06981b8aa00bc`, image `zlyme-my355-20260928-b709719aac5c.tar`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`, kernel `Linux 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. Later branch commits are documentation. No new OTA was built for the close.
+
+BL31 v1.44 accepted `LINUX_PM_STATE` `0x3`, mode `0x5ec`, and wake `0x10`, each with `res.a0=0`. `vdd_logic` is off in mem suspend, with `regulator-always-on` and `regulator-boot-on` kept, under `ARMOFF_LOGOFF`. The maintainer repeated physical power-button cycles and reports that they worked. The log does not hold an exact count. NextUI and in-game suspend/resume worked. Display, audio, the built-in pad, the virtual Xbox pad, `/storage`, Wi-Fi, DMC devfreq, and `mali_kbase` returned. The SSH double-sleep bypassed `PWR_sleepNow()` and was not a firmware failure. The xHCI resume reinit recovered. Lid policy was not separately tested and is unchanged.
+
+`CONFIG_ROCKCHIP_PM_CONFIG` stays `y`. Success `dev_info` lines stay. DFI `1010` stays and is re-checked with DMC in Phase 7. The ROCKNIX GPU power-domain change stays out. RK817 `0003` stays. `002` and `008` stay disabled. `005` stays unapplied after the unplugged sleep and the charging pair at ratios 1.22 and 0.98. `0007` is unchanged. Dozens of scripted cycles, a USB matrix, a radio matrix, standby current, and DMC scaling were not closure blockers and were not claimed.
+
 ## 2026-09-29 — RK817 sleep-gauge evaluation closed
 
 Three read-only power-button sleeps on the installed Phase 6D image, kernel `#2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. No register write and no remote suspend. Unplugged, uptime advanced 1002.97 s and `Q_PRES` fell 31648 µAh, from 65% to 64%. That is not a jump. The first charging interval, near 1.02 A, advanced 1014.25 s and `Q_PRES` rose 352256 µAh against a simple estimate of 287941 µAh, ratio 1.22. Charging stayed near 1.01 A. The repeat, near 1.08 A, advanced 963.90 s and `Q_PRES` rose 282424 µAh against 289167 µAh, ratio 0.98. Charging stayed near 0.98 A, so that interval did not finish. `Q_INIT` did not change. No full relax pair appeared. The 1.22 ratio did not repeat. ROCKNIX `005` stays unapplied. Its elapsed-current fallback credits only a shortfall, so it would not correct the 1.22 direction, and it still depends on disabled `002`. `008` stays disabled. No Zlyme gauge change.

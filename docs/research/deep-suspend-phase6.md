@@ -388,9 +388,9 @@ The first image changes only that driver and the DTS node. It does not change `1
 | 6C | On device: conduit present, `res.a0` success, `mem` and `deep` both resume, power key wakes, storage is intact, input and the panel return. Repeat a handful of cycles, not dozens yet. |
 | 6D | Separate image. Same mask, `vdd_logic` off. Resume must still work. If it does not, revert the regulator and keep the driver. |
 | 6E | Only failures from 6D: DFI counters, GPU, RK817 gauge, Wi-Fi/BT, USB. One subsystem per experiment. |
-| 6F | The roadmap gate: dozens of cycles, USB attached and not, radios on and off, audio, input, DMC scaling, NextUI first frame, standby current, filesystem intact. |
+| 6F | Closure. The original dozens-of-cycles, USB, radio, standby-current, and DMC-scaling list is not the gate. See the closure section. |
 
-6B logs belong to that image: SMC id, subcommand, two arguments, `res.a0`, the Linux sleep state, and the mode and wake masks. One line per call. Drop them to `dev_dbg` or a Kconfig debug option before a release image. Do not leave `dev_info` on the success path forever.
+6B logs belong to that image: SMC id, subcommand, two arguments, `res.a0`, the Linux sleep state, and the mode and wake masks. One line per call. Closure keeps those successful `dev_info` lines. They are the ABI trace the hardware test ran. Demoting them would be a different kernel. A later logging-only change can do that.
 
 ## Phase 6B implementation
 
@@ -441,7 +441,7 @@ WAKE           ctrl=0x2 cfg1=0x10             res.a0=0
 
 The maintainer repeated physical power-button suspend/resume after that and reports that those cycles worked. A later awake boot of the same kernel, uptime about 249 seconds, still showed the probe trio at `res.a0=0` and zero `.prepare` lines. The ring buffer therefore does not hold a total cycle count. On that boot `/storage` was mounted, `/sys/class/devfreq/dmc` was `powersave` at 324 MHz, `mali_kbase` was loaded, Wi-Fi was associated to `TP-Link_E44F`, and both `Miyoo Flip Gamepad` and `Microsoft X-Box 360 pad` were present. Battery was discharging at 68%. No standby current was measured. No `Oops`, `BUG`, panic, or filesystem I/O error was in that buffer. The `xHC error in resume, USBSTS 0x401, Reinit` line from Phase 6C is a recovering USB reinit, not by itself a 6D regression.
 
-`dmc` still has `center-supply = <&vdd_logic>`. DCDC1 powers the center domain while the system is running. BL31 `ARMOFF_LOGOFF` restored it across these mem suspends. The DMC driver was not changed. Phase 6 is not complete.
+`dmc` still has `center-supply = <&vdd_logic>`. DCDC1 powers the center domain while the system is running. BL31 `ARMOFF_LOGOFF` restored it across these mem suspends. The DMC driver was not changed. Phase 6 later closed on this runtime. The closure section records the revised gate.
 
 ## Open items
 
@@ -570,3 +570,11 @@ ratio    = 282424 / 289167 = 0.98
 The estimate is `pre-sleep current_avg * elapsed` over the whole snapshot interval. That interval includes awake time before the power press and after wake. It uses the gauge's own averaged current, not an external coulomb meter. Charger current can move, and a taper makes the estimate high. B2's terminal voltage rose from 4.172 V to 4.227 V and current fell about 9%, from 1.08 A to 0.98 A, so this interval had started toward the charge voltage. Current was still near 1 A and the charge did not complete. B2's ratio of 0.98 sits inside that current change. B1's ratio of 1.22 did not repeat, and B2 did not substantially under-count.
 
 Classification: **A. No actionable Flip problem demonstrated.** `005` stays unapplied. No Zlyme gauge change is justified. The published fallback still would not correct an over-count, and the patch still depends on helpers from disabled `002`.
+
+## Phase 6 closure
+
+**Phase 6 — COMPLETE.** Accepted runtime `b709719aac5c5540394d0369e5e06981b8aa00bc`. Image `zlyme-my355-20260928-b709719aac5c.tar`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`. Kernel `Linux 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. Commits after that runtime are documentation. No closing OTA was built.
+
+The gate that closed the phase is: BSP-compatible `rockchip,pm-rk3568` configuration, BL31 acceptance of the SMC calls, Linux deep mem suspend and resume, `vdd_logic` off with `ARMOFF_LOGOFF`, repeated physical power-button cycles, NextUI and in-game suspend/resume, display, audio, and input recovery, healthy storage, networking able to recover, no serious kernel or filesystem failure attributable to deep suspend, and an explicit RK817 gauge disposition. Dozens of cycles, a USB attached/unattached matrix, a Wi-Fi/BT matrix, standby current, and DMC dynamic scaling are not blockers. DMC scaling is Phase 7. Standby current is power characterization. USB and Bluetooth matrices are extended regression coverage. None of those extended checks is claimed as done. Lid policy was not given its own deep-suspend test and is unchanged.
+
+`CONFIG_ROCKCHIP_PM_CONFIG=y` stays. The module question is closed as keep built-in. Successful probe and `.prepare` `dev_info` lines stay, because that is the runtime the hardware accepted. DFI `1010` stays applied and is re-evaluated with the DMC module work in Phase 7. The ROCKNIX GPU power-domain change stays out. RK817 `0003` stays applied. `002` and `008` stay disabled. `005` stays unapplied. `0007` is unchanged. Phase 7 does not reopen the gauge.

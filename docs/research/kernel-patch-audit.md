@@ -160,6 +160,8 @@ Current ROCKNIX `next` has no `rk3568_dmc` hit under `projects/` or `packages/li
 
 ### Phase 6
 
+Phase 6 is complete. The accepted runtime is `b709719aac5c5540394d0369e5e06981b8aa00bc`. `1010` stays applied and is re-evaluated with DMC in Phase 7. RK817 `005` was evaluated and left unapplied. The PM-config driver stays built-in. The bullets below are the Phase 2 queue, not the closure record. The closure record is `docs/research/deep-suspend-phase6.md`.
+
 - Zlyme `1010` rockchip-dfi suspend/resume. Keep it in the tree through Phase 2. Do not enable deep suspend. The Flip DTS suspend include stays commented out.
 - ROCKNIX rk817 gauge-across-sleep patch `005`.
 - ROCKNIX RK3566 `modules.keep` / `sleep.sh` wifi change.
@@ -305,7 +307,7 @@ RK817 gauge correction across sleep, ROCKNIX patch `005` by Jacob Cook, hooks sy
 
 `platforms/RK3566/modules.keep` in the wifi-sleep merge contains `rtw88_8821cs`. The Flip radio is RTL8733BU. That line is ROCKNIX userspace policy for a different module. Zlyme has no matching sleep script. Owner: **ignore**. It is not Phase 6.
 
-`1010` still belongs to Phase 6 as a disposition. Its callbacks are system PM ops and the current standard-suspend image already includes them, so 2C does not delete them either. The failure described is DDRMON state lost when the center domain gates in deep suspend, which Phase 6 owns. Class **B + DEFER**, owner Phase 6.
+`1010` still belongs to Phase 6 as a disposition. Its callbacks are system PM ops and the current standard-suspend image already includes them, so 2C does not delete them either. The failure described is DDRMON state lost when the center domain gates in deep suspend, which Phase 6 owns. Class **B + DEFER**, owner Phase 6. Phase 6 later kept the patch. Deep suspend did not show a fatal DFI resume failure. Re-evaluate it with the DMC module lifecycle in Phase 7. Do not delete it in a Phase 6 closeout.
 
 ### All 45 patches
 
