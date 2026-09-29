@@ -133,13 +133,12 @@ Zlyme keeps `CONFIG_PM_DEVFREQ_EVENT=y`,
 `1010-devfreq-event-rockchip-dfi-add-pm-suspend-resume.patch`. Phase 7B
 does not remove that dependency.
 
-## Binding patch
+## Binding
 
-Zlyme still carries
-`1012a-dt-bindings-memory-controllers-rockchip-rk3568-dmc.patch`. That
-patch is the kernel-tree schema for `rockchip,rk3568-dmc`. This README
-is the integration note for the external module. It does not replace
-schema validation.
+The former local kernel-tree schema patch was removed when the driver
+became an external module. This README records the external module's
+integration contract; the board DTS supplies the actual node. It is not
+an upstream binding.
 
 ## Suspend
 
