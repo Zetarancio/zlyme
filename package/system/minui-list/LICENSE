@@ -6,6 +6,7 @@ https://github.com/josegonzalez/minui-list
 
 JSON is kgabis/parson, also MIT.
 https://github.com/kgabis/parson
+The parson license text is /usr/share/minui-list/parson-LICENSE.
 
 This image links minui-list against NextUI (LoveRetro). NextUI is
 PolyForm Noncommercial 1.0.0 and a fork of MinUI by Shaun Inman.

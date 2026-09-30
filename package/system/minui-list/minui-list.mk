@@ -13,6 +13,8 @@ MINUI_LIST_SITE = $(MINUI_LIST_PKGDIR)/src
 MINUI_LIST_SITE_METHOD = local
 MINUI_LIST_LICENSE = MIT
 MINUI_LIST_LICENSE_FILES = LICENSE
+# minui-list and parson are both MIT. The parson text is not inside src/
+# (upstream gitignores include/), so the recipe ships it separately.
 # Linked against NextUI objects (PolyForm NC). See $(MINUI_LIST_PKGDIR)/LICENSE.
 MINUI_LIST_DEPENDENCIES = nextui sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate libdrm
 
@@ -67,6 +69,8 @@ define MINUI_LIST_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/minui-list/LICENSE
 	$(INSTALL) -D -m 0644 $(@D)/LICENSE \
 		$(TARGET_DIR)/usr/share/minui-list/LICENSE.upstream
+	$(INSTALL) -D -m 0644 $(MINUI_LIST_PKGDIR)/parson/LICENSE \
+		$(TARGET_DIR)/usr/share/minui-list/parson-LICENSE
 endef
 
 $(eval $(generic-package))
