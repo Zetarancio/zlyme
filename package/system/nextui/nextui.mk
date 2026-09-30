@@ -2,18 +2,18 @@
 #
 # nextui
 #
-# Vendored LoveRetro/NextUI (see src/UPSTREAM), edited here. When this
-# fork is proven it will become its own repo and Zlyme will fetch it.
+# Zetarancio/NextUI at an exact commit. Branch zlyme is workflow only.
 # Cores stay /usr/lib/libretro; emu paks exec RetroArch (ra-run).
 #
-# NextUI: https://github.com/LoveRetro/NextUI
+# NextUI: https://github.com/Zetarancio/NextUI
+# Upstream LoveRetro/NextUI pin is the fetched UPSTREAM file.
 # Originally MinUI by Shaun Inman: https://github.com/shauninman/MinUI
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme43
-NEXTUI_SITE = $(NEXTUI_PKGDIR)/src
-NEXTUI_SITE_METHOD = local
+NEXTUI_VERSION = 40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59
+NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
+NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
@@ -156,7 +156,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/lib/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
 		$(TARGET_DIR)/usr/share/zlyme/gamecontrollerdb.txt
-	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/src/UPSTREAM \
+	$(INSTALL) -D -m 0644 $(@D)/UPSTREAM \
 		$(TARGET_DIR)/usr/share/nextui/UPSTREAM
 	$(INSTALL) -D -m 0644 $(@D)/LICENSE \
 		$(TARGET_DIR)/usr/share/nextui/LICENSE
