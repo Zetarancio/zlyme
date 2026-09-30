@@ -12,11 +12,6 @@ USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 	"$USERDATA_PATH/Pico-8-native" "$SHARED_USERDATA_PATH/Pico-8-native"
 
-if [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
-	# shellcheck disable=SC1091
-	. /usr/share/nextui/bin/zlyme-library.sh
-	zlyme_library_for "$ROM"
-fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 if [ "${ZLYME_EMU_CORE:-}" = fake08 ]; then
 	exec ra-run -L "${CORES_PATH:-/usr/lib/libretro}/fake08_libretro.so" "$ROM"

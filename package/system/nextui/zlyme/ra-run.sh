@@ -34,7 +34,9 @@ fi
 # mkdir Bios/TAG. Link one level of those files into Bios/ so a dump
 # in Bios/PS/ still counts. Never copy into Roms/.
 BIOS_PATH="${BIOS_PATH:-/storage/Bios}"
-if [ -d "$BIOS_PATH" ]; then
+# The runtime BIOS view already contains these aliases. Repeating the
+# glob walks every BIOS file again and can abort the shell.
+if [ -d "$BIOS_PATH" ] && [ ! -f "$BIOS_PATH/.zlyme-ready" ]; then
 	for f in "$BIOS_PATH"/*/*; do
 		[ -f "$f" ] || continue
 		bn=$(basename "$f")
@@ -42,6 +44,8 @@ if [ -d "$BIOS_PATH" ]; then
 		rel=${f#"$BIOS_PATH/"}
 		ln -s "$rel" "$BIOS_PATH/$bn" 2>/dev/null || true
 	done
+fi
+if [ -d "$BIOS_PATH" ]; then
 	mkdir -p "$BIOS_PATH/fbneo" "$BIOS_PATH/neocd"
 	for f in neogeo.zip neocdz.zip; do
 		if [ -f "$BIOS_PATH/$f" ] && [ ! -e "$BIOS_PATH/fbneo/$f" ]; then
@@ -191,9 +195,11 @@ while [ "$i" -le $# ]; do
 	esac
 	i=$((i + 1))
 done
-if [ -n "$_ra_rom" ] && [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+if [ -n "$_ra_rom" ] && [ "${ZLYME_RESOLVED_ROM:-}" != "$_ra_rom" ] \
+	&& [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+	# shellcheck disable=SC1091
 	. /usr/share/nextui/bin/zlyme-library.sh
-	zlyme_library_for "$_ra_rom"
+	zlyme_library_for "$_ra_rom" || exit 1
 fi
 _ra_tag=${EMU_TAG:-}
 if [ -z "$_ra_tag" ] && [ -n "$_ra_rom" ]; then

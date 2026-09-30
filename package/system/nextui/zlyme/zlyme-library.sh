@@ -53,41 +53,51 @@ zlyme_each_library() {
 	printf '%s\n' /storage
 }
 
-# Link one Bios tree into the runtime view. find -P does not walk
-# symlinked directories, so a cyclic link is not followed. [ -f ]
-# rejects a dangling or looping symlink (ELOOP).
-zlyme_bios_link() {
-	src=$1
-	dest=$2
-	[ -d "$src" ] || return 0
-	find -P "$src" \( -type f -o -type l \) 2>/dev/null |
-	while IFS= read -r f; do
-		[ -n "$f" ] || continue
-		[ -f "$f" ] || continue
-		rel=${f#"$src"/}
-		case "$rel" in
-			""|/*|..|../*|*/..|*/../*) continue ;;
-		esac
-		mkdir -p "$dest/$(dirname "$rel")" || continue
-		ln -sfn "$f" "$dest/$rel" || true
-	done
+# Cache key is the library list plus which card wins duplicates.
+# A rescan deletes the stamp. The same topology does not walk Bios again.
+zlyme_bios_key() {
+	romlib=$1
+	libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+	if [ -r "$libs" ]; then
+		sum=$(cksum "$libs" | awk '{ print $1 }')
+	else
+		sum=main
+	fi
+	printf '%s %s\n' "$sum" "$romlib"
 }
 
-# Union of every library Bios directory. The ROM library is linked
-# last so a duplicate relative path resolves to that card. Only the
-# runtime directory is written.
+# Union of every library Bios directory. The ROM library is applied
+# last so a duplicate relative path resolves to that card. Only /run
+# is written. Directory symlinks are not walked.
 zlyme_bios_view() {
 	romlib=$1
 	run=${ZLYME_RUN_DIR:-/run/zlyme}
 	view=$run/bios
+	py=${ZLYME_BIOS_PY:-/usr/share/zlyme/bios-union.py}
 	mkdir -p "$run" || return 1
+	key=$(zlyme_bios_key "$romlib")
+	if [ -f "$run/bios.stamp" ] && [ "$(cat "$run/bios.stamp")" = "$key" ] \
+		&& [ -d "$view" ]; then
+		BIOS_PATH=$view
+		export BIOS_PATH
+		return 0
+	fi
+	[ -f "$py" ] || return 1
+	command -v python3 >/dev/null 2>&1 || return 1
+	ZLYME_BIOS_SCANS=$(( ${ZLYME_BIOS_SCANS:-0} + 1 ))
+	export ZLYME_BIOS_SCANS
 	stage=$(mktemp -d "$run/bios.XXXXXX") || return 1
-	zlyme_each_library | while IFS= read -r root; do
-		[ -n "$root" ] || continue
-		[ "$root" = "$romlib" ] && continue
-		zlyme_bios_link "$root/Bios" "$stage"
-	done
-	zlyme_bios_link "$romlib/Bios" "$stage"
+	{
+		zlyme_each_library | while IFS= read -r root; do
+			[ -n "$root" ] || continue
+			[ "$root" = "$romlib" ] && continue
+			printf '%s\n' "$root/Bios"
+		done
+		printf '%s\n' "$romlib/Bios"
+	} | python3 "$py" "$stage" || {
+		rm -rf "$stage"
+		return 1
+	}
 	rm -rf "$view.next"
 	if ! mv "$stage" "$view.next"; then
 		rm -rf "$stage"
@@ -95,6 +105,7 @@ zlyme_bios_view() {
 	fi
 	rm -rf "$view"
 	mv "$view.next" "$view" || return 1
+	printf '%s\n' "$key" > "$run/bios.stamp" || return 1
 	BIOS_PATH=$view
 	export BIOS_PATH
 }
@@ -116,7 +127,8 @@ zlyme_save_matches_rom() {
 
 zlyme_dir_has_files() {
 	[ -d "$1" ] || return 1
-	n=$(find "$1" -type f 2>/dev/null | head -n 1)
+	# Stop at the first file. Do not walk an entire save tree.
+	n=$(find "$1" -maxdepth 2 -type f 2>/dev/null | head -n 1)
 	[ -n "$n" ]
 }
 
@@ -125,18 +137,23 @@ zlyme_dir_exact() {
 	stem=$2
 	stem2=$3
 	[ -d "$dir" ] || return 1
-	hit=$(mktemp) || return 1
-	: > "$hit"
-	find "$dir" -type f 2>/dev/null |
-	while IFS= read -r f; do
-		zlyme_save_matches_rom "$(basename "$f")" "$stem" "$stem2" && \
-			echo 1 >> "$hit"
+	for base in "$stem" "$stem2"; do
+		[ -n "$base" ] || continue
+		for f in \
+			"$dir/$base".sav "$dir/$base".srm "$dir/$base".state \
+			"$dir/$base".state[0-9] "$dir/$base".state.[0-9] \
+			"$dir/$base".st[0-9] "$dir/$base".auto \
+			"$dir/$base".rtc "$dir/$base".mcr "$dir/$base".eep \
+			"$dir/$base".fla "$dir/$base".nv \
+			"$dir/$base".dsv "$dir/$base".dst \
+			"$dir"/*/"$base".sav "$dir"/*/"$base".srm \
+			"$dir"/*/"$base".state "$dir"/*/"$base".dsv \
+			"$dir"/*/"$base".dst
+		do
+			[ -f "$f" ] || continue
+			zlyme_save_matches_rom "$(basename "$f")" "$stem" "$stem2" && return 0
+		done
 	done
-	if [ -s "$hit" ]; then
-		rm -f "$hit"
-		return 0
-	fi
-	rm -f "$hit"
 	return 1
 }
 
@@ -151,8 +168,11 @@ zlyme_save_root() {
 	base=$(basename "$rom")
 	stem=${base%.*}
 	stem2=${stem%.*}
-	pick=$(mktemp) || return 1
-	: > "$pick"
+	other_exact=
+	other_loose=
+	# A temp file keeps the loop out of a pipeline so the hits survive.
+	hits=$(mktemp) || return 1
+	: > "$hits"
 	zlyme_each_library | while IFS= read -r root; do
 		[ -n "$root" ] || continue
 		[ "$root" = "$romlib" ] && continue
@@ -161,9 +181,7 @@ zlyme_save_root() {
 		elif zlyme_dir_has_files "$root/Saves/$tag"; then
 			printf 'loose|%s\n' "$root"
 		fi
-	done > "$pick"
-	other_exact=
-	other_loose=
+	done > "$hits"
 	while IFS= read -r line; do
 		kind=${line%%|*}
 		root=${line#*|}
@@ -173,8 +191,8 @@ zlyme_save_root() {
 		if [ "$kind" = loose ] && [ -z "$other_loose" ]; then
 			other_loose=$root
 		fi
-	done < "$pick"
-	rm -f "$pick"
+	done < "$hits"
+	rm -f "$hits"
 	if zlyme_dir_exact "$romlib/Saves/$tag" "$stem" "$stem2"; then
 		printf '%s\n' "$romlib"
 		return 0
@@ -267,18 +285,18 @@ zlyme_pref_lookup() {
 zlyme_library_for() {
 	rom=$1
 	[ -n "$rom" ] || return 0
+	if [ "${ZLYME_RESOLVED_ROM:-}" = "$rom" ] && [ -n "${BIOS_PATH:-}" ] \
+		&& [ -n "${SAVES_PATH:-}" ]; then
+		return 0
+	fi
 	library=$(zlyme_library_root "$rom")
 	export library
 
 	# BIOS is a runtime union of every mounted library. The ROM
 	# library wins duplicate relative paths. Card trees are not copied.
 	if ! zlyme_bios_view "$library"; then
-		if [ -d "$library/Bios" ]; then
-			BIOS_PATH=$library/Bios
-		else
-			BIOS_PATH=/storage/Bios
-		fi
-		export BIOS_PATH
+		echo "zlyme: could not build the BIOS view for $rom" >&2
+		return 1
 	fi
 
 	tr=$(zlyme_library_tag_rel "$rom") || tr=
@@ -305,10 +323,17 @@ zlyme_library_for() {
 		sroot=$library
 	fi
 	SAVES_PATH=$sroot/Saves
-	mkdir -p "$SAVES_PATH" 2>/dev/null || true
+	mkdir -p "$SAVES_PATH" 2>/dev/null || {
+		echo "zlyme: could not create $SAVES_PATH" >&2
+		return 1
+	}
 	export SAVES_PATH
 	[ -n "${ZLYME_GOVERNOR:-}" ] && export ZLYME_GOVERNOR
 	[ -n "${ZLYME_EMU_CORE:-}" ] && export ZLYME_EMU_CORE
+	ZLYME_RESOLVED_ROM=$rom
+	export ZLYME_RESOLVED_ROM
+	ZLYME_RESOLVE_COUNT=$(( ${ZLYME_RESOLVE_COUNT:-0} + 1 ))
+	export ZLYME_RESOLVE_COUNT
 	return 0
 }
 

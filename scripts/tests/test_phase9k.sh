@@ -27,7 +27,12 @@ sum_before=$(find "$main/Bios" "$sd2/Bios" "$usb/Bios" -type f -exec sha256sum {
 . "$LIB"
 export ZLYME_LIBRARIES_FILE=$td/libs
 export ZLYME_RUN_DIR=$td/run
+export ZLYME_BIOS_PY=$ROOT/board/my355/fsoverlay/usr/share/zlyme/bios-union.py
 zlyme_library_for "$sd2/Roms/Game Boy (GB)/game.gb"
+test "${ZLYME_BIOS_SCANS:-0}" = 1
+zlyme_library_for "$sd2/Roms/Game Boy (GB)/game.gb"
+test "${ZLYME_RESOLVE_COUNT:-0}" = 1
+test "${ZLYME_BIOS_SCANS:-0}" = 1
 test -L "$td/run/bios/GB/gb_bios.bin"
 test "$(cat "$td/run/bios/GB/gb_bios.bin")" = sd-gb
 test "$(cat "$td/run/bios/PS/scph1001.bin")" = usb-only

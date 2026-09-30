@@ -48,6 +48,10 @@ if logs_wanted; then
 fi
 
 if [ -n "${ROM:-}" ] && [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+	# shellcheck disable=SC1091
 	. /usr/share/nextui/bin/zlyme-library.sh
-	zlyme_library_for "$ROM"
+	if ! zlyme_library_for "$ROM"; then
+		echo "zlyme: launch setup failed for $ROM" >&2
+		exit 1
+	fi
 fi

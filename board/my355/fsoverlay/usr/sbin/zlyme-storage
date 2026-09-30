@@ -80,6 +80,9 @@ is_library_root() {
 rescan_nextui() {
 	# Libraries are already current. Sync the Splore row before NextUI
 	# is told to reread the ROM folders.
+	# Library membership changed. The BIOS view is rebuilt on the next launch.
+	rm -f /run/zlyme/bios.stamp
+	rm -rf /run/zlyme/bios /run/zlyme/bios.next
 	if [ -x /usr/sbin/zlyme-pico-splore ]; then
 		/usr/sbin/zlyme-pico-splore || true
 	fi
