@@ -161,11 +161,11 @@ ORPHAN MATCHING = INDEXED
 | Quick Menu order | COMPLETE | `getQuickToggles()` is Settings, Wi-Fi, Bluetooth, Pak Store if present, Sleep, Reboot, Poweroff. Missing capabilities are still omitted. Pak Store was not added. |
 | Keyboard L1 DELETE pill | COMPLETE | `KeyboardPrompt` still deletes on L1. The hint row is `L1 DELETE` on the left and `B BACK` / `X ENTER` on the right. |
 | Shorter destructive Game-settings text | COMPLETE | Game cleanup rows name the real action. "Reset standalone settings" says games and saves are kept because the reset list is settings files only. |
-| One pending-reboot prompt | COMPLETE | `zlyme-bootcfg` snapshots `gpu`, `undervolt`, `otg`, `hdmi`, `sd2`, and `ab_swap` when Settings opens. On a clean exit it compares the normalized values. HDMI off then on does not prompt. Restart writes `/tmp/reboot` and exits. `nextui-session` calls `zlyme-halt reboot`. Later leaves the saved values in place. ZRAM, logs, timezone, Wi-Fi country, LED, network services, and rumble are not in the snapshot. |
+| One pending-reboot prompt | COMPLETE | `zlyme-bootcfg` snapshots `gpu`, `undervolt`, `otg`, `hdmi`, and `sd2` when Settings opens. On a clean exit it compares the normalized values. HDMI off then on does not prompt. Restart writes `/tmp/reboot` and exits. `nextui-session` calls `zlyme-halt reboot`. Later leaves the saved values in place. ZRAM, logs, timezone, Wi-Fi country, LED, network services, and rumble are not in the snapshot. `ab_swap` was removed from this snapshot in Phase 9K. |
 | PortMaster and VTree dark themes | COMPLETE | PortMaster theme is already the dark Zlyme baseline (`#050608` / `#F2F3F5` / `#FA7C08` / `#EC2A01`). `portmaster-launch` sets that theme once and does not replace a later user theme. VTree seeds the Zlyme theme on first run and then keeps the user's choice. |
 | Emulator and governor selectors as pills | COMPLETE | The per-game screen still uses left/right to change Governor and Emulator, up/down to move, A save, B back, and X inherit. Rows are now selector pills. The stored preference format and launch path are unchanged. |
 | Stop advertising CLTMP on my355 | COMPLETE | `PLAT_supportsColorTemperature()` is false on my355 and true on the shared fallback. The hint and the color-temp overlay are skipped here. `GetColortemp` stays for other platforms. |
-| Global A/B swap | COMPLETE | Persisted `ab_swap` defaults to off. On writes the shipped swapped map into `/run/inputplumber/capability_maps.d/zlyme_miyoo_flip.yaml` before InputPlumber starts. Only `BTN_EAST` and `BTN_SOUTH` targets swap. Joystick calibration still uses the physical pad. The change is reboot-required because Settings is holding the virtual pad. |
+| Global A/B swap | DROPPED in Phase 9K | The selectable setting, `zlyme-ab-map`, and the alternate capability map are gone. One built-in map remains: printed A (east, `BTN_EAST`) is virtual South and printed B (south, `BTN_SOUTH`) is virtual East. my355 raw `JOY_A` is 0 and `JOY_B` is 1 so NextUI agrees with that map. The generic Xbox line `a:b0,b:b1` is unchanged. |
 | Advanced System submenu | COMPLETE | System keeps ordinary preferences, Time zone, Joysticks, Storage, and Backup. Advanced holds GPU, CPU undervolt, ZRAM, USB OTG, HDMI, Second SD, System logs, Reset Settings, and Factory Reset. Per-menu Reset to defaults stays on the ordinary menus. |
 | Factory Reset placement | COMPLETE | Both resets are buttons under Advanced. Neither runs on highlight. Each asks A RESET / B BACK. |
 | Reset Settings vs Factory Reset | COMPLETE | See the reset ownership section below. `rm -rf /storage/.config/nextui` is gone. Settings does not call `reboot -f`. |
@@ -196,7 +196,6 @@ Reset Settings deletes only these files when they are regular files:
 /storage/.config/zlyme/merge
 /storage/.config/zlyme/logs
 /storage/.config/zlyme/update_channel
-/storage/.config/zlyme/ab_swap
 /storage/.config/zlyme/cpu_gov
 /storage/.config/zlyme/gpu_gov
 /storage/.config/nextui/shared/minuisettings.txt
@@ -206,7 +205,7 @@ Reset Settings deletes only these files when they are regular files:
 /storage/.config/nextui/shared/vtree/.zlyme-vtree-v1
 ```
 
-It then seeds a UTC zone file when `zlyme-timezone` is available and recreates `minuisettings.txt` through `zlyme-card-defaults`, the same helper `nextui-session` uses. Immediate defaults are applied by the existing owners: Wi-Fi, Bluetooth, SSH, Samba, and Syncthing init scripts, plus `zlyme-ctl` for LED, ZRAM, refresh, HDMI mode, logs, merge, and the governor profile. GPU, undervolt, OTG, HDMI, second SD, and A/B swap stay reboot-required; the overlay line is rewritten and the pending-reboot prompt covers them. `boost`, `cpu_gov`, `gpu_gov`, and `update_channel` are persistence only. A missing flag falls back to the existing `zlyme-ctl` default. CPU undervolt's default remains off.
+It then seeds a UTC zone file when `zlyme-timezone` is available and recreates `minuisettings.txt` through `zlyme-card-defaults`, the same helper `nextui-session` uses. Immediate defaults are applied by the existing owners: Wi-Fi, Bluetooth, SSH, Samba, and Syncthing init scripts, plus `zlyme-ctl` for LED, ZRAM, refresh, HDMI mode, logs, merge, and the governor profile. GPU, undervolt, OTG, HDMI, and second SD stay reboot-required; the overlay line is rewritten and the pending-reboot prompt covers them. `boost`, `cpu_gov`, `gpu_gov`, and `update_channel` are persistence only. A missing flag falls back to the existing `zlyme-ctl` default. CPU undervolt's default remains off.
 
 Reset Settings preserves ROMs, BIOS, saves, cheats, Wi-Fi credentials (`wpa_supplicant.conf`), Bluetooth pairings (`bluetooth.tar`), SSH host keys under `/storage/.config/ssh`, joystick calibration and rumble, standalone emulator configs and saves, Pico-8 carts and cdata, PortMaster ports and config, the Wine prefix, user-installed PAKs, stock PAKs, and logs.
 
@@ -219,8 +218,8 @@ Factory Reset does that same settings reset, then creates `/storage/.config/zlym
 | PortMaster install disk | COMPLETE | Pinned PortMaster `2026.05.04-1202` reads `HM_TOOLS_DIR`, `HM_PORTS_DIR`, and `HM_SCRIPTS_DIR` when they are already set. Zlyme persists the library root and exports those three. Default is `/storage`. Changing it does not move files. A missing explicit disk refuses to start PortMaster. Runtime `libs` is `/run/portmaster/libs`, pointed at the selected root at launch. |
 | Format secondary media | COMPLETE | `zlyme-storage-format` accepts only the removable names `zlyme-storage` already scans. It rejects `mmcblk0`, the disks behind `/`, `/boot`, and `/storage`, and labels `ZLYME` and `ZLYMEBOOT`. Filesystems are exFAT and ext4. A failed normal unmount aborts before mkfs. No lazy unmount and no repartitioning. The label default is `ZLYME-LIB`. |
 | Overlays PAK content-directory overrides | COMPLETE | The PAK no longer writes both `/Overlays/<TAG>` and `/Overlays/<res>/<TAG>`. It stores the asset on the chosen library and records the absolute content directory in `content-overlays.tsv`. `ra-run` appends that cfg. The same folder name on another card is a different key. `write-cfg` replaces only `input_overlay` and `input_overlay_enable`. |
-| PICO-8 / Splore | IMPLEMENTED, LIVE SPLORE PENDING | Ordinary BIOS still follows the ROM's library, with `/storage/Bios` only when that library has no `Bios` directory. Native PICO-8 is different because the Splore dummy is not a ROM tied to the runtime card. `start_pico8.sh` accepts a directory only when both `pico8_64` and `pico8.dat` are there. It tries the ROM library's `Bios/PICO` first, then each active library in `/run/zlyme/libraries`. It does not move the proprietary files. Fake-8 is unchanged. A Splore launch whose runtime is only on the second card is covered by a host test. Where Splore saves a downloaded cart is still not proven. |
-| Per-ROM delete | COMPLETE | MENU+Y on a ROM has a Delete game row. Confirmation runs `zlyme-game-cleanup rom` as argv, then `rom-apply` on that exact plan. Saves and box art are matched on the same library only. `.cue` / `.m3u` / `.gdi` do not pull in referenced files. A Splore dummy delete also clears its marker so the helper can recreate it. |
+| PICO-8 / Splore | SUPERSEDED for BIOS scope by Phase 9K | Runtime discovery is unchanged and now shared: both `pico8_64` and `pico8.dat`, ROM-library BIOS first, then every active library. The synthetic Splore row exists only while that pair is present. Downloaded carts were proven on the live Flip at `/storage/.config/nextui/shared/Pico-8-native/bbs/carts/` (`marepike-0.p8.png` is Last Bullet). NextUI lists that directory. It does not copy the carts. |
+| Per-ROM delete | UPDATED in Phase 9K | MENU+Y on a ROM has a Delete game row. Confirmation runs `zlyme-game-cleanup rom` as argv, then `rom-apply` on that exact plan. Saves are taken only from the library the save resolver would select. `.cue` / `.m3u` / `.gdi` do not pull in referenced files. A Splore dummy delete also clears its marker so the helper can recreate it. |
 | Splash vs `quiet` | COMPLETE | `zlyme_splash_wanted` matches a complete `quiet` token. `S12splash` and `nextui-session` both use it. Without `quiet`, the initramfs splash is stopped and the squashfs splash is not started, including progress mode. |
 
 ## Group 4 — optional systems
@@ -294,6 +293,27 @@ INTEGRATION CANDIDATE as a direct pinned Zlyme package. Pak Store is not part of
 Not a Phase 8 or Phase 9 gate. The earlier note treated Pak Store as an open delivery choice for Music Player and Cheat Downloader. That choice is closed for this phase: both are evaluated as pinned Zlyme integrations only. Do not design a generic Pak Store architecture here.
 
 Future: evaluate Pak Store after the core Zlyme product and first stable release are complete. At that time reconsider whether optional/community applications should move from curated built-in integrations to Pak Store. The later look can weigh easier community updates, a smaller base image, upstream independence, reproducibility, offline availability, security and provenance, and breakage when an upstream package changes.
+
+## Phase 9K — live corrections and multi-library BIOS/saves
+
+The previous rule "BIOS and saves follow the ROM library, with a main-card BIOS fallback" is superseded.
+
+BIOS: each launch builds one runtime view of every mounted library's `Bios` tree. The ROM library is applied last, so a duplicate relative path comes from the game card. Card files are not copied. If the library registry is missing, only `/storage` is used.
+
+Saves: one writable library per launch. Exact save files for that ROM win over unrelated files in the same system folder. The ROM library wins when it is one of the matches. An empty `Saves/<tag>` does not count. If nothing exists, the new directory is on the ROM library. Nothing is copied between cards.
+
+| Launcher write under BIOS_PATH | Class | Where it lives now |
+| --- | --- | --- |
+| PAK `mkdir` of `BIOS_PATH/<tag>` | mkdir only | runtime view |
+| `ra-run` fbneo, neocd, tos, colecovision links | temporary alias | runtime view, rebuilt each launch |
+| ST `tos.img`, Coleco `colecovision.rom`, MSX Machines/Databases | temporary alias | runtime view |
+| Flycast BIOS links | temporary alias into the save dir | selected `Saves/DC` |
+| RetroArch save RAM / states | persistent | selected `Saves/<tag>` via `savefile_directory` |
+| PPSSPP, DraStic, Flycast, Dolphin, AetherSX2, GZDoom, OpenBOR, ScummVM | persistent saves | selected `SAVES_PATH` (system directory, not a ROM-name match) |
+| Native PICO-8 | no BIOS write | runtime pair stays on its card |
+| Wine, PortMaster | not conventional saves | application prefix / port tree, not the save resolver |
+
+A/B swap user setting: dropped. Wi-Fi Country row: kept across scan rebuilds. Clock default: on, once, via `zlyme-card-defaults` marker `.zlyme-clock-on-default`. Volume overlay: no Y EDIT. MENU+Y: releasing MENU does not close Edit Preferences. Splore dummy: only while `Bios/PICO/pico8_64` and `pico8.dat` exist. Splore download location, proven on the live Flip: `/storage/.config/nextui/shared/Pico-8-native/bbs/carts/marepike-0.p8.png` (title Last Bullet, from `temp-marepike.nfo`).
 
 ## Group 5 — release
 
