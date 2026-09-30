@@ -1794,53 +1794,52 @@ Test:
 - deep suspend if Phase 6 is enabled;
 - module unload only if explicitly supported and safe.
 
-## 8 — NextUI optimization
+## 8 — Frontend source ownership, platformization, and performance
 
-Do this after graphics compatibility and input architecture have stabilized so you do not optimize code that will immediately be rewritten.
+Detailed findings: `docs/research/frontend-source-phase8.md`.
 
-Profile before modifying.
+Do this in order. Do not combine the fork with a LoveRetro version bump. Do not comment out large regions of upstream code. Prefer a build exclusion, a platform or feature conditional, or deletion of code that exists only in the Zlyme tree and is demonstrably dead. Leave harmless upstream code in place when removing it would only add merge conflicts.
 
-Areas to measure:
-- time from `exec` to first flip;
-- ROM/library scanning;
-- image/font loading;
-- filesystem reads;
-- redraw frequency;
-- SDL event handling;
-- settings startup;
-- allocations;
-- logging;
-- controller enumeration;
-- suspend/resume lifecycle.
-
-Do not treat `-O3`/`-Ofast` as a substitute for profiling.
-
-Prioritize architectural/runtime wins over compiler flag churn.
+1. **Storage preflight.** `FSCK0000.REC` on `ZLYMEBOOT` is a dosfstools recovered-cluster name. Root is a squashfs loop backed by `/boot/zlyme`, so `umount /boot` cannot succeed while the system is running, and `zlyme-halt` skips `/boot` before `poweroff -f` / `reboot -f`. That is a real integrity candidate. First implementation gate: try `mount -o remount,ro /boot` after `sync`, record what still holds the mount, and do not unmount the boot vfat out from under the loop. Fix it before the fork migration if the experiment confirms a dirty FAT.
+2. **Baseline.** Keep a measured known-good frontend (first frame and a normal menu path) before moving source.
+3. **Fork from the vendored pin.** Reconstruct Zlyme's NextUI as commits on LoveRetro `ae652648548edf6ab24cbb816cf4e4194e609fb3`, not on current upstream HEAD. Preserve PolyForm Noncommercial 1.0.0 and the LoveRetro / MinUI attribution.
+4. **Fetch the fork.** Switch `nextui.mk` from `SITE_METHOD=local` to that exact commit after the tree matches current behavior.
+5. **Platform boundary.** Device code stays in `workspace/<platform>` (`workspace/my355` today). `BR2_PACKAGE_NEXTUI_PLATFORM` remains the selector. Joystick-calibration UI visibility is part of this boundary.
+6. **MinUI helpers.** `minui-list` 0.15.2 and `minui-presenter` 0.13.2 have no Zlyme source delta. Make their platform flag and include path follow `BR2_PACKAGE_NEXTUI_PLATFORM`. Do not fork them unless a later change needs source upstream does not have. Newer upstream tags are a separate evaluation.
+7. **Equivalence.** Current user-visible behavior stays, or the change is written down. Targeted frontend builds. One incremental device image is allowed to prove the migration. Source or build comparison is not hardware acceptance.
+8. **Upstream, after that.** Current LoveRetro HEAD at research time was `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7`, two commits past the pin. Rebase only once the fork matches today's image. Re-fetch HEAD at that time.
+9. **Profile, then optimize.** First frame, menu frame time, extra filesystem I/O, image and font loads, redraws, allocations, logging, controller enumeration, Settings startup. `-O3` is not a substitute for a measurement.
+10. **Dead code.** Drop or exclude only what the image cannot reach. A full clean Buildroot build is not required at the end of this phase.
 
 ### Gate
 
-Compare before/after:
-- first flip;
-- menu frame time;
-- input latency;
-- RSS;
-- CPU usage while idle;
-- battery/power impact.
+- Boot vfat remount experiment recorded, and fixed if it shows a dirty shutdown.
+- Frontend behavior matches the pre-migration baseline, or differences are documented.
+- Buildroot fetches a pinned Zlyme NextUI commit.
+- `minui-list` / `minui-presenter` recipes are platform-neutral and still build upstream source.
+- A profile exists for the paths that were optimized.
 
-## 9 — Delete unused files
+## 9 — Product polish, integrations, and release preparation
 
-Correctly last.
+Detailed dispositions: `docs/research/product-phase9.md`.
 
-After the migrations are stable:
+Group related work so one implementation and test cycle covers a subsystem. README updates ride along with each user-facing change. No OTA per text or default tweak. Items already implemented or intentionally designed (trash globs, the three PortMaster directories, `/tmp/poweroff` through `zlyme-halt`, RTL8723FU Bluetooth firmware) are not reopen tasks.
 
-- search all references;
-- include build-time/generated references;
-- inspect package install commands;
-- inspect scripts/CI/docs;
-- remove dead assets/tools/packages;
-- build from a clean output tree.
+1. **Correctness.** Save-format and save-state-format consumers (`zlyme-game-cleanup` uses them; `ra-run.sh` does not map them yet). Wi-Fi regdb persistence. Bounded PAK logs. Timezone versus NTP. Stale Bluetooth headset icon. gzdoom input path. Orphan-cleanup dry-run before any destructive run. VTree font/log. Any ZLYMEBOOT FAT issue Phase 8 left open.
+2. **Settings.** Shared KeyboardPrompt L1 DELETE pill. Shorter destructive Game copy. One pending-reboot prompt via `zlyme-halt reboot`. Dark PortMaster and VTree themes. Pill selectors for emulator and governor. No CLTMP hint on my355. Global A/B swap at the InputPlumber virtual controller. Advanced System submenu. Factory Reset documented and moved; distinct from Reset Settings. VTree hidden-files default only after the key is confirmed. Rumble default 30% to 40%. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable.
+3. **Library and launch.** PortMaster install location only through its `HM_*` directories, if PortMaster already supports that switch. Format UI for secondary SD and removable OTG only. Overlays PAK content-directory overrides. PICO-8 carts separate from `pico8_64` / `pico8.dat`, Splore's real download directory, Fake-8 separate, BIOS discovery researched. Per-ROM delete through the existing cleanup matcher. Skip the splash when the kernel command line has no `quiet`.
+4. **Optional PAKs.** Research licenses before inclusion. Preferred Flash path: pinned official Ruffle plus a thin SDL/GLES frontend, with SilverPsychoo as the menu/discovery reference and `ruffle-miyooflip` as the renderer starting point. Music Player and Cheat Downloader are integration candidates (MIT, `pak.json` already lists `my355`). Do not keep Music Player's own cpufreq writes. Do not put the Libretro cheat database in the image. Pak Store versus a built-in Tool is a later decision about offline use, reproducibility, and upstream breakage.
+5. **Release cleanup.** Weston test PAK off the production image if it is no longer user-facing. CI console log short, full log as an artifact. Community text for other RK3566 ports. Dead-file audit after features stop moving.
 
-"Not referenced by grep" alone is not proof of unused Buildroot content.
+### Gate
+
+At the end of the phase, in order:
+
+1. Update the Zlyme version.
+2. One full clean Buildroot build.
+3. Reproducibility check.
+4. One release/OTA candidate.
+5. One hardware pass for the behavior that actually needs the device.
 
 ## Suggested commit/checkpoint rhythm
 
@@ -1859,11 +1858,14 @@ kernel-patch-prune-2
 deep-suspend
 dmc-as-module
 dmc-external-module
+bootfat-remount
+nextui-fork
+nextui-fetch
 nextui-profile
-nextui-optimize
-dead-file-cleanup
+product-polish
+release-image
 ```
 
 Names are illustrative; the important part is one reason per checkpoint.
 
-The Phase-2 research checkpoint should not contain kernel implementation changes.
+The Phase-2 research checkpoint should not contain kernel implementation changes. The Phase 8 research checkpoint should not contain the NextUI fork.
