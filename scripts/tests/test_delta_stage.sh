@@ -89,9 +89,35 @@ if run_stage "$delta"; then
 	exit 1
 fi
 test ! -e "$storage/.update/pending/zlyme"
-cmp "$boot/zlyme" "$work/boot-check" 2>/dev/null || cmp "$boot/zlyme" "$boot/zlyme"
 printf 'other-root\n' >"$work/expect-wrong"
 cmp "$boot/zlyme" "$work/expect-wrong"
+
+# A reconstructed file whose hash is not TARGET_SHA256 is not pending.
+cp "$old" "$boot/zlyme"
+rm -rf "$storage/.update"
+wrong=$(printf '%064d' 0 | tr 0 f)
+cat >"$destage/DELTA-MANIFEST" <<EOF
+TYPE=delta
+SCHEMA=1
+DEVICE=my355
+FROM_VERSION=zlyme43
+TARGET_VERSION=zlyme43.1
+BASE_SHA256=$base
+TARGET_SHA256=$wrong
+TARGET_SIZE=$size
+PATCH=zlyme.patch.zst
+EOF
+mismatch=$work/mismatch.tar
+tar -C "$destage" -cf "$mismatch" DELTA-MANIFEST zlyme.patch.zst Image.gz \
+	rk3566-miyoo-flip.dtb idbloader.img u-boot.itb VERSION pre-update.sh \
+	post-update.sh splash.anim overlays extlinux
+if run_stage "$mismatch"; then
+	echo "wrong target hash was accepted" >&2
+	exit 1
+fi
+test ! -e "$storage/.update/pending/zlyme"
+test ! -e "$storage/.update/reconstruct/zlyme.new"
+cmp "$boot/zlyme" "$old"
 
 # Corrupt patch.
 cp "$old" "$boot/zlyme"

@@ -186,6 +186,91 @@ class DeltaRoundTripTests(unittest.TestCase):
             rel.parse_delta_manifest_text(text + "EVIL=$(reboot)\n")
 
 
+class ReleaseWriterTests(unittest.TestCase):
+    def _images(self, directory, root):
+        stage = os.path.join(directory, "stage")
+        os.makedirs(stage)
+        with open(os.path.join(stage, "zlyme"), "wb") as handle:
+            handle.write(root)
+        with open(os.path.join(stage, "Image.gz"), "wb") as handle:
+            handle.write(b"kernel")
+        with open(os.path.join(stage, "VERSION"), "wb") as handle:
+            handle.write(b"v\n")
+        images = os.path.join(directory, "images")
+        os.makedirs(images)
+        full = os.path.join(images, "zlyme-my355-full.tar")
+        with tarfile.open(full, "w:") as archive:
+            for name in os.listdir(stage):
+                archive.add(os.path.join(stage, name), arcname=name)
+        return images
+
+    def test_baseline_writes_no_deltas(self):
+        spec = importlib.util.spec_from_file_location(
+            "make_release_deltas",
+            os.path.join(ROOT, "scripts", "make-release-deltas.py"),
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        directory = tempfile.mkdtemp()
+        images = self._images(directory, b"baseline-root-bytes\n")
+        module._write_release(images, "zlyme43", "abc123", bases=[{"unused": True}])
+        with open(os.path.join(images, "release-manifest.json"), "r", encoding="utf-8") as handle:
+            data = json_load(handle)
+        self.assertEqual(data["deltas"], [])
+        self.assertFalse(any(name.startswith("zlyme-my355-delta-") for name in os.listdir(images)))
+
+    def _bases(self, directory, old):
+        old_path = os.path.join(directory, "old")
+        with open(old_path, "wb") as handle:
+            handle.write(old)
+        return [
+            {
+                "version": "zlyme43",
+                "root_path": old_path,
+                "root_sha256": rel.sha256_file(old_path),
+            }
+        ]
+
+    def test_point_omits_delta_at_cutoff(self):
+        spec = importlib.util.spec_from_file_location(
+            "make_release_deltas_omit",
+            os.path.join(ROOT, "scripts", "make-release-deltas.py"),
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        directory = tempfile.mkdtemp()
+        images = self._images(directory, b"tiny-new\n")
+        module._write_release(images, "zlyme43.1", "abc123", self._bases(directory, b"tiny-old\n"))
+        with open(os.path.join(images, "release-manifest.json"), "r", encoding="utf-8") as handle:
+            data = json_load(handle)
+        self.assertEqual(data["deltas"], [])
+        self.assertFalse(any("-delta-" in name and name.endswith(".tar") for name in os.listdir(images)))
+
+    def test_point_publishes_a_small_delta(self):
+        spec = importlib.util.spec_from_file_location(
+            "make_release_deltas_keep",
+            os.path.join(ROOT, "scripts", "make-release-deltas.py"),
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        directory = tempfile.mkdtemp()
+        images = self._images(directory, b"A" * 200000 + b"new\n")
+        bases = self._bases(directory, b"A" * 200000 + b"old\n")
+        module._write_release(images, "zlyme43.1", "abc123", bases)
+        with open(os.path.join(images, "release-manifest.json"), "r", encoding="utf-8") as handle:
+            data = json_load(handle)
+        self.assertEqual(len(data["deltas"]), 1)
+        self.assertEqual(data["deltas"][0]["from_version"], "zlyme43")
+        self.assertEqual(data["deltas"][0]["from_sha256"], bases[0]["root_sha256"])
+        self.assertLess(data["deltas"][0]["size"], int(data["full"]["size"] * rel.DELTA_SIZE_RATIO))
+
+
+def json_load(handle):
+    import json
+
+    return json.load(handle)
+
+
 def archive_member(path, name):
     with tarfile.open(path, "r:") as archive:
         return archive.extractfile(name).read().decode()
