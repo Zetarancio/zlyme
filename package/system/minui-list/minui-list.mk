@@ -3,7 +3,8 @@
 # minui-list
 #
 # Vendored snapshot of josegonzalez/minui-list 0.15.2.
-# See UPSTREAM. parson ec53fb65 is under src/include/parson.
+# See UPSTREAM. parson ec53fb65 is under parson/ because upstream
+# gitignores include/, which is where the compiler looks.
 #
 ################################################################################
 
@@ -34,6 +35,11 @@ MINUI_LIST_OBJS = \
 	$(NEXTUI_DIR)/api.o $(NEXTUI_DIR)/palette.o $(NEXTUI_DIR)/platform.o
 
 define MINUI_LIST_BUILD_CMDS
+	mkdir -p $(@D)/include/parson
+	cp -f $(MINUI_LIST_PKGDIR)/parson/parson.c \
+		$(MINUI_LIST_PKGDIR)/parson/parson.h \
+		$(MINUI_LIST_PKGDIR)/parson/LICENSE \
+		$(@D)/include/parson/
 	$(TARGET_CC) $(MINUI_LIST_CFLAGS) \
 		-o $(@D)/minui-list \
 		$(@D)/minui-list.c \

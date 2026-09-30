@@ -7,4 +7,4 @@ parson:
 repository: https://github.com/kgabis/parson
 commit: ec53fb6528b45811df9db0db22cab96a94a96a11
 license: MIT
-files: src/include/parson/parson.c src/include/parson/parson.h src/include/parson/LICENSE
+files: parson/parson.c parson/parson.h parson/LICENSE
