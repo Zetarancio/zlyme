@@ -15,39 +15,70 @@ HOME_DIR="${SHARED}/Pico-8-native"
 ROM="$1"
 DB="${SDL_GAMECONTROLLERCONFIG_FILE:-/usr/lib/gamecontrollerdb.txt}"
 
-# Older cards dropped the binary in Bios/. MinUI is Bios/PICO/.
-mkdir -p "$BIOS/PICO"
-for f in pico8_64 pico8.dat pico8_dyn; do
-	if [ -e "$BIOS/$f" ] && [ ! -e "$BIOS/PICO/$f" ]; then
-		mv "$BIOS/$f" "$BIOS/PICO/$f" 2>/dev/null || true
-	fi
-done
+# A runtime is valid only when pico8_64 and pico8.dat are both present.
+# Splore's dummy ROM lives on the main card, so the ROM library's BIOS
+# is not the only place the commercial files may be. Ordinary emulators
+# still use only the ROM library. This search does not move files.
+#
+# ZLYME_PICO_LIBRARIES and ZLYME_PICO_DRY=1 are test seams.
 
 GAME_DIR=""
 if [ -n "$ROM" ] && [ -f "$ROM" ]; then
 	GAME_DIR=$(dirname "$ROM")
 fi
 
+pair_ok() {
+	[ -f "$1/$STATIC_BIN" ] && [ -f "$1/pico8.dat" ]
+}
+
+tried=$(mktemp)
+trap 'rm -f "$tried"' EXIT
 LAUNCH_DIR=""
-set -- \
-	"$BIOS/PICO" \
-	"$BIOS/PICO/aarch64" \
-	"$BIOS/PICO-8" \
-	"$BIOS" \
-	"/storage/Bios/PICO" \
-	"/storage/Bios/PICO/aarch64" \
-	"/storage/Bios"
-for d in "$@"; do
-	[ -n "$d" ] || continue
-	if [ -x "$d/$STATIC_BIN" ] || [ -f "$d/$STATIC_BIN" ]; then
-		LAUNCH_DIR=$d
-		break
+
+consider() {
+	d=$1
+	[ -n "$d" ] || return 1
+	if grep -Fxq -- "$d" "$tried" 2>/dev/null; then
+		return 1
 	fi
-done
+	printf '%s\n' "$d" >> "$tried"
+	if pair_ok "$d"; then
+		LAUNCH_DIR=$d
+		return 0
+	fi
+	return 1
+}
+
+consider_bios() {
+	root=$1
+	[ -n "$root" ] || return 1
+	consider "$root/PICO" && return 0
+	consider "$root/PICO/aarch64" && return 0
+	consider "$root/PICO-8" && return 0
+	consider "$root" && return 0
+	return 1
+}
+
+consider_bios "$BIOS" || true
+
+libs=${ZLYME_PICO_LIBRARIES:-/run/zlyme/libraries}
+if [ -z "$LAUNCH_DIR" ] && [ -r "$libs" ]; then
+	while IFS= read -r lib; do
+		[ -n "$lib" ] || continue
+		consider_bios "$lib/Bios" && break
+	done < "$libs"
+elif [ -z "$LAUNCH_DIR" ]; then
+	consider_bios /storage/Bios || true
+fi
 
 if [ -z "$LAUNCH_DIR" ]; then
-	echo "pico8: put ${STATIC_BIN} and pico8.dat in ${BIOS}/PICO" >&2
+	echo "pico8: put pico8_64 and pico8.dat in Bios/PICO/ on the main card, second SD, or another mounted library" >&2
 	exit 1
+fi
+
+if [ "${ZLYME_PICO_DRY:-}" = 1 ]; then
+	printf 'LAUNCH_DIR=%s\n' "$LAUNCH_DIR"
+	exit 0
 fi
 
 chmod 0755 "$LAUNCH_DIR/$STATIC_BIN" 2>/dev/null || true

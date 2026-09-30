@@ -98,6 +98,8 @@ zlyme_library_for() {
 	library=$(zlyme_library_root "$rom")
 	export library
 
+	# Ordinary BIOS follows the ROM's library. Native PICO-8 is the
+	# exception and searches every active library itself.
 	if [ -d "$library/Bios" ]; then
 		BIOS_PATH=$library/Bios
 	else
