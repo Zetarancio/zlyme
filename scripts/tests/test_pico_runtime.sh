@@ -17,6 +17,7 @@ run() {
 	SDCARD_PATH=$work/storage \
 	SHARED_USERDATA_PATH=$work/home \
 	ZLYME_PICO_LIBRARIES=$2 \
+	ZLYME_PICO_RUNTIME=$ROOT/board/my355/fsoverlay/usr/share/zlyme/pico-runtime.sh \
 	ZLYME_PICO_DRY=1 \
 	"$BIN" "$3"
 }
@@ -75,6 +76,7 @@ rm -f "$work/libs"
 pair "$work/storage/Bios/PICO"
 out=$(BIOS_PATH=$work/storage/Bios SDCARD_PATH=$work/storage \
 	SHARED_USERDATA_PATH=$work/home ZLYME_PICO_LIBRARIES=$work/missing \
+	ZLYME_PICO_RUNTIME=$ROOT/board/my355/fsoverlay/usr/share/zlyme/pico-runtime.sh \
 	ZLYME_PICO_DRY=1 "$BIN" "$work/storage/Roms/Pico-8 (PICO)/cart.p8")
 test "$out" = "LAUNCH_DIR=$work/storage/Bios/PICO"
 

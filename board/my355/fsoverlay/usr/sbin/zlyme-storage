@@ -78,6 +78,11 @@ is_library_root() {
 }
 
 rescan_nextui() {
+	# Libraries are already current. Sync the Splore row before NextUI
+	# is told to reread the ROM folders.
+	if [ -x /usr/sbin/zlyme-pico-splore ]; then
+		/usr/sbin/zlyme-pico-splore || true
+	fi
 	[ -f /tmp/zlyme-keep-emu ] && return 0
 	for p in retroarch PPSSPPSDL flycast drastic moonlight pico8_64 aethersx2 dolphin-emu-nogui; do
 		pidof "$p" >/dev/null 2>&1 && return 0
