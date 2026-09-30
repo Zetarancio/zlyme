@@ -98,7 +98,7 @@ These were checked in source and are not open Phase 9 tasks.
 | --- | --- | --- |
 | Save format / save-state format / extracted file name | COMPLETE | Hidden on my355. Shared NextUI enums, getters, setters, defaults, and `minuisettings.txt` keys stay. See the Game-format conclusion below. |
 | Wi-Fi regulatory domain | RESEARCH FIRST | No country UI decision until cfg80211/regdb behavior and whether the domain persists are known. |
-| Persistent PAK logs | KEEP | `pak-log.sh` appends with `>>` when `zlyme-ctl want logs`. Bound the files. Do not add logrotate unless a bound file is not enough. |
+| Persistent PAK logs | COMPLETE | System logs keep 5 logged-boot generations under `/storage/.logs/system-N`. PAK logs keep 3 launch generations per tag under `/storage/.logs/paks/`. Logs off: the session wrapper and routine session lines use `/tmp`, and normal use does not append a diagnostic file on `/storage`. No logrotate or daemon. New images no longer write `/storage/.config/zlyme/nextui-session.log`. An old copy on a card is left in place. |
 | Timezone vs NTP | RESEARCH FIRST | `platform.c` stores localtime under `/storage/.config/nextui/shared/localtime` and reads `/usr/share/zoneinfo`. The clock widget uses `localtime()`. First-frame work deliberately skipped `TIME_init()`. Separate "clock is UTC" from "no NTP". |
 | Bluetooth headset icon after radio off | RESEARCH FIRST | `generic_bt.c` classifies headsets from bluetoothctl Class/Icon. The stale icon is an invalidation question when the radio stops, not a new audio path. |
 | Doom input | RESEARCH FIRST | `DOOM.pak/launch.sh` execs `gzdoom` with `+set use_joystick true` and sources `pak-input.sh`. Map that path before changing buttons. It is not a libretro core. |
