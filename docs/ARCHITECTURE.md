@@ -179,7 +179,7 @@ The Miyoo Flip image currently uses:
 - no rootfs GPT partition;
 - root squashfs stored as a file named `zlyme` on `ZLYMEBOOT`.
 
-The writable persistent filesystem is `/storage` (`ZLYME`).
+The writable persistent filesystem is `/storage` (`ZLYME`). Shutdown leaves `/boot` mounted, moves off `/storage`, and unmounts that exFAT volume with a normal `umount` before `reboot -f` or `poweroff -f`.
 
 The root filesystem is read-only squashfs.
 

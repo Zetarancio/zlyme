@@ -1,11 +1,36 @@
 #!/bin/sh
 #
-# Drop squashfs bind/overlay mounts, then force poweroff or reboot.
-# Plain busybox poweroff remounts root ro while NextUI still has image
-# paks bind-mounted from squashfs, which shows as SQUASHFS read errors
-# and a machine that never actually goes down.
+# Drop squashfs bind/overlay mounts, unmount primary storage, then
+# force poweroff or reboot. Plain busybox poweroff remounts root ro
+# while NextUI still has image paks bind-mounted from squashfs, which
+# shows as SQUASHFS read errors and a machine that never actually goes
+# down.
+#
+# nextui-session does `cd /storage` and then execs this script, with
+# stdout/stderr pointed at the session log on that volume. Both holds
+# have to be dropped before umount. A lazy umount of /storage does not
+# finish exFAT teardown before power is cut, so it is not used here.
 
 mode=${1:-poweroff}
+
+cd / || true
+if ! exec >/dev/console 2>&1 </dev/null; then
+	exec >/dev/null 2>&1 </dev/null
+fi
+
+# Any other inherited descriptor still naming the card.
+for fd in /proc/self/fd/*; do
+	n=$(basename "$fd")
+	case "$n" in
+		0|1|2) continue ;;
+	esac
+	t=$(readlink "$fd" 2>/dev/null) || continue
+	case "$t" in
+		/storage|/storage/*)
+			eval "exec ${n}>&-"
+			;;
+	esac
+done
 
 umount_list() {
 	awk '{ print $2 }' /proc/mounts | sed 's/\\040/ /g' | sort -r |
@@ -23,6 +48,53 @@ umount_list() {
 		done
 }
 
+# Walk /proc after the redirects. Prints holders of /storage.
+storage_holders() {
+	for p in /proc/[0-9]*; do
+		pid=${p#/proc/}
+		cwd=$(readlink "$p/cwd" 2>/dev/null) || continue
+		cmd=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null)
+		case "$cwd" in
+			/storage|/storage/*)
+				echo "pid=$pid cwd=$cwd cmd=$cmd"
+				;;
+		esac
+		for fd in "$p"/fd/*; do
+			t=$(readlink "$fd" 2>/dev/null) || continue
+			case "$t" in
+				/storage|/storage/*)
+					echo "pid=$pid fd=$(basename "$fd") path=$t cmd=$cmd"
+					;;
+			esac
+		done
+	done
+}
+
+# Phase 8A2 acceptance proof. Remove after that reboot is recorded.
+# Written only after ordinary umount /storage returns success.
+note_storage_unmount() {
+	ok=$1
+	[ -x /usr/sbin/zlyme-boot-write ] || return 0
+	if [ "$ok" -eq 1 ]; then
+		zlyme-boot-write sh -c 'rm -f /boot/.zlyme-storage-unmount-failed; : > /boot/.zlyme-storage-unmounted-test' || true
+		return 0
+	fi
+	tmp=/tmp/zlyme-storage-unmount-failed
+	{
+		echo "umount /storage failed"
+		storage_holders
+	} > "$tmp" 2>/dev/null || true
+	zlyme-boot-write sh -c 'rm -f /boot/.zlyme-storage-unmounted-test; cp -f /tmp/zlyme-storage-unmount-failed /boot/.zlyme-storage-unmount-failed' || true
+	rm -f "$tmp"
+}
+
+if pidof smbd >/dev/null 2>&1 || pidof nmbd >/dev/null 2>&1; then
+	[ -x /etc/init.d/S70samba ] && /etc/init.d/S70samba stop
+fi
+if pidof syncthing >/dev/null 2>&1; then
+	[ -x /etc/init.d/S75syncthing ] && /etc/init.d/S75syncthing stop
+fi
+
 sync
 [ -x /usr/sbin/zlyme-led ] && /usr/sbin/zlyme-led poweroff >/dev/null 2>&1 || true
 
@@ -35,6 +107,19 @@ if [ -x /usr/sbin/zlyme-storage ]; then
 fi
 umount_list
 sync
+
+storage_ok=0
+storage_tried=0
+if grep -q ' /storage ' /proc/mounts; then
+	storage_tried=1
+	if umount /storage; then
+		storage_ok=1
+	fi
+fi
+sync
+if [ "$storage_tried" -eq 1 ]; then
+	note_storage_unmount "$storage_ok"
+fi
 sleep 1
 
 case "$mode" in

@@ -240,3 +240,25 @@ backing file = /boot/zlyme
 BusyBox 1.36.1 `mount -o loop,ro` opens the backing file `O_RDONLY` when `MS_RDONLY` is already set (`util-linux/mount.c` passes `BB_LO_FLAGS_READ_ONLY` into `set_loop`). That is the mechanism for `loop0/ro=1`. The initramfs refuses to `switch_root` if the loop is not read-only.
 
 This image is not hardware-accepted until a boot shows that table and one helper transaction returns `/boot` to read-only.
+
+## Phase 8A hardware result
+
+Accepted 2026-09-30 on `zlyme-my355-20260930-37d41679996f.tar`, kernel `#3 SMP PREEMPT Wed Sep 30 09:35:46 UTC 2026`. After a normal NextUI reboot, `/boot` was vfat read-only, `/` was squashfs read-only, `loop0/ro` was 1, and the backing file was `/boot/zlyme`. A direct write was rejected. `zlyme-boot-write` returned the volume to read-only. No `FSCK*.REC` files were on `/boot`. The historical FAT dirty flag is not claimed to be cleared. The two `FAT-fs (mmcblk0p2)` warnings on the pre-reboot boot were the helper remounting a volume that was already dirty, not a new structural error.
+
+## Phase 8A2 — primary `/storage`
+
+PROVEN ON DEVICE before this change, same image, Samba `off`, Syncthing `off`:
+
+| PID | Process | cwd under `/storage` | open fd under `/storage` | Still there when NextUI asks to shut down |
+| --- | --- | --- | --- | --- |
+| session | `nextui-session` | yes, `/storage` | yes, `/storage/.config/zlyme/nextui-session.log` (stdout/stderr from `S28minui`) | yes: it `exec`s `zlyme-halt` and both holds are inherited |
+| frontend | `nextui.elf` | yes, `/storage` | no | no: it has exited before that `exec` |
+| sshd | listener cwd `/` | no | no | left running; host key is on tmpfs |
+| wpa_supplicant | config path is on the card | no | no open fd at the audit | not stopped merely because the path is in argv |
+| smbd / syncthing | not running | — | — | stopped only when the process is actually present |
+
+`zlyme-storage eject` unmounts secondary SD and removable media, not `/storage`. The old `zlyme-halt` skipped `/storage` and did not `cd /`.
+
+PROVEN FROM THE SELECTED KERNEL, `output/build/linux-7.0.2/fs/exfat/super.c`. At mount, `vol_flags_persistent` keeps `VOLUME_DIRTY` if that bit was already set. `exfat_set_vol_flags()` ORs those persistent flags back in. `exfat_put_super()` calls `exfat_clear_volume_dirty()`, which therefore cannot clear a dirty bit inherited from mount. A normal `umount /storage` is still the right teardown. The next boot can keep printing `Volume was not properly unmounted` after a clean unmount of a volume that started dirty. Acceptance is `umount /storage` returning success, recorded as `/boot/.zlyme-storage-unmounted-test` only after that return. That marker is Phase 8A2 proof and is removed after the reboot test. A failed unmount writes `/boot/.zlyme-storage-unmount-failed` with the remaining holders and still reboots. There is no lazy unmount of primary `/storage` and no fsck at boot.
+
+`/storage` also logged the exFAT dirty warning after the accepted ZLYMEBOOT reboot. That is a separate problem from ZLYMEBOOT. Do not fsck it on every boot. A one-time `fsck.exfat` with the card out, or a one-shot initramfs pass before the mount, is how the inherited bit would be cleared later. Neither is done here.

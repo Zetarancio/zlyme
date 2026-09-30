@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8A ZLYMEBOOT accepted, storage shutdown next
+
+Phase 8A is hardware-accepted on `zlyme-my355-20260930-37d41679996f.tar` (SHA-256 `9da4444d5652ade0e80ebc668aec0616d17a459922a8fe65b8848a73a1637e81`), kernel `#3 SMP PREEMPT Wed Sep 30 09:35:46 UTC 2026`. After a normal NextUI reboot, `/boot` was vfat `ro`, `/` was squashfs `ro`, and `loop0/ro` was 1 with backing file `/boot/zlyme`. A direct write to `/boot` failed. `zlyme-boot-write` created and removed a marker and left the volume read-only. No `FSCK*.REC` files were present. This does not clear a historical FAT dirty flag.
+
+`/storage` still logged `exFAT-fs (mmcblk0p3): Volume was not properly unmounted` on that reboot. `nextui-session` is in `cd /storage` with stdout on `/storage/.config/zlyme/nextui-session.log`, then execs `zlyme-halt`, which used to skip `/storage`. Linux 7.0.2 `fs/exfat/super.c` keeps `VOLUME_DIRTY` in `vol_flags_persistent` when the volume was dirty at mount, so `exfat_put_super()` cannot clear that inherited bit. A later clean unmount can still succeed while the next boot warns. Phase 8A2 records that unmount directly. Frontend migration has not started.
+
 ## 2026-09-30 — Phase 7 complete
 
 Phase 7 is complete. The hardware-validated normal path is runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`, image `zlyme-my355-20260929-21de8081d6e6.tar`, module SHA-256 `f0b8739266ad67d9ba94ebecb5a874603e7d6773ecbbfda42cb085035633715d`. That image autoloaded `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, held Smart at 324/324/324 MHz, changed rate under Play, and resumed from one physical deep suspend with `res.a0=0` for state `0x3`, mode `0x5ec`, and wake `0x10`. Storage, both pads, Wi-Fi, and `mali_kbase` returned. The Mali `_regulator_disable` warning is separate from DMC. After wake, Play left 324 MHz and Smart restored it.
