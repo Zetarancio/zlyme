@@ -269,6 +269,8 @@ Accepted 2026-09-30 on `zlyme-my355-20260930-632202865c71.tar` after a normal Ne
 
 The success and failure boot markers, and the holder dump that existed only to fill the failure file, are removed from `zlyme-halt` after this result. A failed `umount /storage` prints one line on the console and shutdown still proceeds. Production shutdown does not reopen ZLYMEBOOT.
 
+The later image `zlyme-my355-20260930-07aacf303475.tar` is the same mechanism without those markers. On the live Flip, `/usr/sbin/zlyme-halt` matched that source byte for byte and contained no `storage-unmounted` string. `/boot` was vfat read-only, `/storage` was exFAT read-write, and `loop0/ro` was 1. No second shutdown cycle was run for the marker removal. The unmount proof remains the `632202865c71` reboot.
+
 `S28minui` redirects the session onto `/storage/.config/zlyme/nextui-session.log`. On the live process those were fds 11 and 12, not only 1 and 2, so `exec` of `zlyme-halt` inherits them. POSIX `exec N>&-` needs a literal number. The close loop uses `eval` only after `n` is checked to be digits. That is the exception to the no-`eval` rule. Moving the session log would change the kept log, and a C helper would not change who owns the descriptor.
 
 ## Frontend baseline

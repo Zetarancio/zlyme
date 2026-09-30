@@ -1826,20 +1826,46 @@ Detailed dispositions: `docs/research/product-phase9.md`.
 Group related work so one implementation and test cycle covers a subsystem. README updates ride along with each user-facing change. No OTA per text or default tweak. Items already implemented or intentionally designed (trash globs, the three PortMaster directories, `/tmp/poweroff` through `zlyme-halt`, RTL8723FU Bluetooth firmware) are not reopen tasks.
 
 1. **Correctness.** Save-format and save-state-format consumers (`zlyme-game-cleanup` uses them; `ra-run.sh` does not map them yet). Wi-Fi regdb persistence. Bounded PAK logs. Timezone versus NTP. Stale Bluetooth headset icon. gzdoom input path. Orphan-cleanup dry-run before any destructive run. VTree font/log. Any ZLYMEBOOT FAT issue Phase 8 left open.
-2. **Settings.** Shared KeyboardPrompt L1 DELETE pill. Shorter destructive Game copy. One pending-reboot prompt via `zlyme-halt reboot`. Dark PortMaster and VTree themes. Pill selectors for emulator and governor. No CLTMP hint on my355. Global A/B swap at the InputPlumber virtual controller. Advanced System submenu. Factory Reset documented and moved; distinct from Reset Settings. VTree hidden-files default only after the key is confirmed. Rumble default 30% to 40%. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable.
+2. **Settings.** Quick Menu order, where those entries exist: Settings, then Wi-Fi, then Bluetooth, then Pak Store, Sleep, Reboot, and Poweroff. Today the source order is Wi-Fi, Bluetooth, Settings. Phase 8 keeps that order. Pak Store stays deferred; only its place in this list is reserved if the entry exists. Shared KeyboardPrompt L1 DELETE pill. Shorter destructive Game copy. One pending-reboot prompt via `zlyme-halt reboot`. Dark PortMaster and VTree themes. Pill selectors for emulator and governor. No CLTMP hint on my355. Global A/B swap at the InputPlumber virtual controller. Advanced System submenu. Factory Reset documented and moved; distinct from Reset Settings. VTree hidden-files default only after the key is confirmed. Rumble default 30% to 40%. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable.
 3. **Library and launch.** PortMaster install location only through its `HM_*` directories, if PortMaster already supports that switch. Format UI for secondary SD and removable OTG only. Overlays PAK content-directory overrides. PICO-8 carts separate from `pico8_64` / `pico8.dat`, Splore's real download directory, Fake-8 separate, BIOS discovery researched. Per-ROM delete through the existing cleanup matcher. Skip the splash when the kernel command line has no `quiet`.
 4. **Optional PAKs.** Research licenses before inclusion. Flash, if it lands in this phase, is a pinned `SilverPsychoo/Ruffle-Handheld` release used as an upstream appliance: small Zlyme launch/environment glue only. Do not maintain a Zlyme Ruffle frontend, do not swap in current official Ruffle, and do not take on renderer or runtime patches. If that is what it needs, defer Flash. It is not proven on Zlyme/my355. Music Player and Cheat Downloader are direct pinned integrations, not Pak Store deliveries. Do not keep Music Player's own cpufreq writes. Do not put the Libretro cheat database in the image. Pak Store is not a Phase 9 gate; reconsider it only after the first stable release.
 5. **Release cleanup.** Weston test PAK off the production image if it is no longer user-facing. CI console log short, full log as an artifact. Community text for other RK3566 ports. Dead-file audit after features stop moving.
 
 ### Gate
 
-At the end of the phase, in order:
+After the product work, in order:
 
-1. Update the Zlyme version.
-2. One full clean Buildroot build.
-3. Reproducibility check.
-4. One release/OTA candidate.
-5. One hardware pass for the behavior that actually needs the device.
+1. Finish the Phase 9 product changes.
+2. Update the Zlyme version.
+3. Commit that candidate and freeze its SHA.
+4. From that same SHA, start both of these:
+   - a local incremental OTA from the existing output tree, for a fast device smoke test;
+   - the GitHub Actions `Build` workflow, which starts from an empty Buildroot `output/` on the runner. Restoring compiler ccache is allowed. That is not an incremental output-tree build.
+5. Smoke-test the local OTA while the remote build runs. The local archive is not the release artifact and is not reproducibility evidence.
+6. If the smoke test finds a bug, fix it and start both paths again from the corrected SHA. Do not keep a remote build of the broken SHA as the candidate.
+7. The remote clean build succeeds.
+8. Reproducibility and artifact checks use that clean result.
+9. Release validation, including the hardware pass for behavior that needs the device. The release image is the clean remote artifact. An incremental OTA does not prove a different clean image.
+
+```text
+product work done
+        |
+        v
+version bump, one committed SHA
+        |
+        +-----------------------------+
+        |                             |
+        v                             v
+local incremental OTA          remote clean Build
+        |                             |
+        v                             v
+quick device smoke             clean image
+        |                             |
+        +-------------+---------------+
+                      |
+                      v
+              release validation
+```
 
 ## Suggested commit/checkpoint rhythm
 

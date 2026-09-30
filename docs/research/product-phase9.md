@@ -37,6 +37,7 @@ These were checked in source and are not open Phase 9 tasks.
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
+| Quick Menu order | KEEP, after Phase 8 | Current `getQuickToggles()` order is Wi-Fi, Bluetooth, Settings, then Pak Store, Sleep, Reboot, Poweroff. The intended order is Settings, Wi-Fi, Bluetooth, then the same remaining entries. Phase 8 preserves today's order. Pak Store stays deferred; this only reserves its place if the entry exists. |
 | Keyboard L1 DELETE pill | KEEP | `keyboardprompt.cpp` already deletes on `BTN_L1`. The shared button hint does not say so. Add the pill once, in `KeyboardPrompt`, so every caller gets it. |
 | Shorter destructive Game-settings text | KEEP | Copy change only, after the save-format audit so the text matches real behavior. |
 | One pending-reboot prompt | KEEP | Aggregate reboot-required settings. Prompt once on leaving Settings. Reboot through `zlyme-halt reboot`. |
@@ -144,4 +145,4 @@ Future: evaluate Pak Store after the core Zlyme product and first stable release
 | Community / Contributing | KEEP | Invite other RK3566 ports and point at Discord. |
 | Dead file audit | KEEP, last | After features stop moving. Grep-clean is not proof. |
 
-End of Phase 9, in order: version bump, one full clean Buildroot build, reproducibility check, one release/OTA candidate, one hardware pass for the behavior that needs the device. No OTA per text or default tweak.
+End of Phase 9: version bump, then one committed SHA. From that SHA, a local incremental OTA is only a smoke test. The GitHub Actions `Build` workflow, from an empty Buildroot output tree, is the clean release candidate. Reproducibility checks and the release image use the remote artifact. An incremental OTA does not prove that clean image. No OTA per text or default tweak.
