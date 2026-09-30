@@ -1,0 +1,77 @@
+#!/bin/sh
+# Snapshot the boot-time settings Settings may change.
+# capture writes the normalized state. dirty exits 0 when it differs.
+#
+# ZLYME_CFG is a test seam. These keys are the ones that do not apply
+# until the next boot. ZRAM, logs, timezone, Wi-Fi country, LED, and
+# network services are not in the snapshot.
+
+DIR="${ZLYME_CFG:-/storage/.config}/zlyme"
+
+read_flag() {
+	name=$1
+	if [ -r "$DIR/$name" ]; then
+		tr -d ' \t\r\n' < "$DIR/$name"
+	fi
+}
+
+norm_gpu() {
+	v=$(read_flag gpu)
+	case "$v" in
+		panfrost|libmali) printf '%s' "$v" ;;
+		*) printf '%s' libmali ;;
+	esac
+}
+
+norm_uv() {
+	v=$(read_flag undervolt)
+	case "$v" in
+		l1|l2|l3) printf '%s' "$v" ;;
+		*) printf '%s' off ;;
+	esac
+}
+
+norm_on() {
+	v=$(read_flag "$1")
+	def=$2
+	if [ -z "$v" ]; then
+		printf '%s' "$def"
+		return
+	fi
+	case "$v" in
+		on|1|yes) printf '%s' on ;;
+		*) printf '%s' off ;;
+	esac
+}
+
+dump() {
+	printf 'gpu=%s\n' "$(norm_gpu)"
+	printf 'undervolt=%s\n' "$(norm_uv)"
+	printf 'otg=%s\n' "$(norm_on otg on)"
+	printf 'hdmi=%s\n' "$(norm_on hdmi on)"
+	printf 'sd2=%s\n' "$(norm_on sd2 on)"
+	printf 'ab_swap=%s\n' "$(norm_on ab_swap off)"
+}
+
+case "${1:-}" in
+	capture)
+		[ $# -eq 2 ] || { echo "usage: $0 capture FILE" >&2; exit 2; }
+		dump > "$2"
+		;;
+	dirty)
+		[ $# -eq 2 ] || { echo "usage: $0 dirty FILE" >&2; exit 2; }
+		[ -f "$2" ] || exit 1
+		now=$(mktemp) || exit 1
+		dump > "$now"
+		if cmp -s "$2" "$now"; then
+			rm -f "$now"
+			exit 1
+		fi
+		rm -f "$now"
+		exit 0
+		;;
+	*)
+		echo "usage: $0 {capture FILE|dirty FILE}" >&2
+		exit 2
+		;;
+esac

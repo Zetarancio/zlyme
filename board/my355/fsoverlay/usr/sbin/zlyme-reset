@@ -1,0 +1,65 @@
+#!/bin/sh
+# Explicit Zlyme settings reset. Does not delete user content.
+#
+# ZLYME_RESET_ROOT prefixes every path (host tests).
+# ZLYME_RESET_SKIP_APPLY=1 skips zlyme-ctl apply (host tests).
+# ZLYME_TZ_BIN overrides zlyme-timezone.
+
+root=${ZLYME_RESET_ROOT:-}
+cfg=${ZLYME_CFG:-$root/storage/.config}
+zlyme=$cfg/zlyme
+shared=$cfg/nextui/shared
+
+reset_flags() {
+	mkdir -p "$zlyme" || return 1
+	for n in \
+		wifi bluetooth ssh samba syncthing \
+		gpu display_mode refresh undervolt led \
+		otg hdmi sd2 boost zram merge logs \
+		update_channel ab_swap cpu_gov gpu_gov
+	do
+		# Flags are files. Do not follow a directory that shares a name.
+		if [ -f "$zlyme/$n" ]; then
+			rm -f "$zlyme/$n"
+		fi
+	done
+}
+
+reset_ui() {
+	rm -f "$shared/minuisettings.txt"
+	rm -f "$shared/localtime" "$shared/localtime.zone"
+	tz=${ZLYME_TZ_BIN:-/usr/sbin/zlyme-timezone}
+	if [ -x "$tz" ]; then
+		ZLYME_TZ_FILE=$shared/localtime "$tz" ensure || return 1
+	fi
+	rm -f "$shared/vtree/config.ini" "$shared/vtree/.zlyme-vtree-v1"
+}
+
+apply_now() {
+	[ "${ZLYME_RESET_SKIP_APPLY:-}" = 1 ] && return 0
+	command -v zlyme-ctl >/dev/null 2>&1 || return 0
+	zlyme-ctl apply-settings || return 1
+	zlyme-ctl apply-logs || return 1
+	zlyme-ctl apply-refresh || return 1
+}
+
+settings_reset() {
+	reset_flags || return 1
+	reset_ui || return 1
+	apply_now
+}
+
+factory_reset() {
+	settings_reset || return 1
+	mkdir -p "$zlyme" || return 1
+	: > "$zlyme/factory-reset"
+}
+
+case "${1:-}" in
+	settings) settings_reset ;;
+	factory) factory_reset ;;
+	*)
+		echo "usage: $0 {settings|factory}" >&2
+		exit 2
+		;;
+esac
