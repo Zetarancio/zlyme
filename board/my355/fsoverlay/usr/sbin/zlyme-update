@@ -14,14 +14,18 @@
 # Junk archives are deleted.
 #
 # Do not dd a partition. Do not rewrite GPT.
+# A delta tar reconstructs a complete squashfs on storage. It never
+# patches /boot/zlyme. Initramfs still copies pending/zlyme.
 
 set -eu
 
-. /usr/share/zlyme/device.conf
+. "${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}"
 : "${ZLYME_UPDATE_PREFIX:?device.conf missing ZLYME_UPDATE_PREFIX}"
 : "${ZLYME_DTB:?device.conf missing ZLYME_DTB}"
 
-. /etc/zlyme.conf 2>/dev/null || true
+if [ -f /etc/zlyme.conf ]; then
+	. /etc/zlyme.conf
+fi
 STORAGE="${ZLYME_STORAGE:-/storage}"
 BOOT="${ZLYME_BOOT:-/boot}"
 STAGEDIR="$STORAGE/.update"
@@ -136,11 +140,207 @@ verify_tar() {
 	tarf=$1
 	[ -s "$tarf" ] || mark_fail junk "empty tar"
 	need_cmd tar
+	if tar -tf "$tarf" | grep -qx DELTA-MANIFEST; then
+		verify_delta_tar "$tarf"
+		return 0
+	fi
 	tar -tf "$tarf" | grep -qx "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
 	tar -tf "$tarf" | grep -qx zlyme || mark_fail junk "tar has no zlyme squashfs"
 	tar -tf "$tarf" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
 	log "tar ok ($tarf)"
 	tar -xOf "$tarf" VERSION 2>/dev/null | head -n 2 || true
+}
+
+is_hex64() {
+	v=$1
+	[ "${#v}" -eq 64 ] || return 1
+	case "$v" in
+		*[!0-9a-fA-F]*) return 1 ;;
+	esac
+	return 0
+}
+
+# DELTA-MANIFEST is a fixed key list. Do not eval or source it.
+read_delta_manifest() {
+	file=$1
+	delta_type=""
+	delta_schema=""
+	delta_device=""
+	delta_from=""
+	delta_target_ver=""
+	delta_base=""
+	delta_target=""
+	delta_size=""
+	delta_patch=""
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			""|\#*) continue ;;
+		esac
+		case "$line" in
+			*=*) ;;
+			*) mark_fail apply "delta manifest syntax" ;;
+		esac
+		key=${line%%=*}
+		val=${line#*=}
+		case "$val" in
+			*" "*|*"	"*|*'$'*|*'`'*|*'\'*|*'\"'*|*"'"*)
+				mark_fail apply "delta manifest value"
+				;;
+		esac
+		case "$key" in
+			TYPE)
+				[ -z "$delta_type" ] || mark_fail apply "delta manifest duplicate"
+				delta_type=$val
+				;;
+			SCHEMA)
+				[ -z "$delta_schema" ] || mark_fail apply "delta manifest duplicate"
+				delta_schema=$val
+				;;
+			DEVICE)
+				[ -z "$delta_device" ] || mark_fail apply "delta manifest duplicate"
+				delta_device=$val
+				;;
+			FROM_VERSION)
+				[ -z "$delta_from" ] || mark_fail apply "delta manifest duplicate"
+				delta_from=$val
+				;;
+			TARGET_VERSION)
+				[ -z "$delta_target_ver" ] || mark_fail apply "delta manifest duplicate"
+				delta_target_ver=$val
+				;;
+			BASE_SHA256)
+				[ -z "$delta_base" ] || mark_fail apply "delta manifest duplicate"
+				delta_base=$val
+				;;
+			TARGET_SHA256)
+				[ -z "$delta_target" ] || mark_fail apply "delta manifest duplicate"
+				delta_target=$val
+				;;
+			TARGET_SIZE)
+				[ -z "$delta_size" ] || mark_fail apply "delta manifest duplicate"
+				delta_size=$val
+				;;
+			PATCH)
+				[ -z "$delta_patch" ] || mark_fail apply "delta manifest duplicate"
+				delta_patch=$val
+				;;
+			*) mark_fail apply "delta manifest key" ;;
+		esac
+	done <"$file"
+	[ "$delta_type" = delta ] || mark_fail apply "delta manifest type"
+	[ "$delta_schema" = 1 ] || mark_fail apply "delta manifest schema"
+	[ "$delta_device" = my355 ] || mark_fail apply "delta manifest device"
+	is_hex64 "$delta_base" || mark_fail apply "delta manifest base hash"
+	is_hex64 "$delta_target" || mark_fail apply "delta manifest target hash"
+	case "$delta_size" in
+		""|*[!0-9]*) mark_fail apply "delta manifest size" ;;
+	esac
+	[ "$delta_patch" = zlyme.patch.zst ] || mark_fail apply "delta manifest patch"
+	delta_base=$(printf '%s' "$delta_base" | tr 'A-F' 'a-f')
+	delta_target=$(printf '%s' "$delta_target" | tr 'A-F' 'a-f')
+}
+
+verify_delta_tar() {
+	tarf=$1
+	need_cmd tar
+	members=$(tar -tf "$tarf")
+	printf '%s\n' "$members" | grep -qx DELTA-MANIFEST || mark_fail junk "delta tar has no manifest"
+	printf '%s\n' "$members" | grep -qx zlyme.patch.zst || mark_fail junk "delta tar has no patch"
+	printf '%s\n' "$members" | grep -qx zlyme && mark_fail junk "delta tar must not contain zlyme"
+	printf '%s\n' "$members" | grep -qx "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
+	printf '%s\n' "$members" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
+	printf '%s\n' "$members" | grep -qx VERSION || mark_fail junk "tar has no VERSION"
+	log "delta tar ok ($tarf)"
+}
+
+file_sha256() {
+	need_cmd sha256sum
+	sha256sum "$1" | awk '{ print $1 }' | tr 'A-F' 'a-f'
+}
+
+storage_free_bytes() {
+	avail=$(df -P "$STORAGE" | awk 'NR==2 { print $4 }')
+	[ -n "$avail" ] && [ "$avail" -gt 0 ] || fail "cannot df $STORAGE"
+	echo $((avail * 1024))
+}
+
+# Tar stays on storage while the new root is written beside it.
+storage_has_room() {
+	need=$1
+	free=$(storage_free_bytes) || return 1
+	if [ "$free" -lt "$need" ]; then
+		mark_fail apply "not enough space on $STORAGE (need $need bytes, free $free)"
+		return 1
+	fi
+	log "storage free $free bytes, need $need"
+}
+
+cleanup_reconstruct() {
+	rm -rf "$STAGEDIR/reconstruct"
+}
+
+stage_delta() {
+	tarf=$1
+	need_cmd zstd
+	verify_delta_tar "$tarf"
+	[ -s "$BOOT/zlyme" ] || mark_fail apply "installed /boot/zlyme is missing; current OS was not modified"
+	work=$STAGEDIR/reconstruct
+	cleanup_reconstruct
+	mkdir -p "$work"
+	tar -xOf "$tarf" DELTA-MANIFEST >"$work/DELTA-MANIFEST" || {
+		cleanup_reconstruct
+		mark_fail apply "cannot read delta manifest"
+	}
+	read_delta_manifest "$work/DELTA-MANIFEST"
+	have=$(file_sha256 "$BOOT/zlyme")
+	if [ "$have" != "$delta_base" ]; then
+		cleanup_reconstruct
+		mark_fail apply "installed root does not match delta base; current OS was not modified"
+	fi
+	# 64 MiB covers the other boot files extracted next to the new root.
+	storage_has_room $((delta_size + 67108864)) || {
+		cleanup_reconstruct
+		return 1
+	}
+	log "reconstructing squashfs from delta (base $delta_base)"
+	if ! tar -xOf "$tarf" zlyme.patch.zst | zstd -d --patch-from="$BOOT/zlyme" -o "$work/zlyme.new" -f; then
+		cleanup_reconstruct
+		mark_fail apply "zstd reconstruction failed; current OS was not modified"
+	fi
+	got=$(file_sha256 "$work/zlyme.new")
+	got_sz=$(wc -c <"$work/zlyme.new")
+	got_sz=$((got_sz))
+	if [ "$got" != "$delta_target" ] || [ "$got_sz" -ne "$delta_size" ]; then
+		cleanup_reconstruct
+		mark_fail apply "reconstructed squashfs hash mismatch; current OS was not modified"
+	fi
+	mv "$work/zlyme.new" "$work/zlyme"
+	tar -xf "$tarf" -C "$work" Image.gz "$ZLYME_DTB" idbloader.img u-boot.itb \
+		pre-update.sh post-update.sh VERSION || {
+		cleanup_reconstruct
+		mark_fail apply "delta boot file extract failed"
+	}
+	names=$(tar -tf "$tarf")
+	if printf '%s\n' "$names" | grep -qx splash.anim; then
+		tar -xf "$tarf" -C "$work" splash.anim
+	fi
+	if printf '%s\n' "$names" | grep -qx progress.anim; then
+		tar -xf "$tarf" -C "$work" progress.anim
+	fi
+	if printf '%s\n' "$names" | grep -q '^overlays/'; then
+		tar -xf "$tarf" -C "$work" overlays
+	fi
+	if printf '%s\n' "$names" | grep -q '^extlinux/'; then
+		tar -xf "$tarf" -C "$work" extlinux
+	fi
+	rm -f "$work/DELTA-MANIFEST"
+	sync
+	rm -rf "$PENDING"
+	mv "$work" "$PENDING"
+	sync
+	verify_dir "$PENDING"
+	squashfs_fits "$PENDING/zlyme"
+	log "delta reconstructed $PENDING/zlyme"
 }
 
 verify_dir() {
@@ -176,10 +376,16 @@ squashfs_fits() {
 stage_tar() {
 	tarf=$1
 	show_galaxy
+	if tar -tf "$tarf" | grep -qx DELTA-MANIFEST; then
+		stage_delta "$tarf"
+		return 0
+	fi
 	verify_tar "$tarf"
 	rm -rf "$PENDING"
 	mkdir -p "$PENDING"
 	log "extracting $(basename "$tarf") to $PENDING"
+	# The downloaded tar stays until apply finishes, so storage must hold both.
+	storage_has_room $(( $(wc -c <"$tarf") + 67108864 ))
 	tar -xf "$tarf" -C "$PENDING" || mark_fail apply "extract failed"
 	verify_dir "$PENDING"
 	squashfs_fits "$PENDING/zlyme"
@@ -542,6 +748,10 @@ case "$cmd" in
 		;;
 	dry-run)
 		dry_run "${1:?tar}"
+		;;
+	test-stage)
+		[ "${ZLYME_UPDATE_TEST:-}" = 1 ] || fail "test-stage is not a user command"
+		stage_tar "${1:?tar}"
 		;;
 	*)
 		echo "usage: zlyme-update {queue|apply|boot-apply|verify|status|cancel|dry-run|uboot} [tar]" >&2
