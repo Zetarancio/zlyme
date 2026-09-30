@@ -387,7 +387,7 @@ Also audit repository license and example mentions of `Autocal.pak` in 3C2b. Do 
 | `board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts` | already switched; do not treat the old node as remaining Flip work |
 | `package/system/zlyme-keylidmon/zlyme-keylidmon.c` | `PAD_NAME` `retrogame_joypad` |
 | `package/system/nextui/zlyme/zlyme-pak-hotkey.c` | `PAD_NAME` `retrogame_joypad` |
-| `package/system/nextui/src/workspace/my355/platform/platform.c` | rumble looks for `retrogame` in the evdev name |
+| `workspace/my355/platform/platform.c` in `Zetarancio/NextUI` | rumble looks for `retrogame` in the evdev name |
 | `package/system/nextui/nextui-session` | `grep retrogame_joypad` on the SDL db |
 | `package/system/nextui/zlyme/gamecontrollerdb.txt` | both GUID lines and the name. Installed by `nextui.mk` to `/usr/lib/gamecontrollerdb.txt` and `/usr/share/zlyme/gamecontrollerdb.txt` |
 | `package/system/nextui/zlyme/ra-run.sh` | copies `retrogame_joypad.cfg` if the autoconfig dir lacks it |
