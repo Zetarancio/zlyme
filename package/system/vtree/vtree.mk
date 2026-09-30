@@ -27,6 +27,7 @@ define VTREE_INSTALL_TARGET_CMDS
 	sed -i \
 		-e 's|^StartDirectoryLeft=.*|StartDirectoryLeft=/storage|' \
 		-e 's|^StartDirectoryRight=.*|StartDirectoryRight=/storage|' \
+		-e 's|^ShowHidden=.*|ShowHidden=true|' \
 		$(TARGET_DIR)/usr/share/vtree/config.ini
 	if grep -q '^ActiveTheme=' $(TARGET_DIR)/usr/share/vtree/config.ini; then \
 		sed -i \

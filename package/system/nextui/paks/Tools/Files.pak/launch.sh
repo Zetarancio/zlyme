@@ -9,30 +9,70 @@ msg() {
 		sleep 2
 	fi
 }
-if [ ! -x /usr/bin/vtree ]; then
+
+# Immutable defaults live under SHARE. RUN is the user's copy.
+# ZLYME_VTREE_SHARE, ZLYME_VTREE_RUN, and ZLYME_VTREE_TEST=1 are test seams.
+SHARE=${ZLYME_VTREE_SHARE:-/usr/share/vtree}
+RUN=${ZLYME_VTREE_RUN:-/storage/.config/nextui/shared/vtree}
+MARKER=$RUN/.zlyme-vtree-v1
+
+set_ini() {
+	file=$1
+	key=$2
+	val=$3
+	if grep -q "^${key}=" "$file"; then
+		sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+	else
+		printf '%s\n' "${key}=${val}" >> "$file"
+	fi
+}
+
+seed_vtree() {
+	mkdir -p "$RUN/theme"
+	if [ ! -f "$RUN/config.ini" ]; then
+		cp -a "$SHARE/config.ini" "$RUN/config.ini"
+		set_ini "$RUN/config.ini" ShowHidden true
+		set_ini "$RUN/config.ini" ActiveTheme Zlyme
+		: > "$MARKER"
+	elif [ ! -f "$MARKER" ]; then
+		# Older Files.pak replaced this file every launch, so a saved
+		# ShowHidden=false was the packaged default, not a user choice.
+		set_ini "$RUN/config.ini" ShowHidden true
+		: > "$MARKER"
+	fi
+	if [ ! -f "$RUN/theme.ini" ] && [ -f "$SHARE/theme.ini" ]; then
+		cp -a "$SHARE/theme.ini" "$RUN/theme.ini"
+	fi
+	if [ -d "$SHARE/theme" ] && [ ! -d "$RUN/theme" ]; then
+		mkdir -p "$RUN/theme"
+		cp -a "$SHARE/theme/." "$RUN/theme/"
+	fi
+	if [ -f "$SHARE/theme/Zlyme.ini" ] && [ ! -f "$RUN/theme/Zlyme.ini" ]; then
+		mkdir -p "$RUN/theme"
+		cp -a "$SHARE/theme/Zlyme.ini" "$RUN/theme/Zlyme.ini"
+	fi
+	if [ -e "$SHARE/res" ]; then
+		ln -sfn "$SHARE/res" "$RUN/res"
+	fi
+	if [ -e "$SHARE/fonts" ]; then
+		ln -sfn "$SHARE/fonts" "$RUN/fonts"
+	fi
+}
+
+if [ "${ZLYME_VTREE_TEST:-}" = 1 ]; then
+	seed_vtree
+	exit 0
+fi
+
+if [ ! -x /usr/bin/vtree ] && [ ! -x "$SHARE/vtree" ]; then
 	msg "vtree is not installed"
 	exit 1
 fi
-# Squashfs /usr/share/vtree is read-only. Run from userdata so ActiveTheme
-# is Zlyme even if an older image still has Dark in the packaged ini.
-RUN=/storage/.config/nextui/shared/vtree
-mkdir -p "$RUN/theme"
-cp -a /usr/share/vtree/config.ini "$RUN/config.ini"
-cp -a /usr/share/vtree/theme.ini "$RUN/theme.ini" 2>/dev/null || true
-if [ -d /usr/share/vtree/theme ]; then
-	cp -a /usr/share/vtree/theme/. "$RUN/theme/" 2>/dev/null || true
-fi
-if [ -f /usr/share/vtree/theme/Zlyme.ini ]; then
-	cp -a /usr/share/vtree/theme/Zlyme.ini "$RUN/theme/Zlyme.ini"
-fi
-ln -sfn /usr/share/vtree/res "$RUN/res"
-ln -sfn /usr/share/vtree/fonts "$RUN/fonts"
-if grep -q '^ActiveTheme=' "$RUN/config.ini"; then
-	sed -i 's|^ActiveTheme=.*|ActiveTheme=Zlyme|' "$RUN/config.ini"
-else
-	printf '%s\n' '[ActiveTheme]' 'ActiveTheme=Zlyme' >> "$RUN/config.ini"
-fi
+seed_vtree
 sleep 0.4
 cd "$RUN" || exit 1
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
+if [ -x "$SHARE/vtree" ]; then
+	exec "$SHARE/vtree"
+fi
 exec /usr/share/vtree/vtree
