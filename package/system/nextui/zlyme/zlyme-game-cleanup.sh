@@ -128,9 +128,14 @@ do_orphan_saves() {
 	cands=/tmp/zlyme-cands.$$
 	: > "$stems" || return 1
 	: > "$cands" || return 1
+	# Stems from every mounted library. A save is not an orphan when
+	# its ROM is on a different active card.
 	list_roots | while IFS= read -r root; do
 		[ -d "$root" ] || continue
-		rom_stems "$root" > "$stems"
+		rom_stems "$root"
+	done > "$stems"
+	list_roots | while IFS= read -r root; do
+		[ -d "$root" ] || continue
 		: > "$cands"
 		if [ -d "$root/Saves" ]; then
 			find "$root/Saves" -type f 2>/dev/null |
@@ -385,8 +390,22 @@ plan_rom() {
 	stem=$(basename "$rom")
 	stem=${stem%.*}
 	stem2=${stem%.*}
-	if [ -d "$lib/Saves" ]; then
-		find "$lib/Saves" -type f 2>/dev/null |
+	sroot=$lib
+	libsh=${ZLYME_LIBRARY_SH:-/usr/share/nextui/bin/zlyme-library.sh}
+	if [ -r "$libsh" ]; then
+		# shellcheck disable=SC1090
+		. "$libsh"
+		tag=$(basename "$(dirname "$rom")")
+		case "$tag" in
+			*'('*')')
+				tag=${tag##*(}
+				tag=${tag%%)*}
+				;;
+		esac
+		sroot=$(zlyme_save_root "$rom" "$tag")
+	fi
+	if [ -d "$sroot/Saves" ]; then
+		find "$sroot/Saves" -type f 2>/dev/null |
 		while IFS= read -r f; do
 			b=$(basename "$f")
 			is_save_name "$b" || continue

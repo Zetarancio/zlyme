@@ -32,8 +32,8 @@ run() {
 
 out=$(run orphan-saves --dry-run)
 count=$(printf '%s\n' "$out" | awk -F= '/^COUNT=/{print $2; exit}')
-[ "$count" = 2 ] || {
-	echo "expected 2 orphans, got: $out" >&2
+[ "$count" = 1 ] || {
+	echo "expected 1 orphan, got: $out" >&2
 	exit 1
 }
 for keep in Mario.srm Game.gba.sav Game.state Game.state1 Game.state.1 Game.st0 notes.txt; do
@@ -50,7 +50,7 @@ test -f "$libA/Saves/GBA/Game.state.1"
 test -f "$libA/Saves/GBA/Game.st0"
 test -f "$libA/Saves/GBA/notes.txt"
 test ! -e "$libA/Saves/GBA/Gone.srm"
-test ! -e "$libA/Saves/GBA/OnlyB.srm"
+test -f "$libA/Saves/GBA/OnlyB.srm"
 test -f "$libB/Roms/GBA/OnlyB.gba"
 
 # Standalone settings reset. Sentinels are user data.
