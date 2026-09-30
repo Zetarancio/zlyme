@@ -1819,7 +1819,7 @@ Do this in order. Do not combine the fork with a LoveRetro version bump. Do not 
 - `minui-list` / `minui-presenter` are vendored at the current tags, platform-neutral, and behavior-equivalent. Newer tags are not mixed into that step.
 - A profile exists for the paths that were optimized.
 
-Status, 2026-09-30: migration image `7a0fc397cb5b` is hardware-equivalent on the Miyoo Flip. The normal reboot after that image matches the frontend baseline. Upstream review kept the current NextUI, minui-list, and minui-presenter pins. Other-platform NextUI source stays in the fork. The only image exclusion is `res/branding/`, which remains the splash and README source and is no longer copied into the rootfs. The profile did not justify a frontend optimization. Phase 8 is ready to close. `main` has not moved.
+Status, 2026-09-30: Phase 8 is complete. The hardware-equivalent runtime is `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`, image `zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`. The later commit `b7c5a19` excludes build-only `res/branding/` from the target. That exclusion was checked in the build tree and was not given a second hardware OTA. It does not change the accepted runtime. Other-platform NextUI source stays in the fork. Upstream pins were not moved. The profile did not justify a frontend optimization.
 
 ## 9 — Product polish, integrations, and release preparation
 

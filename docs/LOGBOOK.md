@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8 closed
+
+Phase 8 is complete. Hardware equivalence belongs to runtime `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8` and OTA `zlyme-my355-20260930-7a0fc397cb5b.tar` (SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`). Commit `b7c5a19` excludes build-only branding from the target. That exclusion was build-verified and was not flashed as a second OTA. The final Phase 8 HEAD is not claimed as a hardware-tested image. Other-platform NextUI source stays in the fork.
+
 ## 2026-09-30 — Build-only branding stays out of the rootfs
 
 `package/system/nextui/res/branding/` remains the source for `scripts/rasterize-zlyme-branding.py` and the README. The NextUI recipe still copies `res/`, then deletes `/usr/share/nextui/res/branding` from the target. That installed directory was 3699882 bytes. After `nextui-reinstall`, the menu images, palettes, splash, progress frames, and PortMaster theme logo were unchanged, and the target branding directory was gone. A squashfs rebuilt from that tree is 644694016 bytes, 3682304 bytes smaller than the 648376320-byte migration squashfs. No new OTA was packed. Other-platform NextUI source stays in the fork. Weston.pak was not touched.

@@ -373,4 +373,18 @@ res/branding = EXCLUDE FROM RUNTIME IMAGE
 
 ## Phase 8 close
 
-Hardware equivalence, the upstream dispositions, the normal-reboot profile, and this source-versus-image distinction are recorded. No frontend behavior change is justified beyond keeping build-only branding out of the rootfs. Phase 8 is ready to close. `main` stays where it is. Phase 9 has not started.
+Phase 8 is complete. The hardware-equivalent runtime is `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. The accepted OTA is `zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`. Commit `b7c5a19` later excludes build-only branding from the target image. That change was verified by package reinstall and a squashfs rebuild. It did not get a second device OTA, and it is not part of the hardware-tested runtime. The final Phase 8 git HEAD is therefore not itself a hardware-tested image.
+
+```text
+PHASE 8 STORAGE PREFLIGHT = COMPLETE
+PHASE 8 FRONTEND BASELINE = COMPLETE
+PHASE 8 NEXTUI SOURCE OWNERSHIP = COMPLETE
+PHASE 8 MINUI HELPER OWNERSHIP = COMPLETE
+PHASE 8 MIGRATION HARDWARE EQUIVALENCE = PASS
+PHASE 8 UPSTREAM REVIEW = COMPLETE
+PHASE 8 PERFORMANCE AUDIT = COMPLETE
+PHASE 8 DEAD-CODE/SOURCE AUDIT = COMPLETE
+OTHER-PLATFORM NEXTUI SOURCE = INTENTIONALLY RETAINED
+BUILD-ONLY BRANDING IN TARGET = REMOVED
+PHASE 8 = COMPLETE
+```
