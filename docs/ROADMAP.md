@@ -1819,6 +1819,8 @@ Do this in order. Do not combine the fork with a LoveRetro version bump. Do not 
 - `minui-list` / `minui-presenter` are vendored at the current tags, platform-neutral, and behavior-equivalent. Newer tags are not mixed into that step.
 - A profile exists for the paths that were optimized.
 
+Status, 2026-09-30: migration image `7a0fc397cb5b` is hardware-equivalent on the Miyoo Flip. The normal reboot after that image matches the frontend baseline. Upstream review kept the current NextUI, minui-list, and minui-presenter pins. The profile did not justify an optimization, and the image audit did not justify a removal. Phase 8 is ready to close. `main` has not moved.
+
 ## 9 — Product polish, integrations, and release preparation
 
 Detailed dispositions: `docs/research/product-phase9.md`.

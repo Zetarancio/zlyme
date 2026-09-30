@@ -337,3 +337,37 @@ The following normal reboot, uptime 287 seconds at capture, with `nextui-session
 | `inputplumber-start` | 11.25 | 11.24 |
 
 From `rcS-start` to `nextui-first-flip` is 5.91 seconds, against 6.27 on the baseline. From `nextui-enter` to first flip is 2.81 seconds, against 3.17. From `session-nextui` to `nextui-enter` is 0.76 seconds, against 0.74. `session-copy` to `session-paks` is 0.22 seconds. The eight-second gap on the OTA-commit boot is the stock-pak overwrite that runs when `paks-version.txt` does not match the card. A matching stamp returns before that copy. This sample is not a regression.
+
+## Upstream review
+
+Fetched 2026-09-30. Nothing below was merged.
+
+LoveRetro/NextUI `main` is still `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7`, two commits after `ae652648548edf6ab24cbb816cf4e4194e609fb3`.
+
+`afbdb83735e2efb8f7828a74d7af802d40c7566e` changes only `workspace/tg5040` and `workspace/tg5050` Gearcoleco patches. Those trees are not compiled or installed for my355. Disposition: does not apply, no my355 image effect, ignore.
+
+`a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7` adds `mallopt` and a 1 MiB SDL thread-stack hint in `workspace/all/minarch/minarch.c`, and routes the vibration and battery `pthread_create` calls in `workspace/all/common/api.c` through a 1 MiB stack. Zlyme does not build MinArch; `nextui.mk` deletes `minarch.elf` if one is present, and games launch through RetroArch. The `api.c` hunk is shared code that this image does compile. The Zlyme fork already carries its own `api.c` delta (223 insertions against the pin) and still uses the plain `pthread_create` at those two sites. There is no demonstrated Zlyme failure that needs the smaller stacks. Disposition: shared hunk is technically relevant, original problem is MinArch/dynarec, defer. Do not move the pin just to match upstream.
+
+`minui-list` `0.15.4` is `47f111762c6229ab16284d7eeab72e27a1461154`. Against vendored `0.15.2` (`a5f5b456c2704bbf6ec92aa26bc58d268488696f`) the diff is Makefile, docs, tests, and upstream-pin scripts. No `.c` or `.h` changes. Disposition: evaluated, no Zlyme runtime benefit, keep 0.15.2.
+
+`minui-presenter` `0.13.4` is `6d71bbeb136eca476168f65522c59310f84f9f6a`. Against vendored `0.13.2` (`4d9f6ea350f663a72ef3621f1b4a11fdb8279f7a`) the diff is the same kind of maintenance. No `.c` or `.h` changes. Disposition: evaluated, no Zlyme runtime benefit, keep 0.13.2.
+
+## Profile
+
+The normal-reboot marks are the profile. `nextui.c` writes `enter` at `main`, `settings` after `InitSettings`, `gfx` after `GFX_init`, `menu` after pad, vibration, power, and `Menu_init`, and `first-flip` on the first `GFX_flip`. On this sample those steps are 0.02, 0.80, 1.46, and 0.53 seconds. The baseline `gfx` to `menu` interval was 1.74 seconds. `libraryReload` runs before graphics init. Folder art is skipped until first flip, and thumbnail workers start after it. The bluetooth `sleep` calls in `nextui-session` run while a pak is starting, not before the menu. No hot-path change is justified from this sample. The helpers were not retimed; their physical Tool check already passed, and this audit found no separate helper cost to chase.
+
+## Image audit
+
+Fetched NextUI workspaces other than `my355` stay in the git checkout. They are not installed. `nextui.mk` compiles `libmsettings`, the common objects `scaler`, `utils`, `config`, `api`, `palette`, and `platform`, plus `nextui.elf`, `settings.elf`, `show.elf`, and `nextval.elf`. It deletes `keymon.elf`, `minarch.elf`, and `gametimectl.elf` if present, and it drops Update, Autocal, and the old Joystick Calibration pak. Parallel N64 and melonDS DS cores are removed from the image.
+
+`/usr/share/nextui` in the migration target tree is about 24 MB uncompressed: 15 MB of paks and 9 MB of `res`. ScrapeGoat and Artwork Scraper are most of the pak bytes and are reachable Tools. `show.elf` and `nextval.elf` are installed both under `/usr/bin` and `/usr/share/nextui/bin`; callers use `PATH`, and squashfs deduplicates the identical files.
+
+`font2.ttf` and both `BPreplayBold-unhinted*.otf` files are the same 169304-byte blob. Settings skips the `BPreplay` names and offers `font2.ttf` as OG. `show.elf` still has the `BPreplay` path as a fallback. Squashfs stores that blob once, so deleting the extra names would not meaningfully shrink the image.
+
+`res/branding/` is 3.7 MB, almost all `zlyme_static_fog_transparent.png` and `Z.png`. The splash tools read the package tree at build time and install `splash.anim` / `splash.rgb565`. No NextUI or settings source opens `res/branding`. Excluding that directory from the image copy would drop those PNGs and would not change the menu. It is an image-size exclusion, not a boot fix, and it was not made. Weston.pak is 354 bytes and is a reachable Tools entry; removing it is the Phase 9 release-cleanup item.
+
+No installed file in this audit was both unreachable and large enough, after squashfs duplication, to justify a removal in this phase.
+
+## Phase 8 close
+
+Hardware equivalence, the upstream dispositions, the normal-reboot profile, and the image audit are recorded. No runtime change is justified. Phase 8 is ready to close. `main` stays where it is. Phase 9 has not started.

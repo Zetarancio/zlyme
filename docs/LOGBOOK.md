@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8 audit finds no runtime change
+
+LoveRetro/NextUI `main` is still `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7`. The Gearcoleco commit does not apply to my355. The dynarec stack commit's shared `api.c` hunk stays deferred. `minui-list` 0.15.4 and `minui-presenter` 0.13.4 still have no C source changes, so the vendored tags stay. The normal-reboot profile matches the baseline. `res/branding` holds about 3.7 MB of splash source PNGs that the running frontend does not open; leaving them installed does not affect boot, and they were not removed. Phase 8 is ready to close. `main` was not moved.
+
 ## 2026-09-30 — Phase 8 frontend migration is hardware-equivalent
 
 The installed image is `zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`, built from `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. Remote checks and all seven physical checks passed. Quick Menu stayed Wi-Fi, Bluetooth, Settings. A later docs-only commit is not in that image. The OTA-commit boot (`rcS-start` 46.28) copied the squashfs and rewrote stock paks. The following normal reboot reached `nextui-first-flip` at 9.53 seconds, against the 9.95 second baseline. `session-copy` to `session-paks` was 0.22 seconds.
