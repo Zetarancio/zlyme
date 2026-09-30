@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — NextUI repository is a GitHub fork
+
+`Zetarancio/NextUI` is a GitHub fork of `LoveRetro/NextUI`. GitHub's network root is `shauninman/MinUI`. Branch `zlyme` is still `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, and `ae652648548edf6ab24cbb816cf4e4194e609fb3` is its ancestor. The commits were not replayed. `nextui.mk` still fetches that exact commit. Upstream `main` was not merged. The fork's GitHub default branch was left at `main` because this environment has no token that can change it.
+
 ## 2026-09-30 — NextUI is fetched from the Zlyme fork
 
 `Zetarancio/NextUI` branch `zlyme` is `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`. Its tree matches the earlier local reconstruction `b56771b1fad1a85620ed47685c6c4be379276157` (tree `912da6253ab156a57a1d6c420a98397670f18f34`). That older commit could not be pushed: the first local clone was missing ancestor blobs. The published history is the same twelve Zlyme commits replayed on a complete LoveRetro history rooted at `ae652648548edf6ab24cbb816cf4e4194e609fb3`. `nextui.mk` fetches that commit. `ZLYME_VERSION` stays `zlyme43`. The vendored `package/system/nextui/src` tree is gone. A targeted `nextui-dirclean nextui` build matched those sources and installed `nextui.elf`, `settings.elf`, and `libmsettings.so`. `/usr/share/nextui/version.txt` is the fork commit. `/usr/share/zlyme/version` is `zlyme43 (2026-09-30)`. MinUI helper vendoring has not started.
