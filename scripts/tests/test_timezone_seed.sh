@@ -30,11 +30,28 @@ cmp "$file" "$zi/UTC"
 
 ZLYME_ZONEINFO=$zi ZLYME_TZ_FILE=$file "$TZBIN" apply Europe/Rome
 cmp "$file" "$zi/Europe/Rome"
+printf 'Europe/Rome\n' > "$work/expect-name"
+cmp "$file.zone" "$work/expect-name"
+
+printf 'not-a-zone\n' > "$file.zone"
+printf 'bad' > "$file"
+ZLYME_ZONEINFO=$zi ZLYME_TZ_FILE=$file "$TZBIN" ensure
+cmp "$file" "$zi/UTC"
+if [ -e "$file.zone" ]; then
+	echo "corrupt zone kept a name" >&2
+	exit 1
+fi
+
+ZLYME_ZONEINFO=$zi ZLYME_TZ_FILE=$file "$TZBIN" apply Europe/Rome
+printf 'TZifKEEP' > "$file"
+printf 'Europe/Rome\n' > "$file.zone"
+ZLYME_ZONEINFO=$zi ZLYME_TZ_FILE=$file "$TZBIN" ensure
+cmp "$file.zone" "$work/expect-name"
 
 if ZLYME_ZONEINFO=$zi ZLYME_TZ_FILE=$file "$TZBIN" apply '../etc/passwd'; then
 	echo "path escape was accepted" >&2
 	exit 1
 fi
-cmp "$file" "$zi/Europe/Rome"
+cmp "$file" "$work/expect-keep"
 
 echo "timezone seed ok"

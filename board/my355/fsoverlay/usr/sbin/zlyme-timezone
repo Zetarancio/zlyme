@@ -46,7 +46,9 @@ ensure() {
 		return 0
 	fi
 	src=$(utc_source) || return 1
-	install_zone "$src"
+	install_zone "$src" || return 1
+	# A replaced file is UTC. Drop a name that described the old bytes.
+	rm -f "$TZFILE.zone"
 }
 
 apply() {
@@ -62,7 +64,17 @@ apply() {
 		echo "zlyme-timezone: no zone file $name" >&2
 		return 1
 	}
-	install_zone "$src"
+	install_zone "$src" || return 1
+	dir=$(dirname "$TZFILE")
+	tmp=$(mktemp "$dir/.tzname.XXXXXXXX") || return 1
+	if ! printf '%s\n' "$name" > "$tmp"; then
+		rm -f "$tmp"
+		return 1
+	fi
+	if ! mv -f "$tmp" "$TZFILE.zone"; then
+		rm -f "$tmp"
+		return 1
+	fi
 }
 
 case "${1:-ensure}" in
