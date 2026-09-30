@@ -294,6 +294,14 @@ Not a Phase 8 or Phase 9 gate. The earlier note treated Pak Store as an open del
 
 Future: evaluate Pak Store after the core Zlyme product and first stable release are complete. At that time reconsider whether optional/community applications should move from curated built-in integrations to Pak Store. The later look can weigh easier community updates, a smaller base image, upstream independence, reproducibility, offline availability, security and provenance, and breakage when an upstream package changes.
 
+## Phase 9L — launch and format stabilization
+
+The Phase 9K BIOS view rebuilt every BIOS symlink in the shell on every launch, and `ra-run` did it again. On a card with thousands of BIOS files that never reached the emulator. One resolution is cached for the active library list. A second launch of the same topology does not walk Bios again. Saves are matched by filename, not a full tree walk.
+
+The MENU+Y screen shows the governor policy from `zlyme-governor --policy` (Auto, or Heavy/Play when that is the real fallback) and the emulator id from `emu-defaults.txt`. X clears the stored override and leaves the effective values on screen.
+
+Format removable storage passed `--confirm-text` without `--confirm-show`, so A did nothing on the last step. The confirm button is shown. A tmpfs status file records the stage. No card was formatted from this session.
+
 ## Phase 9K — live corrections and multi-library BIOS/saves
 
 The previous rule "BIOS and saves follow the ROM library, with a main-card BIOS fallback" is superseded.
@@ -319,7 +327,7 @@ A/B swap user setting: dropped. Wi-Fi Country row: kept across scan rebuilds. Cl
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
-| Weston test PAK | KEEP | `paks/Tools/Weston.pak` is still installed. Drop it from the production image if it is only a developer probe. Keep the developer tool. |
+| Weston test PAK | REMOVED from the image in Phase 9L | `Tools/Weston.pak` only launched `zlyme-weston-test`. That Tools entry is gone. Weston itself stays for PortMaster and Wine. |
 | CI log volume | KEEP | Short log on the Actions console, full log as an artifact, so the job is not truncated. |
 | README | INVARIANT, plus a final gate | Per shipped feature, and one reconciliation against non-prerelease `zlyme40 (2026-09-23)` before the version bump. See the README release gate above. |
 | Community / Contributing | KEEP | Invite other RK3566 ports and point at Discord. |
