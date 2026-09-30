@@ -206,7 +206,7 @@ Reset Settings deletes only these files when they are regular files:
 /storage/.config/nextui/shared/vtree/.zlyme-vtree-v1
 ```
 
-It then seeds a UTC zone file when `zlyme-timezone` is available, and applies overlays, logs, and panel refresh. A missing flag falls back to the existing `zlyme-ctl` default. CPU undervolt's default remains off.
+It then seeds a UTC zone file when `zlyme-timezone` is available and recreates `minuisettings.txt` through `zlyme-card-defaults`, the same helper `nextui-session` uses. Immediate defaults are applied by the existing owners: Wi-Fi, Bluetooth, SSH, Samba, and Syncthing init scripts, plus `zlyme-ctl` for LED, ZRAM, refresh, HDMI mode, logs, merge, and the governor profile. GPU, undervolt, OTG, HDMI, second SD, and A/B swap stay reboot-required; the overlay line is rewritten and the pending-reboot prompt covers them. `boost`, `cpu_gov`, `gpu_gov`, and `update_channel` are persistence only. A missing flag falls back to the existing `zlyme-ctl` default. CPU undervolt's default remains off.
 
 Reset Settings preserves ROMs, BIOS, saves, cheats, Wi-Fi credentials (`wpa_supplicant.conf`), Bluetooth pairings (`bluetooth.tar`), SSH host keys under `/storage/.config/ssh`, joystick calibration and rumble, standalone emulator configs and saves, Pico-8 carts and cdata, PortMaster ports and config, the Wine prefix, user-installed PAKs, stock PAKs, and logs.
 
@@ -216,12 +216,12 @@ Factory Reset does that same settings reset, then creates `/storage/.config/zlym
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
-| PortMaster install disk | RESEARCH FIRST | `portmaster-launch` already exports `HM_PORTS_DIR`, `HM_TOOLS_DIR`, and `HM_SCRIPTS_DIR`. Use that model if PortMaster already has a supported install-location switch. Do not move its files from outside. |
-| Format secondary media | KEEP, with hard limits | Secondary SD and removable OTG only. The system card and internal partitions must be impossible to select. Explicit filesystem choice and a destructive confirm. Inspect who owns the mount before adding the UI. |
-| Overlays PAK content-directory overrides | KEEP | Deterministic RetroArch content-directory overrides. The PAK already exists. |
-| PICO-8 / Splore | RESEARCH FIRST | `nextui.c` treats `pico8_64` and `pico8.dat` as runtime assets, separate from `.p8` cartridges. Find Splore's real download directory before listing those carts. Fake-8 is a different emulator. BIOS discovery across libraries is its own question. |
-| Per-ROM delete | KEEP | Reuse `zlyme-game-cleanup` matching. Exact ROM and save paths, plus a confirm. |
-| Splash vs `quiet` | KEEP | `S12splash` starts the animation without reading `/proc/cmdline`. If `quiet` is absent, leave the console visible. |
+| PortMaster install disk | COMPLETE | Pinned PortMaster `2026.05.04-1202` reads `HM_TOOLS_DIR`, `HM_PORTS_DIR`, and `HM_SCRIPTS_DIR` when they are already set. Zlyme persists the library root and exports those three. Default is `/storage`. Changing it does not move files. A missing explicit disk refuses to start PortMaster. Runtime `libs` is `/run/portmaster/libs`, pointed at the selected root at launch. |
+| Format secondary media | COMPLETE | `zlyme-storage-format` accepts only the removable names `zlyme-storage` already scans. It rejects `mmcblk0`, the disks behind `/`, `/boot`, and `/storage`, and labels `ZLYME` and `ZLYMEBOOT`. Filesystems are exFAT and ext4. A failed normal unmount aborts before mkfs. No lazy unmount and no repartitioning. The label default is `ZLYME-LIB`. |
+| Overlays PAK content-directory overrides | COMPLETE | The PAK no longer writes both `/Overlays/<TAG>` and `/Overlays/<res>/<TAG>`. It stores the asset on the chosen library and records the absolute content directory in `content-overlays.tsv`. `ra-run` appends that cfg. The same folder name on another card is a different key. `write-cfg` replaces only `input_overlay` and `input_overlay_enable`. |
+| PICO-8 / Splore | PARTIAL | Native PICO-8 and Fake-8 stay separate. The emulator row can choose `native` or `fake08` for PICO and P8. `zlyme-pico-splore` is the only dummy Splore writer. The wrapper passes `-root_path` as the ROM folder and `-home` as Pico-8-native. Where Splore actually saves a download is not statically proven, because `pico8_64` is proprietary. cdata, bbs, and data are not deleted. |
+| Per-ROM delete | COMPLETE | MENU+Y on a ROM has a Delete game row. Confirmation runs `zlyme-game-cleanup rom` as argv, then `rom-apply` on that exact plan. Saves and box art are matched on the same library only. `.cue` / `.m3u` / `.gdi` do not pull in referenced files. A Splore dummy delete also clears its marker so the helper can recreate it. |
+| Splash vs `quiet` | COMPLETE | `zlyme_splash_wanted` matches a complete `quiet` token. `S12splash` and `nextui-session` both use it. Without `quiet`, the initramfs splash is stopped and the squashfs splash is not started, including progress mode. |
 
 ## Group 4 — optional systems
 
