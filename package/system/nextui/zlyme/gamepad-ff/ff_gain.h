@@ -2,7 +2,7 @@
 #define ZLYME_FF_GAIN_H
 
 /* Displayed product default. Missing and invalid files use this at runtime. */
-#define FF_DEFAULT_GAIN_PERCENT 30
+#define FF_DEFAULT_GAIN_PERCENT 40
 
 /* 0 and fills *pct with the parsed value, or FF_DEFAULT_GAIN_PERCENT when
  * text is missing or not a single gain=0..100. Nonzero means invalid text.

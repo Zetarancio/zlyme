@@ -16,7 +16,7 @@ int main(void)
 {
 	int pct = 0;
 
-	expect(FF_DEFAULT_GAIN_PERCENT == 30, "default");
+	expect(FF_DEFAULT_GAIN_PERCENT == 40, "default");
 	expect(ff_parse_gain(NULL, &pct) == 0 && pct == FF_DEFAULT_GAIN_PERCENT, "missing");
 	expect(ff_parse_gain("gain=0\n", &pct) == 0 && pct == 0, "zero");
 	expect(ff_parse_gain("gain=10\n", &pct) == 0 && pct == 10, "ten");
