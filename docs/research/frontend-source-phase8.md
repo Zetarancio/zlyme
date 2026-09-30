@@ -20,8 +20,8 @@ UNKNOWN
 | Zlyme | `baadc22b4be1e96c67e75ab94482a5f51f13d4c5` | Vendored NextUI under `package/system/nextui/src`. |
 | LoveRetro/NextUI pin | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | Recorded in `src/UPSTREAM` and as the prefix of `NEXTUI_VERSION`. License transition to PolyForm Noncommercial 1.0.0, 2026-08-15. |
 | LoveRetro/NextUI HEAD | `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7` | Fetched `origin/main` on 2026-09-30. Subject: reduce address space pressure around dynarec JIT caches (#814), 2026-09-15. |
-| minui-list | tag `0.15.2` | `josegonzalez/minui-list`, `SITE_METHOD=git`. Latest GitHub release seen: `0.15.4` (2026-09-27). |
-| minui-presenter | tag `0.13.2` | `josegonzalez/minui-presenter`, `SITE_METHOD=git`. Latest GitHub release seen: `0.13.4` (2026-09-27). |
+| minui-list | tag `0.15.2` | Current recipe: `josegonzalez/minui-list`, `SITE_METHOD=git`. Latest GitHub release seen: `0.15.4` (2026-09-27). Phase 8 vendors `0.15.2` first. |
+| minui-presenter | tag `0.13.2` | Current recipe: `josegonzalez/minui-presenter`, `SITE_METHOD=git`. Latest GitHub release seen: `0.13.4` (2026-09-27). Phase 8 vendors `0.13.2` first. |
 
 The pin checkout used for the file inventory lived outside the Zlyme tree at `/tmp/p8-research/pin`. It is not part of this repository.
 
@@ -33,7 +33,7 @@ PROVEN FROM SOURCE:
 - `NEXTUI_VERSION` is `ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme43`.
 - License is PolyForm Noncommercial 1.0.0. `CREDITS` attributes LoveRetro/NextUI, Shaun Inman's MinUI, and the my355 hardware map started from `apommel/NextUI` `my355-latest`.
 - `BR2_PACKAGE_NEXTUI_PLATFORM` is a hidden string in the top-level `Config.in`. Its default is `my355` when `BR2_ZLYME_DEVICE_MY355` is selected.
-- `minui-list` and `minui-presenter` are fetched from upstream git. Neither recipe has a Zlyme patch directory or a local source tree. Their `CFLAGS` hard-code `-DPLATFORM=\"my355\"` and include `workspace/my355/platform` plus `workspace/my355/libmsettings`. Install paths also place copies under `bin/my355/`.
+- `minui-list` and `minui-presenter` are fetched from upstream git. Neither recipe has a Zlyme patch directory or a local source tree. Their `CFLAGS` hard-code `-DPLATFORM=\"my355\"` and include `workspace/my355/platform` plus `workspace/my355/libmsettings`. Install paths also place copies under `bin/my355/`. That is the tree today. The Phase 8 decision is to vendor these snapshots locally; it is not a reason to keep fetching them.
 
 ## Zlyme delta against `ae652648`
 
@@ -121,11 +121,36 @@ Device code stays under `workspace/my355` and behind commands (`zlyme-wifi`, `zl
 
 ## minui-list and minui-presenter
 
-PROVEN FROM SOURCE: Zlyme has no source delta. Both recipes clone upstream tags and compile them against the NextUI objects.
+PROVEN FROM SOURCE: Zlyme has no source delta. Both recipes clone upstream tags and compile them against the NextUI objects. Their `CFLAGS` hard-code `-DPLATFORM=\"my355\"` and `workspace/my355` include paths.
 
-Phase 8 should make `-DPLATFORM` and the include path follow `BR2_PACKAGE_NEXTUI_PLATFORM` instead of the literal `my355`. Do not fork either project for ownership.
+That finding still stands. The maintainer decision after it is to vendor both trees anyway, before any source change is required. Device integration is expected to need local edits later, and a copy in the Zlyme tree keeps the build reproducible without two extra repositories.
 
-Newer tags exist (`0.15.4`, `0.13.4`, both 2026-09-27). Evaluating them is a separate step after the recipes are platform-neutral. Do not bump them in the fork-migration work.
+Superseded: "do not fork, and keep fetching the tags." Do not create GitHub forks merely because the source is vendored. Reconsider a fork only if Zlyme later carries a long-lived divergence or wants to send changes upstream.
+
+Phase 8 sequence, same split as NextUI:
+
+1. Vendor the exact versions Zlyme already builds: minui-list `0.15.2`, minui-presenter `0.13.2`. Record the upstream repository, tag, and commit. Keep copyright and license. Buildroot builds that `src/` with `SITE_METHOD=local`.
+2. Prove the vendored tree builds and behaves like the git-fetched recipes.
+3. Only then evaluate upstream `0.15.4` and `0.13.4` (both released 2026-09-27). Do not take those tags as part of the initial vendoring.
+
+Layout, not implemented here:
+
+```text
+package/system/minui-list/
+    Config.in
+    minui-list.mk
+    LICENSE / provenance
+    UPSTREAM
+    src/                 exact 0.15.2 snapshot
+package/system/minui-presenter/
+    Config.in
+    minui-presenter.mk
+    LICENSE / provenance
+    UPSTREAM
+    src/                 exact 0.13.2 snapshot
+```
+
+The exact filenames may follow the existing package style. `-DPLATFORM` and the include path come from `BR2_PACKAGE_NEXTUI_PLATFORM`. No behavioral source edits in the first vendoring step.
 
 ## Buildroot migration
 

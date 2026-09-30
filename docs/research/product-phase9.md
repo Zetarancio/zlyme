@@ -68,17 +68,49 @@ No binaries were downloaded. No forks were created.
 
 ### Flash / Ruffle
 
-Fetched 2026-09-30:
+Fetched 2026-09-30. The first research note preferred official Ruffle plus a Zlyme-maintained SDL/GLES frontend, with `aweigit/ruffle-miyooflip` as the fallback fork. That direction is superseded. Zlyme will not own a Ruffle frontend. An older working player with a small packaging glue layer is preferred to a newer Ruffle that Zlyme would have to keep building.
 
-| Candidate | What it is | License signal | Activity |
-| --- | --- | --- | --- |
-| `ruffle-rs/ruffle` | Official player. HEAD seen `7140bb4e9b8b` (2026-09-30), web dependency bump. | GitHub license API returned no single SPDX id. Confirm MIT OR Apache-2.0 from the repo before packaging. | Active the day of this note. |
-| `aweigit/ruffle-miyooflip` | Fork with `sdl2test-flip` (SDL2/GLES), plus Brick and desktop frontends. Pushed 2026-07-19. | GitHub license API: no SPDX id. Read `LICENSE.md` before any import. | Stale relative to upstream. |
-| `SilverPsychoo/Ruffle-Handheld` | Multi-CFW launcher: discovery, profiles, NextUI menu. Pushed 2026-09-30. | MIT. | Active. NextUI display/cursor path is still described as experimental by the maintainer; re-read the README at implementation time. |
+Preferred candidate: `SilverPsychoo/Ruffle-Handheld`, used as an upstream-owned appliance.
 
-Preferred direction: pin official Ruffle, and put a thin SDL/GLES frontend in front of it, using `sdl2test-flip` as the handheld renderer starting point. Use SilverPsychoo as the reference for SWF discovery, multi-file games, profiles, handheld controls, and the NextUI menu. Pinning the whole `aweigit` fork is the alternative if the official core cannot be built against that frontend without a large private patch set.
+```text
+Zlyme integration glue
+        |
+        v
+Ruffle-Handheld
+        |
+        v
+its frozen bundled Ruffle runtime
+```
 
-Record before inclusion: Rust/Buildroot/cargo, dependency size, GLES fit with the Zlyme stack, controller ABI, virtual mouse, quit/hotkey, and the license of every crate that would ship. Do not import a prebuilt player.
+Inspected `main` at `d6e6e4527e97e6d25ba034de29754086a3eb5a9b` (2026-09-30). `VERSION` is `0.8.34`. Project license is MIT.
+
+PROVEN FROM UPSTREAM SOURCE:
+
+- `port.json` describes the bundle as an offline ARM64 launcher with frozen v0.7.7 binaries, profile-controlled buttons, and an offline profile maker.
+- `runtime/core/launch.sh` is labeled "Ruffle Handheld v0.7.7" and logs `Engine: frozen-v0.7.7`. It reads SDL controller config (`SDL_GAMECONTROLLERCONFIG` or `SDL_GAMECONTROLLERCONFIG_FILE`) and can feed gptokeyb2.
+- `runtime/native-adapter.sh` selects a video driver. The NextUI/TrimUI branch clears `DISPLAY` and `SDL_VIDEODRIVER`. Another branch sets `SDL_VIDEODRIVER=kmsdrm`. NextUI preloads `runtime/libruffle_nextui_display.aarch64.so` when `RUFFLE_NEXTUI_DISPLAY=1`.
+- The tree ships ARM64 `ruffle-native.aarch64` and `ruffle-native-multifile.aarch64`. Zlyme does not build that runtime.
+- `setup.sh` detects NextUI when `SDCARD_PATH` has `Roms`, `PLATFORM` is set, and `Emus/$PLATFORM/PORTS.pak` exists. It can also detect `PORTS.pak` from the script path.
+- Profiles, single-file and multi-file launchers, and `profile-maker.html` are in the tree. `THIRD_PARTY.txt` attributes the emulator to Ruffle / ruffle4consoles (MIT OR Apache-2.0) and says no SWFs are distributed.
+- `tools/ruffle_nextui_display.c` says the display adapter is experimental, keeps the frozen executable unchanged, and does not intercept GL calls.
+
+README limits, still current, so this is not a Zlyme/my355 success:
+
+- NextUI / TrimUI Brick: installer and game player have run. Cursor movement is still under investigation. Some games render in only a quarter of the screen.
+- ROCKNIX on Miyoo Flip: reported to reach the player. Controls and individual games still need testing.
+
+`ruffle-rs/ruffle` (`7140bb4e9b8b`, 2026-09-30) and `aweigit/ruffle-miyooflip` (pushed 2026-07-19, `sdl2test-flip`) stay in this note as comparison only. They are not the implementation path.
+
+Phase 9 policy:
+
+1. Integrate a pinned Ruffle-Handheld revision substantially as supplied. Record the revision and checksums.
+2. Allow only small packaging and environment glue, as with other third-party ports.
+3. Do not fork or patch the bundled Ruffle runtime or frontend to make Flash work.
+4. Do not replace frozen v0.7.7 with current official Ruffle in the first integration.
+5. Keep the bundled third-party license and attribution.
+6. Test the existing NextUI path on Zlyme/my355.
+
+If it runs with that glue, include it. If it needs a Zlyme renderer, a Zlyme SDL/GLES frontend, invasive runtime patches, or ongoing merges from official Ruffle, defer Flash. No binaries were imported for this note.
 
 ### Music Player
 
@@ -86,7 +118,7 @@ Record before inclusion: Rust/Buildroot/cargo, dependency size, GLES fit with th
 
 `launch.sh` on `main` reads and writes `cpu0/cpufreq` itself (`conservative`, min, max) and restores them on exit. Do not ship that. Session policy goes through `zlyme-governor`, the PAK input environment, `pak-log.sh`, and `zlyme-audio`.
 
-INTEGRATION CANDIDATE. Built-in Tool PAK versus Pak Store is not decided here.
+INTEGRATION CANDIDATE as a direct pinned Zlyme package. Pak Store is not part of this decision.
 
 ### Cheat Downloader
 
@@ -94,11 +126,13 @@ INTEGRATION CANDIDATE. Built-in Tool PAK versus Pak Store is not decided here.
 
 The Libretro cheat database stays downloaded user content. It does not go in the base image. Prefer the minui-list and minui-presenter already in the image over bundling second copies.
 
-INTEGRATION CANDIDATE. Same Pak Store question as Music Player.
+INTEGRATION CANDIDATE as a direct pinned Zlyme package. Pak Store is not part of this decision.
 
 ### Pak Store
 
-DEFER the delivery decision until both candidates have a source-build plan. Weigh offline availability, reproducible builds, and what happens when upstream `launch.sh` or `pak.json` changes. Convenience of not vendoring is not the reason to choose the store.
+Not a Phase 8 or Phase 9 gate. The earlier note treated Pak Store as an open delivery choice for Music Player and Cheat Downloader. That choice is closed for this phase: both are evaluated as pinned Zlyme integrations only. Do not design a generic Pak Store architecture here.
+
+Future: evaluate Pak Store after the core Zlyme product and first stable release are complete. At that time reconsider whether optional/community applications should move from curated built-in integrations to Pak Store. The later look can weigh easier community updates, a smaller base image, upstream independence, reproducibility, offline availability, security and provenance, and breakage when an upstream package changes.
 
 ## Group 5 — release
 
