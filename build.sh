@@ -332,10 +332,16 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     start_build_log
     refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
         package/system/nextui package/system/zlyme-input/virtpad.h
+    # Helpers link objects built from the NextUI pin in nextui.mk.
+    # Presenter also compiles minui-list's vendored parson.c.
+    # Do not fingerprint output/build or the downloaded NextUI tree.
     refresh_compiled_package minui-list BR2_PACKAGE_MINUI_LIST \
-        package/system/minui-list
+        package/system/minui-list \
+        package/system/nextui/nextui.mk
     refresh_compiled_package minui-presenter BR2_PACKAGE_MINUI_PRESENTER \
-        package/system/minui-presenter
+        package/system/minui-presenter \
+        package/system/minui-list \
+        package/system/nextui/nextui.mk
     # keylidmon compiles the msettings.h that the nextui package
     # installs into staging. The pin lives in nextui.mk. Do not
     # fingerprint the downloaded NextUI tree.
