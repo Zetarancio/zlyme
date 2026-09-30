@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Build-only branding stays out of the rootfs
+
+`package/system/nextui/res/branding/` remains the source for `scripts/rasterize-zlyme-branding.py` and the README. The NextUI recipe still copies `res/`, then deletes `/usr/share/nextui/res/branding` from the target. That installed directory was 3699882 bytes. After `nextui-reinstall`, the menu images, palettes, splash, progress frames, and PortMaster theme logo were unchanged, and the target branding directory was gone. A squashfs rebuilt from that tree is 644694016 bytes, 3682304 bytes smaller than the 648376320-byte migration squashfs. No new OTA was packed. Other-platform NextUI source stays in the fork. Weston.pak was not touched.
+
 ## 2026-09-30 — Phase 8 audit finds no runtime change
 
 LoveRetro/NextUI `main` is still `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7`. The Gearcoleco commit does not apply to my355. The dynarec stack commit's shared `api.c` hunk stays deferred. `minui-list` 0.15.4 and `minui-presenter` 0.13.4 still have no C source changes, so the vendored tags stay. The normal-reboot profile matches the baseline. `res/branding` holds about 3.7 MB of splash source PNGs that the running frontend does not open; leaving them installed does not affect boot, and they were not removed. Phase 8 is ready to close. `main` was not moved.

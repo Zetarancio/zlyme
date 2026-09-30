@@ -358,16 +358,19 @@ The normal-reboot marks are the profile. `nextui.c` writes `enter` at `main`, `s
 
 ## Image audit
 
-Fetched NextUI workspaces other than `my355` stay in the git checkout. They are not installed. `nextui.mk` compiles `libmsettings`, the common objects `scaler`, `utils`, `config`, `api`, `palette`, and `platform`, plus `nextui.elf`, `settings.elf`, `show.elf`, and `nextval.elf`. It deletes `keymon.elf`, `minarch.elf`, and `gametimectl.elf` if present, and it drops Update, Autocal, and the old Joystick Calibration pak. Parallel N64 and melonDS DS cores are removed from the image.
+Other-platform NextUI source is intentionally retained in the fork. Platform selection excludes it from the my355 build and image. Future Zlyme devices may reuse it. That includes other device workspaces, MinArch, platform-specific core patches, and generic upstream implementation that another platform may use. Deleting those files would only increase fork divergence. They do not enlarge the my355 squashfs when Buildroot neither compiles nor installs them. Dead-code cleanup is concerned with unreachable installed content, and with Zlyme-only code proven to have no caller. It is not a reason to delete upstream source merely because today's board does not use it.
 
-`/usr/share/nextui` in the migration target tree is about 24 MB uncompressed: 15 MB of paks and 9 MB of `res`. ScrapeGoat and Artwork Scraper are most of the pak bytes and are reachable Tools. `show.elf` and `nextval.elf` are installed both under `/usr/bin` and `/usr/share/nextui/bin`; callers use `PATH`, and squashfs deduplicates the identical files.
+`nextui.mk` compiles `libmsettings`, the common objects `scaler`, `utils`, `config`, `api`, `palette`, and `platform`, plus `nextui.elf`, `settings.elf`, `show.elf`, and `nextval.elf`. It deletes `keymon.elf`, `minarch.elf`, and `gametimectl.elf` if a previous package left them in the target, and it drops Update, Autocal, and the old Joystick Calibration pak. Parallel N64 and melonDS DS cores are removed from the image. MinArch source stays in the NextUI fork.
 
-`font2.ttf` and both `BPreplayBold-unhinted*.otf` files are the same 169304-byte blob. Settings skips the `BPreplay` names and offers `font2.ttf` as OG. `show.elf` still has the `BPreplay` path as a fallback. Squashfs stores that blob once, so deleting the extra names would not meaningfully shrink the image.
+`/usr/share/nextui` paks are reachable Tools, including ScrapeGoat and Artwork Scraper. `show.elf` and `nextval.elf` stay installed under `/usr/bin` and `/usr/share/nextui/bin`. `font2.ttf` and the `BPreplay` names stay. Settings offers `font2.ttf` as OG, and `show.elf` keeps the `BPreplay` path as a fallback. Weston.pak stays; removing that Tools entry is a Phase 9 image cleanup, not this phase.
 
-`res/branding/` is 3.7 MB, almost all `zlyme_static_fog_transparent.png` and `Z.png`. The splash tools read the package tree at build time and install `splash.anim` / `splash.rgb565`. No NextUI or settings source opens `res/branding`. Excluding that directory from the image copy would drop those PNGs and would not change the menu. It is an image-size exclusion, not a boot fix, and it was not made. Weston.pak is 354 bytes and is a reachable Tools entry; removing it is the Phase 9 release-cleanup item.
+`package/system/nextui/res/branding/` stays in git. `scripts/rasterize-zlyme-branding.py` and the README still read it. The recipe copies `res/` and then removes only the target directory `/usr/share/nextui/res/branding`. After `nextui-reinstall`, that directory is absent. These runtime files were still present, at the same sizes: `background.png` (360905), `charging-640-480.png` (355964), `logo.png` (202183), 19 palette files, `splash.rgb565` and `progress.rgb565` (614400 each), `splash.anim` (29419220), `progress.anim` (19612820), and the PortMaster Zlyme theme `logo.png` (202183). The installed branding directory had been 3699882 bytes (`COLORS.md`, `zlyme_static_fog_transparent.png`, and `Z.png`). `/usr/share/nextui/res` went from 9279922 bytes to 5580040. A squashfs rebuilt from that target, without packing a new OTA, went from 648376320 bytes to 644694016 bytes (3682304 bytes smaller). mksquashfs reported 633178.52 KiB before and 629582.21 KiB after, and three fewer files. The accepted migration tar was not replaced.
 
-No installed file in this audit was both unreachable and large enough, after squashfs duplication, to justify a removal in this phase.
+```text
+res/branding = KEEP IN SOURCE
+res/branding = EXCLUDE FROM RUNTIME IMAGE
+```
 
 ## Phase 8 close
 
-Hardware equivalence, the upstream dispositions, the normal-reboot profile, and the image audit are recorded. No runtime change is justified. Phase 8 is ready to close. `main` stays where it is. Phase 9 has not started.
+Hardware equivalence, the upstream dispositions, the normal-reboot profile, and this source-versus-image distinction are recorded. No frontend behavior change is justified beyond keeping build-only branding out of the rootfs. Phase 8 is ready to close. `main` stays where it is. Phase 9 has not started.
