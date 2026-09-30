@@ -10,7 +10,9 @@
 #
 # Secrets: GH_PAT (classic PAT, repo + workflow) to write the ccache repo.
 # Optional variable CACHE_REPO (default zlyme-cache).
-# Releases upload zlyme-my355-YYYYMMDD-*.tar, the matching .sha256, and zlyme.img.
+# Releases upload the full OTA, its sha256, zlyme.img, release-manifest.json,
+# and any same-major delta tars the release job verified. Local builds do not
+# generate deltas.
 
 name: Build
 
@@ -52,7 +54,7 @@ jobs:
     needs: [stage-a, stage-b, stage-c]
     if: always() && !cancelled() && (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -91,14 +93,34 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          tars=(output/images/zlyme-my355-*.tar)
-          if [ ${#tars[@]} -eq 0 ]; then
-            echo "no OTA tar" >&2
+          full=""
+          for tar in output/images/zlyme-my355-*.tar; do
+            if tar -tf "$tar" | grep -qx zlyme; then
+              full=$tar
+              break
+            fi
+          done
+          if [ -z "$full" ]; then
+            echo "no full OTA tar" >&2
             exit 1
           fi
-          names=$(tar -tf "${tars[0]}")
+          names=$(tar -tf "$full")
           echo "$names" | grep -qx idbloader.img
           echo "$names" | grep -qx u-boot.itb
+
+      - name: Install zstd
+        run: sudo apt-get update && sudo apt-get install -y zstd
+
+      - name: Release manifest and deltas
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/make-release-deltas.py \
+            --images-dir output/images \
+            --version-file ZLYME_VERSION \
+            --source-sha "${{ github.sha }}" \
+            --repo "${{ github.repository }}"
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -110,6 +132,7 @@ jobs:
           files: |
             output/images/zlyme-my355-*.tar
             output/images/zlyme-my355-*.sha256
+            output/images/release-manifest.json
             output/images/zlyme.img
           generate_release_notes: true
         env:
