@@ -9,8 +9,13 @@ set -u
 
 DRY=0
 ACTION=${1:-}
+ROM_PATH=
 [ "${2:-}" = "--dry-run" ] && DRY=1
 [ "${1:-}" = "--dry-run" ] && DRY=1 && ACTION=${2:-}
+if [ "$ACTION" = rom ]; then
+	ROM_PATH=${2:-}
+	[ "${3:-}" = "--dry-run" ] && DRY=1
+fi
 
 LIBRARIES=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
 STORAGE=${ZLYME_CLEANUP_ROOT:-/storage}
@@ -333,8 +338,125 @@ do_ra_rom_cfg() {
 	[ "$miss" = 0 ] || return 1
 }
 
+rom_library() {
+	p=$1
+	libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+	best=
+	if [ -f "$libs" ]; then
+		while IFS= read -r root; do
+			[ -n "$root" ] || continue
+			case "$p" in
+				"$root"|"$root"/*)
+					if [ "${#root}" -gt "${#best}" ]; then
+						best=$root
+					fi
+					;;
+			esac
+		done < "$libs"
+	fi
+	if [ -n "$best" ]; then
+		printf '%s\n' "$best"
+		return 0
+	fi
+	case "$p" in
+		/mnt/sd2|/mnt/sd2/*) printf '%s\n' /mnt/sd2 ;;
+		/mnt/media/*/*) printf '%s\n' "$(printf '%s' "$p" | awk -F/ '{ print "/" $2 "/" $3 "/" $4 }')" ;;
+		/storage|/storage/*) printf '%s\n' /storage ;;
+		*) return 1 ;;
+	esac
+}
+
+plan_rom() {
+	rom=$1
+	plan=$2
+	[ -n "$rom" ] || return 1
+	case "$rom" in
+		/*) ;;
+		*) echo "rom path must be absolute" >&2; return 1 ;;
+	esac
+	[ -f "$rom" ] || return 1
+	lib=$(rom_library "$rom") || return 1
+	case "$rom" in
+		"$lib"/*) ;;
+		*) return 1 ;;
+	esac
+	: > "$plan" || return 1
+	printf '%s\n' "$rom" >> "$plan"
+	stem=$(basename "$rom")
+	stem=${stem%.*}
+	stem2=${stem%.*}
+	if [ -d "$lib/Saves" ]; then
+		find "$lib/Saves" -type f 2>/dev/null |
+		while IFS= read -r f; do
+			b=$(basename "$f")
+			is_save_name "$b" || continue
+			s1=${b%.*}
+			s2=${s1%.*}
+			if [ "$s1" = "$stem" ] || [ "$s1" = "$stem2" ] || \
+				[ "$s2" = "$stem" ] || [ "$s2" = "$stem2" ]; then
+				printf '%s\n' "$f"
+			fi
+		done >> "$plan"
+	fi
+	parent=$(dirname "$rom")
+	if [ -d "$parent/.media" ]; then
+		for img in "$parent/.media/$stem".* "$parent/.media/$stem2".*; do
+			[ -f "$img" ] || continue
+			printf '%s\n' "$img"
+		done >> "$plan"
+	fi
+	case "$(basename "$rom")" in
+		*[Ss]plore*)
+			marker=$STORAGE/.config/nextui/shared/Pico-8-native/splore-installed
+			[ -f "$marker" ] && printf '%s\n' "$marker" >> "$plan"
+			;;
+	esac
+	sort -u "$plan" -o "$plan"
+}
+
+apply_plan() {
+	list=$1
+	miss=0
+	while IFS= read -r f; do
+		[ -n "$f" ] || continue
+		case "$f" in
+			/*) ;;
+			*) miss=1; continue ;;
+		esac
+		[ -e "$f" ] || continue
+		if [ ! -f "$f" ]; then
+			miss=1
+			continue
+		fi
+		rm -f -- "$f" || miss=1
+	done < "$list"
+	recent=${ZLYME_RECENT_FILE:-$STORAGE/.config/nextui/shared/.minui/recent.txt}
+	if [ -f "$recent" ]; then
+		tmp=$(mktemp) || return 1
+		grep -Fvx -f "$list" "$recent" > "$tmp" || true
+		mv -f "$tmp" "$recent" || miss=1
+	fi
+	return "$miss"
+}
+
 st=0
 case "$ACTION" in
+	rom)
+		plan=${ZLYME_ROM_PLAN:-/tmp/zlyme-rom.plan}
+		plan_rom "$ROM_PATH" "$plan" || exit 1
+		n=$(wc -l < "$plan" | tr -d ' ')
+		echo "COUNT=$n"
+		cat "$plan"
+		if [ "$DRY" = 0 ]; then
+			apply_plan "$plan" || exit 1
+		fi
+		exit 0
+		;;
+	rom-apply)
+		[ -f "${2:-}" ] || exit 1
+		apply_plan "$2" || exit 1
+		exit 0
+		;;
 	junk) n=$(do_junk) || st=$?; echo "COUNT=$n"; echo "junk files" ;;
 	orphan-saves) n=$(do_orphan_saves) || st=$?; echo "COUNT=$n"; echo "orphan saves" ;;
 	orphan-media) n=$(do_orphan_media) || st=$?; echo "COUNT=$n"; echo "orphan boxart" ;;
@@ -343,7 +465,7 @@ case "$ACTION" in
 	standalones) n=$(do_standalones) || st=$?; echo "COUNT=$n" ;;
 	ra-rom-cfg) n=$(do_ra_rom_cfg) || st=$?; echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
 	*)
-		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|standalones|ra-rom-cfg} [--dry-run]" >&2
+		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|standalones|ra-rom-cfg|rom PATH|rom-apply PLAN} [--dry-run]" >&2
 		exit 1
 		;;
 esac
