@@ -99,12 +99,12 @@ These were checked in source and are not open Phase 9 tasks.
 | Save format / save-state format / extracted file name | COMPLETE | Hidden on my355. Shared NextUI enums, getters, setters, defaults, and `minuisettings.txt` keys stay. See the Game-format conclusion below. |
 | Wi-Fi regulatory domain | COMPLETE | `wireless-regdb` is already shipped. `cfg80211` and `mac80211` stay modules so `regulatory.db` is present when they load. The persistent country is the global `country=` line in `/storage/.config/wpa_supplicant.conf`. No line means World/default `00`. The user chooses an explicit alpha-2; timezone, locale, and location are not used. The pinned RTL8733BU build does not set `CONFIG_REGD_SRC_FROM_OS`. Its cfg80211 notifier passes `NL80211_REGDOM_SET_BY_USER` into `rtw_set_country()`, so `iw reg set` is the existing hint. No driver patch. |
 | Persistent PAK logs | COMPLETE | System logs keep 5 logged-boot generations under `/storage/.logs/system-N`. PAK logs keep 3 launch generations per tag under `/storage/.logs/paks/`. Logs off: the session wrapper and routine session lines use `/tmp`, and normal use does not append a diagnostic file on `/storage`. No logrotate or daemon. New images no longer write `/storage/.config/zlyme/nextui-session.log`. An old copy on a card is left in place. |
-| Timezone vs NTP | RESEARCH FIRST | `platform.c` stores localtime under `/storage/.config/nextui/shared/localtime` and reads `/usr/share/zoneinfo`. The clock widget uses `localtime()`. First-frame work deliberately skipped `TIME_init()`. Separate "clock is UTC" from "no NTP". |
-| Bluetooth headset icon after radio off | RESEARCH FIRST | `generic_bt.c` classifies headsets from bluetoothctl Class/Icon. The stale icon is an invalidation question when the radio stops, not a new audio path. |
-| Doom input | RESEARCH FIRST | `DOOM.pak/launch.sh` execs `gzdoom` with `+set use_joystick true` and sources `pak-input.sh`. Map that path before changing buttons. It is not a libretro core. |
+| Timezone vs NTP | COMPLETE | Wall-clock sync stays `S49ntp`: HTTP `Date` sets UTC system time and writes the RTC in UTC. No NTP daemon. Timezone is presentation. `/etc/localtime` is a squashfs symlink to `/storage/.config/nextui/shared/localtime`. `S15` seeds a UTC `TZif` when that file is missing or corrupt. Settings copies the chosen zoneinfo file over it. Zoneinfo comes from `BR2_TARGET_TZ_INFO`. The clock does not depend on Wi-Fi, and timezone setup is not on the first-frame path. |
+| Bluetooth headset icon after radio off | COMPLETE | `PLAT_bluetoothEnable(false)` clears the saved radio flag before the shutdown thread finishes. `PLAT_getNetworkStatus()` already forced the cache false when `BT_enabled()` was false, but only on the next poll. `PLAT_btIsConnected()` now returns `BT_enabled() && bluetoothConnected`, so the status pill cannot keep a cached true in that gap. Pairing, reconnect, and BlueALSA are unchanged. |
+| Doom input | ALREADY CORRECT | GZDoom g4.14.2 Linux input is `src/common/platform/posix/sdl/i_joystick.cpp`. It calls `SDL_JoystickOpen` and polls axes and hats. `+set use_joystick true` enables that path. Default axes are side, forward, none, yaw, pitch, which matches an Xbox pad whose third axis is the left trigger. InputPlumber grabs the physical pad; the remaining node is the virtual `045e:028e` pad. No Zlyme remap was added. |
 | Orphan cleanup UI freeze | COMPLETE | The scan loads each card's ROM stems once and matches saves in one `awk` pass. A 5,000-ROM / 5,500-save host fixture took 18753 ms with a per-file `grep` and 48 ms with the indexed scan, with the same 500 orphans. No UI thread was added. Dry-run remains `zlyme-game-cleanup <action> --dry-run` and still runs before DELETE. |
-| VTree font / log | RESEARCH FIRST | Still open. Not re-diagnosed in this pass. |
-| Leftover `FSCK*.REC` | KEEP if Phase 8 did not fix it | See `frontend-source-phase8.md`. |
+| VTree font / log | COMPLETE | Files.pak used to copy `config.ini` on every launch, so `FontFile` and `ShowHidden` never survived. It now seeds once. A selected font stays. Logging is the bounded Files PAK log from Phase 9E. No second VTree log. |
+| Leftover `FSCK*.REC` | CLOSED AS HISTORICAL | `FSCK*.REC` is a dosfstools recovered-cluster name, not a Zlyme writer. Phase 8 left `/boot` read-only and found none of those files after a normal reboot. No current production path creates them. Do not fsck or delete boot-FAT files from this phase. |
 
 ### Game-format conclusion
 
@@ -158,19 +158,19 @@ ORPHAN MATCHING = INDEXED
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
-| Quick Menu order | KEEP, after Phase 8 | Current `getQuickToggles()` order is Wi-Fi, Bluetooth, Settings, then Pak Store, Sleep, Reboot, Poweroff. The intended order is Settings, Wi-Fi, Bluetooth, then the same remaining entries. Phase 8 preserves today's order. Pak Store stays deferred; this only reserves its place if the entry exists. |
-| Keyboard L1 DELETE pill | KEEP | `keyboardprompt.cpp` already deletes on `BTN_L1`. The shared button hint does not say so. Add the pill once, in `KeyboardPrompt`, so every caller gets it. |
+| Quick Menu order | COMPLETE | `getQuickToggles()` is Settings, Wi-Fi, Bluetooth, Pak Store if present, Sleep, Reboot, Poweroff. Missing capabilities are still omitted. Pak Store was not added. |
+| Keyboard L1 DELETE pill | COMPLETE | `KeyboardPrompt` still deletes on L1. The hint row is `L1 DELETE` on the left and `B BACK` / `X ENTER` on the right. |
 | Shorter destructive Game-settings text | COMPLETE | Game cleanup rows name the real action. "Reset standalone settings" says games and saves are kept because the reset list is settings files only. |
 | One pending-reboot prompt | KEEP | Aggregate reboot-required settings. Prompt once on leaving Settings. Reboot through `zlyme-halt reboot`. |
 | PortMaster and VTree dark themes | KEEP | `portmaster-launch` already seeds a Zlyme theme into PortMaster. Rethink it from a dark baseline. VTree is separate. |
 | Emulator and governor selectors as pills | KEEP | Use the existing NextUI/MinUI pill widgets. |
-| Stop advertising CLTMP on my355 | KEEP | `GFX_blitHardwareHints` still offers `CLTMP` / `COLOR TEMP`. Display color temperature is not a my355 control. Hide that hint on this platform. |
+| Stop advertising CLTMP on my355 | COMPLETE | `PLAT_supportsColorTemperature()` is false on my355 and true on the shared fallback. The hint and the color-temp overlay are skipped here. `GetColortemp` stays for other platforms. |
 | Global A/B swap | KEEP | Implement at the InputPlumber virtual controller, not per emulator. |
 | Advanced System submenu | KEEP | GPU, CPU undervolt, ZRAM, USB OTG, HDMI, secondary SD, System Logs. |
 | Factory Reset placement | KEEP | Document what it deletes, then move it. `Zlyme_appendFactoryResetItem` is on the system list today. |
 | Reset Settings vs Factory Reset | KEEP | Do not remove submenu reset actions until the two operations are distinct in the UI and in the files they touch. |
-| VTree `Settings_ShowHidden=yes` | RESEARCH FIRST | Confirm the key's meaning in the VTree source before changing the default. |
-| Rumble default 30% to 40% | KEEP | `FF_DEFAULT_GAIN_PERCENT` is 30 in `ff_gain.h`, with tests that lock that number. This is a my355 product default, not an upstream MinUI change. |
+| VTree hidden files | COMPLETE | The stored key is `[General] ShowHidden`. `Settings_ShowHidden` is only a settings-screen label. A new config and the one-time migration use `ShowHidden=true`. A later user choice is kept. |
+| Rumble default 30% to 40% | COMPLETE | `FF_DEFAULT_GAIN_PERCENT` is 40. Missing and invalid gain files use it. A saved 0–100 value is left alone. |
 | CPU undervolt default to L1 | DEFER | Default in `zlyme-ctl` and `S15bootpart` is `undervolt=off`. L1/L2/L3 stay selectable and map to `rk3566-undervolt-cpu-*.dtbo`. L1 sets 800 mV on 408–1104 MHz, then 850/900/950/1000 mV at 1416/1608/1800/1992 MHz. The 1992 MHz base point added by the kernel patch is 1150 mV. Stock voltages for the lower OPPs live in upstream `rk3566.dtsi` and were not copied into this repository. Silicon-dependent. Do not change the default without that side-by-side, failure reports, and an explicit decision. |
 
 ## Group 3 — storage, library, launch
