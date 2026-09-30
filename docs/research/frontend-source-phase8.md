@@ -298,4 +298,14 @@ The local reconstruction commit `b56771b1fad1a85620ed47685c6c4be379276157` could
 
 `Zetarancio/NextUI` is now Zlyme's GitHub fork of `LoveRetro/NextUI`. The Zlyme branch is `zlyme`. Buildroot pins commit `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, not the branch name. LoveRetro/NextUI itself descends from Shaun Inman's MinUI. That fork network is left as GitHub records it. Upstream `main` is not merged into `zlyme`.
 
-`NEXTUI_VERSION` is that fork commit. `ZLYME_VERSION` is `zlyme43` and is what `/usr/share/zlyme/version`, os-release, and the Actions release title use. `/usr/share/nextui/version.txt` is the fork commit. The duplicate `package/system/nextui/src` tree was removed after a `nextui-dirclean nextui` build whose fetched sources matched the vendored delta and whose image install did not include other device trees. `zlyme-keylidmon` still compiles the staged `msettings.h` from the nextui package. MinUI helper vendoring has not started.
+`NEXTUI_VERSION` is that fork commit. `ZLYME_VERSION` is `zlyme43` and is what `/usr/share/zlyme/version`, os-release, and the Actions release title use. `/usr/share/nextui/version.txt` is the fork commit. The duplicate `package/system/nextui/src` tree was removed after a `nextui-dirclean nextui` build whose fetched sources matched the vendored delta and whose image install did not include other device trees. `zlyme-keylidmon` still compiles the staged `msettings.h` from the nextui package.
+
+## MinUI helper vendoring
+
+`minui-list` 0.15.2 is the upstream commit `a5f5b456c2704bbf6ec92aa26bc58d268488696f`. `minui-presenter` 0.13.2 is `4d9f6ea350f663a72ef3621f1b4a11fdb8279f7a`. Both are MIT. Their trees are vendored under each package's `src/` with `SITE_METHOD=local`. No helper source was edited.
+
+Parson stays `ec53fb6528b45811df9db0db22cab96a94a96a11`, MIT. Upstream minui-list gitignores `include/`, which is where `<parson/parson.h>` is found, so the three pinned files live in `package/system/minui-list/parson/` and the recipe copies them there at build time. Presenter still compiles that same `parson.c`. There is no extra download.
+
+`-DPLATFORM`, the NextUI include paths, and `bin/<platform>/` come from `BR2_PACKAGE_NEXTUI_PLATFORM`. An empty value fails the build. On this defconfig that value is `my355`, and the install paths stayed `bin/my355/`. The helpers still link NextUI's `scaler.o`, `utils.o`, `config.o`, `api.o`, `palette.o`, `platform.o`, and `libmsettings`. They do not copy that code.
+
+The rebuilt binaries are not byte-identical to the pre-vendoring builds (`minui-list` `78e96273…` to `68afd637…`, `minui-presenter` `ebc2f587…` to `657d5503…`). The NEEDED libraries match. The helper sources do not call SDL gamecontroller functions. Those new imports come from the current `nextui` `platform.o`, which this recipe has always linked and which was rebuilt for the fork fetch. `0.15.4` and `0.13.4` were not taken.

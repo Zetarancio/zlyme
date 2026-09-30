@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — MinUI helpers are vendored at the current tags
+
+`minui-list` 0.15.2 (`a5f5b456c2704bbf6ec92aa26bc58d268488696f`) and `minui-presenter` 0.13.2 (`4d9f6ea350f663a72ef3621f1b4a11fdb8279f7a`) are local snapshots. Parson remains `ec53fb6528b45811df9db0db22cab96a94a96a11`, copied into the list build because upstream ignores `include/`. Platform flags come from `BR2_PACKAGE_NEXTUI_PLATFORM`. A `minui-list-dirclean minui-list` and `minui-presenter-dirclean minui-presenter` build installed both helpers at the existing `bin/my355/` paths. The new binaries are not byte-identical to the previous ones; the extra SDL gamecontroller imports come from the already rebuilt NextUI `platform.o`, not from helper source. Newer helper tags were not taken.
+
 ## 2026-09-30 — NextUI repository is a GitHub fork
 
 `Zetarancio/NextUI` is a GitHub fork of `LoveRetro/NextUI`. GitHub's network root is `shauninman/MinUI`. Branch `zlyme` is still `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, and `ae652648548edf6ab24cbb816cf4e4194e609fb3` is its ancestor. The commits were not replayed. `nextui.mk` still fetches that exact commit. Upstream `main` was not merged. The fork's GitHub default branch was left at `main` because this environment has no token that can change it.
