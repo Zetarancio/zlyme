@@ -32,12 +32,16 @@ start() {
 	if [ -f /tmp/nextui.txt ]; then
 		cp -f /tmp/nextui.txt "$LOGDIR/nextui.txt" 2>/dev/null || true
 	fi
-	touch /boot/zlyme-logs 2>/dev/null || true
+	if [ -x /usr/sbin/zlyme-boot-write ]; then
+		zlyme-boot-write touch /boot/zlyme-logs || true
+	fi
 	return 0
 }
 
 stop() {
-	rm -f /boot/zlyme-logs
+	if [ -e /boot/zlyme-logs ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+		zlyme-boot-write rm -f /boot/zlyme-logs || true
+	fi
 	return 0
 }
 

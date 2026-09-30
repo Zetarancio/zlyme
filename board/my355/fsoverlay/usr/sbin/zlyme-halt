@@ -14,6 +14,9 @@ umount_list() {
 				/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/run|/run/*|/tmp|/tmp/*) continue ;;
 				/) continue ;;
 				/storage) continue ;;
+				# Already read-only. The squashfs loop backs onto
+				# /boot/zlyme, so umount cannot succeed. Do not remount
+				# here: a writable loop makes remount,ro return EBUSY.
 				/boot) continue ;;
 			esac
 			umount "$m" 2>/dev/null || umount -l "$m" 2>/dev/null || true

@@ -1,0 +1,71 @@
+#!/bin/sh
+# One write transaction against the boot vfat, then put it back read-only.
+# Nested calls (a command that itself calls zlyme-boot-write) share the
+# outer transaction. A dead pid file is not a held transaction.
+
+BOOT=${ZLYME_BOOT:-/boot}
+MARK=/run/zlyme-boot-write.pid
+
+mounted() {
+	grep -q " ${BOOT} " /proc/mounts
+}
+
+is_ro() {
+	while read -r _dev point _fstype opts _rest; do
+		if [ "$point" = "$BOOT" ]; then
+			case "$opts" in
+				ro|ro,*) return 0 ;;
+			esac
+			return 1
+		fi
+	done < /proc/mounts
+	return 1
+}
+
+holder_alive() {
+	[ -f "$MARK" ] || return 1
+	pid=$(cat "$MARK" 2>/dev/null) || return 1
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+close_boot() {
+	sync
+	mount -o remount,ro "$BOOT" 2>/dev/null || true
+	is_ro
+}
+
+if [ "$#" -eq 0 ]; then
+	echo "usage: zlyme-boot-write command [args...]" >&2
+	exit 2
+fi
+
+if ! mounted; then
+	echo "zlyme-boot-write: $BOOT is not mounted" >&2
+	exit 1
+fi
+
+if holder_alive; then
+	"$@"
+	exit $?
+fi
+
+mkdir -p /run
+printf '%s\n' "$$" > "$MARK" || exit 1
+
+if ! mount -o remount,rw "$BOOT"; then
+	rm -f "$MARK"
+	echo "zlyme-boot-write: remount read-write failed" >&2
+	exit 1
+fi
+
+"$@"
+rc=$?
+
+if ! close_boot; then
+	rm -f "$MARK"
+	echo "zlyme-boot-write: $BOOT stayed writable" >&2
+	exit 1
+fi
+rm -f "$MARK"
+exit "$rc"

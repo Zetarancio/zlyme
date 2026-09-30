@@ -173,33 +173,70 @@ Gearcoleco patches do not affect the my355 image. `minarch.c` is not in the vend
 
 ## ZLYMEBOOT / `FSCK0000.REC`
 
-PROVEN FROM SOURCE.
+`FSCK0000.REC` (and `FSCK0001.REC`, …) is the name dosfstools `fsck.fat` gives a recovered orphan cluster chain in the root directory. It means a FAT was dirty or inconsistent and a checker salvaged lost clusters. It is not a Zlyme log format. Existing files can have older causes. This change does not prove they came from the shutdown path, and it does not prove a later checker will never create another one. The useful observation is whether new `FSCK*.REC` files stop appearing after images with this boot policy are in normal use.
 
-`FSCK0000.REC` (and `FSCK0001.REC`, …) is the name dosfstools `fsck.fat` gives a recovered orphan cluster chain in the root directory. It means a FAT was dirty or inconsistent and a checker salvaged lost clusters. It is not a Zlyme log format.
+### Live evidence
 
-Boot path:
+PROVEN ON DEVICE, 2026-09-30, Phase 7C runtime. Kernel `Linux zlyme 7.0.2 #1 SMP PREEMPT Tue Sep 29 23:00:46 UTC 2026`. `/usr/sbin/zlyme-halt` matched the tree at `24324ff` byte for byte (`a578f41d5c9dbe0a448715b00d6cf01cc93b7ca9746758364c8ba312228c34a8`).
 
-- Initramfs mounts `LABEL=ZLYMEBOOT` read-write, loop-mounts the squashfs file `/boot_root/zlyme` as the new root, then `mount --move`s that vfat onto `/boot` (`package/boot/zlyme-initramfs/init`).
-- `S12bootfs` mounts the same label at `/boot` with `rw,noatime,utf8` if initramfs did not.
-- `S12bootfs stop` would `umount /boot`. Ordinary shutdown does not get there.
+```text
+/        /dev/loop0      squashfs  ro
+/boot    /dev/mmcblk0p2  vfat      rw
+/storage /dev/mmcblk0p3  exfat     rw
+/sys/block/loop0/loop/backing_file = /boot/zlyme
+/sys/block/loop0/ro = 0
+```
 
-Shutdown path:
+`mount -o remount,ro /boot` returned `Device or resource busy` (`remount_ro_rc=255`). BusyBox `fuser -m /boot` printed no PID. No process had `/boot`, `/dev/mmcblk0p2`, or `/dev/loop0` open. The writable hold is the loop: BusyBox `mount -o loop` without `ro` opens the backing file read-write, and Linux 7.0.2 sets `LO_FLAGS_READ_ONLY` only when that file is not opened for write (`drivers/block/loop.c`). The volume stayed writable. The marker files were removed and `/boot` was left read-write. No reboot was performed. Shutdown-time remount is not the fix.
 
-- `PLAT_powerOff` touches `/tmp/reboot` or `/tmp/poweroff` and exits.
-- `nextui-session` execs `zlyme-halt reboot` or `zlyme-halt poweroff`.
-- `zlyme-halt` syncs, skips `/boot` and `/storage` while unmounting other mounts, syncs again, sleeps one second, then `reboot -f` or `poweroff -f`.
-- `poweroff -f` / `reboot -f` do not run init stop scripts, so `S12bootfs stop` never unmounts `/boot`.
+### Reference implementation
 
-Why a clean unmount is not available: the root filesystem is a squashfs loop whose backing file is on that vfat. Unmounting `/boot` while `/` is mounted fails. `S13resize` already says not to unmount `/boot` for that reason. Writers that still dirty the volume include extlinux overlay edits (`zlyme-ctl apply_overlays`), splash animation copies (`S12splash`), and `/boot/zlyme-splash.progress`.
+PROVEN FROM UPSTREAM SOURCE. Knulli `package/boot/knulli-initramfs/init` (same sequence as Batocera `batocera-initramfs/init`):
 
-Credible mechanism, not a completed proof: vfat has no journal. A forced poweroff leaves the volume marked dirty. The next checker, on the device or on a host, turns orphan clusters into `FSCK####.REC`. Skipping `/boot` in `zlyme-halt` is consistent with that, and the loop makes a real `umount` the wrong fix.
+1. `do_mount` starts with `mount_options="ro"`.
+2. If `knulli.update` / `batocera.update` exists, `mount -o remount,rw`, replace the squashfs, then `mount -o remount,ro`.
+3. Only then is the system image mounted, and `/boot_root` is moved to `/boot`.
 
-Narrow experiment, first implementation gate if this stays the leading explanation:
+Zlyme does not copy the overlay root, the update filename, or the rest of that init. The lifecycle is the part that applies.
 
-- Before `reboot -f` / `poweroff -f`, after `sync`, try `mount -o remount,ro /boot`.
-- Record whether the remount succeeds and whether anything still has the mount busy (`fuser` / `/proc/mounts`).
-- Do not `umount /boot` while the squashfs loop is the root.
-- If remount-ro fails, name the holder before changing policy.
-- `/storage` is exFAT and is a separate question. Do not fold it into the FAT fix.
+### Writer inventory
 
-This is a storage-integrity defect candidate. It is the first Phase 8 implementation gate. Shutdown code was not changed in this note.
+Searched before the change. Classification is of the behavior that existed at `24324ff`.
+
+| Writer | Class | Handling |
+| --- | --- | --- |
+| `package/boot/zlyme-initramfs/init` `mount_boot` | initramfs, before the loop | Mount `ro,noatime,utf8`. |
+| same, `commit_update` copies `/boot_root/zlyme` | OTA, before the loop | Remount RW, copy, `sync`, remount RO, refuse to attach the loop if it is still writable. A failed copy keeps the old file and still closes the vfat. If the RW remount itself fails, the update is skipped and the old read-only root still boots. |
+| same, writes `zlyme-splash.progress` when a payload is pending | OTA, before the loop | Inside that same RW window. `S12splash` later moves the signal to `/tmp` and deletes the FAT flag. |
+| same, `zlyme-logs` → `zlyme-dmesg.txt` | logging, before the loop | Same window, only if `/boot_root/zlyme-logs` exists. |
+| `S12bootfs` fallback mount | runtime mount | `ro,noatime,utf8`. If initramfs already mounted it, remount RO. |
+| `zlyme-ctl apply_overlays` (`extlinux.conf`, `FDTOVERLAYS`) | runtime configuration | `zlyme-boot-write`. |
+| `zlyme-update install_boot` (Image.gz, DTB, extlinux, overlays, splash anims) | OTA, after the loop exists | One `zlyme-boot-write` transaction. Does not replace `/boot/zlyme`; initramfs does that on the next boot, before the new loop. |
+| `zlyme-splash-progress` persist / keep / off | OTA / first-boot flag | FAT create and delete go through `zlyme-boot-write`. `/tmp` stays the live flag. |
+| `S18zlymeupdate` and `zlyme-update` fallbacks that wrote the flag directly | OTA | Same helper. |
+| `S12splash` seed of missing `splash.anim` / `progress.anim` | first boot / old OTA | One helper transaction, only when a file is missing. Reads stay direct. |
+| `S12splash` consume of `zlyme-splash.progress` | one-shot flag | Helper delete after copying the signal to `/tmp`. |
+| `nextui-session` `stop_splash` | runtime flag | Helper delete if the file is still there. |
+| `S13resize` `remove_trigger` (`zlyme-boot.conf`) | first-boot bookkeeping | `zlyme-boot-write sed`. No GPT work on the vfat. |
+| `zlyme-logs` `touch` / `rm` of `/boot/zlyme-logs` | logging flag | Helper. The dmesg copy is a read. |
+| `generic_video.c` `unlink("/boot/zlyme-splash.progress")` | NextUI, left unchanged | Best-effort. `S12splash` already removes the file, so this becomes a missing-file unlink. Not a frontend migration. |
+| `splash.c`, `S16display`, session splash paths | read | No write. |
+| `post-update.sh` | OTA hook | Writes `/storage_root` only, from the initramfs, before the loop. |
+| `zlyme-halt` | shutdown | Still skips `/boot` and `/storage`. No remount added. `/storage` clean unmount or remount is a later audit. |
+| host `post-image.sh` / `genimage.cfg` | image build | Not a runtime writer. |
+
+`zlyme-boot-write` checks that `/boot` is mounted, remounts it read-write, runs one command, `sync`s, remounts read-only, and checks the mount options. A failed close is an error. A nested call, while the outer pid is alive, does not close the volume early. There is no daemon and no lock. Two overlapping callers are not expected: OTA and Settings do not write the vfat at the same time.
+
+### Expected runtime
+
+```text
+/        squashfs  ro
+/boot    vfat      ro
+/storage exfat     rw
+loop0/ro = 1
+backing file = /boot/zlyme
+```
+
+BusyBox 1.36.1 `mount -o loop,ro` opens the backing file `O_RDONLY` when `MS_RDONLY` is already set (`util-linux/mount.c` passes `BB_LO_FLAGS_READ_ONLY` into `set_loop`). That is the mechanism for `loop0/ro=1`. The initramfs refuses to `switch_root` if the loop is not read-only.
+
+This image is not hardware-accepted until a boot shows that table and one helper transaction returns `/boot` to read-only.

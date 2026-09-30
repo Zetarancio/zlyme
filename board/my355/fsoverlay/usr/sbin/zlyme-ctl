@@ -105,8 +105,15 @@ apply_overlays() {
 	else
 		cat "$tmp" > "$out"
 	fi
-	cat "$out" > "$conf"
-	rm -f "$tmp" "$out"
+	rm -f "$tmp"
+	if [ ! -x /usr/sbin/zlyme-boot-write ]; then
+		rm -f "$out"
+		return 0
+	fi
+	/usr/sbin/zlyme-boot-write cp -f "$out" "$conf"
+	rc=$?
+	rm -f "$out"
+	return "$rc"
 }
 
 apply_undervolt() {

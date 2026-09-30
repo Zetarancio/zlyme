@@ -1,7 +1,7 @@
 #!/bin/ash
-# Mount LABEL=ZLYMEBOOT. If ZLYME has a staged squashfs, copy it over
-# /zlyme (the live file stays on FAT; the payload lives on exFAT).
-# Then loop-mount zlyme and switch_root.
+# Mount LABEL=ZLYMEBOOT read-only. If ZLYME has a staged squashfs, open
+# the vfat, copy it over /zlyme, and close the vfat again. Then
+# loop-mount zlyme read-only and switch_root.
 
 log() {
 	echo "zlyme-init: $*"
@@ -14,7 +14,51 @@ log() {
 }
 
 mount_boot() {
-	mount -t vfat -o rw,noatime,utf8 "$1" /boot_root 2>/dev/null
+	# Read-only until an update or a boot log actually needs a write.
+	# The squashfs loop is attached only after this is read-only again.
+	mount -t vfat -o ro,noatime,utf8 "$1" /boot_root 2>/dev/null
+}
+
+mount_point_ro() {
+	mp=$1
+	while read -r _dev point _fstype opts _rest; do
+		if [ "$point" = "$mp" ]; then
+			case "$opts" in
+				ro|ro,*) return 0 ;;
+			esac
+			return 1
+		fi
+	done < /proc/mounts
+	return 1
+}
+
+boot_open_rw() {
+	mount -o remount,rw /boot_root
+}
+
+boot_close_ro() {
+	sync
+	mount -o remount,ro /boot_root || return 1
+	mount_point_ro /boot_root
+}
+
+zlyme_loop_ro() {
+	for d in /sys/block/loop*; do
+		[ -r "$d/loop/backing_file" ] || continue
+		read -r bf < "$d/loop/backing_file" || continue
+		case "$bf" in
+			*/zlyme) ;;
+			*) continue ;;
+		esac
+		read -r ro < "$d/ro" || return 1
+		if [ "$ro" = 1 ]; then
+			return 0
+		fi
+		log "loop $(basename "$d") ro=$ro backing $bf"
+		return 1
+	done
+	log "no read-only loop for zlyme"
+	return 1
 }
 
 mount_storage() {
@@ -125,24 +169,52 @@ do_root() {
 		fi
 	fi
 
+	pending=0
 	if wait_mount mount_storage "LABEL=ZLYME"; then
 		if [ -f /storage_root/.update/pending/zlyme ]; then
-			: > /zlyme-splash.progress
-			: > /boot_root/zlyme-splash.progress
+			pending=1
 		fi
-		commit_update || true
 	else
 		log "ZLYME not mounted (ok if no pending update)"
 	fi
 
-	# About → System logs. Flag lives on FAT so this ramdisk can dump
-	# dmesg before switch_root. The rest lands in /storage/.logs after S15.
+	# zlyme-logs plants this flag so the ramdisk can dump dmesg.
+	# The copy itself lands on /storage/.logs after S15.
+	logs=0
 	if [ -f /boot_root/zlyme-logs ]; then
-		dmesg > /boot_root/zlyme-dmesg.txt 2>/dev/null || true
-		if grep -q " /storage_root " /proc/mounts; then
-			mkdir -p /storage_root/.logs
-			dmesg > /storage_root/.logs/dmesg-init.txt 2>/dev/null || true
+		logs=1
+	fi
+
+	if [ "$pending" -eq 1 ] || [ "$logs" -eq 1 ]; then
+		if ! boot_open_rw; then
+			if [ "$pending" -eq 1 ]; then
+				log "could not open boot read-write; update not applied"
+			else
+				log "could not open boot read-write; skipping boot dmesg"
+			fi
+		else
+			if [ "$pending" -eq 1 ]; then
+				: > /zlyme-splash.progress
+				: > /boot_root/zlyme-splash.progress
+				commit_update || log "copy failed, keeping current zlyme"
+			fi
+			if [ "$logs" -eq 1 ]; then
+				dmesg > /boot_root/zlyme-dmesg.txt 2>/dev/null || true
+				if grep -q " /storage_root " /proc/mounts; then
+					mkdir -p /storage_root/.logs
+					dmesg > /storage_root/.logs/dmesg-init.txt 2>/dev/null || true
+				fi
+			fi
+			if ! boot_close_ro; then
+				log "boot stayed writable; not attaching root"
+				return 1
+			fi
 		fi
+	fi
+
+	if ! mount_point_ro /boot_root; then
+		log "boot is not read-only; not attaching root"
+		return 1
 	fi
 
 	if [ ! -e /boot_root/zlyme ]; then
@@ -150,11 +222,17 @@ do_root() {
 		return 1
 	fi
 
-	if ! mount -t squashfs -o loop /boot_root/zlyme /new_root; then
-		if ! mount -t squashfs /boot_root/zlyme /new_root; then
+	# loop,ro opens the backing file read-only. Without ro, BusyBox
+	# leaves loop/ro at 0 and a later remount of this vfat is EBUSY.
+	if ! mount -t squashfs -o loop,ro /boot_root/zlyme /new_root; then
+		if ! mount -t squashfs -o ro /boot_root/zlyme /new_root; then
 			log "squashfs mount failed"
 			return 1
 		fi
+	fi
+	if ! zlyme_loop_ro; then
+		umount /new_root 2>/dev/null || true
+		return 1
 	fi
 
 	mkdir -p /new_root/boot /new_root/proc /new_root/sys /new_root/dev \

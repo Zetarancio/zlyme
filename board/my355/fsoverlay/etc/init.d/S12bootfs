@@ -1,11 +1,13 @@
 #!/bin/sh
-# Mount the boot vfat (label ZLYMEBOOT) at /boot so Settings can edit
-# extlinux.conf. Initramfs usually already moved it here. Never fail
-# the boot.
+# Mount the boot vfat (label ZLYMEBOOT) at /boot. Initramfs usually
+# already moved it here, read-only. Writers go through zlyme-boot-write.
+# Never fail the boot. Do not mount it read-write just because Settings
+# sometimes edits extlinux.
 
 start() {
 	printf "Mounting boot: "
 	if grep -q " /boot " /proc/mounts; then
+		mount -o remount,ro /boot 2>/dev/null || true
 		echo "already mounted"
 		return 0
 	fi
@@ -15,7 +17,7 @@ start() {
 		echo "no ZLYMEBOOT"
 		return 0
 	fi
-	if mount -t vfat -o rw,noatime,utf8 "$dev" /boot 2>/dev/null; then
+	if mount -t vfat -o ro,noatime,utf8 "$dev" /boot 2>/dev/null; then
 		echo "OK ($dev)"
 	else
 		echo "FAIL ($dev)"

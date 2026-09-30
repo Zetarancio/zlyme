@@ -25,19 +25,25 @@ start_splash() {
 	mode=
 	if [ -f /tmp/zlyme-splash.progress ] || [ -f /boot/zlyme-splash.progress ]; then
 		mode=progress
+		: > /tmp/zlyme-splash.progress
+		# One-shot. NextUI also unlinks this path; that fails once
+		# /boot is read-only, so consume it here.
+		if [ -e /boot/zlyme-splash.progress ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+			zlyme-boot-write rm -f /boot/zlyme-splash.progress || true
+		fi
 	fi
 	/usr/sbin/zlyme-splash "$still" "$anim" "$pstill" "$panim" $mode \
 		>/dev/null 2>&1 &
 	echo $! > /tmp/zlyme-splash.pid
 	# Next cold boot's initramfs reads these off FAT. OTA with an
-	# older updater left them missing; seed in the background.
-	if [ -d /boot ] && grep -q " /boot " /proc/mounts; then
-		(
-			[ -s /boot/splash.anim ] || \
-				cp -f /usr/share/zlyme/splash.anim /boot/splash.anim
-			[ -s /boot/progress.anim ] || \
-				cp -f /usr/share/zlyme/progress.anim /boot/progress.anim
-		) >/dev/null 2>&1 &
+	# older updater left them missing.
+	if [ -d /boot ] && grep -q " /boot " /proc/mounts && \
+		{ [ ! -s /boot/splash.anim ] || [ ! -s /boot/progress.anim ]; } && \
+		[ -x /usr/sbin/zlyme-boot-write ]; then
+		zlyme-boot-write sh -c '
+			[ -s /boot/splash.anim ] || cp -f /usr/share/zlyme/splash.anim /boot/splash.anim
+			[ -s /boot/progress.anim ] || cp -f /usr/share/zlyme/progress.anim /boot/progress.anim
+		' >/dev/null 2>&1 || true
 	fi
 }
 

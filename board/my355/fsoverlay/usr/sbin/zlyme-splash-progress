@@ -17,7 +17,9 @@ case "$mode" in
 	on|progress)
 		touch_flag /tmp/zlyme-splash.progress
 		if [ "${2:-}" = persist ] || [ "${2:-}" = boot ]; then
-			touch_flag /boot/zlyme-splash.progress
+			if [ -x /usr/sbin/zlyme-boot-write ]; then
+				zlyme-boot-write sh -c ': > /boot/zlyme-splash.progress' || true
+			fi
 		fi
 		# Initramfs splash keeps the old root across switch_root, so
 		# /tmp flags from S13 are invisible to it. SIGUSR1 is.
@@ -25,13 +27,17 @@ case "$mode" in
 		;;
 	keep)
 		# Stay on galaxy until NextUI, but do not persist past this boot.
-		drop_flag /boot/zlyme-splash.progress
+		if [ -e /boot/zlyme-splash.progress ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+			zlyme-boot-write rm -f /boot/zlyme-splash.progress || true
+		fi
 		touch_flag /tmp/zlyme-splash.progress
 		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
 		;;
 	off|boot)
 		drop_flag /tmp/zlyme-splash.progress
-		drop_flag /boot/zlyme-splash.progress
+		if [ -e /boot/zlyme-splash.progress ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+			zlyme-boot-write rm -f /boot/zlyme-splash.progress || true
+		fi
 		drop_flag /boot_root/zlyme-splash.progress
 		drop_flag /zlyme-splash.progress
 		killall -USR2 zlyme-splash >/dev/null 2>&1 || true

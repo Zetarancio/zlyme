@@ -76,7 +76,9 @@ show_galaxy() {
 		zlyme-splash-progress on persist || true
 	else
 		: > /tmp/zlyme-splash.progress 2>/dev/null || true
-		: > /boot/zlyme-splash.progress 2>/dev/null || true
+		if [ -x /usr/sbin/zlyme-boot-write ]; then
+			zlyme-boot-write sh -c ': > /boot/zlyme-splash.progress' || true
+		fi
 		killall -USR1 zlyme-splash >/dev/null 2>&1 || true
 	fi
 }
@@ -220,28 +222,37 @@ install_boot() {
 	fi
 	verify_dir "$dir"
 	squashfs_fits "$dir/zlyme" || return 1
-	rm -f "$BOOT/zlyme.update"
+	if [ ! -x /usr/sbin/zlyme-boot-write ]; then
+		mark_fail apply "zlyme-boot-write missing"
+		return 1
+	fi
 
 	log "installing kernel/dtb/overlays to $BOOT"
-	cp -f "$dir/Image.gz" "$BOOT/Image.gz"
 	# Gzip is the only kernel we boot. Drop a leftover uncompressed
 	# Image so FAT does not keep a second copy.
-	rm -f "$BOOT/Image"
-	cp -f "$dir/$ZLYME_DTB" "$BOOT/$ZLYME_DTB"
-	if [ -f "$dir/splash.anim" ]; then
-		cp -f "$dir/splash.anim" "$BOOT/splash.anim"
-	fi
-	if [ -f "$dir/progress.anim" ]; then
-		cp -f "$dir/progress.anim" "$BOOT/progress.anim"
-	fi
-	if [ -d "$dir/extlinux" ]; then
-		mkdir -p "$BOOT/extlinux"
-		cp -a "$dir/extlinux/." "$BOOT/extlinux/"
-	fi
-	if [ -d "$dir/overlays" ]; then
-		mkdir -p "$BOOT/overlays"
-		cp -a "$dir/overlays/." "$BOOT/overlays/"
-	fi
+	ZLYME_BOOT_SRC=$dir ZLYME_BOOT_DST=$BOOT ZLYME_BOOT_DTB=$ZLYME_DTB \
+		/usr/sbin/zlyme-boot-write /bin/sh -c '
+			cp -f "$ZLYME_BOOT_SRC/Image.gz" "$ZLYME_BOOT_DST/Image.gz" || exit 1
+			rm -f "$ZLYME_BOOT_DST/Image" "$ZLYME_BOOT_DST/zlyme.update"
+			cp -f "$ZLYME_BOOT_SRC/$ZLYME_BOOT_DTB" "$ZLYME_BOOT_DST/$ZLYME_BOOT_DTB" || exit 1
+			if [ -f "$ZLYME_BOOT_SRC/splash.anim" ]; then
+				cp -f "$ZLYME_BOOT_SRC/splash.anim" "$ZLYME_BOOT_DST/splash.anim" || exit 1
+			fi
+			if [ -f "$ZLYME_BOOT_SRC/progress.anim" ]; then
+				cp -f "$ZLYME_BOOT_SRC/progress.anim" "$ZLYME_BOOT_DST/progress.anim" || exit 1
+			fi
+			if [ -d "$ZLYME_BOOT_SRC/extlinux" ]; then
+				mkdir -p "$ZLYME_BOOT_DST/extlinux" || exit 1
+				cp -a "$ZLYME_BOOT_SRC/extlinux/." "$ZLYME_BOOT_DST/extlinux/" || exit 1
+			fi
+			if [ -d "$ZLYME_BOOT_SRC/overlays" ]; then
+				mkdir -p "$ZLYME_BOOT_DST/overlays" || exit 1
+				cp -a "$ZLYME_BOOT_SRC/overlays/." "$ZLYME_BOOT_DST/overlays/" || exit 1
+			fi
+		' || {
+			mark_fail apply "boot file copy failed"
+			return 1
+		}
 	# Keep loader blobs off FAT. pending/ is wiped when initramfs
 	# commits the squashfs, so park them here for `zlyme-update uboot`.
 	if [ -s "$dir/idbloader.img" ] && [ -s "$dir/u-boot.itb" ]; then

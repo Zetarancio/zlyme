@@ -32,7 +32,9 @@ start() {
 			zlyme-splash-progress on persist
 		else
 			: > /tmp/zlyme-splash.progress
-			: > /boot/zlyme-splash.progress
+			if [ -x /usr/sbin/zlyme-boot-write ]; then
+				zlyme-boot-write sh -c ': > /boot/zlyme-splash.progress' || true
+			fi
 		fi
 		touch /tmp/zlyme-ota
 		"$upd" boot-apply
@@ -44,7 +46,9 @@ start() {
 		if [ -x /usr/sbin/zlyme-splash-progress ]; then
 			zlyme-splash-progress keep
 		else
-			rm -f /boot/zlyme-splash.progress
+			if [ -e /boot/zlyme-splash.progress ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+				zlyme-boot-write rm -f /boot/zlyme-splash.progress || true
+			fi
 		fi
 		return 0
 	fi

@@ -145,11 +145,11 @@ Image.gz + rk3566-miyoo-flip.dtb
   v
 embedded Zlyme initramfs
   v
-mount ZLYMEBOOT
+mount ZLYMEBOOT read-only
   v
-apply pending squashfs when needed
+if an update is pending, remount read-write, commit, remount read-only
   v
-loop-mount /boot/zlyme
+loop-mount /boot/zlyme read-only
   v
 switch_root
   v
@@ -204,7 +204,7 @@ update tar on /storage
   v
 verify/stage
   v
-copy kernel/DTB/overlays to ZLYMEBOOT
+copy kernel/DTB/overlays to ZLYMEBOOT through zlyme-boot-write
   v
 leave pending squashfs on ZLYME
   v

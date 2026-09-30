@@ -54,12 +54,12 @@ umount_path() {
 	umount "$p" >>"$LOG" 2>&1
 }
 
-# No GPT work here. /boot is a normal rw vfat.
+# No GPT work here. /boot stays read-only except for this one edit.
 remove_trigger() {
-	mount -o remount,rw /boot >>"$LOG" 2>&1 || true
-	if [ -f "$BOOTCONF" ]; then
-		sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF"
+	if [ ! -f "$BOOTCONF" ] || [ ! -x /usr/sbin/zlyme-boot-write ]; then
+		return 0
 	fi
+	zlyme-boot-write sed -i -e 's/^[ ]*autoresize/#autoresize/' "$BOOTCONF" >>"$LOG" 2>&1 || true
 	sync
 }
 

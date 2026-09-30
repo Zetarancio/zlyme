@@ -260,9 +260,10 @@ ensure_splash() {
 stop_splash() {
 	pid=""
 	[ -f /tmp/zlyme-splash.pid ] && pid=$(cat /tmp/zlyme-splash.pid)
-	rm -f /tmp/zlyme-splash.pid \
-		/tmp/zlyme-splash.progress \
-		/boot/zlyme-splash.progress
+	rm -f /tmp/zlyme-splash.pid /tmp/zlyme-splash.progress
+	if [ -e /boot/zlyme-splash.progress ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+		zlyme-boot-write rm -f /boot/zlyme-splash.progress || true
+	fi
 	if [ -n "$pid" ]; then
 		kill "$pid" 2>/dev/null || true
 		wait "$pid" 2>/dev/null || true
