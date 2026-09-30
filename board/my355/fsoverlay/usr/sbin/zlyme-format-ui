@@ -1,0 +1,64 @@
+#!/bin/sh
+# Settings launches this. The backend rechecks the device before mkfs.
+
+set -u
+FMT=/usr/sbin/zlyme-storage-format
+[ -x "$FMT" ] || exit 1
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+list=$work/list
+"$FMT" list > "$list" || exit 1
+if [ ! -s "$list" ]; then
+	if command -v show.elf >/dev/null 2>&1; then
+		show.elf "No removable storage" 2
+	else
+		echo "No removable storage" >&2
+	fi
+	exit 0
+fi
+
+pick=$work/pick
+if command -v minui-list >/dev/null 2>&1; then
+	minui-list --format text --file "$list" --title "Format storage" \
+		--confirm-text "SELECT" --cancel-text "BACK" \
+		--write-location "$pick" || exit 0
+	chosen=$(cat "$pick" 2>/dev/null || true)
+else
+	chosen=$(head -n 1 "$list")
+fi
+dev=${chosen%%	*}
+label=${chosen#*	}
+[ -n "$dev" ] || exit 0
+
+fsfile=$work/fs
+printf '%s\n' exFAT ext4 > "$fsfile"
+fspick=$work/fspick
+if command -v minui-list >/dev/null 2>&1; then
+	minui-list --format text --file "$fsfile" --title "Filesystem" \
+		--confirm-text "SELECT" --cancel-text "BACK" \
+		--write-location "$fspick" || exit 0
+	fsname=$(cat "$fspick" 2>/dev/null || true)
+else
+	fsname=exFAT
+fi
+case "$fsname" in
+	exFAT) fs=exfat ;;
+	ext4) fs=ext4 ;;
+	*) exit 0 ;;
+esac
+
+msg="$label
+Erase as $fsname?
+ALL DATA WILL BE LOST"
+if command -v minui-presenter >/dev/null 2>&1; then
+	printf '%s\n' "$msg" > "$work/msg"
+	minui-presenter --file "$work/msg" --confirm-text "ERASE" --cancel-text "BACK" || exit 0
+fi
+
+if "$FMT" format "$dev" "$fs" ZLYME-LIB; then
+	command -v show.elf >/dev/null 2>&1 && show.elf "Format finished" 2
+else
+	command -v show.elf >/dev/null 2>&1 && show.elf "Format failed" 3
+	exit 1
+fi

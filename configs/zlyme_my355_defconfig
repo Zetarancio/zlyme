@@ -139,6 +139,8 @@ BR2_PACKAGE_BLUEZ5_UTILS_PLUGINS_HOG=y
 
 # exFAT tools. First boot formats the grown partition (Knulli S02resize).
 BR2_PACKAGE_EXFATPROGS=y
+# mke2fs for formatting a removable library card as ext4.
+BR2_PACKAGE_E2FSPROGS=y
 BR2_PACKAGE_PARTED=y
 BR2_PACKAGE_GPTFDISK=y
 BR2_PACKAGE_GPTFDISK_SGDISK=y

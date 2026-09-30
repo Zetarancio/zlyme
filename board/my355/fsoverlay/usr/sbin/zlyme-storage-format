@@ -1,0 +1,225 @@
+#!/bin/sh
+# Format one removable filesystem. The OS disk cannot be selected.
+# No repartitioning. A busy volume aborts before mkfs.
+#
+# Test seams (set together; they never touch a real disk):
+#   ZLYME_FMT_MOUNTS   mounts file
+#   ZLYME_FMT_BLKID    "DEV parent= LABEL= TYPE=" lines
+#   ZLYME_FMT_BLOCKS   existing device names, one per line
+#   ZLYME_FMT_LOG      command log
+#   ZLYME_FMT_UMOUNT_FAIL=1
+#   ZLYME_FMT_MKFS_FAIL=1
+
+set -u
+
+MOUNTS=${ZLYME_FMT_MOUNTS:-/proc/mounts}
+FAKE=0
+[ -n "${ZLYME_FMT_MOUNTS:-}" ] && FAKE=1
+
+disk_of() {
+	dev=${1#/dev/}
+	case "$dev" in
+		mmcblk*p*) printf '%s\n' "${dev%%p*}" ;;
+		nvme*n*p*) printf '%s\n' "${dev%%p*}" ;;
+		*) printf '%s\n' "$(printf '%s' "$dev" | sed 's/[0-9]*$//')" ;;
+	esac
+}
+
+exists_dev() {
+	if [ -n "${ZLYME_FMT_BLOCKS:-}" ]; then
+		grep -Fxq -- "$1" "$ZLYME_FMT_BLOCKS"
+		return
+	fi
+	[ -b "$1" ]
+}
+
+blkid_line() {
+	dev=$1
+	if [ -n "${ZLYME_FMT_BLKID:-}" ]; then
+		awk -v d="$dev" '$1 == d { print; exit }' "$ZLYME_FMT_BLKID"
+		return
+	fi
+	blkid "$dev" 2>/dev/null || true
+}
+
+field_of() {
+	line=$1
+	key=$2
+	printf '%s\n' "$line" | sed -n "s/.*${key}=\"\\{0,1\\}\\([^\" ]*\\)\"\\{0,1\\}.*/\\1/p"
+}
+
+os_disks() {
+	awk '$2 == "/" || $2 == "/boot" || $2 == "/storage" { print $1 }' "$MOUNTS" |
+	while IFS= read -r src; do
+		[ -n "$src" ] || continue
+		disk_of "$src"
+	done | sort -u
+}
+
+is_candidate_name() {
+	name=${1#/dev/}
+	# Same names zlyme-storage scans. Anything else is not a candidate.
+	case "$name" in
+		mmcblk1|mmcblk1p1|mmcblk2|mmcblk2p1|sda|sda1|sdb|sdb1|sdc|sdc1)
+			return 0
+			;;
+	esac
+	return 1
+}
+
+has_child_part() {
+	name=${1#/dev/}
+	case "$name" in
+		mmcblk[0-9]|mmcblk[0-9][0-9])
+			exists_dev "/dev/${name}p1"
+			;;
+		sd[a-z])
+			exists_dev "/dev/${name}1"
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+reject() {
+	echo "zlyme-storage-format: $*" >&2
+	return 1
+}
+
+validate() {
+	dev=$1
+	case "$dev" in
+		/dev/*) ;;
+		*) reject "not a device path"; return 1 ;;
+	esac
+	case "$dev" in
+		*..*) reject "bad path"; return 1 ;;
+	esac
+	exists_dev "$dev" || { reject "not present"; return 1; }
+	is_candidate_name "$dev" || { reject "not removable media"; return 1; }
+	disk=$(disk_of "$dev")
+	[ "$disk" = mmcblk0 ] && { reject "OS card"; return 1; }
+	if os_disks | grep -Fxq -- "$disk"; then
+		reject "OS disk"
+		return 1
+	fi
+	has_child_part "$dev" && { reject "use the data partition"; return 1; }
+	line=$(blkid_line "$dev")
+	got_label=$(field_of "$line" LABEL)
+	case "$got_label" in
+		ZLYME|ZLYMEBOOT) reject "reserved label"; return 1 ;;
+	esac
+	parent=$(field_of "$line" parent)
+	if [ -n "$parent" ]; then
+		[ "$parent" = mmcblk0 ] && { reject "OS card"; return 1; }
+		if os_disks | grep -Fxq -- "$parent"; then
+			reject "OS disk"
+			return 1
+		fi
+	fi
+	return 0
+}
+
+list_devs() {
+	for dev in /dev/mmcblk1p1 /dev/mmcblk2p1 /dev/mmcblk1 \
+		/dev/sda1 /dev/sdb1 /dev/sdc1 /dev/sda /dev/sdb; do
+		exists_dev "$dev" || continue
+		validate "$dev" >/dev/null 2>&1 || continue
+		line=$(blkid_line "$dev")
+		label=$(field_of "$line" LABEL)
+		[ -n "$label" ] || label=$(basename "$dev")
+		printf '%s\t%s\n' "$dev" "$label"
+	done
+}
+
+do_umount() {
+	mp=$1
+	if [ "$FAKE" = 1 ]; then
+		printf 'UMOUNT %s\n' "$mp" >> "$ZLYME_FMT_LOG"
+		[ "${ZLYME_FMT_UMOUNT_FAIL:-}" = 1 ] && return 1
+		return 0
+	fi
+	umount "$mp"
+}
+
+do_mkfs() {
+	dev=$1
+	fs=$2
+	label=$3
+	if [ "$FAKE" = 1 ]; then
+		printf 'MKFS %s %s %s\n' "$fs" "$label" "$dev" >> "$ZLYME_FMT_LOG"
+		[ "${ZLYME_FMT_MKFS_FAIL:-}" = 1 ] && return 1
+		return 0
+	fi
+	case "$fs" in
+		exfat)
+			command -v mkfs.exfat >/dev/null 2>&1 || return 1
+			mkfs.exfat -L "$label" "$dev"
+			;;
+		ext4)
+			command -v mke2fs >/dev/null 2>&1 || return 1
+			mke2fs -t ext4 -F -L "$label" "$dev"
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+sanitize_label() {
+	in=${1:-ZLYME-LIB}
+	out=$(printf '%s' "$in" | tr -cd 'A-Za-z0-9_-')
+	out=$(printf '%s' "$out" | cut -c 1-16)
+	case "$out" in
+		""|ZLYME|ZLYMEBOOT) out=ZLYME-LIB ;;
+	esac
+	printf '%s\n' "$out"
+}
+
+format_dev() {
+	dev=$1
+	fs=$2
+	label=$(sanitize_label "${3:-ZLYME-LIB}")
+	case "$fs" in
+		exfat|ext4) ;;
+		*) echo "zlyme-storage-format: unsupported filesystem" >&2; return 1 ;;
+	esac
+	validate "$dev" || return 1
+	# Re-check immediately before the destructive call.
+	validate "$dev" || return 1
+	mp=$(awk -v d="$dev" '$1 == d { print $2; exit }' "$MOUNTS")
+	if [ -n "$mp" ]; then
+		if ! do_umount "$mp"; then
+			echo "zlyme-storage-format: media busy" >&2
+			return 1
+		fi
+	fi
+	if ! do_mkfs "$dev" "$fs" "$label"; then
+		echo "zlyme-storage-format: format failed" >&2
+		return 1
+	fi
+	if [ "$FAKE" = 1 ]; then
+		printf 'RESCAN %s\n' "$dev" >> "$ZLYME_FMT_LOG"
+		return 0
+	fi
+	if [ -x /usr/sbin/zlyme-storage ]; then
+		/usr/sbin/zlyme-storage add "${dev#/dev/}" || true
+		/usr/sbin/zlyme-storage libraries || true
+	fi
+}
+
+case "${1:-}" in
+	list) list_devs ;;
+	format)
+		[ $# -ge 3 ] || {
+			echo "usage: $0 format DEV exfat|ext4 [LABEL]" >&2
+			exit 2
+		}
+		format_dev "$2" "$3" "${4:-ZLYME-LIB}"
+		;;
+	*)
+		echo "usage: $0 {list|format DEV exfat|ext4 [LABEL]}" >&2
+		exit 2
+		;;
+esac
