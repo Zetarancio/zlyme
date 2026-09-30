@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8A2 primary storage unmount accepted
+
+A normal NextUI reboot of `zlyme-my355-20260930-632202865c71.tar` left `/boot/.zlyme-storage-unmounted-test` and did not leave `/boot/.zlyme-storage-unmount-failed`. That file is written only after `umount /storage` returns 0. The new boot mounted `/storage` read-write again, kept `/boot` and `loop0` read-only, and brought NextUI and Wi-Fi back. Uptime at the check was 55 seconds. `dmesg` still has the inherited exFAT dirty warning at 3.09 seconds. No new I/O error. The historical dirty flag is not repaired. The boot markers are removed from `zlyme-halt` after this result. Cold-boot `nextui-first-flip` on this image was 9.95 seconds. Frontend migration has not started.
+
 ## 2026-09-30 — Phase 8A ZLYMEBOOT accepted, storage shutdown next
 
 Phase 8A is hardware-accepted on `zlyme-my355-20260930-37d41679996f.tar` (SHA-256 `9da4444d5652ade0e80ebc668aec0616d17a459922a8fe65b8848a73a1637e81`), kernel `#3 SMP PREEMPT Wed Sep 30 09:35:46 UTC 2026`. After a normal NextUI reboot, `/boot` was vfat `ro`, `/` was squashfs `ro`, and `loop0/ro` was 1 with backing file `/boot/zlyme`. A direct write to `/boot` failed. `zlyme-boot-write` created and removed a marker and left the volume read-only. No `FSCK*.REC` files were present. This does not clear a historical FAT dirty flag.

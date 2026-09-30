@@ -259,6 +259,33 @@ PROVEN ON DEVICE before this change, same image, Samba `off`, Syncthing `off`:
 
 `zlyme-storage eject` unmounts secondary SD and removable media, not `/storage`. The old `zlyme-halt` skipped `/storage` and did not `cd /`.
 
-PROVEN FROM THE SELECTED KERNEL, `output/build/linux-7.0.2/fs/exfat/super.c`. At mount, `vol_flags_persistent` keeps `VOLUME_DIRTY` if that bit was already set. `exfat_set_vol_flags()` ORs those persistent flags back in. `exfat_put_super()` calls `exfat_clear_volume_dirty()`, which therefore cannot clear a dirty bit inherited from mount. A normal `umount /storage` is still the right teardown. The next boot can keep printing `Volume was not properly unmounted` after a clean unmount of a volume that started dirty. Acceptance is `umount /storage` returning success, recorded as `/boot/.zlyme-storage-unmounted-test` only after that return. That marker is Phase 8A2 proof and is removed after the reboot test. A failed unmount writes `/boot/.zlyme-storage-unmount-failed` with the remaining holders and still reboots. There is no lazy unmount of primary `/storage` and no fsck at boot.
+PROVEN FROM THE SELECTED KERNEL, `output/build/linux-7.0.2/fs/exfat/super.c`. At mount, `vol_flags_persistent` keeps `VOLUME_DIRTY` if that bit was already set. `exfat_set_vol_flags()` ORs those persistent flags back in. `exfat_put_super()` calls `exfat_clear_volume_dirty()`, which therefore cannot clear a dirty bit inherited from mount. A normal `umount /storage` is still the right teardown. The next boot can keep printing `Volume was not properly unmounted` after a clean unmount of a volume that started dirty. There is no lazy unmount of primary `/storage` and no fsck at boot.
 
-`/storage` also logged the exFAT dirty warning after the accepted ZLYMEBOOT reboot. That is a separate problem from ZLYMEBOOT. Do not fsck it on every boot. A one-time `fsck.exfat` with the card out, or a one-shot initramfs pass before the mount, is how the inherited bit would be cleared later. Neither is done here.
+### Phase 8A2 hardware result
+
+Accepted 2026-09-30 on `zlyme-my355-20260930-632202865c71.tar` after a normal NextUI reboot. Uptime at the check was 55 seconds. Kernel still `#3`. `/boot` was vfat read-only, `loop0/ro` was 1, backing file `/boot/zlyme`. `/storage` was exFAT read-write again. `nextui-session` and `nextui.elf` were running. `wlan0` was up and SSH worked.
+
+`/boot/.zlyme-storage-unmounted-test` existed (mtime 10:23 UTC). `/boot/.zlyme-storage-unmount-failed` did not. The success file is written only after `umount /storage` returns 0. This boot's `dmesg` still has `exFAT-fs (mmcblk0p3): Volume was not properly unmounted` at 3.09 s, which matches the inherited dirty bit. No I/O error and no ZLYMEBOOT FAT warning. The historical dirty flag is not repaired. Automatic fsck, a one-time `fsck.exfat`, and secondary-media format stay out of this phase.
+
+The success and failure boot markers, and the holder dump that existed only to fill the failure file, are removed from `zlyme-halt` after this result. A failed `umount /storage` prints one line on the console and shutdown still proceeds. Production shutdown does not reopen ZLYMEBOOT.
+
+`S28minui` redirects the session onto `/storage/.config/zlyme/nextui-session.log`. On the live process those were fds 11 and 12, not only 1 and 2, so `exec` of `zlyme-halt` inherits them. POSIX `exec N>&-` needs a literal number. The close loop uses `eval` only after `n` is checked to be digits. That is the exception to the no-`eval` rule. Moving the session log would change the kept log, and a C helper would not change who owns the descriptor.
+
+## Frontend baseline
+
+Measured on that same accepted boot, `/tmp/boot-timing` (also copied to `/storage/.config/zlyme/boot-timing`). Seconds from boot. This is the cold path to the menu, not a later manual visit to Settings.
+
+| Mark | Seconds |
+| --- | ---: |
+| `rcS-start` | 3.68 |
+| `rcS-nextui-ready` | 4.92 |
+| `session-start` | 5.12 |
+| `session-nextui` | 6.04 |
+| `nextui-enter` | 6.78 |
+| `nextui-settings` | 6.80 |
+| `nextui-gfx` | 7.73 |
+| `nextui-menu` | 9.47 |
+| `nextui-first-flip` | 9.95 |
+| `inputplumber-start` | 11.25 |
+
+`/usr/share/zlyme/version` is `zlyme43 (2026-09-30)`. `nextui.elf` was built from `nextui-ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme43`. No navigation beyond this boot path was driven over SSH. No optimization was done.

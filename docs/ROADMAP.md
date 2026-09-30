@@ -1800,7 +1800,7 @@ Detailed findings: `docs/research/frontend-source-phase8.md`.
 
 Do this in order. Do not combine the fork with a LoveRetro version bump. Do not comment out large regions of upstream code. Prefer a build exclusion, a platform or feature conditional, or deletion of code that exists only in the Zlyme tree and is demonstrably dead. Leave harmless upstream code in place when removing it would only add merge conflicts.
 
-1. **Storage preflight.** A shutdown-time `mount -o remount,ro /boot` was tried on the Phase 7C device and failed: `loop0` held `/boot/zlyme` writable (`loop0/ro=0`), so the remount returned `EBUSY`. Do not put that remount in `zlyme-halt`. Normal runtime keeps ZLYMEBOOT read-only and attaches the squashfs through a read-only loop. Runtime boot edits go through `zlyme-boot-write`. Hardware acceptance of that image is still required. Cleaning up `/storage` at shutdown is a separate audit.
+1. **Storage preflight.** Done. ZLYMEBOOT stays read-only and the squashfs loop is read-only (`loop0/ro=1`); a shutdown-time remount of `/boot` is not the mechanism. Primary `/storage` is unmounted with a normal `umount` before `reboot -f` / `poweroff -f`. Both were hardware-accepted. Do not add boot-time fsck or repair the inherited exFAT dirty bit in this phase.
 2. **Baseline.** Keep a measured known-good frontend (first frame and a normal menu path) before moving source.
 3. **Fork from the vendored pin.** Reconstruct Zlyme's NextUI as commits on LoveRetro `ae652648548edf6ab24cbb816cf4e4194e609fb3`, not on current upstream HEAD. Preserve PolyForm Noncommercial 1.0.0 and the LoveRetro / MinUI attribution.
 4. **Fetch the fork.** Switch `nextui.mk` from `SITE_METHOD=local` to that exact commit after the tree matches current behavior.
@@ -1813,7 +1813,7 @@ Do this in order. Do not combine the fork with a LoveRetro version bump. Do not 
 
 ### Gate
 
-- On the boot-FAT image, `/boot` is `ro`, `/` is squashfs `ro`, and `loop0/ro` is 1. One `zlyme-boot-write` transaction returns `/boot` to `ro`. The build alone is not acceptance.
+- Storage preflight is already hardware-accepted: `/boot` read-only, `loop0/ro=1`, and a normal `umount /storage` before forced reboot.
 - Frontend behavior matches the pre-migration baseline, or differences are documented.
 - Buildroot fetches a pinned Zlyme NextUI commit.
 - `minui-list` / `minui-presenter` are vendored at the current tags, platform-neutral, and behavior-equivalent. Newer tags are not mixed into that step.
