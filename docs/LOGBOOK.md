@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8 frontend migration is hardware-equivalent
+
+The installed image is `zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`, built from `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. Remote checks and all seven physical checks passed. Quick Menu stayed Wi-Fi, Bluetooth, Settings. A later docs-only commit is not in that image. The OTA-commit boot (`rcS-start` 46.28) copied the squashfs and rewrote stock paks. The following normal reboot reached `nextui-first-flip` at 9.53 seconds, against the 9.95 second baseline. `session-copy` to `session-paks` was 0.22 seconds.
+
 ## 2026-09-30 — Phase 8 migration image built, not yet installed
 
 `minui-list` and `minui-presenter` now dirclean when `nextui.mk` changes, and presenter also dircleans when the minui-list package changes. The parson MIT text ships as `/usr/share/minui-list/parson-LICENSE`. Incremental image `zlyme-my355-20260930-7a0fc397cb5b.tar` (SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`) packs NextUI `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, minui-list 0.15.2, and minui-presenter 0.13.2. Product version stays `zlyme43 (2026-09-30)`. Quick Menu order was not changed. Hardware equivalence is not claimed.

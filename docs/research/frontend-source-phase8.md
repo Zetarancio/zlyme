@@ -312,4 +312,28 @@ The rebuilt binaries are not byte-identical to the pre-vendoring builds (`minui-
 
 A full image build now treats `nextui.mk` as an input of both helpers, and the `minui-list` package as an input of `minui-presenter`. A pin or recipe change dircleans NextUI and both helpers. A parson or list change dircleans list and presenter. The downloaded NextUI tree is not fingerprinted. The parson MIT text is installed as `/usr/share/minui-list/parson-LICENSE`.
 
-The migration image is `output/images/zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`. Its `VERSION` file is `7a0fc397cb5b`. `/usr/share/zlyme/version` in that image is `zlyme43 (2026-09-30)`. `/usr/share/nextui/version.txt` is `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`. This image is not hardware-accepted. Helper equivalence at this point is source and build only.
+The migration image is `output/images/zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`. Its `VERSION` file and the runtime it was built from are `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. `/usr/share/zlyme/version` in that image is `zlyme43 (2026-09-30)`. `/usr/share/nextui/version.txt` is `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`. Later documentation commits are not inside the image.
+
+## Migration hardware equivalence
+
+The maintainer installed that OTA. Remote checks matched the image: product version `zlyme43 (2026-09-30)`, NextUI `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, helper SHA-256 values `df1b81df…` and `e000e3c9…` at `/usr/bin` and under `bin/my355/`, parson license present, `/boot` vfat read-only, `/` squashfs read-only, `/storage` exFAT read-write, `loop0/ro=1`, backing file `/boot/zlyme` at 648376320 bytes. `apply.log` names `zlyme-my355-20260930-7a0fc397cb5b.tar`. No oops, panic, I/O error, or segfault. The inherited exFAT dirty-volume warning remained.
+
+The maintainer then passed all seven physical checks: menu and buttons, Quick Menu still Wi-Fi then Bluetooth then Settings, Settings rendering, my355 System and joystick calibration, one helper Tool opened and exited, one existing game launched, and that game returned to NextUI. Those checks were not repeated.
+
+The first timing sample was the OTA-commit boot (`rcS-start` 46.28). Initramfs copies the squashfs before `rcS`, and that boot also rewrote the stock paks because the image pak stamp did not match the card. It is not a normal-boot benchmark.
+
+The following normal reboot, uptime 287 seconds at capture, with `nextui-session` and `nextui.elf` running:
+
+| Mark | Baseline | Normal reboot |
+| --- | ---: | ---: |
+| `rcS-start` | 3.68 | 3.62 |
+| `rcS-nextui-ready` | 4.92 | 4.84 |
+| `session-nextui` | 6.04 | 5.96 |
+| `nextui-enter` | 6.78 | 6.72 |
+| `nextui-settings` | 6.80 | 6.74 |
+| `nextui-gfx` | 7.73 | 7.54 |
+| `nextui-menu` | 9.47 | 9.00 |
+| `nextui-first-flip` | 9.95 | 9.53 |
+| `inputplumber-start` | 11.25 | 11.24 |
+
+From `rcS-start` to `nextui-first-flip` is 5.91 seconds, against 6.27 on the baseline. From `nextui-enter` to first flip is 2.81 seconds, against 3.17. From `session-nextui` to `nextui-enter` is 0.76 seconds, against 0.74. `session-copy` to `session-paks` is 0.22 seconds. The eight-second gap on the OTA-commit boot is the stock-pak overwrite that runs when `paks-version.txt` does not match the card. A matching stamp returns before that copy. This sample is not a regression.
