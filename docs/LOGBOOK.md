@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 8 migration image built, not yet installed
+
+`minui-list` and `minui-presenter` now dirclean when `nextui.mk` changes, and presenter also dircleans when the minui-list package changes. The parson MIT text ships as `/usr/share/minui-list/parson-LICENSE`. Incremental image `zlyme-my355-20260930-7a0fc397cb5b.tar` (SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`) packs NextUI `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`, minui-list 0.15.2, and minui-presenter 0.13.2. Product version stays `zlyme43 (2026-09-30)`. Quick Menu order was not changed. Hardware equivalence is not claimed.
+
 ## 2026-09-30 — MinUI helpers are vendored at the current tags
 
 `minui-list` 0.15.2 (`a5f5b456c2704bbf6ec92aa26bc58d268488696f`) and `minui-presenter` 0.13.2 (`4d9f6ea350f663a72ef3621f1b4a11fdb8279f7a`) are local snapshots. Parson remains `ec53fb6528b45811df9db0db22cab96a94a96a11`, copied into the list build because upstream ignores `include/`. Platform flags come from `BR2_PACKAGE_NEXTUI_PLATFORM`. A `minui-list-dirclean minui-list` and `minui-presenter-dirclean minui-presenter` build installed both helpers at the existing `bin/my355/` paths. The new binaries are not byte-identical to the previous ones; the extra SDL gamecontroller imports come from the already rebuilt NextUI `platform.o`, not from helper source. Newer helper tags were not taken.
