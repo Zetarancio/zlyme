@@ -36,6 +36,11 @@
 # Everything wpa_cli changes is lost on reboot unless you also
 # `wpa_cli save_config`, which needs update_config=1 below.
 
+# Optional two-letter ISO country code.
+# Set this to the country where the device is being used.
+# Example:
+# country=IT
+
 ctrl_interface=/var/run/wpa_supplicant
 update_config=1
 ap_scan=1

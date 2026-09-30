@@ -16,14 +16,16 @@
 #   zlyme-wifi forget <ssid>
 #   zlyme-wifi status
 
-. /etc/zlyme.conf 2>/dev/null || true
+if [ -r /etc/zlyme.conf ]; then
+	. /etc/zlyme.conf
+fi
 
 IFACE="${IFACE:-wlan0}"
 SOCK="${WPA_CLI_SOCK:-/var/run/wpa_supplicant}"
 WPA_CLI="wpa_cli -p ${SOCK} -i ${IFACE}"
 
 usage() {
-	echo "usage: $0 scanlist|list|enable|disable|connect|disconnect|forget|status" >&2
+	echo "usage: $0 scanlist|list|enable|disable|connect|disconnect|forget|status|country [XX|00]" >&2
 	exit 1
 }
 
@@ -177,6 +179,171 @@ do_status() {
 	cli status
 }
 
+# Persistent country is the global country= line in wpa_supplicant.conf.
+# No line means World/default (00). Never write country=00.
+WPA_CONF="${ZLYME_WPA_CONF:-${ZLYME_CFG:-/storage/.config}/wpa_supplicant.conf}"
+
+normalize_country() {
+	in=$1
+	case "$in" in
+		00)
+			printf '00\n'
+			return 0
+			;;
+		[A-Za-z][A-Za-z])
+			up=$(printf '%s\n' "$in" | tr '[:lower:]' '[:upper:]')
+			# EU is not an ISO 3166 alpha-2 code.
+			[ "$up" = "EU" ] && return 1
+			printf '%s\n' "$up"
+			return 0
+			;;
+	esac
+	return 1
+}
+
+read_country() {
+	conf=$1
+	[ -f "$conf" ] || {
+		printf '00\n'
+		return 0
+	}
+	raw=$(awk '
+		BEGIN { depth = 0 }
+		function braces(s,    i, c, n) {
+			n = 0
+			for (i = 1; i <= length(s); i++) {
+				c = substr(s, i, 1)
+				if (c == "{")
+					n++
+				else if (c == "}")
+					n--
+			}
+			return n
+		}
+		{
+			sub(/\r$/, "")
+			if (depth == 0 && $0 ~ /^[ \t]*country[ \t]*=/) {
+				line = $0
+				sub(/^[ \t]*country[ \t]*=[ \t]*/, "", line)
+				sub(/[ \t].*$/, "", line)
+				if (line ~ /^[A-Za-z][A-Za-z]$/) {
+					print line
+					exit
+				}
+				next
+			}
+			if (depth > 0 || $0 ~ /^[ \t]*network[ \t]*=[ \t]*\{/)
+				depth += braces($0)
+			if (depth < 0)
+				depth = 0
+		}
+	' "$conf")
+	normalize_country "${raw:-00}" || printf '00\n'
+}
+
+write_country() {
+	conf=$1
+	code=$2
+	if [ ! -f "$conf" ] && [ -z "$code" ]; then
+		return 0
+	fi
+	dir=$(dirname "$conf")
+	mkdir -p "$dir" || return 1
+	tmp=$(mktemp "$dir/.wpa.XXXXXXXX") || return 1
+	chmod 600 "$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	src=$conf
+	[ -f "$conf" ] || src=/dev/null
+	if ! awk -v code="$code" '
+		BEGIN { depth = 0; placed = 0 }
+		function braces(s,    i, c, n) {
+			n = 0
+			for (i = 1; i <= length(s); i++) {
+				c = substr(s, i, 1)
+				if (c == "{")
+					n++
+				else if (c == "}")
+					n--
+			}
+			return n
+		}
+		{
+			sub(/\r$/, "")
+			if (depth == 0 && $0 ~ /^[ \t]*country[ \t]*=/) {
+				if (code != "" && placed == 0) {
+					print "country=" code
+					placed = 1
+				}
+				next
+			}
+			if (depth == 0 && code != "" && placed == 0 && $0 ~ /^[ \t]*network[ \t]*=[ \t]*\{/) {
+				print "country=" code
+				placed = 1
+			}
+			print
+			if (depth > 0 || $0 ~ /^[ \t]*network[ \t]*=[ \t]*\{/)
+				depth += braces($0)
+			if (depth < 0)
+				depth = 0
+		}
+		END {
+			if (code != "" && placed == 0)
+				print "country=" code
+		}
+	' "$src" > "$tmp"; then
+		rm -f "$tmp"
+		return 1
+	fi
+	if ! mv -f "$tmp" "$conf"; then
+		rm -f "$tmp"
+		return 1
+	fi
+	chmod 600 "$conf" || return 1
+}
+
+wifi_active() {
+	case "${ZLYME_WIFI_ACTIVE:-}" in
+		1) return 0 ;;
+		0) return 1 ;;
+	esac
+	[ -f /var/run/wpa_supplicant.pid ] || return 1
+	kill -0 "$(cat /var/run/wpa_supplicant.pid 2>/dev/null)" 2>/dev/null
+}
+
+apply_country_runtime() {
+	code=$1
+	iw reg set "$code" || return 1
+	out=$(cli reconfigure 2>&1) || return 1
+	printf '%s\n' "$out" | grep -qx 'OK'
+}
+
+do_country() {
+	if [ $# -eq 0 ]; then
+		read_country "$WPA_CONF"
+		return 0
+	fi
+	[ $# -eq 1 ] || usage
+	code=$(normalize_country "$1") || {
+		echo "zlyme-wifi: invalid country" >&2
+		return 1
+	}
+	persist=$code
+	[ "$code" = "00" ] && persist=
+	write_country "$WPA_CONF" "$persist" || {
+		echo "zlyme-wifi: could not save country" >&2
+		return 2
+	}
+	if wifi_active; then
+		apply_country_runtime "$code" || {
+			echo "zlyme-wifi: country saved, radio did not apply it" >&2
+			return 3
+		}
+	fi
+	return 0
+}
+
 [ $# -ge 1 ] || usage
 ACTION=$1
 shift
@@ -196,5 +363,6 @@ case "$ACTION" in
 		do_forget "$1"
 		;;
 	status) do_status ;;
+	country) do_country "$@" ;;
 	*) usage ;;
 esac
