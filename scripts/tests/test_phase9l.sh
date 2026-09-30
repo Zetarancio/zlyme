@@ -23,9 +23,9 @@ printf 'win\n' > "$sd/Bios/GB/gb_bios.bin"
 printf 'lose\n' > "$main/Bios/GB/gb_bios.bin"
 printf 'r\n' > "$sd/Roms/Game Boy (GB)/game.gb"
 printf 's\n' > "$sd/Saves/GBA/Quest.sav"
-rom=$main/Roms/Game\ Boy\ Advance\ \(GBA\)/Quest.gba
-mkdir -p "$(dirname "$rom")"
-printf 'r\n' > "$rom"
+gba_rom=$main/Roms/Game\ Boy\ Advance\ \(GBA\)/Quest.gba
+mkdir -p "$(dirname "$gba_rom")"
+printf 'r\n' > "$gba_rom"
 printf '%s\n' "$main" "$sd" > "$td/libs"
 # shellcheck disable=SC1090
 . "$LIB"
@@ -33,21 +33,30 @@ export ZLYME_LIBRARIES_FILE=$td/libs
 export ZLYME_RUN_DIR=$td/run
 export ZLYME_BIOS_PY=$PY
 export EMU_TAG=GBA
-zlyme_library_for "$rom"
+zlyme_library_for "$gba_rom"
 test "$ZLYME_RESOLVE_COUNT" = 1
 test "$ZLYME_BIOS_SCANS" = 1
 test "$(cat "$td/run/bios/GB/gb_bios.bin")" = lose
-zlyme_library_for "$rom"
+zlyme_library_for "$gba_rom"
 test "$ZLYME_RESOLVE_COUNT" = 1
 test "$ZLYME_BIOS_SCANS" = 1
 test "$SAVES_PATH" = "$sd/Saves"
 # existing save is on the other card
 unset ZLYME_RESOLVED_ROM
-zlyme_library_for "$rom"
+zlyme_library_for "$gba_rom"
 # BIOS cache still valid
 test "$ZLYME_BIOS_SCANS" = 1
-got=$(zlyme_save_root "$rom" GBA)
+got=$(zlyme_save_root "$gba_rom" GBA)
 test "$got" = "$sd"
+# A second winning card gets its own view. Returning does not rescan.
+unset ZLYME_RESOLVED_ROM
+zlyme_library_for "$sd/Roms/Game Boy (GB)/game.gb"
+test "$ZLYME_BIOS_SCANS" = 2
+test "$(cat "$td/run/bios/GB/gb_bios.bin")" = win
+unset ZLYME_RESOLVED_ROM
+zlyme_library_for "$gba_rom"
+test "$ZLYME_BIOS_SCANS" = 2
+test "$(cat "$td/run/bios/GB/gb_bios.bin")" = lose
 
 # PAK sources must not resolve again after pak-log
 if grep -n zlyme_library_for "$ROOT/package/system/nextui/paks/Emus/PICO.pak/launch.sh" \

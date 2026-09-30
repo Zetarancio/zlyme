@@ -53,8 +53,9 @@ zlyme_each_library() {
 	printf '%s\n' /storage
 }
 
-# Cache key is the library list plus which card wins duplicates.
-# A rescan deletes the stamp. The same topology does not walk Bios again.
+# One cached view per library list plus the card that wins duplicates.
+# Switching from an SD2 game to a main-card game must not rebuild the
+# other card's view. A rescan deletes the whole cache.
 zlyme_bios_key() {
 	romlib=$1
 	libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
@@ -66,18 +67,24 @@ zlyme_bios_key() {
 	printf '%s %s\n' "$sum" "$romlib"
 }
 
+zlyme_bios_id() {
+	printf '%s' "$1" | tr '/ ' '__'
+}
+
 # Union of every library Bios directory. The ROM library is applied
 # last so a duplicate relative path resolves to that card. Only /run
 # is written. Directory symlinks are not walked.
 zlyme_bios_view() {
 	romlib=$1
 	run=${ZLYME_RUN_DIR:-/run/zlyme}
-	view=$run/bios
 	py=${ZLYME_BIOS_PY:-/usr/share/zlyme/bios-union.py}
-	mkdir -p "$run" || return 1
+	mkdir -p "$run/bios-cache" || return 1
 	key=$(zlyme_bios_key "$romlib")
-	if [ -f "$run/bios.stamp" ] && [ "$(cat "$run/bios.stamp")" = "$key" ] \
-		&& [ -d "$view" ]; then
+	id=$(zlyme_bios_id "$key")
+	view=$run/bios-cache/$id
+	if [ -d "$view" ] && [ -f "$view/.zlyme-ready" ]; then
+		rm -f "$run/bios"
+		ln -s "$view" "$run/bios"
 		BIOS_PATH=$view
 		export BIOS_PATH
 		return 0
@@ -98,14 +105,13 @@ zlyme_bios_view() {
 		rm -rf "$stage"
 		return 1
 	}
-	rm -rf "$view.next"
-	if ! mv "$stage" "$view.next"; then
+	rm -rf "$view"
+	mv "$stage" "$view" || {
 		rm -rf "$stage"
 		return 1
-	fi
-	rm -rf "$view"
-	mv "$view.next" "$view" || return 1
-	printf '%s\n' "$key" > "$run/bios.stamp" || return 1
+	}
+	rm -f "$run/bios"
+	ln -s "$view" "$run/bios"
 	BIOS_PATH=$view
 	export BIOS_PATH
 }

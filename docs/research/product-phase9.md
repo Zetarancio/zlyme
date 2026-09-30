@@ -296,7 +296,9 @@ Future: evaluate Pak Store after the core Zlyme product and first stable release
 
 ## Phase 9L — launch and format stabilization
 
-The Phase 9K BIOS view rebuilt every BIOS symlink in the shell on every launch, and `ra-run` did it again. On a card with thousands of BIOS files that never reached the emulator. One resolution is cached for the active library list. A second launch of the same topology does not walk Bios again. Saves are matched by filename, not a full tree walk.
+The Phase 9K BIOS view rebuilt every BIOS symlink in the shell on every launch, and `ra-run` did it again. On a card with thousands of BIOS files that never reached the emulator. One resolution is cached per winning library. A second launch for the same card does not walk Bios again, and switching to another card reuses that card's view. Saves are matched by filename, not a full tree walk.
+
+On the installed 9L image, 4272 BIOS files took 1.519s to build and 0.059s from the same-card cache. Switching cards rebuilt (1.756s and 1.441s). That rebuild is what the per-card cache removes. GBC/Gambatte started, ran 11 seconds, saved, and returned. PPSSPP booted an ISO; the first exit aborted inside PPSSPP while creating a Vulkan window, and the second exit returned. MENU+Y, the format confirmation, and the quick Settings smoke were not done on that image. No card was formatted.
 
 The MENU+Y screen shows the governor policy from `zlyme-governor --policy` (Auto, or Heavy/Play when that is the real fallback) and the emulator id from `emu-defaults.txt`. X clears the stored override and leaves the effective values on screen.
 

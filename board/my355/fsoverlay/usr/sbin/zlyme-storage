@@ -82,7 +82,7 @@ rescan_nextui() {
 	# is told to reread the ROM folders.
 	# Library membership changed. The BIOS view is rebuilt on the next launch.
 	rm -f /run/zlyme/bios.stamp
-	rm -rf /run/zlyme/bios /run/zlyme/bios.next
+	rm -rf /run/zlyme/bios /run/zlyme/bios.next /run/zlyme/bios-cache
 	if [ -x /usr/sbin/zlyme-pico-splore ]; then
 		/usr/sbin/zlyme-pico-splore || true
 	fi
