@@ -33,9 +33,6 @@ fi
 export HM_TOOLS_DIR
 if [ -z "${HM_PORTS_DIR:-}" ]; then
 	HM_PORTS_DIR="/storage/Roms/Ports (PORTS)"
-	if [ ! -d "$HM_PORTS_DIR" ] && [ -d /storage/Roms/ports ]; then
-		HM_PORTS_DIR=/storage/Roms/ports
-	fi
 fi
 export HM_PORTS_DIR
 if [ -z "${HM_SCRIPTS_DIR:-}" ]; then

@@ -105,7 +105,9 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/portmaster/PortMaster/oga_controls \
 		$(TARGET_DIR)/usr/share/portmaster/PortMaster/tasksetter
 	rm -rf $(TARGET_DIR)/usr/share/portmaster/PortMaster/libs
-	ln -sfn /storage/Roms/.portmaster/PortMaster/libs \
+	# Runtime points this at the selected library. The squashfs link
+	# itself never changes.
+	ln -sfn /run/portmaster/libs \
 		$(TARGET_DIR)/usr/share/portmaster/PortMaster/libs
 endef
 

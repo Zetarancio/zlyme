@@ -112,20 +112,14 @@ export PYTHONUNBUFFERED=1
 export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
 # harbourmaster defaults to /roms/ports (RO squashfs). Zlyme ROMs live here.
 # Same selection as control.txt. An explicit HM_* from the caller wins.
-if [ -z "${HM_TOOLS_DIR:-}" ]; then
+if [ -x /usr/sbin/zlyme-portmaster-root ]; then
+	eval "$(/usr/sbin/zlyme-portmaster-root export)" || exit 1
+	/usr/sbin/zlyme-portmaster-root link-libs || exit 1
+else
 	HM_TOOLS_DIR=/storage/Roms/.portmaster
-	export HM_TOOLS_DIR
-fi
-if [ -z "${HM_PORTS_DIR:-}" ]; then
 	HM_PORTS_DIR="/storage/Roms/Ports (PORTS)"
-	if [ ! -d "$HM_PORTS_DIR" ] && [ -d /storage/Roms/ports ]; then
-		HM_PORTS_DIR=/storage/Roms/ports
-	fi
-	export HM_PORTS_DIR
-fi
-if [ -z "${HM_SCRIPTS_DIR:-}" ]; then
 	HM_SCRIPTS_DIR=$HM_PORTS_DIR
-	export HM_SCRIPTS_DIR
+	export HM_TOOLS_DIR HM_PORTS_DIR HM_SCRIPTS_DIR
 fi
 mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
 seed_zlyme_theme
