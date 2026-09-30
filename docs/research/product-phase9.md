@@ -71,6 +71,8 @@ The patch is `zstd --patch-from` from CLI 1.5.7, which the image already ships. 
 
 Reproducibility of the squashfs is still a final Phase 9 release check. This transport does not require two clean builds. Safety is exact base hash to exact target hash. mksquashfs timestamps and `SOURCE_DATE_EPOCH` are not rewritten here.
 
+The final release gate should also run one realistic zstd-delta benchmark on Zlyme-sized squashfs inputs. Record the old root size, the new root size, the patch size, the patch/full ratio, encode time, decode time, peak decoder RSS if practical, and the round-trip target SHA. That measurement is release validation. It does not block the current product work.
+
 ```text
 PHASE 9A GPSP UPDATE = BUILD VERIFIED
 PHASE 9A SPRUCE CPU FLOORS = STATIC/BUILD VERIFIED
@@ -94,15 +96,41 @@ These were checked in source and are not open Phase 9 tasks.
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
-| Save format / save-state format | RESEARCH FIRST, then KEEP or hide | Settings still persist `SAVE_FORMAT` and `STATE_FORMAT` (`settings.cpp`, `config.h`). `zlyme-game-cleanup` reads them. `ra-run.sh` sets `savefile_directory` and `savestate_directory` and does not map the format enums onto RetroArch save names. Do not delete the rows as a MinArch leftover until that audit finishes. Either wire them or hide them with a migration note. |
+| Save format / save-state format / extracted file name | COMPLETE | Hidden on my355. Shared NextUI enums, getters, setters, defaults, and `minuisettings.txt` keys stay. See the Game-format conclusion below. |
 | Wi-Fi regulatory domain | RESEARCH FIRST | No country UI decision until cfg80211/regdb behavior and whether the domain persists are known. |
 | Persistent PAK logs | KEEP | `pak-log.sh` appends with `>>` when `zlyme-ctl want logs`. Bound the files. Do not add logrotate unless a bound file is not enough. |
 | Timezone vs NTP | RESEARCH FIRST | `platform.c` stores localtime under `/storage/.config/nextui/shared/localtime` and reads `/usr/share/zoneinfo`. The clock widget uses `localtime()`. First-frame work deliberately skipped `TIME_init()`. Separate "clock is UTC" from "no NTP". |
 | Bluetooth headset icon after radio off | RESEARCH FIRST | `generic_bt.c` classifies headsets from bluetoothctl Class/Icon. The stale icon is an invalidation question when the radio stops, not a new audio path. |
 | Doom input | RESEARCH FIRST | `DOOM.pak/launch.sh` execs `gzdoom` with `+set use_joystick true` and sources `pak-input.sh`. Map that path before changing buttons. It is not a libretro core. |
-| Orphan cleanup UI freeze | RESEARCH FIRST | `zlymemenu.cpp` already has a dry-run invocation of `zlyme-game-cleanup`. Run that and capture the exit before any destructive pass. |
+| Orphan cleanup UI freeze | RESEARCH FIRST | The dry-run path remains `zlyme-game-cleanup <action> --dry-run`. Responsiveness of that synchronous scan is a later item. Do not add threads, cancellation, or a progress UI as part of the format-row change. |
 | VTree font / log | RESEARCH FIRST | Still open. Not re-diagnosed in this pass. |
 | Leftover `FSCK*.REC` | KEEP if Phase 8 did not fix it | See `frontend-source-phase8.md`. |
+
+### Game-format conclusion
+
+RetroArch 1.22.2 names battery saves `*.srm` and savestates `*.state`, with numbered slots as `*.stateN` (slot 0 stays `*.state`). Compression is `save_file_compression` (default false) and `savestate_file_compression` (default true). Those options are not the MinUI filename enums. `ra-run.sh` sets `savefile_directory` and `savestate_directory` only. It does not read `SAVE_FORMAT`, `STATE_FORMAT`, or `useExtractedFileName`.
+
+```text
+Save format:
+shared NextUI setting, not consumed by Zlyme's RetroArch launcher.
+Hidden on my355; retained in shared NextUI for other/future platforms.
+Save-state format:
+same disposition.
+Use extracted file name:
+not consumed by the current Zlyme RetroArch path.
+Hidden on my355; shared setting retained.
+Cleanup:
+never depended on these values; stale environment plumbing removed.
+```
+
+MinArch still reads the shared settings. The my355 image deletes `minarch.elf`, and no emulator pak launches it. The enums, getters, setters, defaults, and `minuisettings.txt` keys stay. Old values remain stored and unused on my355. No settings file is rewritten.
+
+```text
+PHASE 9C GAME FORMAT SETTINGS = COMPLETE
+MY355 INERT FORMAT ROWS = HIDDEN
+SHARED NEXTUI FORMAT SUPPORT = RETAINED
+CLEANUP FORMAT DEPENDENCY = REMOVED
+```
 
 ## Group 2 — Settings and UI
 
