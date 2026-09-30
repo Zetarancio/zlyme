@@ -1,0 +1,81 @@
+#!/bin/sh
+# Persistent zoneinfo for glibc localtime().
+# /etc/localtime is a squashfs symlink to the file this script maintains.
+# The system clock and the RTC stay UTC.
+#
+# ZLYME_ZONEINFO and ZLYME_TZ_FILE are test seams.
+
+ZONEINFO=${ZLYME_ZONEINFO:-/usr/share/zoneinfo}
+TZFILE=${ZLYME_TZ_FILE:-/storage/.config/nextui/shared/localtime}
+
+utc_source() {
+	for f in "$ZONEINFO/UTC" "$ZONEINFO/Etc/UTC"; do
+		if [ -f "$f" ]; then
+			printf '%s\n' "$f"
+			return 0
+		fi
+	done
+	return 1
+}
+
+is_tzif() {
+	magic=
+	[ -f "$1" ] && [ -s "$1" ] || return 1
+	magic=$(dd if="$1" bs=4 count=1 2>/dev/null) || return 1
+	[ "$magic" = "TZif" ]
+}
+
+install_zone() {
+	src=$1
+	dir=$(dirname "$TZFILE")
+	tmp=
+	mkdir -p "$dir" || return 1
+	tmp=$(mktemp "$dir/.tz.XXXXXXXX") || return 1
+	if ! cp "$src" "$tmp"; then
+		rm -f "$tmp"
+		return 1
+	fi
+	if ! mv -f "$tmp" "$TZFILE"; then
+		rm -f "$tmp"
+		return 1
+	fi
+}
+
+ensure() {
+	if is_tzif "$TZFILE"; then
+		return 0
+	fi
+	src=$(utc_source) || return 1
+	install_zone "$src"
+}
+
+apply() {
+	name=$1
+	case "$name" in
+		""|*[!A-Za-z0-9/_+-]*)
+			echo "zlyme-timezone: invalid zone" >&2
+			return 1
+			;;
+	esac
+	src=$ZONEINFO/$name
+	[ -f "$src" ] || {
+		echo "zlyme-timezone: no zone file $name" >&2
+		return 1
+	}
+	install_zone "$src"
+}
+
+case "${1:-ensure}" in
+	ensure) ensure ;;
+	apply)
+		[ $# -eq 2 ] || {
+			echo "usage: $0 apply ZONE" >&2
+			exit 1
+		}
+		apply "$2"
+		;;
+	*)
+		echo "usage: $0 {ensure|apply ZONE}" >&2
+		exit 1
+		;;
+esac

@@ -299,6 +299,11 @@ if [ -f "${TARGET_DIR}/etc/inittab" ]; then
 	fi
 fi
 
+# glibc reads /etc/localtime. The squashfs cannot be updated at runtime,
+# so this is a symlink to the zone file on /storage. S15 seeds UTC.
+ln -sfn /storage/.config/nextui/shared/localtime "${TARGET_DIR}/etc/localtime"
+rm -f "${TARGET_DIR}/etc/timezone"
+
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp
 # from the binaries that actually ship.

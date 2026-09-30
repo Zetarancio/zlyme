@@ -24,6 +24,11 @@ BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/10-ma
 BR2_TARGET_GENERIC_HOSTNAME="zlyme"
 BR2_TARGET_GENERIC_ISSUE="Zlyme"
 
+# Zoneinfo for Settings. /etc/localtime is not a baked zone; post-build
+# points it at the persistent file on /storage.
+BR2_TARGET_TZ_INFO=y
+BR2_TARGET_LOCALTIME=""
+
 # Empty root password on serial. Bring-up only.
 BR2_TARGET_ENABLE_ROOT_LOGIN=y
 BR2_TARGET_GENERIC_ROOT_PASSWD=""

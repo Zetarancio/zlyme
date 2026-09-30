@@ -70,6 +70,8 @@ seed() {
 	# seedrng waits for crng. rc.late S01seedrng owns it after
 	# the list is up.
 	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
+	# UTC file behind /etc/localtime. Missing or corrupt falls back to UTC.
+	[ -x /usr/sbin/zlyme-timezone ] && /usr/sbin/zlyme-timezone ensure
 }
 
 stop() {
