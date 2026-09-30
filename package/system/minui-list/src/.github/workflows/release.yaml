@@ -1,0 +1,208 @@
+---
+name: "release"
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "release type"
+        default: "patch"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  attestations: write
+  id-token: write
+  contents: write
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          # - gkdpixel deprecated, but also i386 only so it won't build without buildx
+          - m17 # (deprecated)
+          - magicmini
+          - miyoomini # (deprecated)
+          - my282
+          - my355
+          - rg35xx # (deprecated)
+          - rg35xxplus
+          - rgb30 # (deprecated)
+          # - tg3040 now merged with tg5040, so we can't build it separately
+          - tg5040
+          - trimuismart # (deprecated)
+          - zero28
+          # NextUI-specific builds (device also runs MinUI for tg5040/my355;
+          # tg5050/h700 are NextUI-only)
+          - tg5040-nextui
+          - my355-nextui
+          - tg5050-nextui
+          - h700-nextui
+        include:
+          - toolchain: tg5040-nextui
+            toolchain_repo: LoveRetro/tg5040-toolchain
+          - toolchain: my355-nextui
+            toolchain_repo: LoveRetro/my355-toolchain
+          - toolchain: tg5050-nextui
+            toolchain_repo: LoveRetro/tg5050-toolchain
+          - toolchain: h700-nextui
+            toolchain_repo: LoveRetro/h700-toolchain
+    outputs:
+      filename: ${{ steps.binary.outputs.filename }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Clone the union repository
+        run: |
+          if [ -n "${{ matrix.toolchain_repo }}" ]; then
+            git clone https://github.com/${{ matrix.toolchain_repo }} union-${{ matrix.toolchain }}-toolchain
+          else
+            git clone https://github.com/shauninman/union-${{ matrix.toolchain }}-toolchain
+          fi
+
+      - name: Move the codebase to the correct location
+        run: |
+          mkdir -p union-${{ matrix.toolchain }}-toolchain/workspace/repo
+          mv *.c *.h Makefile union-${{ matrix.toolchain }}-toolchain/workspace/repo
+
+      - name: Pull the toolchain
+        run: |
+          docker pull savant/minui-toolchain:${{ matrix.toolchain }}
+          touch .build
+        working-directory: union-${{ matrix.toolchain }}-toolchain
+
+      - name: Build the application
+        run: |
+          docker run -d -v "$(pwd)/workspace":/root/workspace savant/minui-toolchain:${{ matrix.toolchain }} tail -f /dev/null
+          container_id="$(docker container ls | grep savant/minui-toolchain:${{ matrix.toolchain }} | awk '{print $1}')"
+          docker exec --env PLATFORM=${{ matrix.toolchain }} "$container_id" bash -c "source /root/.bashrc && make -C /root/workspace/repo setup"
+          docker exec --env PLATFORM=${{ matrix.toolchain }} "$container_id" bash -c "source /root/.bashrc && make -C /root/workspace/repo"
+          docker container rm -f "$container_id"
+        working-directory: union-${{ matrix.toolchain }}-toolchain
+
+      - name: Ensure the binary exists
+        id: binary
+        run: |
+          filename="$(cat union-${{ matrix.toolchain }}-toolchain/workspace/repo/Makefile | grep ^TARGET | awk '{print $3}')-${{ matrix.toolchain }}"
+          cp "union-${{ matrix.toolchain }}-toolchain/workspace/repo/$filename" "$filename"
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: "${{ steps.binary.outputs.filename }}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.binary.outputs.filename }}
+          path: ${{ steps.binary.outputs.filename }}
+
+  macos:
+    name: macos
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            arch: x86_64
+          - os: macos-15
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install SDL2 dependencies
+        run: brew install sdl2 sdl2_image sdl2_ttf pkg-config
+
+      - name: Build the application
+        run: PLATFORM=macos make
+
+      - name: Rename binary with architecture
+        id: binary
+        run: |
+          mv minui-list-macos minui-list-macos-${{ matrix.arch }}
+          echo "filename=minui-list-macos-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: "${{ steps.binary.outputs.filename }}"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.binary.outputs.filename }}
+          path: ${{ steps.binary.outputs.filename }}
+
+  release:
+    name: release
+    runs-on: ubuntu-24.04
+    needs: [build, macos]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Get Latest Tag
+        id: latest-tag
+        run: |
+          echo GIT_LATEST_TAG="$(git describe --tags "$(git rev-list --tags --max-count=1)")" >>"$GITHUB_OUTPUT"
+
+      - name: Compute Next Tag
+        id: next-tag
+        uses: docker://ghcr.io/dokku/semver-generator:latest
+        with:
+          bump: ${{ github.event.inputs.release_type }}
+          input: ${{ steps.latest-tag.outputs.GIT_LATEST_TAG }}
+
+      - name: Generate Pattern
+        id: pattern
+        run: |
+          pattern="$(grep ^TARGET Makefile | awk '{print $3}')"
+          echo "pattern=$pattern" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: ${{ steps.pattern.outputs.pattern }}-*
+          merge-multiple: true
+
+      - name: Create and Push Tag
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag "$GIT_NEXT_TAG"
+          git push origin "$GIT_NEXT_TAG"
+        env:
+          GIT_NEXT_TAG: ${{ steps.next-tag.outputs.version }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true
+          make_latest: "true"
+          tag_name: ${{ steps.next-tag.outputs.version }}

@@ -1,0 +1,10 @@
+repository: https://github.com/josegonzalez/minui-list
+tag: 0.15.2
+commit: a5f5b456c2704bbf6ec92aa26bc58d268488696f
+license: MIT
+
+parson:
+repository: https://github.com/kgabis/parson
+commit: ec53fb6528b45811df9db0db22cab96a94a96a11
+license: MIT
+files: src/include/parson/parson.c src/include/parson/parson.h src/include/parson/LICENSE
