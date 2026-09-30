@@ -1,0 +1,68 @@
+#!/bin/sh
+# Zlyme product defaults for minuisettings.txt.
+# nextui-session and zlyme-reset both call this. One-time migration
+# flags stay here so a Settings reset does not wait for the next boot.
+#
+# SHARED_USERDATA_PATH, BIOS_PATH, SAVES_PATH, and CHEATS_PATH are the
+# same variables nextui-session exports.
+
+SHARED_USERDATA_PATH=${SHARED_USERDATA_PATH:-/storage/.config/nextui/shared}
+BIOS_PATH=${BIOS_PATH:-/storage/Bios}
+SAVES_PATH=${SAVES_PATH:-/storage/Saves}
+CHEATS_PATH=${CHEATS_PATH:-/storage/Cheats}
+
+mkdir -p "$BIOS_PATH" "$SAVES_PATH" "$CHEATS_PATH"
+cfg=$SHARED_USERDATA_PATH/minuisettings.txt
+mkdir -p "$SHARED_USERDATA_PATH"
+if [ -f "$cfg" ] && grep -q $'\r' "$cfg"; then
+	sed -i 's/\r$//' "$cfg"
+fi
+if [ ! -f "$cfg" ]; then
+	printf '%s\n' 'screentimeout=120' 'suspendTimeout=600' > "$cfg"
+else
+	grep -q '^screentimeout=' "$cfg" || echo 'screentimeout=120' >> "$cfg"
+	grep -q '^suspendTimeout=' "$cfg" || echo 'suspendTimeout=600' >> "$cfg"
+fi
+if [ -f "$cfg" ] && grep -q '^palette=Zlyme' "$cfg"; then
+	sed -i \
+		-e 's/^color1=0xF7B07CFF$/color1=0xFA7C08FF/' \
+		-e 's/^color6=0xB9BDC4FF$/color6=0xEC2A01FF/' \
+		-e 's/^color6=0xF7B07CFF$/color6=0xEC2A01FF/' \
+		-e 's/^color6=0xE99962FF$/color6=0xEC2A01FF/' \
+		"$cfg"
+fi
+flag=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults
+if [ ! -f "$flag" ]; then
+	if [ -f "$cfg" ]; then
+		grep -q '^screentimeout=0$' "$cfg" && \
+			sed -i 's/^screentimeout=0$/screentimeout=120/' "$cfg"
+		grep -q '^suspendTimeout=0$' "$cfg" && \
+			sed -i 's/^suspendTimeout=0$/suspendTimeout=600/' "$cfg"
+	fi
+	: > "$flag"
+fi
+flag2=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v2
+flag3=$SHARED_USERDATA_PATH/.zlyme-sleep-defaults-v3
+if [ ! -f "$flag2" ] || [ ! -f "$flag3" ]; then
+	if [ -f "$cfg" ]; then
+		grep -q '^screentimeout=60$' "$cfg" && \
+			sed -i 's/^screentimeout=60$/screentimeout=120/' "$cfg"
+		grep -q '^suspendTimeout=30$' "$cfg" && \
+			sed -i 's/^suspendTimeout=30$/suspendTimeout=600/' "$cfg"
+	fi
+	: > "$flag2"
+	: > "$flag3"
+fi
+flag_bat=$SHARED_USERDATA_PATH/.zlyme-batteryperc-on
+if [ ! -f "$flag_bat" ]; then
+	if [ -f "$cfg" ]; then
+		if grep -q '^batteryperc=' "$cfg"; then
+			sed -i 's/^batteryperc=.*/batteryperc=1/' "$cfg"
+		else
+			echo 'batteryperc=1' >> "$cfg"
+		fi
+	else
+		printf '%s\n' 'batteryperc=1' >> "$cfg"
+	fi
+	: > "$flag_bat"
+fi

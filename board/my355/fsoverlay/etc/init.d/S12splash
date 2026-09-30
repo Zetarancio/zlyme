@@ -6,6 +6,17 @@
 
 start_splash() {
 	[ -x /usr/sbin/zlyme-splash ] || return 0
+	# Drop the initramfs splash either way. Only start the squashfs
+	# replacement when the kernel command line has a quiet token.
+	if [ -r /usr/share/zlyme/splash-quiet.sh ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/zlyme/splash-quiet.sh
+		if ! zlyme_splash_wanted; then
+			killall zlyme-splash 2>/dev/null || true
+			rm -f /tmp/zlyme-splash.pid
+			return 0
+		fi
+	fi
 	if pidof zlyme-splash >/dev/null 2>&1; then
 		killall zlyme-splash 2>/dev/null || true
 		n=0

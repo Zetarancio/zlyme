@@ -1,0 +1,29 @@
+#!/bin/sh
+# One owner for the dummy Splore launcher. The marker stops a second copy.
+# Deleting the dummy and the marker lets the next call recreate it.
+# cdata, bbs, data, and config are never touched.
+#
+# ZLYME_PICO_ROMDIR, ZLYME_PICO_SHARED, and ZLYME_PICO_ART are test seams.
+
+SDCARD=${SDCARD_PATH:-/storage}
+ROMDIR=${ZLYME_PICO_ROMDIR:-$SDCARD/Roms/Pico-8 (PICO)}
+SHARED=${ZLYME_PICO_SHARED:-${SHARED_USERDATA_PATH:-$SDCARD/.config/nextui/shared}/Pico-8-native}
+ART=${ZLYME_PICO_ART:-/usr/share/nextui/paks/Emus/PICO.pak/splore/Splore.p8.png}
+marker=$SHARED/splore-installed
+
+[ -f "$ART" ] || exit 0
+[ -f "$marker" ] && exit 0
+mkdir -p "$ROMDIR" "$SHARED"
+for e in "$ROMDIR"/*; do
+	[ -f "$e" ] || continue
+	case "$(basename "$e")" in
+		*[Ss]plore*)
+			: > "$marker"
+			exit 0
+			;;
+	esac
+done
+cp -f "$ART" "$ROMDIR/Splore.p8"
+mkdir -p "$ROMDIR/.media"
+[ -f "$ROMDIR/.media/Splore.png" ] || cp -f "$ART" "$ROMDIR/.media/Splore.png"
+: > "$marker"

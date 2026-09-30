@@ -6,8 +6,23 @@ TZBIN="$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-timezone"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 export ZLYME_RESET_ROOT="$work"
-export ZLYME_RESET_SKIP_APPLY=1
+export ZLYME_RESET_APPLY_LOG="$work/apply.log"
+export ZLYME_CARD_DEFAULTS="$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-card-defaults"
 export ZLYME_TZ_BIN="$TZBIN"
+: > "$work/apply.log"
+mkdir -p "$work/bin"
+cat > "$work/bin/zlyme-ctl" <<'EOF'
+#!/bin/sh
+if [ "$1" = want ]; then
+	case "$2" in
+		samba|syncthing) exit 1 ;;
+	esac
+	exit 0
+fi
+exit 0
+EOF
+chmod 0755 "$work/bin/zlyme-ctl"
+export PATH="$work/bin:$PATH"
 zi=$work/zoneinfo
 mkdir -p "$zi"
 printf 'TZifUTC' > "$zi/UTC"
@@ -59,9 +74,16 @@ test ! -e "$zlyme/hdmi"
 test ! -e "$zlyme/ssh"
 test ! -e "$zlyme/ab_swap"
 test ! -e "$zlyme/undervolt"
-test ! -e "$shared/minuisettings.txt"
 test ! -e "$shared/vtree/config.ini"
 test ! -e "$shared/vtree/.zlyme-vtree-v1"
+grep -q '^screentimeout=120$' "$shared/minuisettings.txt"
+grep -q '^suspendTimeout=600$' "$shared/minuisettings.txt"
+grep -q '^batteryperc=1$' "$shared/minuisettings.txt"
+grep -q '/etc/init.d/S30wifi start' "$work/apply.log"
+grep -q '/etc/init.d/S70samba stop' "$work/apply.log"
+grep -q 'zlyme-ctl apply-zram' "$work/apply.log"
+grep -q 'zlyme-ctl apply-led' "$work/apply.log"
+grep -q 'zlyme-ctl apply-overlays' "$work/apply.log"
 cmp "$shared/localtime" "$zi/UTC"
 test ! -e "$shared/localtime.zone"
 test ! -e "$zlyme/factory-reset"
@@ -85,11 +107,11 @@ grep -q pm "$cfg/PortMaster/control.txt"
 
 "$BIN" factory
 test -f "$zlyme/factory-reset"
+grep -q '^screentimeout=120$' "$shared/minuisettings.txt"
 grep -q extra "$work/storage/Tools/my355/Extra.pak/launch.sh"
 grep -q stock "$work/storage/Tools/my355/Files.pak/launch.sh"
 grep -q 'network={' "$cfg/wpa_supplicant.conf"
 grep -q paired "$cfg/bluetooth.tar"
 grep -q rom "$work/storage/Roms/game.gba"
-test ! -e "$shared/minuisettings.txt"
 
 echo "reset ok"

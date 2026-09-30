@@ -33,14 +33,54 @@ reset_ui() {
 		ZLYME_TZ_FILE=$shared/localtime "$tz" ensure || return 1
 	fi
 	rm -f "$shared/vtree/config.ini" "$shared/vtree/.zlyme-vtree-v1"
+	card=${ZLYME_CARD_DEFAULTS:-/usr/sbin/zlyme-card-defaults}
+	if [ -x "$card" ]; then
+		SHARED_USERDATA_PATH=$shared \
+		BIOS_PATH=$root/storage/Bios \
+		SAVES_PATH=$root/storage/Saves \
+		CHEATS_PATH=$root/storage/Cheats \
+			"$card" || return 1
+	fi
+}
+
+run_apply() {
+	if [ -n "${ZLYME_RESET_APPLY_LOG:-}" ]; then
+		printf '%s\n' "$*" >> "$ZLYME_RESET_APPLY_LOG"
+		return 0
+	fi
+	[ "${ZLYME_RESET_SKIP_APPLY:-}" = 1 ] && return 0
+	"$@"
+}
+
+apply_service() {
+	name=$1
+	init=$2
+	if zlyme-ctl want "$name"; then
+		run_apply "$init" start
+	else
+		run_apply "$init" stop
+	fi
 }
 
 apply_now() {
-	[ "${ZLYME_RESET_SKIP_APPLY:-}" = 1 ] && return 0
-	command -v zlyme-ctl >/dev/null 2>&1 || return 0
-	zlyme-ctl apply-settings || return 1
-	zlyme-ctl apply-logs || return 1
-	zlyme-ctl apply-refresh || return 1
+	[ "${ZLYME_RESET_SKIP_APPLY:-}" = 1 ] && [ -z "${ZLYME_RESET_APPLY_LOG:-}" ] && return 0
+	command -v zlyme-ctl >/dev/null 2>&1 || [ -n "${ZLYME_RESET_APPLY_LOG:-}" ] || return 0
+	# Immediate owners. The init scripts and zlyme-ctl apply-* stay the
+	# implementation; this only asks them to match the restored default.
+	apply_service wifi /etc/init.d/S30wifi || return 1
+	apply_service bluetooth /etc/init.d/S40bluetoothd || return 1
+	apply_service ssh /etc/init.d/S50sshd || return 1
+	apply_service samba /etc/init.d/S70samba || return 1
+	apply_service syncthing /etc/init.d/S75syncthing || return 1
+	run_apply zlyme-ctl apply-led || return 1
+	run_apply zlyme-ctl apply-zram || return 1
+	run_apply zlyme-ctl apply-refresh || return 1
+	run_apply zlyme-ctl apply-hdmi-mode || return 1
+	run_apply zlyme-ctl apply-logs || return 1
+	run_apply zlyme-ctl apply-merge || return 1
+	run_apply zlyme-ctl apply-gov || return 1
+	# Boot-time flags. Writing the overlay line now does not reboot.
+	run_apply zlyme-ctl apply-overlays || return 1
 }
 
 settings_reset() {

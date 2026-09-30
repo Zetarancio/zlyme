@@ -12,37 +12,15 @@ USERDATA_PATH="${USERDATA_PATH:-$SDCARD_PATH/.config/nextui/${PLATFORM:-my355}}"
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 	"$USERDATA_PATH/Pico-8-native" "$SHARED_USERDATA_PATH/Pico-8-native"
 
-seed_splore() {
-	romdir=""
-	if [ -n "$ROM" ] && [ -f "$ROM" ]; then
-		romdir=$(dirname "$ROM")
-	fi
-	[ -d "$romdir" ] || romdir="$SDCARD_PATH/Roms/Pico-8 (PICO)"
-	mkdir -p "$romdir"
-
-	marker="$SHARED_USERDATA_PATH/Pico-8-native/splore-installed"
-	[ -f "$marker" ] && return 0
-
-	src="$PAK_DIR/splore/Splore.p8.png"
-	[ -f "$src" ] || return 0
-
-	for e in "$romdir"/*; do
-		[ -f "$e" ] || continue
-		case "$(basename "$e")" in
-			*[Ss]plore*) mkdir -p "$(dirname "$marker")"; : >"$marker"; return 0 ;;
-		esac
-	done
-
-	cp -f "$src" "$romdir/Splore.p8"
-	mkdir -p "$romdir/.media"
-	[ -f "$romdir/.media/Splore.png" ] || cp -f "$src" "$romdir/.media/Splore.png"
-	mkdir -p "$(dirname "$marker")"
-	: >"$marker"
-	sync
-}
-
-seed_splore
+if [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/nextui/bin/zlyme-library.sh
+	zlyme_library_for "$ROM"
+fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
+if [ "${ZLYME_EMU_CORE:-}" = fake08 ]; then
+	exec ra-run -L "${CORES_PATH:-/usr/lib/libretro}/fake08_libretro.so" "$ROM"
+fi
 # pico8 wrapper sets -home. Do not point HOME at the parent userdata dir.
 export HOME="${SHARED_USERDATA_PATH}/Pico-8-native"
 mkdir -p "$HOME/carts" "$HOME/cdata" "$HOME/bbs" "$HOME/config" "$HOME/data"
