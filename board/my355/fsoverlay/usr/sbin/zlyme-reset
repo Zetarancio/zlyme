@@ -16,7 +16,7 @@ reset_flags() {
 		wifi bluetooth ssh samba syncthing \
 		gpu display_mode refresh undervolt led \
 		otg hdmi sd2 boost zram merge logs \
-		update_channel ab_swap cpu_gov gpu_gov
+		update_channel cpu_gov gpu_gov
 	do
 		# Flags are files. Do not follow a directory that shares a name.
 		if [ -f "$zlyme/$n" ]; then
@@ -26,7 +26,7 @@ reset_flags() {
 }
 
 reset_ui() {
-	rm -f "$shared/minuisettings.txt"
+	rm -f "$shared/minuisettings.txt" "$shared/.zlyme-clock-on-default"
 	rm -f "$shared/localtime" "$shared/localtime.zone"
 	tz=${ZLYME_TZ_BIN:-/usr/sbin/zlyme-timezone}
 	if [ -x "$tz" ]; then

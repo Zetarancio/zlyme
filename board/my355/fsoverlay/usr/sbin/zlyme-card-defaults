@@ -66,3 +66,15 @@ if [ ! -f "$flag_bat" ]; then
 	fi
 	: > "$flag_bat"
 fi
+flag_clock=$SHARED_USERDATA_PATH/.zlyme-clock-on-default
+if [ ! -f "$cfg" ]; then
+	printf '%s\n' 'showclock=1' >> "$cfg"
+fi
+if [ ! -f "$flag_clock" ]; then
+	if grep -q '^showclock=' "$cfg"; then
+		sed -i 's/^showclock=.*/showclock=1/' "$cfg"
+	else
+		echo 'showclock=1' >> "$cfg"
+	fi
+	: > "$flag_clock"
+fi
