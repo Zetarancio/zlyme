@@ -40,7 +40,7 @@ Speaker vs jack is automatic (`zlyme-jackd`). Bluetooth audio follows the headse
 
 Each community pak below was ported (paths, Flip joystick, this image’s binaries).
 
-- **Settings** — Wi-Fi, Bluetooth, SSH, Samba, Syncthing, GPU, HDMI, OTG, second SD, governors, undervolt, backup, **Update**. Wi-Fi country can be set from Settings for the correct regional channel rules. About → System logs writes `/storage/.logs`.
+- **Settings** — Wi-Fi, Bluetooth, SSH, Samba, Syncthing, GPU, HDMI, OTG, second SD, governors, undervolt, backup, **Update**. Wi-Fi country can be set from Settings for the correct regional channel rules. System → Time zone sets how the clock is shown; until you pick one, the clock stays on UTC. About → System logs writes `/storage/.logs`.
 - **Artwork Scraper** — matches ROM names to box art and downloads it. From [minui-artwork-scraper-pak](https://github.com/josegonzalez/minui-artwork-scraper-pak).
 - **ScrapeGoat** — ScreenScraper metadata and images. From [nextui-scrapegoat-pak](https://github.com/Helaas/nextui-scrapegoat-pak). Requires a [Screenscraper.fr](http://Screenscraper.fr) account. 
 - **Overlays** — browse and install community bezels. From [nextui-community-overlays](https://github.com/LoveRetro/nextui-community-overlays).
