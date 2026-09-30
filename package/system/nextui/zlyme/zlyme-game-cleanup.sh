@@ -10,8 +10,6 @@ ACTION=${1:-}
 [ "${1:-}" = "--dry-run" ] && DRY=1 && ACTION=${2:-}
 
 LIBRARIES=/run/zlyme/libraries
-SAVE_FORMAT=${SAVE_FORMAT:-0}
-STATE_FORMAT=${STATE_FORMAT:-0}
 
 list_roots() {
 	if [ -f "$LIBRARIES" ]; then
