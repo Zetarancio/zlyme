@@ -1,6 +1,9 @@
 #!/bin/sh
 # Settings → Game housekeeping. Walk /run/zlyme/libraries.
 # First line of stdout is COUNT=n. Rest is a short summary.
+#
+# ZLYME_LIBRARIES_FILE and ZLYME_CLEANUP_ROOT are test seams.
+# Production leaves both unset.
 
 set -u
 
@@ -9,41 +12,30 @@ ACTION=${1:-}
 [ "${2:-}" = "--dry-run" ] && DRY=1
 [ "${1:-}" = "--dry-run" ] && DRY=1 && ACTION=${2:-}
 
-LIBRARIES=/run/zlyme/libraries
+LIBRARIES=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+STORAGE=${ZLYME_CLEANUP_ROOT:-/storage}
 
 list_roots() {
 	if [ -f "$LIBRARIES" ]; then
 		cat "$LIBRARIES"
 	else
-		echo /storage
+		echo "$STORAGE"
 	fi
 }
 
-count=0
-summary=
-
-bump() {
-	n=$1
-	msg=$2
-	count=$((count + n))
-	[ -n "$msg" ] && summary="$summary$msg
-"
-}
-
-is_junk_name() {
-	b=$1
-	case "$b" in
-		.DS_Store|Thumbs.db|desktop.ini) return 0 ;;
-		._*) return 0 ;;
-		__MACOSX) return 0 ;;
-		'$RECYCLE.BIN'|'$Recycle.Bin') return 0 ;;
-		.Trash|.Trash-*|'.Trash-'*) return 0 ;;
-	esac
-	return 1
+remove_listed() {
+	list=$1
+	miss=0
+	while IFS= read -r f; do
+		[ -n "$f" ] || continue
+		rm -rf -- "$f" || miss=1
+	done < "$list"
+	return "$miss"
 }
 
 do_junk() {
 	n=0
+	: > /tmp/zlyme-junk.list || return 1
 	list_roots | while IFS= read -r root; do
 		[ -d "$root" ] || continue
 		find "$root" \( -name '.DS_Store' -o -name 'Thumbs.db' -o -name 'desktop.ini' \
@@ -51,13 +43,12 @@ do_junk() {
 			-o -name '$RECYCLE.BIN' -o -name '$Recycle.Bin' \) 2>/dev/null
 	done > /tmp/zlyme-junk.list
 	n=$(wc -l < /tmp/zlyme-junk.list | tr -d ' ')
+	miss=0
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
-		while IFS= read -r f; do
-			[ -n "$f" ] || continue
-			rm -rf "$f"
-		done < /tmp/zlyme-junk.list
+		remove_listed /tmp/zlyme-junk.list || miss=1
 	fi
 	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
 }
 
 rom_stems() {
@@ -70,16 +61,19 @@ rom_stems() {
 	else
 		return 0
 	fi
+	# One awk process. A shell basename per ROM is what made large libraries stall.
 	find "$roms" -type f ! -path '*/.media/*' ! -name '.*' 2>/dev/null |
-	while IFS= read -r f; do
-		b=$(basename "$f")
-		stem=$b
-		stem=${stem%.*}
-		printf '%s\n' "$stem"
-		# MinUI Game.gba.sav → also Game
-		stem2=${stem%.*}
-		[ "$stem2" != "$stem" ] && printf '%s\n' "$stem2"
-	done | sort -u
+	awk '
+	function base(p) { n = split(p, a, "/"); return a[n] }
+	function strip(s) { sub(/\.[^.]*$/, "", s); return s }
+	{
+		s1 = strip(base($0))
+		print s1
+		s2 = strip(s1)
+		if (s2 != s1)
+			print s2
+	}
+	' | sort -u
 }
 
 is_save_name() {
@@ -91,38 +85,81 @@ is_save_name() {
 	return 1
 }
 
-append_orphan() {
+# Candidates are stem, second stem, path, separated by ASCII unit separator.
+# Stems are loaded once. An empty stem file matches nothing, so every
+# candidate is an orphan. That is the same rule as an empty ROM set.
+filter_unmatched() {
 	stems=$1
-	f=$2
+	cands=$2
+	[ -s "$cands" ] || return 0
+	awk -F '\037' -v stems="$stems" '
+	BEGIN {
+		while ((getline line < stems) > 0) {
+			if (line != "")
+				have[line] = 1
+		}
+		close(stems)
+	}
+	{
+		if (!($1 in have) && !($2 in have))
+			print $3
+	}
+	' "$cands"
+}
+
+note_save() {
+	f=$1
 	b=$(basename "$f")
-	stem=$b
-	stem=${stem%.*}
+	stem=${b%.*}
 	stem2=${stem%.*}
-	hit=0
-	printf '%s\n' "$stems" | grep -Fxq "$stem" && hit=1
-	[ "$hit" = 0 ] && printf '%s\n' "$stems" | grep -Fxq "$stem2" && hit=1
-	[ "$hit" = 0 ] && printf '%s\n' "$f"
+	printf '%s\037%s\037%s\n' "$stem" "$stem2" "$f"
 }
 
 do_orphan_saves() {
 	n=0
-	: > /tmp/zlyme-orph.list
+	command -v awk >/dev/null 2>&1 || return 1
+	: > /tmp/zlyme-orph.list || return 1
+	stems=/tmp/zlyme-stems.$$
+	cands=/tmp/zlyme-cands.$$
+	: > "$stems" || return 1
+	: > "$cands" || return 1
 	list_roots | while IFS= read -r root; do
-		[ -d "$root/Saves" ] || continue
-		stems=$(rom_stems "$root")
-		find "$root/Saves" -type f 2>/dev/null |
-		while IFS= read -r f; do
-			b=$(basename "$f")
-			is_save_name "$b" || continue
-			append_orphan "$stems" "$f"
-		done
+		[ -d "$root" ] || continue
+		rom_stems "$root" > "$stems"
+		: > "$cands"
+		if [ -d "$root/Saves" ]; then
+			find "$root/Saves" -type f 2>/dev/null |
+			awk -v stems="$stems" '
+			BEGIN {
+				while ((getline line < stems) > 0) {
+					if (line != "")
+						have[line] = 1
+				}
+				close(stems)
+			}
+			function base(p) { n = split(p, a, "/"); return a[n] }
+			function strip(s) { sub(/\.[^.]*$/, "", s); return s }
+			function is_save(name) {
+				return name ~ /\.(sav|srm|state|state[0-9]|state\.[0-9]|st[0-9]|auto|rtc|mcr|eep|fla|nv)$/
+			}
+			{
+				name = base($0)
+				if (!is_save(name))
+					next
+				s1 = strip(name)
+				s2 = strip(s1)
+				if (!(s1 in have) && !(s2 in have))
+					print
+			}
+			'
+		fi
 		# DraStic slots (paks bind Saves/NDS/{backup,savestates})
 		for d in "$root/Saves/NDS/backup" "$root/Saves/NDS/savestates" "$root/Saves/NDS"; do
 			[ -d "$d" ] || continue
 			find "$d" -maxdepth 1 -type f \( -name '*.dsv' -o -name '*.dst' -o -name '*.dsv.*' \) 2>/dev/null |
 			while IFS= read -r f; do
-				append_orphan "$stems" "$f"
-			done
+				note_save "$f"
+			done >> "$cands"
 		done
 		# OpenBOR .sav next to the pak (launch.sh cds to the ROM dir)
 		for roms in "$root/Roms" "$root/roms"; do
@@ -131,10 +168,11 @@ do_orphan_saves() {
 			while IFS= read -r od; do
 				find "$od" -maxdepth 2 -type f -name '*.sav' 2>/dev/null |
 				while IFS= read -r f; do
-					append_orphan "$stems" "$f"
-				done
+					note_save "$f"
+				done >> "$cands"
 			done
 		done
+		filter_unmatched "$stems" "$cands"
 		# PortMaster savedata: sibling of a missing .sh
 		for ports in "$root/Roms/Ports (PORTS)" "$root/Roms/ports" "$root/roms/ports"; do
 			[ -d "$ports" ] || continue
@@ -150,18 +188,18 @@ do_orphan_saves() {
 			done
 		done
 	done >> /tmp/zlyme-orph.list
+	rm -f "$stems" "$cands"
 	n=$(wc -l < /tmp/zlyme-orph.list | tr -d ' ')
+	miss=0
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
-		while IFS= read -r f; do
-			[ -n "$f" ] || continue
-			rm -rf "$f"
-		done < /tmp/zlyme-orph.list
+		remove_listed /tmp/zlyme-orph.list || miss=1
 	fi
 	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
 }
 
 do_orphan_media() {
-	: > /tmp/zlyme-media.list
+	: > /tmp/zlyme-media.list || return 1
 	list_roots | while IFS= read -r root; do
 		roms=
 		[ -d "$root/Roms" ] && roms=$root/Roms
@@ -188,109 +226,125 @@ do_orphan_media() {
 		done
 	done >> /tmp/zlyme-media.list
 	n=$(wc -l < /tmp/zlyme-media.list | tr -d ' ')
+	miss=0
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
-		while IFS= read -r f; do
-			[ -n "$f" ] || continue
-			rm -f "$f"
-		done < /tmp/zlyme-media.list
+		remove_listed /tmp/zlyme-media.list || miss=1
 	fi
 	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
 }
 
 do_recents() {
-	f=/storage/.config/nextui/shared/.minui/recent.txt
+	f=$STORAGE/.config/nextui/shared/.minui/recent.txt
 	if [ -f "$f" ]; then
 		n=$(wc -l < "$f" | tr -d ' ')
-		[ "$DRY" = 0 ] && : > "$f"
+		miss=0
+		if [ "$DRY" = 0 ]; then
+			: > "$f" || miss=1
+		fi
 		printf '%s\n' "$n"
+		[ "$miss" = 0 ] || return 1
 	else
 		printf '0\n'
 	fi
 }
 
 do_ra_cores() {
-	d=/storage/.config/retroarch/config
+	d=$STORAGE/.config/retroarch/config
 	n=0
 	if [ -d "$d" ]; then
 		n=$(find "$d" -type f | wc -l | tr -d ' ')
-		[ "$DRY" = 0 ] && rm -rf "$d"
+		miss=0
+		if [ "$DRY" = 0 ]; then
+			rm -rf -- "$d" || miss=1
+		fi
+		printf '%s\n' "$n"
+		[ "$miss" = 0 ] || return 1
+		return 0
 	fi
 	printf '%s\n' "$n"
 }
 
-do_standalones() {
-	# names printed to stderr-style list file
+# Settings only. User carts, saves, prefixes, and soundfonts are not listed.
+standalone_targets() {
 	plat=my355
-	if [ -f /usr/share/zlyme/device.conf ]; then
+	conf=${ZLYME_DEVICE_CONF-/usr/share/zlyme/device.conf}
+	if [ -n "$conf" ] && [ -f "$conf" ]; then
 		# shellcheck disable=SC1091
-		. /usr/share/zlyme/device.conf
+		. "$conf"
 		plat=${ZLYME_NEXTUI_PLATFORM:-my355}
 	fi
-	: > /tmp/zlyme-sa.list
-	for p in \
-		/storage/.config/ppsspp \
-		/storage/.config/flycast \
-		/storage/.config/dolphin-emu \
-		/storage/.config/drastic \
-		/storage/.config/aethersx2 \
-		/storage/.config/nextui/shared/configs/gzdoom \
-		/storage/.config/nextui/shared/Pico-8-native \
-		/storage/.config/nextui/${plat}/wine \
-		/storage/.config/nextui/${plat}/wine-prefix.ext4
-	do
+	printf '%s\n' \
+		"$STORAGE/.config/ppsspp/PSP/SYSTEM" \
+		"$STORAGE/.config/flycast" \
+		"$STORAGE/.config/nextui/${plat}/.config/flycast" \
+		"$STORAGE/.config/dolphin-emu" \
+		"$STORAGE/.config/drastic/drastic.cfg" \
+		"$STORAGE/.config/aethersx2/inis" \
+		"$STORAGE/.config/nextui/shared/configs/gzdoom/gzdoom.ini" \
+		"$STORAGE/.config/nextui/shared/Pico-8-native/config" \
+		"$STORAGE/.config/nextui/shared/Pico-8-native/sdl_controllers.txt"
+}
+
+do_standalones() {
+	: > /tmp/zlyme-sa.list || return 1
+	standalone_targets | while IFS= read -r p; do
 		[ -e "$p" ] || continue
-		printf '%s\n' "$p" >> /tmp/zlyme-sa.list
-	done
+		printf '%s\n' "$p"
+	done > /tmp/zlyme-sa.list
 	n=$(wc -l < /tmp/zlyme-sa.list | tr -d ' ')
-	if [ "$DRY" = 0 ]; then
-		if [ -x /usr/sbin/zlyme-wine-prefix ]; then
-			/usr/sbin/zlyme-wine-prefix cleanup || true
-		fi
-		if grep -F ' /run/zlyme-wine/prefix ' /proc/mounts >/dev/null 2>&1; then
-			echo "wine prefix still mounted; not removing it" >&2
-		else
-			while IFS= read -r p; do
-				rm -rf "$p"
-			done < /tmp/zlyme-sa.list
-		fi
+	miss=0
+	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
+		remove_listed /tmp/zlyme-sa.list || miss=1
 	fi
 	printf '%s\n' "$n"
 	if [ "$n" -gt 0 ]; then
 		tr '\n' ',' < /tmp/zlyme-sa.list | sed 's/,$/\n/'
 	fi
+	[ "$miss" = 0 ] || return 1
 }
 
 do_ra_rom_cfg() {
-	d=/storage/.config/retroarch/config
-	: > /tmp/zlyme-racfg.list
-	stems=$(list_roots | while IFS= read -r root; do rom_stems "$root"; done | sort -u)
+	d=$STORAGE/.config/retroarch/config
+	command -v awk >/dev/null 2>&1 || return 1
+	: > /tmp/zlyme-racfg.list || return 1
+	stems=/tmp/zlyme-stems.$$
+	cands=/tmp/zlyme-cands.$$
+	: > "$stems" || return 1
+	: > "$cands" || return 1
+	list_roots | while IFS= read -r root; do
+		rom_stems "$root"
+	done > "$stems"
 	if [ -d "$d" ]; then
 		find "$d" -type f -name '*.cfg' ! -name '*libretro.cfg' 2>/dev/null |
 		while IFS= read -r f; do
 			b=$(basename "$f" .cfg)
-			printf '%s\n' "$stems" | grep -Fxq "$b" && continue
-			printf '%s\n' "$f"
-		done >> /tmp/zlyme-racfg.list
+			printf '%s\037%s\037%s\n' "$b" "$b" "$f"
+		done > "$cands"
+		filter_unmatched "$stems" "$cands" >> /tmp/zlyme-racfg.list
 	fi
+	rm -f "$stems" "$cands"
 	n=$(wc -l < /tmp/zlyme-racfg.list | tr -d ' ')
+	miss=0
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
-		while IFS= read -r f; do
-			rm -f "$f"
-		done < /tmp/zlyme-racfg.list
+		remove_listed /tmp/zlyme-racfg.list || miss=1
 	fi
 	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
 }
 
+st=0
 case "$ACTION" in
-	junk) n=$(do_junk); echo "COUNT=$n"; echo "junk files" ;;
-	orphan-saves) n=$(do_orphan_saves); echo "COUNT=$n"; echo "orphan saves" ;;
-	orphan-media) n=$(do_orphan_media); echo "COUNT=$n"; echo "orphan boxart" ;;
-	recents) n=$(do_recents); echo "COUNT=$n"; echo "recents" ;;
-	ra-cores) n=$(do_ra_cores); echo "COUNT=$n"; echo "RetroArch core options" ;;
-	standalones) n=$(do_standalones); echo "COUNT=$n" ;;
-	ra-rom-cfg) n=$(do_ra_rom_cfg); echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
+	junk) n=$(do_junk) || st=$?; echo "COUNT=$n"; echo "junk files" ;;
+	orphan-saves) n=$(do_orphan_saves) || st=$?; echo "COUNT=$n"; echo "orphan saves" ;;
+	orphan-media) n=$(do_orphan_media) || st=$?; echo "COUNT=$n"; echo "orphan boxart" ;;
+	recents) n=$(do_recents) || st=$?; echo "COUNT=$n"; echo "recents" ;;
+	ra-cores) n=$(do_ra_cores) || st=$?; echo "COUNT=$n"; echo "RetroArch core options" ;;
+	standalones) n=$(do_standalones) || st=$?; echo "COUNT=$n" ;;
+	ra-rom-cfg) n=$(do_ra_rom_cfg) || st=$?; echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
 	*)
 		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|standalones|ra-rom-cfg} [--dry-run]" >&2
 		exit 1
 		;;
 esac
+exit "$st"
