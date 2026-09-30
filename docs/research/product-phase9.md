@@ -102,7 +102,7 @@ These were checked in source and are not open Phase 9 tasks.
 | Timezone vs NTP | RESEARCH FIRST | `platform.c` stores localtime under `/storage/.config/nextui/shared/localtime` and reads `/usr/share/zoneinfo`. The clock widget uses `localtime()`. First-frame work deliberately skipped `TIME_init()`. Separate "clock is UTC" from "no NTP". |
 | Bluetooth headset icon after radio off | RESEARCH FIRST | `generic_bt.c` classifies headsets from bluetoothctl Class/Icon. The stale icon is an invalidation question when the radio stops, not a new audio path. |
 | Doom input | RESEARCH FIRST | `DOOM.pak/launch.sh` execs `gzdoom` with `+set use_joystick true` and sources `pak-input.sh`. Map that path before changing buttons. It is not a libretro core. |
-| Orphan cleanup UI freeze | RESEARCH FIRST | The dry-run path remains `zlyme-game-cleanup <action> --dry-run`. Responsiveness of that synchronous scan is a later item. Do not add threads, cancellation, or a progress UI as part of the format-row change. |
+| Orphan cleanup UI freeze | COMPLETE | The scan loads each card's ROM stems once and matches saves in one `awk` pass. A 5,000-ROM / 5,500-save host fixture took 18753 ms with a per-file `grep` and 48 ms with the indexed scan, with the same 500 orphans. No UI thread was added. Dry-run remains `zlyme-game-cleanup <action> --dry-run` and still runs before DELETE. |
 | VTree font / log | RESEARCH FIRST | Still open. Not re-diagnosed in this pass. |
 | Leftover `FSCK*.REC` | KEEP if Phase 8 did not fix it | See `frontend-source-phase8.md`. |
 
@@ -132,13 +132,35 @@ SHARED NEXTUI FORMAT SUPPORT = RETAINED
 CLEANUP FORMAT DEPENDENCY = REMOVED
 ```
 
+### Standalone settings reset
+
+`zlyme-game-cleanup standalones` deletes an explicit settings list. It does not delete a tree and then try to spare user data. Dry-run prints that same list. A failed `rm` makes the script exit nonzero. The Settings row shows "Scan failed" or "Cleanup failed" instead of "Done".
+
+| Emulator | Settings reset path | Preserved user-data path | Evidence |
+| --- | --- | --- | --- |
+| PPSSPP | `/storage/.config/ppsspp/PSP/SYSTEM` | `/storage/.config/ppsspp/PSP/SAVEDATA`, `/storage/.config/ppsspp/PSP/PPSSPP_STATE`, and `Saves/PSP` | `PSP.pak/launch.sh` bind-mounts the Saves directories onto those two config paths. A failed bind must not turn them into delete targets. |
+| Flycast | `/storage/.config/flycast` and `/storage/.config/nextui/<platform>/.config/flycast` | `Saves/DC` and `/storage/.config/nextui/<platform>/.local/share/flycast` | `DC.pak/launch.sh` seeds `emu.cfg` from `XDG_CONFIG_HOME` or `$HOME/.config`. It bind-mounts `Saves/DC` onto `XDG_DATA_HOME/flycast`. |
+| Dolphin | `/storage/.config/dolphin-emu` | `Saves/GC`, `Saves/WII`, and `/storage/.config/nextui/<platform>/.local/share/dolphin-emu` | `start_dolphin.sh` writes `Dolphin.ini` and `GCPadNew.ini` under `XDG_CONFIG_HOME` and bind-mounts the Saves trees onto the data directory. |
+| DraStic | `/storage/.config/drastic/drastic.cfg` | `Saves/NDS/backup`, `Saves/NDS/savestates` | `start_drastic.sh` keeps the cfg on the OS card and bind-mounts the slot directories. |
+| AetherSX2 | `/storage/.config/aethersx2/inis` | `Saves/PS2`, `/storage/Bios/PS2`, `/storage/.config/aethersx2/cache` | `start_aethersx2.sh` points MemoryCards and Savestates at `Saves/PS2` and BIOS at `Bios/PS2`. Cache is not a settings file and is left in place. |
+| GZDoom | `/storage/.config/nextui/shared/configs/gzdoom/gzdoom.ini` | `soundfonts/`, `fm_banks/`, `autoexec.cfg`, `Saves/DOOM`, `shared/saves/gzdoom` | `0001-Fix-file-paths.patch` and `DOOM.pak/launch.sh`. User soundfonts and FM banks are search paths, not generated settings. |
+| Pico-8 | `Pico-8-native/config`, `Pico-8-native/sdl_controllers.txt` | `carts/`, `cdata/`, `bbs/`, `data/`, `splore-installed` | `start_pico8.sh` uses `-home` on `Pico-8-native`, sets `XDG_CONFIG_HOME` to `config/`, and copies the controller db to `sdl_controllers.txt`. |
+| Wine | none | `wine-prefix.ext4`, `/storage/.config/nextui/<platform>/wine` | `zlyme-wine-prefix` stores installed Windows software in the 1 GiB ext4 image. Nothing in the current launcher owns the `wine/` directory, so it is left untouched. The reset does not call `zlyme-wine-prefix cleanup`. |
+
+```text
+PHASE 9D GAME CLEANUP SAFETY = COMPLETE
+STANDALONE USER DATA = PRESERVED
+DRY-RUN BEFORE DELETE = PASS
+ORPHAN MATCHING = INDEXED
+```
+
 ## Group 2 — Settings and UI
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
 | Quick Menu order | KEEP, after Phase 8 | Current `getQuickToggles()` order is Wi-Fi, Bluetooth, Settings, then Pak Store, Sleep, Reboot, Poweroff. The intended order is Settings, Wi-Fi, Bluetooth, then the same remaining entries. Phase 8 preserves today's order. Pak Store stays deferred; this only reserves its place if the entry exists. |
 | Keyboard L1 DELETE pill | KEEP | `keyboardprompt.cpp` already deletes on `BTN_L1`. The shared button hint does not say so. Add the pill once, in `KeyboardPrompt`, so every caller gets it. |
-| Shorter destructive Game-settings text | KEEP | Copy change only, after the save-format audit so the text matches real behavior. |
+| Shorter destructive Game-settings text | COMPLETE | Game cleanup rows name the real action. "Reset standalone settings" says games and saves are kept because the reset list is settings files only. |
 | One pending-reboot prompt | KEEP | Aggregate reboot-required settings. Prompt once on leaving Settings. Reboot through `zlyme-halt reboot`. |
 | PortMaster and VTree dark themes | KEEP | `portmaster-launch` already seeds a Zlyme theme into PortMaster. Rethink it from a dark baseline. VTree is separate. |
 | Emulator and governor selectors as pills | KEEP | Use the existing NextUI/MinUI pill widgets. |
