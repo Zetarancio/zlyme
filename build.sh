@@ -332,6 +332,10 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     start_build_log
     refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
         package/system/nextui package/system/zlyme-input/virtpad.h
+    refresh_compiled_package minui-list BR2_PACKAGE_MINUI_LIST \
+        package/system/minui-list
+    refresh_compiled_package minui-presenter BR2_PACKAGE_MINUI_PRESENTER \
+        package/system/minui-presenter
     # keylidmon compiles the msettings.h that the nextui package
     # installs into staging. The pin lives in nextui.mk. Do not
     # fingerprint the downloaded NextUI tree.
