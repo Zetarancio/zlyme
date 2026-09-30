@@ -47,11 +47,35 @@ Applied from SpruceOS `2b7bc4a` `Emu/*/config.json`. Effective floors use the my
 
 ### What "tested" means
 
-Every shipped tag is checked statically against the Spruce floor, the resolved mainline floor, or the documented fallback. Physical play is GBA, plus one lighter system and one heavier system if needed, then a return to NextUI. The maintainer is not asked to play every system. Passing means GBA is full speed and stable on this kernel.
+Phase 9A does not require gameplay. The maintainer may play emulators later; that is outside this gate. Acceptance is: gpSP is exactly the ROCKNIX revision and the package builds; every shipped tag has an explicit governor disposition; the Spruce floor table and the OPP resolution tests pass; launchers call `zlyme-governor emu <tag>`; `ZLYME_GOVERNOR` still wins; return to NextUI still selects smart. Do not describe emulator speed as physically proven.
+
+```text
+PHASE 9A GPSP UPDATE = BUILD VERIFIED
+PHASE 9A SPRUCE CPU FLOORS = STATIC/BUILD VERIFIED
+RUNTIME EMULATOR PERFORMANCE = MAINTAINER VALIDATION OUTSIDE PHASE GATE
+```
 
 ## README release gate
 
 Ride-along README edits stay. They do not replace a final pass against the last non-prerelease GitHub release: `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. `zlyme43 (2026-09-28)` is a prerelease and is not that baseline. The pass checks emulators, Tools/PAKs, Settings, and install/update instructions against the final image and source. Deferred work stays undescribed. The joystick section should keep calibration, deadzone, the stick test, rumble, and that built-in controls work in games. Driver, UART, and InputPlumber detail stays out of the README. After the floor change, the README may say that per-system CPU frequency floors are adapted from SpruceOS's Miyoo Flip tuning onto Zlyme's mainline frequency table. It must not say that Zlyme uses Spruce's governor, DMC policy, or core-count policy. The full README pass against `zlyme40` is still the release gate.
+
+## Incremental OTA
+
+This is transport only. A full OTA and a delta OTA both end at `/storage/.update/pending/zlyme`. Initramfs still copies that file over `/boot/zlyme`. Nothing patches the live squashfs in place.
+
+`zlyme43` is a baseline. `zlyme43.1` is a maintenance release. `zlyme43.0` is not a version. A baseline publishes a full OTA, `zlyme.img`, and a manifest with `deltas` empty. It does not diff against the previous major. A point release still publishes the full OTA, and may add direct deltas from the same-major baseline and the last three earlier point releases of that major. The device applies a delta only when `from_sha256` equals the SHA-256 of the installed `/boot/zlyme`. Otherwise it uses the full OTA.
+
+The patch is `zstd --patch-from` from CLI 1.5.7, which the image already ships. Do not add xdelta3. A delta package is a tar of the normal boot files with `zlyme` replaced by `zlyme.patch.zst` and a `DELTA-MANIFEST`. Reconstruction writes `zlyme.new` under `/storage/.update/reconstruct`, hashes it, and renames it into `pending/zlyme` only on a match. A `.new` file is not a pending update. A delta tar at least 70% of the full OTA size is not published.
+
+`scripts/make-release-deltas.py` runs in the GitHub Actions release job only. `build.sh` and `make-update-tar.sh` stay full-OTA tools. Releases without `release-manifest.json` stay on the old single-tar path. A corrupt manifest that names a full OTA which fails its hash fails the release job. A release with no manifest is skipped as a delta base.
+
+Reproducibility of the squashfs is still a final Phase 9 release check. This transport does not require two clean builds. Safety is exact base hash to exact target hash. mksquashfs timestamps and `SOURCE_DATE_EPOCH` are not rewritten here.
+
+```text
+PHASE 9A GPSP UPDATE = BUILD VERIFIED
+PHASE 9A SPRUCE CPU FLOORS = STATIC/BUILD VERIFIED
+RUNTIME EMULATOR PERFORMANCE = MAINTAINER VALIDATION OUTSIDE PHASE GATE
+```
 
 ## Dropped from the roadmap
 
