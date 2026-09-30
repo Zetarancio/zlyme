@@ -50,7 +50,6 @@ dump() {
 	printf 'otg=%s\n' "$(norm_on otg on)"
 	printf 'hdmi=%s\n' "$(norm_on hdmi on)"
 	printf 'sd2=%s\n' "$(norm_on sd2 on)"
-	printf 'ab_swap=%s\n' "$(norm_on ab_swap off)"
 }
 
 case "${1:-}" in

@@ -43,9 +43,6 @@ define INPUTPLUMBER_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 \
 		$(INPUTPLUMBER_PKGDIR)/zlyme_miyoo_flip.yaml \
 		$(TARGET_DIR)/usr/share/inputplumber/capability_maps/zlyme_miyoo_flip.yaml
-	$(INSTALL) -D -m 0644 \
-		$(INPUTPLUMBER_PKGDIR)/zlyme_miyoo_flip_ab.yaml \
-		$(TARGET_DIR)/usr/share/inputplumber/capability_maps/zlyme_miyoo_flip_ab.yaml
 	$(INSTALL) -D -m 0755 \
 		$(INPUTPLUMBER_PKGDIR)/S31inputplumber \
 		$(TARGET_DIR)/etc/init.d/S31inputplumber

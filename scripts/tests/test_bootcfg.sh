@@ -14,7 +14,10 @@ grep -qx 'undervolt=off' "$snap"
 grep -qx 'otg=on' "$snap"
 grep -qx 'hdmi=on' "$snap"
 grep -qx 'sd2=on' "$snap"
-grep -qx 'ab_swap=off' "$snap"
+if grep -q ab_swap "$snap"; then
+	echo "ab_swap is not a boot setting" >&2
+	exit 1
+fi
 if "$BIN" dirty "$snap"; then
 	echo "fresh snapshot was dirty" >&2
 	exit 1
@@ -29,12 +32,12 @@ fi
 
 printf '%s\n' off > "$ZLYME_CFG/zlyme/hdmi"
 "$BIN" dirty "$snap"
-printf '%s\n' on > "$ZLYME_CFG/zlyme/ab_swap"
+printf '%s\n' l1 > "$ZLYME_CFG/zlyme/undervolt"
 "$BIN" capture "$snap"
 if "$BIN" dirty "$snap"; then
-	echo "captured ab_swap was still dirty" >&2
+	echo "captured undervolt was still dirty" >&2
 	exit 1
 fi
-rm -f "$ZLYME_CFG/zlyme/ab_swap"
+rm -f "$ZLYME_CFG/zlyme/undervolt"
 "$BIN" dirty "$snap"
 echo "bootcfg ok"

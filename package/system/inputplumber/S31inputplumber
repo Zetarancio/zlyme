@@ -26,11 +26,6 @@ start() {
 		return 0
 	fi
 	rm -f "$PIDFILE"
-	# /etc/inputplumber -> /run/inputplumber. The swapped map, if selected,
-	# must be in place before the daemon opens the built-in pad.
-	if [ -z "${ZLYME_AB_MAP_SKIP:-}" ] && [ -x /usr/sbin/zlyme-ab-map ]; then
-		/usr/sbin/zlyme-ab-map sync || true
-	fi
 	printf 'Starting inputplumber: '
 	mkdir -p /run
 	if start-stop-daemon -S -q -b -m -p "$PIDFILE" --exec "$DAEMON" \
