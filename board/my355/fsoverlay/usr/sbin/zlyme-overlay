@@ -1,0 +1,68 @@
+#!/bin/sh
+# Content-directory overlay assignments.
+# One absolute directory maps to one overlay cfg. A same-named folder
+# on another card is a different key.
+#
+# ZLYME_OVERLAY_DB is a test seam.
+
+DB=${ZLYME_OVERLAY_DB:-/storage/.config/zlyme/content-overlays.tsv}
+
+ancestor_hit() {
+	rom=$1
+	dir=$(dirname "$rom")
+	while [ -n "$dir" ] && [ "$dir" != / ]; do
+		hit=$(awk -F '\t' -v d="$dir" '$1 == d { print $2; exit }' "$DB" 2>/dev/null)
+		if [ -n "$hit" ]; then
+			printf '%s\n' "$hit"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
+assign() {
+	content=$1
+	cfg=$2
+	[ -n "$content" ] && [ -n "$cfg" ] || return 1
+	mkdir -p "$(dirname "$DB")" "$(dirname "$cfg")" || return 1
+	tmp=$(mktemp) || return 1
+	if [ -f "$DB" ]; then
+		awk -F '\t' -v d="$content" '$1 != d { print }' "$DB" > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	printf '%s\t%s\n' "$content" "$cfg" >> "$tmp"
+	mv -f "$tmp" "$DB"
+}
+
+# Rewrite only the overlay keys Zlyme owns. Other lines stay.
+write_cfg() {
+	cfg=$1
+	asset=$2
+	[ -n "$cfg" ] && [ -n "$asset" ] || return 1
+	mkdir -p "$(dirname "$cfg")" || return 1
+	tmp=$(mktemp) || return 1
+	if [ -f "$cfg" ]; then
+		grep -Ev '^[[:space:]]*input_overlay(_enable)?[[:space:]]*=' "$cfg" > "$tmp" || true
+	else
+		: > "$tmp"
+	fi
+	{
+		printf 'input_overlay_enable = "true"\n'
+		printf 'input_overlay = "%s"\n' "$asset"
+		cat "$tmp"
+	} > "${tmp}.out"
+	mv -f "${tmp}.out" "$cfg"
+	rm -f "$tmp"
+}
+
+case "${1:-}" in
+	assign) assign "$2" "$3" ;;
+	for-rom) ancestor_hit "$2" ;;
+	write-cfg) write_cfg "$2" "$3" ;;
+	*)
+		echo "usage: $0 {assign DIR CFG|for-rom ROM|write-cfg CFG ASSET}" >&2
+		exit 2
+		;;
+esac

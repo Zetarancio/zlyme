@@ -252,6 +252,15 @@ done
 [ -s "$MINUI_RA" ] && APPEND="$APPEND|$MINUI_RA"
 APPEND="$APPEND|$RA_AC"
 [ -s "${RA_SAVES:-}" ] && APPEND="$APPEND|$RA_SAVES"
+# Content-directory overlay. The map is keyed by the absolute folder,
+# so the same system name on another card is a different entry.
+if [ -n "${_ra_rom:-}" ] && [ -x /usr/sbin/zlyme-overlay ]; then
+	_ov=$(/usr/sbin/zlyme-overlay for-rom "$_ra_rom" 2>/dev/null || true)
+	if [ -n "$_ov" ] && [ -f "$_ov" ]; then
+		APPEND="$APPEND|$_ov"
+	fi
+	unset _ov
+fi
 THEME=/usr/share/retroarch/rgui-theme.cfg
 [ -s "$THEME" ] || THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
 [ -s "$THEME" ] && APPEND="$APPEND|$THEME"

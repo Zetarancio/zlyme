@@ -372,11 +372,8 @@ download_repo_file() {
   return 0
 }
 
-# Newer NextUI builds (v6.7+) look for /Overlays/<RES>/<CORE>/*.png so they
-# can ship overlays per resolution. Older builds look for /Overlays/<CORE>/.
-# We don't know which is in use, and the right answer differs by core (e.g.
-# GBC may already work in the legacy path while GBA needs the new one), so
-# we just install to both locations. install_one_dir handles a single target.
+# Assets live on the library that owns the content directory.
+# ra-run applies the cfg recorded for that absolute directory.
 install_one_dir() {
   dest_dir="$1"
   src_repo_path="$2"
@@ -518,23 +515,73 @@ install_overlay() {
 
   tags=$(expand_system_to_tags "$system")
   echo "INSTALL  system=$system tags='$tags' res=$res"
-
-  ok=0
-  installed_human=""
-  for tag in $tags; do
-    if install_one_dir "$OVERLAYS_ROOT/$tag" "$repo_path" "$cfg_repo_path" "$unique_stem" "$ext"; then
-      ok=$((ok+1))
-      installed_human="${installed_human}/Overlays/$tag/\n"
-    fi
-    if install_one_dir "$OVERLAYS_ROOT/$res/$tag" "$repo_path" "$cfg_repo_path" "$unique_stem" "$ext"; then
-      ok=$((ok+1))
-      installed_human="${installed_human}/Overlays/$res/$tag/\n"
-    fi
-  done
-
-  [ "$ok" -gt 0 ] || return 1
-  INSTALL_DEST_HUMAN="$installed_human"
+  content=${CONTENT_DIR:-}
+  [ -n "$content" ] || return 1
+  case "$content" in
+    /mnt/sd2|/mnt/sd2/*) library=/mnt/sd2 ;;
+    /mnt/media/*/*) library=$(printf '%s\n' "$content" | awk -F/ '{ print "/" $2 "/" $3 "/" $4 }') ;;
+    *) library=/storage ;;
+  esac
+  tag=$(printf '%s\n' "$tags" | awk '{ print $1 }')
+  [ -n "$tag" ] || tag=$system
+  dest="$library/Overlays/$tag"
+  install_one_dir "$dest" "$repo_path" "$cfg_repo_path" "$unique_stem" "$ext" || return 1
+  cfg="$library/.zlyme/overlays/$(printf '%s' "$content" | tr '/ ' '__').cfg"
+  asset="$dest/${unique_stem}.cfg"
+  if [ -x /usr/sbin/zlyme-overlay ]; then
+    /usr/sbin/zlyme-overlay write-cfg "$cfg" "$asset" || return 1
+    /usr/sbin/zlyme-overlay assign "$content" "$cfg" || return 1
+  fi
+  INSTALL_DEST_HUMAN="$content"
   return 0
+}
+
+list_content_dirs() {
+  tags=$1
+  libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+  if [ ! -f "$libs" ]; then
+    libs=/dev/null
+    printf '%s\n' /storage
+  fi
+  {
+    [ -f "$libs" ] && cat "$libs"
+    [ -f "$libs" ] || true
+  } | while IFS= read -r root; do
+    [ -n "$root" ] || continue
+    for tag in $tags; do
+      for base in "$root/Roms" "$root/roms"; do
+        [ -d "$base" ] || continue
+        for d in "$base/"*"(${tag})"; do
+          [ -d "$d" ] || continue
+          printf '%s\n' "$d"
+        done
+      done
+    done
+  done | awk 'NF && !seen[$0]++'
+}
+
+pick_content_dir() {
+  tags=$1
+  dirs=$WORK_DIR/content-dirs.txt
+  list_content_dirs "$tags" > "$dirs"
+  if [ ! -s "$dirs" ]; then
+    show_message "No ROM folder for this system" 3
+    CONTENT_DIR=
+    return 1
+  fi
+  n=$(wc -l < "$dirs" | tr -d ' ')
+  if [ "$n" = 1 ]; then
+    CONTENT_DIR=$(cat "$dirs")
+    return 0
+  fi
+  show_list "Which game folder" "$dirs" "USE" "BACK"
+  rc=$?
+  classify_helper_rc "$rc"
+  case "$HELPER_ACTION" in
+    abort|back) CONTENT_DIR=; return 1 ;;
+  esac
+  CONTENT_DIR=$(cat "$LIST_OUT_FILE")
+  [ -n "$CONTENT_DIR" ]
 }
 
 # ---------------------------------------------------------------------------
@@ -587,6 +634,10 @@ browse_overlays_for_system() {
     case "$HELPER_ACTION" in
       abort) exit "$prev_rc" ;;
       ok)
+        tags=$(expand_system_to_tags "$sys")
+        if ! pick_content_dir "$tags"; then
+          continue
+        fi
         if install_overlay "$chosen_path"; then
           show_message "Installed to:\n${INSTALL_DEST_HUMAN}" 4
         else
