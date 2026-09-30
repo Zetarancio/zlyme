@@ -2,9 +2,58 @@
 
 Research only. Nothing here was implemented. Dispositions say what Phase 9 should do after Phase 8 owns the NextUI source.
 
-Date: 2026-09-30. Tree: `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`.
+Date: 2026-09-30. The original notes were taken at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed, before any Phase 9 code.
 
 Evidence labels match `docs/research/frontend-source-phase8.md`.
+
+## Emulator speed and governor policy
+
+This is the first Phase 9 investigation. It is not a request to copy Spruce sysfs values or to bump gpSP because a newer commit exists. Nothing here is implemented.
+
+### Current Zlyme policy
+
+`zlyme-governor` in `package/system/nextui/zlyme/governor.sh`:
+
+| Mode | Cores | CPU governor | CPU range | DMC |
+| --- | --- | --- | --- | --- |
+| `smart` | 2 | schedutil | 408–1800 MHz | powersave, fixed 324 MHz |
+| `play` | 4 | schedutil | 408–1800 MHz | simple_ondemand, 528–1056 MHz |
+| `heavy` | 4 | schedutil | 1104–1800 MHz | simple_ondemand, 528–1056 MHz |
+
+`emu <tag>` calls `is_heavy`. PSP, NDS, DC, N64, Saturn, PS2, GC, and Wii, plus a few core-name fragments, select heavy. Everything else, including GBA, selects play. `ZLYME_GOVERNOR` is read before the launch argument, so MENU+Y wins. Keep that.
+
+### SpruceOS reference, not a patch
+
+SpruceOS `2b7bc4a79359de14ea4d4f00da9801a937e2846d` runs Miyoo Flip Smart on CPU cores 0 and 1, governor `ondemand`, CPU max 1800000, and a per-emulator minimum. DMC Smart is powersave at 324 MHz. GBA uses gpSP with Smart and `scaling_min_freq` 816000. Other recorded floors include GB 240000, GBC and FC 312000, MD 648000, SFC and PICO-8 816000, and PS, PSP, N64, DC, and Saturn 1008000. PORTS is 648000. Those numbers are BSP policy. Zlyme's mainline CPU OPPs are 408, 600, 816, 1104, 1416, 1608, 1800, and 1992 MHz. Reproduce the idea of a per-system floor on those OPPs. Do not write the Spruce frequencies into sysfs.
+
+### gpSP is a separate variable
+
+Zlyme pins libretro-gpsp at `4caf7a167d159866479ea94d6b2d13c26ceb3e72` (February 2024). The ROCKNIX pin under comparison is `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`. That newer history changes the default sound output rate from 65536 to 32768 because 65536 slowed some low-end platforms, and it contains later ARM64/dynarec fixes. `board/my355/fsoverlay/usr/share/zlyme/retroarch/config/gpSP/gpSP.opt` sets `gpsp_drc = enabled` and `gpsp_frameskip = disabled`. It does not set the output rate.
+
+Before either change, compare at least:
+
+```text
+old gpSP + current Zlyme governor
+newer gpSP + current Zlyme governor
+old gpSP + candidate policy
+newer gpSP + candidate policy
+```
+
+Inspect the intervening gpSP commits, the ROCKNIX and KNULLI recipes, build flags, and the license before taking a newer pin. A newer pin is not a reason by itself.
+
+RetroArch on Zlyme already has `video_threaded = true`, `video_vsync = true`, `video_hard_sync = false`, `video_frame_delay = 0`, `video_max_swapchain_images = 3`, `audio_latency = 64`, and `run_ahead_enabled = false`. Older NextUI notes about gpSP pacing without threaded video do not describe this tree.
+
+### If the policy is wrong
+
+Keep one owner: `zlyme-governor emu <tag>`. A small per-system table may replace the play/heavy split. Do not spread CPU policy through PAK launch scripts. Do not build a governor framework. `ZLYME_GOVERNOR` remains the user override.
+
+### What "tested" means
+
+Every shipped emulator gets a static check of the policy it is supposed to receive. Representative classes get a sysfs check of online CPUs, governor, min, max, and DMC/GPU policy. Physical checks are GBA, one light system, and one heavy system, then a return to NextUI. The maintainer is not asked to play every system. Passing means GBA is full speed and stable on this mainline kernel, and the other classes follow a coherent policy. Matching Spruce's menu text is not the result.
+
+## README release gate
+
+Ride-along README edits stay. They do not replace a final pass against the last non-prerelease GitHub release: `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. `zlyme43 (2026-09-28)` is a prerelease and is not that baseline. The pass checks emulators, Tools/PAKs, Settings, and install/update instructions against the final image and source. Deferred work stays undescribed. The joystick section should keep calibration, deadzone, the stick test, rumble, and that built-in controls work in games. Driver, UART, and InputPlumber detail stays out of the README. The sentence that core pinning and per-emulator settings are Spruce's battle-tested policy has to be removed or rewritten, because Zlyme does not currently apply Spruce's per-system Smart floors.
 
 ## Dropped from the roadmap
 
@@ -141,7 +190,7 @@ Future: evaluate Pak Store after the core Zlyme product and first stable release
 | --- | --- | --- |
 | Weston test PAK | KEEP | `paks/Tools/Weston.pak` is still installed. Drop it from the production image if it is only a developer probe. Keep the developer tool. |
 | CI log volume | KEEP | Short log on the Actions console, full log as an artifact, so the job is not truncated. |
-| README | INVARIANT | Per shipped feature, not a final dump. |
+| README | INVARIANT, plus a final gate | Per shipped feature, and one reconciliation against non-prerelease `zlyme40 (2026-09-23)` before the version bump. See the README release gate above. |
 | Community / Contributing | KEEP | Invite other RK3566 ports and point at Discord. |
 | Dead file audit | KEEP, last | After features stop moving. Grep-clean is not proof. |
 

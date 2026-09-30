@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — Phase 9 is planned, not started
+
+`main` is the Phase 8 closure. `phase-9-product` adds the governor and gpSP investigation, the `zlyme40 (2026-09-23)` README gate, and a Phase 10 maintenance outline. No governor code, gpSP pin, or README product text changed. Phase 10 has no branch.
+
 ## 2026-09-30 — Phase 8 closed
 
 Phase 8 is complete. Hardware equivalence belongs to runtime `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8` and OTA `zlyme-my355-20260930-7a0fc397cb5b.tar` (SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`). Commit `b7c5a19` excludes build-only branding from the target. That exclusion was build-verified and was not flashed as a second OTA. The final Phase 8 HEAD is not claimed as a hardware-tested image. Other-platform NextUI source stays in the fork.
