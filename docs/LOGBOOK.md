@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-09-30 — NextUI is fetched from the Zlyme fork
+
+`Zetarancio/NextUI` branch `zlyme` is `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`. Its tree matches the earlier local reconstruction `b56771b1fad1a85620ed47685c6c4be379276157` (tree `912da6253ab156a57a1d6c420a98397670f18f34`). That older commit could not be pushed: the first local clone was missing ancestor blobs. The published history is the same twelve Zlyme commits replayed on a complete LoveRetro history rooted at `ae652648548edf6ab24cbb816cf4e4194e609fb3`. `nextui.mk` fetches that commit. `ZLYME_VERSION` stays `zlyme43`. The vendored `package/system/nextui/src` tree is gone. A targeted `nextui-dirclean nextui` build matched those sources and installed `nextui.elf`, `settings.elf`, and `libmsettings.so`. `/usr/share/nextui/version.txt` is the fork commit. `/usr/share/zlyme/version` is `zlyme43 (2026-09-30)`. MinUI helper vendoring has not started.
+
 ## 2026-09-30 — Phase 8A2 primary storage unmount accepted
 
 A normal NextUI reboot of `zlyme-my355-20260930-632202865c71.tar` left `/boot/.zlyme-storage-unmounted-test` and did not leave `/boot/.zlyme-storage-unmount-failed`. That file is written only after `umount /storage` returns 0. The new boot mounted `/storage` read-write again, kept `/boot` and `loop0` read-only, and brought NextUI and Wi-Fi back. Uptime at the check was 55 seconds. `dmesg` still has the inherited exFAT dirty warning at 3.09 seconds. No new I/O error. The historical dirty flag is not repaired. The boot markers are removed from `zlyme-halt` after this result. Cold-boot `nextui-first-flip` on this image was 9.95 seconds. Frontend migration has not started.

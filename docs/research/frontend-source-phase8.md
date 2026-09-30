@@ -291,3 +291,9 @@ Measured on that same accepted boot, `/tmp/boot-timing` (also copied to `/storag
 | `inputplumber-start` | 11.25 |
 
 `/usr/share/zlyme/version` is `zlyme43 (2026-09-30)`. `nextui.elf` was built from `nextui-ae652648548edf6ab24cbb816cf4e4194e609fb3-zlyme43`. No navigation beyond this boot path was driven over SSH. No optimization was done.
+
+## Fetch migration
+
+The local reconstruction commit `b56771b1fad1a85620ed47685c6c4be379276157` could not be pushed. Its clone was missing ancestor blobs. The same tree, `912da6253ab156a57a1d6c420a98397670f18f34`, was replayed onto a complete LoveRetro history and published as `Zetarancio/NextUI` branch `zlyme` at `40cc8a64c7fe4e22e9fd746a49b11d083d4f1f59`. That commit is still rooted at `ae652648548edf6ab24cbb816cf4e4194e609fb3`. It does not include the two newer LoveRetro commits. Quick Menu order is unchanged.
+
+`NEXTUI_VERSION` is that fork commit. `ZLYME_VERSION` is `zlyme43` and is what `/usr/share/zlyme/version`, os-release, and the Actions release title use. `/usr/share/nextui/version.txt` is the fork commit. The duplicate `package/system/nextui/src` tree was removed after a `nextui-dirclean nextui` build whose fetched sources matched the vendored delta and whose image install did not include other device trees. `zlyme-keylidmon` still compiles the staged `msettings.h` from the nextui package. MinUI helper vendoring has not started.
