@@ -29,7 +29,21 @@ SpruceOS `2b7bc4a79359de14ea4d4f00da9801a937e2846d` is the source of `scaling_mi
 
 Zlyme keeps schedutil, the existing core counts, and the existing in-game DMC and GPU behavior. The Spruce number is the requested minimum. The runtime floor is the lowest frequency in `scaling_available_frequencies` that is greater than or equal to that request. Exact matches stay. 240000 and 312000 become 408000. 648000 becomes 816000. 1008000 becomes 1104000. Never round down. If the sysfs list is missing, use that same mapping on the known my355 OPPs: 408000, 600000, 816000, 1104000, 1416000, 1608000, 1800000, 1992000.
 
-`zlyme-governor emu <tag>` owns the table. A launcher passes the tag. It does not call `play` or `heavy` for an emulator. `ZLYME_GOVERNOR`, set from MENU+Y, still selects smart, performance, overclock, or the other explicit modes and is not replaced by the Spruce floor. A shipped system with no Spruce equivalent keeps today's Zlyme profile and is named in the table. PS2, GameCube, Wii, and Wine are the expected cases until the Spruce tree says otherwise.
+`zlyme-governor emu <tag>` owns the table. A launcher passes the tag. It does not call `play` or `heavy` for an emulator. `ZLYME_GOVERNOR`, set from MENU+Y, still selects smart, performance, overclock, or the other explicit modes and is not replaced by the Spruce floor.
+
+Applied from SpruceOS `2b7bc4a` `Emu/*/config.json`. Effective floors use the my355 OPP list.
+
+| Zlyme tag | Spruce system | Spruce floor | Zlyme floor |
+| --- | --- | ---: | ---: |
+| GB | GB | 240000 | 408000 |
+| GBC, FC, A5200 | GBC, FC, FIFTYTWOHUNDRED | 312000 | 408000 |
+| MS, GG, PCE, NGP, A26, SG1000, VEC, PKM, MSX | MS, GG, PCE, NGP, ATARI, SEGASGONE, VECTREX, POKE, MSX | 408000 | 408000 |
+| COLECO, INTV, LYNX, O2, ST, A78, A800, DOOM, EASYRPG, P8 | COLECO, INTELLIVISION, LYNX, ODYSSEY, ATARIST, SEVENTYEIGHTHUNDRED, EIGHTHUNDRED, DOOM, EASYRPG, FAKE08 | 480000 | 600000 |
+| MD, WS, MKXPZ, PORTS | MD, WS, MKXP-Z, PORTS | 648000 | 816000 |
+| GBA, SFC, VB, DOS, PICO, NDS, SCUMMVM, FBNEO, MAME, AMIGA, 32X, SGX, TIC | GBA, SFC, VB, DOS, PICO8, NDS, SCUMMVM, FBNEO, ARCADE, AMIGA, THIRTYTWOX, SGFX, TIC | 816000 | 816000 |
+| PS, PSP, N64, DC, SATURN, OPENBOR, NEOCD | same names | 1008000 | 1104000 |
+| PS2, GC, WII | none |  | heavy, minimum 1104000 |
+| WINE, 3DO, DAPHNE | none |  | play, minimum 408000 |
 
 ### What "tested" means
 

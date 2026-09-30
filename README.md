@@ -14,7 +14,7 @@ Kernel, boot, and flashing detail lives in the [Miyoo Flip wiki](https://github.
 
 ## Features
 
-Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few libretro cores that miscompile are pinned back to `-O2` so they stay correct. The kernel stays on its usual performance profile. It offers both mali and panfrost (only mali supports Vulkan as of now). Optimized core pinning and per-emulator performance settings battle-tested by the friends at [SpruceOS](https://spruceui.github.io/).  
+Userspace is compiled at the fastest setting this CPU will take (`-O3`). A few libretro cores that miscompile are pinned back to `-O2` so they stay correct. The kernel stays on its usual performance profile. It offers both mali and panfrost (only mali supports Vulkan as of now). Per-system CPU frequency floors are adapted from [SpruceOS](https://spruceui.github.io/) Miyoo Flip tuning onto Zlyme's mainline frequency table. The governor, core count, and memory clocks stay Zlyme's.
 
 “It’s not buttery smooth. It’s slime-smooth.”
 

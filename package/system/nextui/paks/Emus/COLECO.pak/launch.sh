@@ -11,5 +11,5 @@ if [ -f "$BIOS_PATH/coleco.rom" ] && [ ! -e "$BIOS_PATH/colecovision.rom" ]; the
 fi
 HOME="$USERDATA_PATH"
 cd "$HOME"
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 exec ra-run -L "$CORES_PATH/${EMU_EXE}_libretro.so" "$ROM"

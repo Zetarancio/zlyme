@@ -12,10 +12,14 @@
 #   idle         lid: 2 cores, conservative 408-1104, DMC 324
 #   auto         smart
 #   powersave    idle
-#   emu <tag>    play, or heavy if the core/pak is heavy
+#   emu <tag>    Spruce per-system CPU floor on the play profile.
+#                No Spruce row: PS2/GC/Wii stay heavy; others stay play.
 #
 # CPU never uses ondemand. GPU/DMC stay simple_ondemand in-game.
 # GPU sysfs is /sys/class/devfreq/*.gpu (panfrost or mali). DMC is not the GPU.
+# Spruce scaling_min_freq is the requested minimum. The applied minimum is
+# the lowest mainline OPP that is not below that request. ZLYME_GOVERNOR
+# still replaces the whole mode, including emu.
 
 boost_on() {
 	val=""
@@ -123,14 +127,82 @@ profile_smart() {
 	set_gpu simple_ondemand
 }
 
-# In-game, including GB and Ports. 4 cores + DMC headroom for combo USB / A2DP.
+# In-game. 4 cores + DMC headroom for combo USB / A2DP.
+# $1 is the CPU minimum. Default 408000 is the old generic play floor.
 profile_play() {
+	min=${1:-408000}
+	max=1800000
+	if [ "$min" -gt "$max" ]; then
+		min=$max
+	fi
 	set_boost 0
 	online_all
-	set_cpu_minmax 408000 1800000
+	set_cpu_minmax "$min" "$max"
 	set_cpu_gov schedutil
 	set_dmc simple_ondemand 528000000 1056000000
 	set_gpu simple_ondemand
+}
+
+# Known my355 OPPs. Used when sysfs does not list frequencies.
+zlyme_known_freqs() {
+	printf '%s\n' 408000 600000 816000 1104000 1416000 1608000 1800000 1992000
+}
+
+cpu_freq_list() {
+	if [ -n "${ZLYME_CPU_FREQS:-}" ]; then
+		printf '%s\n' $ZLYME_CPU_FREQS
+		return 0
+	fi
+	avail=/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies
+	if [ -r "$avail" ]; then
+		tr ' ' '\n' < "$avail"
+		return 0
+	fi
+	zlyme_known_freqs
+}
+
+# Lowest listed frequency that is >= the Spruce request. Never rounds down.
+resolve_floor() {
+	req=$1
+	best=
+	for f in $(cpu_freq_list); do
+		[ "$f" -ge "$req" ] 2>/dev/null || continue
+		if [ -z "$best" ] || [ "$f" -lt "$best" ]; then
+			best=$f
+		fi
+	done
+	if [ -n "$best" ]; then
+		printf '%s\n' "$best"
+		return 0
+	fi
+	printf '%s\n' 1992000
+}
+
+# SpruceOS 2b7bc4a Emu/*/config.json scaling_min_freq, keyed by Zlyme tag.
+# Names that differ: A26=ATARI, A5200=FIFTYTWOHUNDRED, A78=SEVENTYEIGHTHUNDRED,
+# A800=EIGHTHUNDRED, INTV=INTELLIVISION, O2=ODYSSEY, P8=FAKE08, PICO=PICO8,
+# PKM=POKE, SG1000=SEGASGONE, SGX=SGFX, ST=ATARIST, 32X=THIRTYTWOX, MAME=ARCADE.
+spruce_floor() {
+	tag=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+	case "$tag" in
+		gb) printf '%s\n' 240000 ;;
+		gbc|fc|a5200) printf '%s\n' 312000 ;;
+		ms|gg|pce|ngp|a26|sg1000|vec|pkm|msx) printf '%s\n' 408000 ;;
+		coleco|intv|lynx|o2|st|a78|a800|doom|easyrpg|p8) printf '%s\n' 480000 ;;
+		md|ws|mkxpz|ports) printf '%s\n' 648000 ;;
+		gba|sfc|vb|dos|pico|nds|scummvm|fbneo|mame|amiga|32x|sgx|tic) printf '%s\n' 816000 ;;
+		ps|psp|n64|dc|saturn|openbor|neocd) printf '%s\n' 1008000 ;;
+		*) return 1 ;;
+	esac
+}
+
+# Systems Spruce does not ship. Keep the previous Zlyme class.
+legacy_game_profile() {
+	tag=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+	case "$tag" in
+		ps2|gc|wii|gamecube) printf '%s\n' heavy ;;
+		*) printf '%s\n' play ;;
+	esac
 }
 
 profile_idle() {
@@ -162,19 +234,20 @@ profile_overclock() {
 	set_gpu simple_ondemand
 }
 
-is_heavy() {
-	tag=$(printf '%s' "$*" | tr 'A-Z' 'a-z')
-	case "$tag" in
-		psp|nds|dc|n64|saturn|ps2|gc|wii|gamecube)
-			return 0
-			;;
-		*ppsspp*|*flycast*|*dreamcast*|*drastic*|*melonds*|\
-		*mupen*|*yaba*|*aether*|*dolphin*|*n64*)
-			return 0
-			;;
-	esac
-	return 1
-}
+if [ "${1:-}" = "--resolve-floor" ]; then
+	resolve_floor "${2:?floor}"
+	exit 0
+fi
+if [ "${1:-}" = "--policy" ]; then
+	tag=$(printf '%s' "${2:?tag}" | tr 'A-Z' 'a-z')
+	if spruce=$(spruce_floor "$tag"); then
+		printf 'spruce=%s effective=%s profile=spruce\n' \
+			"$spruce" "$(resolve_floor "$spruce")"
+	else
+		printf 'spruce= effective= profile=%s\n' "$(legacy_game_profile "$tag")"
+	fi
+	exit 0
+fi
 
 mode=${ZLYME_GOVERNOR:-${1:-smart}}
 case "$mode" in
@@ -182,16 +255,15 @@ case "$mode" in
 	powersave) mode=idle ;;
 	emu)
 		shift
-		if is_heavy "$@"; then
-			if boost_on; then
-				mode=overclock
-			else
-				mode=heavy
-			fi
-		else
-			mode=play
+		tag=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
+		if spruce=$(spruce_floor "$tag"); then
+			profile_play "$(resolve_floor "$spruce")"
+			exit 0
 		fi
+		mode=$(legacy_game_profile "$tag")
 		;;
+esac
+case "$mode" in
 	performance|heavy)
 		if boost_on; then
 			mode=overclock

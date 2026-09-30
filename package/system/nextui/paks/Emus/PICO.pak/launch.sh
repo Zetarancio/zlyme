@@ -42,7 +42,7 @@ seed_splore() {
 }
 
 seed_splore
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 # pico8 wrapper sets -home. Do not point HOME at the parent userdata dir.
 export HOME="${SHARED_USERDATA_PATH}/Pico-8-native"
 mkdir -p "$HOME/carts" "$HOME/cdata" "$HOME/bbs" "$HOME/config" "$HOME/data"

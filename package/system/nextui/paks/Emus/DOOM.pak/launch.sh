@@ -9,7 +9,7 @@ mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 shared="${SHARED_USERDATA_PATH:-/storage/.config/nextui/shared}"
 mkdir -p "$shared/configs/gzdoom" "$SAVES_PATH/DOOM" "$shared/cache/gzdoom" \
 	/mnt/SDCARD/.userdata/shared/configs/gzdoom
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 HOME="$USERDATA_PATH"
 cd "$HOME"
 case "$ROM" in
