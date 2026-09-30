@@ -11,7 +11,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = 556a64ad95fb6d59e21b125cbbbcc46ea5897d91
+NEXTUI_VERSION = 3444209c44fdf01f7cedaa89abdbd2b8ce012605
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -188,6 +188,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-governor
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/emu-alts.txt \
 		$(TARGET_DIR)/usr/share/nextui/emu-alts.txt
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/emu-defaults.txt \
+		$(TARGET_DIR)/usr/share/nextui/emu-defaults.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/zlyme-library.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \

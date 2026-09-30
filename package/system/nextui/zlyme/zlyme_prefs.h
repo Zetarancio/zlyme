@@ -10,5 +10,7 @@ void prefsGetExact(const char *kind, const char *tag, const char *rel, char *gov
 void prefsSet(const char *kind, const char *tag, const char *rel, const char *gov, const char *emu);
 void prefsClear(const char *kind, const char *tag, const char *rel);
 int prefsAlts(const char *tag, char alts[][32], int max);
+/* Default launcher id for TAG. 0 when the metadata has no row. */
+int prefsDefault(const char *tag, char *id, size_t n);
 
 #endif

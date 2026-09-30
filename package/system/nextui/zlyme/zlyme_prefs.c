@@ -14,6 +14,7 @@
 #define PREFS_MAX 256
 #define PREFS_FILE SHARED_USERDATA_PATH "/zlyme-prefs.txt"
 #define ALTS_FILE SYSTEM_PATH "/emu-alts.txt"
+#define DEFAULTS_FILE SYSTEM_PATH "/emu-defaults.txt"
 
 typedef struct {
 	char kind[8];
@@ -292,4 +293,35 @@ int prefsAlts(const char *tag, char alts[][32], int max)
 	}
 	fclose(f);
 	return n;
+}
+
+int prefsDefault(const char *tag, char *id, size_t n)
+{
+	FILE *f;
+	char line[256];
+
+	if (!tag || !id || n < 2)
+		return 0;
+	id[0] = '\0';
+	f = fopen(DEFAULTS_FILE, "r");
+	if (!f)
+		return 0;
+	while (fgets(line, sizeof(line), f)) {
+		char *p, *tok, *val;
+		trim_field(line);
+		if (!line[0] || line[0] == '#')
+			continue;
+		p = line;
+		tok = strsep(&p, " \t");
+		if (!tok || strcasecmp(tok, tag) != 0)
+			continue;
+		while (p && (*p == ' ' || *p == '\t'))
+			p++;
+		val = strsep(&p, " \t");
+		if (val && val[0])
+			snprintf(id, n, "%s", val);
+		break;
+	}
+	fclose(f);
+	return id[0] ? 1 : 0;
 }
