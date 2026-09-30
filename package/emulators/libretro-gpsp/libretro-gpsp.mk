@@ -4,8 +4,10 @@
 #
 # libretro-gpsp
 ################################################################################
-# Version: Commits on Feb 10, 2024
-LIBRETRO_GPSP_VERSION = 4caf7a167d159866479ea94d6b2d13c26ceb3e72
+# ROCKNIX next a55d58a1 carries this revision (2026-08-25).
+# Newer than KNULLI knulli-main d6decfa3. Not libretro/gpSP HEAD.
+# Default sound output rate at this pin is 32768. gpSP.opt does not override it.
+LIBRETRO_GPSP_VERSION = 8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f
 LIBRETRO_GPSP_SITE = $(call github,libretro,gpsp,$(LIBRETRO_GPSP_VERSION))
 LIBRETRO_GPSP_LICENSE = GPLv2
 LIBRETRO_GPSP_DEPENDENCIES += retroarch
