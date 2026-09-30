@@ -6,8 +6,8 @@
 # shows as SQUASHFS read errors and a machine that never actually goes
 # down.
 #
-# nextui-session does `cd /storage` and then execs this script, with
-# stdout/stderr pointed at the session log on that volume. Both holds
+# nextui-session does `cd /storage` and then execs this script. When
+# system logs are on, stdout/stderr are under /storage/.logs. Both holds
 # have to be dropped before umount. A lazy umount of /storage does not
 # finish exFAT teardown before power is cut, so it is not used here.
 
@@ -18,9 +18,10 @@ if ! exec >/dev/console 2>&1 </dev/null; then
 	exec >/dev/null 2>&1 </dev/null
 fi
 
-# S28 starts the session with stdout/stderr on the card log. BusyBox
+# S28 may start the session with stdout/stderr on the card log. BusyBox
 # ash keeps extra copies of that open file above fd 2, and exec of
-# this script inherits them. POSIX redirection needs a literal fd
+# this script inherits them. A /tmp session log needs no storage close.
+# POSIX redirection needs a literal fd
 # number, so closing the copy requires eval. n is checked to be
 # digits only. A helper just to avoid that would not change ownership.
 for fd in /proc/self/fd/*; do

@@ -25,11 +25,20 @@ start() {
 	fi
 	printf "Starting NextUI: "
 	mkdir -p /storage/.config/zlyme /tmp
-	# /tmp vanishes when the card is pulled; keep a copy on ZLYME.
+	# Logs off: the wrapper output stays in tmpfs. Logs on: one file in
+	# the current boot generation. Do not append the legacy card log.
+	_session_log=/tmp/nextui-session.log
+	if [ -x /usr/sbin/zlyme-ctl ] && zlyme-ctl want logs && [ -x /usr/sbin/zlyme-logs ]; then
+		/usr/sbin/zlyme-logs start
+		_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=
+		if [ -n "$_cur" ]; then
+			_session_log=$_cur/session.txt
+		fi
+	fi
 	if [ -x /usr/sbin/nextui-session ]; then
-		nextui-session >> /storage/.config/zlyme/nextui-session.log 2>&1 &
+		nextui-session >> "$_session_log" 2>&1 &
 	else
-		minui-session >> /storage/.config/zlyme/nextui-session.log 2>&1 &
+		minui-session >> "$_session_log" 2>&1 &
 	fi
 	echo "OK"
 }

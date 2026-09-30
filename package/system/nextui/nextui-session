@@ -20,14 +20,21 @@ export CORES_PATH=/usr/lib/libretro
 export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
 export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
 export LOGS_PATH=$USERDATA_PATH/logs
-SESSION_LOG=$LOGS_PATH/next.txt
+# Diagnostic logging off: routine session lines stay in tmpfs.
+LOGS_ON=0
+SESSION_LOG=/tmp/nextui-session.txt
 _logs=
 [ -r /storage/.config/zlyme/logs ] && _logs=$(tr -d ' \t\r\n' < /storage/.config/zlyme/logs)
 case "$_logs" in
 	on|1|yes)
-		mkdir -p /storage/.logs
-		[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
-		SESSION_LOG=/storage/.logs/next.txt
+		LOGS_ON=1
+		if [ -x /usr/sbin/zlyme-logs ]; then
+			/usr/sbin/zlyme-logs start
+			_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=
+			if [ -n "$_cur" ]; then
+				SESSION_LOG=$_cur/next.txt
+			fi
+		fi
 		;;
 esac
 export HOOKS_PATH=$USERDATA_PATH/.hooks
@@ -368,7 +375,7 @@ run_pak_cmd() {
 			pak_env='[ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh; '
 			;;
 	esac
-	if [ "$SESSION_LOG" = /storage/.logs/next.txt ]; then
+	if [ "$LOGS_ON" = 1 ]; then
 		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" &
 	else
 		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" >> "$SESSION_LOG" 2>&1 &
@@ -493,8 +500,11 @@ while [ -f "$EXEC_PATH" ]; do
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
 	nextui.elf >> /tmp/nextui.txt 2>&1
-	if [ "$SESSION_LOG" = /storage/.logs/next.txt ] && [ -f /tmp/nextui.txt ]; then
-		cp -f /tmp/nextui.txt /storage/.logs/nextui.txt 2>/dev/null || true
+	if [ "$LOGS_ON" = 1 ] && [ -f /tmp/nextui.txt ] && [ -x /usr/sbin/zlyme-logs ]; then
+		_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=
+		if [ -n "$_cur" ]; then
+			cp -f /tmp/nextui.txt "$_cur/nextui.txt" 2>/dev/null || true
+		fi
 	fi
 	if [ -f "$NEXT_PATH" ]; then
 		rm -f /tmp/poweroff /tmp/reboot

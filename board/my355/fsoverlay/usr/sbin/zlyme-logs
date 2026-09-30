@@ -1,45 +1,94 @@
 #!/bin/sh
-# One folder for a bug report: /storage/.logs
-# On: About → System logs. Off by default so the card is not filled.
+# Bounded diagnostic history under /storage/.logs.
+# About → System logs. Off by default.
+#
+# system-0 is the newest logged boot. Ordering is rotation, not the clock.
+# /run is cleared on reboot, so the marker allows one rotation per boot
+# even if start runs again after Settings toggles logs.
+#
+# ZLYME_LOG_ROOT and ZLYME_LOG_MARK are test seams. ZLYME_LOG_FORCE=1
+# skips zlyme-ctl. Production leaves them unset.
 
-. /etc/zlyme.conf
+[ -r /etc/zlyme.conf ] && . /etc/zlyme.conf
 
-LOGDIR=/storage/.logs
+SYSTEM_LOG_GENERATIONS=5
+LOGDIR=${ZLYME_LOG_ROOT:-/storage/.logs}
+MARK=${ZLYME_LOG_MARK:-/run/zlyme-logs-generation}
 
 want_logs() {
+	[ "${ZLYME_LOG_FORCE:-}" = 1 ] && return 0
 	[ -x /usr/sbin/zlyme-ctl ] && zlyme-ctl want logs
+}
+
+storage_ready() {
+	[ -n "${ZLYME_LOG_ROOT:-}" ] && return 0
+	[ -d /storage ] || return 1
+	grep -q " /storage " /proc/mounts
+}
+
+write_readme() {
+	printf '%s\n' \
+		'Send this folder if something goes wrong.' \
+		'system-0 is the newest logged boot. system-1 through system-4 are earlier logged boots.' \
+		'paks/TAG.log is the newest run of that pak. paks/TAG.log.1 and paks/TAG.log.2 are the previous runs.' \
+		> "$LOGDIR/README.txt"
+}
+
+refresh_snapshots() {
+	cur=$LOGDIR/system-0
+	mkdir -p "$cur" || return 1
+	# Host tests set ZLYME_LOG_ROOT and do not want the machine's kernel log.
+	if [ -z "${ZLYME_LOG_ROOT:-}" ]; then
+		dmesg > "$cur/dmesg.txt" 2>/dev/null || true
+	fi
+	if [ -f /boot/zlyme-dmesg.txt ]; then
+		cp -f /boot/zlyme-dmesg.txt "$cur/dmesg-boot.txt" 2>/dev/null || true
+	fi
+	if [ -f /tmp/boot-timing ]; then
+		cp -f /tmp/boot-timing "$cur/boot-timing.txt" 2>/dev/null || true
+	fi
+	if [ -f /tmp/nextui.txt ]; then
+		cp -f /tmp/nextui.txt "$cur/nextui.txt" 2>/dev/null || true
+	fi
+}
+
+# Oldest generation is deleted, then each directory moves up one index.
+rotate_system() {
+	last=$((SYSTEM_LOG_GENERATIONS - 1))
+	rm -rf "$LOGDIR/system-$last"
+	i=$last
+	while [ "$i" -gt 0 ]; do
+		prev=$((i - 1))
+		if [ -d "$LOGDIR/system-$prev" ]; then
+			mv "$LOGDIR/system-$prev" "$LOGDIR/system-$i"
+		fi
+		i=$prev
+	done
+	mkdir -p "$LOGDIR/system-0"
 }
 
 start() {
 	want_logs || return 0
-	[ -d /storage ] || return 0
-	grep -q " /storage " /proc/mounts || return 0
+	storage_ready || return 0
 	mkdir -p "$LOGDIR" || return 0
-	if [ ! -f "$LOGDIR/README.txt" ]; then
-		printf '%s\n' \
-			'Send this folder if something goes wrong.' \
-			'next.txt is the session. Each pak writes TAG.log (FC.log, PSP.log, ...).' \
-			'dmesg-boot.txt is the initramfs; dmesg.txt is after the card mounted.' \
-			> "$LOGDIR/README.txt"
+	write_readme || return 0
+	if [ ! -f "$MARK" ]; then
+		rotate_system || return 0
+		mkdir -p "$(dirname "$MARK")" 2>/dev/null || true
+		: > "$MARK" || return 0
 	fi
-	dmesg > "$LOGDIR/dmesg.txt" 2>/dev/null || true
-	if [ -f /boot/zlyme-dmesg.txt ]; then
-		cp -f /boot/zlyme-dmesg.txt "$LOGDIR/dmesg-boot.txt" 2>/dev/null || true
-	fi
-	if [ -f /tmp/boot-timing ]; then
-		cp -f /tmp/boot-timing "$LOGDIR/boot-timing.txt" 2>/dev/null || true
-	fi
-	if [ -f /tmp/nextui.txt ]; then
-		cp -f /tmp/nextui.txt "$LOGDIR/nextui.txt" 2>/dev/null || true
-	fi
-	if [ -x /usr/sbin/zlyme-boot-write ]; then
+	refresh_snapshots || return 0
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -x /usr/sbin/zlyme-boot-write ]; then
 		zlyme-boot-write touch /boot/zlyme-logs || true
 	fi
 	return 0
 }
 
 stop() {
-	if [ -e /boot/zlyme-logs ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+	# Keep the runtime marker. Off then On in the same boot must not
+	# consume another generation. The initramfs flag is the only thing
+	# this turns off.
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -e /boot/zlyme-logs ] && [ -x /usr/sbin/zlyme-boot-write ]; then
 		zlyme-boot-write rm -f /boot/zlyme-logs || true
 	fi
 	return 0
@@ -53,9 +102,16 @@ apply() {
 	fi
 }
 
+current() {
+	[ -f "$MARK" ] || return 1
+	[ -d "$LOGDIR/system-0" ] || return 1
+	printf '%s\n' "$LOGDIR/system-0"
+}
+
 case "${1:-start}" in
 	start) start ;;
 	stop) stop ;;
 	apply) apply ;;
-	*) echo "usage: $0 {start|stop|apply}" >&2; exit 1 ;;
+	current) current ;;
+	*) echo "usage: $0 {start|stop|apply|current}" >&2; exit 1 ;;
 esac
