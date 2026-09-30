@@ -99,7 +99,7 @@ These were checked in source and are not open Phase 9 tasks.
 | Save format / save-state format / extracted file name | COMPLETE | Hidden on my355. Shared NextUI enums, getters, setters, defaults, and `minuisettings.txt` keys stay. See the Game-format conclusion below. |
 | Wi-Fi regulatory domain | COMPLETE | `wireless-regdb` is already shipped. `cfg80211` and `mac80211` stay modules so `regulatory.db` is present when they load. The persistent country is the global `country=` line in `/storage/.config/wpa_supplicant.conf`. No line means World/default `00`. The user chooses an explicit alpha-2; timezone, locale, and location are not used. The pinned RTL8733BU build does not set `CONFIG_REGD_SRC_FROM_OS`. Its cfg80211 notifier passes `NL80211_REGDOM_SET_BY_USER` into `rtw_set_country()`, so `iw reg set` is the existing hint. No driver patch. |
 | Persistent PAK logs | COMPLETE | System logs keep 5 logged-boot generations under `/storage/.logs/system-N`. PAK logs keep 3 launch generations per tag under `/storage/.logs/paks/`. Logs off: the session wrapper and routine session lines use `/tmp`, and normal use does not append a diagnostic file on `/storage`. No logrotate or daemon. New images no longer write `/storage/.config/zlyme/nextui-session.log`. An old copy on a card is left in place. |
-| Timezone vs NTP | COMPLETE | Wall-clock sync stays `S49ntp`: HTTP `Date` sets UTC system time and writes the RTC in UTC. No NTP daemon. Timezone is presentation. `/etc/localtime` is a squashfs symlink to `/storage/.config/nextui/shared/localtime`. `S15` seeds a UTC `TZif` when that file is missing or corrupt and drops a stale zone name. Settings → System → Time zone calls `zlyme-timezone apply`, which stores the zone bytes and `localtime.zone`. A missing name on a UTC file shows UTC, so the old default index is not treated as a choice. The frontend restarts after Settings, so the status clock reads the new file. Zoneinfo comes from `BR2_TARGET_TZ_INFO` with an empty `BR2_TARGET_LOCALTIME`, so the image does not bake `Etc/UTC` over the symlink. The clock does not depend on Wi-Fi, and timezone setup is not on the first-frame path. |
+| Timezone vs NTP | COMPLETE | Wall-clock sync stays `S49ntp`: HTTP `Date` sets UTC system time and writes the RTC in UTC. No NTP daemon. Timezone is presentation. `/etc/localtime` is a squashfs symlink to `/storage/.config/nextui/shared/localtime`. After `/storage` is mounted, `S15` runs `zlyme-timezone ensure` before the background seed returns, so the first `localtime()` is not racing an empty target. A missing or corrupt file becomes UTC. A valid file is kept. Settings → System → Time zone calls `zlyme-timezone apply`, which stores the zone bytes and `localtime.zone`. A missing name on a UTC file shows UTC. Zoneinfo comes from `BR2_TARGET_TZ_INFO` with an empty `BR2_TARGET_LOCALTIME`. The clock does not depend on Wi-Fi, and zoneinfo parsing is not on the first-frame path. |
 | Bluetooth headset icon after radio off | COMPLETE | `PLAT_bluetoothEnable(false)` clears the saved radio flag before the shutdown thread finishes. `PLAT_getNetworkStatus()` already forced the cache false when `BT_enabled()` was false, but only on the next poll. `PLAT_btIsConnected()` now returns `BT_enabled() && bluetoothConnected`, so the status pill cannot keep a cached true in that gap. Pairing, reconnect, and BlueALSA are unchanged. |
 | Doom input | ALREADY CORRECT | GZDoom g4.14.2 Linux input is `src/common/platform/posix/sdl/i_joystick.cpp`. It calls `SDL_JoystickOpen` and polls axes and hats. `+set use_joystick true` enables that path. Default axes are side, forward, none, yaw, pitch, which matches an Xbox pad whose third axis is the left trigger. InputPlumber grabs the physical pad; the remaining node is the virtual `045e:028e` pad. No Zlyme remap was added. |
 | Orphan cleanup UI freeze | COMPLETE | The scan loads each card's ROM stems once and matches saves in one `awk` pass. A 5,000-ROM / 5,500-save host fixture took 18753 ms with a per-file `grep` and 48 ms with the indexed scan, with the same 500 orphans. No UI thread was added. Dry-run remains `zlyme-game-cleanup <action> --dry-run` and still runs before DELETE. |
@@ -161,17 +161,56 @@ ORPHAN MATCHING = INDEXED
 | Quick Menu order | COMPLETE | `getQuickToggles()` is Settings, Wi-Fi, Bluetooth, Pak Store if present, Sleep, Reboot, Poweroff. Missing capabilities are still omitted. Pak Store was not added. |
 | Keyboard L1 DELETE pill | COMPLETE | `KeyboardPrompt` still deletes on L1. The hint row is `L1 DELETE` on the left and `B BACK` / `X ENTER` on the right. |
 | Shorter destructive Game-settings text | COMPLETE | Game cleanup rows name the real action. "Reset standalone settings" says games and saves are kept because the reset list is settings files only. |
-| One pending-reboot prompt | KEEP | Aggregate reboot-required settings. Prompt once on leaving Settings. Reboot through `zlyme-halt reboot`. |
-| PortMaster and VTree dark themes | KEEP | `portmaster-launch` already seeds a Zlyme theme into PortMaster. Rethink it from a dark baseline. VTree is separate. |
-| Emulator and governor selectors as pills | KEEP | Use the existing NextUI/MinUI pill widgets. |
+| One pending-reboot prompt | COMPLETE | `zlyme-bootcfg` snapshots `gpu`, `undervolt`, `otg`, `hdmi`, `sd2`, and `ab_swap` when Settings opens. On a clean exit it compares the normalized values. HDMI off then on does not prompt. Restart writes `/tmp/reboot` and exits. `nextui-session` calls `zlyme-halt reboot`. Later leaves the saved values in place. ZRAM, logs, timezone, Wi-Fi country, LED, network services, and rumble are not in the snapshot. |
+| PortMaster and VTree dark themes | COMPLETE | PortMaster theme is already the dark Zlyme baseline (`#050608` / `#F2F3F5` / `#FA7C08` / `#EC2A01`). `portmaster-launch` sets that theme once and does not replace a later user theme. VTree seeds the Zlyme theme on first run and then keeps the user's choice. |
+| Emulator and governor selectors as pills | COMPLETE | The per-game screen still uses left/right to change Governor and Emulator, up/down to move, A save, B back, and X inherit. Rows are now selector pills. The stored preference format and launch path are unchanged. |
 | Stop advertising CLTMP on my355 | COMPLETE | `PLAT_supportsColorTemperature()` is false on my355 and true on the shared fallback. The hint and the color-temp overlay are skipped here. `GetColortemp` stays for other platforms. |
-| Global A/B swap | KEEP | Implement at the InputPlumber virtual controller, not per emulator. |
-| Advanced System submenu | KEEP | GPU, CPU undervolt, ZRAM, USB OTG, HDMI, secondary SD, System Logs. |
-| Factory Reset placement | KEEP | Document what it deletes, then move it. `Zlyme_appendFactoryResetItem` is on the system list today. |
-| Reset Settings vs Factory Reset | KEEP | Do not remove submenu reset actions until the two operations are distinct in the UI and in the files they touch. |
+| Global A/B swap | COMPLETE | Persisted `ab_swap` defaults to off. On writes the shipped swapped map into `/run/inputplumber/capability_maps.d/zlyme_miyoo_flip.yaml` before InputPlumber starts. Only `BTN_EAST` and `BTN_SOUTH` targets swap. Joystick calibration still uses the physical pad. The change is reboot-required because Settings is holding the virtual pad. |
+| Advanced System submenu | COMPLETE | System keeps ordinary preferences, Time zone, Joysticks, Storage, and Backup. Advanced holds GPU, CPU undervolt, ZRAM, USB OTG, HDMI, Second SD, System logs, Reset Settings, and Factory Reset. Per-menu Reset to defaults stays on the ordinary menus. |
+| Factory Reset placement | COMPLETE | Both resets are buttons under Advanced. Neither runs on highlight. Each asks A RESET / B BACK. |
+| Reset Settings vs Factory Reset | COMPLETE | See the reset ownership section below. `rm -rf /storage/.config/nextui` is gone. Settings does not call `reboot -f`. |
 | VTree hidden files | COMPLETE | The stored key is `[General] ShowHidden`. `Settings_ShowHidden` is only a settings-screen label. A new config and the one-time migration use `ShowHidden=true`. A later user choice is kept. |
 | Rumble default 30% to 40% | COMPLETE | `FF_DEFAULT_GAIN_PERCENT` is 40. Missing and invalid gain files use it. A saved 0–100 value is left alone. |
 | CPU undervolt default to L1 | DEFER | Default in `zlyme-ctl` and `S15bootpart` is `undervolt=off`. L1/L2/L3 stay selectable and map to `rk3566-undervolt-cpu-*.dtbo`. L1 sets 800 mV on 408–1104 MHz, then 850/900/950/1000 mV at 1416/1608/1800/1992 MHz. The 1992 MHz base point added by the kernel patch is 1150 mV. Stock voltages for the lower OPPs live in upstream `rk3566.dtsi` and were not copied into this repository. Silicon-dependent. Do not change the default without that side-by-side, failure reports, and an explicit decision. |
+
+### Reset ownership
+
+Reset Settings deletes only these files when they are regular files:
+
+```text
+/storage/.config/zlyme/wifi
+/storage/.config/zlyme/bluetooth
+/storage/.config/zlyme/ssh
+/storage/.config/zlyme/samba
+/storage/.config/zlyme/syncthing
+/storage/.config/zlyme/gpu
+/storage/.config/zlyme/display_mode
+/storage/.config/zlyme/refresh
+/storage/.config/zlyme/undervolt
+/storage/.config/zlyme/led
+/storage/.config/zlyme/otg
+/storage/.config/zlyme/hdmi
+/storage/.config/zlyme/sd2
+/storage/.config/zlyme/boost
+/storage/.config/zlyme/zram
+/storage/.config/zlyme/merge
+/storage/.config/zlyme/logs
+/storage/.config/zlyme/update_channel
+/storage/.config/zlyme/ab_swap
+/storage/.config/zlyme/cpu_gov
+/storage/.config/zlyme/gpu_gov
+/storage/.config/nextui/shared/minuisettings.txt
+/storage/.config/nextui/shared/localtime
+/storage/.config/nextui/shared/localtime.zone
+/storage/.config/nextui/shared/vtree/config.ini
+/storage/.config/nextui/shared/vtree/.zlyme-vtree-v1
+```
+
+It then seeds a UTC zone file when `zlyme-timezone` is available, and applies overlays, logs, and panel refresh. A missing flag falls back to the existing `zlyme-ctl` default. CPU undervolt's default remains off.
+
+Reset Settings preserves ROMs, BIOS, saves, cheats, Wi-Fi credentials (`wpa_supplicant.conf`), Bluetooth pairings (`bluetooth.tar`), SSH host keys under `/storage/.config/ssh`, joystick calibration and rumble, standalone emulator configs and saves, Pico-8 carts and cdata, PortMaster ports and config, the Wine prefix, user-installed PAKs, stock PAKs, and logs.
+
+Factory Reset does that same settings reset, then creates `/storage/.config/zlyme/factory-reset`. The next session start overwrites stock Tools and Emus names from the image and leaves extra PAKs. It does not delete personal content. Settings asks for a restart through `/tmp/reboot` after that flag is written. The reset command itself does not reboot.
 
 ## Group 3 — storage, library, launch
 
