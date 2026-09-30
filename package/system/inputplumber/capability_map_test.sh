@@ -31,6 +31,29 @@ if grep -q 'InputPlumber/main/' "$map"; then
 	exit 1
 fi
 grep -q 'id: zlyme_miyoo_flip' "$map"
+ab=$dir/zlyme_miyoo_flip_ab.yaml
+grep -q 'id: zlyme_miyoo_flip' "$ab"
+abgot=$(mktemp)
+awk '
+	/event_code:/ { code = $2; vt = "" }
+	/value_type:/ { vt = $2 }
+	/button:/ { print code, vt, "button", $2 }
+	/name: LeftTrigger/ { print code, vt, "trigger", "LeftTrigger" }
+	/name: RightTrigger/ { print code, vt, "trigger", "RightTrigger" }
+' "$ab" >"$abgot"
+printf '%s\n' \
+	"BTN_DPAD_UP button button DPadUp" \
+	"BTN_DPAD_DOWN button button DPadDown" \
+	"BTN_DPAD_LEFT button button DPadLeft" \
+	"BTN_DPAD_RIGHT button button DPadRight" \
+	"BTN_TL2 trigger trigger LeftTrigger" \
+	"BTN_TR2 trigger trigger RightTrigger" \
+	"BTN_EAST button button East" \
+	"BTN_SOUTH button button South" \
+	"BTN_NORTH button button North" \
+	"BTN_WEST button button West" >"$want"
+cmp -s "$want" "$abgot"
+rm -f "$abgot"
 grep -q 'capability_map_id: zlyme_miyoo_flip' "$dev"
 grep -q 'auto_manage: false' "$dev"
 grep -q 'persist: false' "$dev"

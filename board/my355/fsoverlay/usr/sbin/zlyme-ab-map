@@ -1,0 +1,46 @@
+#!/bin/sh
+# Install or remove the A/B-swapped capability map.
+# /etc/inputplumber is a symlink to /run/inputplumber. InputPlumber
+# loads /etc/inputplumber/capability_maps.d after the stock maps and
+# keeps the last file with a given id. The override uses the stock id
+# and the stock filename so it replaces zlyme_miyoo_flip.
+#
+# ZLYME_CFG, ZLYME_AB_SRC, and ZLYME_AB_OVR are test seams.
+
+DIR="${ZLYME_CFG:-/storage/.config}/zlyme"
+FLAG="$DIR/ab_swap"
+SRC="${ZLYME_AB_SRC:-/usr/share/inputplumber/capability_maps/zlyme_miyoo_flip_ab.yaml}"
+OVR="${ZLYME_AB_OVR:-/run/inputplumber/capability_maps.d}"
+DEST="$OVR/zlyme_miyoo_flip.yaml"
+
+want_on() {
+	val=off
+	if [ -r "$FLAG" ]; then
+		val=$(tr -d ' \t\r\n' < "$FLAG")
+	fi
+	case "$val" in
+		on|1|yes) return 0 ;;
+	esac
+	return 1
+}
+
+sync_map() {
+	if ! want_on; then
+		rm -f "$DEST"
+		return 0
+	fi
+	if [ ! -f "$SRC" ]; then
+		echo "zlyme-ab-map: missing $SRC" >&2
+		return 1
+	fi
+	mkdir -p "$OVR" || return 1
+	cp -f "$SRC" "$DEST"
+}
+
+case "${1:-sync}" in
+	sync) sync_map ;;
+	*)
+		echo "usage: $0 sync" >&2
+		exit 1
+		;;
+esac
