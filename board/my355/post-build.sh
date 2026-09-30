@@ -168,20 +168,25 @@ fi
 # first_run path.
 # Keep PRETTY_NAME so About → OS stays the Buildroot string.
 pm_short_version() {
-	local raw="" date="" zver=""
-	if [ -f "${TARGET_DIR}/usr/share/nextui/version.txt" ]; then
-		raw=$(tr -d '\r\n' < "${TARGET_DIR}/usr/share/nextui/version.txt")
-		case "$raw" in
-			*-zlyme*) zver="zlyme${raw##*-zlyme}" ;;
-			*) zver=$raw ;;
-		esac
+	local root="" date="" zver="" verfile=""
+	root="${BR2_EXTERNAL_ZLYME_PATH:-}"
+	if [ -z "$root" ]; then
+		root=$(cd "$(dirname "$0")/../.." && pwd)
+	fi
+	verfile="${root}/ZLYME_VERSION"
+	if [ ! -f "$verfile" ]; then
+		echo "post-build: ${verfile} is missing" >&2
+		return 1
+	fi
+	zver=$(tr -d ' \t\r\n' < "$verfile")
+	if [ -z "$zver" ]; then
+		echo "post-build: ZLYME_VERSION is empty" >&2
+		return 1
 	fi
 	if [ -f "${TARGET_DIR}/usr/share/nextui/build-date.txt" ]; then
 		date=$(tr -d '\r\n' < "${TARGET_DIR}/usr/share/nextui/build-date.txt")
 	fi
-	if [ -z "$zver" ]; then
-		zver=${date:-unknown}
-	elif [ -n "$date" ]; then
+	if [ -n "$date" ]; then
 		zver="$zver ($date)"
 	fi
 	printf '%s\n' "$zver"
@@ -190,7 +195,7 @@ pm_os_release() {
 	src="${TARGET_DIR}/usr/lib/os-release"
 	[ -f "$src" ] || src="${TARGET_DIR}/etc/os-release"
 	[ -f "$src" ] || return 0
-	zver=$(pm_short_version)
+	zver=$(pm_short_version) || return 1
 	mkdir -p "${TARGET_DIR}/usr/share/zlyme"
 	printf '%s\n' "$zver" > "${TARGET_DIR}/usr/share/zlyme/version"
 	if grep -q '^NAME=' "$src"; then

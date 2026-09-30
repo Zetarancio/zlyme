@@ -332,9 +332,12 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     start_build_log
     refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
         package/system/nextui package/system/zlyme-input/virtpad.h
+    # keylidmon compiles the msettings.h that the nextui package
+    # installs into staging. The pin lives in nextui.mk. Do not
+    # fingerprint the downloaded NextUI tree.
     refresh_compiled_package zlyme-keylidmon BR2_PACKAGE_ZLYME_KEYLIDMON \
         package/system/zlyme-keylidmon package/system/zlyme-input/virtpad.h \
-        package/system/nextui/src/workspace/my355/libmsettings/msettings.h
+        package/system/nextui/nextui.mk
     refresh_compiled_package openbor BR2_PACKAGE_OPENBOR package/emulators/openbor
     refresh_compiled_package ppsspp BR2_PACKAGE_PPSSPP package/emulators/ppsspp
     say "building ${ZLYME_DEFCONFIG}"

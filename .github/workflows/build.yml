@@ -69,7 +69,7 @@ jobs:
         id: title
         run: |
           set -euo pipefail
-          zver=$(sed -n 's/^NEXTUI_VERSION *= .*-\(zlyme[0-9][0-9]*\).*/\1/p' package/system/nextui/nextui.mk | head -1)
+          zver=$(tr -d ' \t\r\n' < ZLYME_VERSION)
           shopt -s nullglob
           tars=(output/images/zlyme-my355-*.tar)
           tar=""

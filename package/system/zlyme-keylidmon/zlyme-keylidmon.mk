@@ -10,6 +10,8 @@ ZLYME_KEYLIDMON_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-keylidmon
 ZLYME_KEYLIDMON_SITE_METHOD = local
 ZLYME_KEYLIDMON_LICENSE = GPL-2.0
 ZLYME_KEYLIDMON_LICENSE_FILES = LICENSE
+# msettings.h is installed to staging by nextui. This package does not
+# read the NextUI source tree.
 ZLYME_KEYLIDMON_DEPENDENCIES = nextui libdrm
 
 define ZLYME_KEYLIDMON_BUILD_CMDS
