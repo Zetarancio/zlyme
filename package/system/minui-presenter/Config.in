@@ -5,7 +5,8 @@ config BR2_PACKAGE_MINUI_PRESENTER
 	help
 	  Message/preview UI for NextUI/MinUI tool paks.
 
-	  Built from josegonzalez/minui-presenter (MIT, Jose Diaz-Gonzalez)
+	  Vendored snapshot of josegonzalez/minui-presenter 0.13.2
+	  (MIT, Jose Diaz-Gonzalez). See UPSTREAM.
 	  against Zlyme's NextUI SDK so fonts/assets come from
 	  /usr/share/nextui/res. The linked NextUI objects stay
 	  PolyForm Noncommercial 1.0.0 (originally MinUI by Shaun Inman).
