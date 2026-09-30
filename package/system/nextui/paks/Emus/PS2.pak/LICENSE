@@ -10,7 +10,7 @@ Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/Lov
 Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).
 
 Original MinUI has no formal SPDX license. See
-package/system/nextui/src/NOTICE.
+the NextUI NOTICE installed as /usr/share/nextui/NOTICE.
 Do not treat this file as granting MIT or GPL for Shaun Inman's original work.
 
 This pak is licensed under PolyForm Noncommercial 1.0.0 (NextUI):

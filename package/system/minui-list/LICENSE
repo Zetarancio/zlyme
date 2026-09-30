@@ -10,8 +10,8 @@ https://github.com/kgabis/parson
 This image links minui-list against NextUI (LoveRetro). NextUI is
 PolyForm Noncommercial 1.0.0 and a fork of MinUI by Shaun Inman.
 Those NextUI objects are not MIT. See
-package/system/nextui/src/LICENSE and src/NOTICE, installed as
 /usr/share/nextui/LICENSE and /usr/share/nextui/NOTICE.
+Source is Zetarancio/NextUI at the commit in nextui.mk.
 
 Required Notice: Copyright LoveRetro/NextUI contributors (https://github.com/LoveRetro/NextUI).
 Required Notice: Originally MinUI by Shaun Inman (https://github.com/shauninman/MinUI).

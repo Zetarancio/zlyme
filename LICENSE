@@ -44,11 +44,11 @@ Each package and each NextUI pak ships its own LICENSE. Those terms
 control that component. In particular:
 
   NextUI          PolyForm Noncommercial 1.0.0
-                  package/system/nextui/src/LICENSE
+                  Zetarancio/NextUI at the commit in nextui.mk
                   /usr/share/nextui/LICENSE on the image
 
   MinUI (origin)  No formal SPDX license. NextUI's NOTICE records that.
-                  package/system/nextui/src/NOTICE
+                  /usr/share/nextui/NOTICE on the image
 
   minui-list /    MIT, Jose Diaz-Gonzalez. Binaries on this image
   minui-presenter also contain NextUI objects (PolyForm NC).

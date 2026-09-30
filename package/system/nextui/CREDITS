@@ -1,16 +1,15 @@
-NextUI (LoveRetro)
-  https://github.com/LoveRetro/NextUI
-  Commit: see src/UPSTREAM
-  License: PolyForm Noncommercial 1.0.0 (src/LICENSE)
+NextUI
+  https://github.com/Zetarancio/NextUI
+  Commit: the NEXTUI_VERSION pin in nextui.mk
+  Upstream LoveRetro base: /usr/share/nextui/UPSTREAM
+  License: PolyForm Noncommercial 1.0.0 (/usr/share/nextui/LICENSE)
 
 Originally MinUI by Shaun Inman
   https://github.com/shauninman/MinUI
-  No formal SPDX license — see src/NOTICE
+  No formal SPDX license — see /usr/share/nextui/NOTICE
 
-Zlyme vendors a working copy of NextUI until this fork is proven
-and becomes its own repository. LoveRetro has no my355 tree; the
-Miyoo Flip platform files under src/workspace/my355 started from
-apommel/NextUI my355-latest (hardware map only) and are edited here.
+The Miyoo Flip platform files under workspace/my355 started from
+apommel/NextUI my355-latest (hardware map only).
 SDCARD_PATH is /storage in platform.h — there is no path-rewriting
 wrapper.
 
