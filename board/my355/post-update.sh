@@ -4,6 +4,8 @@
 #
 # Remove released Autocal and the old serial-joypad config. Also remove
 # a hot-copied old module if one was left under the Zlyme config tree.
+# Stale stock Tools copied onto the OS card by older images are removed
+# by exact path. Weston, user artwork, cheats, and ScrapeGoat state stay.
 # Tests may set ZLYME_STORAGE_ROOT. The current gamepad config stays.
 root=${ZLYME_STORAGE_ROOT:-/storage_root}
 
@@ -14,6 +16,9 @@ remove() {
 }
 
 remove "$root/Tools/my355/Autocal.pak"
+remove "$root/Tools/my355/Weston.pak"
+remove "$root/Tools/my355/Artwork Scraper.pak"
+remove "$root/Tools/my355/Cheat Downloader.pak"
 remove "$root/.config/miyoo-serial-joypad"
 remove "$root/.config/zlyme/rocknix-singleadc-joypad.ko"
 exit 0

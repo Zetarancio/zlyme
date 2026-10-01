@@ -70,28 +70,15 @@ if grep -q '/mnt/SDCARD' "$ROOT/package/emulators/gzdoom/0001-Fix-file-paths.pat
 	exit 1
 fi
 
-# Presenter timeouts stay as the application passed them.
-fake=$work/presenter
-cat > "$fake" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*"
-EOF
-chmod +x "$fake"
-out=$(ZLYME_PRESENTER=$fake \
-	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/minui-presenter" \
-	--message "Checking for updates..." --timeout -1)
-printf '%s\n' "$out" | grep -F -q -- '--timeout -1'
-out=$(ZLYME_PRESENTER=$fake \
-	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/minui-presenter" \
-	--message "Download the cheat database?" --timeout 0)
-printf '%s\n' "$out" | grep -F -q -- '--timeout 0'
-if grep -q 'mount -t overlay' \
-	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/launch.sh"
-then
-	echo "cheat launcher uses overlay despite exFAT" >&2
+if [ -d "$ROOT/package/system/cheat-downloader" ] || \
+	[ -d "$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak" ] || \
+	[ -d "$ROOT/package/system/nextui/paks/Tools/Artwork Scraper.pak" ]; then
+	echo "removed tool is still in the tree" >&2
 	exit 1
 fi
-grep -q 'place_system' \
-	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/launch.sh"
+if grep -q 'BR2_PACKAGE_CHEAT_DOWNLOADER' "$ROOT/configs/zlyme_my355_defconfig"; then
+	echo "cheat-downloader is still selected" >&2
+	exit 1
+fi
 
 echo "persist paths ok"

@@ -1,9 +1,0 @@
-# Locally computed
-sha256  4dabacfa6b9ab77fc4085bc109ddf87bcc988d5cda8b706a5e31d4e4ed25a581  cheat-downloader-4e673432cb3e92c8a34907cf5740aafacbbc3f47-git4.tar.gz
-sha256  eed763d0f8ed849781198fe18730638eb520e5ada81d8bc916f8d3c1b256dd6e  nim-2.2.8-linux_x64.tar.xz
-sha256  cb28402bb2af93bdc331b60d16807e89727d1712a2d0a7ba0cac79a3e406fe40  miniz-3.1.1.zip
-# License files incorporated in the target binary. The Nim compiler
-# license is not listed: the compiler is a build tool.
-sha256  a2bd974577bb79d3f530db53029d390a66bacbdcd6d81ef79fff89050436f09f  LICENSE
-sha256  0115478d567121238cf6cc1c0c361926cf07a49d9e4c9e66da97fac6a01646b3  miniz-LICENSE
-sha256  3f83518f4535cf20964f08167dc68bdf2c8c632f0227d6bb753e3d6218b915c9  db_connector-LICENSE

@@ -134,6 +134,10 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	# package tree. Nothing in the running frontend opens this directory.
 	rm -rf $(TARGET_DIR)/usr/share/nextui/res/branding
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/paks
+	# These directories are image content. Recreate them so a pak removed
+	# from the package does not survive an incremental output tree.
+	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/Emus \
+		$(TARGET_DIR)/usr/share/nextui/paks/Tools
 	cp -a $(NEXTUI_PKGDIR)/paks/Emus $(TARGET_DIR)/usr/share/nextui/paks/
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
 	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/Tools/Update.pak \

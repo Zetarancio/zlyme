@@ -182,7 +182,6 @@ log "sd2=$(zlyme-storage status 2>/dev/null | tr '\n' ' ')"
 # Tools that failed last pass.
 run ScrapeGoat "'/storage/Tools/my355/ScrapeGoat.pak/launch.sh'" 20
 run Moonlight "'/storage/Tools/my355/Moonlight.pak/launch.sh'" 20
-run ArtworkScraper "'/storage/Tools/my355/Artwork Scraper.pak/launch.sh'" 20
 run Overlays "'/storage/Tools/my355/Overlays.pak/launch.sh'" 25
 run Settings "'/storage/Tools/my355/Settings.pak/launch.sh'" 20
 run Files "'/storage/Tools/my355/Files.pak/launch.sh'" 20

@@ -3,7 +3,7 @@ config BR2_PACKAGE_MINUI_LIST
 	depends on BR2_PACKAGE_NEXTUI
 	help
 	  Scrollable list UI for NextUI/MinUI tool paks
-	  (Artwork Scraper, Overlays, …).
+	  (Overlays and other Tools).
 
 	  Vendored snapshot of josegonzalez/minui-list 0.15.2
 	  (MIT, Jose Diaz-Gonzalez). See UPSTREAM.

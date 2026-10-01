@@ -28,11 +28,6 @@ minui-presenter (Tools helper)
   0.13.2. Linked here against NextUI (PolyForm Noncommercial 1.0.0).
   See package/system/minui-presenter/LICENSE and src/LICENSE.
 
-Artwork Scraper (Tools)
-  Jose Diaz-Gonzalez, MIT
-  https://github.com/josegonzalez/minui-artwork-scraper-pak
-  Release 0.8.0
-
 ScrapeGoat (Tools)
   Kevin Vranken (Helaas), MIT
   https://github.com/Helaas/nextui-scrapegoat-pak

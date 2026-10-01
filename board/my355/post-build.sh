@@ -304,6 +304,11 @@ fi
 ln -sfn /storage/.config/nextui/shared/localtime "${TARGET_DIR}/etc/localtime"
 rm -f "${TARGET_DIR}/etc/timezone"
 
+# cheat-downloader was removed. Buildroot has no uninstall step, so an
+# incremental tree would keep the old binary and its license file.
+rm -rf "${TARGET_DIR}/usr/lib/zlyme/cheat-downloader"
+rm -rf "${TARGET_DIR}/usr/share/licenses/cheat-downloader"
+
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp
 # from the binaries that actually ship.
