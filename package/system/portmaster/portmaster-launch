@@ -59,38 +59,18 @@ if [ -f "$root/pylibs/harbourmaster/hardware.py" ] && \
 		"$root/pylibs/harbourmaster/hardware.py" >/dev/null 2>&1 || true
 fi
 
-seed_zlyme_theme() {
-	src=/usr/share/portmaster/PortMaster/themes/Zlyme
-	[ -f "$src/theme.json" ] || return 0
-	# pugwash reads HM_TOOLS_DIR/PortMaster/themes, not pylibs/.
+apply_zlyme_scheme() {
+	# HM_TOOLS_DIR is the selected library. The image copy is not a
+	# second install root.
 	tools="${HM_TOOLS_DIR:-/storage/Roms/.portmaster}/PortMaster"
-	dest="$tools/themes/Zlyme"
-	mkdir -p "$dest"
-	cp -a "$src/." "$dest/" 2>/dev/null || true
-
-	stamp="${ZLYME_CFG:-/storage/.config}/portmaster-home/.zlyme-theme-seeded"
-	[ -f "$stamp" ] && return 0
-	mkdir -p "$(dirname "$stamp")" "$tools/config"
-	cfg="$tools/config/config.json"
-	if command -v python3 >/dev/null 2>&1; then
-		python3 - "$cfg" <<'PY'
-import json, sys
-from pathlib import Path
-p = Path(sys.argv[1])
-data = {}
-if p.is_file():
-    try:
-        data = json.loads(p.read_text() or "{}")
-    except json.JSONDecodeError:
-        data = {}
-theme = data.get("theme", "default_theme")
-if theme in ("default_theme", "Zlyme", None, ""):
-    data["theme"] = "Zlyme"
-    data["theme-scheme"] = "Zlyme"
-    p.write_text(json.dumps(data, indent=4) + "\n")
-PY
+	mkdir -p "$tools/config" "$tools/themes"
+	script=/usr/share/portmaster/zlyme-theme-config.py
+	if [ -n "${ZLYME_PM_THEME_CONFIG:-}" ]; then
+		script=$ZLYME_PM_THEME_CONFIG
 	fi
-	: >"$stamp"
+	if [ -f "$script" ] && command -v python3 >/dev/null 2>&1; then
+		python3 "$script" "$tools/config/config.json" "$tools/themes" || true
+	fi
 }
 
 
@@ -123,7 +103,7 @@ else
 	export HM_TOOLS_DIR HM_PORTS_DIR HM_SCRIPTS_DIR
 fi
 mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
-seed_zlyme_theme
+apply_zlyme_scheme
 # ROCKNIX first_run copies /storage/.config/PortMaster/control.txt.
 # exFAT treats that name the same as portmaster, so HOME stays elsewhere.
 pm_cfg="${ZLYME_CFG}/PortMaster"

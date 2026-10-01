@@ -64,19 +64,14 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-exec
 	$(INSTALL) -D -m 0644 $(PORTMASTER_PKGDIR)/patch-hardware.py \
 		$(TARGET_DIR)/usr/share/portmaster/patch-hardware.py
-	# pugwash lists extra themes from PortMaster/themes/<name>/theme.json
-	# (pylibs/default_theme is the built-in). Copy the stock assets, then
-	# inject a Zlyme colour scheme as the default.
+	# pugwash treats pylibs/default_theme as the built-in theme and
+	# PortMaster/themes/<name> as a separate theme. Zlyme is a scheme
+	# inside default_theme, not a cloned theme directory.
 	rm -rf $(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme
-	mkdir -p $(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme
-	cp -a $(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/default_theme/. \
-		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/
 	python3 $(PORTMASTER_PKGDIR)/zlyme-theme/inject-scheme.py \
-		$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/theme.json
-	if [ -f $(PORTMASTER_PKGDIR)/zlyme-theme/logo.png ]; then \
-		$(INSTALL) -m 0644 $(PORTMASTER_PKGDIR)/zlyme-theme/logo.png \
-			$(TARGET_DIR)/usr/share/portmaster/PortMaster/themes/Zlyme/logo.png; \
-	fi
+		$(TARGET_DIR)/usr/share/portmaster/PortMaster/pylibs/default_theme/theme.json
+	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-theme/select-scheme.py \
+		$(TARGET_DIR)/usr/share/portmaster/zlyme-theme-config.py
 	# ROCKNIX first_run copytree source.
 	mkdir -p $(TARGET_DIR)/usr/config/PortMaster
 	if [ -f $(PORTMASTER_PKGDIR)/control.txt ]; then \
