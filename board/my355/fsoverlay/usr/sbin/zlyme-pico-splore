@@ -1,18 +1,21 @@
 #!/bin/sh
 # One synthetic Splore launcher, and only while a native runtime pair
-# exists on an active library. The packaged Splore.p8.png is the
-# ownership proof: a different file with "splore" in the name is left
-# alone. cdata, bbs, and downloaded carts are never touched.
+# exists on an active library. The file lives in that library's Pico-8
+# folder. NextUI lists the folder it is actually browsing; a dummy on
+# a different card is not the catalog the runtime belongs to.
+# The packaged Splore.p8.png is the ownership proof. A different file
+# with "splore" in the name is left alone. cdata, bbs, and downloaded
+# carts are never touched.
 #
-# ZLYME_PICO_ROMDIR, ZLYME_PICO_SHARED, ZLYME_PICO_ART, and
-# ZLYME_PICO_LIBRARIES are test seams.
+# ZLYME_PICO_ROMDIR, when set, forces the destination (tests).
+# ZLYME_PICO_SHARED, ZLYME_PICO_ART, and ZLYME_PICO_LIBRARIES are seams.
 
 SDCARD=${SDCARD_PATH:-/storage}
-ROMDIR=${ZLYME_PICO_ROMDIR:-$SDCARD/Roms/Pico-8 (PICO)}
 SHARED=${ZLYME_PICO_SHARED:-${SHARED_USERDATA_PATH:-$SDCARD/.config/nextui/shared}/Pico-8-native}
 ART=${ZLYME_PICO_ART:-/usr/share/nextui/paks/Emus/PICO.pak/splore/Splore.p8.png}
 marker=$SHARED/splore-installed
 rt=${ZLYME_PICO_RUNTIME:-/usr/share/zlyme/pico-runtime.sh}
+ROMDIR=
 
 [ -f "$ART" ] || exit 0
 # shellcheck disable=SC1091
@@ -32,49 +35,79 @@ remove_owned() {
 	fi
 }
 
-drop_other_owned() {
+each_library_splore() {
 	libs=${ZLYME_PICO_LIBRARIES:-/run/zlyme/libraries}
 	[ -r "$libs" ] || return 0
 	while IFS= read -r lib || [ -n "$lib" ]; do
 		[ -n "$lib" ] || continue
-		for folder in \
-			"$lib/Roms/Pico-8 (PICO)/Splore.p8" \
-			"$lib/roms/Pico-8 (PICO)/Splore.p8"
-		do
-			[ "$folder" = "$ROMDIR/Splore.p8" ] && continue
-			remove_owned "$folder"
+		for base in "$lib/Roms" "$lib/roms" "$lib/ROMS"; do
+			[ -d "$base" ] || continue
+			printf '%s\n' "$base/Pico-8 (PICO)/Splore.p8"
 		done
 	done < "$libs"
 }
 
-if zlyme_pico_any; then
-	mkdir -p "$ROMDIR" "$SHARED"
-	if [ ! -e "$ROMDIR/Splore.p8" ]; then
-		other=
-		for e in "$ROMDIR"/*; do
-			[ -f "$e" ] || continue
-			case "$(basename "$e")" in
-				*[Ss]plore*) other=1 ;;
-			esac
-		done
-		if [ -z "$other" ]; then
-			cp -f "$ART" "$ROMDIR/Splore.p8"
-			mkdir -p "$ROMDIR/.media"
-			if [ ! -e "$ROMDIR/.media/Splore.png" ]; then
-				cp -f "$ART" "$ROMDIR/.media/Splore.png"
-			fi
+drop_other_owned() {
+	each_library_splore | while IFS= read -r folder; do
+		[ -n "$folder" ] || continue
+		[ "$folder" = "$ROMDIR/Splore.p8" ] && continue
+		remove_owned "$folder"
+	done
+}
+
+drop_all_owned() {
+	each_library_splore | while IFS= read -r folder; do
+		[ -n "$folder" ] || continue
+		remove_owned "$folder"
+	done
+	rm -f "$marker"
+}
+
+pick_romdir() {
+	if [ -n "${ZLYME_PICO_ROMDIR:-}" ]; then
+		ROMDIR=$ZLYME_PICO_ROMDIR
+		return 0
+	fi
+	root=$ZLYME_PICO_LAUNCH
+	case "$root" in
+		*/Bios|*/Bios/*) root=${root%%/Bios*} ;;
+	esac
+	base=
+	for d in "$root/Roms" "$root/roms" "$root/ROMS"; do
+		if [ -d "$d" ]; then
+			base=$d
+			break
 		fi
-	fi
-	if owned "$ROMDIR/Splore.p8"; then
-		: > "$marker"
-	fi
-	drop_other_owned
+	done
+	[ -n "$base" ] || base=$root/Roms
+	ROMDIR="$base/Pico-8 (PICO)"
+}
+
+if ! zlyme_pico_any; then
+	drop_all_owned
 	exit 0
 fi
+pick_romdir
 
-remove_owned "$ROMDIR/Splore.p8"
-drop_other_owned
+mkdir -p "$ROMDIR" "$SHARED"
 if [ ! -e "$ROMDIR/Splore.p8" ]; then
-	rm -f "$marker"
+	other=
+	for e in "$ROMDIR"/*; do
+		[ -f "$e" ] || continue
+		case "$(basename "$e")" in
+			*[Ss]plore*) other=1 ;;
+		esac
+	done
+	if [ -z "$other" ]; then
+		cp -f "$ART" "$ROMDIR/Splore.p8"
+		mkdir -p "$ROMDIR/.media"
+		if [ ! -e "$ROMDIR/.media/Splore.png" ]; then
+			cp -f "$ART" "$ROMDIR/.media/Splore.png"
+		fi
+	fi
 fi
+if owned "$ROMDIR/Splore.p8"; then
+	: > "$marker"
+fi
+drop_other_owned
 exit 0

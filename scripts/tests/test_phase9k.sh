@@ -123,9 +123,9 @@ printf 'synthetic-splore' > "$art"
 export ZLYME_PICO_ART=$art
 export ZLYME_PICO_RUNTIME=$RT
 export ZLYME_PICO_LIBRARIES=$td/pico-libs
-export ZLYME_PICO_ROMDIR="$main/Roms/Pico-8 (PICO)"
+unset ZLYME_PICO_ROMDIR
 export ZLYME_PICO_SHARED=$td/native
-mkdir -p "$td/native"
+mkdir -p "$td/native" "$main/Roms" "$sd2/Roms"
 : > "$td/pico-libs"
 "$SPLORE"
 if [ -e "$main/Roms/Pico-8 (PICO)/Splore.p8" ]; then
@@ -137,21 +137,20 @@ printf 'bin' > "$sd2/Bios/PICO/pico8_64"
 printf 'dat' > "$sd2/Bios/PICO/pico8.dat"
 printf '%s\n' "$main" "$sd2" > "$td/pico-libs"
 "$SPLORE"
-cmp -s "$art" "$main/Roms/Pico-8 (PICO)/Splore.p8"
-# a second library must not get its own copy
-if [ -e "$sd2/Roms/Pico-8 (PICO)/Splore.p8" ]; then
-	echo "splore seeded on the runtime card" >&2
+cmp -s "$art" "$sd2/Roms/Pico-8 (PICO)/Splore.p8"
+if [ -e "$main/Roms/Pico-8 (PICO)/Splore.p8" ]; then
+	echo "splore seeded on a card with no runtime" >&2
 	exit 1
 fi
 # user file is not deleted when the runtime goes away
+mkdir -p "$main/Roms/Pico-8 (PICO)"
 printf 'user-cart' > "$main/Roms/Pico-8 (PICO)/My Splore Game.p8"
 rm -f "$sd2/Bios/PICO/pico8_64"
 "$SPLORE"
-cmp -s "$art" "$main/Roms/Pico-8 (PICO)/Splore.p8" && {
+if [ -e "$sd2/Roms/Pico-8 (PICO)/Splore.p8" ]; then
 	echo "owned splore survived a missing runtime" >&2
 	exit 1
-}
-test ! -e "$main/Roms/Pico-8 (PICO)/Splore.p8"
+fi
 grep -q 'user-cart' "$main/Roms/Pico-8 (PICO)/My Splore Game.p8"
 # runtime only on main, with no other splore-named file in the way
 rm -f "$main/Roms/Pico-8 (PICO)/My Splore Game.p8"
