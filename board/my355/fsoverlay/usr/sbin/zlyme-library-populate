@@ -1,0 +1,54 @@
+#!/bin/sh
+# Add the standard library skeleton. Existing files and directories
+# are left alone. The only argument is an exact active library root.
+#
+# ZLYME_LIBRARIES_FILE and ZLYME_ROM_DIRS are test seams.
+
+set -eu
+
+root=${1:-}
+libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+manifest=${ZLYME_ROM_DIRS:-/usr/share/nextui/rom-dirs.txt}
+
+[ -n "$root" ] || exit 2
+case $root in
+	/*) ;;
+	*) exit 2 ;;
+esac
+case $root in
+	*..*) exit 2 ;;
+esac
+
+[ -f "$libs" ] || exit 2
+[ -f "$manifest" ] || exit 2
+
+ok=
+while IFS= read -r line || [ -n "$line" ]; do
+	[ "$line" = "$root" ] || continue
+	ok=1
+	break
+done < "$libs"
+[ -n "$ok" ] || exit 2
+[ -d "$root" ] || exit 3
+[ -w "$root" ] || exit 4
+
+mkdir -p "$root/Roms" "$root/Bios" "$root/Bios/PICO" "$root/Saves"
+
+while IFS= read -r name || [ -n "$name" ]; do
+	case $name in
+		''|\#*) continue ;;
+	esac
+	mkdir -p "$root/Roms/$name"
+	tag=
+	case $name in
+		*'('*)
+			tag=${name##*(}
+			tag=${tag%)}
+			;;
+	esac
+	[ -n "$tag" ] || continue
+	mkdir -p "$root/Saves/$tag"
+done < "$manifest"
+
+sync
+exit 0

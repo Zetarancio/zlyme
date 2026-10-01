@@ -4,7 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fail=0
 for f in \
-	"$ROOT/package/system/nextui/paks/Emus/RUFFLE.pak/launch.sh" \
+	"$ROOT/package/system/nextui/paks/Emus/FLASH.pak/launch.sh" \
 	"$ROOT/package/system/nextui/paks/Tools/Music Player.pak/launch.sh" \
 	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/launch.sh" \
 	"$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pico-bbs"
@@ -31,10 +31,12 @@ grep -F -q 'zlyme43' "$ROOT/ZLYME_VERSION" || {
 	fail=1
 }
 grep -F -q 'RUFFLE_PERFORMANCE=0' \
-	"$ROOT/package/system/nextui/paks/Emus/RUFFLE.pak/launch.sh"
+	"$ROOT/package/system/nextui/paks/Emus/FLASH.pak/launch.sh"
+grep -F -q 'Flash (FLASH)' "$ROOT/package/system/nextui/rom-dirs.txt"
+grep -F -q 'FLASH: swf' "$ROOT/package/system/nextui/rom-exts.txt"
 grep -F -q 'auto_update=0' \
 	"$ROOT/package/system/nextui/paks/Tools/Music Player.pak/launch.sh"
-grep -F -q '/usr/bin' \
+grep -F -q 'cheat: CHECK_UPDATE' \
 	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/launch.sh"
 
 work=$(mktemp -d)

@@ -375,6 +375,7 @@ else
 	copy_stock_paks "$seed/paks/Emus" /storage/Emus/my355
 	copy_stock_paks "$seed/paks/Tools" /storage/Tools/my355
 	rm -rf /storage/Tools/my355/Update.pak
+	rm -rf /storage/Emus/my355/RUFFLE.pak
 	apply_card_defaults
 	if [ -n "$img_ver" ]; then
 		printf '%s\n' "$img_ver" > "$stamp"
