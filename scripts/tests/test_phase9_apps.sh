@@ -26,6 +26,11 @@ if [ -e "$ROOT/package/system/nextui/paks/Tools/Joystick Calibration.pak" ]; the
 	echo "standalone joystick pak is back" >&2
 	fail=1
 fi
+if [ -d "$ROOT/package/system/nextui/paks/Emus/RUFFLE.pak" ]; then
+	echo "RUFFLE.pak is back" >&2
+	fail=1
+fi
+grep -F -q 'paks/Emus/RUFFLE.pak' "$ROOT/package/system/nextui/nextui.mk"
 grep -F -q 'zlyme43' "$ROOT/ZLYME_VERSION" || {
 	echo "product version file changed" >&2
 	fail=1

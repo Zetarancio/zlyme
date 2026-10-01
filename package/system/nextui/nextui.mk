@@ -138,7 +138,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	cp -a $(NEXTUI_PKGDIR)/paks/Tools $(TARGET_DIR)/usr/share/nextui/paks/
 	rm -rf $(TARGET_DIR)/usr/share/nextui/paks/Tools/Update.pak \
 		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Autocal.pak \
-		"$(TARGET_DIR)/usr/share/nextui/paks/Tools/Joystick Calibration.pak"
+		"$(TARGET_DIR)/usr/share/nextui/paks/Tools/Joystick Calibration.pak" \
+		$(TARGET_DIR)/usr/share/nextui/paks/Emus/RUFFLE.pak
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-dirs.txt \
 		$(TARGET_DIR)/usr/share/nextui/rom-dirs.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/rom-exts.txt \
