@@ -1,34 +1,27 @@
 #!/bin/sh
-# One line per screen so a stuck presenter is visible in the pak log.
-# --timeout -1 and 0 wait forever. Bound them so a blank screen returns.
+# One line per screen when this pak's stderr is being logged.
+# Timeouts stay as Cheat Downloader passed them. Upstream uses -1 for a
+# status screen it kills itself, and 0 for a confirmation that waits
+# for a button. A database download can sit on -1 for much longer than
+# a status check.
 msg=
-i=1
-for arg in "$@"; do
-	eval "a$i=\$arg"
-	i=$((i + 1))
-done
-n=$((i - 1))
-set --
 prev=
-i=1
-while [ "$i" -le "$n" ]; do
-	eval "arg=\$a$i"
-	if [ "$prev" = "--timeout" ]; then
-		case $arg in
-			-1) arg=25 ;;
-			0) arg=45 ;;
-		esac
-	fi
+for arg in "$@"; do
 	if [ "$prev" = "--message" ]; then
 		msg=$arg
 	fi
-	set -- "$@" "$arg"
 	prev=$arg
-	i=$((i + 1))
 done
 if [ -n "$msg" ]; then
 	echo "cheat: presenter ${msg}" >&2
 else
 	echo "cheat: presenter" >&2
+fi
+# The launcher watches this file. It is not the pak log: logging can be off.
+mark=${ZLYME_CHEAT_PRESENTER_MARK:-}
+if [ -n "$mark" ]; then
+	dir=$(dirname "$mark")
+	tmp=$(mktemp "$dir/.zlyme-cheat-presenter.XXXXXX") || exit 1
+	mv -f "$tmp" "$mark"
 fi
 exec "${ZLYME_PRESENTER:-/usr/bin/minui-presenter}" "$@"

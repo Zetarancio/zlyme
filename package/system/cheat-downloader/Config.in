@@ -5,6 +5,7 @@ config BR2_PACKAGE_CHEAT_DOWNLOADER
 	select BR2_PACKAGE_MINUI_PRESENTER
 	help
 	  Cheat Downloader v1.6.0. The Libretro database is user data
-	  under /storage/.config/zlyme/cheat-downloader.
+	  under /storage/.config/cheat-downloader. Installed .cht files
+	  stay on the Cheats content path.
 
 	  https://github.com/nborodikhin/nextui-cheat-downloader-alt

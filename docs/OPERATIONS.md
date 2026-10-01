@@ -77,6 +77,8 @@ Examples are `/storage/.config/zlyme` (policy, including whether Samba is enable
 
 Per-library user content stays on that library: `Roms`, `Saves`, and `Bios`. User media such as `/storage/Music`, `/storage/Podcasts`, and the Cheats directory is content, not configuration. Transient data belongs in `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT has no POSIX mode bits. Optional logs stay `/storage/.logs` when system logging is enabled.
 
+`/storage` is SD card 1. A card in the second SD slot (`sdmmc1`, `mmc@fe2c0000`) is mounted at `/mnt/sd2` and shown as SD card 2, including when the card is blank. USB disks are mounted at `/mnt/media/<label>` and shown as `USB: <label>`. Slot identity does not depend on a `Roms` directory already being present.
+
 `/storage` is exFAT. Shutdown syncs it and unmounts it with a normal `umount` before `reboot -f` or `poweroff -f`. Filesystem repair is an offline maintenance operation.
 
 Important classes include:

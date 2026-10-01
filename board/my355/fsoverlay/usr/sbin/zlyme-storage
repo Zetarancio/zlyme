@@ -2,10 +2,17 @@
 #
 # Second SD and USB disks. NextUI scans each root from
 # /run/zlyme/libraries. No mergerfs, no .roms_base, no Bios bind.
+# The second SD slot is the board's sdmmc1 controller (mmc@fe2c0000,
+# alias mmc1, regulator vcc_sd2). The boot slot is mmc@fe2b0000.
+# A blank card in that slot is still SD2. USB disks stay under
+# /mnt/media even when they already contain Roms.
 
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
-. /etc/zlyme.conf 2>/dev/null || true
+# Optional. A missing file must not abort: "." is a special builtin.
+if [ -r /etc/zlyme.conf ]; then
+	. /etc/zlyme.conf
+fi
 
 SD2=/mnt/sd2
 MEDIA=/mnt/media
@@ -63,18 +70,57 @@ unescape_mp() {
 	printf '%s' "$1" | sed 's/\\040/ /g; s/\\011/\t/g'
 }
 
-is_library_root() {
-	root=$1
-	[ -d "$root/roms" ] && return 0
-	[ -d "$root/Roms" ] && return 0
-	[ -d "$root/ROMS" ] && return 0
-	for d in "$root"/*; do
-		[ -d "$d" ] || continue
-		case "$(basename "$d")" in
-			*'('*')') return 0 ;;
-		esac
-	done
+sysfs_root() {
+	printf '%s\n' "${ZLYME_STORAGE_SYSFS:-/sys}"
+}
+
+block_syspath() {
+	name=$1
+	root=$(sysfs_root)
+	[ -e "$root/class/block/$name" ] || return 1
+	readlink -f "$root/class/block/$name"
+}
+
+# disk_of strips the trailing index from a whole mmcblk disk. Slot
+# identity needs that index, and the partition's parent disk.
+slot_disk() {
+	name=${1#/dev/}
+	case "$name" in
+		mmcblk*p*) printf '%s\n' "${name%%p*}" ;;
+		mmcblk*) printf '%s\n' "$name" ;;
+		*) disk_of "$name" ;;
+	esac
+}
+
+# Secondary SD is the controller, not "this volume already looks like a library".
+is_secondary_sd() {
+	name=${1#/dev/}
+	case "$name" in
+		mmcblk*) ;;
+		*) return 1 ;;
+	esac
+	disk=$(slot_disk "$name")
+	path=$(block_syspath "$disk" || true)
+	if [ -z "$path" ]; then
+		path=$(block_syspath "$name" || true)
+	fi
+	case "$path" in
+		*fe2c0000.mmc*) return 0 ;;
+	esac
 	return 1
+}
+
+is_usb_disk() {
+	name=${1#/dev/}
+	disk=$(slot_disk "$name")
+	path=$(block_syspath "$disk" || true)
+	if [ -z "$path" ]; then
+		path=$(block_syspath "$name" || true)
+	fi
+	case "$path" in
+		*usb[0-9]*) return 0 ;;
+	esac
+	[ "${ID_BUS:-}" = usb ]
 }
 
 rescan_nextui() {
@@ -152,7 +198,7 @@ place_volume() {
 	tmp=$2
 	label=$3
 	name=$4
-	if is_library_root "$tmp"; then
+	if is_secondary_sd "$name"; then
 		if ! grep -q " $SD2 " /proc/mounts; then
 			mkdir -p "$SD2"
 			mount --move "$tmp" "$SD2" 2>/dev/null || {
@@ -229,7 +275,7 @@ remove_dev() {
 }
 
 scan_add() {
-	for dev in /dev/mmcblk1p1 /dev/mmcblk2p1 /dev/mmcblk1 /dev/sda1 /dev/sdb1 /dev/sdc1 /dev/sda; do
+	for dev in /dev/mmcblk[1-9]p1 /dev/mmcblk[1-9] /dev/sd[a-z]1 /dev/sd[a-z]; do
 		[ -b "$dev" ] || continue
 		add_dev "${dev#/dev/}"
 	done
@@ -284,6 +330,16 @@ case "${1:-}" in
 		eject_extras
 		;;
 	status) status ;;
+	classify)
+		[ -n "${2:-}" ] || exit 1
+		if is_secondary_sd "$2"; then
+			echo secondary-sd
+		elif is_usb_disk "$2"; then
+			echo usb
+		else
+			echo other
+		fi
+		;;
 	libraries)
 		write_libraries
 		[ -f "$LIBRARIES" ] && cat "$LIBRARIES"
@@ -294,7 +350,7 @@ case "${1:-}" in
 		rescan_nextui
 		;;
 	*)
-		echo "usage: $0 {start|add <dev>|remove <dev>|eject|status|libraries}" >&2
+		echo "usage: $0 {start|add <dev>|remove <dev>|eject|status|classify <dev>|libraries}" >&2
 		exit 1
 		;;
 esac

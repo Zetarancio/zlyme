@@ -402,7 +402,7 @@ Other shipped Tools: Files, Artwork Scraper, Overlays, and PortMaster do not lin
 | --- | --- | --- | --- |
 | Ruffle Handheld | release v4.2, commit `d6e6e4527e97e6d25ba034de29754086a3eb5a9b` | MIT, bundled Ruffle MIT OR Apache-2.0 | Appliance under `/usr/share/zlyme/rufflehandheld`. `FLASH.pak` launches it. `RUFFLE_PERFORMANCE=0` so it does not write CPU, GPU, or DMC governors. `setup.sh` and `core-install.sh` are not installed. No SWF is shipped. Per-game data is `$library/Saves/FLASH/flash_data`. Logs are `/storage/.config/ruffle`. Direct NextUI path, not Weston. |
 | Music Player | release v1.17.0, commit `a77cdf69cd19e3313dc2b906e19b5be34715375a` | MIT, plus Fraunhofer FDK AAC | Binary on the squashfs. Launch script does not write cpufreq and forces `auto_update=0`. The restart flag is ignored. Application state is `/storage/.config/music-player`. Music is `/storage/Music`. Podcasts are `/storage/Podcasts`. Optional YouTube helpers, if the user installs them, are `/storage/.config/music-player/helpers`. No audio files are shipped. |
-| Cheat Downloader | release v1.6.0, commit `4e673432cb3e92c8a34907cf5740aafacbbc3f47` | MIT | Experimental. AArch64 `cheat_manager` from the my355 zip (`bin/arm` is still AArch64). `minui-list` and `minui-presenter` come from `/usr/bin`. ROM folders on every library are symlinked in `/tmp` for the run; files are not copied. A duplicate filename follows the later library. Cheats install to `CHEATS_PATH` (`/storage/Cheats`). The Libretro database is only downloaded when the pak runs, into `/storage/.config/cheat-downloader`. Presenter waits are bounded. |
+| Cheat Downloader | release v1.6.0, commit `4e673432cb3e92c8a34907cf5740aafacbbc3f47` | MIT | Experimental. AArch64 `cheat_manager` from the my355 zip (`bin/arm` is still AArch64). `minui-list` and `minui-presenter` come from `/usr/bin`. ROM folders on every library are symlinked in `/tmp` for the run; files are not copied. A duplicate filename follows the later library. Cheats install to `CHEATS_PATH` (`/storage/Cheats`). The Libretro database is only downloaded when the pak runs, into `/storage/.config/cheat-downloader`. Presenter timeouts are the upstream values. MENU+START leaves the tool. |
 
 `pico8-data-extractor` 0.1.0 is a Buildroot package (`host-go`, `CGO_ENABLED=0`, `GOARCH=arm64`).
 
@@ -466,13 +466,13 @@ Canonical state, also in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md`:
 - optional logs: `/storage/.logs`
 - Samba enable state: `/storage/.config/zlyme`. Samba's private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits.
 
-Ruffle's emulator is unchanged. The launcher sets the runtime's ROM root to `$library/Saves/FLASH`, which is where the frozen save script writes `flash_data`. A legacy `$library/flash_data` directory is migrated once. Application logs are `/storage/.config/ruffle`.
+Ruffle's emulator is unchanged. `RUFFLE_ROM_ROOT` stays the library, and the launch passes that same directory as `--rom-root`, which is the path accepted on `f6f1b2d`. `RUFFLE_FLASH_DIR` is the directory that already contains the SWF (`dirname` of the ROM). Companion data is `RUFFLE_DATA_DIR=$library/Saves/FLASH/flash_data`. A legacy `$library/flash_data` directory and the old `$library/.config/zlyme/ruffle/data` tree are migrated once. The old `$library/.config/zlyme/ruffle/flash` directory is left in place: it is not ROM content and it is not the save tree. Application logs are `/storage/.config/ruffle`. `RUFFLE_PERFORMANCE=0` stays.
 
 Music Player state is `/storage/.config/music-player`. The player is patched so it does not use NextUI's shared userdata macro. Legacy `.userdata/shared/music-player` and `.config/nextui/shared/music-player` are migrated once. The launch script does not create `.userdata`.
 
 The YouTube helper's `Failed to check GitHub` was reproduced on the installed pak. The player runs `curl --cacert ./res/cacert.pem` from the pak directory. That file is not installed. The same request with `/etc/ssl/certs/ca-certificates.crt` returned HTTP 200. The patch uses that system bundle. User-installed `yt-dlp`, `qjs`, and `ffmpeg` go under `/storage/.config/music-player/helpers/`. Application self-update stays off. The in-player check has not been repeated on the Flip; that waits for the image that contains the patched binary.
 
-Cheat Downloader stays experimental. On the installed image, `minui-presenter` under `SDL_VIDEODRIVER=dummy` opens both gamepads and exits on its timeout, so the presenter binary itself starts. The graphical failure was not reproduced while NextUI held the panel. The pak wrapper changes a forever timeout (`-1` or `0`) to 25s or 45s, and the launcher exits if the presenter never logs a screen within 20s. Cache and database metadata are `/storage/.config/cheat-downloader`. Installed `.cht` files stay on the Cheats content path. The database is not in the image.
+Cheat Downloader stays experimental. On the installed image, `minui-presenter` under `SDL_VIDEODRIVER=dummy` opens both gamepads and exits on its timeout, so the presenter binary itself starts. The graphical failure was not reproduced while NextUI held the panel. The launcher no longer treats the optional pak log as a presenter handshake. The presenter wrapper touches `/tmp/zlyme-cheat-presenter.<pid>` immediately before exec, and the launcher removes that file on exit. Upstream `--timeout -1` and `--timeout 0` are passed through. Curl still bounds the update check and the database transfer separately. Cache and database metadata are `/storage/.config/cheat-downloader`. Installed `.cht` files stay on the Cheats content path. The database is not in the image. MENU+START remains the escape.
 
 GZDoom config follows upstream `$HOME/.config/gzdoom` with `HOME=/storage`. The path patch no longer hardcodes `/mnt/SDCARD` or `.userdata`. It keeps `/usr/share/gzdoom` for the immutable resources and points the node cache at `$HOME/.config/gzdoom/cache`. Game saves stay `$SAVES_PATH/DOOM` via `-savedir`. Legacy config trees are migrated once.
 
@@ -480,12 +480,16 @@ GZDoom config follows upstream `$HOME/.config/gzdoom` with `HOME=/storage`. The 
 
 Ruffle, Music Player, and Cheat Downloader do not write cpufreq, do not start a daemon, and do not run at boot. Music Player application update stays disabled. Ruffle's installer is not shipped. Cheat Downloader downloads only the user database.
 
+A blank card in the second SD slot is SD card 2. `zlyme-storage` classifies that slot by the `sdmmc1` controller (`mmc@fe2c0000` in the Flip DTB; alias `mmc1`; regulator `vcc_sd2`). The boot slot is `mmc@fe2b0000`. USB mass storage stays `/mnt/media/<label>`. Whether the volume already contains `Roms` is not the slot identity. Settings already labels `/mnt/sd2` as SD card 2 and `/mnt/media/<label>` as `USB: <label>`.
+
 ```text
 RUFFLE LAUNCH = MAINTAINER ACCEPTED on f6f1b2d
-RUFFLE flash_data MOVE = HOST TESTED; live dry-run moved /storage/flash_data to /storage/Saves/FLASH/flash_data
+RUFFLE ROM ROOT = LIBRARY, SAME AS f6f1b2d
+RUFFLE flash_data = $library/Saves/FLASH/flash_data; SWF STAYS IN Roms/Flash (FLASH)
 MUSIC PLAYER RADIO = MAINTAINER ACCEPTED on f6f1b2d
 MUSIC YOUTUBE HELPER = ROOT CAUSE REPRODUCED, FIX IN SOURCE, UI RECHECK OUTSTANDING
-CHEAT DOWNLOADER = EXPERIMENTAL, BLACK SCREEN NOT REPRODUCED THIS PASS, WAITS ARE BOUNDED
+CHEAT DOWNLOADER = EXPERIMENTAL; WATCHDOG DOES NOT USE THE PAK LOG; PRESENTER TIMEOUTS UNCHANGED
+SD2 = CONTROLLER IDENTITY IN SOURCE; BLANK-CARD MOUNT NOT YET SEEN ON THE FLIP
 GZDOOM PATHS = HOST TESTED, LAUNCH RECHECK OUTSTANDING
 PHASE 9 RELEASE = NOT COMPLETE
 ```

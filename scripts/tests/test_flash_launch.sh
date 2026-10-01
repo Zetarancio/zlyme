@@ -18,18 +18,28 @@ for root in "$work/storage" "$work/sd2" "$work/media/OTG"; do
 	printf '%s\n' "$root" >> "$work/libs"
 done
 libsh=$ROOT/package/system/nextui/zlyme/zlyme-library.sh
+mkdir -p "$work/os"
 launch() {
 	rom=$1
-	ZLYME_RUFFLE_DRY=1 ZLYME_LIBRARY_SH=$libsh ZLYME_LIBRARIES_FILE=$work/libs \
+	ZLYME_RUFFLE_DRY=1 ZLYME_STATE_ROOT=$work/os \
+		ZLYME_LIBRARY_SH=$libsh ZLYME_LIBRARIES_FILE=$work/libs \
 		ROM=$rom "$pak" "$rom"
 }
+check() {
+	root=$1
+	out=$2
+	printf '%s\n' "$out" | grep -F -q "library=$root"
+	printf '%s\n' "$out" | grep -F -q "romroot=$root"
+	printf '%s\n' "$out" | grep -F -q "flash=$root/Roms/Flash (FLASH)"
+	printf '%s\n' "$out" | grep -F -q "rom=$root/Roms/Flash (FLASH)/Game.swf"
+	printf '%s\n' "$out" | grep -F -q "data=$root/Saves/FLASH/flash_data"
+	test -f "$root/Roms/Flash (FLASH)/Game.swf"
+	test ! -e "$root/Saves/FLASH/flash"
+}
 out=$(launch "$work/storage/Roms/Flash (FLASH)/Game.swf")
-printf '%s\n' "$out" | grep -F -q "library=$work/storage"
-printf '%s\n' "$out" | grep -F -q "data=$work/storage/Saves/FLASH/flash_data"
+check "$work/storage" "$out"
 out=$(launch "$work/sd2/Roms/Flash (FLASH)/Game.swf")
-printf '%s\n' "$out" | grep -F -q "library=$work/sd2"
-printf '%s\n' "$out" | grep -F -q "data=$work/sd2/Saves/FLASH/flash_data"
+check "$work/sd2" "$out"
 out=$(launch "$work/media/OTG/Roms/Flash (FLASH)/Game.swf")
-printf '%s\n' "$out" | grep -F -q "library=$work/media/OTG"
-printf '%s\n' "$out" | grep -F -q "data=$work/media/OTG/Saves/FLASH/flash_data"
+check "$work/media/OTG" "$out"
 echo "flash launch ok"

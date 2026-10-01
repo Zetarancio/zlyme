@@ -41,7 +41,12 @@ mkdir -p "$lib/Roms/Flash (FLASH)" "$lib/flash_data/storage"
 printf 'swf' > "$lib/Roms/Flash (FLASH)/Game.swf"
 printf 'progress' > "$lib/flash_data/storage/game"
 printf '%s\n' "$lib" > "$work/libs"
-out=$(ZLYME_RUFFLE_DRY=1 \
+mkdir -p "$lib/.config/zlyme/ruffle/data" "$lib/.config/zlyme/ruffle/flash"
+printf 'companion' > "$lib/.config/zlyme/ruffle/data/keep"
+printf 'not-a-rom' > "$lib/.config/zlyme/ruffle/flash/leave"
+mkdir -p "$work/os/.config/zlyme/ruffle/logs"
+printf 'oldlog' > "$work/os/.config/zlyme/ruffle/logs/session"
+out=$(ZLYME_RUFFLE_DRY=1 ZLYME_STATE_ROOT=$work/os \
 	ZLYME_LIBRARY_SH=$ROOT/package/system/nextui/zlyme/zlyme-library.sh \
 	ZLYME_LIBRARIES_FILE=$work/libs \
 	ZLYME_MIGRATE_SH=$ROOT/package/system/nextui/zlyme/zlyme-migrate-tree.sh \
@@ -49,8 +54,18 @@ out=$(ZLYME_RUFFLE_DRY=1 \
 	"$ROOT/package/system/nextui/paks/Emus/FLASH.pak/launch.sh" \
 	"$lib/Roms/Flash (FLASH)/Game.swf")
 printf '%s\n' "$out" | grep -F -q "data=$lib/Saves/FLASH/flash_data"
+printf '%s\n' "$out" | grep -F -q "romroot=$lib"
+printf '%s\n' "$out" | grep -F -q "flash=$lib/Roms/Flash (FLASH)"
+printf '%s\n' "$out" | grep -F -q "rom=$lib/Roms/Flash (FLASH)/Game.swf"
+test -f "$lib/Roms/Flash (FLASH)/Game.swf"
 test -f "$lib/Saves/FLASH/flash_data/storage/game"
+test -f "$lib/Saves/FLASH/flash_data/keep"
 test ! -d "$lib/flash_data"
+test ! -d "$lib/.config/zlyme/ruffle/data"
+test -f "$lib/.config/zlyme/ruffle/flash/leave"
+test ! -d "$lib/Saves/FLASH/flash"
+test -f "$work/os/.config/ruffle/logs/session"
+test ! -d "$work/os/.config/zlyme/ruffle/logs"
 
 # Music state leaves .userdata and the old NextUI shared tree.
 mkdir -p "$work/music/.userdata/shared/music-player/radio"
@@ -95,7 +110,7 @@ if grep -q '/mnt/SDCARD' "$ROOT/package/emulators/gzdoom/0001-Fix-file-paths.pat
 	exit 1
 fi
 
-# Presenter timeouts cannot wait forever.
+# Presenter timeouts stay as the application passed them.
 fake=$work/presenter
 cat > "$fake" << 'EOF'
 #!/bin/sh
@@ -105,11 +120,27 @@ chmod +x "$fake"
 out=$(ZLYME_PRESENTER=$fake \
 	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/minui-presenter" \
 	--message "Checking for updates..." --timeout -1)
-printf '%s\n' "$out" | grep -F -q -- '--timeout 25'
+printf '%s\n' "$out" | grep -F -q -- '--timeout -1'
+if printf '%s\n' "$out" | grep -F -q -- '--timeout 25'; then
+	echo "startup presenter timeout was rewritten" >&2
+	exit 1
+fi
 out=$(ZLYME_PRESENTER=$fake \
 	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/minui-presenter" \
-	--message "Download?" --timeout 0)
-printf '%s\n' "$out" | grep -F -q -- '--timeout 45'
+	--message "Download the cheat database?" --timeout 0)
+printf '%s\n' "$out" | grep -F -q -- '--timeout 0'
+if printf '%s\n' "$out" | grep -F -q -- '--timeout 45'; then
+	echo "confirmation timeout was rewritten" >&2
+	exit 1
+fi
+out=$(ZLYME_PRESENTER=$fake \
+	"$ROOT/package/system/nextui/paks/Tools/Cheat Downloader.pak/minui-presenter" \
+	--message "Downloading database..." --timeout -1)
+printf '%s\n' "$out" | grep -F -q -- '--timeout -1'
+if printf '%s\n' "$out" | grep -E -q -- '--timeout (25|45)'; then
+	echo "download presenter timeout was rewritten" >&2
+	exit 1
+fi
 
 # Music sources no longer point helper installs at the pak or a relative CA.
 grep -q '/etc/ssl/certs/ca-certificates.crt' \

@@ -28,7 +28,7 @@ define RUFFLE_HANDHELD_INSTALL_TARGET_CMDS
 	rm -f $(TARGET_DIR)/usr/share/zlyme/rufflehandheld/setup.sh \
 		$(TARGET_DIR)/usr/share/zlyme/rufflehandheld/core-install.sh
 	rm -rf $(TARGET_DIR)/usr/share/zlyme/rufflehandheld/logs
-	ln -s /storage/.config/zlyme/ruffle/logs \
+	ln -s /storage/.config/ruffle/logs \
 		$(TARGET_DIR)/usr/share/zlyme/rufflehandheld/logs
 endef
 

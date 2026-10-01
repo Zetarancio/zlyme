@@ -6,7 +6,7 @@ PAK_DIR="$(dirname "$0")"
 # Comment out to skip this pak's log (About → System logs).
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
-APP=/usr/lib/zlyme/cheat-downloader/cheat_manager
+APP=${ZLYME_CHEAT_BIN:-/usr/lib/zlyme/cheat-downloader/cheat_manager}
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
 
 if [ "${ZLYME_CHEAT_DRY:-}" != 1 ] && [ ! -x "$APP" ]; then
@@ -18,7 +18,14 @@ fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 
 union=$(mktemp -d /tmp/zlyme-cheat-roms.XXXXXX)
-trap 'rm -rf "$union"' EXIT
+mark=/tmp/zlyme-cheat-presenter.$$
+rm -f "$mark"
+export ZLYME_CHEAT_PRESENTER_MARK=$mark
+cleanup() {
+	rm -rf "$union"
+	rm -f "$mark"
+}
+trap cleanup EXIT
 
 merge_dir() {
 	src=$1
@@ -98,15 +105,21 @@ if [ "${ZLYME_CHEAT_DRY:-}" = 1 ]; then
 	printf 'cache=%s\n' "$CACHE_DIR"
 	exit 0
 fi
-# The menu is experimental. A presenter that never starts, or a confirm
-# that waits forever, must not leave the panel black. The presenter
-# wrapper bounds those timeouts. This watchdog covers a hang before it.
+# The menu is experimental. If the presenter never starts, leave instead
+# of holding a black panel. The marker is created by this pak's presenter
+# wrapper. Pak logging is optional and is not part of the handshake.
+# MENU+START is the escape when a screen is up. Presenter timeouts are
+# left as the application set them.
 "$APP" &
 child=$!
 seen=0
 i=0
-while [ "$i" -lt 20 ]; do
-	if [ -n "${ZLYME_PAK_LOG:-}" ] && grep -q 'cheat: presenter' "$ZLYME_PAK_LOG"; then
+watch=${ZLYME_CHEAT_WATCH_SEC:-20}
+case $watch in
+	''|*[!0-9]*) watch=20 ;;
+esac
+while [ "$i" -lt "$watch" ]; do
+	if [ -f "$mark" ]; then
 		seen=1
 		break
 	fi
