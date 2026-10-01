@@ -84,4 +84,21 @@ if grep -n eval "$BIN" >/dev/null; then
 	echo "start_pico8.sh uses eval" >&2
 	exit 1
 fi
+
+# Downloaded Splore carts stay in bbs/carts and launch with -run.
+cart="$work/home/Pico-8-native/bbs/carts/marepike-0.p8.png"
+mkdir -p "$(dirname "$cart")"
+printf 'pngcart' > "$cart"
+cmd=$(BIOS_PATH=$work/storage/Bios SDCARD_PATH=$work/storage \
+	SHARED_USERDATA_PATH=$work/home ZLYME_PICO_LIBRARIES=$work/libs \
+	ZLYME_PICO_RUNTIME=$ROOT/board/my355/fsoverlay/usr/share/zlyme/pico-runtime.sh \
+	ZLYME_PICO_CMD=1 "$BIN" "$cart")
+printf '%s\n' "$cmd" | grep -F -q -- '-run'
+printf '%s\n' "$cmd" | grep -F -q -- "$cart"
+printf '%s\n' "$cmd" | grep -F -q -- "$work/home/Pico-8-native/bbs/carts"
+test ! -e "$work/storage/Roms/Pico-8 (PICO)/marepike-0.p8.png"
+printf '%s\n' "$cmd" | grep -F -q -- '-splore' && {
+	echo "bbs cart was launched as Splore" >&2
+	exit 1
+}
 echo "pico runtime ok"

@@ -32,7 +32,7 @@ if ! zlyme_pico_find "$BIOS"; then
 fi
 LAUNCH_DIR=$ZLYME_PICO_LAUNCH
 
-if [ "${ZLYME_PICO_DRY:-}" = 1 ]; then
+if [ "${ZLYME_PICO_DRY:-}" = 1 ] && [ "${ZLYME_PICO_CMD:-}" != 1 ]; then
 	printf 'LAUNCH_DIR=%s\n' "$LAUNCH_DIR"
 	exit 0
 fi
@@ -92,7 +92,18 @@ cd "$LAUNCH_DIR" || exit 1
 # ROCKNIX runs the Pico-8 binary directly. The virtual xb360 pad is SDL
 # joystick 0 and its d-pad is a hat, so Splore does not need a translator
 # that grabs that pad.
-if echo "$ROM" | grep -qi splore; then
-	exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
+splore=0
+base=$(basename "$ROM")
+case "$base" in
+	[Ss]plore.p8|*' Splore.p8') splore=1 ;;
+esac
+if [ "$splore" = 1 ]; then
+	set -- "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick 0 -splore
+else
+	set -- "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -run "$ROM"
 fi
-exec "./${STATIC_BIN}" -home "$HOME_DIR" -root_path "$GAME_DIR" -joystick "$joy" -run "$ROM"
+if [ "${ZLYME_PICO_CMD:-}" = 1 ]; then
+	printf '%s\n' "$@"
+	exit 0
+fi
+exec "$@"

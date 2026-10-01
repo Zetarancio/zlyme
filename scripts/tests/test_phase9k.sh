@@ -128,7 +128,7 @@ export ZLYME_PICO_SHARED=$td/native
 mkdir -p "$td/native" "$main/Roms" "$sd2/Roms"
 : > "$td/pico-libs"
 "$SPLORE"
-if [ -e "$main/Roms/Pico-8 (PICO)/Splore.p8" ]; then
+if [ -e "$main/Roms/Pico-8 (PICO)/000) Splore.p8" ]; then
 	echo "splore seeded without a runtime" >&2
 	exit 1
 fi
@@ -137,8 +137,8 @@ printf 'bin' > "$sd2/Bios/PICO/pico8_64"
 printf 'dat' > "$sd2/Bios/PICO/pico8.dat"
 printf '%s\n' "$main" "$sd2" > "$td/pico-libs"
 "$SPLORE"
-cmp -s "$art" "$sd2/Roms/Pico-8 (PICO)/Splore.p8"
-if [ -e "$main/Roms/Pico-8 (PICO)/Splore.p8" ]; then
+cmp -s "$art" "$sd2/Roms/Pico-8 (PICO)/000) Splore.p8"
+if [ -e "$main/Roms/Pico-8 (PICO)/000) Splore.p8" ]; then
 	echo "splore seeded on a card with no runtime" >&2
 	exit 1
 fi
@@ -147,7 +147,7 @@ mkdir -p "$main/Roms/Pico-8 (PICO)"
 printf 'user-cart' > "$main/Roms/Pico-8 (PICO)/My Splore Game.p8"
 rm -f "$sd2/Bios/PICO/pico8_64"
 "$SPLORE"
-if [ -e "$sd2/Roms/Pico-8 (PICO)/Splore.p8" ]; then
+if [ -e "$sd2/Roms/Pico-8 (PICO)/000) Splore.p8" ]; then
 	echo "owned splore survived a missing runtime" >&2
 	exit 1
 fi
@@ -159,7 +159,7 @@ printf 'bin' > "$main/Bios/PICO/pico8_64"
 printf 'dat' > "$main/Bios/PICO/pico8.dat"
 printf '%s\n' "$main" > "$td/pico-libs"
 "$SPLORE"
-cmp -s "$art" "$main/Roms/Pico-8 (PICO)/Splore.p8"
+cmp -s "$art" "$main/Roms/Pico-8 (PICO)/000) Splore.p8"
 
 # --- Clock ---
 export SHARED_USERDATA_PATH=$td/ui
