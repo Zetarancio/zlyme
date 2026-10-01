@@ -34,10 +34,12 @@ else
 PPSSPP_CONF_OPTS += -DVULKAN=OFF
 endif
 PPSSPP_CONF_OPTS += -DUSING_X11_VULKAN=OFF
-# OpenGL stays on SDL KMSDRM. Vulkan needs a Wayland surface; the
-# PSP launcher starts a temporary Weston only when that backend is selected.
-PPSSPP_CONF_OPTS += -DUSE_WAYLAND_WSI=ON
-PPSSPP_DEPENDENCIES += wayland
+# Mali's ICD has VK_KHR_display and no Wayland surface. ROCKNIX
+# standalone PPSSPP uses the same display extension: the SDL window
+# is KMSDRM, and Vulkan presents with vkCreateDisplayPlaneSurfaceKHR.
+# Weston cannot provide that surface.
+PPSSPP_CONF_OPTS += -DUSE_WAYLAND_WSI=OFF
+PPSSPP_CONF_OPTS += -DUSE_VULKAN_DISPLAY_KHR=ON
 # Staging sdl2_ttf-config.cmake sets FOUND but looks for /usr/lib/libSDL2_ttf.so
 # (host path) and never creates SDL2_ttf::SDL2_ttf. Use pkg-config instead.
 PPSSPP_CONF_OPTS += -DCMAKE_DISABLE_FIND_PACKAGE_SDL2_ttf=ON

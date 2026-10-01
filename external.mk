@@ -9,6 +9,17 @@ endif
 # Panfrost does not need LLVM in the GL client.
 MESA3D_CONF_OPTS += -Ddraw-use-llvm=false
 
+# Upstream sdl2.mk always passes --disable-video-vulkan. This file is
+# included after package/*/*.mk, so the filter sees that flag.
+# PPSSPP's Vulkan path needs SDL_CreateWindow(SDL_WINDOW_VULKAN) on
+# KMSDRM; the surface itself is VK_KHR_display, which this Mali ICD
+# implements. Wayland WSI is not in the ICD.
+ifeq ($(BR2_PACKAGE_VULKAN_LOADER),y)
+SDL2_DEPENDENCIES += vulkan-headers vulkan-loader
+SDL2_CONF_OPTS := $(filter-out --disable-video-vulkan,$(SDL2_CONF_OPTS))
+SDL2_CONF_OPTS += --enable-video-vulkan
+endif
+
 # mkxp-z's meson wrap leaked SDL3 into staging; fluidsynth then linked it
 # and the image had no libSDL3.so.0. EasyRPG/mkxp MIDI does not need SDL
 # audio — ALSA is enough.
