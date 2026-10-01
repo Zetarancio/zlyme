@@ -77,7 +77,9 @@ export ROM_DIR=$union
 export CHEAT_DIR=${CHEATS_PATH:-$SDCARD_PATH/Cheats}
 export CACHE_DIR=$SDCARD_PATH/.config/zlyme/cheat-downloader
 mkdir -p "$CHEAT_DIR" "$CACHE_DIR"
-export PATH="/usr/bin:${PATH:-}"
+echo "cheat: FIND_LOCAL_DB"
+echo "cheat: CHECK_UPDATE"
+export PATH="$PAK_DIR:${PATH:-}"
 export HOME=${HOME:-$SDCARD_PATH/.config/nextui/my355}
 if [ "${ZLYME_CHEAT_DRY:-}" = 1 ]; then
 	find "$union" -type l | sort | while IFS= read -r link; do

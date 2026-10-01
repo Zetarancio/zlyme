@@ -1,0 +1,16 @@
+#!/bin/sh
+# One line per screen so a stuck presenter is visible in the pak log.
+msg=
+prev=
+for arg in "$@"; do
+	if [ "$prev" = "--message" ]; then
+		msg=$arg
+	fi
+	prev=$arg
+done
+if [ -n "$msg" ]; then
+	echo "cheat: presenter ${msg}" >&2
+else
+	echo "cheat: presenter" >&2
+fi
+exec /usr/bin/minui-presenter "$@"
