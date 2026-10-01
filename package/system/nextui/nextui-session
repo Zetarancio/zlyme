@@ -79,10 +79,9 @@ card_ver=""
 factory=0
 [ -f /storage/.config/zlyme/factory-reset ] && factory=1
 
-# Dummy Splore launcher. zlyme-pico-splore is the only writer.
-if [ -x /usr/sbin/zlyme-pico-splore ]; then
-	/usr/sbin/zlyme-pico-splore || true
-fi
+# Splore presence is owned by zlyme-storage, after the library list
+# includes every card. Calling it here used to run while the list was
+# still only /storage and delete the synthetic row.
 
 # Update lives in Settings. Drop the old Tools pak every boot so an
 # older squashfs (or paks copy) cannot put it back.

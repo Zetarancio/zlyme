@@ -28,7 +28,11 @@ if grep -q seed_splore "$ROOT/package/system/nextui/paks/Emus/PICO.pak/launch.sh
 	echo "PICO.pak still seeds Splore" >&2
 	exit 1
 fi
-grep -q zlyme-pico-splore "$ROOT/package/system/nextui/nextui-session"
+if grep -q zlyme-pico-splore "$ROOT/package/system/nextui/nextui-session"; then
+	echo "session still owns Splore" >&2
+	exit 1
+fi
+grep -q 'rescan_nextui' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-storage"
 grep -q 'fake08' "$ROOT/package/system/nextui/paks/Emus/PICO.pak/launch.sh"
 grep -q 'native' "$ROOT/package/system/nextui/paks/Emus/P8.pak/launch.sh"
 grep -q -- '-root_path' "$ROOT/package/emulators/pico8/start_pico8.sh"

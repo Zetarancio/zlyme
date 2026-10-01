@@ -196,6 +196,7 @@ add_dev() {
 	esac
 	if awk -v d="$dev" '$1 == d { found=1 } END { exit !found }' /proc/mounts; then
 		write_libraries
+		rescan_nextui
 		return 0
 	fi
 	tmp=$(mktemp -d /tmp/zlyme-probe.XXXXXX) || return 0
@@ -269,6 +270,7 @@ case "${1:-}" in
 	start|scan)
 		scan_add
 		write_libraries
+		rescan_nextui
 		;;
 	add)
 		[ -n "${2:-}" ] || exit 0
