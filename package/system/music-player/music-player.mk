@@ -4,52 +4,36 @@
 #
 # nborodikhin/nextui-music-player v1.17.0
 # commit a77cdf69cd19e3313dc2b906e19b5be34715375a
-# MIT. The release binary is the pinned build. Zlyme does not ship its
-# cpufreq launch.sh or its restart-after-update loop.
-# libfdk-aac.so.1 comes from that same archive (Fraunhofer FDK AAC).
+# Built with the Zlyme toolchain. GLES comes from pkg-config glesv2
+# (-lGLESv2), not libmali. Audio is SDL. The pak launcher disables
+# the in-app updater and does not write cpufreq.
 #
 ################################################################################
 
 MUSIC_PLAYER_VERSION = 1.17.0
-MUSIC_PLAYER_SITE = https://github.com/nborodikhin/nextui-music-player/releases/download/v$(MUSIC_PLAYER_VERSION)
-MUSIC_PLAYER_SOURCE = Music.Player.pak.zip
-MUSIC_PLAYER_LICENSE = MIT, Fraunhofer-FDK-AAC
-MUSIC_PLAYER_LICENSE_FILES = LICENSE FDK-AAC-NOTICE
-
-define MUSIC_PLAYER_EXTRACT_CMDS
-	unzip -q -o $(MUSIC_PLAYER_DL_DIR)/$(MUSIC_PLAYER_SOURCE) -d $(@D)
-endef
-
-define MUSIC_PLAYER_COPY_LICENSE
-	cp $(MUSIC_PLAYER_PKGDIR)/LICENSE $(@D)/LICENSE
-	cp $(MUSIC_PLAYER_PKGDIR)/FDK-AAC-NOTICE $(@D)/FDK-AAC-NOTICE
-endef
-MUSIC_PLAYER_POST_EXTRACT_HOOKS += MUSIC_PLAYER_COPY_LICENSE
+MUSIC_PLAYER_SITE = https://github.com/nborodikhin/nextui-music-player/archive/refs/tags
+MUSIC_PLAYER_SOURCE = v$(MUSIC_PLAYER_VERSION).tar.gz
+MUSIC_PLAYER_LICENSE = MIT
+MUSIC_PLAYER_LICENSE_FILES = LICENSE
+MUSIC_PLAYER_DEPENDENCIES = nextui sdl2 sdl2_image sdl2_ttf fdk-aac libzip \
+	libsamplerate alsa-lib
 
 define MUSIC_PLAYER_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) -shared -fPIC \
-		-Wl,-soname,libmali_hook.so.1 \
-		-o $(@D)/libmali_hook.so.1 \
-		$(MUSIC_PLAYER_PKGDIR)/mali_hook.c
-	$(TARGET_CC) $(TARGET_CFLAGS) -shared -fPIC \
-		-Wl,-soname,libtinyalsa.so.2 \
-		-o $(@D)/libtinyalsa.so.2 \
-		$(MUSIC_PLAYER_PKGDIR)/tinyalsa_soname.c
+	sed -i '/-ltinyalsa/d' $(@D)/src/Makefile
+	$(TARGET_MAKE_ENV) \
+	PKG_CONFIG_SYSROOT_DIR="$(STAGING_DIR)" \
+	PKG_CONFIG_LIBDIR="$(STAGING_DIR)/usr/lib/pkgconfig" \
+	$(MAKE) -C $(@D)/src PLATFORM=my355 KIND=release \
+		CC="$(TARGET_CC)" AR="$(TARGET_AR)" \
+		NEXTUI_ROOT="$(NEXTUI_DIR)/workspace" \
+		MY_LDFLAGS="$(TARGET_LDFLAGS)"
 endef
 
 define MUSIC_PLAYER_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/bin/my355/musicplayer.elf \
 		$(TARGET_DIR)/usr/lib/zlyme/music-player/musicplayer.elf
-	$(INSTALL) -D -m 0755 $(@D)/bin/my355/libfdk-aac.so.1 \
-		$(TARGET_DIR)/usr/lib/zlyme/music-player/libfdk-aac.so.1
-	$(INSTALL) -D -m 0755 $(@D)/libmali_hook.so.1 \
-		$(TARGET_DIR)/usr/lib/zlyme/music-player/libmali_hook.so.1
-	$(INSTALL) -D -m 0755 $(@D)/libtinyalsa.so.2 \
-		$(TARGET_DIR)/usr/lib/zlyme/music-player/libtinyalsa.so.2
 	$(INSTALL) -D -m 0644 $(@D)/LICENSE \
 		$(TARGET_DIR)/usr/share/licenses/music-player/LICENSE
-	$(INSTALL) -D -m 0644 $(@D)/FDK-AAC-NOTICE \
-		$(TARGET_DIR)/usr/share/licenses/music-player/FDK-AAC-NOTICE
 endef
 
 $(eval $(generic-package))

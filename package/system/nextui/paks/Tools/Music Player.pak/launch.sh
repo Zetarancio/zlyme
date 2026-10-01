@@ -8,7 +8,6 @@ PAK_DIR="$(dirname "$0")"
 
 APP=/usr/lib/zlyme/music-player/musicplayer.elf
 SDCARD_PATH="${SDCARD_PATH:-/storage}"
-LIB=/usr/lib/zlyme/music-player
 
 if [ ! -x "$APP" ]; then
 	echo "music-player: missing" >&2
@@ -35,7 +34,6 @@ printf '%s\n' 'auto_update=0' >> "$cfg.zlyme"
 mv -f "$cfg.zlyme" "$cfg"
 rm -f /tmp/nextui-music-player.restart
 
-export LD_LIBRARY_PATH="$LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export SDCARD_PATH
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 exec "$APP"

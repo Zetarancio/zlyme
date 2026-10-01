@@ -1,5 +1,0 @@
-The Zlyme music player package ships libfdk-aac.so.1 from the pinned
-nborodikhin/nextui-music-player v1.17.0 release archive.
-That library is the Fraunhofer FDK AAC codec, licensed separately
-from the player's MIT license.
-https://android.googlesource.com/platform/external/aac/+/master/NOTICE
