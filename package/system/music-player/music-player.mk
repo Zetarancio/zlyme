@@ -20,6 +20,8 @@ MUSIC_PLAYER_DEPENDENCIES = nextui sdl2 sdl2_image sdl2_ttf fdk-aac libzip \
 
 define MUSIC_PLAYER_BUILD_CMDS
 	sed -i '/-ltinyalsa/d' $(@D)/src/Makefile
+	sed -i 's|all/common/scaler.c|all/common/scaler.c $$(NEXTUI_ROOT)/all/common/palette.c|' \
+		$(@D)/src/Makefile
 	$(TARGET_MAKE_ENV) \
 	PKG_CONFIG_SYSROOT_DIR="$(STAGING_DIR)" \
 	PKG_CONFIG_LIBDIR="$(STAGING_DIR)/usr/lib/pkgconfig" \
