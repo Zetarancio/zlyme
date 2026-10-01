@@ -180,11 +180,11 @@ BR2_PACKAGE_BLUEZ_ALSA=y
 BR2_PACKAGE_ZLYME_JACKD=y
 
 # zlyme_defconfig = zlyme_minimal plus emulators. Keep the shared lines in step.
-# SDL2: KMSDRM + GLES only.
-
+# SDL2: KMSDRM for the frontend. Wayland is only for a temporary Weston client.
 BR2_PACKAGE_SDL2=y
 BR2_PACKAGE_SDL2_OPENGLES=y
 BR2_PACKAGE_SDL2_KMSDRM=y
+BR2_PACKAGE_SDL2_WAYLAND=y
 # AetherSX2 (ROCKNIX binary) needs libaio. PortMaster games often need cairo.
 BR2_PACKAGE_LIBAIO=y
 BR2_PACKAGE_CAIRO=y
