@@ -329,7 +329,7 @@ A/B swap user setting: dropped. Wi-Fi Country row: kept across scan rebuilds. Cl
 
 Confirmed on `zlyme-my355-20261001-b9f8947780ec.tar`: PPSSPP OpenGL and Vulkan, a real format of a disposable card, the offline clock after a network sync, Splore and downloaded BBS carts, Splore sorting first, the PortMaster GUI, the quiet graphical boot, game/Settings/PAK handoff, and MENU+Y without the old list layer.
 
-Ruffle, the Music Player, Cheat Downloader, and Pak Store are deferred past the first stable release.
+Ruffle, the Music Player, and Cheat Downloader were deferred here. The maintainer later made those three pre-release gates. Pak Store stays deferred. See the pre-release source pass below.
 
 ## Phase 9 architecture audit
 
@@ -353,6 +353,64 @@ Ruffle, the Music Player, Cheat Downloader, and Pak Store are deferred past the 
 | quiet / console | extlinux, initramfs, `S12splash` | DROPPED | `console=tty1` and the `rcS` copy onto the LCD left stray text during splash and app handoff. The splash owns the panel again. Serial remains `ttyS2`. |
 | MENU+Y editor | NextUI `SCREEN_EDITPREFS` | KEEP | Opaque `THEME_COLOR7`, then the same dark theme pill and `THEME_COLOR5_255` as a selected game row. Delete has no inline A. Bottom hints are B/X/A on a setting row and B/A on Delete. MENU release is not Back. |
 | RTC | `S49ntp`, `PLAT_setDateTime` | KEEP, LIVE PASS | Both writers use `hwclock -u -w`. After one network sync the maintainer rebooted with Wi-Fi off and the local clock stayed correct. |
+
+## Live acceptance of 8e8116f
+
+Confirmed on `zlyme-my355-20261001-8e8116f00969.tar`, product file still `zlyme43`:
+
+- MENU+Y title position
+- System order: Display, then Joysticks, Storage, Advanced
+- Time zone immediately under Show 24h time format
+- Default view under Appearance
+- About → Version shows `zlyme43`
+
+Those rows were not reworked in the pre-release source pass.
+
+## Pre-release source pass
+
+This is not the version-bump gate. Hardware smoke of the new OTA is still outstanding. Do not treat the items below as live-accepted.
+
+### Splore names and art
+
+`zlyme-pico-bbs` owns the catalog. It runs from `zlyme-pico-splore` and after `PICO.pak` returns. It does not run while NextUI draws.
+
+PICO-8's sidecar is real. The live capture of `marepike-0.p8.png` stored `title:Last Bullet` in `temp-marepike.nfo`. The old list matcher required `lid:` to equal the whole filename stem (`marepike-0`), so the title was ignored and the row stayed a slug. The indexer matches `lid:` or the `.nfo` name (`temp-` stripped) to the stem or the stem with a trailing `-<digits>` removed.
+
+If no `.nfo` title matches, `pico8-data-extractor` 0.1.0 (MIT, static AArch64, Buildroot `host-go`) reads the first Lua comment. A cart that yields neither keeps its stem. `temp-*` files are not rows. Layout is `bbs/carts/` plus one numeric directory under `bbs` (`bbs/1/…`), which is the shard pico-8 and minui-pico-8-pak 0.8.5 both describe. Nothing deeper is scanned.
+
+Rows go to each Pico-8 folder's existing `map.txt` (`filename<TAB>title`). `.zlyme-bbs-map` records the keys this tool owns so a removed or renamed cart drops its generated alias and other rows stay. Carts are not copied into `Roms`, `.media`, or `.res`.
+
+Artwork stays the NextUI thumbnail path. `.media` next to the cart wins. Otherwise a finished `.p8.png` under `Pico-8-native/bbs/` is the image. `Show game art` off still skips the thumbnail. A PNG outside that BBS tree is not treated as a cart label.
+
+ROCKNIX's current `next` tree was not found to contain a BBS filename parser. The title source here is the `.nfo` plus the cart's own comment, then `map.txt`.
+
+The Flip was not reachable for a fresh `.nfo` read this pass. The mapping above uses the earlier live capture.
+
+### Apostrophe, Update, and Joysticks
+
+`nextui-session` still sources `pak-input.sh` for every pak except Settings. That exposes only the InputPlumber Xbox 360 target. Apostrophe's my355 path now opens that pad with SDL GameController. The standard A/B/X/Y/dpad/L1/R1/Start/Select/Guide map is the one that runs. The raw fallback is Xbox order (A=0, B=1), not the old physical Flip indices. TrimUI maps are unchanged. Settings still does not source `pak-input.sh`, so joystick calibration still sees the physical pad.
+
+`ap_set_cpu_speed()` returns immediately on my355. The rebuilt Moonlight and ScrapeGoat binaries are compiled with `AP_CPU_SPEED_DEFAULT` and `-DPLATFORM_MY355`, and the `scaling_setspeed` string is not in those binaries. ScreenScraper developer credentials in the ScrapeGoat rebuild are the same strings that were already in the previous binary.
+
+The old `Update.pak` is still deleted by `nextui-session` and is not in the image seed. Update remains a Settings row. The standalone joystick/calibration pak is not shipped. Calibration stays inside Settings. Neither was resurrected.
+
+Other shipped Tools: Files, Artwork Scraper, Overlays, and PortMaster do not link Apostrophe. Music Player and Cheat Downloader are not Apostrophe apps. They inherit `pak-input.sh` from the session. Ruffle selects its existing NextUI display path (`RUFFLE_CFW_NAME=nextui`) and the same controller database. No Moonlight-only or ScrapeGoat-only button swap was added.
+
+### New packages
+
+| App | Pin | License | Integration |
+| --- | --- | --- | --- |
+| Ruffle Handheld | release v4.2, commit `d6e6e4527e97e6d25ba034de29754086a3eb5a9b` | MIT, bundled Ruffle MIT OR Apache-2.0 | Appliance under `/usr/share/zlyme/rufflehandheld`. `RUFFLE.pak` launches it. `RUFFLE_PERFORMANCE=0` so it does not write CPU, GPU, or DMC governors. `setup.sh` and `core-install.sh` are not installed. No SWF is shipped. Saves and logs are under `/storage/.config/zlyme/ruffle`. Direct NextUI path, not Weston. |
+| Music Player | release v1.17.0, commit `a77cdf69cd19e3313dc2b906e19b5be34715375a` | MIT, plus Fraunhofer FDK AAC for the bundled `libfdk-aac.so.1` | Binary on the squashfs. Launch script does not write cpufreq and forces `auto_update=0`. The restart flag is ignored. Local files are `/storage/Music`. No audio files are shipped. |
+| Cheat Downloader | release v1.6.0, commit `4e673432cb3e92c8a34907cf5740aafacbbc3f47` | MIT | AArch64 `cheat_manager` from the my355 zip (`bin/arm` is still AArch64). `minui-list` and `minui-presenter` come from `/usr/bin`. ROM folders on every library are symlinked in `/tmp` for the run; files are not copied. A duplicate filename follows the later library. Cheats install to `CHEATS_PATH` (`/storage/Cheats`). The Libretro database is only downloaded when the pak runs, into `/storage/.config/zlyme/cheat-downloader`. |
+
+`pico8-data-extractor` 0.1.0 is a Buildroot package (`host-go`, `CGO_ENABLED=0`, `GOARCH=arm64`).
+
+Stock Tools and Emus are still the image glob. No new boot service and no first-frame work were added for these apps.
+
+### Still not hardware-accepted
+
+Splore titles and art, Moonlight A/B, ScrapeGoat A/B, Ruffle, Music Player, and Cheat Downloader need the maintainer's smoke on the new OTA. PPSSPP Vulkan, formatting, the clock, PortMaster, quiet boot, and the 8e8116f Settings rows stay closed.
 
 ## Group 5 — release
 
