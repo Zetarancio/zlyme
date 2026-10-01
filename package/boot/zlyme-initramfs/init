@@ -3,18 +3,13 @@
 # the vfat, copy it over /zlyme, and close the vfat again. Then
 # loop-mount zlyme read-only and switch_root.
 
-# splash_on is 1 only while the graphical splash owns the panel.
-# quiet: splash, and these lines stay off the LCD.
-# no quiet: the same lines are the text progress, including an OTA.
-splash_on=0
 log() {
-	printf 'zlyme-init: %s\n' "$*"
-	if [ "$splash_on" = 1 ]; then
+	echo "zlyme-init: $*"
+	# Do not scribble on the panel while the lockup is up.
+	if [ -f /zlyme-splash.progress ] || [ -f /boot_root/zlyme-splash.progress ]; then
 		return 0
 	fi
-	if [ -c /dev/tty1 ]; then
-		printf 'zlyme-init: %s\n' "$*" >/dev/tty1 2>/dev/null || true
-	fi
+	[ -w /dev/console ] && echo "zlyme-init: $*" >/dev/console 2>/dev/null
 }
 
 mount_boot() {
@@ -148,31 +143,17 @@ do_root() {
 		mount_boot /dev/mmcblk1p2 || true
 	fi
 	read -r cmdline < /proc/cmdline
-	# Normal splash only when the command line has a complete quiet
-	# token. Without quiet, an OTA stays on the text console.
-	# Same token rule as
-	# splash-quiet.sh; initramfs cannot source the squashfs copy.
-	splash_wanted=0
-	for _tok in ${cmdline}; do
-		if [ "$_tok" = quiet ]; then
-			splash_wanted=1
-		fi
-	done
-	splash_mode=
-	# A pending update does not override a non-quiet boot. Text on
-	# tty1 is the progress indication in that case.
-	if [ "$splash_wanted" -eq 1 ] && [ -f /boot_root/zlyme-splash.progress ]; then
+	# Graphical splash for every product boot. The progress flag
+	# flips this process to the update animation.
+	if [ -f /boot_root/zlyme-splash.progress ]; then
 		: > /zlyme-splash.progress
-		splash_mode=progress
 	fi
-	if [ "$splash_wanted" -eq 1 ] && [ -x /zlyme-splash ]; then
-		splash_on=1
+	if [ -x /zlyme-splash ]; then
 		# Stills from the ramdisk. Anims appear on FAT at
 		# /boot_root once MMC is up; splash loads them then.
 		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
-			/progress.rgb565 /boot_root/progress.anim $splash_mode &
+			/progress.rgb565 /boot_root/progress.anim &
 	fi
-
 	label=ZLYMEBOOT
 	for param in ${cmdline}; do
 		case ${param} in
@@ -212,17 +193,8 @@ do_root() {
 			fi
 		else
 			if [ "$pending" -eq 1 ]; then
-				if [ "$splash_wanted" -eq 1 ]; then
-					: > /zlyme-splash.progress
-					: > /boot_root/zlyme-splash.progress
-					if [ "$splash_on" != 1 ] && [ -x /zlyme-splash ]; then
-						splash_on=1
-						/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
-							/progress.rgb565 /boot_root/progress.anim progress &
-					fi
-				else
-					log "applying update"
-				fi
+				: > /zlyme-splash.progress
+				: > /boot_root/zlyme-splash.progress
 				commit_update || log "copy failed, keeping current zlyme"
 			fi
 			if [ "$logs" -eq 1 ]; then

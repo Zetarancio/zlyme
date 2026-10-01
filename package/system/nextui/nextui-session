@@ -175,14 +175,6 @@ apply_card_defaults() {
 }
 
 ensure_splash() {
-	if [ -r /usr/share/zlyme/splash-quiet.sh ]; then
-		# shellcheck disable=SC1091
-		. /usr/share/zlyme/splash-quiet.sh
-		if ! zlyme_splash_wanted; then
-			stop_splash
-			return 0
-		fi
-	fi
 	if [ -f /tmp/zlyme-splash.pid ]; then
 		_sp=$(cat /tmp/zlyme-splash.pid)
 		if [ -n "$_sp" ] && kill -0 "$_sp" 2>/dev/null; then
