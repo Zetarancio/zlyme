@@ -54,7 +54,7 @@ Native PICO-8 / Splore uses the Raspberry Pi build you bought from Lexaloffle. P
 
 Zlyme uses its own Miyoo Flip gamepad driver. Buttons are GPIO-backed. The two analog sticks use the Flip UART protocol. Settings provides stick testing, calibration, a deadzone for each stick, Rumble Strength, and Test Rumble. Rumble is standard Linux force feedback. Switch replacement sticks are not called physically validated.
 
-**Settings → Update** pulls a GitHub release (or prerelease) tar, shows notes, draws a progress bar, and only queues the file after sha256 matches.
+**Settings → Update** pulls a GitHub release (or prerelease) tar, shows notes, draws a progress bar, and only queues the file after sha256 matches. A later point release may also offer a delta; the device rebuilds a full root image and checks it before the reboot. Local builds ship the full tar only.
 
 ### Install
 
@@ -77,7 +77,7 @@ Games live on the **ZLYME** partition (mounted at `/storage`). NextUI only lists
 
 A second card in the other slot (or an OTG usb stick) is picked up if it has a `roms/` or `Roms/` folder using the **same** `Pretty (TAG)` **names** as the table. Settings → About → System logs writes boot files and a per-pak `TAG.log` to `/storage/.logs` (off by default). 
 
-Box art is NextUI’s `{folder}/.media/{rom stem}.png` (same basename as the game file or playlist, `.png`). 
+Box art is NextUI’s `{folder}/.media/{rom stem}.png` (same basename as the game file or playlist, `.png`). A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists. 
 
 
 | System                  | Emulator                         | Folder                                            | Files                                                                        | Bios                                             |
@@ -123,7 +123,7 @@ Box art is NextUI’s `{folder}/.media/{rom stem}.png` (same basename as the gam
 | TIC-80                  | TIC-80 (libretro)                | `Roms/TIC-80 (TIC)/`                              | `.tic`                                                                       | —                                                |
 | Pico-8                  | Official Pico-8 (you add it)     | `Roms/Pico-8 (PICO)/`                             | `.p8` `.png` `.zip`                                                          | `Bios/PICO/pico8_64` and `pico8.dat`             |
 | Pico-8 (fake-08)        | fake-08 (libretro)               | `Roms/Pico-8 fake-08 (P8)/`                       | `.p8` `.png` `.zip`                                                          | —                                                |
-| PSP                     | PPSSPP                           | `Roms/Sony PlayStation Portable (PSP)/`           | `.iso` `.cso` `.pbp` `.chd`                                                  | —                                                |
+| PSP                     | PPSSPP                           | `Roms/Sony PlayStation Portable (PSP)/`           | `.iso` `.cso` `.pbp` `.chd`                                                  | OpenGL on KMS, or Vulkan on the Mali display |
 | Dreamcast               | Flycast                          | `Roms/Sega Dreamcast (DC)/`                       | `.cdi` `.gdi` `.cue` `.chd` `.m3u`                                           | `DC/dc_boot.bin` `DC/dc_flash.bin`               |
 | Nintendo DS             | DraStic                          | `Roms/Nintendo DS (NDS)/`                         | `.nds` `.zip` `.7z`                                                          | —                                                |
 | Amiga                   | Amiberry                         | `Roms/Commodore Amiga (AMIGA)/`                   | `.adf` `.ipf` `.hdf` `.lha` `.cue` `.iso` `.chd` `.zip`                      | kickstarts in `Bios/` (AROS ships)               |

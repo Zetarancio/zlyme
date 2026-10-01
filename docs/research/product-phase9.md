@@ -325,6 +325,12 @@ Saves: one writable library per launch. Exact save files for that ROM win over u
 
 A/B swap user setting: dropped. Wi-Fi Country row: kept across scan rebuilds. Clock default: on, once, via `zlyme-card-defaults` marker `.zlyme-clock-on-default`. Volume overlay: no Y EDIT. MENU+Y: releasing MENU does not close Edit Preferences. Splore dummy: only while `Bios/PICO/pico8_64` and `pico8.dat` exist. Splore download location, proven on the live Flip: `/storage/.config/nextui/shared/Pico-8-native/bbs/carts/marepike-0.p8.png` (title Last Bullet, from `temp-marepike.nfo`).
 
+## Live acceptance
+
+Confirmed on `zlyme-my355-20261001-b9f8947780ec.tar`: PPSSPP OpenGL and Vulkan, a real format of a disposable card, the offline clock after a network sync, Splore and downloaded BBS carts, Splore sorting first, the PortMaster GUI, the quiet graphical boot, game/Settings/PAK handoff, and MENU+Y without the old list layer.
+
+Ruffle, the Music Player, Cheat Downloader, and Pak Store are deferred past the first stable release.
+
 ## Phase 9 architecture audit
 
 | Subsystem | Owner | Classification | Why |

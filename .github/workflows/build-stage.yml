@@ -102,8 +102,13 @@ jobs:
           echo "have_image=false" >> "$GITHUB_OUTPUT"
           chmod +x ./build.sh
           set +e
-          timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}"
+          mkdir -p output
+          # Full log is the artifact. The job console keeps the tail so a
+          # failure is still visible without a multi-megabyte Actions log.
+          timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}" \
+            > output/zlyme-build.log 2>&1
           rc=$?
+          tail -n 120 output/zlyme-build.log || true
           docker ps -aq | xargs -r docker stop || true
           docker ps -aq | xargs -r docker rm -f || true
           if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
@@ -132,6 +137,15 @@ jobs:
           names=$(tar -tf "${tars[0]}")
           echo "$names" | grep -qx idbloader.img
           echo "$names" | grep -qx u-boot.itb
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlyme-build-log-${{ github.run_id }}-${{ inputs.stage }}
+          retention-days: 7
+          path: output/zlyme-build.log
+          if-no-files-found: ignore
 
       - name: Upload artifacts
         if: steps.build.outputs.have_image == 'true'
