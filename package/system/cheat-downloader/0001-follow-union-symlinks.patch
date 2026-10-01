@@ -1,0 +1,141 @@
+--- a/cheat_manager.nim	2026-10-01 22:50:33.063429371 +0200
++++ b/cheat_manager.nim	2026-10-01 23:01:58.550917645 +0200
+@@ -4,7 +4,7 @@
+ ## Persists state as JSON, indexes zip archives into SQLite,
+ ## and provides dual-mode UI (text terminal or minui-presenter/minui-list).
+ 
+-import std/[json, osproc, os, posix, streams, strutils, strformat, algorithm]
++import std/[json, osproc, os, posix, sets, streams, strutils, strformat, algorithm]
+ import db_connector/db_sqlite
+ import miniz
+ 
+@@ -806,22 +806,61 @@
+       return dirName[p + 1 .. ^2]
+   return ""
+ 
++proc isDirEntry(kind: PathComponent): bool {.inline.} =
++  kind in {pcDir, pcLinkToDir}
++
++proc isFileEntry(kind: PathComponent): bool {.inline.} =
++  kind in {pcFile, pcLinkToFile}
++
++proc dirIdentity(path: string): string =
++  ## Target inode. A symlink and its directory are the same node, so a
++  ## cycle through the union cannot be walked forever.
++  try:
++    let info = getFileInfo(path, followSymlink = true)
++    result = $info.id.device & ":" & $info.id.file
++  except OSError:
++    result = ""
++
++proc hiddenGamePath(root, path: string): bool =
++  if path.len < root.len:
++    return true
++  let rel = path[root.len .. ^1]
++  "/." in rel or rel.startsWith(".") or rel.startsWith("/.")
++
+ proc hasGameFiles*(dirPath: string): bool =
+-  for path in walkDirRec(dirPath):
+-    let rel = path[dirPath.len .. ^1]
+-    if "/." in rel or rel.startsWith("."):
+-      continue
+-    let ext = splitFile(path).ext.toLowerAscii()
+-    if ext notin EXCLUDED_EXTS:
+-      return true
+-  return false
++  var seen = initHashSet[string]()
++  proc scan(dir: string; depth: int): bool =
++    if depth > 8:
++      return false
++    let id = dirIdentity(dir)
++    if id.len == 0 or id in seen:
++      return false
++    seen.incl(id)
++    try:
++      for kind, path in walkDir(dir):
++        let name = extractFilename(path)
++        if name.startsWith("."):
++          continue
++        if isFileEntry(kind):
++          if hiddenGamePath(dirPath, path):
++            continue
++          let ext = splitFile(path).ext.toLowerAscii()
++          if ext notin EXCLUDED_EXTS:
++            return true
++        elif isDirEntry(kind):
++          if scan(path, depth + 1):
++            return true
++    except OSError:
++      discard
++    false
++  scan(dirPath, 0)
+ 
+ proc browserListDirs*(rootDir: string): seq[DirEntry] =
+   ## List ROM subdirectories that have a parseable tag and contain game files.
+   result = @[]
+   var entries: seq[string] = @[]
+   for kind, path in walkDir(rootDir):
+-    if kind == pcDir:
++    if isDirEntry(kind):
+       entries.add(path)
+   entries.sort(proc(a, b: string): int = cmpIgnoreCase(extractFilename(a),
+                extractFilename(b)))
+@@ -848,16 +887,16 @@
+     if name.startsWith("."):
+       continue
+ 
+-    let info = getFileInfo(f)
+-    if info.kind == pcFile:
++    let info = getFileInfo(f, followSymlink = false)
++    if isFileEntry(info.kind):
+       let ext = splitFile(name).ext.toLowerAscii()
+       if ext notin EXCLUDED_EXTS:
+         result.add(DirEntry(name: name, path: f))
+-    elif info.kind == pcDir:
++    elif isDirEntry(info.kind):
+       # Check for .m3u inside subdir
+       var m3uFiles: seq[string] = @[]
+       for subKind, subPath in walkDir(f):
+-        if subKind == pcFile and subPath.toLowerAscii().endsWith(".m3u"):
++        if isFileEntry(subKind) and subPath.toLowerAscii().endsWith(".m3u"):
+           m3uFiles.add(subPath)
+ 
+       if m3uFiles.len > 0:
+@@ -868,7 +907,7 @@
+         # Check for other valid game files inside
+         var validGameFound = false
+         for subKind, subPath in walkDir(f):
+-          if subKind == pcFile:
++          if isFileEntry(subKind):
+             let sname = extractFilename(subPath)
+             if sname.startsWith("."):
+               continue
+@@ -1301,6 +1340,7 @@
+   # Check arguments
+   var textui = false
+   var jsonuiMode = false
++  var listDirs = false
+   for arg in commandLineParams():
+     if arg == "textui":
+       textui = true
+@@ -1310,6 +1350,8 @@
+       debugMode = true
+     elif arg == "offline":
+       offlineMode = true
++    elif arg == "list-dirs":
++      listDirs = true
+ 
+   # Check for required environment variables
+   env.romDir = getEnv("ROM_DIR")
+@@ -1333,6 +1375,11 @@
+   debug "CACHE_DIR: ", env.cacheDir
+   debug "CHEAT_DIR: ", env.cheatDir
+ 
++  if listDirs:
++    for d in browserListDirs(env.romDir):
++      echo d.name
++    quit(0)
++
+   ui = createUi(textui, jsonuiMode)
+ 
+   main()

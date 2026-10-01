@@ -25,7 +25,12 @@ mark=/tmp/zlyme-cheat-presenter.$$
 rm -f "$mark"
 export ZLYME_CHEAT_PRESENTER_MARK=$mark
 cleanup() {
-	rm -rf "$union"
+	# Tests keep the view so list-dirs can read the same symlink tree.
+	if [ "${ZLYME_CHEAT_KEEP:-}" = 1 ]; then
+		printf 'union=%s\n' "$union"
+	else
+		rm -rf "$union"
+	fi
 	rm -f "$mark"
 }
 trap cleanup EXIT

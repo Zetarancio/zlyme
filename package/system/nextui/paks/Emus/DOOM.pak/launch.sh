@@ -23,9 +23,7 @@ export HOME
 cd "$HOME" || exit 1
 case "$ROM" in
 	*.wad|*.WAD|*.pk3|*.PK3) exec gzdoom +set use_joystick true \
-		+set menu_confirm Joy1 +set menu_back Joy2 \
 		-savedir "$SAVES_PATH/DOOM" -iwad "$ROM" ;;
 	*) exec gzdoom +set use_joystick true \
-		+set menu_confirm Joy1 +set menu_back Joy2 \
 		-savedir "$SAVES_PATH/DOOM" "$ROM" ;;
 esac

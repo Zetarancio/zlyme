@@ -55,10 +55,16 @@ out=$(ZLYME_DOOM_DRY=1 ZLYME_STATE_ROOT=$work/doom \
 	"$ROOT/package/system/nextui/paks/Emus/DOOM.pak/launch.sh" "$work/doom/game.wad")
 printf '%s\n' "$out" | grep -F -q "home=$work/doom"
 printf '%s\n' "$out" | grep -F -q "config=$work/doom/.config/gzdoom"
-grep -q 'menu_confirm Joy1' \
+if grep -q 'menu_confirm\|menu_back' \
 	"$ROOT/package/system/nextui/paks/Emus/DOOM.pak/launch.sh"
-grep -q 'menu_back Joy2' \
-	"$ROOT/package/system/nextui/paks/Emus/DOOM.pak/launch.sh"
+then
+	echo "doom launcher still sets menu_confirm" >&2
+	exit 1
+fi
+if [ -e "$ROOT/package/emulators/gzdoom/0005-configurable-menu-confirm-back.patch" ]; then
+	echo "gzdoom menu_confirm patch is still present" >&2
+	exit 1
+fi
 if grep -q '/mnt/SDCARD' "$ROOT/package/emulators/gzdoom/0001-Fix-file-paths.patch"; then
 	echo "gzdoom patch still hardcodes a card path" >&2
 	exit 1
