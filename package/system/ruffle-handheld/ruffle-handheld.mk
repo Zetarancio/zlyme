@@ -17,6 +17,10 @@ RUFFLE_HANDHELD_LICENSE_FILES = \
 	rufflehandheld/licenses/LICENSE.Ruffle-Handheld.txt \
 	rufflehandheld/licenses/THIRD_PARTY.txt
 
+define RUFFLE_HANDHELD_EXTRACT_CMDS
+	unzip -q -o $(RUFFLE_HANDHELD_DL_DIR)/$(RUFFLE_HANDHELD_SOURCE) -d $(@D)
+endef
+
 define RUFFLE_HANDHELD_INSTALL_TARGET_CMDS
 	rm -rf $(TARGET_DIR)/usr/share/zlyme/rufflehandheld
 	mkdir -p $(TARGET_DIR)/usr/share/zlyme
