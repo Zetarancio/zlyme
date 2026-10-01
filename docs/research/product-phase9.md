@@ -325,6 +325,27 @@ Saves: one writable library per launch. Exact save files for that ROM win over u
 
 A/B swap user setting: dropped. Wi-Fi Country row: kept across scan rebuilds. Clock default: on, once, via `zlyme-card-defaults` marker `.zlyme-clock-on-default`. Volume overlay: no Y EDIT. MENU+Y: releasing MENU does not close Edit Preferences. Splore dummy: only while `Bios/PICO/pico8_64` and `pico8.dat` exist. Splore download location, proven on the live Flip: `/storage/.config/nextui/shared/Pico-8-native/bbs/carts/marepike-0.p8.png` (title Last Bullet, from `temp-marepike.nfo`).
 
+## Phase 9 architecture audit
+
+| Subsystem | Owner | Classification | Why |
+| --- | --- | --- | --- |
+| gpSP pin and Spruce floors | `zlyme-governor` | KEEP | One policy command. NextUI asks `--policy` instead of copying the table. |
+| Incremental OTA | update scripts | KEEP | Hash and base checks are the safety, not leftover complexity. |
+| Game cleanup | `zlyme-game-cleanup` | KEEP | Dry-run, then one plan. Per-ROM delete uses the save resolver. |
+| Bounded logs | `pak-log.sh` / `zlyme-logs` | KEEP | Fixed generations. Format status is one tmpfs line, copied into the Settings log only when logging is already on. |
+| Wi-Fi country | `zlyme-wifi` plus the settings row | KEEP | The row is static across scans. |
+| Time zone | `zlyme-timezone` | KEEP | `/etc/localtime` is the one path. RTC stays UTC. |
+| Reset / Advanced | `zlyme-reset`, `zlyme-bootcfg` | KEEP | Explicit file list. `ab_swap` has no consumer. |
+| A/B swap setting | removed | REMOVE | One built-in map. `JOY_A`/`JOY_B` live in the my355 platform header that NextUI, minui-list, and minui-presenter all compile. |
+| Multi-library BIOS | `zlyme-library.sh` + `bios-union.py` | KEEP | Callers see one `BIOS_PATH`. Precedence and the per-card cache stay behind that. The shell `find` loop was the wrong implementation and is gone. |
+| Multi-library saves | `zlyme_save_root` | KEEP | One writable root. Exact name, then any file in `Saves/<tag>`, ROM card wins, no copy. |
+| Synthetic Splore | `zlyme-storage` calls `zlyme-pico-splore` | KEEP, BUT the old session call was REPLACE | A dummy ROM is still the smallest thing NextUI already lists. A synthetic menu action would be a second catalog. The session must not seed it before SD2 is in the library list. |
+| PortMaster | `control.txt`, `mod_Zlyme.txt`, `PORTS.pak` | KEEP, identity forced after `device_info.txt` | Upstream `device_info.txt` was leaving `CFW_NAME=Unknown`, so `mod_Zlyme.txt` never loaded. DRM is released before the port, same as RetroArch. No per-game script patches. |
+| Weston | `zlyme-weston-run` | KEEP | Temporary, one client. The test PAK is gone. OpenGL PPSSPP stays on KMS. Vulkan PPSSPP uses this helper. |
+| Formatting | `zlyme-storage-format` plus a thin UI | KEEP | The backend rejects the OS disk. The UI only adds confirm/cancel. Real format of the ROM card was not run. |
+| quiet splash | initramfs `init`, `S12splash`, `S16display` | KEEP, initramfs was REPLACE | Rootfs already honored `quiet`. The ramdisk and S16 started the splash anyway. Progress mode still runs for an OTA. |
+| MENU+Y editor | NextUI `SCREEN_EDITPREFS` | KEEP | Opaque `THEME_COLOR7` before the rows. MENU release is not Back. |
+
 ## Group 5 — release
 
 | Work | Disposition | Notes |
