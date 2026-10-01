@@ -408,9 +408,27 @@ Other shipped Tools: Files, Artwork Scraper, Overlays, and PortMaster do not lin
 
 Stock Tools and Emus are still the image glob. No new boot service and no first-frame work were added for these apps.
 
-### Still not hardware-accepted
+### Live acceptance of e93a85f
 
-Splore titles and art, Moonlight A/B, ScrapeGoat A/B, Ruffle, Music Player, and Cheat Downloader need the maintainer's smoke on the new OTA. PPSSPP Vulkan, formatting, the clock, PortMaster, quiet boot, and the 8e8116f Settings rows stay closed.
+Confirmed on the installed `e93a85f` image:
+
+- downloaded Splore titles and artwork, with no visible `temp-*` rows, and a downloaded cart launch
+- Moonlight and ScrapeGoat: printed A confirms, printed B goes back
+- RetroArch, PPSSPP Vulkan, Settings open/return, and quiet transitions
+
+Ruffle was not visible. The card directory is `Flash (FLASH)` and the SWF is there. The image shipped `RUFFLE.pak`, `RUFFLE: swf`, and `Flash (RUFFLE)`. NextUI hides a ROM folder when `hasEmu()` cannot find `TAG.pak`. `.swf` is not on the junk list, so the missing pak is what hid the folder. The tag and the extension line were also the wrong name.
+
+Music Player exited 127. The log is `libmali.so.1: cannot open shared object file`. The v1.17.0 my355 binary was linked in a toolchain whose GLES dependency is vendor libmali. That library is at `/usr/lib/mali/libmali.so.1` and is not on the default loader path. The GPU file is `libmali`. A Panfrost boot would fail the same `DT_NEEDED` even if the path were added.
+
+Cheat Downloader stayed up until MENU+START. Its pak log is only the launch header. `textui debug offline` on the device walks `FIND_LOCAL_DB` → `CHECK_UPDATE` → `INIT_DB` and exits with "No cheat database". GitHub's release redirect answers in a few seconds when curl has a timeout. The graphical path starts `minui-presenter` with `--timeout -1` or `0`, which waits until a button, and the binary does not log unless `debug` is passed. Its curl invocations have no connect or total timeout.
+
+`mmcblk0p3` is `/storage` (exFAT, rw). The exFAT "not properly unmounted" line is from this boot, at about 3 seconds. `zlyme-halt` already `sync`s and unmounts `/storage` without a lazy unmount before poweroff. No repair was run.
+
+Create game folders is a Phase 9 settings action. It only adds missing directories on a library listed in `/run/zlyme/libraries`.
+
+## Still not hardware-accepted
+
+Ruffle still needs a runtime launch on the Flip and a visual confirmation. Music Player and Cheat Downloader still need a launch on the corrected image. Create game folders still needs a settings pass. The exFAT warning still needs a maintainer filesystem check when the card can be unmounted. PPSSPP Vulkan, formatting, the clock, PortMaster, quiet boot, and the 8e8116f Settings rows stay closed.
 
 ## Group 5 — release
 
