@@ -30,6 +30,22 @@ is_class_a() {
 
 boot_mark rcS-start
 
+# /dev/console is the serial port. Without quiet, copy this boot's
+# userspace lines onto the LCD VT as well. quiet keeps the panel for
+# the splash; kernel text is already suppressed by that token.
+if [ -r /usr/share/zlyme/splash-quiet.sh ] && [ -c /dev/tty1 ]; then
+	# shellcheck disable=SC1091
+	. /usr/share/zlyme/splash-quiet.sh
+	if ! zlyme_splash_wanted && command -v tee >/dev/null 2>&1; then
+		_fifo=/run/zlyme-lcd.fifo
+		rm -f "$_fifo"
+		if mkfifo "$_fifo"; then
+			tee /dev/tty1 < "$_fifo" &
+			exec > "$_fifo" 2>&1
+		fi
+	fi
+fi
+
 # Session + NextUI are the remaining seconds. schedutil leaves the
 # A55s idle while we mount and bind. Initramfs already set this for
 # the squashfs loop; repeat in case we booted without that ramdisk.

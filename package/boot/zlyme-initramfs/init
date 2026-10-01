@@ -3,14 +3,18 @@
 # the vfat, copy it over /zlyme, and close the vfat again. Then
 # loop-mount zlyme read-only and switch_root.
 
+# splash_on is 1 only while the graphical splash owns the panel.
+# quiet: splash, and these lines stay off the LCD.
+# no quiet: the same lines are the text progress, including an OTA.
+splash_on=0
 log() {
-	echo "zlyme-init: $*"
-	# Do not scribble on the panel while the lockup is up.
-	if [ -f /zlyme-splash.progress ] || [ -f /boot_root/zlyme-splash.progress ]; then
+	printf 'zlyme-init: %s\n' "$*"
+	if [ "$splash_on" = 1 ]; then
 		return 0
 	fi
-	[ -w /dev/console ] && echo "zlyme-init: $*" >/dev/console 2>/dev/null
-	[ -w /dev/tty1 ] && echo "zlyme-init: $*" >/dev/tty1 2>/dev/null
+	if [ -c /dev/tty1 ]; then
+		printf 'zlyme-init: %s\n' "$*" >/dev/tty1 2>/dev/null || true
+	fi
 }
 
 mount_boot() {
@@ -145,8 +149,8 @@ do_root() {
 	fi
 	read -r cmdline < /proc/cmdline
 	# Normal splash only when the command line has a complete quiet
-	# token. A pending-update progress flag may still paint, so an
-	# OTA reboot is not a black screen. Same token rule as
+	# token. Without quiet, an OTA stays on the text console.
+	# Same token rule as
 	# splash-quiet.sh; initramfs cannot source the squashfs copy.
 	splash_wanted=0
 	for _tok in ${cmdline}; do
@@ -155,12 +159,14 @@ do_root() {
 		fi
 	done
 	splash_mode=
-	if [ -f /boot_root/zlyme-splash.progress ]; then
+	# A pending update does not override a non-quiet boot. Text on
+	# tty1 is the progress indication in that case.
+	if [ "$splash_wanted" -eq 1 ] && [ -f /boot_root/zlyme-splash.progress ]; then
 		: > /zlyme-splash.progress
-		splash_wanted=1
 		splash_mode=progress
 	fi
 	if [ "$splash_wanted" -eq 1 ] && [ -x /zlyme-splash ]; then
+		splash_on=1
 		# Stills from the ramdisk. Anims appear on FAT at
 		# /boot_root once MMC is up; splash loads them then.
 		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
@@ -206,11 +212,16 @@ do_root() {
 			fi
 		else
 			if [ "$pending" -eq 1 ]; then
-				: > /zlyme-splash.progress
-				: > /boot_root/zlyme-splash.progress
-				if [ "$splash_wanted" -eq 0 ] && [ -x /zlyme-splash ]; then
-					/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
-						/progress.rgb565 /boot_root/progress.anim progress &
+				if [ "$splash_wanted" -eq 1 ]; then
+					: > /zlyme-splash.progress
+					: > /boot_root/zlyme-splash.progress
+					if [ "$splash_on" != 1 ] && [ -x /zlyme-splash ]; then
+						splash_on=1
+						/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
+							/progress.rgb565 /boot_root/progress.anim progress &
+					fi
+				else
+					log "applying update"
 				fi
 				commit_update || log "copy failed, keeping current zlyme"
 			fi

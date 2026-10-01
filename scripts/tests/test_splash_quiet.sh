@@ -33,4 +33,17 @@ awk '
 	seen && /zlyme-splash \/splash/ { ok = 1 }
 	END { exit ok ? 0 : 1 }
 ' "$init"
+# The only splash_wanted=1 is the quiet-token branch.
+awk '
+	/= quiet/ { quiet = 1; next }
+	/splash_wanted=1/ { if (!quiet) bad = 1; quiet = 0 }
+	{ quiet = 0 }
+	END { exit bad ? 1 : 0 }
+' "$init"
+grep -q 'console=tty1 console=ttyS2' "$ROOT/board/my355/extlinux.conf"
+grep -q '/dev/tty1' "$ROOT/board/my355/fsoverlay/etc/init.d/rcS"
+if grep -n splash_ok=1 "$ROOT/board/my355/fsoverlay/etc/init.d/S16display" | grep -v zlyme_splash_wanted; then
+	echo "S16 starts the splash for a reason other than quiet" >&2
+	exit 1
+fi
 echo "splash quiet ok"
