@@ -66,8 +66,13 @@ raconf="--config /storage/.config/retroarch/retroarch.cfg"
 [ -f "$controlfolder/device_info.txt" ] && . "$controlfolder/device_info.txt"
 [ -f "$controlfolder/funcs.txt" ] && . "$controlfolder/funcs.txt"
 
-export CFW_NAME="${CFW_NAME:-Zlyme}"
-export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
+# device_info.txt assigns CFW_NAME=Unknown and may replace
+# DEVICE_NAME from the devicetree. Ports then look for mod_${CFW_NAME}.
+export CFW_NAME=Zlyme
+export DEVICE_NAME="Miyoo Flip"
+: "${DISPLAY_WIDTH:=640}"
+: "${DISPLAY_HEIGHT:=480}"
+export DISPLAY_WIDTH DISPLAY_HEIGHT
 
 get_controls() {
 	: "${SDL_GAMECONTROLLERCONFIG_FILE:=/usr/lib/gamecontrollerdb.txt}"
