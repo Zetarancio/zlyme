@@ -22,4 +22,10 @@ mkdir -p "$HOME/carts" "$HOME/cdata" "$HOME/bbs" "$HOME/config" "$HOME/data"
 export XDG_CONFIG_HOME="$HOME/config"
 export XDG_DATA_HOME="$HOME/data"
 cd "$HOME"
-exec pico8 "$ROM"
+pico8 "$ROM"
+st=$?
+# Titles are indexed after PICO exits, not while the list is drawing.
+if [ -x /usr/sbin/zlyme-pico-bbs ]; then
+	/usr/sbin/zlyme-pico-bbs || true
+fi
+exit "$st"

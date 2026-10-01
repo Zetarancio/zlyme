@@ -11,7 +11,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = 0b5ed75187058b822db2d9aed0eecc28d574b4ac
+NEXTUI_VERSION = a9e7da1b6a0d3eee1284b098ab42f99b1a1826ca
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

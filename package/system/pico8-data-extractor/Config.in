@@ -1,0 +1,8 @@
+config BR2_PACKAGE_PICO8_DATA_EXTRACTOR
+	bool "pico8-data-extractor"
+	depends on BR2_aarch64
+	help
+	  pico8-data-extractor 0.1.0. Prints PICO-8 cart Lua so
+	  zlyme-pico-bbs can read a title. Static AArch64.
+
+	  https://github.com/josegonzalez/pico8-data-extractor

@@ -125,4 +125,7 @@ if owned "$ROMDIR/$NAME"; then
 	: > "$marker"
 fi
 drop_other_owned
+if [ -x /usr/sbin/zlyme-pico-bbs ]; then
+	/usr/sbin/zlyme-pico-bbs || true
+fi
 exit 0

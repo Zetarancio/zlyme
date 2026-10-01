@@ -38,6 +38,6 @@ grep -F -q 'PADDING + PILL_SIZE + BUTTON_MARGIN' \
 	/home/ale/zlyme-nextui/workspace/all/nextui/nextui.c
 grep -F -q 'GFX_getTextWidth(font.large, editprefs.title' \
 	/home/ale/zlyme-nextui/workspace/all/nextui/nextui.c
-grep -F -q 'strstr(in_name, "/Pico-8-native/bbs/carts/")' \
+grep -F -q 'strstr(in_name, "/Pico-8-native/bbs/")' \
 	/home/ale/zlyme-nextui/workspace/all/common/utils.c
 echo "phase9n ok"

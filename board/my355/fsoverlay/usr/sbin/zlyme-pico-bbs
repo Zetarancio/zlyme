@@ -1,0 +1,190 @@
+#!/bin/sh
+# Titles for Splore carts. Carts stay where PICO-8 wrote them.
+# This writes filename<TAB>title rows into each Pico-8 map.txt and
+# does not copy carts, artwork, or .res files.
+#
+# Titles, in order: a matching PICO-8 .nfo, then the first Lua comment
+# from pico8-data-extractor, then the cart stem. temp-* files are not
+# entries. One numeric directory under bbs is listed; nothing deeper.
+#
+# ZLYME_PICO_SHARED, ZLYME_PICO_ROMDIR, ZLYME_PICO_LIBRARIES, and
+# ZLYME_PICO_EXTRACTOR are test seams.
+
+set -eu
+
+SDCARD=${SDCARD_PATH:-/storage}
+SHARED=${ZLYME_PICO_SHARED:-${SHARED_USERDATA_PATH:-$SDCARD/.config/nextui/shared}/Pico-8-native}
+BBS=$SHARED/bbs
+EXTRACTOR=${ZLYME_PICO_EXTRACTOR:-pico8-data-extractor}
+
+[ -d "$BBS" ] || exit 0
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+cart_stem() {
+	base=$(basename "$1")
+	base=${base%.p8.png}
+	base=${base%.p8}
+	printf '%s\n' "$base"
+}
+
+cart_slug() {
+	stem=$(cart_stem "$1")
+	printf '%s\n' "$stem" | sed 's/-[0-9][0-9]*$//'
+}
+
+nfo_title() {
+	cart=$1
+	dir=$(dirname "$cart")
+	stem=$(cart_stem "$cart")
+	slug=$(cart_slug "$cart")
+	found=
+	for nfo in "$dir"/*.nfo; do
+		[ -f "$nfo" ] || continue
+		base=$(basename "$nfo" .nfo)
+		case $base in
+			temp-*) base=${base#temp-} ;;
+		esac
+		lid=
+		title=
+		while IFS= read -r line || [ -n "$line" ]; do
+			line=${line%
+}
+			case $line in
+				lid:*) lid=${line#lid:} ;;
+				title:*) title=${line#title:} ;;
+			esac
+		done < "$nfo"
+		lid=${lid# }
+		title=${title# }
+		[ -n "$title" ] || continue
+		ok=
+		if [ "$lid" = "$stem" ] || [ "$lid" = "$slug" ]; then
+			ok=1
+		fi
+		if [ "$base" = "$stem" ] || [ "$base" = "$slug" ]; then
+			ok=1
+		fi
+		if [ -n "$ok" ]; then
+			printf '%s' "$title" | tr '\t\r' '  ' | sed 's/[[:space:]]*$//'
+			found=1
+			break
+		fi
+	done
+	[ -n "$found" ]
+}
+
+lua_title() {
+	cart=$1
+	command -v "$EXTRACTOR" >/dev/null 2>&1 || return 1
+	raw=$("$EXTRACTOR" "$cart" 2>/dev/null) || return 1
+	title=$(printf '%s\n' "$raw" | awk '/^-- /{sub(/^-- /, ""); print; exit}')
+	title=$(printf '%s' "$title" | sed -e 's/^[~*=+[:space:]]*//' -e 's/[~*=+[:space:]]*$//')
+	[ -n "$title" ] || return 1
+	printf '%s' "$title" | tr '\t\r' '  ' | sed 's/[[:space:]]*$//'
+}
+
+consider() {
+	f=$1
+	[ -f "$f" ] || return 0
+	name=$(basename "$f")
+	case $name in
+		temp-*|.*) return 0 ;;
+	esac
+	case $name in
+		*.p8.png|*.p8) ;;
+		*) return 0 ;;
+	esac
+	# A text .p8 next to its .p8.png is the same cart.
+	case $name in
+		*.p8.png) ;;
+		*.p8)
+			alt=$(dirname "$f")/${name%.p8}.p8.png
+			[ -f "$alt" ] && return 0
+			;;
+	esac
+	printf '%s\n' "$f"
+}
+
+: > "$work/carts"
+if [ -d "$BBS/carts" ]; then
+	for f in "$BBS/carts"/*.p8.png "$BBS/carts"/*.p8; do
+		consider "$f"
+	done >> "$work/carts"
+fi
+for d in "$BBS"/[0-9]*; do
+	[ -d "$d" ] || continue
+	shard=$(basename "$d")
+	case $shard in
+		*[!0-9]*) continue ;;
+	esac
+	for f in "$d"/*.p8.png "$d"/*.p8; do
+		consider "$f"
+	done >> "$work/carts"
+done
+
+: > "$work/rows"
+while IFS= read -r cart; do
+	[ -n "$cart" ] || continue
+	name=$(basename "$cart")
+	title=
+	title=$(nfo_title "$cart") || title=
+	if [ -z "$title" ]; then
+		title=$(lua_title "$cart") || title=
+	fi
+	if [ -z "$title" ]; then
+		title=$(cart_stem "$cart")
+	fi
+	printf '%s\t%s\n' "$name" "$title"
+done < "$work/carts" | sort -u > "$work/rows"
+
+: > "$work/drop"
+cut -f1 "$work/rows" > "$work/drop"
+
+each_romdir() {
+	if [ -n "${ZLYME_PICO_ROMDIR:-}" ]; then
+		printf '%s\n' "$ZLYME_PICO_ROMDIR"
+		return 0
+	fi
+	libs=${ZLYME_PICO_LIBRARIES:-/run/zlyme/libraries}
+	[ -r "$libs" ] || return 0
+	while IFS= read -r lib || [ -n "$lib" ]; do
+		[ -n "$lib" ] || continue
+		for base in "$lib/Roms" "$lib/roms" "$lib/ROMS"; do
+			[ -d "$base/Pico-8 (PICO)" ] || continue
+			printf '%s\n' "$base/Pico-8 (PICO)"
+		done
+	done < "$libs"
+}
+
+each_romdir | while IFS= read -r dir; do
+	[ -n "$dir" ] || continue
+	[ -d "$dir" ] || continue
+	map=$dir/map.txt
+	owned=$dir/.zlyme-bbs-map
+	[ -f "$owned" ] && cat "$owned" >> "$work/drop"
+	tmp=$(mktemp "$dir/.zlyme-map.XXXXXX")
+	otmp=$(mktemp "$dir/.zlyme-own.XXXXXX")
+	if [ -f "$map" ]; then
+		awk -F '\t' '
+			NR == FNR { if ($1 != "") drop[$1] = 1; next }
+			{
+				key = $1
+				if (key == "" || drop[key]) next
+				print
+			}
+		' "$work/drop" "$map" > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	cat "$work/rows" >> "$tmp"
+	cut -f1 "$work/rows" > "$otmp"
+	mv -f "$tmp" "$map"
+	mv -f "$otmp" "$owned"
+	# The drop file is per directory. Reset it to the current carts
+	# so the next library does not inherit this folder's old keys.
+	cut -f1 "$work/rows" > "$work/drop"
+done
+
+exit 0

@@ -17,8 +17,13 @@ art_for() {
 		return
 	fi
 	case "$rom" in
-		*/Pico-8-native/bbs/carts/*.p8.png)
-			printf '%s\n' "$rom"
+		*/Pico-8-native/bbs/*)
+			base=$(basename "$rom")
+			case $base in
+				temp-*) printf '%s\n' none ;;
+				*.p8.png) printf '%s\n' "$rom" ;;
+				*) printf '%s\n' none ;;
+			esac
 			;;
 		*)
 			printf '%s\n' none
@@ -37,6 +42,14 @@ other="$work/Roms/Game Boy (GB)/shot.png"
 mkdir -p "$(dirname "$other")"
 printf 'png' > "$other"
 test "$(art_for "$other")" = none
-grep -F -q 'Pico-8-native/bbs/carts/' "$ui"
+partial="$work/Pico-8-native/bbs/carts/temp-partial.p8.png"
+printf 'png' > "$partial"
+test "$(art_for "$partial")" = none
+shard="$work/Pico-8-native/bbs/4/15133.p8.png"
+mkdir -p "$(dirname "$shard")"
+printf 'png' > "$shard"
+test "$(art_for "$shard")" = "$shard"
+grep -F -q 'Pico-8-native/bbs/' "$ui"
 grep -F -q '.media/%s.png' "$ui"
+grep -F -q 'CFG_getShowGameArt()' "$ui"
 echo "pico art ok"
