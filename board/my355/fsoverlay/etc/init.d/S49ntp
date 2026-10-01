@@ -40,11 +40,11 @@ start() {
 			stamp=
 			[ -n "$hdr" ] && stamp=$(http_date_to_stamp "$hdr")
 			if [ -n "$stamp" ] && date -u -s "$stamp" >/dev/null 2>&1; then
-				hwclock -w >/dev/null 2>&1 || true
+				hwclock -u -w >/dev/null 2>&1 || true
 				exit 0
 			fi
 			if [ -n "$hdr" ] && date -u -D "%a, %d %b %Y %H:%M:%S GMT" -s "$hdr" >/dev/null 2>&1; then
-				hwclock -w >/dev/null 2>&1 || true
+				hwclock -u -w >/dev/null 2>&1 || true
 				exit 0
 			fi
 			sleep 2
