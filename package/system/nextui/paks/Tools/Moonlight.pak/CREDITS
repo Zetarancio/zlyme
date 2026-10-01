@@ -6,8 +6,9 @@ Moonlight.pak UI is moonlight-pak from:
 Rebuilt here against Apostrophe
   https://github.com/Helaas/Apostrophe
   Copyright (c) 2026 Kevin Vranken, MIT (LICENSE.apostrophe)
-with Zlyme Flip joystick mapping (NextUI JOY_*). Upstream Apostrophe
-treats the Flip as keyboard scancodes; this image's joypad does not.
+The my355 build opens InputPlumber's virtual Xbox 360 pad through
+SDL GameController. It does not use physical Flip button indices,
+and it does not write cpufreq. zlyme-governor owns the clocks.
 
 The streamer on PATH is moonlight-embedded from this image (/usr/bin/moonlight),
 not the pak. See LICENSE in this directory (upstream pak license).

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Point Apostrophe my355 builds at the Flip joystick (NextUI JOY_*).
+"""Point Apostrophe my355 builds at the virtual Xbox pad.
 
-https://github.com/Helaas/Apostrophe treats Flip buttons as keyboard
-scancodes. Zlyme's rocknix joypad only emits joystick events.
-Handles both the compile-time MY355 exclusion (Moonlight's pin) and
-the runtime skip (current ScrapeGoat pin).
+Production PAKs see InputPlumber's Xbox 360 target, not the physical
+Flip. GameController is the primary path. The raw fallback uses Xbox
+button indices (A=0, B=1), not the old physical Flip map.
 """
 from __future__ import annotations
 
@@ -13,34 +12,37 @@ from pathlib import Path
 
 MY355_CASES = """\
         switch (btn) {
-            case 0:  return AP_BTN_B;
-            case 1:  return AP_BTN_A;
+            case 0:  return AP_BTN_A;
+            case 1:  return AP_BTN_B;
             case 2:  return AP_BTN_X;
             case 3:  return AP_BTN_Y;
             case 4:  return AP_BTN_L1;
             case 5:  return AP_BTN_R1;
-            case 6:  return AP_BTN_L2;
-            case 7:  return AP_BTN_R2;
-            case 8:  return AP_BTN_SELECT;
-            case 9:  return AP_BTN_START;
-            case 10: return AP_BTN_MENU;
-            case 13: return AP_BTN_UP;
-            case 14: return AP_BTN_DOWN;
-            case 15: return AP_BTN_LEFT;
-            case 16: return AP_BTN_RIGHT;
+            case 6:  return AP_BTN_SELECT;
+            case 7:  return AP_BTN_START;
+            case 8:  return AP_BTN_MENU;
             default: return AP_BTN_NONE;
         }
 """
 
 MY355_BLOCK = f"""\
-    /* Flip (my355): NextUI platform.h JOY_* indices, not TrimUI / keyboard. */
+    /* my355 production PAKs see InputPlumber's virtual Xbox 360 pad,
+     * not the physical Flip. Raw indices follow that pad. The
+     * GameController path is preferred; this is the fallback. */
     if (ap_get_platform() == AP_PLATFORM_MY355) {{
 {MY355_CASES}    }}
 """
 
 
 def patch(text: str) -> str:
-    if "Flip (my355): NextUI platform.h JOY_*" in text:
+    old = "Flip (my355): NextUI platform.h JOY_* indices, not TrimUI / keyboard."
+    if old in text:
+        start = text.find("    /* Flip (my355):")
+        end = text.find("    /* H700 external pads", start)
+        if start < 0 or end < 0:
+            raise SystemExit("apostrophe.h: old my355 map block not bounded")
+        text = text[:start] + MY355_BLOCK + text[end:]
+    if "virtual Xbox 360 pad" in text and "case 0:  return AP_BTN_A;" in text:
         return text
 
     # Moonlight pin: mapper and JOYBUTTON cases are compiled out on my355.

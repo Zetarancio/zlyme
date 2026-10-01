@@ -8,8 +8,10 @@ UI toolkit: Apostrophe
 https://github.com/Helaas/Apostrophe
 Copyright (c) 2026 Kevin Vranken, MIT
 
-The my355 binary is rebuilt here against Apostrophe with Zlyme Flip
-joystick mapping (NextUI JOY_*). Stock Apostrophe treats the Flip as
-keyboard scancodes; this image's joypad emits joystick events.
+The my355 binary is rebuilt here against Apostrophe. It opens
+InputPlumber's virtual Xbox 360 pad through SDL GameController and
+does not write cpufreq. zlyme-governor owns the clocks. Stock
+Apostrophe treats the Flip as keyboard scancodes; this image's
+production PAKs do not see that device.
 ScreenScraper developer credentials are the same ones baked into the
 upstream 2.3.0 release binary.

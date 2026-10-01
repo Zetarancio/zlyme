@@ -4,7 +4,7 @@ Copyright (c) 2026 Kevin Vranken
 License: MIT (see LICENSE)
 
 Upstream pin is in UPSTREAM. include/apostrophe.h carries a Zlyme my355
-change: map Flip buttons with NextUI JOY_* joystick indices. Stock
-Apostrophe treats the Flip as keyboard scancodes only; this image's
-rocknix joypad emits joystick BTN_* events, which ScrapeGoat and
-Moonlight need in order to see A/B/D-pad.
+change: open InputPlumber's virtual Xbox 360 pad as an SDL
+GameController. The raw fallback uses Xbox indices (A=0, B=1). my355
+does not write cpufreq; zlyme-governor owns the clocks. TrimUI maps
+are unchanged.

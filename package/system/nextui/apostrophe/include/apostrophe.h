@@ -932,8 +932,9 @@ static const char *ap__font_search_paths[] = {
 #define AP__JOY_AXIS_L2     2   /* ABS_Z   */
 #define AP__JOY_AXIS_R2     5   /* ABS_RZ  */
 
-/* my355 (Miyoo Flip) keyboard scancode mapping.
- * On the Flip, ALL buttons arrive as SDL keyboard scancodes, not joystick. */
+/* my355 keyboard scancode fallback. Production PAKs do not see the
+ * physical Flip; they see the virtual Xbox pad as a GameController.
+ * These scancodes remain only if a keyboard event still arrives. */
 #define AP__MY355_CODE_A       44   /* SDL_SCANCODE_SPACE */
 #define AP__MY355_CODE_B       224  /* SDL_SCANCODE_LCTRL */
 #define AP__MY355_CODE_X       225  /* SDL_SCANCODE_LSHIFT */
@@ -1489,24 +1490,20 @@ static ap_button ap__flip_face_button(ap_button button) {
 
 /* Map SDL joystick button to virtual button (raw joystick — used on TrimUI) */
 static ap_button ap__map_joy_button(uint8_t btn) {
-    /* Flip (my355): NextUI platform.h JOY_* indices, not TrimUI / keyboard. */
+    /* my355 production PAKs see InputPlumber's virtual Xbox 360 pad,
+     * not the physical Flip. Raw indices follow that pad. The
+     * GameController path is preferred; this is the fallback. */
     if (ap_get_platform() == AP_PLATFORM_MY355) {
         switch (btn) {
-            case 0:  return AP_BTN_B;
-            case 1:  return AP_BTN_A;
+            case 0:  return AP_BTN_A;
+            case 1:  return AP_BTN_B;
             case 2:  return AP_BTN_X;
             case 3:  return AP_BTN_Y;
             case 4:  return AP_BTN_L1;
             case 5:  return AP_BTN_R1;
-            case 6:  return AP_BTN_L2;
-            case 7:  return AP_BTN_R2;
-            case 8:  return AP_BTN_SELECT;
-            case 9:  return AP_BTN_START;
-            case 10: return AP_BTN_MENU;
-            case 13: return AP_BTN_UP;
-            case 14: return AP_BTN_DOWN;
-            case 15: return AP_BTN_LEFT;
-            case 16: return AP_BTN_RIGHT;
+            case 6:  return AP_BTN_SELECT;
+            case 7:  return AP_BTN_START;
+            case 8:  return AP_BTN_MENU;
             default: return AP_BTN_NONE;
         }
     }
@@ -2085,11 +2082,10 @@ static void ap__handle_sdl_event(SDL_Event *ev, uint32_t now) {
         }
 
         /* --- Raw joystick button/hat events ---
-           Stock Apostrophe skips these on MY355 (keyboard scancodes).
-           Zlyme's rocknix joypad emits joystick BTN_* only, so Flip
-           must take this path. When a GameController is active (desktop),
-           skip raw button/hat — the GameController API already maps them.
-           Axis events (thumbstick) are allowed through on all platforms. */
+           When a GameController is open (my355 virtual Xbox pad, or
+           desktop), skip raw button/hat — SDL_CONTROLLERBUTTON* already
+           mapped them. The raw my355 fallback is the Xbox contract, not
+           the physical Flip indices. Axis events stay on all platforms. */
         case SDL_JOYBUTTONDOWN: {
             if (ap__g.controller) break; /* GameController handles this */
             ap_button b = ap__map_joy_button(ev->jbutton.button);
@@ -3786,6 +3782,11 @@ static ap_fan_mode ap__fan_detect_helper_mode(void) {
 
 int ap_set_cpu_speed(ap_cpu_speed speed) {
 #if AP_PLATFORM_IS_DEVICE
+    /* zlyme-governor owns my355 clocks. Do not write cpufreq here. */
+    if (ap_get_platform() == AP_PLATFORM_MY355) {
+        (void)speed;
+        return AP_OK;
+    }
     if (ap_get_platform() == AP_PLATFORM_H700) {
         const char *mode = NULL;
         switch (speed) {
@@ -4543,7 +4544,10 @@ int ap_init(ap_config *cfg) {
     ap__g.footer_overflow_opts.chord_b = AP_BTN_NONE;
 
     uint32_t sdl_flags = SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_EVENTS;
-    #if !AP_PLATFORM_IS_DEVICE
+    /* my355 PAKs are given a virtual Xbox pad. Open it as a
+     * GameController so A/B/X/Y follow SDL, not old Flip indices.
+     * TrimUI device builds stay on the raw joystick path. */
+    #if !AP_PLATFORM_IS_DEVICE || defined(PLATFORM_MY355)
     sdl_flags |= SDL_INIT_GAMECONTROLLER;
     #endif
     if (SDL_Init(sdl_flags) < 0) {
@@ -4564,12 +4568,21 @@ int ap_init(ap_config *cfg) {
     }
 
     /* Open input devices.
-     * On device we prefer raw joystick mapping because SDL GameController
-     * DB mappings can remap face buttons in ways that differ from NextUI's
-     * expected A/B layout on TrimUI hardware.
-     * On device, ALL joysticks are opened (like NextUI's PLAT_initInput) so that
-     * SDL receives keyboard/power events from every registered input device. */
+     * TrimUI stays on raw joystick indices: GameController DB mappings
+     * there do not match that hardware's A/B layout.
+     * my355 production PAKs only see the virtual Xbox pad, so that pad
+     * is opened as a GameController. Raw Xbox indices remain the fallback
+     * when SDL does not recognise it.
+     * On device, remaining joysticks are still opened so SDL receives
+     * events from every device the filter left visible. */
     int num_joy = SDL_NumJoysticks();
+    #if defined(PLATFORM_MY355)
+    {
+        const char *db = getenv("SDL_GAMECONTROLLERCONFIG_FILE");
+        if (db && db[0])
+            SDL_GameControllerAddMappingsFromFile(db);
+    }
+    #endif
     #if AP_PLATFORM_IS_DEVICE
     for (int i = 0; i < num_joy; i++) {
         const char *name = SDL_JoystickNameForIndex(i);
@@ -4577,6 +4590,18 @@ int ap_init(ap_config *cfg) {
             ap_log("Joystick %d skipped: %s (handled via evdev)", i, name);
             continue;
         }
+        #if defined(PLATFORM_MY355)
+        if (!ap__g.controller && SDL_IsGameController(i)) {
+            SDL_GameController *pad = SDL_GameControllerOpen(i);
+            if (pad) {
+                ap__g.controller = pad;
+                ap__g.joystick = SDL_GameControllerGetJoystick(pad);
+                ap_log("my355 pad: virtual xbox gamecontroller %s",
+                       SDL_GameControllerName(pad));
+                continue;
+            }
+        }
+        #endif
         SDL_Joystick *joy = SDL_JoystickOpen(i);
         if (joy) {
             ap_log("Joystick %d opened: %s", i, SDL_JoystickName(joy));
