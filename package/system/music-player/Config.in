@@ -1,0 +1,8 @@
+config BR2_PACKAGE_MUSIC_PLAYER
+	bool "music-player"
+	depends on BR2_aarch64
+	help
+	  Music Player v1.17.0. Local files under /storage/Music.
+	  The in-app updater and cpufreq writes are not used.
+
+	  https://github.com/nborodikhin/nextui-music-player

@@ -1,0 +1,8 @@
+config BR2_PACKAGE_RUFFLE_HANDHELD
+	bool "ruffle-handheld"
+	depends on BR2_aarch64
+	help
+	  Ruffle Handheld v4.2, pinned release zip. No SWF games.
+	  Launch glue is RUFFLE.pak. The runtime is not forked.
+
+	  https://github.com/SilverPsychoo/Ruffle-Handheld

@@ -1,0 +1,10 @@
+{
+  "name": "Music Player",
+  "version": "v1.17.0",
+  "type": "TOOL",
+  "description": "Play music files from the Music folder on the main card.",
+  "author": "nborodikhin",
+  "repo_url": "https://github.com/nborodikhin/nextui-music-player",
+  "platforms": ["my355"],
+  "launch": "launch.sh"
+}
