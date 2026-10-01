@@ -9,6 +9,11 @@ status=${ZLYME_FORMAT_STATUS:-/tmp/zlyme-format.status}
 
 note() {
 	printf '%s\n' "$1" > "$status"
+	# Settings logging is already bounded. Append one line there when
+	# it is on so a reboot does not erase the only copy.
+	if [ -n "${ZLYME_PAK_LOG:-}" ]; then
+		printf 'format: %s\n' "$1" >> "$ZLYME_PAK_LOG" 2>/dev/null || true
+	fi
 }
 
 work=$(mktemp -d) || exit 1

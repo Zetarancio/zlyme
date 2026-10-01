@@ -46,7 +46,8 @@ chmod 700 "$RUN"
 
 # Session exports SDL_VIDEODRIVER=kmsdrm. Weston clients must not
 # try to open the KMS device Weston already owns.
-unset SDL_VIDEODRIVER
+# KMSDRM cannot host a Vulkan window. Clients of this helper use Wayland.
+export SDL_VIDEODRIVER=wayland
 export XDG_RUNTIME_DIR="$RUN"
 export WAYLAND_DISPLAY="$SOCK"
 export LIBSEAT_BACKEND=builtin

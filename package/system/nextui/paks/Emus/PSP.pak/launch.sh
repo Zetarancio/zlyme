@@ -66,4 +66,20 @@ fi
 if [ -d /usr/share/ppsspp/assets ]; then
 	cd /usr/share/ppsspp || true
 fi
+# 0 is OpenGL (direct KMS). 3 is Vulkan, which SDL KMSDRM cannot
+# window. A temporary Weston provides the Wayland surface. The ini
+# stays the user's; this only chooses the display path.
+ppsspp_vk=0
+if [ -f "$INI" ] && grep -q '^GraphicsBackend *= *3' "$INI"; then
+	ppsspp_vk=1
+fi
+if [ "$ppsspp_vk" -eq 1 ]; then
+	if [ -e /usr/share/vulkan/icd.d/mali_icd.json ] || \
+		[ -n "${VK_ICD_FILENAMES:-}" ]; then
+		echo "ppsspp: Vulkan via temporary Weston" >&2
+		export SDL_VIDEODRIVER=wayland
+		exec zlyme-weston-run PPSSPPSDL --fullscreen --dpi 0.5 "$ROM"
+	fi
+	echo "ppsspp: Vulkan selected but no ICD; trying the OpenGL display path" >&2
+fi
 exec PPSSPPSDL --fullscreen --dpi 0.5 "$ROM"
