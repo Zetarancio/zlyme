@@ -1,0 +1,49 @@
+diff -ruN a/src/config_readonly_shim.h b/src/config_readonly_shim.h
+--- a/src/config_readonly_shim.h	2026-09-13 20:18:01.000000000 +0200
++++ b/src/config_readonly_shim.h	2026-10-01 22:07:57.626834026 +0200
+@@ -33,10 +33,12 @@
+ 
+ static inline FILE *mp_config_readonly_fopen(const char *path, const char *mode)
+ {
+-	/* Block write ("w"/"w+"/"wb"...) and append ("a"...) opens; allow reads
+-	 * (and any unexpected mode) through. config.c only ever opens "r" and "w". */
++	/* Discard writes. Returning NULL makes CFG_sync print
++	 * "[CFG] Unable to open settings file" on every call. /dev/null
++	 * accepts the write and leaves NextUI's minuisettings.txt alone.
++	 * config.c only ever opens "r" and "w". */
+ 	if (mode && (mode[0] == 'w' || mode[0] == 'a'))
+-		return NULL;
++		return fopen("/dev/null", mode);
+ 	return fopen(path, mode); /* macro not yet defined here -> the real fopen */
+ }
+ 
+diff -ruN a/src/downloader.c b/src/downloader.c
+--- a/src/downloader.c	2026-10-01 22:07:57.622920645 +0200
++++ b/src/downloader.c	2026-10-01 22:07:57.627067728 +0200
+@@ -758,12 +758,10 @@
+         if (access(output_file, F_OK) == 0) {
+             success = true;
+         } else {
+-            // Build download command - audio-only itag 140 (AAC-LC in m4a),
+-            // so nothing is ever merged or re-encoded. yt-dlp still shells out
+-            // to ffmpeg for two stream-copy passes: repackaging the DASH
+-            // container and writing the tags.
+-            // Album art will be fetched by player during playback
+-            // Force M4A only - no fallback to other formats
++            // Prefer a native M4A audio stream. If YouTube only offers
++            // another audio codec, take that and let ffmpeg write a real
++            // M4A. The output name stays .m4a only because --audio-format
++            // produces that container. Album art is fetched at playback.
+             // socket-timeout prevents network hangs
+             char safe_ytdlp[1024];
+             char safe_qjs[1024];
+@@ -779,7 +777,8 @@
+             char cmd[4096];
+             snprintf(cmd, sizeof(cmd),
+                 "\"%s\" "
+-                "-f \"bestaudio[ext=m4a]\" "
++                "-f \"bestaudio[ext=m4a]/bestaudio\" "
++                "-x --audio-format m4a --audio-quality 0 "
+                 "--js-runtimes \"quickjs:%s\" "
+                 "--ffmpeg-location \"%s\" "
+                 "--embed-metadata "

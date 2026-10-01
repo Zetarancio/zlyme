@@ -1877,7 +1877,7 @@ quick device smoke             clean image
               release validation
 ```
 
-Status, 2026-10-01: the product version stays `zlyme43 (2026-10-01)`. Ruffle and Music Player radio are maintainer-accepted on `f6f1b2d`. The optional YouTube helper is fixed in source and still needs the release image. Cheat Downloader is experimental. The persistence corrections after `b82a57c7` are a local test image, not the clean release candidate. Phase 9 is not closed. `main` is not moved until the maintainer installs and accepts the clean remote artifact.
+Status, 2026-10-01: the product version stays `zlyme43 (2026-10-01)`. The maintainer accepted Ruffle, Music radio and helpers, SD2, and GZDoom launch on `1cd9c94`. Song download, Cheat Downloader's menu, GZDoom menu buttons, and the Ruffle `/storage/flash_data` directory are corrected in the following local test image. Cheat Downloader stays experimental. Phase 9 is not closed. `main` is not moved until the maintainer installs and accepts the clean remote artifact.
 
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 

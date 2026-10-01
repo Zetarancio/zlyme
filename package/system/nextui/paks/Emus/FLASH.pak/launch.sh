@@ -11,13 +11,6 @@ ROM="$1"
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
 APP=/usr/share/zlyme/rufflehandheld
-mig=${ZLYME_MIGRATE_SH:-/usr/share/nextui/bin/zlyme-migrate-tree.sh}
-if [ ! -r "$mig" ]; then
-	_pak=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-	mig=$_pak/../../../zlyme/zlyme-migrate-tree.sh
-fi
-# shellcheck disable=SC1090
-[ -r "$mig" ] && . "$mig"
 
 if [ -z "$ROM" ] || [ ! -f "$ROM" ]; then
 	echo "ruffle: no swf" >&2
@@ -47,14 +40,6 @@ flash=$(dirname "$ROM")
 # Profiles and logs are application state on the OS card.
 os=${ZLYME_STATE_ROOT:-/storage}
 cfg=${ZLYME_RUFFLE_CONFIG:-$os/.config/ruffle}
-if command -v zlyme_migrate_tree >/dev/null 2>&1; then
-	zlyme_migrate_tree "$library/flash_data" "$data" || true
-	zlyme_migrate_tree "$library/.config/zlyme/ruffle/data" "$data" || true
-	zlyme_migrate_tree "$os/.config/zlyme/ruffle/logs" "$cfg/logs" || true
-	if [ "$library/.config/zlyme/ruffle/logs" != "$os/.config/zlyme/ruffle/logs" ]; then
-		zlyme_migrate_tree "$library/.config/zlyme/ruffle/logs" "$cfg/logs" || true
-	fi
-fi
 
 export RUFFLE_PERFORMANCE=0
 export RUFFLE_CFW_NAME=nextui
@@ -76,4 +61,13 @@ if [ "${ZLYME_RUFFLE_DRY:-}" = 1 ]; then
 fi
 
 mkdir -p "$data" "$cfg/logs"
-exec /bin/bash "$APP/runtime/entrypoint.sh" --rom-root "$library" "$ROM"
+/bin/bash "$APP/runtime/entrypoint.sh" --rom-root "$library" "$ROM"
+rc=$?
+# The frozen save helper used to mkdir $ROMROOT/flash_data. If that
+# directory was created empty, drop it. Never delete a directory that
+# still has contents.
+rmdir "$library/flash_data" 2>/dev/null || true
+if [ "$library" != /storage ]; then
+	rmdir /storage/flash_data 2>/dev/null || true
+fi
+exit "$rc"

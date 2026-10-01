@@ -1,0 +1,19 @@
+diff -ruN a/rufflehandheld/runtime/save-storage.sh b/rufflehandheld/runtime/save-storage.sh
+--- a/rufflehandheld/runtime/save-storage.sh	2026-09-03 00:00:00.000000000 +0200
++++ b/rufflehandheld/runtime/save-storage.sh	2026-10-01 22:07:57.972943907 +0200
+@@ -8,7 +8,14 @@
+     safe="$(printf '%s' "$base" | sed 's/[^A-Za-z0-9._-]/_/g')"
+     [ -n "$safe" ] || safe="game.swf"
+     checksum="$(printf '%s' "$base" | cksum | awk '{print $1}')"
+-    saves="$rom_root/flash_data/storage/$safe-$checksum"
++    # RUFFLE_ROM_ROOT stays the library that holds the SWF. Companion
++    # data is RUFFLE_DATA_DIR, which is already the flash_data directory.
++    # Appending /flash_data again created /storage/flash_data.
++    if [ -n "${RUFFLE_DATA_DIR:-}" ]; then
++        saves="${RUFFLE_DATA_DIR}/storage/${safe}-${checksum}"
++    else
++        saves="$rom_root/flash_data/storage/$safe-$checksum"
++    fi
+     staged="$content_dir/storage"
+ 
+     mkdir -p "$saves" || { echo "ERROR: cannot create persistent Flash saves: $saves"; return 1; }

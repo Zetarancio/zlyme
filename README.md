@@ -40,7 +40,7 @@ Speaker vs jack is automatic (`zlyme-jackd`). Bluetooth audio follows the headse
 
 Each community pak below was ported (paths, Flip joystick, this image’s binaries).
 
-- **Settings** — Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, and **Update**. Settings → Game → Create game folders adds the stock ROM, BIOS, and save folders on a library and does not remove games that are already there. Hardware choices such as GPU, undervolt, ZRAM, USB, HDMI, the second SD slot, and system logs are under System → Advanced. Wi-Fi country can be set from Settings for the correct regional channel rules. System → Time zone sets how the clock is shown; until you pick one, the clock stays on UTC. Reset Settings and Factory Reset keep games, saves, Wi-Fi, and paired devices. Factory Reset also restores the stock Tools and Emus.
+- **Settings** — Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, and **Update**. Settings → System → Storage → Create game folders adds the stock ROM, BIOS, and save folders on a library and does not remove games that are already there. Hardware choices such as GPU, undervolt, ZRAM, USB, HDMI, the second SD slot, and system logs are under System → Advanced. Wi-Fi country can be set from Settings for the correct regional channel rules. System → Time zone sets how the clock is shown; until you pick one, the clock stays on UTC. Reset Settings and Factory Reset keep games, saves, Wi-Fi, and paired devices. Factory Reset also restores the stock Tools and Emus.
 - **Artwork Scraper** — matches ROM names to box art and downloads it. From [minui-artwork-scraper-pak](https://github.com/josegonzalez/minui-artwork-scraper-pak).
 - **ScrapeGoat** — ScreenScraper metadata and images. From [nextui-scrapegoat-pak](https://github.com/Helaas/nextui-scrapegoat-pak). Requires a [Screenscraper.fr](http://Screenscraper.fr) account. 
 - **Overlays** — browse and install community bezels for one game folder. The same system on another card is a separate choice. From [nextui-community-overlays](https://github.com/LoveRetro/nextui-community-overlays).
@@ -75,7 +75,7 @@ Manual updates: copy a finished `zlyme-my355-*.tar` into `/storage/.update` and 
 
 ## Systems
 
-Games live on a library card. The OS card is `/storage`. Another SD card or a USB disk is its own library. NextUI only lists a system if that folder exists and it contains ROMs. Settings → Game → Create game folders creates the stock folders. It does not delete ROMs.
+Games live on a library card. The OS card is `/storage`. Another SD card or a USB disk is its own library. NextUI lists a system only when a library has a launchable game for it. An empty folder, a save directory, or artwork does not keep the system on the list. Settings → System → Storage → Create game folders creates the stock folders. It does not delete ROMs.
 
 Configuration stays in `/storage/.config`. Saves stay in `Saves` on the library that holds the game. A Flash game keeps its companion data in that library's `Saves/FLASH/flash_data`. Music is `/storage/Music` and podcasts are `/storage/Podcasts`.
 

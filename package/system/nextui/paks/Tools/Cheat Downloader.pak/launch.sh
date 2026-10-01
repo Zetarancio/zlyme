@@ -1,6 +1,9 @@
 #!/bin/sh
 # Cheat Downloader v1.6.0. Uses the image minui-list and minui-presenter.
-# ROM folders from every mounted library are linked, not copied.
+# Each system folder is one symlink. When two libraries share a system,
+# only that folder's immediate children are linked. Later libraries win
+# a duplicate name. Nested game folders stay as directory symlinks.
+# OverlayFS cannot use the exFAT OS card, so it is not the view.
 # The cheat database is downloaded only when this pak runs.
 PAK_DIR="$(dirname "$0")"
 # Comment out to skip this pak's log (About → System logs).
@@ -27,35 +30,35 @@ cleanup() {
 }
 trap cleanup EXIT
 
-merge_dir() {
-	src=$1
-	dest=$2
-	if [ ! -e "$dest" ]; then
-		ln -s "$src" "$dest"
+# Expand a system that already came from another library. One level only.
+link_children() {
+	_csrc=$1
+	_cdest=$2
+	for _cf in "$_csrc"/* "$_csrc"/.[!.]* "$_csrc"/..?*; do
+		[ -e "$_cf" ] || [ -L "$_cf" ] || continue
+		_cbase=$(basename "$_cf")
+		case "$_cbase" in
+			.|..) continue ;;
+		esac
+		ln -sfn "$_cf" "$_cdest/$_cbase"
+	done
+}
+
+place_system() {
+	_psrc=$1
+	_pname=$2
+	_pdest=$union/$_pname
+	if [ ! -e "$_pdest" ] && [ ! -L "$_pdest" ]; then
+		ln -s "$_psrc" "$_pdest"
 		return 0
 	fi
-	if [ -L "$dest" ]; then
-		prev=$(readlink "$dest")
-		rm -f "$dest"
-		mkdir -p "$dest"
-		merge_dir "$prev" "$dest"
-		src=$1
-		dest=$2
+	if [ -L "$_pdest" ]; then
+		_pprev=$(readlink "$_pdest")
+		rm -f "$_pdest"
+		mkdir -p "$_pdest"
+		link_children "$_pprev" "$_pdest"
 	fi
-	for f in "$src"/*; do
-		[ -e "$f" ] || continue
-		base=$(basename "$f")
-		if [ -d "$f" ] && [ ! -L "$f" ]; then
-			if [ -L "$dest/$base" ]; then
-				merge_dir "$f" "$dest/$base"
-			else
-				mkdir -p "$dest/$base"
-				merge_dir "$f" "$dest/$base"
-			fi
-		else
-			ln -sfn "$f" "$dest/$base"
-		fi
-	done
+	link_children "$_psrc" "$_pdest"
 }
 
 libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
@@ -66,8 +69,9 @@ if [ -r "$libs" ]; then
 			[ -d "$base" ] || continue
 			for d in "$base"/*; do
 				[ -d "$d" ] || continue
-				merge_dir "$d" "$union/$(basename "$d")"
+				place_system "$d" "$(basename "$d")"
 			done
+			break
 		done
 	done < "$libs"
 else
@@ -75,7 +79,7 @@ else
 	if [ -d "$base" ]; then
 		for d in "$base"/*; do
 			[ -d "$d" ] || continue
-			merge_dir "$d" "$union/$(basename "$d")"
+			place_system "$d" "$(basename "$d")"
 		done
 	fi
 fi
@@ -84,16 +88,6 @@ export ROM_DIR=$union
 export CHEAT_DIR=${CHEATS_PATH:-$SDCARD_PATH/Cheats}
 export CACHE_DIR=$SDCARD_PATH/.config/cheat-downloader
 mkdir -p "$CHEAT_DIR" "$CACHE_DIR"
-mig=${ZLYME_MIGRATE_SH:-/usr/share/nextui/bin/zlyme-migrate-tree.sh}
-if [ ! -r "$mig" ]; then
-	_pak=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-	mig=$_pak/../../../zlyme/zlyme-migrate-tree.sh
-fi
-# shellcheck disable=SC1090
-[ -r "$mig" ] && . "$mig"
-if command -v zlyme_migrate_tree >/dev/null 2>&1; then
-	zlyme_migrate_tree "$SDCARD_PATH/.config/zlyme/cheat-downloader" "$CACHE_DIR" || true
-fi
 echo "cheat: FIND_LOCAL_DB"
 echo "cheat: CHECK_UPDATE"
 export PATH="$PAK_DIR:${PATH:-}"

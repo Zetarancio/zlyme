@@ -126,9 +126,18 @@ is_usb_disk() {
 rescan_nextui() {
 	# Libraries are already current. Sync the Splore row before NextUI
 	# is told to reread the ROM folders.
-	# Library membership changed. The BIOS view is rebuilt on the next launch.
-	rm -f /run/zlyme/bios.stamp
-	rm -rf /run/zlyme/bios /run/zlyme/bios.next /run/zlyme/bios-cache
+	# Bump the BIOS generation. Do not delete a cache or staging tree
+	# a launch may be publishing. The same path can be a different card.
+	mkdir -p /run/zlyme
+	gen=/run/zlyme/bios-generation
+	n=0
+	if [ -r "$gen" ]; then
+		n=$(tr -cd '0-9' < "$gen")
+		[ -n "$n" ] || n=0
+	fi
+	n=$((n + 1))
+	printf '%s\n' "$n" > "$gen"
+	rm -f /run/zlyme/bios
 	if [ -x /usr/sbin/zlyme-pico-splore ]; then
 		/usr/sbin/zlyme-pico-splore || true
 	fi

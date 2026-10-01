@@ -12,19 +12,6 @@ root=${ZLYME_STATE_ROOT:-${SDCARD_PATH:-/storage}}
 SDCARD_PATH=$root
 state=$root/.config/music-player
 
-mig=${ZLYME_MIGRATE_SH:-/usr/share/nextui/bin/zlyme-migrate-tree.sh}
-if [ ! -r "$mig" ]; then
-	_pak=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-	mig=$_pak/../../../zlyme/zlyme-migrate-tree.sh
-fi
-# shellcheck disable=SC1090
-[ -r "$mig" ] && . "$mig"
-if command -v zlyme_migrate_tree >/dev/null 2>&1; then
-	zlyme_migrate_tree "$root/.userdata/shared/music-player" "$state" || true
-	zlyme_migrate_tree "$root/.config/nextui/shared/music-player" "$state" || true
-	rmdir "$root/.userdata/shared" "$root/.userdata" 2>/dev/null || true
-fi
-
 if [ "${ZLYME_MUSIC_DRY:-}" != 1 ] && [ ! -x "$APP" ]; then
 	echo "music-player: missing" >&2
 	command -v show.elf >/dev/null 2>&1 && show.elf "Music Player is not installed" 3

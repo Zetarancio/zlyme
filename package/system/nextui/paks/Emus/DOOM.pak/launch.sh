@@ -8,23 +8,6 @@ mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 
 root=${ZLYME_STATE_ROOT:-/storage}
 cfg=$root/.config/gzdoom
-mig=${ZLYME_MIGRATE_SH:-/usr/share/nextui/bin/zlyme-migrate-tree.sh}
-if [ ! -r "$mig" ]; then
-	_pak=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-	mig=$_pak/../../../zlyme/zlyme-migrate-tree.sh
-fi
-# shellcheck disable=SC1090
-[ -r "$mig" ] && . "$mig"
-if command -v zlyme_migrate_tree >/dev/null 2>&1; then
-	zlyme_migrate_tree "$root/.config/nextui/shared/configs/gzdoom" "$cfg" || true
-	zlyme_migrate_tree "$root/.userdata/shared/configs/gzdoom" "$cfg" || true
-	zlyme_migrate_tree "$root/.config/nextui/shared/cache/gzdoom" "$cfg/cache" || true
-	if [ -n "${SAVES_PATH:-}" ]; then
-		zlyme_migrate_tree "$root/.config/nextui/shared/saves/gzdoom" "$SAVES_PATH/DOOM" || true
-	fi
-	rmdir "$root/.userdata/shared/configs" "$root/.userdata/shared" \
-		"$root/.userdata" 2>/dev/null || true
-fi
 
 if [ "${ZLYME_DOOM_DRY:-}" = 1 ]; then
 	printf 'home=%s\n' "$root"
@@ -39,6 +22,10 @@ HOME=$root
 export HOME
 cd "$HOME" || exit 1
 case "$ROM" in
-	*.wad|*.WAD|*.pk3|*.PK3) exec gzdoom +set use_joystick true -savedir "$SAVES_PATH/DOOM" -iwad "$ROM" ;;
-	*) exec gzdoom +set use_joystick true -savedir "$SAVES_PATH/DOOM" "$ROM" ;;
+	*.wad|*.WAD|*.pk3|*.PK3) exec gzdoom +set use_joystick true \
+		+set menu_confirm Joy1 +set menu_back Joy2 \
+		-savedir "$SAVES_PATH/DOOM" -iwad "$ROM" ;;
+	*) exec gzdoom +set use_joystick true \
+		+set menu_confirm Joy1 +set menu_back Joy2 \
+		-savedir "$SAVES_PATH/DOOM" "$ROM" ;;
 esac

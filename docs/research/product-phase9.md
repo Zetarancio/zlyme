@@ -482,14 +482,25 @@ Ruffle, Music Player, and Cheat Downloader do not write cpufreq, do not start a 
 
 A blank card in the second SD slot is SD card 2. `zlyme-storage` classifies that slot by the `sdmmc1` controller (`mmc@fe2c0000` in the Flip DTB; alias `mmc1`; regulator `vcc_sd2`). The boot slot is `mmc@fe2b0000`. USB mass storage stays `/mnt/media/<label>`. Whether the volume already contains `Roms` is not the slot identity. Settings already labels `/mnt/sd2` as SD card 2 and `/mnt/media/<label>` as `USB: <label>`.
 
+## Live acceptance of 1cd9c94
+
+The maintainer installed `zlyme-my355-20261001-1cd9c9411b03.tar` and accepted:
+
+- Ruffle launches `Mario ATV.swf`, renders, and MENU+START returns. The save is `$library/Saves/FLASH/flash_data/.../MarioATVGE.sol`
+- Music Player radio, YouTube helper installation, `/storage/.config/music-player`, and podcast download
+- Physical SD2 identification, formatting, and Create game folders on SD2
+- GZDoom launches and uses `/storage/.config/gzdoom`
+
+Still open on that image: `/storage/flash_data` was recreated beside the real save, song download failed, Cheat Downloader stayed black until MENU+START, GZDoom buttons did not operate the menus, and an empty-looking Flash system could appear. Create game folders moves to Settings → System → Storage after this pass. Pre-release path migrations are removed.
+
 ```text
-RUFFLE LAUNCH = MAINTAINER ACCEPTED on f6f1b2d
-RUFFLE ROM ROOT = LIBRARY, SAME AS f6f1b2d
-RUFFLE flash_data = $library/Saves/FLASH/flash_data; SWF STAYS IN Roms/Flash (FLASH)
-MUSIC PLAYER RADIO = MAINTAINER ACCEPTED on f6f1b2d
-MUSIC YOUTUBE HELPER = ROOT CAUSE REPRODUCED, FIX IN SOURCE, UI RECHECK OUTSTANDING
-CHEAT DOWNLOADER = EXPERIMENTAL; WATCHDOG DOES NOT USE THE PAK LOG; PRESENTER TIMEOUTS UNCHANGED
-SD2 = CONTROLLER IDENTITY IN SOURCE; BLANK-CARD MOUNT NOT YET SEEN ON THE FLIP
-GZDOOM PATHS = HOST TESTED, LAUNCH RECHECK OUTSTANDING
+RUFFLE LAUNCH = MAINTAINER ACCEPTED on 1cd9c94
+RUFFLE flash_data CREATOR = runtime/save-storage.sh via RUFFLE_ROM_ROOT; PATCHED TO RUFFLE_DATA_DIR
+MUSIC RADIO AND HELPERS = MAINTAINER ACCEPTED on 1cd9c94
+MUSIC SONG DOWNLOAD = M4A PREFERRED, FFMPEG FALLBACK
+CHEAT DOWNLOADER = EXPERIMENTAL; SHALLOW ROM VIEW; OLD UNION WAS 1019s
+SD2 = MAINTAINER ACCEPTED on 1cd9c94
+CREATE GAME FOLDERS = Settings → System → Storage
+GZDOOM = LAUNCH ACCEPTED; MENU CONFIRM IS Joy1
 PHASE 9 RELEASE = NOT COMPLETE
 ```

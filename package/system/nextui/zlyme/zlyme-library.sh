@@ -53,18 +53,25 @@ zlyme_each_library() {
 	printf '%s\n' /storage
 }
 
-# One cached view per library list plus the card that wins duplicates.
-# Switching from an SD2 game to a main-card game must not rebuild the
-# other card's view. A rescan deletes the whole cache.
+# One cached view per generation, library list, and winning card.
+# zlyme-storage bumps the generation when membership changes and does
+# not delete a view another launch is building. The same mount path
+# with a different card is a new generation, so the old view is not reused.
 zlyme_bios_key() {
 	romlib=$1
+	run=${ZLYME_RUN_DIR:-/run/zlyme}
+	gen=0
+	if [ -r "$run/bios-generation" ]; then
+		gen=$(tr -cd '0-9' < "$run/bios-generation")
+		[ -n "$gen" ] || gen=0
+	fi
 	libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
 	if [ -r "$libs" ]; then
 		sum=$(cksum "$libs" | awk '{ print $1 }')
 	else
 		sum=main
 	fi
-	printf '%s %s\n' "$sum" "$romlib"
+	printf '%s %s %s\n' "$gen" "$sum" "$romlib"
 }
 
 zlyme_bios_id() {
@@ -79,6 +86,14 @@ zlyme_bios_view() {
 	run=${ZLYME_RUN_DIR:-/run/zlyme}
 	py=${ZLYME_BIOS_PY:-/usr/share/zlyme/bios-union.py}
 	mkdir -p "$run/bios-cache" || return 1
+	lock=$run/bios.lock
+	mkdir -p "$(dirname "$lock")"
+	# flock serializes publish. A rescan only bumps the generation, so
+	# it cannot remove this staging directory or the cache parent.
+	if command -v flock >/dev/null 2>&1; then
+		exec 9>>"$lock"
+		flock 9
+	fi
 	key=$(zlyme_bios_key "$romlib")
 	id=$(zlyme_bios_id "$key")
 	view=$run/bios-cache/$id
@@ -87,13 +102,25 @@ zlyme_bios_view() {
 		ln -s "$view" "$run/bios"
 		BIOS_PATH=$view
 		export BIOS_PATH
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
 		return 0
 	fi
-	[ -f "$py" ] || return 1
-	command -v python3 >/dev/null 2>&1 || return 1
+	if [ ! -f "$py" ] || ! command -v python3 >/dev/null 2>&1; then
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
+		return 1
+	fi
 	ZLYME_BIOS_SCANS=$(( ${ZLYME_BIOS_SCANS:-0} + 1 ))
 	export ZLYME_BIOS_SCANS
-	stage=$(mktemp -d "$run/bios.XXXXXX") || return 1
+	stage=$(mktemp -d "$run/bios.XXXXXX") || {
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
+		return 1
+	}
 	{
 		zlyme_each_library | while IFS= read -r root; do
 			[ -n "$root" ] || continue
@@ -103,17 +130,33 @@ zlyme_bios_view() {
 		printf '%s\n' "$romlib/Bios"
 	} | python3 "$py" "$stage" || {
 		rm -rf "$stage"
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
+		return 1
+	}
+	mkdir -p "$run/bios-cache" || {
+		rm -rf "$stage"
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
 		return 1
 	}
 	rm -rf "$view"
 	mv "$stage" "$view" || {
 		rm -rf "$stage"
+		if command -v flock >/dev/null 2>&1; then
+			flock -u 9
+		fi
 		return 1
 	}
 	rm -f "$run/bios"
 	ln -s "$view" "$run/bios"
 	BIOS_PATH=$view
 	export BIOS_PATH
+	if command -v flock >/dev/null 2>&1; then
+		flock -u 9
+	fi
 }
 
 zlyme_save_matches_rom() {

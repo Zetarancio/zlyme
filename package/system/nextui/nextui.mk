@@ -11,7 +11,7 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = c82b4a63a9cf42b79ea82b7c370af3c02938c4da
+NEXTUI_VERSION = 70344ade993c4c5e64f7a2e7ff719474d088f470
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -193,8 +193,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/emu-defaults.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/zlyme-library.sh
-	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zlyme-migrate-tree.sh \
-		$(TARGET_DIR)/usr/share/nextui/bin/zlyme-migrate-tree.sh
+	rm -f $(TARGET_DIR)/usr/share/nextui/bin/zlyme-migrate-tree.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-library.sh \
 		$(TARGET_DIR)/usr/sbin/zlyme-library
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-game-cleanup.sh \
