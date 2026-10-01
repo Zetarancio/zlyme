@@ -38,9 +38,9 @@ export_hm() {
 	fi
 	ports="$root/Roms/Ports (PORTS)"
 	tools="$root/Roms/.portmaster"
-	printf 'HM_TOOLS_DIR=%s\n' "$(q "$tools")"
-	printf 'HM_PORTS_DIR=%s\n' "$(q "$ports")"
-	printf 'HM_SCRIPTS_DIR=%s\n' "$(q "$ports")"
+	printf 'export HM_TOOLS_DIR=%s\n' "$(q "$tools")"
+	printf 'export HM_PORTS_DIR=%s\n' "$(q "$ports")"
+	printf 'export HM_SCRIPTS_DIR=%s\n' "$(q "$ports")"
 }
 
 link_libs() {

@@ -114,6 +114,7 @@ export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
 # Same selection as control.txt. An explicit HM_* from the caller wins.
 if [ -x /usr/sbin/zlyme-portmaster-root ]; then
 	eval "$(/usr/sbin/zlyme-portmaster-root export)" || exit 1
+	export HM_TOOLS_DIR HM_PORTS_DIR HM_SCRIPTS_DIR
 	/usr/sbin/zlyme-portmaster-root link-libs || exit 1
 else
 	HM_TOOLS_DIR=/storage/Roms/.portmaster

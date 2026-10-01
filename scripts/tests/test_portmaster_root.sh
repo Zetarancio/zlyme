@@ -16,6 +16,8 @@ printf '%s\n' /storage "$sd2" "$usb" > "$work/libraries"
 test ! -s "$work/flag"
 eval "$("$BIN" export)"
 test "$HM_TOOLS_DIR" = "/storage/Roms/.portmaster"
+# The GUI is a child process. The assignment must be exported.
+sh -c 'test "$HM_TOOLS_DIR" = "/storage/Roms/.portmaster"'
 test "$HM_PORTS_DIR" = "/storage/Roms/Ports (PORTS)"
 test "$HM_SCRIPTS_DIR" = "$HM_PORTS_DIR"
 
