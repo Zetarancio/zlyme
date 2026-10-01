@@ -1,6 +1,6 @@
 # Product polish — Phase 9
 
-This file records the Phase 9 decisions and what was actually verified. Earlier sections are the research and the passes that led here. The corrective section at the end is the current persistence and acceptance record. Phase 9 is not complete until the maintainer installs and accepts the clean remote release-candidate artifact.
+This file records the Phase 9 decisions and what was actually verified. Earlier sections are the research and the passes that led here. The closure section at the end is the current process. Hardware acceptance of the final local image is still required before `phase-9-product` moves to `main`. The remote clean build is the reproducibility and release-artifact gate. It does not have to finish before that merge, and a failure there still blocks treating a stable release as valid.
 
 Date of the original notes: 2026-09-30, at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed.
 
@@ -504,4 +504,42 @@ SD2 = MAINTAINER ACCEPTED on 1cd9c94
 CREATE GAME FOLDERS = Settings → System → Storage
 GZDOOM = LAUNCH ACCEPTED ON 1cd9c94; BUTTON EVENTS NOT YET DISTINGUISHED FROM POLLING
 PHASE 9 RELEASE = NOT COMPLETE
+```
+
+## Live acceptance of f0143dd
+
+The maintainer installed `zlyme-my355-20261001-f0143dd5b067.tar` (`f0143dd5b067b04fa808b706973a6632c04ebd1b`) and accepted:
+
+- GZDoom: A confirms, B goes back, both sticks, L1/R1, L2/R2, Start, save creation, three launch/exit cycles with no reproduced NextUI crash, and MENU+START
+- Cheat Downloader: the UI appears promptly, navigation and systems/cards work, and MENU+START works
+- Music Player: an online song download works, the downloaded song plays, and radio works
+- Ruffle: an SWF launches, the companion save follows the ROM library under `Saves/FLASH`, `/storage/flash_data` is not recreated, and MENU+START works
+- ROM-driven system visibility: an empty Flash folder stays hidden, and Flash appears when another library has a valid SWF
+- Settings: Create game folders is under System → Storage and the action works
+
+That Cheat Downloader pass is evidence for `f0143dd` only. Product policy then changed. Cheat Downloader does not stay on the next image.
+
+## Closure decisions, 2026-10-02
+
+These supersede earlier notes that still list Artwork Scraper or Cheat Downloader as shipped tools. The sections above stay as the record of those intermediate images.
+
+- Artwork Scraper is removed. ScrapeGoat owns ScreenScraper artwork, metadata, and manuals.
+- Cheat Downloader is removed. ScrapeGoat owns Libretro cheat discovery and install.
+- ScrapeGoat is the only built-in scraper and cheat application. Its private state is `/storage/.config/ScrapeGoat`. It must not create `.userdata/shared/ScrapeGoat`. Artwork is written beside the real ROM. Installed cheats stay at `/storage/Cheats` and do not follow the ROM card.
+- PortMaster drops the separate cloned Zlyme theme. Fresh configs use `default_theme` and the `Zlyme` scheme derived from Darkest Mode. A stored standalone `Zlyme` theme converts once. A later user choice is kept.
+- After a successful OTA, exact stale stock paths removed from the OS card are `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, and `Tools/my355/Cheat Downloader.pak`. Weston and `zlyme-weston-run` stay.
+- The dead-file audit runs after those product changes, and only for files Phase 9 made obsolete.
+- This development image stays `zlyme43 (2026-10-01)`. Local validation is a targeted clean/rebuild of the remaining Phase 9 packages and the packages this pass changes, then one incremental image. The local output tree is not wiped. GitHub Actions is not dispatched in this pass.
+- After the maintainer accepts that local image, `phase-9-product` may fast-forward into `main`. The maintainer may then dispatch the GitHub clean build from that exact SHA. Phase 9 implementation closure does not wait for the runner. The remote build remains the reproducibility and release-artifact gate. A failure there still requires a correction before a stable release is valid.
+- Phase 10 is documentation and maintainability only. It may start on `main` after the merge and the remote dispatch. Zlyme documentation in this repository comes first. The hardware-wiki agent runs afterward, using the Phase 9 implementation SHA as runtime evidence and the Phase 10 documentation SHA as wording guidance.
+- Pak Store stays post-first-stable. The CPU undervolt default stays off. Community text for other RK3566 ports is not a Phase 9 release blocker.
+
+The next local image is not hardware-accepted until the maintainer installs it.
+
+```text
+F0143DD = MAINTAINER ACCEPTED for the items listed above
+ARTWORK SCRAPER = REMOVED; SCRAPEGOAT OWNS ARTWORK
+CHEAT DOWNLOADER = REMOVED AFTER f0143dd ACCEPTANCE; SCRAPEGOAT OWNS CHEATS
+PORTMASTER THEME = default_theme SCHEME Zlyme; CLONED themes/Zlyme REMOVED
+PHASE 9 RELEASE = NOT COMPLETE; FINAL LOCAL IMAGE NOT YET ACCEPTED
 ```

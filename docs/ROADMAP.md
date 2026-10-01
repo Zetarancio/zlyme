@@ -1831,61 +1831,63 @@ Detailed governor and gpSP notes: `docs/research/product-phase9.md`.
 
 1. **Emulator speed and governor policy.** This comes before cosmetic Settings work. GBA is the known regression. Two decisions are already made. Update libretro-gpsp from `4caf7a167d159866479ea94d6b2d13c26ceb3e72` to exactly `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the gpSP revision in ROCKNIX `next` at `a55d58a1209b35e287dd55a3aad67a5543b467ce`. KNULLI `knulli-main` at `6a23957a19a1df18989ac6aa5e9fff003ae611ed` carries the older gpSP `d6decfa351b575e2936afebba26d41ec20e4ddcd`. Take the newer of those two carried revisions. Do not move to current libretro/gpSP HEAD, and do not pick a commit past the ROCKNIX pin. The February 2024 Zlyme pin is history, not a candidate. Inspect the delta and the Zlyme recipe for build compatibility. Do not add a `gpSP.opt` override just to restate the upstream default sound rate of 32768. Adopt SpruceOS `2b7bc4a79359de14ea4d4f00da9801a937e2846d` per-system `scaling_min_freq` values as the CPU minimum floors. Do not invent replacement floors, and do not collapse a Spruce system back to a generic play/heavy minimum. Do not copy Spruce's ondemand governor, two-core Smart layout, or DMC policy. Zlyme keeps schedutil, the existing online-core counts, and the existing in-game DMC and GPU behavior. Resolve each Spruce floor to the lowest mainline OPP that is greater than or equal to it: 240000 and 312000 become 408000, 648000 becomes 816000, 1008000 becomes 1104000, and an exact OPP stays unchanged. Never round down. `zlyme-governor emu <tag>` owns that table. Launchers pass the tag. `ZLYME_GOVERNOR` from MENU+Y still wins, and that explicit choice is not replaced by the Spruce floor. A system Spruce does not cover keeps the existing Zlyme profile and is written down. Audit every shipped tag in static checks. Gameplay is not a Phase 9A gate; the maintainer may report it later. Zlyme already sets RetroArch `video_threaded = true`.
 2. **Correctness.** Save format, save-state format, and extracted-file-name rows are hidden on my355. Shared NextUI still stores them and still shows them on other platforms. Zlyme's RetroArch launcher does not consume them. Wi-Fi country is the global `country=` line in `wpa_supplicant.conf`; no line means World/default. Diagnostic logs keep five system boots and three PAK launches. Timezone presentation is `/etc/localtime` pointing at the storage zone file. `S15` seeds that file before returning. `S49ntp` sets the system clock from the HTTP `Date` header as UTC and writes the RTC with `hwclock -u -w`. A timezone change does not write the RTC. The Bluetooth status pill drops when the radio flag is off. GZDoom already reads the virtual pad through SDL joysticks. Orphan cleanup is an indexed same-card scan with a dry-run before DELETE. Standalone reset deletes settings files only. VTree settings persist, with hidden files on for a new config. `FSCK*.REC` is a historical FAT recovery name, not a current writer.
-3. **Settings.** Done: Quick Menu, keyboard L1 DELETE, no CLTMP hint on my355, VTree hidden files, rumble default 40%, Time zone, Advanced (GPU, undervolt, ZRAM, OTG, HDMI, second SD, logs, Reset Settings, Factory Reset), one reboot prompt for `gpu` / `undervolt` / `otg` / `hdmi` / `sd2`, and pill rows for the per-game governor and emulator. The selectable A/B swap was dropped in Phase 9K; the built-in map is fixed. PortMaster already uses the dark Zlyme theme. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable. The exact reset file list is in `docs/research/product-phase9.md`.
+3. **Settings.** Done: Quick Menu, keyboard L1 DELETE, no CLTMP hint on my355, VTree hidden files, rumble default 40%, Time zone, Advanced (GPU, undervolt, ZRAM, OTG, HDMI, second SD, logs, Reset Settings, Factory Reset), one reboot prompt for `gpu` / `undervolt` / `otg` / `hdmi` / `sd2`, and pill rows for the per-game governor and emulator. The selectable A/B swap was dropped in Phase 9K; the built-in map is fixed. PortMaster keeps upstream `default_theme`. A `Zlyme` color scheme derived from Darkest Mode is the fresh default. The separate cloned `themes/Zlyme` theme is removed. A stored selection of that obsolete standalone theme converts once to `default_theme` with the `Zlyme` scheme. A later user theme or scheme choice is kept. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable. The exact reset file list is in `docs/research/product-phase9.md`.
 4. **Library and launch.** Done: PortMaster location through the existing `HM_*` variables, guarded formatting of removable media, one overlay assignment per content directory, separate native PICO-8 and Fake-8, per-ROM delete, and splash only when the kernel command line has a `quiet` token. Phase 9K supersedes "BIOS and saves follow only the ROM library": BIOS is a runtime union of every mounted library, with the game card winning duplicate paths, and saves pick one writable library (existing data across cards, game card wins, new saves on the game card). Each winning card keeps its own tmpfs BIOS view, so switching cards does not rebuild the other view. The synthetic Splore row is created by `zlyme-storage` in the Pico-8 folder of the library that holds the native runtime, with a `000)` sort prefix so it is the first row. Downloaded carts stay under `Pico-8-native/bbs/carts` and open through `PICO.pak`. The graphical splash is the product boot, including update progress. A non-quiet LCD text console was tried and dropped. The command line is `quiet` plus `console=ttyS2`. Native PICO-8 can find `Bios/PICO/pico8_64` and `pico8.dat` on any active library. Splore downloads land in `Pico-8-native/bbs/carts`. CPU undervolt stays off.
-5. **Optional PAKs.** Ruffle, Music Player, and Cheat Downloader are pre-release gates by maintainer decision. Pak Store stays deferred. Flash is the pinned `SilverPsychoo/Ruffle-Handheld` v4.2 appliance: small Zlyme launch/environment glue only. Do not maintain a Zlyme Ruffle frontend, do not swap in current official Ruffle, and do not take on renderer or runtime patches. Music Player and Cheat Downloader are direct pinned integrations, not Pak Store deliveries. Do not keep Music Player's own cpufreq writes. Do not put the Libretro cheat database in the image.
-6. **Release cleanup.** The Weston test PAK is off the production image. The Actions build writes the full log to an artifact and prints the tail on the job console. Community text for other RK3566 ports can wait until after the first stable release.
+5. **Optional PAKs.** Ruffle and Music Player stay. Artwork Scraper and Cheat Downloader are removed. ScrapeGoat is the sole built-in ScreenScraper artwork, metadata, and manual tool, and the sole Libretro cheat installer. Pak Store stays deferred past the first stable release. Flash is the pinned `SilverPsychoo/Ruffle-Handheld` v4.2 appliance: small Zlyme launch/environment glue only. Do not maintain a Zlyme Ruffle frontend, do not swap in current official Ruffle, and do not take on renderer or runtime patches. Music Player is a direct pinned integration, not a Pak Store delivery. Do not keep Music Player's own cpufreq writes. Do not put the Libretro cheat database in the image. Installed cheats stay at `/storage/Cheats` and do not follow the ROM card. ScrapeGoat private state is `/storage/.config/ScrapeGoat`. Artwork is written beside the real ROM, in that system's `.media` directory.
+6. **Release cleanup.** The Weston test PAK is off the production image. Weston and `zlyme-weston-run` stay. After a successful OTA, the OS card loses only the exact stale stock paths `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, and `Tools/my355/Cheat Downloader.pak`. The dead-file audit runs after the Phase 9 surface stops moving. The Actions build writes the full log to an artifact and prints the tail on the job console. Community text for other RK3566 ports can wait until after the first stable release and is not a Phase 9 release blocker.
 7. **Incremental OTA transport.** A maintenance release may publish zstd `--patch-from` deltas beside the full OTA. The device reconstructs a complete squashfs on `/storage`, checks its SHA-256, and only then writes `/storage/.update/pending/zlyme`. The existing boot-apply and initramfs copy are unchanged. Never patch `/boot/zlyme` in place. A baseline version (`zlyme44`) publishes a full OTA only. A point version (`zlyme44.1`) may add direct deltas from the same-major baseline and the last three same-major point releases. The installed root hash, not the version string, decides whether a delta applies. Local `build.sh` does not generate deltas or query GitHub. Details are in `docs/research/product-phase9.md`.
 
 ### Gate
 
+The earlier plan started the remote clean build in parallel with the local smoke OTA and held `main` until that clean artifact was hardware-accepted. That is superseded. The process below is the one this closure follows.
+
 After the product work, in order:
 
-1. Finish the Phase 9 product changes.
-2. Reconcile the README with the last non-prerelease GitHub release, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Ignore `zlyme43 (2026-09-28)` because that release is a prerelease. The README must describe the user-facing behavior the final image actually ships: emulators, Tools/PAKs, Settings, and install/update steps. Do not describe deferred or experimental work as supported. Ride-along README edits during the phase do not replace this pass. Keep joystick text to calibration, deadzone, the stick test, rumble, and that built-in controls work in games. GPIO, UART, force-feedback, and InputPlumber topology stay in the technical docs. Remove or rewrite the claim that core pinning and per-emulator performance settings are the SpruceOS policy; Zlyme's current policy is not that per-system Smart table.
-3. Update the Zlyme version.
-4. Commit that candidate and freeze its SHA.
-5. From that same SHA, start both of these:
-   - a local incremental OTA from the existing output tree, for a fast device smoke test;
-   - the GitHub Actions `Build` workflow, which starts from an empty Buildroot `output/` on the runner. Restoring compiler ccache is allowed. That is not an incremental output-tree build.
-6. Smoke-test the local OTA while the remote build runs. The local archive is not the release artifact and is not reproducibility evidence.
-7. If the smoke test finds a bug, fix it and start both paths again from the corrected SHA. Do not keep a remote build of the broken SHA as the candidate.
-8. The remote clean build succeeds.
-9. Reproducibility and artifact checks use that clean result.
-10. Release validation, including the hardware pass for behavior that needs the device. The release image is the clean remote artifact. An incremental OTA does not prove a different clean image.
+1. Finish the Phase 9 product changes on `phase-9-product`: remove Artwork Scraper and Cheat Downloader, make ScrapeGoat the sole scraper and cheat integration, replace the cloned PortMaster theme with the `Zlyme` scheme, and add the stale-PAK post-update cleanup.
+2. Reconcile the README with the last non-prerelease GitHub release, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Ignore `zlyme43 (2026-09-28)` because that release is a prerelease. The README must describe the user-facing behavior the final image actually ships: emulators, Tools/PAKs, Settings, and install/update steps. Do not describe deferred or experimental work as supported. Ride-along README edits during the phase do not replace this pass. Keep joystick text to calibration, deadzone, the stick test, rumble, and that built-in controls work in games. GPIO, UART, force-feedback, and InputPlumber topology stay in the technical docs. Remove or rewrite the claim that core pinning and per-emulator performance settings are the SpruceOS policy; Zlyme's current policy is not that per-system Smart table. Run the dead-file audit in the same reconciliation, limited to files Phase 9 made obsolete.
+3. Keep the product version at `zlyme43 (2026-10-01)` for this development image. Do not bump it in the closure candidate.
+4. Local validation does not wipe the Buildroot output tree. Clean and rebuild the Phase 9 packages that remain shipped, and the packages this pass changes, then build one incremental image with `./build.sh --config zlyme_my355_defconfig`. Do not dispatch GitHub Actions for that proof.
+5. The maintainer installs that one local OTA. Phase 9 is not closed, and `phase-9-product` does not move, until that image is hardware-accepted.
+6. After that acceptance, `phase-9-product` may fast-forward into `main`.
+7. Immediately after that merge, the maintainer may dispatch the GitHub Actions `Build` workflow from that exact Phase 9 SHA. The runner starts from an empty Buildroot `output/`. Restoring compiler ccache is allowed. That is the full clean-build proof. It is not started during the local closure pass.
+8. Phase 9 implementation closure does not wait for the remote build to finish.
+9. The remote clean build remains the reproducibility and release-artifact gate. A failed remote clean build still requires a correction before a stable release can be considered valid. The local incremental OTA does not prove a different clean image.
+10. Pak Store stays post-first-stable. The CPU undervolt default stays off. Community text for other RK3566 ports is not a Phase 9 release blocker.
 
 ```text
-product work done
+product work and README reconciliation
         |
         v
-README reconciled to zlyme40
+targeted package rebuilds, one local incremental OTA
+(product version stays zlyme43)
         |
         v
-version bump, one committed SHA
+maintainer hardware acceptance of that local image
         |
-        +-----------------------------+
-        |                             |
-        v                             v
-local incremental OTA          remote clean Build
-        |                             |
-        v                             v
-quick device smoke             clean image
-        |                             |
-        +-------------+---------------+
-                      |
-                      v
-              release validation
+        v
+fast-forward phase-9-product into main
+        |
+        v
+dispatch the GitHub clean build from that SHA
+        |
+        +------------------------------+
+        |                              |
+        v                              v
+Phase 9 implementation closure   remote clean build
+(does not wait for the runner)   (release artifact;
+                                 failure blocks a
+                                 stable release)
 ```
 
-Status, 2026-10-01: the product version stays `zlyme43 (2026-10-01)`. The maintainer accepted Ruffle, Music radio and helpers, SD2, and GZDoom launch on `1cd9c94`. Song download, Cheat Downloader's menu, GZDoom menu buttons, and the Ruffle `/storage/flash_data` directory are corrected in the following local test image. Cheat Downloader stays experimental. Phase 9 is not closed. `main` is not moved until the maintainer installs and accepts the clean remote artifact.
+Status, 2026-10-02: the product version stays `zlyme43 (2026-10-01)`. The maintainer installed `zlyme-my355-20261001-f0143dd5b067.tar` and accepted GZDoom controls and saves, Cheat Downloader navigation, Music song download and radio, Ruffle launch and `Saves/FLASH` persistence, ROM-driven system visibility, and Create game folders under Settings → System → Storage. That acceptance does not keep Artwork Scraper or Cheat Downloader. Both are removed. ScrapeGoat becomes the sole scraper and cheat integration. PortMaster's separate Zlyme theme is replaced by a `Zlyme` scheme in `default_theme`. The next local image is the hardware-acceptance candidate and is not accepted yet. `main` stays where it is until that candidate is accepted. The remote clean build is not dispatched in this pass.
 
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 
-This is not a product-feature phase. Do not open its branch until Phase 9 is closed from the final stable `main`. A second agent may edit the hardware wiki only against a pinned Zlyme SHA, not against an uncommitted tree. Outline: `docs/research/maintenance-phase10.md`. Do not create `docs/MAINTENANCE.md` until that phase starts.
+This is not a product-feature phase. It may start on `main` after the Phase 9 merge and the dispatch of the remote clean build. Do not wait for that remote build to finish. Complete the Zlyme documentation in this repository first. Only afterward should the hardware-wiki agent edit the wiki. That agent uses the exact Phase 9 implementation SHA as runtime evidence and the later Phase 10 Zlyme documentation SHA as documentation guidance. It does not edit against an uncommitted tree. Outline: `docs/research/maintenance-phase10.md`. Do not create `docs/MAINTENANCE.md` until that phase starts.
 
 ### 10A. Wiki synchronization
 
-`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` already has `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, a hardware-versus-implementation hierarchy, and a test for what belongs in the wiki. Keep that model. The gap is content. `docs/implementations/zlyme.md` still says no Zlyme snapshot is recorded and does not claim deep suspend, the replacement joypad driver, InputPlumber, current DMC packaging, or the Weston runtime. After Phase 9, update that page from one stable Zlyme release or SHA. Do not paste the Zlyme architecture manual into the wiki.
+`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` already has `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, a hardware-versus-implementation hierarchy, and a test for what belongs in the wiki. Keep that model. The gap is content. `docs/implementations/zlyme.md` still says no Zlyme snapshot is recorded and does not claim deep suspend, the replacement joypad driver, InputPlumber, current DMC packaging, or the Weston runtime. Update that page only after the Phase 10 Zlyme documentation in this repository is done. Runtime behavior is the Phase 9 implementation SHA. Wording guidance is the later Phase 10 documentation SHA. Do not paste the Zlyme architecture manual into the wiki.
 
 Ownership stays split. Hardware, electrical, protocol, and firmware facts stay in the wiki. Zlyme packaging, init, policy, frontend, and build architecture stay in this repository. A short statement of how Zlyme implements a hardware mechanism goes in `docs/implementations/zlyme.md` with `Last synchronized against Zlyme <release / exact SHA>`. Joypad protocol stays in the wiki; the driver, InputPlumber topology, and calibration plumbing stay here. BL31/SIP and `vdd_logic` constraints stay in the wiki; the DTS and runtime stay here. The RK3566/RK3568 V2 DMC protocol stays in the wiki; the external module and its policy stay here. Do not mirror Markdown both ways. Historical ROCKNIX evidence stays historical.
 
@@ -1895,12 +1897,12 @@ Review Zlyme-owned code in this repository. Comments explain hardware quirks, sa
 
 ### 10C. Maintenance playbook
 
-`AGENTS.md` already points at `docs/UPSTREAMS.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, and `docs/ENGINEERING_PRINCIPLES.md`. Phase 10 adds one index, `docs/MAINTENANCE.md`, and points agents at it. It links those documents. It does not replace them. The index covers kernel and ROCKNIX-derived patch review, emulator updates, vendored helper updates, NextUI fork maintenance, and README/release notes. The last non-prerelease remains the user-visible README baseline. Release notes describe accepted behavior. The Phase 9 same-SHA local smoke OTA plus remote clean build stays the release procedure.
+`AGENTS.md` already points at `docs/UPSTREAMS.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, and `docs/ENGINEERING_PRINCIPLES.md`. Phase 10 adds one index, `docs/MAINTENANCE.md`, and points agents at it. It links those documents. It does not replace them. The index covers kernel and ROCKNIX-derived patch review, emulator updates, vendored helper updates, NextUI fork maintenance, and README/release notes. The last non-prerelease remains the user-visible README baseline. Release notes describe accepted behavior. The Phase 9 local incremental OTA is the hardware-acceptance image. The remote clean build dispatched from the merged Phase 9 SHA is the release artifact. Implementation closure does not wait for that runner. A failed remote build still blocks treating a stable release as valid.
 
 ### Gate
 
 - Zlyme and the wiki name the same ownership boundaries.
-- The wiki Zlyme page matches one pinned stable Zlyme revision.
+- The wiki Zlyme page uses the Phase 9 implementation SHA for runtime evidence and the Phase 10 documentation SHA for wording.
 - Hardware facts found during the roadmap are on the wiki page that owns them.
 - Historical ROCKNIX evidence is still marked historical.
 - Non-obvious Zlyme-owned code has short comments, and obvious code does not.

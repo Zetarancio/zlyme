@@ -1,14 +1,14 @@
 # Phase 10 — maintenance outline
 
-Planning only. Phase 10 starts after Phase 9 is closed. Do not create its branch from this note. Do not add `docs/MAINTENANCE.md` until that phase. The roadmap summary is in `docs/ROADMAP.md`.
+Planning only. Phase 10 may start on `main` after the Phase 9 merge and the dispatch of the remote clean build. Do not wait for that remote build to finish, and do not create its branch from this note. Complete the Zlyme documentation in this repository first. The hardware-wiki agent runs only after that documentation exists. Do not add `docs/MAINTENANCE.md` until that phase. The roadmap summary is in `docs/ROADMAP.md`.
 
 ## 10A. Wiki
 
 Repository: `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`.
 
-Keep its `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, evidence rules, and hardware-safety rules. Do not invent a second documentation model. The open job is to refresh stale Zlyme implementation text, especially `docs/implementations/zlyme.md`, from one stable post-Phase-9 Zlyme release or SHA. That page currently declines to record a snapshot and does not claim deep suspend, the replacement joypad driver, InputPlumber, current DMC packaging, or the Weston runtime.
+Keep its `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, evidence rules, and hardware-safety rules. Do not invent a second documentation model. The open job is to refresh stale Zlyme implementation text, especially `docs/implementations/zlyme.md`, after the Phase 10 Zlyme documentation in this repository is written. That page currently declines to record a snapshot and does not claim deep suspend, the replacement joypad driver, InputPlumber, current DMC packaging, or the Weston runtime.
 
-Record `Last synchronized against Zlyme <release / exact SHA>` on that page. A wiki edit uses that pinned SHA. It does not assume another agent's working tree.
+Record `Last synchronized against Zlyme <release / exact SHA>` on that page. Runtime evidence is the exact Phase 9 implementation SHA. Documentation guidance is the later Phase 10 Zlyme documentation SHA. A wiki edit uses those pinned SHAs. It does not assume another agent's working tree.
 
 | Topic | Wiki | Zlyme |
 | --- | --- | --- |
@@ -34,4 +34,4 @@ Vendored helpers: minui-list, minui-presenter, and parson stay at recorded commi
 
 NextUI: `Zetarancio/NextUI` is a fork of `LoveRetro/NextUI`. Buildroot pins an exact commit on the `zlyme` branch. Review upstream commits. Do not rebase the fork onto upstream HEAD to look current. Keep other-platform source in the fork. Hardware equivalence is required when runtime behavior changes, not for a comment or docs-only pin note.
 
-README and releases: the user-visible delta starts at the last non-prerelease, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Emulator and PAK lists come from the image. Deep technical detail stays in Zlyme docs or the wiki. Release notes describe accepted behavior, not the logbook. The release procedure remains one SHA, a local incremental OTA for smoke, and a remote clean Buildroot run as the release artifact.
+README and releases: the user-visible delta starts at the last non-prerelease, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Emulator and PAK lists come from the image. Deep technical detail stays in Zlyme docs or the wiki. Release notes describe accepted behavior, not the logbook. The local incremental OTA is the hardware-acceptance image. The remote clean Buildroot run from the merged Phase 9 SHA is the release artifact. Implementation closure does not wait for that run to finish. A failed remote build still blocks a stable release.
