@@ -32,7 +32,16 @@ start() {
 	# S12 already started the squashfs splash. Only restart if it
 	# died; do not kill a running lockup (flicker, and resize/OTA
 	# may already be on galaxy). Anim seed is S12splash.
-	if [ -x /usr/sbin/zlyme-splash ] && ! pidof zlyme-splash >/dev/null 2>&1; then
+	splash_ok=0
+	if [ -r /usr/share/zlyme/splash-quiet.sh ]; then
+		# shellcheck disable=SC1091
+		. /usr/share/zlyme/splash-quiet.sh
+		zlyme_splash_wanted && splash_ok=1
+	fi
+	if [ -f /tmp/zlyme-splash.progress ] || [ -f /boot/zlyme-splash.progress ]; then
+		splash_ok=1
+	fi
+	if [ "$splash_ok" -eq 1 ] && [ -x /usr/sbin/zlyme-splash ] && ! pidof zlyme-splash >/dev/null 2>&1; then
 		still=/usr/share/zlyme/splash.rgb565
 		anim=/usr/share/zlyme/splash.anim
 		pstill=/usr/share/zlyme/progress.rgb565

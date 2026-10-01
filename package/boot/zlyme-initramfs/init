@@ -143,17 +143,29 @@ do_root() {
 	elif [ -b /dev/mmcblk1p2 ]; then
 		mount_boot /dev/mmcblk1p2 || true
 	fi
+	read -r cmdline < /proc/cmdline
+	# Normal splash only when the command line has a complete quiet
+	# token. A pending-update progress flag may still paint, so an
+	# OTA reboot is not a black screen. Same token rule as
+	# splash-quiet.sh; initramfs cannot source the squashfs copy.
+	splash_wanted=0
+	for _tok in ${cmdline}; do
+		if [ "$_tok" = quiet ]; then
+			splash_wanted=1
+		fi
+	done
+	splash_mode=
 	if [ -f /boot_root/zlyme-splash.progress ]; then
 		: > /zlyme-splash.progress
+		splash_wanted=1
+		splash_mode=progress
 	fi
-	if [ -x /zlyme-splash ]; then
+	if [ "$splash_wanted" -eq 1 ] && [ -x /zlyme-splash ]; then
 		# Stills from the ramdisk. Anims appear on FAT at
 		# /boot_root once MMC is up; splash loads them then.
 		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
-			/progress.rgb565 /boot_root/progress.anim &
+			/progress.rgb565 /boot_root/progress.anim $splash_mode &
 	fi
-
-	read -r cmdline < /proc/cmdline
 
 	label=ZLYMEBOOT
 	for param in ${cmdline}; do
@@ -196,6 +208,10 @@ do_root() {
 			if [ "$pending" -eq 1 ]; then
 				: > /zlyme-splash.progress
 				: > /boot_root/zlyme-splash.progress
+				if [ "$splash_wanted" -eq 0 ] && [ -x /zlyme-splash ]; then
+					/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
+						/progress.rgb565 /boot_root/progress.anim progress &
+				fi
 				commit_update || log "copy failed, keeping current zlyme"
 			fi
 			if [ "$logs" -eq 1 ]; then

@@ -25,5 +25,12 @@ check "foo=quiet" no
 check "quietly" no
 check "root=/dev/mmcblk0p2" no
 grep -q zlyme_splash_wanted "$ROOT/board/my355/fsoverlay/etc/init.d/S12splash"
+grep -q zlyme_splash_wanted "$ROOT/board/my355/fsoverlay/etc/init.d/S16display"
 grep -q zlyme_splash_wanted "$ROOT/package/system/nextui/nextui-session"
+init=$ROOT/package/boot/zlyme-initramfs/init
+awk '
+	/read -r cmdline/ { seen = 1 }
+	seen && /zlyme-splash \/splash/ { ok = 1 }
+	END { exit ok ? 0 : 1 }
+' "$init"
 echo "splash quiet ok"
