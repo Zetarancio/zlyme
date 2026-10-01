@@ -1,0 +1,148 @@
+diff --color -ruN a/src/downloader.c b/src/downloader.c
+--- a/src/downloader.c	2026-10-01 16:11:37.528005665 +0200
++++ b/src/downloader.c	2026-10-01 18:33:37.951519175 +0200
+@@ -135,11 +135,14 @@
+     strncpy(pak_path, ".", sizeof(pak_path) - 1);
+     pak_path[sizeof(pak_path) - 1] = '\0';
+ 
+-    snprintf(ytdlp_path, sizeof(ytdlp_path), "%s/bin/yt-dlp", pak_path);
+-    snprintf(qjs_path, sizeof(qjs_path), "%s/bin/qjs", pak_path);
+-    snprintf(ffmpeg_path, sizeof(ffmpeg_path), "%s/bin/ffmpeg", pak_path);
+-    snprintf(version_file, sizeof(version_file), "%s/state/yt-dlp_version.txt", pak_path);
+-    snprintf(queue_file, sizeof(queue_file), "%s/state/youtube_queue.txt", pak_path);
++    /* Optional helpers are user content. They must not be written into the pak. */
++    snprintf(ytdlp_path, sizeof(ytdlp_path), "/storage/.config/music-player/helpers/yt-dlp");
++    snprintf(qjs_path, sizeof(qjs_path), "/storage/.config/music-player/helpers/qjs");
++    snprintf(ffmpeg_path, sizeof(ffmpeg_path), "/storage/.config/music-player/helpers/ffmpeg");
++    snprintf(version_file, sizeof(version_file), "/storage/.config/music-player/yt-dlp_version.txt");
++    snprintf(queue_file, sizeof(queue_file), "/storage/.config/music-player/youtube_queue.txt");
++    mkdir("/storage/.config/music-player", 0755);
++    mkdir("/storage/.config/music-player/helpers", 0755);
+     snprintf(download_dir, sizeof(download_dir), "%s/Music/Downloaded", SDCARD_PATH);
+ 
+     Keyboard_init();
+diff --color -ruN a/src/playlist_m3u.c b/src/playlist_m3u.c
+--- a/src/playlist_m3u.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/playlist_m3u.c	2026-10-01 18:33:37.951960399 +0200
+@@ -12,7 +12,7 @@
+ #include "player.h"
+ 
+ void M3U_init(void) {
+-    mkdir(SHARED_USERDATA_PATH "/music-player", 0755);
++    mkdir("/storage/.config/music-player", 0755);
+     mkdir(PLAYLISTS_DIR, 0755);
+ }
+ 
+diff --color -ruN a/src/playlist_m3u.h b/src/playlist_m3u.h
+--- a/src/playlist_m3u.h	2026-10-01 16:11:37.554004827 +0200
++++ b/src/playlist_m3u.h	2026-10-01 18:33:37.951898925 +0200
+@@ -5,7 +5,7 @@
+ #include <stddef.h>
+ #include "playlist.h"  // For PlaylistTrack
+ 
+-#define PLAYLISTS_DIR  SHARED_USERDATA_PATH "/music-player/playlists"
++#define PLAYLISTS_DIR  "/storage/.config/music-player/playlists"
+ #define MAX_PLAYLISTS  50
+ #define MAX_PLAYLIST_NAME 128
+ 
+diff --color -ruN a/src/podcast.c b/src/podcast.c
+--- a/src/podcast.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/podcast.c	2026-10-01 18:33:37.952471592 +0200
+@@ -557,7 +557,7 @@
+ int Podcast_init(void) {
+     if (podcast_initialized) return 0;  // Already initialized
+ 
+-    snprintf(podcast_data_dir, sizeof(podcast_data_dir), "%s/" PODCAST_DATA_DIR, SHARED_USERDATA_PATH);
++    snprintf(podcast_data_dir, sizeof(podcast_data_dir), "/storage/.config/" PODCAST_DATA_DIR);
+     snprintf(subscriptions_file, sizeof(subscriptions_file), "%s/" PODCAST_SUBSCRIPTIONS_FILE, podcast_data_dir);
+     snprintf(progress_file, sizeof(progress_file), "%s/progress.json", podcast_data_dir);
+     snprintf(downloads_file, sizeof(downloads_file), "%s/downloads.json", podcast_data_dir);
+diff --color -ruN a/src/radio.c b/src/radio.c
+--- a/src/radio.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/radio.c	2026-10-01 18:33:37.951820791 +0200
+@@ -65,7 +65,7 @@
+ 
+ #define SAMPLE_RATE 48000
+ #define AUDIO_CHANNELS 2
+-#define RADIO_STATIONS_FILE SHARED_USERDATA_PATH "/music-player/radio/stations.txt"
++#define RADIO_STATIONS_FILE "/storage/.config/music-player/radio/stations.txt"
+ 
+ // Ring buffer for decoded audio
+ #define AUDIO_RING_SIZE (SAMPLE_RATE * 2 * 10)  // 10 seconds of stereo audio
+@@ -1555,8 +1555,8 @@
+ }
+ 
+ void Radio_saveStations(void) {
+-    mkdir(SHARED_USERDATA_PATH "/music-player", 0755);
+-    mkdir(SHARED_USERDATA_PATH "/music-player/radio", 0755);
++    mkdir("/storage/.config/music-player", 0755);
++    mkdir("/storage/.config/music-player/radio", 0755);
+     FILE* f = fopen(RADIO_STATIONS_FILE, "w");
+     if (!f) return;
+ 
+diff --color -ruN a/src/resume.c b/src/resume.c
+--- a/src/resume.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/resume.c	2026-10-01 18:33:37.951656638 +0200
+@@ -6,8 +6,8 @@
+ #include "defines.h"
+ #include "resume.h"
+ 
+-#define RESUME_DIR  SHARED_USERDATA_PATH "/music-player"
+-#define RESUME_FILE SHARED_USERDATA_PATH "/music-player/resume.cfg"
++#define RESUME_DIR  "/storage/.config/music-player"
++#define RESUME_FILE "/storage/.config/music-player/resume.cfg"
+ 
+ // In-memory state
+ static ResumeState state = { .type = RESUME_TYPE_NONE };
+diff --color -ruN a/src/settings.c b/src/settings.c
+--- a/src/settings.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/settings.c	2026-10-01 18:33:37.951611174 +0200
+@@ -5,8 +5,8 @@
+ #include <string.h>
+ 
+ // Settings file path (in shared userdata directory)
+-#define SETTINGS_FILE SHARED_USERDATA_PATH "/music-player/settings.cfg"
+-#define SETTINGS_DIR SHARED_USERDATA_PATH "/music-player"
++#define SETTINGS_FILE "/storage/.config/music-player/settings.cfg"
++#define SETTINGS_DIR "/storage/.config/music-player"
+ 
+ // Valid screen off timeout values (in seconds)
+ // 0 means off (no auto screen off)
+diff --color -ruN a/src/spectrum.c b/src/spectrum.c
+--- a/src/spectrum.c	2026-10-01 16:11:37.554004827 +0200
++++ b/src/spectrum.c	2026-10-01 18:33:37.952028284 +0200
+@@ -9,7 +9,7 @@
+ #include <string.h>
+ #include <stdio.h>
+ 
+-#define SPECTRUM_SETTINGS_FILE SHARED_USERDATA_PATH "/spectrum_settings.txt"
++#define SPECTRUM_SETTINGS_FILE "/storage/.config/music-player/spectrum_settings.txt"
+ 
+ #define SMOOTHING_FACTOR 0.7f
+ 
+diff --color -ruN a/src/ui_radio.c b/src/ui_radio.c
+--- a/src/ui_radio.c	2026-10-01 16:11:37.555004794 +0200
++++ b/src/ui_radio.c	2026-10-01 18:33:37.952579992 +0200
+@@ -326,7 +326,7 @@
+         "To add custom radio stations:",
+         "",
+         "1. Create or edit the file:",
+-        "   /.userdata/shared/music-player/radio/stations.txt",
++        "   /storage/.config/music-player/radio/stations.txt",
+         "",
+         "2. Add one station per line:",
+         "   Name|URL|Genre|Slogan",
+diff --color -ruN a/src/wget_fetch.c b/src/wget_fetch.c
+--- a/src/wget_fetch.c	2026-10-01 16:11:37.556004762 +0200
++++ b/src/wget_fetch.c	2026-10-01 18:33:37.951339173 +0200
+@@ -21,8 +21,8 @@
+ // total time limit would. Keep to flags curl 7.54 knows: that is what the
+ // devices carry, and it rejects anything newer.
+ 
+-// Pak root is the working directory
+-#define CA_BUNDLE_PATH "./res/cacert.pem"
++/* Zlyme ships the CA bundle with the OS. The pak has no res/cacert.pem. */
++#define CA_BUNDLE_PATH "/etc/ssl/certs/ca-certificates.crt"
+ 
+ // Identifies us to the servers we talk to. The GitHub API requires a
+ // User-Agent, and a name beats curl/x.y in a podcast host's logs.

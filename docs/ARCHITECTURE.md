@@ -189,9 +189,23 @@ Persistent configuration belongs under:
 /storage/.config
 ```
 
-ROM/save/BIOS handling follows Zlyme's per-library-volume design rather than assuming all content lives on the OS card.
+That directory is the OS-card home for application and system configuration. Examples:
 
-`/storage` remains exFAT. Wine needs a POSIX prefix, so Zlyme stores one Wine-owned ext4 image under `/storage/.config` and loop-mounts it only while Wine runs. That does not change the storage partition format and is not a general image-file mechanism.
+- `/storage/.config/zlyme` for Zlyme policy, including Samba's enable state;
+- `/storage/.config/syncthing` for Syncthing's persistent home;
+- `/storage/.config/<application>` for an emulator or tool, or a NextUI subtree that NextUI itself owns.
+
+Per-library content stays on the library that holds it:
+
+- `$library/Roms` for games;
+- `$library/Saves` for saves and per-game companion data;
+- `$library/Bios` for BIOS files.
+
+User media is not configuration. Music and podcasts stay `/storage/Music` and `/storage/Podcasts`. Installed cheat files stay on the Cheats content path.
+
+Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs. Optional system logs stay under `/storage/.logs` when logging is enabled.
+
+`/storage` remains exFAT. Wine needs a POSIX prefix, so Zlyme stores one Wine-owned ext4 image under `/storage/.config` and loop-mounts it only while Wine runs. That does not change the storage partition format and is not a general image-file mechanism. A dirty-unmount message from an earlier boot is not a reason to change shutdown: `zlyme-halt` already syncs and unmounts `/storage` with a normal `umount` before `reboot -f` or `poweroff -f`. Checking the volume is an offline maintenance step.
 
 Image layout is a board concern. A future device may use another boot layout while preserving the higher-level Zlyme runtime contracts.
 

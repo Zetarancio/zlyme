@@ -291,7 +291,7 @@ standalone_targets() {
 		"$STORAGE/.config/dolphin-emu" \
 		"$STORAGE/.config/drastic/drastic.cfg" \
 		"$STORAGE/.config/aethersx2/inis" \
-		"$STORAGE/.config/nextui/shared/configs/gzdoom/gzdoom.ini" \
+		"$STORAGE/.config/gzdoom/gzdoom.ini" \
 		"$STORAGE/.config/nextui/shared/Pico-8-native/config" \
 		"$STORAGE/.config/nextui/shared/Pico-8-native/sdl_controllers.txt"
 }

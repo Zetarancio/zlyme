@@ -1,16 +1,34 @@
 #!/bin/sh
 # One line per screen so a stuck presenter is visible in the pak log.
+# --timeout -1 and 0 wait forever. Bound them so a blank screen returns.
 msg=
-prev=
+i=1
 for arg in "$@"; do
+	eval "a$i=\$arg"
+	i=$((i + 1))
+done
+n=$((i - 1))
+set --
+prev=
+i=1
+while [ "$i" -le "$n" ]; do
+	eval "arg=\$a$i"
+	if [ "$prev" = "--timeout" ]; then
+		case $arg in
+			-1) arg=25 ;;
+			0) arg=45 ;;
+		esac
+	fi
 	if [ "$prev" = "--message" ]; then
 		msg=$arg
 	fi
+	set -- "$@" "$arg"
 	prev=$arg
+	i=$((i + 1))
 done
 if [ -n "$msg" ]; then
 	echo "cheat: presenter ${msg}" >&2
 else
 	echo "cheat: presenter" >&2
 fi
-exec /usr/bin/minui-presenter "$@"
+exec "${ZLYME_PRESENTER:-/usr/bin/minui-presenter}" "$@"

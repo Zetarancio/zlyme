@@ -75,8 +75,18 @@ fi
 
 export ROM_DIR=$union
 export CHEAT_DIR=${CHEATS_PATH:-$SDCARD_PATH/Cheats}
-export CACHE_DIR=$SDCARD_PATH/.config/zlyme/cheat-downloader
+export CACHE_DIR=$SDCARD_PATH/.config/cheat-downloader
 mkdir -p "$CHEAT_DIR" "$CACHE_DIR"
+mig=${ZLYME_MIGRATE_SH:-/usr/share/nextui/bin/zlyme-migrate-tree.sh}
+if [ ! -r "$mig" ]; then
+	_pak=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+	mig=$_pak/../../../zlyme/zlyme-migrate-tree.sh
+fi
+# shellcheck disable=SC1090
+[ -r "$mig" ] && . "$mig"
+if command -v zlyme_migrate_tree >/dev/null 2>&1; then
+	zlyme_migrate_tree "$SDCARD_PATH/.config/zlyme/cheat-downloader" "$CACHE_DIR" || true
+fi
 echo "cheat: FIND_LOCAL_DB"
 echo "cheat: CHECK_UPDATE"
 export PATH="$PAK_DIR:${PATH:-}"
@@ -85,6 +95,32 @@ if [ "${ZLYME_CHEAT_DRY:-}" = 1 ]; then
 	find "$union" -type l | sort | while IFS= read -r link; do
 		printf '%s %s\n' "$(basename "$(dirname "$link")")/$(basename "$link")" "$(readlink "$link")"
 	done
+	printf 'cache=%s\n' "$CACHE_DIR"
 	exit 0
 fi
-exec "$APP"
+# The menu is experimental. A presenter that never starts, or a confirm
+# that waits forever, must not leave the panel black. The presenter
+# wrapper bounds those timeouts. This watchdog covers a hang before it.
+"$APP" &
+child=$!
+seen=0
+i=0
+while [ "$i" -lt 20 ]; do
+	if [ -n "${ZLYME_PAK_LOG:-}" ] && grep -q 'cheat: presenter' "$ZLYME_PAK_LOG"; then
+		seen=1
+		break
+	fi
+	kill -0 "$child" 2>/dev/null || break
+	i=$((i + 1))
+	sleep 1
+done
+if [ "$seen" -eq 0 ] && kill -0 "$child" 2>/dev/null; then
+	kill "$child" 2>/dev/null || true
+	wait "$child" 2>/dev/null || true
+	echo "cheat: no presenter; exiting" >&2
+	command -v show.elf >/dev/null 2>&1 &&
+		show.elf "Cheat Downloader could not open its menu" 4
+	exit 1
+fi
+wait "$child"
+exit $?

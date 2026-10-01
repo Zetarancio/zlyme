@@ -3,8 +3,9 @@
 # gzdoom
 #
 # Recipe and patches from Knulli (g4.14.2). Patches live next to this
-# file (Buildroot does not apply package/foo/patches/). 0001 maps
-# Knulli's /userdata paths onto NextUI's SD card userdata.
+# file (Buildroot does not apply package/foo/patches/). 0001 keeps the
+# immutable /usr/share/gzdoom lookup. User config follows upstream
+# $HOME/.config/gzdoom with HOME=/storage.
 #
 ################################################################################
 

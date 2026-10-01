@@ -67,11 +67,17 @@ Treat this as filesystem-integrity-sensitive code.
 
 The root filesystem is read-only.
 
-Persistent configuration lives under:
+Application and system configuration on the OS card lives under:
 
 ```text
 /storage/.config
 ```
+
+Examples are `/storage/.config/zlyme` (policy, including whether Samba is enabled), `/storage/.config/syncthing`, and `/storage/.config/<application>`. A NextUI-owned subtree is used only where NextUI actually owns that state.
+
+Per-library user content stays on that library: `Roms`, `Saves`, and `Bios`. User media such as `/storage/Music`, `/storage/Podcasts`, and the Cheats directory is content, not configuration. Transient data belongs in `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT has no POSIX mode bits. Optional logs stay `/storage/.logs` when system logging is enabled.
+
+`/storage` is exFAT. Shutdown syncs it and unmounts it with a normal `umount` before `reboot -f` or `poweroff -f`. Filesystem repair is an offline maintenance operation.
 
 Important classes include:
 - Zlyme flags;

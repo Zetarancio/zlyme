@@ -22,7 +22,7 @@ Buildroot **Weston 14.0.2** (MIT, `COPYING`), DRM backend, kiosk shell, simple c
 
 `zlyme-weston-run` owns one temporary compositor: drop DRM master with the existing `zlyme-drm-release`, start Weston with libseat's builtin backend (`LIBSEAT_BACKEND=builtin`), run the client, then stop Weston on any exit. There is no `seatd` daemon and no `S70seatd` service. NextUI's session already calls `zlyme-drm-release` before a pak and starts `nextui.elf` again after it.
 
-`zlyme-weston-test` runs `weston-simple-egl` for three seconds. If the client is still alive, the tracer kills it and returns 0. If the client has already exited, the tracer returns that status. Client output stays in `/tmp/zlyme-weston-client.log`.
+`zlyme-weston-test` used to run `weston-simple-egl` for three seconds. The Tools entry and that helper are no longer installed.
 
 ## What the Flip showed
 

@@ -25,8 +25,11 @@ launch() {
 }
 out=$(launch "$work/storage/Roms/Flash (FLASH)/Game.swf")
 printf '%s\n' "$out" | grep -F -q "library=$work/storage"
+printf '%s\n' "$out" | grep -F -q "data=$work/storage/Saves/FLASH/flash_data"
 out=$(launch "$work/sd2/Roms/Flash (FLASH)/Game.swf")
 printf '%s\n' "$out" | grep -F -q "library=$work/sd2"
+printf '%s\n' "$out" | grep -F -q "data=$work/sd2/Saves/FLASH/flash_data"
 out=$(launch "$work/media/OTG/Roms/Flash (FLASH)/Game.swf")
 printf '%s\n' "$out" | grep -F -q "library=$work/media/OTG"
+printf '%s\n' "$out" | grep -F -q "data=$work/media/OTG/Saves/FLASH/flash_data"
 echo "flash launch ok"

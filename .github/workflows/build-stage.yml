@@ -109,6 +109,8 @@ jobs:
             > output/zlyme-build.log 2>&1
           rc=$?
           tail -n 120 output/zlyme-build.log || true
+          echo "source=${{ github.sha }}"
+          ls -l output/images/zlyme-my355-*.tar output/images/zlyme.img 2>/dev/null || true
           docker ps -aq | xargs -r docker stop || true
           docker ps -aq | xargs -r docker rm -f || true
           if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then

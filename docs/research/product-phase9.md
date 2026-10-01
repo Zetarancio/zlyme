@@ -1,8 +1,8 @@
 # Product polish — Phase 9
 
-Research only. Nothing here was implemented. Dispositions say what Phase 9 should do after Phase 8 owns the NextUI source.
+This file records the Phase 9 decisions and what was actually verified. Earlier sections are the research and the passes that led here. The corrective section at the end is the current persistence and acceptance record. Phase 9 is not complete until the maintainer installs and accepts the clean remote release-candidate artifact.
 
-Date: 2026-09-30. The original notes were taken at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed, before any Phase 9 code.
+Date of the original notes: 2026-09-30, at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed.
 
 Evidence labels match `docs/research/frontend-source-phase8.md`.
 
@@ -400,9 +400,9 @@ Other shipped Tools: Files, Artwork Scraper, Overlays, and PortMaster do not lin
 
 | App | Pin | License | Integration |
 | --- | --- | --- | --- |
-| Ruffle Handheld | release v4.2, commit `d6e6e4527e97e6d25ba034de29754086a3eb5a9b` | MIT, bundled Ruffle MIT OR Apache-2.0 | Appliance under `/usr/share/zlyme/rufflehandheld`. `RUFFLE.pak` launches it. `RUFFLE_PERFORMANCE=0` so it does not write CPU, GPU, or DMC governors. `setup.sh` and `core-install.sh` are not installed. No SWF is shipped. Saves and logs are under `/storage/.config/zlyme/ruffle`. Direct NextUI path, not Weston. |
-| Music Player | release v1.17.0, commit `a77cdf69cd19e3313dc2b906e19b5be34715375a` | MIT, plus Fraunhofer FDK AAC for the bundled `libfdk-aac.so.1` | Binary on the squashfs. Launch script does not write cpufreq and forces `auto_update=0`. The restart flag is ignored. Local files are `/storage/Music`. No audio files are shipped. |
-| Cheat Downloader | release v1.6.0, commit `4e673432cb3e92c8a34907cf5740aafacbbc3f47` | MIT | AArch64 `cheat_manager` from the my355 zip (`bin/arm` is still AArch64). `minui-list` and `minui-presenter` come from `/usr/bin`. ROM folders on every library are symlinked in `/tmp` for the run; files are not copied. A duplicate filename follows the later library. Cheats install to `CHEATS_PATH` (`/storage/Cheats`). The Libretro database is only downloaded when the pak runs, into `/storage/.config/zlyme/cheat-downloader`. |
+| Ruffle Handheld | release v4.2, commit `d6e6e4527e97e6d25ba034de29754086a3eb5a9b` | MIT, bundled Ruffle MIT OR Apache-2.0 | Appliance under `/usr/share/zlyme/rufflehandheld`. `FLASH.pak` launches it. `RUFFLE_PERFORMANCE=0` so it does not write CPU, GPU, or DMC governors. `setup.sh` and `core-install.sh` are not installed. No SWF is shipped. Per-game data is `$library/Saves/FLASH/flash_data`. Logs are `/storage/.config/ruffle`. Direct NextUI path, not Weston. |
+| Music Player | release v1.17.0, commit `a77cdf69cd19e3313dc2b906e19b5be34715375a` | MIT, plus Fraunhofer FDK AAC | Binary on the squashfs. Launch script does not write cpufreq and forces `auto_update=0`. The restart flag is ignored. Application state is `/storage/.config/music-player`. Music is `/storage/Music`. Podcasts are `/storage/Podcasts`. Optional YouTube helpers, if the user installs them, are `/storage/.config/music-player/helpers`. No audio files are shipped. |
+| Cheat Downloader | release v1.6.0, commit `4e673432cb3e92c8a34907cf5740aafacbbc3f47` | MIT | Experimental. AArch64 `cheat_manager` from the my355 zip (`bin/arm` is still AArch64). `minui-list` and `minui-presenter` come from `/usr/bin`. ROM folders on every library are symlinked in `/tmp` for the run; files are not copied. A duplicate filename follows the later library. Cheats install to `CHEATS_PATH` (`/storage/Cheats`). The Libretro database is only downloaded when the pak runs, into `/storage/.config/cheat-downloader`. Presenter waits are bounded. |
 
 `pico8-data-extractor` 0.1.0 is a Buildroot package (`host-go`, `CGO_ENABLED=0`, `GOARCH=arm64`).
 
@@ -434,10 +434,58 @@ Ruffle still needs a runtime launch on the Flip and a visual confirmation. Music
 
 | Work | Disposition | Notes |
 | --- | --- | --- |
-| Weston test PAK | REMOVED from the image in Phase 9L | `Tools/Weston.pak` only launched `zlyme-weston-test`. That Tools entry is gone. Weston itself stays for PortMaster and Wine. |
+| Weston test PAK | REMOVED from the image in Phase 9L | `Tools/Weston.pak` only launched `zlyme-weston-test`. That Tools entry and the helper are gone. Weston itself stays for PortMaster and Wine. |
 | CI log volume | KEEP | Short log on the Actions console, full log as an artifact, so the job is not truncated. |
 | README | INVARIANT, plus a final gate | Per shipped feature, and one reconciliation against non-prerelease `zlyme40 (2026-09-23)` before the version bump. See the README release gate above. |
 | Community / Contributing | KEEP | Invite other RK3566 ports and point at Discord. |
 | Dead file audit | KEEP, last | After features stop moving. Grep-clean is not proof. |
 
-End of Phase 9: version bump, then one committed SHA. From that SHA, a local incremental OTA is only a smoke test. The GitHub Actions `Build` workflow, from an empty Buildroot output tree, is the clean release candidate. Reproducibility checks and the release image use the remote artifact. An incremental OTA does not prove that clean image. No OTA per text or default tweak.
+End of the pre-release source notes. The section below supersedes "Still not hardware-accepted" for the items the maintainer has since passed.
+
+## Live acceptance of f6f1b2d
+
+The maintainer installed `zlyme-my355-20261001-f6f1b2d7944c.tar` and accepted:
+
+- Splore downloaded-cart names, artwork, and cart launch, with no `temp-*` rows
+- Moonlight and ScrapeGoat printed A/B
+- Ruffle: `Flash (FLASH)` is listed, `/storage/Roms/Flash (FLASH)/Mario ATV.swf` launches and renders, MENU+START returns to NextUI
+- Music Player opens, plays online radio, and returns to NextUI
+- Settings → Game → Create game folders on SD card 1, with existing ROMs kept
+- RetroArch, PPSSPP Vulkan, Settings open/return, and quiet transitions
+
+The exFAT dirty-unmount line is closed for Phase 9. `/storage` is exFAT. `zlyme-halt` already syncs and unmounts it with a normal `umount` before `reboot -f` or `poweroff -f`. `fsck` is an offline maintenance operation. Shutdown code was not changed for it.
+
+## Corrective persistence pass
+
+Canonical state, also in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md`:
+
+- OS and application configuration: `/storage/.config` (`zlyme`, `syncthing`, `<application>`)
+- ROMs, saves, BIOS: the library's `Roms`, `Saves`, and `Bios`
+- user media: `/storage/Music`, `/storage/Podcasts`, and the Cheats content path
+- transient data: `/run` or `/tmp`
+- optional logs: `/storage/.logs`
+- Samba enable state: `/storage/.config/zlyme`. Samba's private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits.
+
+Ruffle's emulator is unchanged. The launcher sets the runtime's ROM root to `$library/Saves/FLASH`, which is where the frozen save script writes `flash_data`. A legacy `$library/flash_data` directory is migrated once. Application logs are `/storage/.config/ruffle`.
+
+Music Player state is `/storage/.config/music-player`. The player is patched so it does not use NextUI's shared userdata macro. Legacy `.userdata/shared/music-player` and `.config/nextui/shared/music-player` are migrated once. The launch script does not create `.userdata`.
+
+The YouTube helper's `Failed to check GitHub` was reproduced on the installed pak. The player runs `curl --cacert ./res/cacert.pem` from the pak directory. That file is not installed. The same request with `/etc/ssl/certs/ca-certificates.crt` returned HTTP 200. The patch uses that system bundle. User-installed `yt-dlp`, `qjs`, and `ffmpeg` go under `/storage/.config/music-player/helpers/`. Application self-update stays off. The in-player check has not been repeated on the Flip; that waits for the image that contains the patched binary.
+
+Cheat Downloader stays experimental. On the installed image, `minui-presenter` under `SDL_VIDEODRIVER=dummy` opens both gamepads and exits on its timeout, so the presenter binary itself starts. The graphical failure was not reproduced while NextUI held the panel. The pak wrapper changes a forever timeout (`-1` or `0`) to 25s or 45s, and the launcher exits if the presenter never logs a screen within 20s. Cache and database metadata are `/storage/.config/cheat-downloader`. Installed `.cht` files stay on the Cheats content path. The database is not in the image.
+
+GZDoom config follows upstream `$HOME/.config/gzdoom` with `HOME=/storage`. The path patch no longer hardcodes `/mnt/SDCARD` or `.userdata`. It keeps `/usr/share/gzdoom` for the immutable resources and points the node cache at `$HOME/.config/gzdoom/cache`. Game saves stay `$SAVES_PATH/DOOM` via `-savedir`. Legacy config trees are migrated once.
+
+`/tmp/zlyme-session-handoff` was only a launch test. NextUI `c82b4a63` removes the poll. Nothing else reads that file.
+
+Ruffle, Music Player, and Cheat Downloader do not write cpufreq, do not start a daemon, and do not run at boot. Music Player application update stays disabled. Ruffle's installer is not shipped. Cheat Downloader downloads only the user database.
+
+```text
+RUFFLE LAUNCH = MAINTAINER ACCEPTED on f6f1b2d
+RUFFLE flash_data MOVE = HOST TESTED; live dry-run moved /storage/flash_data to /storage/Saves/FLASH/flash_data
+MUSIC PLAYER RADIO = MAINTAINER ACCEPTED on f6f1b2d
+MUSIC YOUTUBE HELPER = ROOT CAUSE REPRODUCED, FIX IN SOURCE, UI RECHECK OUTSTANDING
+CHEAT DOWNLOADER = EXPERIMENTAL, BLACK SCREEN NOT REPRODUCED THIS PASS, WAITS ARE BOUNDED
+GZDOOM PATHS = HOST TESTED, LAUNCH RECHECK OUTSTANDING
+PHASE 9 RELEASE = NOT COMPLETE
+```

@@ -1877,6 +1877,8 @@ quick device smoke             clean image
               release validation
 ```
 
+Status, 2026-10-01: the product version stays `zlyme43 (2026-10-01)`. Ruffle and Music Player radio are maintainer-accepted. The optional YouTube helper is fixed in source and still needs the release image. Cheat Downloader is experimental. Phase 9 is not closed. `main` is not moved until the maintainer installs and accepts the clean remote artifact.
+
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 
 This is not a product-feature phase. Do not open its branch until Phase 9 is closed from the final stable `main`. A second agent may edit the hardware wiki only against a pinned Zlyme SHA, not against an uncommitted tree. Outline: `docs/research/maintenance-phase10.md`. Do not create `docs/MAINTENANCE.md` until that phase starts.

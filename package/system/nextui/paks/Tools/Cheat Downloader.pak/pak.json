@@ -1,8 +1,8 @@
 {
-  "name": "Cheat Downloader",
+  "name": "Cheat Downloader (Experimental)",
   "version": "v1.6.0",
   "type": "TOOL",
-  "description": "Download Libretro cheats when you ask. The database is not in the image.",
+  "description": "Experimental. Downloads a Libretro cheat database when you ask. The database is not in the image. MENU+START leaves the tool.",
   "author": "nborodikhin",
   "repo_url": "https://github.com/nborodikhin/nextui-cheat-downloader-alt",
   "platforms": ["my355"],
