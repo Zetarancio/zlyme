@@ -48,8 +48,6 @@ endef
 define MINUI_PRESENTER_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/minui-presenter $(TARGET_DIR)/usr/bin/minui-presenter
 	$(INSTALL) -D -m 0755 $(@D)/minui-presenter \
-		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Artwork\ Scraper.pak/bin/$(MINUI_PRESENTER_PLATFORM)/minui-presenter
-	$(INSTALL) -D -m 0755 $(@D)/minui-presenter \
 		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Overlays.pak/bin/$(MINUI_PRESENTER_PLATFORM)/minui-presenter
 	$(INSTALL) -D -m 0644 $(MINUI_PRESENTER_PKGDIR)/LICENSE \
 		$(TARGET_DIR)/usr/share/minui-presenter/LICENSE

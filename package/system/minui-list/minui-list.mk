@@ -62,8 +62,6 @@ endef
 define MINUI_LIST_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/minui-list $(TARGET_DIR)/usr/bin/minui-list
 	$(INSTALL) -D -m 0755 $(@D)/minui-list \
-		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Artwork\ Scraper.pak/bin/$(MINUI_LIST_PLATFORM)/minui-list
-	$(INSTALL) -D -m 0755 $(@D)/minui-list \
 		$(TARGET_DIR)/usr/share/nextui/paks/Tools/Overlays.pak/bin/$(MINUI_LIST_PLATFORM)/minui-list
 	$(INSTALL) -D -m 0644 $(MINUI_LIST_PKGDIR)/LICENSE \
 		$(TARGET_DIR)/usr/share/minui-list/LICENSE

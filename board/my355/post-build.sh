@@ -308,6 +308,11 @@ rm -f "${TARGET_DIR}/etc/timezone"
 # incremental tree would keep the old binary and its license file.
 rm -rf "${TARGET_DIR}/usr/lib/zlyme/cheat-downloader"
 rm -rf "${TARGET_DIR}/usr/share/licenses/cheat-downloader"
+# minui-list used to install into Artwork Scraper after NextUI copied
+# the pak tree. These exact stock paths must not survive that order.
+rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Artwork Scraper.pak"
+rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Cheat Downloader.pak"
+rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Weston.pak"
 
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp
