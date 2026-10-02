@@ -569,11 +569,23 @@ Still open on that exact artifact:
 
 The first two are code defects in that build. System emptiness was checked only on the representative first library, so an empty `/storage` folder hid a populated SD2 folder of the same name. The manual picker aborted because Apostrophe's POSIX `realpath` wrote into a 1024-byte buffer; glibc fortification expects `PATH_MAX` and aborted with `*** buffer overflow detected ***` (exit 134). PortMaster's accepted scheme, color, and persistence are unchanged. Phase 9 stays open until the next focused candidate is accepted. Duplicate same-name rows remain a host-covered data-model check unless a later hardware run shows otherwise.
 
+## Live result of 93a6714
+
+The maintainer installed `zlyme-my355-20261002-93a6714f658f.tar` (`93a6714f658f659f3cdebf31c2cff155f9b99846`).
+
+Known from that run:
+
+- ScreenScraper artwork works
+- manual downloading works
+- ZcrapeGoat cheats do not work
+
+Cheats stop before the Libretro database clone. The log is `cheats: git binary not found: /usr/lib/zlyme/zcrapegoat/resources/bin/git`. The bundled `git` and `git-remote-https` are in the PAK, and the launcher already exports that directory as `GIT_EXEC_PATH`. This artifact looks beside the executable instead. No other focused check on this image was reported. PortMaster's earlier acceptance is unchanged. Phase 9 stays open.
+
 ## Current ZcrapeGoat build
 
 An earlier draft of this record described `package/system/scrapegoat`, the patch `0001-zlyme-libraries.patch`, copied state from `.userdata/shared/ScrapeGoat`, and PortMaster selected text `#FFD7B0`. That draft is not the current build. `daebc6f` accepted the orange `#FC9C14` selection. The pale color remains only as the `1f5dab` hardware note above.
 
-`BR2_PACKAGE_ZCRAPEGOAT` compiles `package/system/zcrapegoat/src/`. The import is pristine upstream v2.3.0 at `c52f749eae21a4c02c767e485fef2abbb773f2d7`. Zlyme changes after that import are normal commits. There is no ScrapeGoat patch stack. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. The PAK is `Tools/ZcrapeGoat.pak`. The binary is `/usr/lib/zlyme/zcrapegoat/zcrapegoat`.
+`BR2_PACKAGE_ZCRAPEGOAT` compiles `package/system/zcrapegoat/src/`. The import is pristine upstream v2.3.0 at `c52f749eae21a4c02c767e485fef2abbb773f2d7`. Zlyme changes after that import are normal commits. There is no ScrapeGoat patch stack. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. The PAK is `Tools/ZcrapeGoat.pak`. The binary is `/usr/lib/zlyme/zcrapegoat/zcrapegoat`. Bundled `git` and `git-remote-https` stay in the PAK `resources/bin`. The launcher exports that directory as `GIT_EXEC_PATH`, and the cheat client uses it. There is not a second copy beside the executable.
 
 ScreenScraper developer credentials are supplied privately at build time. A local build reads the ignored file `package/system/zcrapegoat/credentials.local`. The GitHub Actions build reads `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. The credential-bearing compile sets `CCACHE_DISABLE=1`. The values are not committed and are not printed. A personal ScreenScraper account is still entered on the device and is separate from those developer credentials.
 
