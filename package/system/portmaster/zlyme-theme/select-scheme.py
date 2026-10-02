@@ -13,14 +13,23 @@ import sys
 from pathlib import Path
 
 
+class MalformedConfig(Exception):
+    pass
+
+
 def load_config(path: Path) -> dict:
     if not path.is_file():
         return {}
+    text = path.read_text()
+    if not text.strip():
+        raise MalformedConfig()
     try:
-        data = json.loads(path.read_text() or "{}")
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise MalformedConfig() from exc
+    if not isinstance(data, dict):
+        raise MalformedConfig()
+    return data
 
 
 def migrate(data: dict) -> bool:
@@ -47,7 +56,14 @@ def main() -> None:
     cfg = Path(sys.argv[1])
     themes = Path(sys.argv[2])
     remove_obsolete_theme(themes)
-    data = load_config(cfg)
+    try:
+        data = load_config(cfg)
+    except MalformedConfig:
+        print(
+            "portmaster: config.json is not valid JSON; leaving it unchanged",
+            file=sys.stderr,
+        )
+        return
     if not migrate(data):
         return
     cfg.parent.mkdir(parents=True, exist_ok=True)

@@ -53,7 +53,7 @@ assert z["#pallet"]["background"] == [0, 0, 0, 255]
 assert z["#pallet"]["list_text"] == [255, 255, 255, 255]
 assert z["#pallet"]["button"] == [0, 0, 0, 255]
 assert z["#pallet"]["list_unselectable"][:3] == [250, 124, 8]
-assert z["#pallet"]["list_selected"][:3] == [255, 215, 176]
+assert z["#pallet"]["list_selected"][:3] == [252, 156, 20]
 assert z["#pallet"]["selection-fill"][:3] == [138, 62, 6]
 assert z["#resources"] == d["#resources"]
 assert data["ports_list"]["select-fill"] == "selection-fill"
@@ -110,5 +110,17 @@ data = json.load(open(sys.argv[1]))
 assert data["theme"] == "Handheld"
 assert data["theme-scheme"] == "Dark Mode"
 PY
+
+mkdir -p "$work/bad"
+printf '%s\n' '{ this is not json' > "$work/bad/config.json"
+cp "$work/bad/config.json" "$work/bad/before"
+if python3 "$select" "$work/bad/config.json" "$work/themes" 2>"$work/bad/err"; then
+	:
+else
+	echo "malformed config was treated as fatal" >&2
+	exit 1
+fi
+cmp -s "$work/bad/before" "$work/bad/config.json"
+grep -q 'not valid JSON' "$work/bad/err"
 
 echo "portmaster theme ok"

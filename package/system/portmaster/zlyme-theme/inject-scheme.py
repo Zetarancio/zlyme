@@ -7,9 +7,8 @@ are. Three palette values change:
 
 - list_unselectable was Darkest Mode red (200, 0, 0). It becomes
   #FA7C08, COLORS.md color1.
-- list_selected was the light blue (153, 180, 255). It becomes #FFD7B0.
-  COLORS.md has no pastel, so this is #FC9C14 (the lighter brand orange)
-  mixed toward white.
+- list_selected was the light blue (153, 180, 255). It becomes
+  #FC9C14, the lighter orange already used in COLORS.md.
 - selection-fill was the dark blue (50, 80, 155). It becomes #8A3E06,
   #FA7C08 mixed with the #050608 background, so the pastel text stays
   readable on the selection bar.
@@ -22,7 +21,7 @@ import sys
 from pathlib import Path
 
 ZLYME_ORANGE = [250, 124, 8]  # #FA7C08
-PASTEL_ORANGE = [255, 215, 176]  # #FFD7B0
+PASTEL_ORANGE = [252, 156, 20]  # #FC9C14
 SELECTION_FILL = [138, 62, 6]  # #8A3E06
 
 
