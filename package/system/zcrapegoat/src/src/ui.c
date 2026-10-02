@@ -2721,7 +2721,8 @@ static bool check_daemon_on_startup(void) {
 static void show_about_screen(void) {
     const char *message =
         "ZcrapeGoat v2.3.0\n"
-        "Based on ScrapeGoat by Helaas.\n\n"
+        "\n"
+        "Based on ScrapeGoat by Helaas.\n"
         "Thanks to Helaas for creating\n"
         "ScrapeGoat and releasing it\n"
         "under the MIT License.";

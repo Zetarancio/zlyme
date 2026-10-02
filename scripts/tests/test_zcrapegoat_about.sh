@@ -8,9 +8,32 @@ lic=$ROOT/package/system/zcrapegoat/src/LICENSE
 pak=$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/pak.json
 ss=$ROOT/package/system/zcrapegoat/src/src/screenscraper.h
 
-grep -q 'ZcrapeGoat v2.3.0' "$ui"
-grep -q 'ScrapeGoat by Helaas' "$ui"
-grep -q 'under the MIT License.' "$ui"
+python3 - "$ui" << 'PY'
+import pathlib, re, sys
+text = pathlib.Path(sys.argv[1]).read_text()
+start = text.find("static void show_about_screen(void)")
+end = text.find("ap_footer_item", start)
+if start < 0 or end < 0:
+    sys.exit("About popup message was not found")
+parts = re.findall(r'"((?:\\.|[^"\\])*)"', text[start:end])
+if not parts:
+    sys.exit("About popup message was not found")
+decoded = "".join(bytes(part, "utf-8").decode("unicode_escape") for part in parts)
+expected = (
+    "ZcrapeGoat v2.3.0\n"
+    "\n"
+    "Based on ScrapeGoat by Helaas.\n"
+    "Thanks to Helaas for creating\n"
+    "ScrapeGoat and releasing it\n"
+    "under the MIT License."
+)
+if decoded != expected:
+    sys.stderr.write("About popup text does not match:\n")
+    sys.stderr.write(repr(decoded) + "\n")
+    sys.exit(1)
+if not decoded.endswith("under the MIT License."):
+    sys.exit("About popup does not end at the MIT License sentence")
+PY
 grep -q 'https://github.com/Helaas/nextui-scrapegoat-pak' "$up"
 if grep -q 'https://github.com/Helaas/nextui-scrapegoat-pak' "$ui"; then
 	echo "About popup still includes the upstream URL" >&2
