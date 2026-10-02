@@ -536,6 +536,16 @@ These supersede earlier notes that still list Artwork Scraper or Cheat Downloade
 
 The next local image is not hardware-accepted until the maintainer installs it.
 
+## Implementation record for the closure candidate
+
+ScrapeGoat is built from `Helaas/nextui-scrapegoat-pak` tag `v2.3.0`, commit `c52f749eae21a4c02c767e485fef2abbb773f2d7`, plus `package/system/scrapegoat/0001-zlyme-libraries.patch` and `zlyme_paths.c`. The Zlyme toolchain compiles it. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. ScreenScraper developer credentials are compile-time flags. No credential file was present, and the old binary was not mined for them, so this binary warns that developer credentials are not embedded. Upstream still treats a personal ScreenScraper account as optional and uses it only to raise the request rate. That path expects the developer identity to be compiled in.
+
+Libraries are the lines in `/run/zlyme/libraries` (`ZLYME_LIBRARIES_FILE` in tests). One system folder name is listed once. ROMs are read from every library that has that folder, and each ROM keeps its real path. Two files with the same name stay separate; the row label adds the library root. Artwork is `<ROM directory>/.media/<stem>.png`. Cheats go to `/storage/Cheats/<tag>/<stem>.cht`. Private state is `/storage/.config/ScrapeGoat`. If that settings file is missing and `/storage/.userdata/shared/ScrapeGoat/settings.json` already exists, the new file is copied and the old tree is left in place. The app does not create `.userdata/shared/ScrapeGoat`.
+
+PortMaster stays on upstream `default_theme`. The `Zlyme` scheme is Darkest Mode with `list_unselectable` set to `#FA7C08`, `list_selected` set to `#FFD7B0`, and `selection-fill` set to `#8A3E06`. A stored theme named `Zlyme` becomes `default_theme` with the `Zlyme` scheme. Other stored themes and schemes are left alone. `themes/Zlyme` is not installed.
+
+Artwork Scraper, Cheat Downloader, and the Weston test PAK are not in the image. After a successful OTA, `post-update.sh` removes `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, and `Tools/my355/Cheat Downloader.pak` from the OS card.
+
 ```text
 F0143DD = MAINTAINER ACCEPTED for the items listed above
 ARTWORK SCRAPER = REMOVED; SCRAPEGOAT OWNS ARTWORK

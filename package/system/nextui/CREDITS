@@ -31,8 +31,9 @@ minui-presenter (Tools helper)
 ScrapeGoat (Tools)
   Kevin Vranken (Helaas), MIT
   https://github.com/Helaas/nextui-scrapegoat-pak
-  Release v2.3.0
-  my355 binary rebuilt against Apostrophe with Flip joystick mapping.
+  Release v2.3.0, commit c52f749eae21a4c02c767e485fef2abbb773f2d7
+  Built with the Zlyme toolchain and the vendored Apostrophe headers.
+  ScreenScraper developer credentials are not in this tree.
 
 Apostrophe (ScrapeGoat / Moonlight UI toolkit)
   https://github.com/Helaas/Apostrophe
