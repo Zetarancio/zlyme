@@ -540,6 +540,31 @@ The next local image is not hardware-accepted until the maintainer installs it.
 
 The maintainer installed `zlyme-my355-20261002-1f5dab487ee4.tar`. No other already accepted Phase 9 surface regressed. Stale Artwork Scraper, Cheat Downloader, and Weston test PAK cleanup was not reported as regressed. ScrapeGoat did not open. The launcher set `LOG_FILE` from the full binary path, which produced a `//` path whose parent directories did not exist, so the log redirect ended the script before the program started. PortMaster worked, and its Zlyme selected text `#FFD7B0` was too close to white. The next candidate corrects those two items. Previously accepted functions do not need the full matrix repeated. `1f5dab` is not the final accepted image.
 
+## Live result of daebc6f
+
+The maintainer installed `output/images/zlyme-my355-20261002-daebc6f5dbab.tar` (`daebc6f5dbabf1a2470cba416067b38176034c20`, SHA-256 `26aa0e1a643f0a6f0bcab9fb34b07c0495bbc4bd6ecac7342fbc81a124bd0a6c`).
+
+Passed on that artifact:
+
+- personal ScreenScraper credential prompt, and the prompt disappearing after username and password are saved
+- `/storage` artwork written beside that ROM's `.media`
+- SD2 artwork written beside the SD2 ROM's `.media`
+- Libretro cheat install under `/storage/Cheats`
+- state owned by `/storage/.config/ZcrapeGoat`
+- no `/storage/.config/ScrapeGoat` and no `.userdata/shared/ScrapeGoat` created
+- MENU+START returns to NextUI
+- OTA removal of the old `ScrapeGoat.pak`, with only `ZcrapeGoat.pak` visible
+- PortMaster Zlyme scheme, orange selection, persistence, and normal PAK handoff
+
+Still open on that exact artifact:
+
+- the logical system list was incomplete across libraries
+- Settings → Manual download directory aborted ZcrapeGoat
+- the About popup was too long
+- a same-name ROM on two cards was not explicitly confirmed on hardware
+
+The first two are code defects in that build. System emptiness was checked only on the representative first library, so an empty `/storage` folder hid a populated SD2 folder of the same name. The manual picker aborted because Apostrophe's POSIX `realpath` wrote into a 1024-byte buffer; glibc fortification expects `PATH_MAX` and aborted with `*** buffer overflow detected ***` (exit 134). PortMaster's accepted scheme, color, and persistence are unchanged. Phase 9 stays open until the next focused candidate is accepted. Duplicate same-name rows remain a host-covered data-model check unless a later hardware run shows otherwise.
+
 ## Implementation record for the closure candidate
 
 ScrapeGoat is built from `Helaas/nextui-scrapegoat-pak` tag `v2.3.0`, commit `c52f749eae21a4c02c767e485fef2abbb773f2d7`, plus `package/system/scrapegoat/0001-zlyme-libraries.patch` and `zlyme_paths.c`. The Zlyme toolchain compiles it. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. ScreenScraper developer credentials are compile-time flags. No credential file was present, and the old binary was not mined for them, so this binary warns that developer credentials are not embedded. Upstream still treats a personal ScreenScraper account as optional and uses it only to raise the request rate. That path expects the developer identity to be compiled in.
