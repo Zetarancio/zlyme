@@ -1,0 +1,463 @@
+diff --git a/src/daemon.c b/src/daemon.c
+index 3d04244..fd82115 100644
+--- a/src/daemon.c
++++ b/src/daemon.c
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include "daemon.h"
++#include "zlyme_paths.h"
+ #include "screenscraper.h"
+ #include "systems.h"
+ #include "cJSON.h"
+@@ -35,8 +36,7 @@
+ /* ── Path helpers ────────────────────────────────────────── */
+ 
+ static void daemon_dir(char *buf, size_t len) {
+-    snprintf(buf, len, "%s/.userdata/shared/ScrapeGoat/daemon",
+-             get_sdcard_path());
++    zlyme_daemon_dir(buf, len);
+ }
+ 
+ static void daemon_pid_path(char *buf, size_t len) {
+diff --git a/src/device.c b/src/device.c
+index d697533..7e4f252 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -1,5 +1,6 @@
+ #include "device.h"
+ #include "systems.h"
++#include "zlyme_paths.h"
+ #include "md5.h"
+ #include "cJSON.h"
+ #include "miniz.h"
+@@ -116,22 +117,19 @@ void get_roms_path(char *buf, size_t buflen) {
+ }
+ 
+ void get_cheats_path(char *buf, size_t buflen) {
+-    snprintf(buf, buflen, "%s/Cheats", get_sdcard_path());
++    zlyme_cheats_root(buf, buflen);
+ }
+ 
+ void get_cheat_repo_path(char *buf, size_t buflen) {
+-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/libretro-database",
+-             get_sdcard_path());
++    zlyme_cheat_repo_path(buf, buflen);
+ }
+ 
+ void get_settings_path(char *buf, size_t buflen) {
+-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/settings.json",
+-             get_sdcard_path());
++    zlyme_settings_path(buf, buflen);
+ }
+ 
+ void get_system_overrides_path(char *buf, size_t buflen) {
+-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/system_overrides.json",
+-             get_sdcard_path());
++    zlyme_overrides_path(buf, buflen);
+ }
+ 
+ /* ── Executable location ─────────────────────────────────── */
+@@ -311,37 +309,32 @@ static int console_cmp(const void *a, const void *b) {
+ }
+ 
+ int scan_console_dirs(bool show_hidden, console_dir **out) {
+-    char roms_path[PATH_MAX];
+-    get_roms_path(roms_path, sizeof(roms_path));
+-
+-    DIR *d = opendir(roms_path);
+-    if (!d) {
+-        *out = NULL;
+-        return 0;
+-    }
+-
++    char system_dirs[64][PATH_MAX];
++    int system_count = zlyme_system_dirs(system_dirs, 64);
+     int count = 0;
+     int capacity = 64;
+     console_dir *consoles = malloc(sizeof(console_dir) * (size_t)capacity);
++    int s;
+ 
+-    struct dirent *entry;
+-    while ((entry = readdir(d)) != NULL) {
+-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' ||
+-            (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
+-            continue;
++    if (!consoles) {
++        *out = NULL;
++        return 0;
++    }
+ 
+-        /* Only directories */
++    for (s = 0; s < system_count; s++) {
+         char full_path[PATH_MAX];
+-        snprintf(full_path, sizeof(full_path), "%s/%s", roms_path, entry->d_name);
++        const char *name;
+         struct stat st;
++
++        snprintf(full_path, sizeof(full_path), "%s", system_dirs[s]);
++        name = strrchr(full_path, '/');
++        name = name ? name + 1 : full_path;
+         if (stat(full_path, &st) != 0 || !S_ISDIR(st.st_mode))
+             continue;
+ 
+         if (is_shortcut_folder(full_path))
+             continue;
+ 
+-        const char *name = entry->d_name;
+-
+         if (!show_hidden) {
+             if (is_hidden(name))
+                 continue;
+@@ -378,7 +371,6 @@ int scan_console_dirs(bool show_hidden, console_dir **out) {
+         extract_display_name(base_name, c->display, sizeof(c->display));
+         c->is_disabled = disabled;
+     }
+-    closedir(d);
+ 
+     qsort(consoles, (size_t)count, sizeof(console_dir), console_cmp);
+     *out = consoles;
+@@ -495,7 +487,9 @@ static void free_name_map(name_map *m) {
+ /* Internal recursive scanner */
+ static int scan_roms_internal(const char *dir_path, bool show_hidden,
+                               rom_file **out, int *count, int *capacity,
+-                              const name_map *map) {
++                              const name_map *map, int depth) {
++    if (depth > 8)
++        return 0;
+     DIR *d = opendir(dir_path);
+     if (!d) return -1;
+ 
+@@ -567,7 +561,7 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
+                 r->is_disabled = disabled;
+             } else {
+                 /* Plain subfolder — recurse */
+-                scan_roms_internal(full_path, show_hidden, out, count, capacity, map);
++                scan_roms_internal(full_path, show_hidden, out, count, capacity, map, depth + 1);
+             }
+             continue;
+         }
+@@ -595,18 +589,81 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
+     return 0;
+ }
+ 
++static void disambiguate_roms(rom_file *roms, int count) {
++    int i, j;
++
++    for (i = 0; i < count; i++) {
++        int collided = 0;
++        for (j = 0; j < count; j++) {
++            if (i != j && strcmp(roms[i].display, roms[j].display) == 0) {
++                collided = 1;
++                break;
++            }
++        }
++        if (collided)
++            zlyme_collision_label(roms[i].label, sizeof(roms[i].label),
++                                  roms[i].display, roms[i].path);
++    }
++}
++
+ int scan_roms(const char *console_path, bool show_hidden, rom_file **out) {
++    char dirs[8][PATH_MAX];
++    int dir_count = zlyme_rom_dirs(console_path, dirs, 8);
+     int count = 0;
+     int capacity = 256;
+-    *out = malloc(sizeof(rom_file) * (size_t)capacity);
++    int i;
+ 
+-    name_map map = load_name_map(console_path);
+-    scan_roms_internal(console_path, show_hidden, out, &count, &capacity, &map);
+-    free_name_map(&map);
++    *out = malloc(sizeof(rom_file) * (size_t)capacity);
++    if (dir_count == 0 && console_path && console_path[0]) {
++        snprintf(dirs[0], PATH_MAX, "%s", console_path);
++        dir_count = 1;
++    }
++    for (i = 0; i < dir_count; i++) {
++        name_map map = load_name_map(dirs[i]);
++        scan_roms_internal(dirs[i], show_hidden, out, &count, &capacity, &map, 0);
++        free_name_map(&map);
++    }
++    disambiguate_roms(*out, count);
+     qsort(*out, (size_t)count, sizeof(rom_file), rom_cmp);
+     return count;
+ }
+ 
++int zlyme_dump_paths(void) {
++    char roots[8][PATH_MAX];
++    char state[PATH_MAX];
++    char cheats[PATH_MAX];
++    int root_count = zlyme_library_roots(roots, 8);
++    console_dir *consoles = NULL;
++    int console_count;
++    int i;
++
++    for (i = 0; i < root_count; i++)
++        printf("library %s\n", roots[i]);
++    zlyme_state_root(state, sizeof(state));
++    zlyme_cheats_root(cheats, sizeof(cheats));
++    printf("state %s\n", state);
++    printf("cheats %s\n", cheats);
++
++    console_count = scan_console_dirs(false, &consoles);
++    for (i = 0; i < console_count; i++) {
++        rom_file *roms = NULL;
++        int rom_count;
++        int r;
++
++        printf("system %s %s\n", consoles[i].tag, consoles[i].path);
++        rom_count = scan_roms(consoles[i].path, false, &roms);
++        for (r = 0; r < rom_count; r++) {
++            char art[PATH_MAX];
++            zlyme_artwork_path(roms[r].path, roms[r].display, art, sizeof(art));
++            printf("rom %s art %s cheat %s/%s/%s.cht\n",
++                   roms[r].path, art, cheats, consoles[i].tag, roms[r].display);
++        }
++        free(roms);
++    }
++    free(consoles);
++    return 0;
++}
++
+ /* ── Artwork helpers ─────────────────────────────────────── */
+ 
+ bool artwork_exists(const char *rom_path, const char *display_name) {
+@@ -618,24 +675,7 @@ bool artwork_exists(const char *rom_path, const char *display_name) {
+ 
+ void artwork_src_path(const char *rom_path, const char *display_name,
+                       char *buf, size_t buflen) {
+-    /* Find the directory containing the ROM */
+-    char dir[PATH_MAX];
+-    snprintf(dir, sizeof(dir), "%s", rom_path);
+-    char *slash = strrchr(dir, '/');
+-    if (slash) *slash = '\0';
+-
+-    /* For folder-based ROMs, dir IS the ROM path's parent */
+-    struct stat st;
+-    if (stat(rom_path, &st) == 0 && S_ISDIR(st.st_mode))
+-        snprintf(dir, sizeof(dir), "%s", rom_path);
+-
+-    /* Actually, Go code uses filepath.Dir(romPath) which for a dir gives its parent.
+-     * Let's fix: for folder ROMs the path IS the folder, Dir gives parent. */
+-    snprintf(dir, sizeof(dir), "%s", rom_path);
+-    slash = strrchr(dir, '/');
+-    if (slash) *slash = '\0';
+-
+-    snprintf(buf, buflen, "%s/.media/%s.png", dir, display_name);
++    zlyme_artwork_path(rom_path, display_name, buf, buflen);
+ }
+ 
+ /* ── Manual helpers ──────────────────────────────────────── */
+@@ -901,6 +941,7 @@ void free_settings(app_settings *s) {
+ app_settings load_settings(void) {
+     app_settings defaults = default_settings();
+     char path[PATH_MAX];
++    zlyme_import_legacy();
+     get_settings_path(path, sizeof(path));
+ 
+     FILE *f = fopen(path, "rb");
+diff --git a/src/device.h b/src/device.h
+index f5f6876..b953b84 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -134,6 +134,7 @@ int scan_console_dirs(bool show_hidden, console_dir **out);
+ 
+ /* Scan ROMs in a console directory. Returns count, caller frees *out. */
+ int scan_roms(const char *console_path, bool show_hidden, rom_file **out);
++int zlyme_dump_paths(void);
+ 
+ /* ── Artwork helpers ──────────────────────────────────────────── */
+ 
+diff --git a/src/main.c b/src/main.c
+index 4f958e8..e99aa1d 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -66,6 +66,9 @@ static void configure_desktop_nextui_preview(void) {
+ #endif
+ 
+ int main(int argc, char *argv[]) {
++    if (argc > 1 && strcmp(argv[1], "zlyme-paths") == 0)
++        return zlyme_dump_paths();
++
+     /* Background daemon mode: headless, no UI */
+     if (argc > 1 && strcmp(argv[1], "--daemon") == 0) {
+         int ready_fd = -1;
+@@ -90,7 +93,9 @@ int main(int argc, char *argv[]) {
+     cfg.window_title = "ScrapeGoat";
+     cfg.log_path = ap_resolve_log_path("scrapegoat");
+     cfg.is_nextui = true;
+-    cfg.cpu_speed = AP_CPU_SPEED_MENU;
++    /* zlyme-governor owns clocks. Apostrophe's my355 path is a no-op,
++     * and the default preset does not ask it to change anything. */
++    cfg.cpu_speed = AP_CPU_SPEED_DEFAULT;
+ 
+ #ifndef PLATFORM_MAC
+     /* On device: use system font (Apostrophe resolves from NextUI theme) */
+diff --git a/src/systems.c b/src/systems.c
+index a9a495f..02475b5 100644
+--- a/src/systems.c
++++ b/src/systems.c
+@@ -2,6 +2,7 @@
+ 
+ #include "cJSON.h"
+ #include "device.h"
++#include "zlyme_paths.h"
+ 
+ #include <ctype.h>
+ #include <errno.h>
+@@ -478,6 +479,12 @@ static bool resolve_catalog_path(char *buf, size_t buflen) {
+         }
+     }
+ 
++    /* launch.sh starts in the pak directory, which holds resources/. */
++    if (access("resources/systems.json", R_OK) == 0) {
++        snprintf(buf, buflen, "%s", "resources/systems.json");
++        return true;
++    }
++
+ #ifdef PLATFORM_MAC
+     /* Development convenience: run from the repository root. */
+     const char *repo = "resources/systems.json";
+@@ -534,43 +541,6 @@ static bool load_catalog(void) {
+ 
+ /* ── Folder keys ──────────────────────────────────────────────── */
+ 
+-/* Resolve relative spelling without following symlinks. Dot components are
+- * allowed in the SD-root prefix, but never in the folder key underneath it. */
+-static bool absolute_path(const char *in, char *out, size_t outlen,
+-                          const char *rom_root) {
+-    char input[PATH_MAX], cwd[PATH_MAX];
+-    if (in[0] != '/' && !getcwd(cwd, sizeof(cwd)))
+-        return false;
+-    int len = in[0] == '/'
+-        ? snprintf(input, sizeof(input), "%s", in)
+-        : snprintf(input, sizeof(input), "%s/%s", cwd, in);
+-    if (len < 0 || (size_t)len >= sizeof(input) || outlen < 2)
+-        return false;
+-
+-    snprintf(out, outlen, "/");
+-    char *save = NULL;
+-    for (char *part = strtok_r(input, "/", &save); part;
+-         part = strtok_r(NULL, "/", &save)) {
+-        size_t used = strlen(out);
+-        if (strcmp(part, ".") == 0 || strcmp(part, "..") == 0) {
+-            size_t root_len = rom_root ? strlen(rom_root) : 0;
+-            if (root_len && strncmp(out, rom_root, root_len) == 0
+-                && (out[root_len] == '/' || out[root_len] == '\0'))
+-                return false;
+-            if (part[1] == '.' && used > 1) {
+-                char *slash = strrchr(out, '/');
+-                slash[slash == out ? 1 : 0] = '\0';
+-            }
+-            continue;
+-        }
+-        len = snprintf(out + used, outlen - used, "%s%s",
+-                       used == 1 ? "" : "/", part);
+-        if (len < 0 || (size_t)len >= outlen - used)
+-            return false;
+-    }
+-    return true;
+-}
+-
+ static bool key_is_safe(const char *key) {
+     if (!key || !key[0] || key[0] == '/')
+         return false;
+@@ -590,38 +560,13 @@ static bool key_is_safe(const char *key) {
+     return true;
+ }
+ 
+-static bool strip_root(const char *root, const char *path,
+-                       char *buf, size_t buflen) {
+-    size_t root_len = strlen(root);
+-    if (root_len == 0 || strncmp(path, root, root_len) != 0)
+-        return false;
+-    const char *rest = path + root_len;
+-    if (rest[0] != '/')
+-        return false;   /* "Roms2/..." must not match "Roms" */
+-    rest++;
+-    if (strlen(rest) >= buflen)
+-        return false;
+-    snprintf(buf, buflen, "%s", rest);
+-    return key_is_safe(buf);
+-}
+-
+ bool systems_folder_key(const char *console_path, char *buf, size_t buflen) {
+-    if (!console_path || !console_path[0] || !buf || buflen == 0)
++    if (!zlyme_folder_key(console_path, buf, buflen)) {
++        if (buf && buflen)
++            buf[0] = '\0';
+         return false;
+-    buf[0] = '\0';
+-
+-    char roms[PATH_MAX];
+-    get_roms_path(roms, sizeof(roms));
+-
+-    char root[PATH_MAX];
+-    char path[PATH_MAX];
+-    if (absolute_path(roms, root, sizeof(root), NULL)
+-        && absolute_path(console_path, path, sizeof(path), root)
+-        && strip_root(root, path, buf, buflen))
+-        return true;
+-
+-    buf[0] = '\0';
+-    return false;
++    }
++    return key_is_safe(buf);
+ }
+ 
+ /* ── Override storage ─────────────────────────────────────────── */
+@@ -746,6 +691,7 @@ static void ov_compact(override_set *set) {
+ /* ── Override loading ─────────────────────────────────────────── */
+ 
+ static void load_overrides(void) {
++    zlyme_import_legacy();
+     get_system_overrides_path(overrides_path, sizeof(overrides_path));
+     if (access(overrides_path, F_OK) != 0)
+         return;   /* absent is normal */
+diff --git a/src/systems.h b/src/systems.h
+index ebf20c1..f9d4c0a 100644
+--- a/src/systems.h
++++ b/src/systems.h
+@@ -12,7 +12,7 @@
+  *
+  * The catalog of platforms ships as resources/systems.json beside the
+  * executable. Users select a platform per folder, or set their own default for
+- * a suffix; those choices live in a separate file under .userdata so they
++ * a suffix; those choices live under the ScrapeGoat state root so they
+  * survive a pak update.
+  *
+  * Resolution precedence, highest first:
+diff --git a/src/ui.c b/src/ui.c
+index e325957..d899de1 100644
+--- a/src/ui.c
++++ b/src/ui.c
+@@ -4,6 +4,7 @@
+ #include "device.h"
+ #include "queue.h"
+ #include "screenscraper.h"
++#include "zlyme_paths.h"
+ #include "systems.h"
+ 
+ #include "apostrophe.h"
+@@ -2005,9 +2006,17 @@ typedef struct {
+ } map_row;
+ 
+ static void folder_path_for_key(const char *key, char *buf, size_t buflen) {
+-    char roms[PATH_MAX];
+-    get_roms_path(roms, sizeof(roms));
+-    snprintf(buf, buflen, "%s/%s", roms, key);
++    char dirs[8][PATH_MAX];
++    char probe[PATH_MAX];
++    int n;
++
++    snprintf(probe, sizeof(probe), "/storage/Roms/%s", key ? key : "");
++    n = zlyme_rom_dirs(probe, dirs, 8);
++    if (n > 0) {
++        snprintf(buf, buflen, "%s", dirs[0]);
++        return;
++    }
++    snprintf(buf, buflen, "%s", probe);
+ }
+ 
+ /* The suffix inside "Name (TAG)", or an empty string. */

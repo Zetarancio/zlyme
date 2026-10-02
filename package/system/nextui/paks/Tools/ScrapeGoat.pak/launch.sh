@@ -1,5 +1,5 @@
 #!/bin/sh
-APP_BIN="scrapegoat"
+APP_BIN="${ZLYME_SCRAPEGOAT_BIN:-/usr/lib/zlyme/scrapegoat/scrapegoat}"
 PAK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PAK_NAME=$(basename "$PAK_DIR")
 PAK_NAME=${PAK_NAME%.pak}
@@ -8,7 +8,7 @@ PAK_NAME=${PAK_NAME%.pak}
 
 cd "$PAK_DIR" || exit 1
 
-chmod +x "$PAK_DIR/$APP_BIN" 2>/dev/null || true
+chmod +x "$APP_BIN" 2>/dev/null || true
 chmod +x "$PAK_DIR/resources/bin/"* 2>/dev/null || true
 
 export SDCARD_PATH="${SDCARD_PATH:-/storage}"
@@ -25,7 +25,10 @@ fi
 export PATH="$PAK_DIR/resources/bin:$PATH"
 export GIT_EXEC_PATH="$PAK_DIR/resources/bin"
 
-if [ -f "$PAK_DIR/lib/cacert.pem" ]; then
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+	export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+	export GIT_SSL_CAINFO="$SSL_CERT_FILE"
+elif [ -f "$PAK_DIR/lib/cacert.pem" ]; then
 	export SSL_CERT_FILE="$PAK_DIR/lib/cacert.pem"
 	export GIT_SSL_CAINFO="$SSL_CERT_FILE"
 fi
@@ -53,7 +56,7 @@ exec 2>&1
 echo "=== Launching $PAK_NAME ($APP_BIN) at $(date) ==="
 echo "platform=${PLATFORM:-unknown} device=${DEVICE:-unknown}"
 
-if [ ! -e "./$APP_BIN" ]; then
+if [ ! -e "$APP_BIN" ]; then
 	echo "missing $APP_BIN"
 	command -v show.elf >/dev/null 2>&1 && show.elf "ScrapeGoat missing" 3
 	exit 1
@@ -68,7 +71,7 @@ if [ -f /usr/share/nextui/res/font1.ttf ]; then
 fi
 
 sleep 0.4
-./"$APP_BIN" "$@"
+"$APP_BIN" "$@"
 st=$?
 if [ "$st" -ne 0 ]; then
 	echo "exit $st"

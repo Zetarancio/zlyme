@@ -1,0 +1,15 @@
+config BR2_PACKAGE_SCRAPEGOAT
+	bool "scrapegoat"
+	depends on BR2_aarch64
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_SDL2_TTF
+	select BR2_PACKAGE_SDL2_IMAGE
+	select BR2_PACKAGE_LIBCURL
+	select BR2_PACKAGE_OPENSSL
+	select BR2_PACKAGE_ZLIB
+	help
+	  ScrapeGoat v2.3.0. ScreenScraper artwork and Libretro cheats.
+	  Private state is /storage/.config/ScrapeGoat. Artwork is written
+	  beside the ROM. Installed cheats stay in /storage/Cheats.
+
+	  https://github.com/Helaas/nextui-scrapegoat-pak
