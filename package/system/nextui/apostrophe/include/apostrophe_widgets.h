@@ -3464,9 +3464,14 @@ static bool ap__file_picker_resolve_existing_path(const char *path,
     if (!_fullpath(resolved, path, sizeof(resolved))) return false;
     if (!ap__file_picker_copy_path(out, out_size, resolved)) return false;
 #else
-    char resolved[AP__FILE_PICKER_PATH_MAX];
-    if (!realpath(path, resolved)) return false;
-    if (!ap__file_picker_copy_path(out, out_size, resolved)) return false;
+    /* realpath(path, buf) requires buf to hold PATH_MAX. A smaller caller
+       buffer aborts under glibc _FORTIFY_SOURCE even for a short path. */
+    char *resolved = realpath(path, NULL);
+    bool ok;
+    if (!resolved) return false;
+    ok = ap__file_picker_copy_path(out, out_size, resolved);
+    free(resolved);
+    if (!ok) return false;
 #endif
 
     return true;
