@@ -461,7 +461,9 @@ int daemon_launch(const queue_item *items, int count) {
     char ready_arg[64];
     snprintf(ready_arg, sizeof(ready_arg), "--ready-fd=%d", ready_pipe[1]);
 
-    /* Re-exec as daemon to get a clean process state */
+    /* Re-exec as daemon to get a clean process state.
+       execl inherits the environment, including the launcher's
+       GIT_EXEC_PATH, so cheat Git helpers stay the PAK copies. */
     execl(self, self, "--daemon", ready_arg, (char *)NULL);
 
     /* If execl fails, exit */

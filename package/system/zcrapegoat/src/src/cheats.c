@@ -28,6 +28,56 @@
 
 /* ── Git binary resolution ────────────────────────────────── */
 
+/* Zlyme installs the executable and the bundled Git helpers in different
+   places. The launcher sets GIT_EXEC_PATH to the PAK resources/bin, and
+   the background daemon's execl keeps that environment. */
+
+static int env_key_is(const char *entry, const char *key) {
+    size_t n = strlen(key);
+    return strncmp(entry, key, n) == 0 && entry[n] == '=';
+}
+
+static int git_join(char *buf, size_t buflen, const char *dir) {
+    size_t n;
+    int slash;
+    if (!buf || buflen == 0 || !dir || !dir[0])
+        return -1;
+    n = strlen(dir);
+    slash = dir[n - 1] == '/';
+    if (n + (slash ? 0 : 1) + 3 >= buflen)
+        return -1;
+    memcpy(buf, dir, n);
+    if (!slash)
+        buf[n++] = '/';
+    memcpy(buf + n, "git", 4);
+    return 0;
+}
+
+static int git_file_usable(const char *path) {
+    struct stat st;
+    if (!path || !path[0])
+        return 0;
+    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode))
+        return 0;
+    return access(path, X_OK) == 0;
+}
+
+static int parent_dir(const char *path, char *dir, size_t dirlen) {
+    const char *slash;
+    size_t n;
+    if (!path)
+        return -1;
+    slash = strrchr(path, '/');
+    if (!slash || slash == path)
+        return -1;
+    n = (size_t)(slash - path);
+    if (n >= dirlen)
+        return -1;
+    memcpy(dir, path, n);
+    dir[n] = '\0';
+    return 0;
+}
+
 const char *get_git_bin(void) {
 #ifdef PLATFORM_MAC
     struct stat st;
@@ -36,15 +86,22 @@ const char *get_git_bin(void) {
     return "git";
 #else
     static _Thread_local char buf[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    const char *inherited = getenv("GIT_EXEC_PATH");
+    char exe[PATH_MAX];
+    ssize_t len;
+    char *slash;
+
+    if (git_join(buf, sizeof(buf), inherited) == 0 && git_file_usable(buf))
+        return buf;
+
+    len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
     if (len <= 0)
         return "git";
-
-    buf[len] = '\0';
-    char *slash = strrchr(buf, '/');
+    exe[len] = '\0';
+    slash = strrchr(exe, '/');
     if (slash)
         *slash = '\0';
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "/resources/bin/git");
+    snprintf(buf, sizeof(buf), "%s/resources/bin/git", exe);
     return buf;
 #endif
 }
@@ -96,40 +153,51 @@ static char **build_git_env(void) {
     for (char **entry = environ; *entry; entry++)
         count++;
 
-    char **env = malloc(sizeof(char *) * (size_t)(count + 8));
+    char **env = malloc(sizeof(char *) * (size_t)(count + 4));
     if (!env)
         return NULL;
 
-    int idx = 0;
-    for (int i = 0; i < count; i++)
-        env[idx++] = environ[i];
-
 #ifndef PLATFORM_MAC
-    static _Thread_local char ld_path[PATH_MAX];
     static _Thread_local char exec_path[PATH_MAX];
     static char template_dir[] = "GIT_TEMPLATE_DIR=";
     static char no_prompt[]    = "GIT_TERMINAL_PROMPT=0";
+    int have_exec = 0;
+    const char *inherited = getenv("GIT_EXEC_PATH");
+    char probe[PATH_MAX];
+    int idx = 0;
 
-    char exe_dir[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", exe_dir, sizeof(exe_dir) - 1);
-    if (len > 0) {
-        exe_dir[len] = '\0';
-        char *slash = strrchr(exe_dir, '/');
-        if (slash)
-            *slash = '\0';
-
-        snprintf(ld_path, sizeof(ld_path), "LD_LIBRARY_PATH=%s/resources/lib:%s",
-                 exe_dir, getenv("LD_LIBRARY_PATH") ? getenv("LD_LIBRARY_PATH") : "");
-        snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s/resources/bin", exe_dir);
-
-        env[idx++] = ld_path;
-        env[idx++] = exec_path;
-        env[idx++] = template_dir;
-        env[idx++] = no_prompt;
+    /* The bundled helpers are static. Keep the inherited library path and
+       do not invent a resources/lib directory beside the executable. */
+    if (git_join(probe, sizeof(probe), inherited) == 0 && git_file_usable(probe)) {
+        snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s", inherited);
+        have_exec = 1;
+    } else {
+        const char *git = get_git_bin();
+        char dir[PATH_MAX];
+        if (parent_dir(git, dir, sizeof(dir)) == 0) {
+            snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s", dir);
+            have_exec = 1;
+        }
     }
-#endif
 
+    for (int i = 0; i < count; i++) {
+        if (env_key_is(environ[i], "GIT_EXEC_PATH")
+            || env_key_is(environ[i], "GIT_TEMPLATE_DIR")
+            || env_key_is(environ[i], "GIT_TERMINAL_PROMPT"))
+            continue;
+        env[idx++] = environ[i];
+    }
+    if (have_exec)
+        env[idx++] = exec_path;
+    env[idx++] = template_dir;
+    env[idx++] = no_prompt;
     env[idx] = NULL;
+#else
+    int idx = 0;
+    for (int i = 0; i < count; i++)
+        env[idx++] = environ[i];
+    env[idx] = NULL;
+#endif
     return env;
 }
 
@@ -170,7 +238,7 @@ static float parse_git_progress(const char *line) {
 
 /* Run a git command and capture up to `cap` bytes of stdout.
  * Returns the process exit code, or -1 on fork/pipe failure. */
-static int run_git_capture(const char **argv, char *out, size_t cap) {
+int run_git_capture(const char **argv, char *out, size_t cap) {
     int pipe_fd[2];
     if (pipe(pipe_fd) != 0)
         return -1;
