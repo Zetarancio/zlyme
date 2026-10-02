@@ -299,6 +299,29 @@ static bool dir_has_visible_content(const char *path) {
     return false;
 }
 
+/* The representative path is only the logical system's identity. Emptiness
+   is the union of every physical copy on the active libraries. */
+static int logical_system_has_visible_content(const char *console_path) {
+    zlyme_strlist dirs = {0};
+    int i;
+    int visible = 0;
+
+    if (zlyme_rom_dirs(console_path, &dirs) != 0)
+        return -1;
+    if (dirs.count == 0) {
+        visible = dir_has_visible_content(console_path) ? 1 : 0;
+    } else {
+        for (i = 0; i < dirs.count; i++) {
+            if (dir_has_visible_content(dirs.item[i])) {
+                visible = 1;
+                break;
+            }
+        }
+    }
+    zlyme_strlist_free(&dirs);
+    return visible;
+}
+
 /* ── Scanning ────────────────────────────────────────────── */
 
 static int console_cmp(const void *a, const void *b) {
@@ -341,9 +364,17 @@ int scan_console_dirs(bool show_hidden, console_dir **out) {
             continue;
 
         if (!show_hidden) {
+            int visible;
             if (is_hidden(name))
                 continue;
-            if (!dir_has_visible_content(full_path))
+            visible = logical_system_has_visible_content(full_path);
+            if (visible < 0) {
+                free(consoles);
+                zlyme_strlist_free(&system_dirs);
+                *out = NULL;
+                return -1;
+            }
+            if (!visible)
                 continue;
         } else {
             if (is_mac_dotfile(name) || strcmp(name, "map.txt") == 0)
@@ -365,8 +396,16 @@ int scan_console_dirs(bool show_hidden, console_dir **out) {
             continue;
 
         if (count >= capacity) {
+            console_dir *grown;
             capacity *= 2;
-            consoles = realloc(consoles, sizeof(console_dir) * (size_t)capacity);
+            grown = realloc(consoles, sizeof(console_dir) * (size_t)capacity);
+            if (!grown) {
+                free(consoles);
+                zlyme_strlist_free(&system_dirs);
+                *out = NULL;
+                return -1;
+            }
+            consoles = grown;
         }
 
         console_dir *c = &consoles[count++];
@@ -490,14 +529,27 @@ static void free_name_map(name_map *m) {
     m->count = 0;
 }
 
-/* Internal recursive scanner */
+static int grow_rom_list(rom_file **out, int *capacity) {
+    rom_file *grown;
+    int next = *capacity > 0 ? *capacity * 2 : 16;
+
+    grown = realloc(*out, sizeof(rom_file) * (size_t)next);
+    if (!grown)
+        return -1;
+    *out = grown;
+    *capacity = next;
+    return 0;
+}
+
+/* Internal recursive scanner. Returns -1 only when allocation fails.
+   An unreadable directory contributes nothing and is not a partial result. */
 static int scan_roms_internal(const char *dir_path, bool show_hidden,
                               rom_file **out, int *count, int *capacity,
                               const name_map *map, int depth) {
     if (depth > 8)
         return 0;
     DIR *d = opendir(dir_path);
-    if (!d) return -1;
+    if (!d) return 0;
 
     struct dirent *entry;
     while ((entry = readdir(d)) != NULL) {
@@ -540,9 +592,9 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
             snprintf(cue_check, sizeof(cue_check), "%s/%s.cue", full_path, base_name);
             struct stat cue_st;
 
-            if (*count >= *capacity) {
-                *capacity *= 2;
-                *out = realloc(*out, sizeof(rom_file) * (size_t)(*capacity));
+            if (*count >= *capacity && grow_rom_list(out, capacity) != 0) {
+                closedir(d);
+                return -1;
             }
 
             if (stat(m3u_check, &m3u_st) == 0) {
@@ -567,7 +619,11 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
                 r->is_disabled = disabled;
             } else {
                 /* Plain subfolder — recurse */
-                scan_roms_internal(full_path, show_hidden, out, count, capacity, map, depth + 1);
+                if (scan_roms_internal(full_path, show_hidden, out, count,
+                                       capacity, map, depth + 1) != 0) {
+                    closedir(d);
+                    return -1;
+                }
             }
             continue;
         }
@@ -577,9 +633,9 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
             continue;
 
         /* Regular file */
-        if (*count >= *capacity) {
-            *capacity *= 2;
-            *out = realloc(*out, sizeof(rom_file) * (size_t)(*capacity));
+        if (*count >= *capacity && grow_rom_list(out, capacity) != 0) {
+            closedir(d);
+            return -1;
         }
         rom_file *r = &(*out)[(*count)++];
         snprintf(r->name, sizeof(r->name), "%s", name);
@@ -619,23 +675,39 @@ int scan_roms(const char *console_path, bool show_hidden, rom_file **out) {
     int i;
 
     *out = malloc(sizeof(rom_file) * (size_t)capacity);
+    if (!*out)
+        return -1;
     if (zlyme_rom_dirs(console_path, &dirs) != 0) {
         free(*out);
         *out = NULL;
         return -1;
     }
     if (dirs.count == 0 && console_path && console_path[0]) {
+        char *copy = strdup(console_path);
         dirs.item = calloc(1, sizeof(char *));
-        if (dirs.item) {
-            dirs.item[0] = strdup(console_path);
-            if (dirs.item[0])
-                dirs.count = 1;
+        if (!dirs.item || !copy) {
+            free(copy);
+            free(dirs.item);
+            dirs.item = NULL;
+            zlyme_strlist_free(&dirs);
+            free(*out);
+            *out = NULL;
+            return -1;
         }
+        dirs.item[0] = copy;
+        dirs.count = 1;
     }
     for (i = 0; i < dirs.count; i++) {
         name_map map = load_name_map(dirs.item[i]);
-        scan_roms_internal(dirs.item[i], show_hidden, out, &count, &capacity, &map, 0);
+        int rc = scan_roms_internal(dirs.item[i], show_hidden, out, &count,
+                                    &capacity, &map, 0);
         free_name_map(&map);
+        if (rc != 0) {
+            zlyme_strlist_free(&dirs);
+            free(*out);
+            *out = NULL;
+            return -1;
+        }
     }
     zlyme_strlist_free(&dirs);
     disambiguate_roms(*out, count);
