@@ -1,5 +1,5 @@
 #!/bin/sh
-APP_BIN="${ZLYME_SCRAPEGOAT_BIN:-/usr/lib/zlyme/scrapegoat/scrapegoat}"
+APP_BIN="${ZLYME_ZCRAPEGOAT_BIN:-/usr/lib/zlyme/zcrapegoat/zcrapegoat}"
 PAK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PAK_NAME=$(basename "$PAK_DIR")
 PAK_NAME=${PAK_NAME%.pak}

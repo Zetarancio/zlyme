@@ -6,7 +6,7 @@ fail=0
 for f in \
 	"$ROOT/package/system/nextui/paks/Emus/FLASH.pak/launch.sh" \
 	"$ROOT/package/system/nextui/paks/Tools/Music Player.pak/launch.sh" \
-	"$ROOT/package/system/nextui/paks/Tools/ScrapeGoat.pak/launch.sh" \
+	"$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/launch.sh" \
 	"$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pico-bbs"
 do
 	if grep -E -q 'scaling_governor|scaling_min_freq|scaling_max_freq|scaling_setspeed' "$f"; then

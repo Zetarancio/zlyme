@@ -691,7 +691,6 @@ static void ov_compact(override_set *set) {
 /* ── Override loading ─────────────────────────────────────────── */
 
 static void load_overrides(void) {
-    zlyme_import_legacy();
     get_system_overrides_path(overrides_path, sizeof(overrides_path));
     if (access(overrides_path, F_OK) != 0)
         return;   /* absent is normal */

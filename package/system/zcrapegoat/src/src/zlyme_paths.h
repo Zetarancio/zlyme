@@ -28,6 +28,5 @@ int zlyme_rom_dirs(const char *console_path, char dirs[][PATH_MAX], int max);
 
 void zlyme_collision_label(char *label, size_t label_len,
 			   const char *display, const char *rom_path);
-void zlyme_import_legacy(void);
 
 #endif

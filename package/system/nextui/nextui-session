@@ -479,7 +479,7 @@ while [ -f "$EXEC_PATH" ]; do
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 				;;
 		esac
-		killall -9 pico8_64 minui-list minui-presenter scrapegoat 2>/dev/null || true
+		killall -9 pico8_64 minui-list minui-presenter zcrapegoat 2>/dev/null || true
 		sleep 0.2
 		# Settings/paks use the same /tmp/reboot flag as nextui.elf.
 		# Honor it here; continue would restart NextUI with the panel off.

@@ -92,8 +92,8 @@ const char *zlyme_library_of(const char *path)
 
 void zlyme_state_root(char *buf, size_t buflen)
 {
-	copy_env_or(buf, buflen, "ZLYME_SCRAPEGOAT_STATE",
-		    "/storage/.config/ScrapeGoat");
+	copy_env_or(buf, buflen, "ZLYME_ZCRAPEGOAT_STATE",
+		    "/storage/.config/ZcrapeGoat");
 }
 
 void zlyme_cheats_root(char *buf, size_t buflen)
@@ -272,63 +272,3 @@ void zlyme_collision_label(char *label, size_t label_len,
 	snprintf(label, label_len, "%s", next);
 }
 
-static void mkdir_parents(const char *file)
-{
-	char dir[PATH_MAX];
-	char *slash;
-
-	snprintf(dir, sizeof(dir), "%s", file);
-	slash = strrchr(dir, '/');
-	if (!slash)
-		return;
-	*slash = '\0';
-	slash = dir + 1;
-	while ((slash = strchr(slash, '/')) != NULL) {
-		*slash = '\0';
-		mkdir(dir, 0755);
-		*slash++ = '/';
-	}
-	mkdir(dir, 0755);
-}
-
-static void copy_if_missing(const char *dest, const char *src)
-{
-	FILE *in;
-	FILE *out;
-	char buf[4096];
-	size_t n;
-
-	if (!dest || !src || access(dest, F_OK) == 0 || access(src, R_OK) != 0)
-		return;
-	in = fopen(src, "rb");
-	if (!in)
-		return;
-	mkdir_parents(dest);
-	out = fopen(dest, "wb");
-	if (!out) {
-		fclose(in);
-		return;
-	}
-	while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
-		if (fwrite(buf, 1, n, out) != n)
-			break;
-	}
-	fclose(in);
-	fclose(out);
-}
-
-void zlyme_import_legacy(void)
-{
-	char legacy[PATH_MAX];
-	char dest[PATH_MAX];
-	char src[PATH_MAX];
-
-	copy_env_or(legacy, sizeof(legacy), "ZLYME_SCRAPEGOAT_LEGACY",
-		    "/storage/.userdata/shared/ScrapeGoat");
-	zlyme_settings_path(dest, sizeof(dest));
-	snprintf(src, sizeof(src), "%s/settings.json", legacy);
-	copy_if_missing(dest, src);
-	zlyme_overrides_path(dest, sizeof(dest));
-	snprintf(src, sizeof(src), "%s/system_overrides.json", legacy);
-	copy_if_missing(dest, src);
-}

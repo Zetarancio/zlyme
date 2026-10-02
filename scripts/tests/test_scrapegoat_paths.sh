@@ -3,16 +3,16 @@
 # to the OS card, not beside a second copy of the ROM.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-src=$ROOT/package/system/scrapegoat/src/src
-launch=$ROOT/package/system/nextui/paks/Tools/ScrapeGoat.pak/launch.sh
+src=$ROOT/package/system/zcrapegoat/src/src
+launch=$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/launch.sh
 
-grep -q '/usr/lib/zlyme/scrapegoat/scrapegoat' "$launch"
+grep -q '/usr/lib/zlyme/zcrapegoat/zcrapegoat' "$launch"
 grep -q '/etc/ssl/certs/ca-certificates.crt' "$launch"
 if grep -q '\.userdata/shared/ScrapeGoat' "$launch"; then
 	echo "scrapegoat launcher still uses .userdata state" >&2
 	exit 1
 fi
-if [ -e "$ROOT/package/system/nextui/paks/Tools/ScrapeGoat.pak/scrapegoat" ]; then
+if [ -e "$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/zcrapegoat" ]; then
 	echo "pak still ships a second scrapegoat binary" >&2
 	exit 1
 fi
@@ -94,13 +94,10 @@ int main(void) {
         need(strstr(label, "Tetris") != NULL && strstr(label, getenv("SG_SD2")) != NULL, "label");
     }
 
-    zlyme_import_legacy();
-    snprintf(buf, sizeof(buf), "%s/settings.json", getenv("SG_STATE"));
-    need(access(buf, R_OK) == 0, "legacy settings copied");
-    snprintf(buf, sizeof(buf), "%s/settings.json", getenv("SG_LEGACY"));
-    need(access(buf, R_OK) == 0, "legacy settings kept");
     snprintf(buf, sizeof(buf), "%s/.userdata/shared/ScrapeGoat", base);
     need(access(buf, F_OK) != 0, "did not create userdata state");
+    snprintf(buf, sizeof(buf), "%s/.userdata/shared/ZcrapeGoat", base);
+    need(access(buf, F_OK) != 0, "did not create zcrapegoat userdata");
     return 0;
 }
 EOF
@@ -119,8 +116,7 @@ SG_BASE=$work \
 SG_SD1=$sd1 SG_SD2=$sd2 \
 SG_STATE=$work/state SG_LEGACY=$work/legacy \
 ZLYME_LIBRARIES_FILE=$work/libraries \
-ZLYME_SCRAPEGOAT_STATE=$work/state \
-ZLYME_SCRAPEGOAT_LEGACY=$work/legacy \
+ZLYME_ZCRAPEGOAT_STATE=$work/state \
 ZLYME_CHEATS_PATH=/storage/Cheats \
 "$cc"
 

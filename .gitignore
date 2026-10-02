@@ -17,8 +17,8 @@ storage.sh
 /output/
 /dl/
 
-# Optional local ScreenScraper developer credentials for scrapegoat.
-/package/system/scrapegoat/credentials.local
+# Optional local ScreenScraper developer credentials for zcrapegoat.
+/package/system/zcrapegoat/credentials.local
 /.ccache/
 
 *.log

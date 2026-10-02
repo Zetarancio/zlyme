@@ -941,7 +941,6 @@ void free_settings(app_settings *s) {
 app_settings load_settings(void) {
     app_settings defaults = default_settings();
     char path[PATH_MAX];
-    zlyme_import_legacy();
     get_settings_path(path, sizeof(path));
 
     FILE *f = fopen(path, "rb");

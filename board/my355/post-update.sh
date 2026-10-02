@@ -19,6 +19,7 @@ remove "$root/Tools/my355/Autocal.pak"
 remove "$root/Tools/my355/Weston.pak"
 remove "$root/Tools/my355/Artwork Scraper.pak"
 remove "$root/Tools/my355/Cheat Downloader.pak"
+remove "$root/Tools/my355/ScrapeGoat.pak"
 remove "$root/.config/miyoo-serial-joypad"
 remove "$root/.config/zlyme/rocknix-singleadc-joypad.ko"
 exit 0

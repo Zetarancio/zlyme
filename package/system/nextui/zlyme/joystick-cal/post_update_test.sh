@@ -6,6 +6,7 @@ mkdir -p "$root/Tools/my355/Autocal.pak" \
 	"$root/Tools/my355/Weston.pak" \
 	"$root/Tools/my355/Artwork Scraper.pak" \
 	"$root/Tools/my355/Cheat Downloader.pak" \
+	"$root/Tools/my355/ScrapeGoat.pak" \
 	"$root/Tools/my355/Files.pak" \
 	"$root/Tools/tg5040/Weston.pak" \
 	"$root/Cheats" \
@@ -26,6 +27,7 @@ test ! -e "$root/Tools/my355/Autocal.pak"
 test ! -e "$root/Tools/my355/Weston.pak"
 test ! -e "$root/Tools/my355/Artwork Scraper.pak"
 test ! -e "$root/Tools/my355/Cheat Downloader.pak"
+test ! -e "$root/Tools/my355/ScrapeGoat.pak"
 test ! -e "$root/.config/miyoo-serial-joypad"
 test ! -e "$root/.config/zlyme/rocknix-singleadc-joypad.ko"
 test "$(cat "$root/.config/zlyme/miyoo-flip-gamepad/rumble.config")" = keep
