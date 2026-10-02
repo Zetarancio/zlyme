@@ -521,20 +521,24 @@ That Cheat Downloader pass is evidence for `f0143dd` only. Product policy then c
 
 ## Closure decisions, 2026-10-02
 
-These supersede earlier notes that still list Artwork Scraper or Cheat Downloader as shipped tools. The sections above stay as the record of those intermediate images.
+This section is the current product. It supersedes earlier notes that still list Artwork Scraper, Cheat Downloader, or a patched ScrapeGoat package as what the image ships. Those earlier sections stay as the record of intermediate images. Dated hardware results below stay history.
 
-- Artwork Scraper is removed. ScrapeGoat owns ScreenScraper artwork, metadata, and manuals.
-- Cheat Downloader is removed. ScrapeGoat owns Libretro cheat discovery and install.
-- ScrapeGoat is the only built-in scraper and cheat application. Its private state is `/storage/.config/ScrapeGoat`. It must not create `.userdata/shared/ScrapeGoat`. Artwork is written beside the real ROM. Installed cheats stay at `/storage/Cheats` and do not follow the ROM card.
-- PortMaster drops the separate cloned Zlyme theme. Fresh configs use `default_theme` and the `Zlyme` scheme derived from Darkest Mode. A stored standalone `Zlyme` theme converts once. A later user choice is kept.
-- After a successful OTA, exact stale stock paths removed from the OS card are `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, and `Tools/my355/Cheat Downloader.pak`. Weston and `zlyme-weston-run` stay.
+- Artwork Scraper is removed. ZcrapeGoat owns ScreenScraper artwork, metadata, and manuals.
+- Cheat Downloader is removed. ZcrapeGoat owns Libretro cheat discovery and install.
+- `BR2_PACKAGE_ZCRAPEGOAT` builds `package/system/zcrapegoat/src/`. That tree is a pristine `Helaas/nextui-scrapegoat-pak` v2.3.0 import at `c52f749eae21a4c02c767e485fef2abbb773f2d7`, followed by normal Zlyme commits. There is no ScrapeGoat patch stack.
+- The tool is `Tools/ZcrapeGoat.pak`. The binary is `/usr/lib/zlyme/zcrapegoat/zcrapegoat`.
+- Private state is `/storage/.config/ZcrapeGoat`. Nothing migrates `/storage/.config/ScrapeGoat` or `.userdata/shared/ScrapeGoat`, and the app does not create those old trees.
+- Libraries are the lines in `/run/zlyme/libraries`. Artwork is written beside the actual ROM, under `.media`. Installed cheats stay at `/storage/Cheats` and do not follow the ROM card.
+- ScreenScraper developer credentials are private build inputs. Local builds read the ignored file `package/system/zcrapegoat/credentials.local`. The GitHub Actions build reads the secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. The credential-bearing compile sets `CCACHE_DISABLE=1`.
+- PortMaster keeps upstream `default_theme` and the `Zlyme` scheme derived from Darkest Mode. Selected text is `#FC9C14`, unselectable text is `#FA7C08`, and the selection fill is `#8A3E06`. The earlier `#FFD7B0` selected color is not the current scheme. A stored standalone `Zlyme` theme converts once. A later user choice is kept. `themes/Zlyme` is not installed.
+- After a successful OTA, exact stale stock paths removed from the OS card are `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, `Tools/my355/Cheat Downloader.pak`, and `Tools/my355/ScrapeGoat.pak`. Weston and `zlyme-weston-run` stay. User artwork, cheats, and existing config directories are not deleted.
 - The dead-file audit runs after those product changes, and only for files Phase 9 made obsolete.
-- This development image stays `zlyme43 (2026-10-01)`. Local validation is a targeted clean/rebuild of the remaining Phase 9 packages and the packages this pass changes, then one incremental image. The local output tree is not wiped. GitHub Actions is not dispatched in this pass.
+- The product version stays `zlyme43`. Do not attach a date to `ZLYME_VERSION`. Artifact filenames and the displayed build date are generated when the image is built. Local validation does not wipe the Buildroot output tree. Refresh the packages whose inputs changed, then build one incremental image. GitHub Actions is not dispatched in this pass.
 - After the maintainer accepts that local image, `phase-9-product` may fast-forward into `main`. The maintainer may then dispatch the GitHub clean build from that exact SHA. Phase 9 implementation closure does not wait for the runner. The remote build remains the reproducibility and release-artifact gate. A failure there still requires a correction before a stable release is valid.
 - Phase 10 is documentation and maintainability only. It may start on `main` after the merge and the remote dispatch. Zlyme documentation in this repository comes first. The hardware-wiki agent runs afterward, using the Phase 9 implementation SHA as runtime evidence and the Phase 10 documentation SHA as wording guidance.
 - Pak Store stays post-first-stable. The CPU undervolt default stays off. Community text for other RK3566 ports is not a Phase 9 release blocker.
 
-The next local image is not hardware-accepted until the maintainer installs it.
+Phase 9 is not complete. The next local image is not hardware-accepted until the maintainer installs it.
 
 ## Live result of 1f5dab
 
@@ -565,20 +569,24 @@ Still open on that exact artifact:
 
 The first two are code defects in that build. System emptiness was checked only on the representative first library, so an empty `/storage` folder hid a populated SD2 folder of the same name. The manual picker aborted because Apostrophe's POSIX `realpath` wrote into a 1024-byte buffer; glibc fortification expects `PATH_MAX` and aborted with `*** buffer overflow detected ***` (exit 134). PortMaster's accepted scheme, color, and persistence are unchanged. Phase 9 stays open until the next focused candidate is accepted. Duplicate same-name rows remain a host-covered data-model check unless a later hardware run shows otherwise.
 
-## Implementation record for the closure candidate
+## Current ZcrapeGoat build
 
-ScrapeGoat is built from `Helaas/nextui-scrapegoat-pak` tag `v2.3.0`, commit `c52f749eae21a4c02c767e485fef2abbb773f2d7`, plus `package/system/scrapegoat/0001-zlyme-libraries.patch` and `zlyme_paths.c`. The Zlyme toolchain compiles it. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. ScreenScraper developer credentials are compile-time flags. No credential file was present, and the old binary was not mined for them, so this binary warns that developer credentials are not embedded. Upstream still treats a personal ScreenScraper account as optional and uses it only to raise the request rate. That path expects the developer identity to be compiled in.
+An earlier draft of this record described `package/system/scrapegoat`, the patch `0001-zlyme-libraries.patch`, copied state from `.userdata/shared/ScrapeGoat`, and PortMaster selected text `#FFD7B0`. That draft is not the current build. `daebc6f` accepted the orange `#FC9C14` selection. The pale color remains only as the `1f5dab` hardware note above.
 
-Libraries are the lines in `/run/zlyme/libraries` (`ZLYME_LIBRARIES_FILE` in tests). One system folder name is listed once. ROMs are read from every library that has that folder, and each ROM keeps its real path. Two files with the same name stay separate; the row label adds the library root. Artwork is `<ROM directory>/.media/<stem>.png`. Cheats go to `/storage/Cheats/<tag>/<stem>.cht`. Private state is `/storage/.config/ScrapeGoat`. If that settings file is missing and `/storage/.userdata/shared/ScrapeGoat/settings.json` already exists, the new file is copied and the old tree is left in place. The app does not create `.userdata/shared/ScrapeGoat`.
+`BR2_PACKAGE_ZCRAPEGOAT` compiles `package/system/zcrapegoat/src/`. The import is pristine upstream v2.3.0 at `c52f749eae21a4c02c767e485fef2abbb773f2d7`. Zlyme changes after that import are normal commits. There is no ScrapeGoat patch stack. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. The PAK is `Tools/ZcrapeGoat.pak`. The binary is `/usr/lib/zlyme/zcrapegoat/zcrapegoat`.
 
-PortMaster stays on upstream `default_theme`. The `Zlyme` scheme is Darkest Mode with `list_unselectable` set to `#FA7C08`, `list_selected` set to `#FFD7B0`, and `selection-fill` set to `#8A3E06`. A stored theme named `Zlyme` becomes `default_theme` with the `Zlyme` scheme. Other stored themes and schemes are left alone. `themes/Zlyme` is not installed.
+ScreenScraper developer credentials are supplied privately at build time. A local build reads the ignored file `package/system/zcrapegoat/credentials.local`. The GitHub Actions build reads `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. The credential-bearing compile sets `CCACHE_DISABLE=1`. The values are not committed and are not printed. A personal ScreenScraper account is still entered on the device and is separate from those developer credentials.
 
-Artwork Scraper, Cheat Downloader, and the Weston test PAK are not in the image. After a successful OTA, `post-update.sh` removes `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, and `Tools/my355/Cheat Downloader.pak` from the OS card.
+Libraries are the lines in `/run/zlyme/libraries` (`ZLYME_LIBRARIES_FILE` in tests). One system folder name is one logical row. A logical system is present when any physical copy has visible ROM content. ROMs are the union of those copies, and each ROM keeps its real path. Two files with the same display name stay separate; only the colliding rows add the library root. Artwork is `<ROM directory>/.media/<stem>.png`. Cheats go to `/storage/Cheats/<tag>/<stem>.cht`. Private state is `/storage/.config/ZcrapeGoat`. There is no migration from `/storage/.config/ScrapeGoat` or from `.userdata/shared/ScrapeGoat`, and those trees are not created.
+
+PortMaster stays on upstream `default_theme`. The `Zlyme` scheme is Darkest Mode with `list_unselectable` set to `#FA7C08`, `list_selected` set to `#FC9C14`, and `selection-fill` set to `#8A3E06`. A stored theme named `Zlyme` becomes `default_theme` with the `Zlyme` scheme. Other stored themes and schemes are left alone. `themes/Zlyme` is not installed.
+
+Artwork Scraper, Cheat Downloader, the Weston test PAK, and `ScrapeGoat.pak` are not in the image. After a successful OTA, `post-update.sh` removes `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, `Tools/my355/Cheat Downloader.pak`, and `Tools/my355/ScrapeGoat.pak` from the OS card.
 
 ```text
 F0143DD = MAINTAINER ACCEPTED for the items listed above
-ARTWORK SCRAPER = REMOVED; SCRAPEGOAT OWNS ARTWORK
-CHEAT DOWNLOADER = REMOVED AFTER f0143dd ACCEPTANCE; SCRAPEGOAT OWNS CHEATS
-PORTMASTER THEME = default_theme SCHEME Zlyme; CLONED themes/Zlyme REMOVED
-PHASE 9 RELEASE = NOT COMPLETE; FINAL LOCAL IMAGE NOT YET ACCEPTED
+ARTWORK SCRAPER = REMOVED; ZCRAPEGOAT OWNS ARTWORK
+CHEAT DOWNLOADER = REMOVED AFTER f0143dd ACCEPTANCE; ZCRAPEGOAT OWNS CHEATS
+PORTMASTER THEME = default_theme SCHEME Zlyme; SELECTED #FC9C14; CLONED themes/Zlyme REMOVED
+PHASE 9 RELEASE = NOT COMPLETE; FOCUSED LOCAL IMAGE NOT YET ACCEPTED
 ```
