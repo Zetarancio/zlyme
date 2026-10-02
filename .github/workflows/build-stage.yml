@@ -98,8 +98,16 @@ jobs:
 
       - name: Build image
         id: build
+        env:
+          SCREENSCRAPER_DEV_ID: ${{ secrets.SCREENSCRAPER_DEV_ID }}
+          SCREENSCRAPER_DEV_PASSWORD: ${{ secrets.SCREENSCRAPER_DEV_PASSWORD }}
+          ZLYME_REQUIRE_SCRAPEGOAT_CREDENTIALS: "1"
         run: |
           echo "have_image=false" >> "$GITHUB_OUTPUT"
+          if [ -z "${SCREENSCRAPER_DEV_ID}" ] || [ -z "${SCREENSCRAPER_DEV_PASSWORD}" ]; then
+            echo "ScreenScraper developer credentials are required for this build" >&2
+            exit 1
+          fi
           chmod +x ./build.sh
           set +e
           mkdir -p output

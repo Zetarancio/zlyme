@@ -272,6 +272,7 @@ typedef enum {
     MAIN_PROGRESS,
     MAIN_SETTINGS,
     MAIN_API_USAGE,
+    MAIN_ABOUT,
 } main_action;
 
 static main_action show_main_menu(void) {
@@ -284,13 +285,14 @@ static main_action show_main_menu(void) {
         {.label = g_progress_label},
         {.label = "Settings"},
         {.label = "API Usage"},
+        {.label = "About"},
     };
     ap_footer_item footer[] = {
         {AP_BTN_B, "QUIT", false},
         {AP_BTN_A, "SELECT", true},
     };
 
-    ap_list_opts opts = ap_list_default_opts("ScrapeGoat", items, 6);
+    ap_list_opts opts = ap_list_default_opts("ZcrapeGoat", items, 7);
     opts.footer = footer;
     opts.footer_count = 2;
     opts.status_bar = &g_status_bar;
@@ -312,6 +314,7 @@ static main_action show_main_menu(void) {
     case 3: return MAIN_PROGRESS;
     case 4: return MAIN_SETTINGS;
     case 5: return MAIN_API_USAGE;
+    case 6: return MAIN_ABOUT;
     default: return MAIN_QUIT;
     }
 }
@@ -2006,17 +2009,15 @@ typedef struct {
 } map_row;
 
 static void folder_path_for_key(const char *key, char *buf, size_t buflen) {
-    char dirs[8][PATH_MAX];
+    zlyme_strlist dirs = {0};
     char probe[PATH_MAX];
-    int n;
 
     snprintf(probe, sizeof(probe), "/storage/Roms/%s", key ? key : "");
-    n = zlyme_rom_dirs(probe, dirs, 8);
-    if (n > 0) {
-        snprintf(buf, buflen, "%s", dirs[0]);
-        return;
-    }
-    snprintf(buf, buflen, "%s", probe);
+    if (zlyme_rom_dirs(probe, &dirs) == 0 && dirs.count > 0)
+        snprintf(buf, buflen, "%s", dirs.item[0]);
+    else
+        snprintf(buf, buflen, "%s", probe);
+    zlyme_strlist_free(&dirs);
 }
 
 /* The suffix inside "Name (TAG)", or an empty string. */
@@ -2717,6 +2718,92 @@ static bool check_daemon_on_startup(void) {
     return true;
 }
 
+static void show_about_screen(void) {
+    const char *message =
+        "ZcrapeGoat v2.3.0\n"
+        "Based on ScrapeGoat by Helaas.\n\n"
+        "Thanks to Helaas for creating\n"
+        "ScrapeGoat and releasing it\n"
+        "under the MIT License.\n\n"
+        "Upstream:\n"
+        "https://github.com/Helaas/nextui-scrapegoat-pak\n\n"
+        "ZcrapeGoat contains Zlyme-specific\n"
+        "downstream integration and\n"
+        "modifications.\n\n"
+        "Artwork: ScreenScraper.fr\n"
+        "Cheats: Libretro";
+    ap_footer_item footer[] = {{AP_BTN_B, "BACK", false}};
+    ap_message_opts opts = {.message = message, .footer = footer,
+                            .footer_count = 1};
+    ap_confirm_result result;
+    ap_confirmation(&opts, &result);
+}
+
+static int user_account_ready(const app_settings *settings) {
+    return settings && settings->ss_username[0] && settings->ss_password[0];
+}
+
+static void enter_user_credentials(void) {
+    app_settings settings = load_settings();
+    edit_username(&settings);
+    free_settings(&settings);
+    settings = load_settings();
+    edit_password(&settings);
+    free_settings(&settings);
+}
+
+static void prompt_screenscraper_account(void) {
+    app_settings settings;
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "CHEATS ONLY", false},
+        {AP_BTN_A, "ENTER CREDENTIALS", true},
+    };
+    ap_message_opts opts;
+    ap_confirm_result result;
+
+    if (ss_check_dev_credentials() != 0) {
+        show_warning("ScreenScraper is unavailable\n"
+                     "in this build.\n\n"
+                     "Libretro cheats still work.\n"
+                     "A personal account cannot\n"
+                     "enable artwork here.");
+        return;
+    }
+    settings = load_settings();
+    if (user_account_ready(&settings)) {
+        free_settings(&settings);
+        return;
+    }
+    free_settings(&settings);
+    opts = (ap_message_opts){
+        .message = "Artwork and manuals need your\n"
+                   "own ScreenScraper account.\n\n"
+                   "Cheats do not.\n\n"
+                   "A: enter username and password\n"
+                   "B: continue with cheats only",
+        .footer = footer,
+        .footer_count = 2,
+    };
+    if (ap_confirmation(&opts, &result) == AP_OK && result.confirmed)
+        enter_user_credentials();
+}
+
+static int screenscraper_ready(void) {
+    app_settings settings;
+    int ready;
+
+    if (ss_check_dev_credentials() != 0) {
+        show_warning("ScreenScraper is unavailable\nin this build.");
+        return 0;
+    }
+    settings = load_settings();
+    ready = user_account_ready(&settings);
+    free_settings(&settings);
+    if (!ready)
+        show_warning("Enter your ScreenScraper\nusername and password first.");
+    return ready;
+}
+
 /* ── App entry ───────────────────────────────────────────── */
 
 void run_app(void) {
@@ -2749,22 +2836,25 @@ void run_app(void) {
                      "manuals or download new cheats.");
     } else
 #endif
-    if (settings.ss_username[0] == '\0') {
-        show_warning("No ScreenScraper.fr user credentials set.\n\nScraping will proceed at basic rate\n(~1 req/min, single-threaded).\n\nFor much faster speeds, go to Settings\nand add your username and password.");
-    }
+    prompt_screenscraper_account();
     free_settings(&settings);
 
     for (;;) {
         main_action action = show_main_menu();
         switch (action) {
         case MAIN_SCRAPE_ART:
-            if (show_library_screen(LIB_MODE_ART)) show_progress_screen();
+            if (screenscraper_ready() && show_library_screen(LIB_MODE_ART))
+                show_progress_screen();
             break;
         case MAIN_DOWNLOAD_CHEATS:
             if (show_library_screen(LIB_MODE_CHEAT)) show_progress_screen();
             break;
         case MAIN_DOWNLOAD_MANUALS: {
             app_settings s = load_settings();
+            if (!screenscraper_ready()) {
+                free_settings(&s);
+                break;
+            }
             if (s.manual_download_dir[0] == '\0') {
                 show_warning("Manual download directory not set.\n\n"
                              "Go to Settings and set a download\n"
@@ -2780,6 +2870,7 @@ void run_app(void) {
         case MAIN_PROGRESS:        show_progress_screen(); break;
         case MAIN_API_USAGE:       show_api_usage_screen(); break;
         case MAIN_SETTINGS:        show_settings_screen(); break;
+        case MAIN_ABOUT:           show_about_screen(); break;
         case MAIN_QUIT: {
             queue_stats stats = queue_get_stats();
             if (stats.pending > 0) {

@@ -8,10 +8,16 @@
 /* ── Constants ────────────────────────────────────────────── */
 
 #define SS_API_BASE   "https://api.screenscraper.fr/api2"
-#define SS_SOFT_NAME  "ScrapeGoat-v2.3.0"
-#define SS_USER_AGENT "ScrapeGoat/2.3.0"
+#define SS_SOFT_NAME  "ZcrapeGoat-v2.3.0"
+#define SS_USER_AGENT "ZcrapeGoat/2.3.0"
 
 /* ── Build-time credentials ───────────────────────────────── */
+/* A private header generated under output/build may define these.
+ * The compiler is given only that header's path, not the values. */
+
+#if defined(ZCRAPEGOAT_CREDENTIALS_HEADER)
+#include ZCRAPEGOAT_CREDENTIALS_HEADER
+#endif
 
 #ifndef SCREENSCRAPER_DEV_ID
 #define SCREENSCRAPER_DEV_ID ""

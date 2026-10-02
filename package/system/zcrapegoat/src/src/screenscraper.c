@@ -548,6 +548,14 @@ int ss_search_rom(const ss_client *client, const rom_file *rom, int system_id,
                   ss_result *result) {
     ss_clear_last_error();
     memset(result, 0, sizeof(*result));
+    if (ss_check_dev_credentials() != 0) {
+        ss_set_last_error("ScreenScraper is unavailable in this build");
+        return -1;
+    }
+    if (!client || !client->username[0] || !client->password[0]) {
+        ss_set_last_error("A ScreenScraper account is required");
+        return -1;
+    }
 
     char md5_hash[33] = {0};
     long file_size = 0;

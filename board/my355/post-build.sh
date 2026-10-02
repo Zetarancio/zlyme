@@ -306,6 +306,7 @@ rm -f "${TARGET_DIR}/etc/timezone"
 
 # cheat-downloader was removed. Buildroot has no uninstall step, so an
 # incremental tree would keep the old binary and its license file.
+rm -rf "${TARGET_DIR}/usr/lib/zlyme/scrapegoat"
 rm -rf "${TARGET_DIR}/usr/lib/zlyme/cheat-downloader"
 rm -rf "${TARGET_DIR}/usr/share/licenses/cheat-downloader"
 # minui-list used to install into Artwork Scraper after NextUI copied
@@ -313,6 +314,7 @@ rm -rf "${TARGET_DIR}/usr/share/licenses/cheat-downloader"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Artwork Scraper.pak"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Cheat Downloader.pak"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Weston.pak"
+rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/ScrapeGoat.pak"
 
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp

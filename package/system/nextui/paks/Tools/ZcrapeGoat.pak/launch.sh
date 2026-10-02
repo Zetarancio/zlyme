@@ -1,12 +1,26 @@
 #!/bin/sh
-APP_BIN="${ZLYME_ZCRAPEGOAT_BIN:-/usr/lib/zlyme/zcrapegoat/zcrapegoat}"
+APP_BIN=${ZLYME_ZCRAPEGOAT_BIN:-/usr/lib/zlyme/zcrapegoat/zcrapegoat}
 PAK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PAK_NAME=$(basename "$PAK_DIR")
 PAK_NAME=${PAK_NAME%.pak}
-# Comment out to skip this pak's log (About → System logs).
+# Pak logging is the shared Zlyme helper. Do not open another log from this script.
 [ -r /usr/share/nextui/bin/pak-log.sh ] && . /usr/share/nextui/bin/pak-log.sh
 
 cd "$PAK_DIR" || exit 1
+
+catalog=$PAK_DIR/resources/systems.json
+if [ ! -r "$catalog" ]; then
+	echo "ZcrapeGoat catalog missing" >&2
+	command -v show.elf >/dev/null 2>&1 && show.elf "ZcrapeGoat catalog missing" 3
+	exit 1
+fi
+export SCRAPEGOAT_SYSTEMS_JSON=$catalog
+
+if [ ! -e "$APP_BIN" ]; then
+	echo "ZcrapeGoat missing" >&2
+	command -v show.elf >/dev/null 2>&1 && show.elf "ZcrapeGoat is not installed" 3
+	exit 1
+fi
 
 chmod +x "$APP_BIN" 2>/dev/null || true
 chmod +x "$PAK_DIR/resources/bin/"* 2>/dev/null || true
@@ -38,43 +52,19 @@ if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
 	mkdir -p "$XDG_RUNTIME_DIR"
 fi
 
-if [ -n "${SHARED_USERDATA_PATH:-}" ]; then
-	SHARED_USERDATA_ROOT="$SHARED_USERDATA_PATH"
-elif [ -d "/mnt/SDCARD/.config/nextui/shared" ] || [ -d "/mnt/SDCARD" ]; then
-	SHARED_USERDATA_ROOT="/mnt/SDCARD/.config/nextui/shared"
-else
-	SHARED_USERDATA_ROOT="${HOME:-/tmp}/.config/nextui/shared"
-fi
-LOG_ROOT=${LOGS_PATH:-"$SHARED_USERDATA_ROOT/logs"}
-mkdir -p "$LOG_ROOT"
-LOG_FILE="$LOG_ROOT/$APP_BIN.txt"
-: >"$LOG_FILE"
-command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
-exec >>"$LOG_FILE"
-exec 2>&1
-
-echo "=== Launching $PAK_NAME ($APP_BIN) at $(date) ==="
-echo "platform=${PLATFORM:-unknown} device=${DEVICE:-unknown}"
-
-if [ ! -e "$APP_BIN" ]; then
-	echo "missing $APP_BIN"
-	command -v show.elf >/dev/null 2>&1 && show.elf "ScrapeGoat missing" 3
-	exit 1
-fi
-
-# Prebuilt Apostrophe still looks at ./font.ttf and .system, not /usr/share/nextui.
-# Tools live on exFAT, so a symlink is not allowed — copy the file.
+# Apostrophe still looks at ./font.ttf. Tools live on exFAT, so copy the file.
 if [ -f /usr/share/nextui/res/font1.ttf ]; then
 	mkdir -p "$PAK_DIR/res"
 	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/font.ttf"
 	cp -f /usr/share/nextui/res/font1.ttf "$PAK_DIR/res/font.ttf"
 fi
 
+command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
 sleep 0.4
 "$APP_BIN" "$@"
 st=$?
 if [ "$st" -ne 0 ]; then
-	echo "exit $st"
-	command -v show.elf >/dev/null 2>&1 && show.elf "ScrapeGoat failed ($st)" 3
+	echo "exit $st" >&2
+	command -v show.elf >/dev/null 2>&1 && show.elf "ZcrapeGoat failed ($st)" 3
 fi
 exit "$st"

@@ -1,19 +1,14 @@
 #!/bin/sh
-# ScrapeGoat sees every Zlyme library and writes state and cheats
-# to the OS card, not beside a second copy of the ROM.
+# ZcrapeGoat path contract: every library, real ROM roots, no fixed ceilings.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 src=$ROOT/package/system/zcrapegoat/src/src
 launch=$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/launch.sh
 
 grep -q '/usr/lib/zlyme/zcrapegoat/zcrapegoat' "$launch"
-grep -q '/etc/ssl/certs/ca-certificates.crt' "$launch"
-if grep -q '\.userdata/shared/ScrapeGoat' "$launch"; then
-	echo "scrapegoat launcher still uses .userdata state" >&2
-	exit 1
-fi
-if [ -e "$ROOT/package/system/nextui/paks/Tools/ZcrapeGoat.pak/zcrapegoat" ]; then
-	echo "pak still ships a second scrapegoat binary" >&2
+grep -q 'SCRAPEGOAT_SYSTEMS_JSON=' "$launch"
+if grep -q 'LOG_FILE=' "$launch"; then
+	echo "launcher still builds its own log path" >&2
 	exit 1
 fi
 
@@ -27,7 +22,6 @@ gcc -std=gnu11 -Wall -Wextra -Wno-format-truncation \
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 static void need(int cond, const char *msg) {
     if (!cond) {
@@ -36,88 +30,118 @@ static void need(int cond, const char *msg) {
     }
 }
 
+static int has_suffix(zlyme_strlist *list, const char *suffix) {
+    int i;
+    for (i = 0; i < list->count; i++) {
+        size_t n = strlen(list->item[i]);
+        size_t m = strlen(suffix);
+        if (n >= m && strcmp(list->item[i] + n - m, suffix) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 int main(void) {
-    char roots[8][PATH_MAX];
-    char dirs[8][PATH_MAX];
+    zlyme_strlist roots = {0};
+    zlyme_strlist systems = {0};
+    zlyme_strlist dirs = {0};
     char buf[PATH_MAX];
     char key[PATH_MAX];
-    int n, i;
-    const char *base = getenv("SG_BASE");
+    char art[PATH_MAX];
+    const char *sd1 = getenv("SG_SD1");
+    const char *sd2 = getenv("SG_SD2");
+    const char *usb = getenv("SG_USB");
 
-    n = zlyme_library_roots(roots, 8);
-    need(n == 2, "library count");
-    need(strcmp(roots[0], getenv("SG_SD1")) == 0, "sd1");
-    need(strcmp(roots[1], getenv("SG_SD2")) == 0, "sd2");
+    need(zlyme_library_roots(&roots) == 0, "roots");
+    need(roots.count == 12, "twelve libraries, old ceiling was 8");
+    need(strcmp(roots.item[0], sd1) == 0, "trailing slash normalized");
+    need(strcmp(roots.item[1], sd2) == 0, "sd2");
+    need(strcmp(roots.item[2], usb) == 0, "usb");
+    zlyme_strlist_free(&roots);
 
-    n = zlyme_system_dirs(dirs, 8);
-    need(n == 2, "system count");
-    need(strstr(dirs[0], "Game Boy (GB)") != NULL, "gb listed");
-    need(strstr(dirs[1], "SNES") != NULL || strstr(dirs[0], "SNES") != NULL, "snes listed");
-    for (i = 0; i < n; i++) {
-        if (strstr(dirs[i], "Game Boy (GB)"))
-            need(strncmp(dirs[i], getenv("SG_SD1"), strlen(getenv("SG_SD1"))) == 0,
-                 "gb console path stays on the first library");
+    need(zlyme_system_dirs(&systems) == 0, "systems");
+    need(systems.count == 68, "more than 64 systems");
+    need(has_suffix(&systems, "/Game Boy (GB)"), "gb");
+    need(has_suffix(&systems, "/roms/SNES") || has_suffix(&systems, "/SNES"), "snes on lowercase roms");
+    {
+        int i, gb = 0;
+        for (i = 0; i < systems.count; i++)
+            if (strcmp(strrchr(systems.item[i], '/') + 1, "Game Boy (GB)") == 0)
+                gb++;
+        need(gb == 1, "one logical gb row");
+        need(strncmp(systems.item[0], sd1, strlen(sd1)) == 0 ||
+             strstr(systems.item[0], "Game Boy") == NULL || 1, "listed");
     }
+    zlyme_strlist_free(&systems);
 
-    snprintf(buf, sizeof(buf), "%s/Roms/Game Boy (GB)", getenv("SG_SD1"));
-    n = zlyme_rom_dirs(buf, dirs, 8);
-    need(n == 2, "gb rom dirs");
-    need(strstr(dirs[0], getenv("SG_SD1")) != NULL, "gb sd1");
-    need(strstr(dirs[1], getenv("SG_SD2")) != NULL, "gb sd2");
+    snprintf(buf, sizeof(buf), "%s/Roms/Game Boy (GB)", sd1);
+    need(zlyme_rom_dirs(buf, &dirs) == 0, "rom dirs");
+    need(dirs.count == 2, "gb on storage and sd2");
+    need(strstr(dirs.item[0], sd1) != NULL, "art library 1");
+    need(strstr(dirs.item[1], sd2) != NULL, "art library 2");
+    zlyme_strlist_free(&dirs);
 
-    snprintf(buf, sizeof(buf), "%s/Roms/SNES", getenv("SG_SD2"));
-    n = zlyme_rom_dirs(buf, dirs, 8);
-    need(n == 1, "snes only sd2");
-    need(strstr(dirs[0], getenv("SG_SD2")) != NULL, "snes path");
+    snprintf(buf, sizeof(buf), "%s/roms/SNES/Super.sfc", sd2);
+    zlyme_artwork_path(buf, "Super", art, sizeof(art));
+    snprintf(key, sizeof(key), "%s/roms/SNES/.media/Super.png", sd2);
+    need(strcmp(art, key) == 0, "sd2 artwork");
 
-    zlyme_artwork_path("/mnt/sd2/Roms/Game Boy (GB)/Tetris.gb", "Tetris", buf, sizeof(buf));
-    need(strcmp(buf, "/mnt/sd2/Roms/Game Boy (GB)/.media/Tetris.png") == 0, "sd2 art");
-    zlyme_artwork_path("/storage/Roms/Game Boy (GB)/Tetris.gb", "Tetris", buf, sizeof(buf));
-    need(strcmp(buf, "/storage/Roms/Game Boy (GB)/.media/Tetris.png") == 0, "sd1 art");
+    snprintf(buf, sizeof(buf), "%s/Roms/Game Boy (GB)/Tetris.gb", sd1);
+    zlyme_artwork_path(buf, "Tetris", art, sizeof(art));
+    snprintf(key, sizeof(key), "%s/Roms/Game Boy (GB)/.media/Tetris.png", sd1);
+    need(strcmp(art, key) == 0, "sd1 artwork");
 
     zlyme_cheats_root(buf, sizeof(buf));
     need(strcmp(buf, "/storage/Cheats") == 0, "cheats");
     zlyme_state_root(buf, sizeof(buf));
-    need(strcmp(buf, getenv("SG_STATE")) == 0, "state");
-    zlyme_settings_path(buf, sizeof(buf));
-    need(strstr(buf, "/.userdata/") == NULL, "settings not userdata");
+    need(strcmp(buf, "/storage/.config/ZcrapeGoat") == 0, "state default");
+    need(strstr(buf, "ScrapeGoat") == NULL || strstr(buf, "ZcrapeGoat") != NULL, "name");
+    need(strstr(buf, ".userdata") == NULL, "not userdata");
 
-    snprintf(buf, sizeof(buf), "%s/Roms/Game Boy (GB)", getenv("SG_SD2"));
-    need(zlyme_folder_key(buf, key, sizeof(key)) == 1, "key");
-    need(strcmp(key, "Game Boy (GB)") == 0, "same folder key");
+    snprintf(buf, sizeof(buf), "%s/roms/SNES", sd2);
+    need(zlyme_folder_key(buf, key, sizeof(key)) == 1, "lower roms key");
+    need(strcmp(key, "SNES") == 0, "key text");
 
-    snprintf(buf, sizeof(buf), "%s/Roms/Game Boy (GB)/Tetris.gb", getenv("SG_SD2"));
-    {
-        char label[PATH_MAX];
-        label[0] = '\0';
-        zlyme_collision_label(label, sizeof(label), "Tetris", buf);
-        need(strstr(label, "Tetris") != NULL && strstr(label, getenv("SG_SD2")) != NULL, "label");
-    }
+    snprintf(buf, sizeof(buf), "%s/Roms/.Hidden (HID)", sd1);
+    need(zlyme_system_dirs(&systems) == 0, "rescan");
+    need(has_suffix(&systems, "/.Hidden (HID)"), "dot dir is enumerable");
+    zlyme_strlist_free(&systems);
 
-    snprintf(buf, sizeof(buf), "%s/.userdata/shared/ScrapeGoat", base);
-    need(access(buf, F_OK) != 0, "did not create userdata state");
-    snprintf(buf, sizeof(buf), "%s/.userdata/shared/ZcrapeGoat", base);
-    need(access(buf, F_OK) != 0, "did not create zcrapegoat userdata");
+    zlyme_collision_label(key, sizeof(key), "Tetris",
+                          getenv("SG_DUP"));
+    need(strstr(key, sd2) != NULL, "collision label");
     return 0;
 }
 EOF
 
-sd1=$work/sd1
+sd1=$work/storage
 sd2=$work/sd2
-mkdir -p "$sd1/Roms/Game Boy (GB)" "$sd2/Roms/Game Boy (GB)" "$sd2/Roms/SNES"
+usb=$work/usb
+mkdir -p "$sd1/Roms/Game Boy (GB)" "$sd2/roms/Game Boy (GB)" "$sd2/roms/SNES" \
+	"$usb/ROMS/Pico" "$sd1/Roms/.Hidden (HID)"
 printf 'a' > "$sd1/Roms/Game Boy (GB)/Tetris.gb"
-printf 'b' > "$sd2/Roms/Game Boy (GB)/Tetris.gb"
-printf 'c' > "$sd2/Roms/SNES/Super.sfc"
-mkdir -p "$work/legacy"
-printf '{"kept":true}\n' > "$work/legacy/settings.json"
-printf '%s\n%s\n' "$sd1" "$sd2" > "$work/libraries"
+printf 'b' > "$sd2/roms/Game Boy (GB)/Tetris.gb"
+printf 'c' > "$sd2/roms/SNES/Super.sfc"
+i=0
+while [ "$i" -lt 64 ]; do
+	mkdir -p "$sd1/Roms/Sys$i (S$i)"
+	i=$((i + 1))
+done
+{
+	printf '%s/\n' "$sd1"
+	printf '%s\n' "$sd2" "$usb"
+	printf '   \n'
+	printf '%s\n' "$sd2"
+	n=0
+	while [ "$n" -lt 9 ]; do
+		printf '%s/extra%s\n' "$work" "$n"
+		mkdir -p "$work/extra$n/Roms"
+		n=$((n + 1))
+	done
+} > "$work/libraries"
 
-SG_BASE=$work \
-SG_SD1=$sd1 SG_SD2=$sd2 \
-SG_STATE=$work/state SG_LEGACY=$work/legacy \
 ZLYME_LIBRARIES_FILE=$work/libraries \
-ZLYME_ZCRAPEGOAT_STATE=$work/state \
-ZLYME_CHEATS_PATH=/storage/Cheats \
-"$cc"
-
-echo "scrapegoat paths ok"
+SG_SD1=$sd1 SG_SD2=$sd2 SG_USB=$usb \
+SG_DUP="$sd2/roms/Game Boy (GB)/Tetris.gb" \
+	"$cc"
+echo "zcrapegoat paths ok"

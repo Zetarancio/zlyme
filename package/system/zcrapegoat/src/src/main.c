@@ -68,6 +68,14 @@ static void configure_desktop_nextui_preview(void) {
 int main(int argc, char *argv[]) {
     if (argc > 1 && strcmp(argv[1], "zlyme-paths") == 0)
         return zlyme_dump_paths();
+    if (argc > 1 && strcmp(argv[1], "--credential-status") == 0) {
+        if (ss_check_dev_credentials() == 0) {
+            puts("developer_credentials=present");
+            return 0;
+        }
+        puts("developer_credentials=absent");
+        return 2;
+    }
 
     /* Background daemon mode: headless, no UI */
     if (argc > 1 && strcmp(argv[1], "--daemon") == 0) {
@@ -90,8 +98,8 @@ int main(int argc, char *argv[]) {
 
     /* Initialize Apostrophe UI */
     ap_config cfg = {0};
-    cfg.window_title = "ScrapeGoat";
-    cfg.log_path = ap_resolve_log_path("scrapegoat");
+    cfg.window_title = "ZcrapeGoat";
+    cfg.log_path = NULL;
     cfg.is_nextui = true;
     /* zlyme-governor owns clocks. Apostrophe's my355 path is a no-op,
      * and the default preset does not ask it to change anything. */

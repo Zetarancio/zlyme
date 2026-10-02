@@ -164,6 +164,9 @@ in_container() {
         -e HOME=/tmp \
         -e BR2_DL_DIR=/zlyme/dl \
         -e BR2_CCACHE_DIR=/zlyme/ccache \
+        -e SCREENSCRAPER_DEV_ID \
+        -e SCREENSCRAPER_DEV_PASSWORD \
+        -e ZLYME_REQUIRE_SCRAPEGOAT_CREDENTIALS \
         -v "${REPO}:/zlyme/src:ro" \
         -v "${ZLYME_BUILDROOT}:/zlyme/buildroot" \
         -v "${ZLYME_OUTPUT}:/zlyme/output" \
@@ -345,6 +348,8 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     # keylidmon compiles the msettings.h that the nextui package
     # installs into staging. The pin lives in nextui.mk. Do not
     # fingerprint the downloaded NextUI tree.
+    refresh_compiled_package zcrapegoat BR2_PACKAGE_ZCRAPEGOAT \
+        package/system/zcrapegoat
     refresh_compiled_package zlyme-keylidmon BR2_PACKAGE_ZLYME_KEYLIDMON \
         package/system/zlyme-keylidmon package/system/zlyme-input/virtpad.h \
         package/system/nextui/nextui.mk

@@ -309,24 +309,29 @@ static int console_cmp(const void *a, const void *b) {
 }
 
 int scan_console_dirs(bool show_hidden, console_dir **out) {
-    char system_dirs[64][PATH_MAX];
-    int system_count = zlyme_system_dirs(system_dirs, 64);
+    zlyme_strlist system_dirs = {0};
     int count = 0;
-    int capacity = 64;
-    console_dir *consoles = malloc(sizeof(console_dir) * (size_t)capacity);
+    int capacity = 16;
+    console_dir *consoles = NULL;
     int s;
 
-    if (!consoles) {
+    if (zlyme_system_dirs(&system_dirs) != 0) {
         *out = NULL;
-        return 0;
+        return -1;
+    }
+    consoles = malloc(sizeof(console_dir) * (size_t)capacity);
+    if (!consoles) {
+        zlyme_strlist_free(&system_dirs);
+        *out = NULL;
+        return -1;
     }
 
-    for (s = 0; s < system_count; s++) {
+    for (s = 0; s < system_dirs.count; s++) {
         char full_path[PATH_MAX];
         const char *name;
         struct stat st;
 
-        snprintf(full_path, sizeof(full_path), "%s", system_dirs[s]);
+        snprintf(full_path, sizeof(full_path), "%s", system_dirs.item[s]);
         name = strrchr(full_path, '/');
         name = name ? name + 1 : full_path;
         if (stat(full_path, &st) != 0 || !S_ISDIR(st.st_mode))
@@ -371,6 +376,7 @@ int scan_console_dirs(bool show_hidden, console_dir **out) {
         extract_display_name(base_name, c->display, sizeof(c->display));
         c->is_disabled = disabled;
     }
+    zlyme_strlist_free(&system_dirs);
 
     qsort(consoles, (size_t)count, sizeof(console_dir), console_cmp);
     *out = consoles;
@@ -607,38 +613,49 @@ static void disambiguate_roms(rom_file *roms, int count) {
 }
 
 int scan_roms(const char *console_path, bool show_hidden, rom_file **out) {
-    char dirs[8][PATH_MAX];
-    int dir_count = zlyme_rom_dirs(console_path, dirs, 8);
+    zlyme_strlist dirs = {0};
     int count = 0;
     int capacity = 256;
     int i;
 
     *out = malloc(sizeof(rom_file) * (size_t)capacity);
-    if (dir_count == 0 && console_path && console_path[0]) {
-        snprintf(dirs[0], PATH_MAX, "%s", console_path);
-        dir_count = 1;
+    if (zlyme_rom_dirs(console_path, &dirs) != 0) {
+        free(*out);
+        *out = NULL;
+        return -1;
     }
-    for (i = 0; i < dir_count; i++) {
-        name_map map = load_name_map(dirs[i]);
-        scan_roms_internal(dirs[i], show_hidden, out, &count, &capacity, &map, 0);
+    if (dirs.count == 0 && console_path && console_path[0]) {
+        dirs.item = calloc(1, sizeof(char *));
+        if (dirs.item) {
+            dirs.item[0] = strdup(console_path);
+            if (dirs.item[0])
+                dirs.count = 1;
+        }
+    }
+    for (i = 0; i < dirs.count; i++) {
+        name_map map = load_name_map(dirs.item[i]);
+        scan_roms_internal(dirs.item[i], show_hidden, out, &count, &capacity, &map, 0);
         free_name_map(&map);
     }
+    zlyme_strlist_free(&dirs);
     disambiguate_roms(*out, count);
     qsort(*out, (size_t)count, sizeof(rom_file), rom_cmp);
     return count;
 }
 
 int zlyme_dump_paths(void) {
-    char roots[8][PATH_MAX];
+    zlyme_strlist roots = {0};
     char state[PATH_MAX];
     char cheats[PATH_MAX];
-    int root_count = zlyme_library_roots(roots, 8);
     console_dir *consoles = NULL;
     int console_count;
     int i;
 
-    for (i = 0; i < root_count; i++)
-        printf("library %s\n", roots[i]);
+    if (zlyme_library_roots(&roots) != 0)
+        return 1;
+    for (i = 0; i < roots.count; i++)
+        printf("library %s\n", roots.item[i]);
+    zlyme_strlist_free(&roots);
     zlyme_state_root(state, sizeof(state));
     zlyme_cheats_root(cheats, sizeof(cheats));
     printf("state %s\n", state);

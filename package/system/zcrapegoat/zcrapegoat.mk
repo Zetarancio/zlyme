@@ -1,18 +1,15 @@
 ################################################################################
 #
-# scrapegoat
+# zcrapegoat
 #
-# Helaas/nextui-scrapegoat-pak v2.3.0
-# commit c52f749eae21a4c02c767e485fef2abbb773f2d7
-# MIT. Built with the Zlyme toolchain and the vendored Apostrophe
-# headers (my355 pad map, no cpufreq writes).
+# Downstream Zlyme integration of Helaas/nextui-scrapegoat-pak v2.3.0,
+# commit c52f749eae21a4c02c767e485fef2abbb773f2d7, MIT.
+# The tracked tree is src/. Zlyme changes are commits after the import.
+# Apostrophe headers are the vendored Zlyme copy.
 #
-# ScreenScraper developer credentials are compile-time -D flags.
-# They are not in this repository. If package/system/zcrapegoat/credentials.local
-# exists, it may set SCREENSCRAPER_DEV_ID and SCREENSCRAPER_DEV_PASSWORD
-# for a local build. A missing file still builds; the binary then has
-# empty developer credentials and warns at startup. Do not commit that file.
-# User ScreenScraper accounts are optional and only raise the request rate.
+# Developer credentials are written to a private header under the
+# Buildroot build directory. They are not compiler -D values.
+# That compile runs with CCACHE_DISABLE=1.
 #
 ################################################################################
 
@@ -23,24 +20,17 @@ ZCRAPEGOAT_LICENSE = MIT
 ZCRAPEGOAT_LICENSE_FILES = LICENSE
 ZCRAPEGOAT_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image libcurl openssl zlib
 
-ZCRAPEGOAT_CREDENTIALS = $(ZCRAPEGOAT_PKGDIR)/credentials.local
-
 define ZCRAPEGOAT_BUILD_CMDS
-	defs=""; \
-	if [ -f $(ZCRAPEGOAT_CREDENTIALS) ]; then \
-		. $(ZCRAPEGOAT_CREDENTIALS); \
-		if [ -n "$${SCREENSCRAPER_DEV_ID:-}" ]; then \
-			defs="$$defs -DSCREENSCRAPER_DEV_ID=\\\"$$SCREENSCRAPER_DEV_ID\\\""; \
-		fi; \
-		if [ -n "$${SCREENSCRAPER_DEV_PASSWORD:-}" ]; then \
-			defs="$$defs -DSCREENSCRAPER_DEV_PASSWORD=\\\"$$SCREENSCRAPER_DEV_PASSWORD\\\""; \
-		fi; \
-	fi; \
-	$(TARGET_MAKE_ENV) \
+	python3 $(ZCRAPEGOAT_PKGDIR)/gen-credentials-header.py \
+		$(@D)/zlyme_credentials.h \
+		$(ZCRAPEGOAT_PKGDIR)/credentials.local
+	$(TARGET_MAKE_ENV) CCACHE_DISABLE=1 \
 	PKG_CONFIG_SYSROOT_DIR="$(STAGING_DIR)" \
 	PKG_CONFIG_LIBDIR="$(STAGING_DIR)/usr/lib/pkgconfig" \
 	$(TARGET_CC) $(TARGET_CFLAGS) -std=gnu11 -Wall -Wextra -Wno-unused-parameter \
-		-DPLATFORM_MY355 -DAP_ENABLE_CURL $$defs \
+		-DPLATFORM_MY355 -DAP_ENABLE_CURL \
+		-DZCRAPEGOAT_CREDENTIALS_HEADER=\"zlyme_credentials.h\" \
+		-I$(@D) \
 		-I$(@D)/src \
 		-I$(@D)/third_party/cJSON \
 		-I$(@D)/third_party/md5 \
@@ -53,10 +43,12 @@ define ZCRAPEGOAT_BUILD_CMDS
 		$(TARGET_LDFLAGS) \
 		$$($(PKG_CONFIG_HOST_BINARY) --libs sdl2 SDL2_ttf SDL2_image libcurl) \
 		-lm -lpthread
+	rm -f $(@D)/zlyme_credentials.h
 	$(TARGET_STRIP) $(@D)/zcrapegoat
 endef
 
 define ZCRAPEGOAT_INSTALL_TARGET_CMDS
+	rm -rf $(TARGET_DIR)/usr/lib/zlyme/scrapegoat
 	$(INSTALL) -D -m 0755 $(@D)/zcrapegoat \
 		$(TARGET_DIR)/usr/lib/zlyme/zcrapegoat/zcrapegoat
 	$(INSTALL) -D -m 0644 $(@D)/LICENSE \
