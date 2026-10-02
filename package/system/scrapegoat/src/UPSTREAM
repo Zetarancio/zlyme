@@ -1,0 +1,9 @@
+repository: https://github.com/Helaas/nextui-scrapegoat-pak
+tag: v2.3.0
+commit: c52f749eae21a4c02c767e485fef2abbb773f2d7
+license: MIT
+imported: 2026-10-02
+
+This directory is the tracked upstream tree at that commit.
+Zlyme modifications after this import are normal commits in the Zlyme repository.
+Do not follow upstream HEAD.

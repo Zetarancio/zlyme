@@ -1,0 +1,2868 @@
+#include "ui.h"
+#include "cheats.h"
+#include "daemon.h"
+#include "device.h"
+#include "queue.h"
+#include "screenscraper.h"
+#include "systems.h"
+
+#include "apostrophe.h"
+#include "apostrophe_widgets.h"
+
+#include <errno.h>
+#include <dirent.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+/* Suppress GCC warnings about snprintf truncation when combining
+   PATH_MAX-sized strings — truncation is safe by design.
+   Also suppress missing-field-initializers for ap_footer_item which
+   has an optional button_text field we don't use. */
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
+
+/* ── Forward declarations ─────────────────────────────────── */
+
+typedef enum { LIB_MODE_ART, LIB_MODE_CHEAT, LIB_MODE_MANUAL } library_mode;
+
+static bool show_rom_list_screen(const console_dir *console,
+                                  const app_settings *settings,
+                                  library_mode mode);
+
+static bool show_rom_detail_screen(const rom_file *rom,
+                                    const console_dir *console,
+                                    library_mode mode,
+                                    const app_settings *settings);
+
+static ap_status_bar_opts g_status_bar = {
+    .show_clock = AP_CLOCK_HIDE,
+    .show_battery = false,
+    .show_wifi = true,
+};
+
+static char g_progress_label[64];
+
+static bool is_flip_layout(void) {
+    return ap_get_screen_width() <= 640 && ap_get_screen_height() <= 480;
+}
+
+static void refresh_progress_label(void) {
+    queue_stats s = queue_get_stats();
+    if (s.total > 0) {
+        int processed = s.done + s.failed;
+        if (s.failed > 0)
+            snprintf(g_progress_label, sizeof(g_progress_label),
+                     "Track Progress  (%d/%d, %d failed)",
+                     processed, s.total, s.failed);
+        else
+            snprintf(g_progress_label, sizeof(g_progress_label),
+                     "Track Progress  (%d/%d)",
+                     processed, s.total);
+    } else {
+        snprintf(g_progress_label, sizeof(g_progress_label), "Track Progress");
+    }
+}
+
+static Uint32 progress_label_timer_cb(Uint32 interval, void *param) {
+    (void)param;
+    refresh_progress_label();
+    SDL_Event ev;
+    SDL_memset(&ev, 0, sizeof(ev));
+    ev.type = SDL_USEREVENT;
+    SDL_PushEvent(&ev);
+    return interval;
+}
+
+/* ── Helpers ──────────────────────────────────────────────── */
+
+static void show_error(const char *message) {
+    ap_footer_item footer[] = {{AP_BTN_B, "BACK", false}};
+    ap_message_opts opts = {.message = message, .footer = footer, .footer_count = 1};
+    ap_confirm_result result;
+    ap_confirmation(&opts, &result);
+}
+
+static void show_warning(const char *message) {
+    ap_footer_item footer[] = {{AP_BTN_A, "CONTINUE", false}};
+    ap_message_opts opts = {.message = message, .footer = footer, .footer_count = 1};
+    ap_confirm_result result;
+    ap_confirmation(&opts, &result);
+}
+
+static void show_brief(const char *message) {
+    ap_footer_item footer[] = {{AP_BTN_A, "OK", true}};
+    ap_message_opts opts = {.message = message, .footer = footer, .footer_count = 1};
+    ap_confirm_result result;
+    ap_confirmation(&opts, &result);
+}
+
+typedef struct {
+    char               **lines;
+    int                  count;
+    char                 title[64];
+} cheat_detail_section_data;
+
+static void free_cheat_detail_section_data(cheat_detail_section_data *data) {
+    if (!data)
+        return;
+
+    if (data->lines) {
+        for (int i = 0; i < data->count; i++)
+            free(data->lines[i]);
+    }
+    free(data->lines);
+    memset(data, 0, sizeof(*data));
+}
+
+/* Render cheats as one section per entry instead of one large wrapped paragraph.
+   This keeps long cheat lists responsive in the detail widget. */
+static bool load_cheat_detail_section(const char *cht_path,
+                                      cheat_detail_section_data *out) {
+    cheat_desc_list descs;
+
+    if (!cht_path || !out)
+        return false;
+
+    memset(out, 0, sizeof(*out));
+    if (parse_cheat_descriptions(cht_path, &descs) != 0 || descs.count <= 0)
+        return false;
+
+    out->count = descs.count;
+    out->lines = calloc((size_t)out->count, sizeof(*out->lines));
+
+    if (!out->lines) {
+        cheat_desc_list_free(&descs);
+        memset(out, 0, sizeof(*out));
+        return false;
+    }
+
+    for (int i = 0; i < out->count; i++) {
+        const char *desc = descs.descriptions[i];
+        char fallback[32];
+        size_t line_len;
+
+        if (!desc || !desc[0]) {
+            snprintf(fallback, sizeof(fallback), "Cheat %d", i + 1);
+            desc = fallback;
+        }
+
+        line_len = strlen(desc) + 16;
+        out->lines[i] = malloc(line_len);
+        if (!out->lines[i]) {
+            cheat_desc_list_free(&descs);
+            free_cheat_detail_section_data(out);
+            return false;
+        }
+
+        snprintf(out->lines[i], line_len, "%d. %s", i + 1, desc);
+    }
+
+    cheat_desc_list_free(&descs);
+    snprintf(out->title, sizeof(out->title), "Cheats (%d)", out->count);
+    return true;
+}
+
+/* Returns true if user chose "Track Progress". */
+static bool show_track_progress_prompt(const char *message) {
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "BACK",            false},
+        {AP_BTN_A, "TRACK PROGRESS", true},
+    };
+    ap_message_opts opts = {
+        .message      = message,
+        .footer       = footer,
+        .footer_count = 2,
+    };
+    ap_confirm_result result;
+    ap_confirmation(&opts, &result);
+    return result.confirmed;
+}
+
+/* ── Console name disambiguation ──────────────────────────── */
+
+static void build_console_menu_names(const console_dir *consoles, int count,
+                                      char names[][512]) {
+    for (int i = 0; i < count; i++) {
+        int dupes = 0;
+        for (int j = 0; j < count; j++) {
+            if (strcmp(consoles[i].display, consoles[j].display) == 0)
+                dupes++;
+        }
+        if (dupes > 1)
+            snprintf(names[i], 512, "%s (%s)", consoles[i].display, consoles[i].tag);
+        else
+            snprintf(names[i], 512, "%s", consoles[i].display);
+
+        if (consoles[i].is_disabled) {
+            size_t len = strlen(names[i]);
+            snprintf(names[i] + len, 512 - len, " [disabled]");
+        }
+    }
+}
+
+/* ── System stats for library browser ─────────────────────── */
+
+typedef struct {
+    int rom_count;
+    int art_count;
+    int cheat_count;
+    int manual_count;
+    bool has_ss;        /* selected platform has a ScreenScraper id */
+    bool has_libretro;  /* selected platform has a cheat database */
+    bool mapped;        /* a platform is selected for this folder */
+    bool hidden;        /* the user hid this folder */
+    mapping_source source;
+    const sg_platform *platform;
+} system_stats;
+
+static system_stats compute_system_stats(const console_dir *console, bool show_hidden,
+                                          const char *manual_download_dir) {
+    system_stats stats = {0};
+    sg_mapping mapping = systems_resolve(console->path, console->tag);
+    stats.platform = mapping.platform;
+    stats.source = mapping.source;
+    stats.hidden = mapping.hidden;
+    stats.mapped = mapping.platform != NULL;
+    stats.has_ss = mapping.platform && mapping.platform->ss_id >= 0;
+    stats.has_libretro = mapping.platform && mapping.platform->libretro_dir;
+
+    /* Nothing to count for a folder the user hid or has not mapped: the
+     * per-ROM asset checks are the expensive part of this scan. */
+    if (stats.hidden || !stats.mapped)
+        return stats;
+
+    rom_file *roms = NULL;
+    int rom_count = scan_roms(console->path, show_hidden, &roms);
+    if (rom_count <= 0) {
+        free(roms);
+        return stats;
+    }
+
+    stats.rom_count = rom_count;
+    for (int i = 0; i < rom_count; i++) {
+        if (artwork_exists(roms[i].path, roms[i].display))
+            stats.art_count++;
+        if (stats.has_libretro && cheat_exists(console->tag, roms[i].display))
+            stats.cheat_count++;
+        if (stats.has_ss && manual_download_dir && manual_download_dir[0] &&
+            manual_exists(manual_download_dir, console->tag, roms[i].display))
+            stats.manual_count++;
+    }
+
+    free(roms);
+    return stats;
+}
+
+/* ── Main menu ────────────────────────────────────────────── */
+
+typedef enum {
+    MAIN_QUIT = 0,
+    MAIN_SCRAPE_ART,
+    MAIN_DOWNLOAD_CHEATS,
+    MAIN_DOWNLOAD_MANUALS,
+    MAIN_PROGRESS,
+    MAIN_SETTINGS,
+    MAIN_API_USAGE,
+} main_action;
+
+static main_action show_main_menu(void) {
+    refresh_progress_label();
+
+    ap_list_item items[] = {
+        {.label = "Artwork"},
+        {.label = "Cheats"},
+        {.label = "Manuals"},
+        {.label = g_progress_label},
+        {.label = "Settings"},
+        {.label = "API Usage"},
+    };
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "QUIT", false},
+        {AP_BTN_A, "SELECT", true},
+    };
+
+    ap_list_opts opts = ap_list_default_opts("ScrapeGoat", items, 6);
+    opts.footer = footer;
+    opts.footer_count = 2;
+    opts.status_bar = &g_status_bar;
+
+    SDL_TimerID timer = SDL_AddTimer(500, progress_label_timer_cb, NULL);
+
+    ap_list_result result;
+    int ret = ap_list(&opts, &result);
+
+    SDL_RemoveTimer(timer);
+
+    if (ret == AP_CANCELLED || result.selected_index < 0)
+        return MAIN_QUIT;
+
+    switch (result.selected_index) {
+    case 0: return MAIN_SCRAPE_ART;
+    case 1: return MAIN_DOWNLOAD_CHEATS;
+    case 2: return MAIN_DOWNLOAD_MANUALS;
+    case 3: return MAIN_PROGRESS;
+    case 4: return MAIN_SETTINGS;
+    case 5: return MAIN_API_USAGE;
+    default: return MAIN_QUIT;
+    }
+}
+
+/* ── Library: ROM list ────────────────────────────────────── */
+
+typedef enum {
+    ROM_FILTER_ALL = 0,
+    ROM_FILTER_MISSING,
+    ROM_FILTER_INSTALLED,
+} rom_filter;
+
+static const char *rom_filter_name(rom_filter f) {
+    switch (f) {
+    case ROM_FILTER_MISSING:   return "Missing";
+    case ROM_FILTER_INSTALLED: return "Installed";
+    default:                   return "All";
+    }
+}
+
+static const char *rom_status_label(const rom_file *rom,
+                                     const console_dir *console,
+                                     library_mode mode,
+                                     const app_settings *settings) {
+    if (mode == LIB_MODE_ART) {
+        queue_item_status qs = queue_get_rom_status(rom->path, QUEUE_TYPE_ARTWORK);
+        if (qs >= QUEUE_IDLE && qs <= QUEUE_DOWNLOADING) {
+            switch (qs) {
+            case QUEUE_IDLE:        return "queued";
+            case QUEUE_SEARCHING:   return "searching";
+            case QUEUE_DOWNLOADING: return "downloading";
+            default:                return "queued";
+            }
+        }
+        return artwork_exists(rom->path, rom->display) ? "art" : NULL;
+    } else if (mode == LIB_MODE_CHEAT) {
+        queue_item_status qs = queue_get_rom_status(rom->path, QUEUE_TYPE_CHEAT);
+        if (qs >= QUEUE_IDLE && qs <= QUEUE_MATCHING) {
+            switch (qs) {
+            case QUEUE_IDLE:        return "queued";
+            case QUEUE_CLONING:     return "cloning";
+            case QUEUE_MATCHING:    return "matching";
+            default:                return "queued";
+            }
+        }
+        return cheat_exists(console->tag, rom->display) ? "cht" : NULL;
+    } else {
+        queue_item_status qs = queue_get_rom_status(rom->path, QUEUE_TYPE_MANUAL);
+        if (qs >= QUEUE_IDLE && qs <= QUEUE_DOWNLOADING) {
+            switch (qs) {
+            case QUEUE_IDLE:        return "queued";
+            case QUEUE_SEARCHING:   return "searching";
+            case QUEUE_DOWNLOADING: return "downloading";
+            default:                return "queued";
+            }
+        }
+        return manual_exists(settings->manual_download_dir, console->tag, rom->display) ? "pdf" : NULL;
+    }
+}
+
+static bool show_rom_list_screen(const console_dir *console,
+                                  const app_settings *settings,
+                                  library_mode mode) {
+    rom_file *roms = NULL;
+    int rom_count = scan_roms(console->path, settings->show_hidden, &roms);
+    if (rom_count <= 0) {
+        show_error("No ROMs found in this system.");
+        free(roms);
+        return false;
+    }
+
+    /* Default to Missing filter, but fall back to All if nothing is missing */
+    rom_filter filter = ROM_FILTER_MISSING;
+    {
+        bool has_missing = false;
+        for (int i = 0; i < rom_count; i++) {
+            bool inst = (mode == LIB_MODE_ART)
+                ? artwork_exists(roms[i].path, roms[i].display)
+                : (mode == LIB_MODE_CHEAT)
+                    ? cheat_exists(console->tag, roms[i].display)
+                    : manual_exists(settings->manual_download_dir, console->tag, roms[i].display);
+            if (!inst) { has_missing = true; break; }
+        }
+        if (!has_missing) filter = ROM_FILTER_ALL;
+    }
+    int        initial_idx = 0;
+    int        visible_start = 0;
+
+    /* Reusable filter map: filter_map[visible_i] = real_i */
+    int *filter_map = malloc(sizeof(int) * (size_t)rom_count);
+
+    for (;;) {
+        /* Determine which ROMs are installed (needed for filter & label) */
+        bool *installed = malloc(sizeof(bool) * (size_t)rom_count);
+        for (int i = 0; i < rom_count; i++) {
+            installed[i] = (mode == LIB_MODE_ART)
+                ? artwork_exists(roms[i].path, roms[i].display)
+                : (mode == LIB_MODE_CHEAT)
+                    ? cheat_exists(console->tag, roms[i].display)
+                    : manual_exists(settings->manual_download_dir, console->tag, roms[i].display);
+        }
+
+        /* Build filter map */
+        int visible_count = 0;
+        for (int i = 0; i < rom_count; i++) {
+            if (filter == ROM_FILTER_MISSING   &&  installed[i]) continue;
+            if (filter == ROM_FILTER_INSTALLED && !installed[i]) continue;
+            filter_map[visible_count++] = i;
+        }
+
+        /* Build list items */
+        char (*labels)[512] = malloc(sizeof(char[512]) * (size_t)(visible_count > 0 ? visible_count : 1));
+        ap_list_item *items = calloc((size_t)(visible_count > 0 ? visible_count : 1), sizeof(ap_list_item));
+
+        for (int vi = 0; vi < visible_count; vi++) {
+            int i = filter_map[vi];
+            const char *status = rom_status_label(&roms[i], console, mode, settings);
+            bool is_inst = installed[i];
+            snprintf(labels[vi], 512, "%s", roms[i].label[0] ? roms[i].label : roms[i].display);
+            items[vi].label = labels[vi];
+            if (is_inst)
+                items[vi].trailing_text = "\u2713";
+            else if (status)
+                items[vi].trailing_text = status;
+        }
+
+        free(installed);
+
+        /* Title always shows filter tag */
+        char title[256];
+        snprintf(title, sizeof(title), "%s  [%s]",
+                 console->display, rom_filter_name(filter));
+
+        /* Footer: B position depends on screen width */
+        ap_footer_item footer[4];
+        if (ap_get_screen_width() >= 1024) {
+            footer[0] = (ap_footer_item){AP_BTN_B, "BACK",        false};
+            footer[1] = (ap_footer_item){AP_BTN_Y, "FILTER",      false};
+            footer[2] = (ap_footer_item){AP_BTN_X, "QUEUE ALL",   false};
+        } else {
+            footer[0] = (ap_footer_item){AP_BTN_Y, "FILTER",      false};
+            footer[1] = (ap_footer_item){AP_BTN_X, "QUEUE ALL",   false};
+            footer[2] = (ap_footer_item){AP_BTN_B, "BACK",        false};
+        }
+        footer[3] = (ap_footer_item){AP_BTN_A, "OPEN", true};
+
+        ap_list_opts opts = ap_list_default_opts(title, items,
+                                                  visible_count > 0 ? visible_count : 0);
+        opts.footer                  = footer;
+        opts.footer_count            = 4;
+        opts.status_bar              = &g_status_bar;
+        opts.secondary_action_button = AP_BTN_X;
+        opts.tertiary_action_button  = AP_BTN_Y;
+        opts.initial_index           = initial_idx;
+        opts.visible_start_index     = visible_start;
+
+        ap_list_result result;
+        int ret = ap_list(&opts, &result);
+
+        initial_idx  = result.selected_index;
+        visible_start = result.visible_start_index;
+
+        free(labels);
+        free(items);
+
+        if (ret == AP_CANCELLED) break;
+
+        /* Y: cycle filter */
+        if (result.action == AP_ACTION_TERTIARY_TRIGGERED) {
+            filter = (rom_filter)((filter + 1) % 3);
+            initial_idx   = 0;
+            visible_start = 0;
+            continue;
+        }
+
+        int sel = result.selected_index;
+        if (sel < 0 || sel >= visible_count) {
+            if (visible_count == 0) continue; /* empty filtered list, let user change filter */
+            break;
+        }
+        int real = filter_map[sel];
+
+        if (result.action == AP_ACTION_SELECTED || result.action == AP_ACTION_TRIGGERED) {
+            /* A: Open detail screen */
+            if (show_rom_detail_screen(&roms[real], console, mode, settings)) {
+                free(filter_map);
+                free(roms);
+                return true;
+            }
+            continue;
+        }
+
+        if (result.action == AP_ACTION_SECONDARY_TRIGGERED) {
+            /* X: Queue all visible (filtered) ROMs */
+            queue_set_settings(settings);
+
+            /* Count how many visible ROMs are already installed */
+            int installed_count = 0;
+            for (int vi = 0; vi < visible_count; vi++) {
+                int ri = filter_map[vi];
+                bool is_inst = (mode == LIB_MODE_ART)
+                    ? artwork_exists(roms[ri].path, roms[ri].display)
+                    : (mode == LIB_MODE_CHEAT)
+                        ? cheat_exists(console->tag, roms[ri].display)
+                        : manual_exists(settings->manual_download_dir, console->tag, roms[ri].display);
+                if (is_inst) installed_count++;
+            }
+
+            bool force = false;
+            if (installed_count > 0) {
+                ap_list_item choices[] = {
+                    {.label = "Queue missing only"},
+                    {.label = "Re-download all (including installed)"},
+                };
+                ap_footer_item cf[] = {
+                    {AP_BTN_B, "CANCEL", false},
+                    {AP_BTN_A, "SELECT", true},
+                };
+                char choice_title[64];
+                snprintf(choice_title, sizeof(choice_title),
+                         "%d already installed", installed_count);
+                ap_list_opts copts = ap_list_default_opts(choice_title, choices, 2);
+                copts.footer       = cf;
+                copts.footer_count = 2;
+                copts.status_bar   = &g_status_bar;
+                ap_list_result cres;
+                int cret = ap_list(&copts, &cres);
+                if (cret == AP_CANCELLED || cres.selected_index < 0)
+                    continue;
+                force = (cres.selected_index == 1);
+            }
+
+            int added = 0;
+            for (int vi = 0; vi < visible_count; vi++) {
+                int ri = filter_map[vi];
+                if (force) {
+                    bool ok = (mode == LIB_MODE_ART)
+                        ? queue_add_artwork_forced(&roms[ri], console)
+                        : (mode == LIB_MODE_CHEAT)
+                            ? queue_add_cheat_forced(&roms[ri], console)
+                            : queue_add_manual_forced(&roms[ri], console);
+                    if (ok) added++;
+                } else {
+                    bool ok = (mode == LIB_MODE_ART)
+                        ? queue_add_artwork(&roms[ri], console)
+                        : (mode == LIB_MODE_CHEAT)
+                            ? queue_add_cheat(&roms[ri], console)
+                            : queue_add_manual(&roms[ri], console);
+                    if (ok) added++;
+                }
+            }
+
+            char msg[128];
+            const char *mode_name = (mode == LIB_MODE_ART) ? "artwork"
+                                   : (mode == LIB_MODE_CHEAT) ? "cheats"
+                                   : "manuals";
+            snprintf(msg, sizeof(msg), "Queued %d ROMs for %s.", added, mode_name);
+            if (show_track_progress_prompt(msg)) {
+                free(filter_map);
+                free(roms);
+                return true;
+            }
+            continue;
+        }
+    }
+
+    free(filter_map);
+    free(roms);
+    return false;
+}
+
+/* ── ROM detail screen ───────────────────────────────────── */
+
+static bool show_rom_detail_screen(const rom_file *rom,
+                                    const console_dir *console,
+                                    library_mode mode,
+                                    const app_settings *settings) {
+    bool is_art = (mode == LIB_MODE_ART);
+    bool is_cheat = (mode == LIB_MODE_CHEAT);
+    bool is_installed = is_art
+        ? artwork_exists(rom->path, rom->display)
+        : is_cheat
+            ? cheat_exists(console->tag, rom->display)
+            : manual_exists(settings->manual_download_dir, console->tag, rom->display);
+
+    queue_item_type qtype = is_art ? QUEUE_TYPE_ARTWORK
+                          : is_cheat ? QUEUE_TYPE_CHEAT
+                          : QUEUE_TYPE_MANUAL;
+    queue_item_status qs = queue_get_rom_status(rom->path, qtype);
+    bool is_queued = (qs >= QUEUE_IDLE && qs <= QUEUE_MATCHING);
+
+    const char *status_str;
+    if (is_queued)
+        status_str = rom_status_label(rom, console, mode, settings);
+    else if (is_installed)
+        status_str = "Installed";
+    else
+        status_str = "Missing";
+    if (!status_str) status_str = "Missing";
+
+    /* Image section — show artwork if present */
+    char art_path[PATH_MAX] = {0};
+    bool has_art_image = false;
+    if (is_art) {
+        artwork_src_path(rom->path, rom->display, art_path, sizeof(art_path));
+        struct stat st;
+        has_art_image = (stat(art_path, &st) == 0);
+    }
+
+    /* Cheat list section — if cheat mode and installed */
+    cheat_detail_section_data cheat_detail = {0};
+    if (is_cheat && is_installed) {
+        char cheats_base[PATH_MAX];
+        char cht_path[PATH_MAX];
+        get_cheats_path(cheats_base, sizeof(cheats_base));
+        snprintf(cht_path, sizeof(cht_path), "%s/%s/%s.cht",
+                 cheats_base, console->tag, rom->display);
+
+        load_cheat_detail_section(cht_path, &cheat_detail);
+    }
+
+    int max_sections = 1 + (has_art_image ? 1 : 0) + cheat_detail.count;
+    ap_detail_section *sections =
+        calloc((size_t)(max_sections > 0 ? max_sections : 1), sizeof(*sections));
+    if (!sections) {
+        free_cheat_detail_section_data(&cheat_detail);
+        show_error("Out of memory.");
+        return false;
+    }
+
+    int section_count = 0;
+    if (has_art_image) {
+        sections[section_count] = (ap_detail_section){
+            .type = AP_SECTION_IMAGE,
+            .title = NULL,
+            .image_path = art_path,
+            .image_w = ap_scale(320),
+            .image_h = ap_scale(320),
+        };
+        section_count++;
+    }
+
+    const char *type_str = is_art ? "Artwork" : is_cheat ? "Cheat" : "Manual";
+    ap_detail_info_pair info_pairs[] = {
+        {"Status", status_str},
+        {"System", console->display},
+        {"Type",   type_str},
+    };
+    sections[section_count] = (ap_detail_section){
+        .type = AP_SECTION_INFO,
+        .title = NULL,
+        .info_pairs = info_pairs,
+        .info_count = 3,
+    };
+    section_count++;
+
+    for (int i = 0; i < cheat_detail.count; i++) {
+        sections[section_count] = (ap_detail_section){
+            .type = AP_SECTION_DESCRIPTION,
+            .title = (i == 0) ? cheat_detail.title : NULL,
+            .description = cheat_detail.lines[i],
+        };
+        section_count++;
+    }
+
+    /* Footer: B=Back, A=Queue (or Re-download) */
+    const char *action_label = is_queued ? "QUEUED" :
+                               is_installed ? "RE-DOWNLOAD" : "QUEUE";
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "BACK",       false},
+        {AP_BTN_A, action_label, true},
+    };
+    int footer_count = is_queued ? 1 : 2; /* hide A if already queued */
+
+    ap_detail_opts opts = {
+        .title         = rom->label[0] ? rom->label : rom->display,
+        .sections      = sections,
+        .section_count = section_count,
+        .footer        = footer,
+        .footer_count  = footer_count,
+        .status_bar    = &g_status_bar,
+    };
+
+    ap_detail_result result;
+    ap_detail_screen(&opts, &result);
+
+    const char *mode_name = is_art ? "artwork" : is_cheat ? "cheats" : "manuals";
+    if (result.action == AP_DETAIL_ACTION && !is_queued) {
+        if (is_installed) {
+            queue_set_settings(settings);
+            if (is_art)
+                queue_add_artwork_forced(rom, console);
+            else if (is_cheat)
+                queue_add_cheat_forced(rom, console);
+            else
+                queue_add_manual_forced(rom, console);
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Re-queued \"%s\" for %s.",
+                     rom->label[0] ? rom->label : rom->display, mode_name);
+            if (show_track_progress_prompt(msg)) {
+                free(sections);
+                free_cheat_detail_section_data(&cheat_detail);
+                return true;
+            }
+        } else {
+            queue_set_settings(settings);
+            bool added;
+            if (is_art)
+                added = queue_add_artwork(rom, console);
+            else if (is_cheat)
+                added = queue_add_cheat(rom, console);
+            else
+                added = queue_add_manual(rom, console);
+            if (added) {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "Queued \"%s\" for %s.",
+                         rom->label[0] ? rom->label : rom->display, mode_name);
+                if (show_track_progress_prompt(msg)) {
+                    free(sections);
+                    free_cheat_detail_section_data(&cheat_detail);
+                    return true;
+                }
+            } else {
+                show_brief("Already queued.");
+            }
+        }
+    }
+
+    free(sections);
+    free_cheat_detail_section_data(&cheat_detail);
+    return false;
+}
+
+/* ── Library: System list ─────────────────────────────────── */
+
+/* ── System mapping picker ────────────────────────────────── */
+
+/* A folder's suffix names the emulator NextUI launches, which does not always
+ * name one scraping platform. The picker lets a user say what a folder holds,
+ * either for that folder alone or as their own default for the suffix. */
+
+typedef enum {
+    PICKER_ROW_SCOPE,
+    PICKER_ROW_VISIBILITY,
+    PICKER_ROW_CLEAR,
+    PICKER_ROW_PLATFORM,
+} picker_row_kind;
+
+typedef struct {
+    picker_row_kind kind;
+    int platform;       /* catalog index, for PICKER_ROW_PLATFORM */
+} picker_row;
+
+/* Editing a mapping is refused while work is queued: a job keeps the provider
+ * target it was queued with, and retargeting live work is not supported. */
+static bool ensure_mapping_edit_allowed(void) {
+    if (queue_begin_mapping_edit())
+        return true;
+    show_error("Wait for downloads to finish or cancel them before changing "
+               "system mappings.");
+    return false;
+}
+
+static const char *provider_summary(const sg_platform *platform) {
+    if (!platform)
+        return "";
+    bool art = platform->ss_id >= 0;
+    bool cheats = platform->libretro_dir != NULL;
+    if (art && cheats) return "Art + Cheats";
+    if (art)           return "Art only";
+    if (cheats)        return "Cheats only";
+    return "No providers";
+}
+
+static int compare_platform_names(const void *a, const void *b) {
+    const sg_platform *pa = systems_platform_at(*(const int *)a);
+    const sg_platform *pb = systems_platform_at(*(const int *)b);
+    int order = strcasecmp(pa->name, pb->name);
+    return order != 0 ? order : strcmp(pa->id, pb->id);
+}
+
+static void describe_mapping(const sg_mapping *mapping, const char *tag,
+                             char *buf, size_t buflen) {
+    const char *source =
+        mapping->source == MAPPING_USER_FOLDER ? "this folder"
+      : mapping->source == MAPPING_USER_TAG    ? "your default for this suffix"
+      : mapping->source == MAPPING_BUILTIN     ? "the bundled default"
+      : "nothing";
+
+    if (!mapping->platform) {
+        const sg_platform *candidates[8];
+        int count = systems_tag_candidates(tag, candidates, 8);
+        if (count > 0)
+            snprintf(buf, buflen,
+                     "No platform selected. The %s suffix can hold %d different "
+                     "systems, so there is no safe default.", tag, count);
+        else
+            snprintf(buf, buflen,
+                     "No platform selected for the %s suffix yet.", tag);
+        return;
+    }
+    snprintf(buf, buflen, "%s — %s, set by %s.",
+             mapping->platform->name, provider_summary(mapping->platform), source);
+}
+
+/* Returns true when a mapping was saved. `console` may be NULL to edit a
+ * suffix default with no folder in hand. */
+static bool show_mapping_picker(const console_dir *console, const char *tag) {
+    if (systems_platform_count() <= 0) {
+        show_error("The platform catalog is not loaded.");
+        return false;
+    }
+
+    int total = systems_platform_count();
+    int *sorted = malloc(sizeof(int) * (size_t)total);
+    if (!sorted) {
+        show_error("Out of memory.");
+        return false;
+    }
+    for (int i = 0; i < total; i++)
+        sorted[i] = i;
+    qsort(sorted, (size_t)total, sizeof(int), compare_platform_names);
+
+    bool folder_scope = console != NULL;
+    bool changed = false;
+    char filter[128] = "";
+    int initial_idx = 0;
+    int visible_start = 0;
+
+    picker_row *rows = malloc(sizeof(picker_row) * (size_t)(total + 4));
+    char (*labels)[192] = malloc(sizeof(char[192]) * (size_t)(total + 4));
+    char (*meta)[40]    = malloc(sizeof(char[40])  * (size_t)(total + 4));
+    const sg_platform *suggestions[8];
+
+    if (!rows || !labels || !meta) {
+        show_error("Out of memory.");
+        free(sorted); free(rows); free(labels); free(meta);
+        return false;
+    }
+
+    for (;;) {
+        sg_mapping mapping = systems_resolve(console ? console->path : NULL, tag);
+        const sg_platform *effective = mapping.platform;
+        int row_count = 0;
+
+        rows[row_count].kind = PICKER_ROW_SCOPE;
+        snprintf(labels[row_count], 192, "Applies to: %s",
+                 folder_scope ? "this folder" : "every folder with this suffix");
+        snprintf(meta[row_count], 40, "%s", folder_scope ? "folder" : tag);
+        row_count++;
+
+        if (console) {
+            rows[row_count].kind = PICKER_ROW_VISIBILITY;
+            snprintf(labels[row_count], 192, "%s this folder",
+                     mapping.hidden ? "Show" : "Hide");
+            snprintf(meta[row_count], 40, "%s",
+                     mapping.hidden ? "hidden" : "visible");
+            row_count++;
+        }
+
+        /* Only offer a clear when something is actually saved at this scope:
+         * a bundled-only mapping has nothing to clear. */
+        bool clearable = folder_scope
+            ? (console && mapping.source == MAPPING_USER_FOLDER)
+            : (systems_resolve(NULL, tag).source == MAPPING_USER_TAG);
+        if (clearable) {
+            rows[row_count].kind = PICKER_ROW_CLEAR;
+            /* Name what clearing actually falls back to: for a folder that is
+             * the suffix default, for a suffix default it is the bundled one,
+             * and either may be nothing at all. */
+            const sg_platform *fallback = folder_scope
+                ? systems_resolve(NULL, tag).platform
+                : systems_builtin_tag(tag);
+            snprintf(labels[row_count], 192, "Clear this %s mapping",
+                     folder_scope ? "folder's" : "suffix");
+            snprintf(meta[row_count], 40, "%s",
+                     fallback ? fallback->name : "unmapped");
+            row_count++;
+        }
+
+        int suggestion_count = systems_suggest(tag, console ? console->display : NULL,
+                                               filter[0] ? filter : NULL,
+                                               suggestions, 8);
+        for (int i = 0; i < suggestion_count && row_count < total + 4; i++) {
+            int index = -1;
+            for (int p = 0; p < total; p++) {
+                if (systems_platform_at(p) == suggestions[i]) { index = p; break; }
+            }
+            if (index < 0) continue;
+            rows[row_count].kind = PICKER_ROW_PLATFORM;
+            rows[row_count].platform = index;
+            snprintf(labels[row_count], 192, "%s%s", suggestions[i]->name,
+                     suggestions[i] == effective ? "  •" : "");
+            snprintf(meta[row_count], 40, "%s", provider_summary(suggestions[i]));
+            row_count++;
+        }
+
+        for (int i = 0; i < total && row_count < total + 4; i++) {
+            int index = sorted[i];
+            const sg_platform *platform = systems_platform_at(index);
+            bool duplicate = false;
+            for (int s = 0; s < suggestion_count; s++) {
+                if (suggestions[s] == platform) { duplicate = true; break; }
+            }
+            if (duplicate)
+                continue;
+            if (!systems_platform_matches(platform, filter))
+                continue;
+            rows[row_count].kind = PICKER_ROW_PLATFORM;
+            rows[row_count].platform = index;
+            snprintf(labels[row_count], 192, "%s%s", platform->name,
+                     platform == effective ? "  •" : "");
+            snprintf(meta[row_count], 40, "%s", provider_summary(platform));
+            row_count++;
+        }
+
+        char title[128];
+        if (console)
+            snprintf(title, sizeof(title), "%s (%s)", console->display, tag);
+        else
+            snprintf(title, sizeof(title), "Suffix default: %s", tag);
+
+        char help[512];
+        describe_mapping(&mapping, tag, help, sizeof(help));
+        size_t used = strlen(help);
+        if (console) {
+            snprintf(help + used, sizeof(help) - used, "\n\nFolder: %s.%s%s",
+                     console->name,
+                     mapping.hidden ? " Hidden in ScrapeGoat." : "",
+                     console->is_disabled ? " Disabled by its folder name."
+                       : console->name[0] == '.' ? " Hidden by its folder name." : "");
+            used = strlen(help);
+        }
+        snprintf(help + used, sizeof(help) - used,
+                 "\n\nA folder's own choice always wins over a suffix default. "
+                 "Not every platform has both artwork and cheats.%s",
+                 filter[0] ? "\n\nSearch is active; press Y to change it." : "");
+
+        ap_list_item *items = calloc((size_t)row_count, sizeof(ap_list_item));
+        if (!items) break;
+        for (int i = 0; i < row_count; i++) {
+            items[i].label = labels[i];
+            items[i].trailing_text = meta[i];
+        }
+
+        ap_footer_item footer[] = {
+            {AP_BTN_A, "SELECT", true},
+            {AP_BTN_Y, filter[0] ? "SEARCH*" : "SEARCH", false},
+            {AP_BTN_B, "BACK", false},
+        };
+        ap_list_opts opts = ap_list_default_opts(title, items, row_count);
+        opts.footer = footer;
+        opts.footer_count = 3;
+        opts.status_bar = &g_status_bar;
+        opts.help_text = help;
+        opts.secondary_action_button = AP_BTN_Y;
+        opts.initial_index = initial_idx < row_count ? initial_idx : 0;
+        opts.visible_start_index = visible_start;
+
+        ap_list_result result;
+        int ret = ap_list(&opts, &result);
+        free(items);
+        if (ret == AP_CANCELLED)
+            break;
+
+        initial_idx = result.selected_index;
+        visible_start = result.visible_start_index;
+
+        if (result.action == AP_ACTION_SECONDARY_TRIGGERED) {
+            ap_keyboard_result kb;
+            if (ap_keyboard(filter, "B: Cancel", AP_KB_GENERAL, &kb) == AP_OK) {
+                snprintf(filter, sizeof(filter), "%s", kb.text);
+                initial_idx = 0;
+                visible_start = 0;
+            }
+            continue;
+        }
+
+        if (result.action != AP_ACTION_SELECTED
+            && result.action != AP_ACTION_TRIGGERED)
+            continue;
+
+        int sel = result.selected_index;
+        if (sel < 0 || sel >= row_count)
+            continue;
+
+        switch (rows[sel].kind) {
+        case PICKER_ROW_SCOPE:
+            if (console)
+                folder_scope = !folder_scope;
+            initial_idx = 0;
+            visible_start = 0;
+            break;
+
+        case PICKER_ROW_VISIBILITY: {
+            if (!console || !ensure_mapping_edit_allowed())
+                break;
+            if (systems_set_folder_hidden(console->path, !mapping.hidden) != 0) {
+                show_error(systems_last_error()
+                           ? systems_last_error()
+                           : "Could not save the change.");
+                break;
+            }
+            changed = true;
+            break;
+        }
+
+        case PICKER_ROW_CLEAR: {
+            if (!ensure_mapping_edit_allowed())
+                break;
+            int rc = folder_scope
+                ? systems_set_folder_platform(console->path, NULL)
+                : systems_set_tag(tag, NULL);
+            if (rc != 0) {
+                show_error(systems_last_error()
+                           ? systems_last_error()
+                           : "Could not save the change.");
+                break;
+            }
+            changed = true;
+            break;
+        }
+
+        case PICKER_ROW_PLATFORM: {
+            if (!ensure_mapping_edit_allowed())
+                break;
+            const sg_platform *platform = systems_platform_at(rows[sel].platform);
+            if (!platform)
+                break;
+            int rc = folder_scope
+                ? systems_set_folder_platform(console->path, platform->id)
+                : systems_set_tag(tag, platform->id);
+            if (rc != 0) {
+                show_error(systems_last_error()
+                           ? systems_last_error()
+                           : "Could not save the change.");
+                break;
+            }
+            changed = true;
+            goto done;
+        }
+        }
+    }
+
+done:
+    free(sorted);
+    free(rows);
+    free(labels);
+    free(meta);
+    return changed;
+}
+
+/* ── Library browser ──────────────────────────────────────── */
+
+/* Everything the library list needs for one pass. A mapping edit can change
+ * which folders appear and what they are called, so the whole view is rebuilt
+ * rather than patched. */
+typedef struct {
+    console_dir  *consoles;
+    int           console_count;
+    char        (*names)[512];
+    system_stats *stats;
+    int          *visible_map;
+    int           visible_count;
+    char        (*labels)[512];
+    char        (*meta)[40];
+} library_view;
+
+static void library_view_free(library_view *view) {
+    free(view->consoles);
+    free(view->names);
+    free(view->stats);
+    free(view->visible_map);
+    free(view->labels);
+    free(view->meta);
+    memset(view, 0, sizeof(*view));
+}
+
+/* A folder appears in a mode when it is not hidden and either has no platform
+ * yet — so the user can fix that — or has one this mode can use. */
+static bool console_visible_in_mode(const system_stats *stats, library_mode mode) {
+    if (stats->hidden)
+        return false;
+    if (!stats->mapped)
+        return true;
+    if (mode == LIB_MODE_CHEAT)
+        return stats->has_libretro;
+    return stats->has_ss;
+}
+
+static bool library_view_build(library_view *view, library_mode mode,
+                               const app_settings *settings) {
+    memset(view, 0, sizeof(*view));
+
+    view->console_count = scan_console_dirs(settings->show_hidden, &view->consoles);
+    if (view->console_count <= 0) {
+        free(view->consoles);
+        memset(view, 0, sizeof(*view));
+        return false;
+    }
+
+    size_t count = (size_t)view->console_count;
+    view->names       = malloc(sizeof(char[512]) * count);
+    view->stats       = malloc(sizeof(system_stats) * count);
+    view->visible_map = malloc(sizeof(int) * count);
+    view->labels      = malloc(sizeof(char[512]) * count);
+    view->meta        = malloc(sizeof(char[40]) * count);
+    if (!view->names || !view->stats || !view->visible_map
+        || !view->labels || !view->meta) {
+        library_view_free(view);
+        return false;
+    }
+
+    build_console_menu_names(view->consoles, view->console_count, view->names);
+
+    /* Manual counts cost an extra stat() per ROM, so only pay for them in
+     * manual mode. */
+    const char *manual_dir = (mode == LIB_MODE_MANUAL)
+        ? settings->manual_download_dir : NULL;
+    for (int i = 0; i < view->console_count; i++)
+        view->stats[i] = compute_system_stats(&view->consoles[i],
+                                              settings->show_hidden, manual_dir);
+
+    for (int i = 0; i < view->console_count; i++) {
+        if (!console_visible_in_mode(&view->stats[i], mode))
+            continue;
+        int vi = view->visible_count++;
+        view->visible_map[vi] = i;
+        snprintf(view->labels[vi], 512, "%s", view->names[i]);
+        if (!view->stats[i].mapped) {
+            snprintf(view->meta[vi], 40, "unmapped");
+        } else {
+            int done = (mode == LIB_MODE_ART)   ? view->stats[i].art_count
+                     : (mode == LIB_MODE_CHEAT) ? view->stats[i].cheat_count
+                     : view->stats[i].manual_count;
+            snprintf(view->meta[vi], 40, "%d / %d", done, view->stats[i].rom_count);
+        }
+    }
+    return true;
+}
+
+/* Keep the cursor on the same folder across a rebuild; clamp when its row is
+ * gone because a mapping change made it ineligible. */
+static int library_index_for_path(const library_view *view, const char *path) {
+    if (!path || !path[0])
+        return 0;
+    for (int vi = 0; vi < view->visible_count; vi++) {
+        if (strcmp(view->consoles[view->visible_map[vi]].path, path) == 0)
+            return vi;
+    }
+    return 0;
+}
+
+static bool show_library_screen(library_mode mode) {
+    app_settings settings = load_settings();
+
+    const char *title = (mode == LIB_MODE_ART) ? "Artwork"
+                      : (mode == LIB_MODE_CHEAT) ? "Cheats"
+                      : "Manuals";
+
+    library_view view;
+    if (!library_view_build(&view, mode, &settings)) {
+        show_error("No ROM folders found.");
+        free_settings(&settings);
+        return false;
+    }
+
+    char selected_path[PATH_MAX] = "";
+    int initial_idx = 0;
+    int visible_start = 0;
+    bool started_work = false;
+
+    for (;;) {
+        if (view.visible_count <= 0) {
+            const char *message = (mode == LIB_MODE_CHEAT)
+                ? "No folders are available for cheats. Map a folder to a "
+                  "platform with a cheat database, or unhide one in Settings."
+                : (mode == LIB_MODE_ART)
+                    ? "No folders are available for artwork. Map a folder to a "
+                      "platform ScreenScraper covers, or unhide one in Settings."
+                    : "No folders are available for manuals. Map a folder to a "
+                      "platform ScreenScraper covers, or unhide one in Settings.";
+            show_error(message);
+            break;
+        }
+
+        ap_list_item *items = calloc((size_t)view.visible_count, sizeof(ap_list_item));
+        if (!items) {
+            show_error("Out of memory.");
+            break;
+        }
+        for (int vi = 0; vi < view.visible_count; vi++) {
+            items[vi].label = view.labels[vi];
+            items[vi].trailing_text = view.meta[vi];
+        }
+
+        ap_footer_item footer[] = {
+            {AP_BTN_A, "OPEN", true},
+            {AP_BTN_X, "MAP", false},
+            {AP_BTN_B, "BACK", false},
+        };
+
+        ap_list_opts opts = ap_list_default_opts(title, items, view.visible_count);
+        opts.footer = footer;
+        opts.footer_count = 3;
+        opts.status_bar = &g_status_bar;
+        opts.secondary_action_button = AP_BTN_X;
+        opts.initial_index = initial_idx < view.visible_count ? initial_idx : 0;
+        opts.visible_start_index = visible_start;
+
+        ap_list_result result;
+        int ret = ap_list(&opts, &result);
+        free(items);
+        if (ret == AP_CANCELLED)
+            break;
+
+        int sel = result.selected_index;
+        if (sel < 0 || sel >= view.visible_count)
+            break;
+
+        initial_idx = sel;
+        visible_start = result.visible_start_index;
+        int real_idx = view.visible_map[sel];
+        console_dir *console = &view.consoles[real_idx];
+        snprintf(selected_path, sizeof(selected_path), "%s", console->path);
+
+        bool open_picker = result.action == AP_ACTION_SECONDARY_TRIGGERED
+                        || !view.stats[real_idx].mapped;
+
+        if (open_picker) {
+            /* A picker call can change a sibling too, through a suffix
+             * default, so rebuild the whole view afterwards. */
+            bool changed = show_mapping_picker(console, console->tag);
+            if (!changed)
+                continue;
+
+            library_view rebuilt;
+            if (!library_view_build(&rebuilt, mode, &settings)) {
+                show_error("No ROM folders found.");
+                break;
+            }
+            library_view_free(&view);
+            view = rebuilt;
+            initial_idx = library_index_for_path(&view, selected_path);
+            visible_start = 0;
+            continue;
+        }
+
+        if (show_rom_list_screen(console, &settings, mode)) {
+            started_work = true;
+            break;
+        }
+    }
+
+    library_view_free(&view);
+    free_settings(&settings);
+    return started_work;
+}
+
+/* ── API Usage screen ─────────────────────────────────────── */
+
+static void show_api_usage_screen(void) {
+    queue_api_stats api = queue_get_api_stats();
+
+    if (api.max_requests <= 0) {
+        show_brief("No API data available yet.\n\nStats update after the first\nartwork search.");
+        return;
+    }
+
+    char req_today[32], daily_limit[32], remaining[32], threads[32];
+    snprintf(req_today,   sizeof(req_today),   "%d", api.requests_today);
+    snprintf(daily_limit, sizeof(daily_limit), "%d", api.max_requests);
+    snprintf(remaining,   sizeof(remaining),   "%d", api.max_requests - api.requests_today);
+    snprintf(threads,     sizeof(threads),     "%d", api.max_threads);
+
+    ap_detail_info_pair info_pairs[] = {
+        {"Requests Today", req_today},
+        {"Daily Limit",    daily_limit},
+        {"Remaining",      remaining},
+        {"Threads",        threads},
+    };
+    ap_detail_section sections[] = {{
+        .type       = AP_SECTION_INFO,
+        .title      = NULL,
+        .info_pairs = info_pairs,
+        .info_count = 4,
+    }};
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "BACK", false},
+    };
+    ap_detail_opts opts = {
+        .title         = "API Usage",
+        .sections      = sections,
+        .section_count = 1,
+        .footer        = footer,
+        .footer_count  = 1,
+        .status_bar    = &g_status_bar,
+    };
+    ap_detail_result result;
+    ap_detail_screen(&opts, &result);
+}
+
+/* ── Progress screen (custom render loop) ─────────────────── */
+
+static const char *queue_status_text(queue_item_status status) {
+    switch (status) {
+    case QUEUE_NONE:        return "-";
+    case QUEUE_IDLE:        return "Queued";
+    case QUEUE_SEARCHING:   return "Searching...";
+    case QUEUE_DOWNLOADING: return "Downloading...";
+    case QUEUE_CLONING:     return "Cloning db...";
+    case QUEUE_MATCHING:    return "Matching...";
+    case QUEUE_DONE:        return "Done";
+    case QUEUE_NOT_FOUND:   return "Not Found";
+    case QUEUE_ERROR:       return "Error";
+    case QUEUE_SKIPPED:     return "Skipped";
+    }
+    return "?";
+}
+
+static bool is_item_terminal(queue_item_status status) {
+    return status == QUEUE_DONE || status == QUEUE_SKIPPED ||
+           status == QUEUE_ERROR || status == QUEUE_NOT_FOUND;
+}
+
+static void show_item_detail(const queue_item *item) {
+    bool is_error = (item->status == QUEUE_ERROR ||
+                     item->status == QUEUE_NOT_FOUND);
+    bool is_cheat = (item->type == QUEUE_TYPE_CHEAT);
+    bool is_art = (item->type == QUEUE_TYPE_ARTWORK);
+
+    /* Error detail */
+    cheat_detail_section_data cheat_detail = {0};
+    char art_path[PATH_MAX] = {0};
+    bool has_art_image = false;
+    bool has_error = false;
+
+    if (is_error) {
+        has_error = true;
+    } else if (is_cheat) {
+        /* Parse and display cheat descriptions */
+        char cheats_base[PATH_MAX];
+        char cht_path[PATH_MAX];
+        get_cheats_path(cheats_base, sizeof(cheats_base));
+        snprintf(cht_path, sizeof(cht_path), "%s/%s/%s.cht",
+                 cheats_base, item->system_tag, item->rom_display);
+
+        load_cheat_detail_section(cht_path, &cheat_detail);
+    } else if (is_art) {
+        /* Artwork: show the image */
+        artwork_src_path(item->rom_path, item->rom_display,
+                         art_path, sizeof(art_path));
+        struct stat st;
+        has_art_image = (stat(art_path, &st) == 0);
+    }
+
+    int max_sections = 1 + (has_error ? 1 : 0) + (has_art_image ? 1 : 0) + cheat_detail.count;
+    ap_detail_section *sections =
+        calloc((size_t)(max_sections > 0 ? max_sections : 1), sizeof(*sections));
+    if (!sections) {
+        free_cheat_detail_section_data(&cheat_detail);
+        show_error("Out of memory.");
+        return;
+    }
+
+    int section_count = 0;
+    const char *status_str = queue_status_text(item->status);
+    const char *type_str = is_art ? "Artwork" : is_cheat ? "Cheat" : "Manual";
+    ap_detail_info_pair info_pairs[] = {
+        {"Status", status_str},
+        {"System", item->system_display},
+        {"Type", type_str},
+    };
+    sections[section_count] = (ap_detail_section){
+        .type = AP_SECTION_INFO,
+        .title = NULL,
+        .info_pairs = info_pairs,
+        .info_count = 3,
+    };
+    section_count++;
+
+    if (has_error) {
+        const char *not_found_msg = is_cheat
+            ? "Not found in libretro database"
+            : "Not found in ScreenScraper.fr database";
+        const char *msg = item->error_msg[0] ? item->error_msg :
+                          (item->status == QUEUE_NOT_FOUND
+                              ? not_found_msg
+                              : "An unknown error occurred");
+        sections[section_count] = (ap_detail_section){
+            .type = AP_SECTION_DESCRIPTION,
+            .title = "Error",
+            .description = msg,
+        };
+        section_count++;
+    } else if (is_cheat) {
+        for (int i = 0; i < cheat_detail.count; i++) {
+            sections[section_count] = (ap_detail_section){
+                .type = AP_SECTION_DESCRIPTION,
+                .title = (i == 0) ? cheat_detail.title : NULL,
+                .description = cheat_detail.lines[i],
+            };
+            section_count++;
+        }
+    } else if (has_art_image) {
+        sections[section_count] = (ap_detail_section){
+            .type = AP_SECTION_IMAGE,
+            .title = NULL,
+            .image_path = art_path,
+            .image_w = ap_scale(320),
+            .image_h = ap_scale(320),
+        };
+        section_count++;
+    }
+
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "BACK", false},
+    };
+
+    ap_detail_opts opts = {
+        .title = item->rom_display,
+        .sections = sections,
+        .section_count = section_count,
+        .footer = footer,
+        .footer_count = 1,
+        .status_bar = &g_status_bar,
+    };
+
+    ap_detail_result result;
+    ap_detail_screen(&opts, &result);
+
+    free(sections);
+    free_cheat_detail_section_data(&cheat_detail);
+}
+
+/* ── Progress screen (ap_queue_viewer) ────────────────────── */
+
+static ap_queue_status map_queue_status(queue_item_status s) {
+    switch (s) {
+    case QUEUE_IDLE:        return AP_QUEUE_PENDING;
+    case QUEUE_SEARCHING:
+    case QUEUE_DOWNLOADING:
+    case QUEUE_CLONING:
+    case QUEUE_MATCHING:    return AP_QUEUE_RUNNING;
+    case QUEUE_DONE:        return AP_QUEUE_DONE;
+    case QUEUE_NOT_FOUND:
+    case QUEUE_ERROR:       return AP_QUEUE_FAILED;
+    case QUEUE_SKIPPED:     return AP_QUEUE_SKIPPED;
+    default:                return AP_QUEUE_PENDING;
+    }
+}
+
+static int progress_snapshot(ap_queue_item *buf, int max, void *userdata) {
+    (void)userdata;
+    queue_item *items = malloc(sizeof(queue_item) * QUEUE_MAX_ITEMS);
+    if (!items) return 0;
+
+    int count = queue_snapshot(items, QUEUE_MAX_ITEMS);
+    if (count > max) count = max;
+
+    for (int i = 0; i < count; i++) {
+        memset(&buf[i], 0, sizeof(buf[i]));
+        snprintf(buf[i].title, sizeof(buf[i].title), "%s", items[i].rom_display);
+
+        const char *type_str = items[i].type == QUEUE_TYPE_ARTWORK ? "art"
+                             : items[i].type == QUEUE_TYPE_CHEAT ? "cht"
+                             : "pdf";
+        snprintf(buf[i].subtitle, sizeof(buf[i].subtitle), "%s  [%s]",
+                 items[i].system_display, type_str);
+
+        snprintf(buf[i].status_text, sizeof(buf[i].status_text), "%s",
+                 queue_status_text(items[i].status));
+
+        buf[i].status   = map_queue_status(items[i].status);
+        buf[i].progress = -1.0f; /* no inline progress bar */
+        buf[i].userdata = (void *)(uintptr_t)items[i].id;
+    }
+
+    free(items);
+    return count;
+}
+
+static void progress_on_detail(const ap_queue_item *item, void *userdata) {
+    (void)userdata;
+    uint32_t item_id = (uint32_t)(uintptr_t)item->userdata;
+    if (item_id == 0)
+        return;
+
+    /* Find the matching queue item to pass to show_item_detail */
+    queue_item *items = malloc(sizeof(queue_item) * QUEUE_MAX_ITEMS);
+    if (!items) return;
+
+    int count = queue_snapshot(items, QUEUE_MAX_ITEMS);
+    for (int i = 0; i < count; i++) {
+        if (items[i].id == item_id &&
+            is_item_terminal(items[i].status)) {
+            show_item_detail(&items[i]);
+            break;
+        }
+    }
+    free(items);
+}
+
+static void progress_on_cancel(void *userdata) {
+    (void)userdata;
+    ap_footer_item cfooter[] = {
+        {AP_BTN_B, "NO",  false},
+        {AP_BTN_A, "YES", true},
+    };
+    ap_message_opts mopts = {
+        .message = "Cancel all downloads?\n\nIn-progress items will be stopped\n"
+                   "and pending items will be skipped.",
+        .footer = cfooter,
+        .footer_count = 2,
+    };
+    ap_confirm_result cres;
+    ap_confirmation(&mopts, &cres);
+    if (cres.confirmed)
+        queue_cancel_all();
+}
+
+static void progress_on_clear(void *userdata) {
+    (void)userdata;
+    queue_clear_done();
+}
+
+static void show_progress_screen(void) {
+    ap_queue_opts opts = {
+        .title         = "Progress",
+        .snapshot      = progress_snapshot,
+        .max_items     = QUEUE_MAX_ITEMS,
+        .status_bar    = &g_status_bar,
+        .userdata      = NULL,
+        .on_detail     = progress_on_detail,
+        .on_cancel     = progress_on_cancel,
+        .on_clear      = progress_on_clear,
+        .filter_labels = { "ALL", "BUSY", "DONE", "FAIL" },
+    };
+    ap_queue_viewer(&opts);
+}
+
+typedef enum {
+    QUIT_QUEUE_KEEP_OPEN = 0,
+    QUIT_QUEUE_EXIT_AND_CANCEL,
+    QUIT_QUEUE_BACKGROUND,
+} quit_queue_action;
+
+static quit_queue_action show_quit_queue_dialog(int pending_count) {
+    ap_list_item items[] = {
+        { .label = "Keep ScrapeGoat Open" },
+        { .label = "Exit and Cancel Downloads" },
+        { .label = "Exit to Background" },
+    };
+
+    char title[64];
+    snprintf(title, sizeof(title), "%d item%s still queued",
+             pending_count, pending_count == 1 ? "" : "s");
+
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "KEEP OPEN", false},
+        {AP_BTN_A, "SELECT", true},
+    };
+
+    ap_list_opts opts = ap_list_default_opts(title, items, 3);
+    opts.footer = footer;
+    opts.footer_count = 2;
+    opts.status_bar = &g_status_bar;
+
+    ap_list_result result;
+    int ret = ap_list(&opts, &result);
+    if (ret == AP_CANCELLED || result.selected_index < 0)
+        return QUIT_QUEUE_KEEP_OPEN;
+
+    switch (result.selected_index) {
+    case 1: return QUIT_QUEUE_EXIT_AND_CANCEL;
+    case 2: return QUIT_QUEUE_BACKGROUND;
+    default: return QUIT_QUEUE_KEEP_OPEN;
+    }
+}
+
+/* ── Settings screen ──────────────────────────────────────── */
+
+static void edit_username(app_settings *settings) {
+    ap_keyboard_result result;
+    int ret = ap_keyboard(settings->ss_username, NULL,
+                           AP_KB_GENERAL, &result);
+    if (ret != AP_OK) return;
+
+    snprintf(settings->ss_username, sizeof(settings->ss_username), "%s", result.text);
+    save_settings(settings);
+}
+
+static void edit_password(app_settings *settings) {
+    ap_keyboard_result result;
+    int ret = ap_keyboard(settings->ss_password, NULL,
+                           AP_KB_GENERAL, &result);
+    if (ret != AP_OK) return;
+
+    snprintf(settings->ss_password, sizeof(settings->ss_password), "%s", result.text);
+    save_settings(settings);
+}
+
+/* ── Artwork priority editor ──────────────────────────────── */
+
+static void edit_artwork_priority(app_settings *settings) {
+    int count = 0;
+    char **types = build_artwork_types(settings, &count);
+
+    ap_list_item *items = calloc((size_t)count, sizeof(ap_list_item));
+    for (int i = 0; i < count; i++) {
+        items[i].label = media_type_display(types[i]);
+        items[i].metadata = types[i];
+    }
+
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "CANCEL", false},
+        {AP_BTN_X, "REORDER", false},
+        {AP_BTN_START, "SAVE", true},
+    };
+
+    ap_list_opts opts = ap_list_default_opts("Artwork Priority", items, count);
+    opts.reorder_button = AP_BTN_X;
+    opts.action_button = AP_BTN_START;
+    opts.footer = footer;
+    opts.footer_count = 3;
+    opts.status_bar = &g_status_bar;
+
+    ap_list_result result;
+    int ret = ap_list(&opts, &result);
+
+    if (ret == AP_OK &&
+        (result.action == AP_ACTION_TRIGGERED || result.action == AP_ACTION_CONFIRMED)) {
+        for (int i = 0; i < settings->artwork_prio_count; i++)
+            free(settings->artwork_prio[i]);
+        settings->artwork_prio_count = 0;
+
+        for (int i = 0; i < result.item_count && i < MAX_PRIORITY_ITEMS; i++) {
+            if (result.items[i].metadata)
+                settings->artwork_prio[settings->artwork_prio_count++] =
+                    strdup(result.items[i].metadata);
+        }
+        save_settings(settings);
+    }
+
+    free(items);
+    for (int i = 0; i < count; i++) free(types[i]);
+    free(types);
+}
+
+/* ── Region priority editor ───────────────────────────────── */
+
+static void edit_region_priority(app_settings *settings) {
+    int count = 0;
+    char **regions = build_region_types(settings, &count);
+
+    int list_count = 0;
+    for (int i = 0; i < count; i++) {
+        if (strcmp(regions[i], "cus") != 0)
+            list_count++;
+    }
+
+    ap_list_item *items = calloc((size_t)list_count, sizeof(ap_list_item));
+    int idx = 0;
+    for (int i = 0; i < count; i++) {
+        if (strcmp(regions[i], "cus") == 0) continue;
+        items[idx].label = region_display(regions[i]);
+        items[idx].metadata = regions[i];
+        idx++;
+    }
+
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "CANCEL", false},
+        {AP_BTN_X, "REORDER", false},
+        {AP_BTN_START, "SAVE", true},
+    };
+
+    ap_list_opts opts = ap_list_default_opts("Region Priority", items, list_count);
+    opts.reorder_button = AP_BTN_X;
+    opts.action_button = AP_BTN_START;
+    opts.footer = footer;
+    opts.footer_count = 3;
+    opts.status_bar = &g_status_bar;
+
+    ap_list_result result;
+    int ret = ap_list(&opts, &result);
+
+    if (ret == AP_OK &&
+        (result.action == AP_ACTION_TRIGGERED || result.action == AP_ACTION_CONFIRMED)) {
+        for (int i = 0; i < settings->region_prio_count; i++)
+            free(settings->region_prio[i]);
+        settings->region_prio_count = 0;
+
+        for (int i = 0; i < result.item_count && i < MAX_PRIORITY_ITEMS; i++) {
+            if (result.items[i].metadata)
+                settings->region_prio[settings->region_prio_count++] =
+                    strdup(result.items[i].metadata);
+        }
+        save_settings(settings);
+    }
+
+    free(items);
+    for (int i = 0; i < count; i++) free(regions[i]);
+    free(regions);
+}
+
+/* ── Artwork options sub-menu ─────────────────────────────── */
+
+/* ── Manual download directory editor ─────────────────────── */
+
+static void edit_manual_download_dir(app_settings *settings) {
+    ap_file_picker_opts fp = ap_file_picker_default_opts(NULL);
+    fp.mode = AP_FILE_PICKER_DIRS;
+    fp.allow_create = true;
+    fp.status_bar = &g_status_bar;
+    if (settings->manual_download_dir[0])
+        fp.initial_path = settings->manual_download_dir;
+
+    ap_file_picker_result result;
+    int ret = ap_file_picker(&fp, &result);
+    if (ret != AP_OK)
+        return;
+
+    snprintf(settings->manual_download_dir, sizeof(settings->manual_download_dir),
+             "%s", result.path);
+    save_settings(settings);
+}
+
+static void edit_artwork_options(app_settings *settings) {
+    for (;;) {
+        int art_count = 0;
+        char **art_types = build_artwork_types(settings, &art_count);
+        char art_summary[256] = "";
+        for (int i = 0; i < art_count && i < 3; i++) {
+            if (i > 0) strcat(art_summary, " > ");
+            strncat(art_summary, media_type_display(art_types[i]),
+                    sizeof(art_summary) - strlen(art_summary) - 1);
+        }
+        if (art_count > 3) strcat(art_summary, " > ...");
+
+        int reg_count = 0;
+        char **reg_types = build_region_types(settings, &reg_count);
+        char reg_summary[256] = "";
+        for (int i = 0; i < reg_count && i < 3; i++) {
+            if (strcmp(reg_types[i], "cus") == 0) continue;
+            if (reg_summary[0]) strcat(reg_summary, " > ");
+            strncat(reg_summary, region_display(reg_types[i]),
+                    sizeof(reg_summary) - strlen(reg_summary) - 1);
+        }
+        if (reg_count > 3) strcat(reg_summary, " > ...");
+
+        ap_option art_opt = {.label = art_summary, .value = "edit"};
+        ap_option reg_opt = {.label = reg_summary, .value = "edit"};
+
+        ap_options_item items[2] = {
+            {.label = "Artwork priority", .type = AP_OPT_CLICKABLE,
+             .options = &art_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Region priority", .type = AP_OPT_CLICKABLE,
+             .options = &reg_opt, .option_count = 1, .selected_option = 0},
+        };
+
+        ap_footer_item footer[] = {
+            {AP_BTN_B, "BACK", false},
+            {AP_BTN_A, "EDIT", false},
+            {AP_BTN_START, "DONE", true},
+        };
+
+        ap_options_list_opts opts = {
+            .title = "Artwork Options",
+            .items = items,
+            .item_count = 2,
+            .footer = footer,
+            .footer_count = 3,
+            .confirm_button = AP_BTN_START,
+            .status_bar = &g_status_bar,
+        };
+
+        ap_options_list_result result;
+        int ret = ap_options_list(&opts, &result);
+
+        for (int i = 0; i < art_count; i++) free(art_types[i]);
+        free(art_types);
+        for (int i = 0; i < reg_count; i++) free(reg_types[i]);
+        free(reg_types);
+
+        if (ret == AP_CANCELLED) return;
+
+        if (result.action == AP_ACTION_SELECTED) {
+            switch (result.focused_index) {
+            case 0: edit_artwork_priority(settings); break;
+            case 1: edit_region_priority(settings); break;
+            }
+            continue;
+        }
+
+        return;
+    }
+}
+
+/* ── Clear cheat cache ────────────────────────────────────── */
+
+typedef struct {
+    float *progress;
+    char   error[256];
+} clear_cache_ctx;
+
+static int remove_path_recursive(const char *path, char *error, size_t error_len) {
+    struct stat st;
+    if (lstat(path, &st) != 0) {
+        if (error && error_len > 0) {
+            snprintf(error, error_len, "Failed to inspect cache entry:\n%s",
+                     strerror(errno));
+        }
+        return -1;
+    }
+
+    if (S_ISDIR(st.st_mode)) {
+        DIR *dir = opendir(path);
+        if (!dir) {
+            if (error && error_len > 0) {
+                snprintf(error, error_len, "Failed to open cache directory:\n%s",
+                         strerror(errno));
+            }
+            return -1;
+        }
+
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            char child[PATH_MAX];
+            snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
+            if (remove_path_recursive(child, error, error_len) != 0) {
+                closedir(dir);
+                return -1;
+            }
+        }
+        closedir(dir);
+
+        if (rmdir(path) != 0) {
+            if (error && error_len > 0) {
+                snprintf(error, error_len, "Failed to remove cache directory:\n%s",
+                         strerror(errno));
+            }
+            return -1;
+        }
+        return 0;
+    }
+
+    if (unlink(path) != 0) {
+        if (error && error_len > 0) {
+            snprintf(error, error_len, "Failed to remove cache file:\n%s",
+                     strerror(errno));
+        }
+        return -1;
+    }
+    return 0;
+}
+
+static int clear_cache_worker(void *userdata) {
+    clear_cache_ctx *ctx = (clear_cache_ctx *)userdata;
+    float *progress = ctx ? ctx->progress : NULL;
+    char repo[PATH_MAX];
+    get_cheat_repo_path(repo, sizeof(repo));
+
+    if (ctx)
+        ctx->error[0] = '\0';
+
+    DIR *dir = opendir(repo);
+    if (!dir) {
+        if (errno != ENOENT) {
+            if (ctx) {
+                snprintf(ctx->error, sizeof(ctx->error),
+                         "Failed to open cheat cache directory:\n%s",
+                         strerror(errno));
+            }
+            return -1;
+        }
+        if (progress) *progress = 1.0f;
+        return 0;
+    }
+
+    /* Count entries first for progress tracking */
+    int total = 0;
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        total++;
+    }
+    rewinddir(dir);
+
+    if (total == 0) {
+        closedir(dir);
+        if (rmdir(repo) != 0 && errno != ENOENT) {
+            if (ctx) {
+                snprintf(ctx->error, sizeof(ctx->error),
+                         "Failed to remove cheat cache directory:\n%s",
+                         strerror(errno));
+            }
+            return -1;
+        }
+        if (progress) *progress = 1.0f;
+        return 0;
+    }
+
+    int done = 0;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", repo, entry->d_name);
+        if (remove_path_recursive(path,
+                                  ctx ? ctx->error : NULL,
+                                  ctx ? sizeof(ctx->error) : 0) != 0) {
+            closedir(dir);
+            return -1;
+        }
+        done++;
+        if (progress) *progress = (float)done / (float)total;
+    }
+    closedir(dir);
+    if (rmdir(repo) != 0 && errno != ENOENT) {
+        if (ctx) {
+            snprintf(ctx->error, sizeof(ctx->error),
+                     "Failed to remove cheat cache directory:\n%s",
+                     strerror(errno));
+        }
+        return -1;
+    }
+    if (progress) *progress = 1.0f;
+    return 0;
+}
+
+static void clear_cheat_cache(void) {
+    if (queue_is_active()) {
+        show_error("Wait for the queue to finish before clearing the cheat cache.");
+        return;
+    }
+
+    ap_footer_item footer[] = {
+        {AP_BTN_B, "CANCEL", false},
+        {AP_BTN_A, "CLEAR", true},
+    };
+    ap_message_opts msg_opts = {
+        .message = "Clear the downloaded cheat database?\n\nThis deletes the local git checkout.\nIt will be re-downloaded on next use.",
+        .footer = footer,
+        .footer_count = 2,
+    };
+    ap_confirm_result confirm;
+    int ret = ap_confirmation(&msg_opts, &confirm);
+    if (ret != AP_OK || !confirm.confirmed)
+        return;
+
+    float progress = 0.0f;
+    clear_cache_ctx ctx = {.progress = &progress};
+    ap_process_opts proc_opts = {
+        .message = "Clearing cheat cache...",
+        .show_progress = true,
+        .progress = &progress,
+    };
+    if (ap_process_message(&proc_opts, clear_cache_worker, &ctx) != 0) {
+        show_error(ctx.error[0]
+            ? ctx.error
+            : "Failed to clear the cheat cache.");
+        return;
+    }
+
+    if (!queue_invalidate_cheat_repo_state()) {
+        show_error("Cheat cache was cleared, but the in-memory queue state\n"
+                   "could not be refreshed.\n\nRestart the app before downloading\n"
+                   "cheats again.");
+    }
+}
+
+/* ── Settings screen ──────────────────────────────────────── */
+
+/* ── Settings: system mappings ────────────────────────────── */
+
+typedef enum {
+    MAP_ROW_SUFFIX_DEFAULTS,
+    MAP_ROW_FOLDER,
+    MAP_ROW_MISSING,   /* a saved override whose folder is gone */
+} map_row_kind;
+
+typedef struct {
+    map_row_kind kind;
+    int  console;                 /* index into consoles, for MAP_ROW_FOLDER */
+    char key[512];                /* folder key, for MAP_ROW_MISSING */
+    char tag[64];
+    bool unmapped;
+} map_row;
+
+static void folder_path_for_key(const char *key, char *buf, size_t buflen) {
+    char roms[PATH_MAX];
+    get_roms_path(roms, sizeof(roms));
+    snprintf(buf, buflen, "%s/%s", roms, key);
+}
+
+/* The suffix inside "Name (TAG)", or an empty string. */
+static void tag_from_key(const char *key, char *buf, size_t buflen) {
+    buf[0] = '\0';
+    const char *open = NULL, *close = NULL;
+    for (const char *p = key; *p; p++) {
+        if (*p == '(') open = p;
+        if (*p == ')') close = p;
+    }
+    if (!open || !close || close <= open + 1)
+        return;
+    size_t len = (size_t)(close - open - 1);
+    if (len >= buflen)
+        return;
+    memcpy(buf, open + 1, len);
+    buf[len] = '\0';
+}
+
+/* Suffix defaults, listing every suffix present on the card plus any the user
+ * has saved a default for, including suffixes with no folder left. */
+static bool show_suffix_defaults_screen(void) {
+    console_dir *consoles = NULL;
+    int console_count = scan_console_dirs(true, &consoles);
+    if (console_count < 0)
+        console_count = 0;
+
+    int capacity = console_count + systems_override_count() + 1;
+    char (*tags)[64] = malloc(sizeof(char[64]) * (size_t)capacity);
+    char (*labels)[192] = malloc(sizeof(char[192]) * (size_t)capacity);
+    char (*meta)[48] = malloc(sizeof(char[48]) * (size_t)capacity);
+    if (!tags || !labels || !meta) {
+        show_error("Out of memory.");
+        free(consoles); free(tags); free(labels); free(meta);
+        return false;
+    }
+
+    bool changed = false;
+    int initial_idx = 0;
+    int visible_start = 0;
+
+    for (;;) {
+        int count = 0;
+        for (int i = 0; i < console_count && count < capacity; i++) {
+            if (!consoles[i].tag[0])
+                continue;
+            bool seen = false;
+            for (int t = 0; t < count; t++) {
+                if (strcmp(tags[t], consoles[i].tag) == 0) { seen = true; break; }
+            }
+            if (!seen)
+                snprintf(tags[count++], 64, "%s", consoles[i].tag);
+        }
+        for (int i = 0; i < systems_override_count() && count < capacity; i++) {
+            sg_override ov;
+            if (!systems_override_at(i, &ov) || ov.is_folder || !ov.key)
+                continue;
+            bool seen = false;
+            for (int t = 0; t < count; t++) {
+                if (strcmp(tags[t], ov.key) == 0) { seen = true; break; }
+            }
+            if (!seen)
+                snprintf(tags[count++], 64, "%s", ov.key);
+        }
+
+        if (count <= 0) {
+            show_error("No ROM folder suffixes were found.");
+            break;
+        }
+
+        for (int i = 0; i < count; i++) {
+            sg_mapping mapping = systems_resolve(NULL, tags[i]);
+            const char *source =
+                mapping.source == MAPPING_USER_TAG ? "yours"
+              : mapping.source == MAPPING_BUILTIN  ? "bundled"
+              : "";
+            snprintf(labels[i], 192, "%s", tags[i]);
+            if (mapping.platform)
+                snprintf(meta[i], 48, "%s%s%s", mapping.platform->name,
+                         source[0] ? " · " : "", source);
+            else
+                snprintf(meta[i], 48, "unmapped");
+        }
+
+        ap_list_item *items = calloc((size_t)count, sizeof(ap_list_item));
+        if (!items) break;
+        for (int i = 0; i < count; i++) {
+            items[i].label = labels[i];
+            items[i].trailing_text = meta[i];
+        }
+
+        ap_footer_item footer[] = {
+            {AP_BTN_A, "EDIT", true},
+            {AP_BTN_B, "BACK", false},
+        };
+        ap_list_opts opts = ap_list_default_opts("Suffix defaults", items, count);
+        opts.footer = footer;
+        opts.footer_count = 2;
+        opts.status_bar = &g_status_bar;
+        opts.help_text =
+            "A suffix default applies to every folder with that suffix that has "
+            "no choice of its own. A folder's own mapping always wins.";
+        opts.initial_index = initial_idx < count ? initial_idx : 0;
+        opts.visible_start_index = visible_start;
+
+        ap_list_result result;
+        int ret = ap_list(&opts, &result);
+        free(items);
+        if (ret == AP_CANCELLED)
+            break;
+
+        int sel = result.selected_index;
+        if (sel < 0 || sel >= count)
+            break;
+        initial_idx = sel;
+        visible_start = result.visible_start_index;
+
+        if (show_mapping_picker(NULL, tags[sel]))
+            changed = true;
+    }
+
+    free(consoles);
+    free(tags);
+    free(labels);
+    free(meta);
+    return changed;
+}
+
+static bool show_system_mappings_screen(void) {
+    bool changed = false;
+    int initial_idx = 0;
+    int visible_start = 0;
+
+    for (;;) {
+        /* Hidden, disabled and empty folders are all listed here: this screen
+         * is where a user gets them back. */
+        console_dir *consoles = NULL;
+        int console_count = scan_console_dirs(true, &consoles);
+        if (console_count < 0)
+            console_count = 0;
+
+        int capacity = console_count + systems_override_count() + 1;
+        map_row *rows = malloc(sizeof(map_row) * (size_t)capacity);
+        char (*labels)[512] = malloc(sizeof(char[512]) * (size_t)capacity);
+        char (*meta)[48] = malloc(sizeof(char[48]) * (size_t)capacity);
+        if (!rows || !labels || !meta) {
+            show_error("Out of memory.");
+            free(consoles); free(rows); free(labels); free(meta);
+            break;
+        }
+
+        int count = 0;
+        rows[count].kind = MAP_ROW_SUFFIX_DEFAULTS;
+        snprintf(labels[count], 512, "Suffix defaults");
+        count++;
+
+        /* Unmapped folders first: those are the ones needing attention. */
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < console_count && count < capacity; i++) {
+                sg_mapping mapping = systems_resolve(consoles[i].path,
+                                                     consoles[i].tag);
+                bool unmapped = mapping.platform == NULL;
+                if (unmapped != (pass == 0))
+                    continue;
+
+                rows[count].kind = MAP_ROW_FOLDER;
+                rows[count].console = i;
+                rows[count].unmapped = unmapped;
+                snprintf(rows[count].tag, sizeof(rows[count].tag), "%s",
+                         consoles[i].tag);
+                rows[count].key[0] = '\0';
+
+                /* Keep suffixes when they carry useful context. Duplicate
+                 * names use the directory spelling; status covers .disabled. */
+                bool duplicate = false;
+                for (int j = 0; j < console_count; j++) {
+                    if (j != i && strcmp(consoles[i].display,
+                                         consoles[j].display) == 0) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                const sg_platform *candidates[2];
+                if (duplicate)
+                    snprintf(labels[count], 512, "%.*s",
+                             (int)strlen(consoles[i].name)
+                               - (consoles[i].is_disabled ? 9 : 0),
+                             consoles[i].name);
+                else if (systems_tag_candidates(consoles[i].tag, candidates, 2) > 1)
+                    snprintf(labels[count], 512, "%s (%s)", consoles[i].display,
+                             consoles[i].tag);
+                else
+                    snprintf(labels[count], 512, "%s", consoles[i].display);
+
+                /* One short exception per row; the picker holds the platform,
+                 * source and provider details. Visibility takes precedence. */
+                const char *status =
+                    consoles[i].is_disabled ? "Disabled"
+                  : mapping.hidden || consoles[i].name[0] == '.' ? "Hidden"
+                  : unmapped ? "Unmapped"
+                  : mapping.source == MAPPING_USER_FOLDER
+                    || mapping.source == MAPPING_USER_TAG ? "Custom"
+                  : "";
+                snprintf(meta[count], 48, "%s", status);
+                count++;
+            }
+        }
+
+        /* Overrides whose folder is gone, usually after a rename. They stay
+         * listed so they can be cleared. */
+        int saved_suffix_defaults = 0;
+        for (int i = 0; i < systems_override_count() && count < capacity; i++) {
+            sg_override ov;
+            if (!systems_override_at(i, &ov) || !ov.key)
+                continue;
+            if (!ov.is_folder) {
+                saved_suffix_defaults++;
+                continue;
+            }
+            bool present = false;
+            for (int c = 0; c < console_count; c++) {
+                char key[512];
+                if (systems_folder_key(consoles[c].path, key, sizeof(key))
+                    && strcmp(key, ov.key) == 0) {
+                    present = true;
+                    break;
+                }
+            }
+            if (present)
+                continue;
+
+            rows[count].kind = MAP_ROW_MISSING;
+            rows[count].console = -1;
+            rows[count].unmapped = false;
+            snprintf(rows[count].key, sizeof(rows[count].key), "%s", ov.key);
+            tag_from_key(ov.key, rows[count].tag, sizeof(rows[count].tag));
+            snprintf(labels[count], 512, "%s", ov.key);
+            snprintf(meta[count], 48, "Missing");
+            count++;
+        }
+        meta[0][0] = '\0';
+        if (saved_suffix_defaults > 0)
+            snprintf(meta[0], 48, "%d saved", saved_suffix_defaults);
+
+        ap_list_item *items = calloc((size_t)count, sizeof(ap_list_item));
+        if (!items) {
+            free(consoles); free(rows); free(labels); free(meta);
+            break;
+        }
+        for (int i = 0; i < count; i++) {
+            items[i].label = labels[i];
+            items[i].trailing_text = meta[i];
+        }
+
+        ap_footer_item footer[] = {
+            {AP_BTN_A, "EDIT", true},
+            {AP_BTN_B, "BACK", false},
+        };
+        ap_list_opts opts = ap_list_default_opts("System Mappings", items, count);
+        opts.footer = footer;
+        opts.footer_count = 2;
+        opts.status_bar = &g_status_bar;
+        opts.help_text =
+            "Unmapped folders are listed first and need a platform choice. "
+            "Custom means you chose a folder mapping or suffix default. "
+            "Hidden and Disabled show visibility restrictions.\n\n"
+            "Press A to edit, then Menu for the platform, mapping source and "
+            "provider details.";
+        opts.initial_index = initial_idx < count ? initial_idx : 0;
+        opts.visible_start_index = visible_start;
+
+        ap_list_result result;
+        int ret = ap_list(&opts, &result);
+        free(items);
+
+        int sel = result.selected_index;
+        bool cancelled = ret == AP_CANCELLED || sel < 0 || sel >= count;
+        map_row row = cancelled ? (map_row){0} : rows[sel];
+        if (!cancelled) {
+            initial_idx = sel;
+            visible_start = result.visible_start_index;
+        }
+
+        char console_path[PATH_MAX] = "";
+        console_dir missing_console;
+        const console_dir *target = NULL;
+        if (!cancelled && row.kind == MAP_ROW_FOLDER) {
+            target = &consoles[row.console];
+            snprintf(console_path, sizeof(console_path), "%s", target->path);
+        }
+
+        bool clear_missing = false;
+        if (!cancelled && row.kind == MAP_ROW_MISSING) {
+            memset(&missing_console, 0, sizeof(missing_console));
+            folder_path_for_key(row.key, missing_console.path,
+                                sizeof(missing_console.path));
+            snprintf(missing_console.display, sizeof(missing_console.display),
+                     "%s", row.key);
+            snprintf(missing_console.tag, sizeof(missing_console.tag), "%s",
+                     row.tag);
+            clear_missing = true;
+        }
+
+        /* The list allocations are dead once a sub-screen opens: it can change
+         * the folders and overrides this pass was built from. */
+        free(consoles);
+        free(rows);
+        free(labels);
+        free(meta);
+        if (cancelled)
+            break;
+
+        if (row.kind == MAP_ROW_SUFFIX_DEFAULTS) {
+            if (show_suffix_defaults_screen())
+                changed = true;
+            continue;
+        }
+
+        if (clear_missing) {
+            ap_footer_item confirm_footer[] = {
+                {AP_BTN_A, "CLEAR", true},
+                {AP_BTN_B, "KEEP", false},
+            };
+            char message[512];
+            snprintf(message, sizeof(message),
+                     "\"%s\" no longer exists.\n\nClear its saved mapping?",
+                     row.key);
+            ap_message_opts mopts = {.message = message,
+                                     .footer = confirm_footer,
+                                     .footer_count = 2};
+            ap_confirm_result confirm;
+            ap_confirmation(&mopts, &confirm);
+            if (!confirm.confirmed)
+                continue;
+            if (!ensure_mapping_edit_allowed())
+                continue;
+            if (systems_clear_folder(missing_console.path) != 0)
+                show_error(systems_last_error()
+                           ? systems_last_error()
+                           : "Could not clear the saved mapping.");
+            else
+                changed = true;
+            continue;
+        }
+
+        /* Re-scan for the selected folder: `target` pointed into freed memory. */
+        console_dir picked;
+        memset(&picked, 0, sizeof(picked));
+        console_dir *fresh = NULL;
+        int fresh_count = scan_console_dirs(true, &fresh);
+        for (int i = 0; i < fresh_count; i++) {
+            if (strcmp(fresh[i].path, console_path) == 0) {
+                picked = fresh[i];
+                break;
+            }
+        }
+        free(fresh);
+        if (!picked.path[0])
+            continue;
+
+        if (show_mapping_picker(&picked, picked.tag))
+            changed = true;
+    }
+
+    return changed;
+}
+
+static void show_settings_screen(void) {
+    for (;;) {
+        app_settings settings = load_settings();
+
+        char user_display[260];
+        if (settings.ss_username[0])
+            snprintf(user_display, sizeof(user_display), "%s", settings.ss_username);
+        else
+            snprintf(user_display, sizeof(user_display), "(not set)");
+
+        const char *pass_display = settings.ss_password[0] ? "(set)" : "(not set)";
+
+        char manual_dir_display[260];
+        if (settings.manual_download_dir[0])
+            snprintf(manual_dir_display, sizeof(manual_dir_display),
+                     "%s", settings.manual_download_dir);
+        else
+            snprintf(manual_dir_display, sizeof(manual_dir_display), "(not set)");
+
+        ap_option user_opt = {.label = user_display, .value = "edit"};
+        ap_option pass_opt = {.label = pass_display, .value = "edit"};
+        ap_option art_opt = {.label = "...", .value = "edit"};
+        ap_option manual_dir_opt = {.label = manual_dir_display, .value = "edit"};
+        ap_option mappings_opt = {.label = "...", .value = "edit"};
+        ap_option clear_opt = {.label = "...", .value = "clear"};
+        ap_option hidden_opts[2] = {
+            {.label = "Off", .value = "0"},
+            {.label = "On", .value = "1"},
+        };
+
+        ap_options_item items[7] = {
+            {.label = "Username", .type = AP_OPT_CLICKABLE,
+             .options = &user_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Password", .type = AP_OPT_CLICKABLE,
+             .options = &pass_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Artwork Options", .type = AP_OPT_CLICKABLE,
+             .options = &art_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Manual download directory", .type = AP_OPT_CLICKABLE,
+             .options = &manual_dir_opt, .option_count = 1, .selected_option = 0},
+            {.label = "System Mappings", .type = AP_OPT_CLICKABLE,
+             .options = &mappings_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Clear cheat cache", .type = AP_OPT_CLICKABLE,
+             .options = &clear_opt, .option_count = 1, .selected_option = 0},
+            {.label = "Include hidden/disabled/empty ROMs", .type = AP_OPT_STANDARD,
+             .options = hidden_opts, .option_count = 2,
+             .selected_option = settings.show_hidden ? 1 : 0},
+        };
+
+        ap_footer_item footer[] = {
+            {AP_BTN_B, "BACK", false},
+            {AP_BTN_A, "EDIT", false},
+            {AP_BTN_START, "SAVE", true},
+        };
+
+        ap_options_list_opts opts = {
+            .title = "Settings",
+            .items = items,
+            .item_count = 7,
+            .footer = footer,
+            .footer_count = 3,
+            .confirm_button = AP_BTN_START,
+            .status_bar = &g_status_bar,
+        };
+
+        ap_options_list_result result;
+        int ret = ap_options_list(&opts, &result);
+
+        if (ret == AP_CANCELLED) {
+            free_settings(&settings);
+            return;
+        }
+
+        if (result.action == AP_ACTION_SELECTED) {
+            switch (result.focused_index) {
+            case 0: edit_username(&settings); break;
+            case 1: edit_password(&settings); break;
+            case 2: edit_artwork_options(&settings); break;
+            case 3: edit_manual_download_dir(&settings); break;
+            case 4: show_system_mappings_screen(); break;
+            case 5: clear_cheat_cache(); break;
+            }
+            free_settings(&settings);
+            continue;
+        }
+
+        /* START pressed: save show_hidden and exit */
+        settings.show_hidden = (result.items[6].selected_option == 1);
+        save_settings(&settings);
+        queue_set_settings(&settings);
+        free_settings(&settings);
+        return;
+    }
+}
+
+/* ── Main application loop ────────────────────────────────── */
+
+#ifndef PLATFORM_MAC
+/* Returns true if the device has a default gateway (i.e. is likely online).
+ * Reads /proc/net/route and looks for a route with destination 0.0.0.0
+ * and a non-zero gateway. No network traffic is generated. */
+static bool has_default_route(void) {
+    FILE *f = fopen("/proc/net/route", "r");
+    if (!f)
+        return false;
+    char line[256];
+    fgets(line, sizeof(line), f); /* skip header */
+    while (fgets(line, sizeof(line), f)) {
+        char iface[32];
+        unsigned long dest, gw;
+        if (sscanf(line, "%31s %lx %lx", iface, &dest, &gw) == 3 &&
+                dest == 0 && gw != 0) {
+            fclose(f);
+            return true;
+        }
+    }
+    fclose(f);
+    return false;
+}
+#endif
+
+/* ── Daemon status screen ────────────────────────────────── */
+
+static int daemon_snapshot(ap_queue_item *buf, int max, void *userdata) {
+    (void)userdata;
+    int limit = max < QUEUE_MAX_ITEMS ? max : QUEUE_MAX_ITEMS;
+    queue_item *items = malloc(sizeof(queue_item) * (size_t)limit);
+    if (!items) return 0;
+
+    queue_stats stats;
+    int count = daemon_read_queue(items, limit, &stats);
+    if (count > limit) count = limit;
+
+    for (int i = 0; i < count; i++) {
+        memset(&buf[i], 0, sizeof(buf[i]));
+        snprintf(buf[i].title, sizeof(buf[i].title), "%s", items[i].rom_display);
+
+        const char *type_str = items[i].type == QUEUE_TYPE_ARTWORK ? "art"
+                             : items[i].type == QUEUE_TYPE_CHEAT ? "cht"
+                             : "pdf";
+        snprintf(buf[i].subtitle, sizeof(buf[i].subtitle), "%s  [%s]",
+                 items[i].system_display, type_str);
+
+        snprintf(buf[i].status_text, sizeof(buf[i].status_text), "%s",
+                 queue_status_text(items[i].status));
+
+        buf[i].status   = map_queue_status(items[i].status);
+        buf[i].progress = -1.0f;
+        buf[i].userdata = (void *)(uintptr_t)items[i].id;
+    }
+
+    free(items);
+    return count;
+}
+
+static bool wait_for_daemon_exit(int timeout_ms) {
+    int steps = timeout_ms / 100;
+    if (steps < 1)
+        steps = 1;
+
+    for (int i = 0; i < steps; i++) {
+        usleep(100000);
+        if (!daemon_is_running())
+            return true;
+    }
+    return !daemon_is_running();
+}
+
+static void daemon_on_stop(void *userdata) {
+    (void)userdata;
+    ap_footer_item cfooter[] = {
+        {AP_BTN_B, "NO",  false},
+        {AP_BTN_A, "YES", true},
+    };
+    ap_message_opts mopts = {
+        .message = "Stop background scraping?\n\n"
+                   "In-progress items will be stopped\n"
+                   "and pending items will be skipped.",
+        .footer = cfooter,
+        .footer_count = 2,
+    };
+    ap_confirm_result cres;
+    ap_confirmation(&mopts, &cres);
+    if (!cres.confirmed)
+        return;
+
+    if (!daemon_request_stop()) {
+        show_error("Failed to stop background scraping.");
+        return;
+    }
+
+    if (!wait_for_daemon_exit(10000))
+        show_error("Background scraping did not stop in time.");
+}
+
+static void show_daemon_status_screen(void) {
+    ap_queue_opts opts = {
+        .title         = "Background Scraping",
+        .snapshot      = daemon_snapshot,
+        .max_items     = QUEUE_MAX_ITEMS,
+        .status_bar    = &g_status_bar,
+        .userdata      = NULL,
+        .on_detail     = NULL,
+        .on_cancel     = daemon_on_stop,
+        .on_clear      = NULL,
+        .filter_labels = { "ALL", "BUSY", "DONE", "FAIL" },
+    };
+    ap_queue_viewer(&opts);
+}
+
+static bool restore_daemon_queue(bool show_progress_once,
+                                 const char *summary_label) {
+    queue_item *items = malloc(sizeof(queue_item) * QUEUE_MAX_ITEMS);
+    if (!items) {
+        show_error("Out of memory.");
+        return false;
+    }
+
+    queue_stats stats;
+    int count = daemon_read_queue(items, QUEUE_MAX_ITEMS, &stats);
+    if (count <= 0) {
+        free(items);
+        return false;
+    }
+
+    queue_load_items(items, count);
+    free(items);
+    daemon_cleanup_all();
+
+    if (show_progress_once || stats.pending > 0) {
+        show_progress_screen();
+        return true;
+    }
+
+    char msg[256];
+    snprintf(msg, sizeof(msg),
+        "%s.\n\n%d done, %d failed out of %d total.",
+        summary_label, stats.done, stats.failed, stats.total);
+    show_brief(msg);
+    return true;
+}
+
+typedef struct {
+    float progress;
+    char  error[256];
+} daemon_takeover_ctx;
+
+static int daemon_takeover_worker(void *userdata) {
+    daemon_takeover_ctx *ctx = (daemon_takeover_ctx *)userdata;
+    if (!ctx)
+        return -1;
+
+    ctx->progress = 0.0f;
+    if (!daemon_request_handoff()) {
+        snprintf(ctx->error, sizeof(ctx->error),
+                 "Failed to request foreground takeover.");
+        return -1;
+    }
+
+    for (int i = 0; i < 100; i++) {
+        if (!daemon_is_running()) {
+            ctx->progress = 1.0f;
+            return 0;
+        }
+        ctx->progress = (float)(i + 1) / 100.0f;
+        usleep(100000);
+    }
+
+    if (daemon_is_running()) {
+        snprintf(ctx->error, sizeof(ctx->error),
+                 "Background scraping did not hand off in time.");
+        return -1;
+    }
+
+    ctx->progress = 1.0f;
+    return 0;
+}
+
+static bool check_daemon_on_startup(void) {
+    /* Reclaim background work immediately on relaunch. */
+    if (daemon_is_running()) {
+        daemon_takeover_ctx ctx = {0};
+        ap_process_opts opts = {
+            .message = "Resuming background scraping...",
+            .show_progress = true,
+            .progress = &ctx.progress,
+        };
+
+        if (ap_process_message(&opts, daemon_takeover_worker, &ctx) == 0) {
+            if (restore_daemon_queue(true, NULL))
+                return true;
+
+            show_error("Background scraping stopped, but the queue\n"
+                       "could not be restored.");
+            daemon_cleanup_all();
+            return true;
+        }
+
+        if (!daemon_is_running()) {
+            if (restore_daemon_queue(true, NULL))
+                return true;
+
+            show_error(ctx.error[0]
+                ? ctx.error
+                : "Background scraping stopped, but the queue\n"
+                  "could not be restored.");
+            daemon_cleanup_all();
+            return true;
+        }
+
+        show_daemon_status_screen();
+        if (!daemon_is_running()) {
+            if (restore_daemon_queue(true, NULL))
+                return true;
+
+            show_error("Background scraping stopped, but the queue\n"
+                       "could not be restored.");
+            daemon_cleanup_all();
+            return true;
+        }
+
+        show_warning("Background scraping is still active.\n\n"
+                     "Close ScrapeGoat and reopen it to retry\n"
+                     "foreground takeover.");
+        return false;
+    }
+
+    /* Check for a daemon that already finished while the app was closed. */
+    if (restore_daemon_queue(false, "Background scraping completed"))
+        return true;
+
+    return true;
+}
+
+/* ── App entry ───────────────────────────────────────────── */
+
+void run_app(void) {
+    /* Load initial settings into queue */
+    app_settings settings = load_settings();
+    queue_set_settings(&settings);
+
+    /* Check for background daemon from previous session */
+    if (!check_daemon_on_startup()) {
+        free_settings(&settings);
+        return;
+    }
+
+    /* A handheld user never sees stderr, so a problem with their saved
+     * mappings has to be said here. */
+    if (systems_warning()) {
+        char message[640];
+        snprintf(message, sizeof(message), "%s\n\nSettings > System Mappings "
+                 "shows what is in effect.", systems_warning());
+        show_warning(message);
+        systems_clear_warning();
+    }
+
+#ifndef PLATFORM_MAC
+    if (!has_default_route()) {
+        show_warning("No internet connection detected.\n\n"
+                     "Previously downloaded cheats can\n"
+                     "still be used offline.\n\n"
+                     "Connect to wifi to scrape artwork/\n"
+                     "manuals or download new cheats.");
+    } else
+#endif
+    if (settings.ss_username[0] == '\0') {
+        show_warning("No ScreenScraper.fr user credentials set.\n\nScraping will proceed at basic rate\n(~1 req/min, single-threaded).\n\nFor much faster speeds, go to Settings\nand add your username and password.");
+    }
+    free_settings(&settings);
+
+    for (;;) {
+        main_action action = show_main_menu();
+        switch (action) {
+        case MAIN_SCRAPE_ART:
+            if (show_library_screen(LIB_MODE_ART)) show_progress_screen();
+            break;
+        case MAIN_DOWNLOAD_CHEATS:
+            if (show_library_screen(LIB_MODE_CHEAT)) show_progress_screen();
+            break;
+        case MAIN_DOWNLOAD_MANUALS: {
+            app_settings s = load_settings();
+            if (s.manual_download_dir[0] == '\0') {
+                show_warning("Manual download directory not set.\n\n"
+                             "Go to Settings and set a download\n"
+                             "directory for manuals.\n\n"
+                             "You'll also need a Pak like\n"
+                             "SDLReader to view downloaded PDFs.");
+            } else {
+                if (show_library_screen(LIB_MODE_MANUAL)) show_progress_screen();
+            }
+            free_settings(&s);
+            break;
+        }
+        case MAIN_PROGRESS:        show_progress_screen(); break;
+        case MAIN_API_USAGE:       show_api_usage_screen(); break;
+        case MAIN_SETTINGS:        show_settings_screen(); break;
+        case MAIN_QUIT: {
+            queue_stats stats = queue_get_stats();
+            if (stats.pending > 0) {
+                quit_queue_action action = show_quit_queue_dialog(stats.pending);
+                if (action == QUIT_QUEUE_KEEP_OPEN)
+                    continue;
+
+                if (action == QUIT_QUEUE_BACKGROUND) {
+                    /* Performance warning */
+                    const char *warn_message = is_flip_layout()
+                        ? "Background scraping keeps running\n"
+                          "after ScrapeGoat closes.\n"
+                          "This may reduce game performance.\n"
+                          "Sleep pauses downloads.\n"
+                          "Power off stops them.\n"
+                          "Progress appears next time\n"
+                          "you open ScrapeGoat."
+                        : "Background scraping keeps running\n"
+                          "after ScrapeGoat closes.\n\n"
+                          "This may reduce game performance.\n\n"
+                          "Sleep pauses downloads.\n"
+                          "Power off stops them.\n\n"
+                          "Progress appears next time\n"
+                          "you open ScrapeGoat.";
+                    ap_footer_item warn_footer[] = {
+                        {AP_BTN_B, "CANCEL", false},
+                        {AP_BTN_A, "CONTINUE", true},
+                    };
+                    ap_message_opts warn_opts = {
+                        .message = warn_message,
+                        .footer = warn_footer,
+                        .footer_count = 2,
+                    };
+                    ap_confirm_result warn_confirm;
+                    int ret = ap_confirmation(&warn_opts, &warn_confirm);
+                    if (ret != AP_OK || !warn_confirm.confirmed)
+                        continue;
+
+                    /* Stop local workers and hand off the full queue state. */
+                    queue_item *snapshot = malloc(sizeof(queue_item) * QUEUE_MAX_ITEMS);
+                    if (!snapshot) {
+                        show_error("Out of memory.");
+                        continue;
+                    }
+                    int snap_count = queue_handoff_snapshot(snapshot, QUEUE_MAX_ITEMS);
+
+                    int pending_count = 0;
+                    for (int i = 0; i < snap_count; i++) {
+                        if (!is_item_terminal(snapshot[i].status))
+                            pending_count++;
+                    }
+                    if (pending_count <= 0) {
+                        free(snapshot);
+                        return;
+                    }
+
+                    int launch_ret = daemon_launch(snapshot, snap_count);
+
+                    if (launch_ret != 0) {
+                        daemon_cleanup_all();
+                        queue_load_items(snapshot, snap_count);
+                        free(snapshot);
+                        show_error("Failed to start background\n"
+                                   "scraping. Try exiting normally.");
+                        continue;
+                    }
+                    free(snapshot);
+                }
+
+                if (action == QUIT_QUEUE_EXIT_AND_CANCEL) {
+                    ap_footer_item exit_footer[] = {
+                        {AP_BTN_B, "KEEP OPEN", false},
+                        {AP_BTN_A, "EXIT", true},
+                    };
+                    ap_message_opts exit_opts = {
+                        .message = "Exit ScrapeGoat and cancel all downloads?\n\n"
+                                   "In-progress items will stop and queued items\n"
+                                   "will be skipped.",
+                        .footer = exit_footer,
+                        .footer_count = 2,
+                    };
+                    ap_confirm_result exit_confirm;
+                    int ret = ap_confirmation(&exit_opts, &exit_confirm);
+                    if (ret != AP_OK || !exit_confirm.confirmed)
+                        continue;
+
+                    queue_cancel_all();
+                }
+                /* Exit or Background (after daemon launched) */
+            }
+            return;
+        }
+        }
+    }
+}

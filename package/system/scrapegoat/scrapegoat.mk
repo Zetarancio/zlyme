@@ -17,8 +17,8 @@
 ################################################################################
 
 SCRAPEGOAT_VERSION = c52f749eae21a4c02c767e485fef2abbb773f2d7
-SCRAPEGOAT_SITE = https://github.com/Helaas/nextui-scrapegoat-pak.git
-SCRAPEGOAT_SITE_METHOD = git
+SCRAPEGOAT_SITE = $(SCRAPEGOAT_PKGDIR)/src
+SCRAPEGOAT_SITE_METHOD = local
 SCRAPEGOAT_LICENSE = MIT
 SCRAPEGOAT_LICENSE_FILES = LICENSE
 SCRAPEGOAT_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image libcurl openssl zlib
