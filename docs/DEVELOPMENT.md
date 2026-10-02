@@ -20,6 +20,8 @@ Buildroot is pinned by `build.sh`. Do not develop against Buildroot master unles
 
 The build runs inside the pinned Docker environment.
 
+ZcrapeGoat may embed ScreenScraper developer credentials. Local builds read `package/system/zcrapegoat/credentials.local` (gitignored). The official GitHub build reads the Actions secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. `build.sh` forwards those environment names into Docker and does not put the values on the command line. Do not commit or log the values. The credential-bearing compile sets `CCACHE_DISABLE=1` so the persistent CI ccache cannot store them. A build with neither source still compiles; the official GitHub build fails closed if either secret is missing.
+
 Buildroot builds the target cross-toolchain. Target software is cross-compiled; do not execute target binaries through QEMU as part of normal compilation.
 
 ## Defconfigs

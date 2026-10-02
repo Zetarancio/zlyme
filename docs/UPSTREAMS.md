@@ -214,3 +214,18 @@ Then, after reviewing the report:
 > Apply the `<package>` update following `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md`, and `docs/UPSTREAMS.md`. Preserve Zlyme's direct-KMS/ALSA architecture and do not import unrelated distro integration.
 
 This two-step workflow is safer than telling an agent to "update everything".
+
+## ZcrapeGoat
+
+Vendored source, not a git submodule and not a patch stack.
+
+```text
+upstream: https://github.com/Helaas/nextui-scrapegoat-pak
+tag: v2.3.0
+commit: c52f749eae21a4c02c767e485fef2abbb773f2d7
+license: MIT
+tree: package/system/zcrapegoat/src
+record: package/system/zcrapegoat/src/UPSTREAM
+```
+
+Zlyme modifications after that import are ordinary commits in this repository. A later update compares a new pinned upstream revision with this tree and imports that revision. Do not follow upstream HEAD.

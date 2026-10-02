@@ -536,6 +536,10 @@ These supersede earlier notes that still list Artwork Scraper or Cheat Downloade
 
 The next local image is not hardware-accepted until the maintainer installs it.
 
+## Live result of 1f5dab
+
+The maintainer installed `zlyme-my355-20261002-1f5dab487ee4.tar`. No other already accepted Phase 9 surface regressed. Stale Artwork Scraper, Cheat Downloader, and Weston test PAK cleanup was not reported as regressed. ScrapeGoat did not open. The launcher set `LOG_FILE` from the full binary path, which produced a `//` path whose parent directories did not exist, so the log redirect ended the script before the program started. PortMaster worked, and its Zlyme selected text `#FFD7B0` was too close to white. The next candidate corrects those two items. Previously accepted functions do not need the full matrix repeated. `1f5dab` is not the final accepted image.
+
 ## Implementation record for the closure candidate
 
 ScrapeGoat is built from `Helaas/nextui-scrapegoat-pak` tag `v2.3.0`, commit `c52f749eae21a4c02c767e485fef2abbb773f2d7`, plus `package/system/scrapegoat/0001-zlyme-libraries.patch` and `zlyme_paths.c`. The Zlyme toolchain compiles it. Apostrophe headers are the vendored copy, which keeps the my355 virtual-pad map and does not write cpufreq. ScreenScraper developer credentials are compile-time flags. No credential file was present, and the old binary was not mined for them, so this binary warns that developer credentials are not embedded. Upstream still treats a personal ScreenScraper account as optional and uses it only to raise the request rate. That path expects the developer identity to be compiled in.
