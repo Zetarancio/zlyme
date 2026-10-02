@@ -34,4 +34,3 @@ Record `Last synchronized against Zlyme <release / exact SHA>` on that page. Run
 | DMC | RK3566/RK3568 V2 SIP, DFI, firmware API | External module, selected patches, load and runtime policy |
 
 Do not copy architecture manuals across. Do not mirror files in both directions. ROCKNIX notes that are historical evidence stay labeled that way.
-
