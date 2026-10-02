@@ -943,7 +943,7 @@ static bool show_mapping_picker(const console_dir *console, const char *tag) {
         if (console) {
             snprintf(help + used, sizeof(help) - used, "\n\nFolder: %s.%s%s",
                      console->name,
-                     mapping.hidden ? " Hidden in ScrapeGoat." : "",
+                     mapping.hidden ? " Hidden in ZcrapeGoat." : "",
                      console->is_disabled ? " Disabled by its folder name."
                        : console->name[0] == '.' ? " Hidden by its folder name." : "");
             used = strlen(help);
@@ -1564,7 +1564,7 @@ typedef enum {
 
 static quit_queue_action show_quit_queue_dialog(int pending_count) {
     ap_list_item items[] = {
-        { .label = "Keep ScrapeGoat Open" },
+        { .label = "Keep ZcrapeGoat Open" },
         { .label = "Exit and Cancel Downloads" },
         { .label = "Exit to Background" },
     };
@@ -2706,7 +2706,7 @@ static bool check_daemon_on_startup(void) {
         }
 
         show_warning("Background scraping is still active.\n\n"
-                     "Close ScrapeGoat and reopen it to retry\n"
+                     "Close ZcrapeGoat and reopen it to retry\n"
                      "foreground takeover.");
         return false;
     }
@@ -2724,14 +2724,7 @@ static void show_about_screen(void) {
         "Based on ScrapeGoat by Helaas.\n\n"
         "Thanks to Helaas for creating\n"
         "ScrapeGoat and releasing it\n"
-        "under the MIT License.\n\n"
-        "Upstream:\n"
-        "https://github.com/Helaas/nextui-scrapegoat-pak\n\n"
-        "ZcrapeGoat contains Zlyme-specific\n"
-        "downstream integration and\n"
-        "modifications.\n\n"
-        "Artwork: ScreenScraper.fr\n"
-        "Cheats: Libretro";
+        "under the MIT License.";
     ap_footer_item footer[] = {{AP_BTN_B, "BACK", false}};
     ap_message_opts opts = {.message = message, .footer = footer,
                             .footer_count = 1};
@@ -2882,19 +2875,19 @@ void run_app(void) {
                     /* Performance warning */
                     const char *warn_message = is_flip_layout()
                         ? "Background scraping keeps running\n"
-                          "after ScrapeGoat closes.\n"
+                          "after ZcrapeGoat closes.\n"
                           "This may reduce game performance.\n"
                           "Sleep pauses downloads.\n"
                           "Power off stops them.\n"
                           "Progress appears next time\n"
-                          "you open ScrapeGoat."
+                          "you open ZcrapeGoat."
                         : "Background scraping keeps running\n"
-                          "after ScrapeGoat closes.\n\n"
+                          "after ZcrapeGoat closes.\n\n"
                           "This may reduce game performance.\n\n"
                           "Sleep pauses downloads.\n"
                           "Power off stops them.\n\n"
                           "Progress appears next time\n"
-                          "you open ScrapeGoat.";
+                          "you open ZcrapeGoat.";
                     ap_footer_item warn_footer[] = {
                         {AP_BTN_B, "CANCEL", false},
                         {AP_BTN_A, "CONTINUE", true},
@@ -2946,7 +2939,7 @@ void run_app(void) {
                         {AP_BTN_A, "EXIT", true},
                     };
                     ap_message_opts exit_opts = {
-                        .message = "Exit ScrapeGoat and cancel all downloads?\n\n"
+                        .message = "Exit ZcrapeGoat and cancel all downloads?\n\n"
                                    "In-progress items will stop and queued items\n"
                                    "will be skipped.",
                         .footer = exit_footer,
