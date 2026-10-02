@@ -12,7 +12,7 @@
  *
  * The catalog of platforms ships as resources/systems.json beside the
  * executable. Users select a platform per folder, or set their own default for
- * a suffix; those choices live in a separate file under .userdata so they
+ * a suffix; those choices live under the ScrapeGoat state root so they
  * survive a pak update.
  *
  * Resolution precedence, highest first:

@@ -3,7 +3,7 @@
 # to the OS card, not beside a second copy of the ROM.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-src=$ROOT/package/system/scrapegoat
+src=$ROOT/package/system/scrapegoat/src/src
 launch=$ROOT/package/system/nextui/paks/Tools/ScrapeGoat.pak/launch.sh
 
 grep -q '/usr/lib/zlyme/scrapegoat/scrapegoat' "$launch"

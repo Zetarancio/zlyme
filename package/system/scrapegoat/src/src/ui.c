@@ -4,6 +4,7 @@
 #include "device.h"
 #include "queue.h"
 #include "screenscraper.h"
+#include "zlyme_paths.h"
 #include "systems.h"
 
 #include "apostrophe.h"
@@ -2005,9 +2006,17 @@ typedef struct {
 } map_row;
 
 static void folder_path_for_key(const char *key, char *buf, size_t buflen) {
-    char roms[PATH_MAX];
-    get_roms_path(roms, sizeof(roms));
-    snprintf(buf, buflen, "%s/%s", roms, key);
+    char dirs[8][PATH_MAX];
+    char probe[PATH_MAX];
+    int n;
+
+    snprintf(probe, sizeof(probe), "/storage/Roms/%s", key ? key : "");
+    n = zlyme_rom_dirs(probe, dirs, 8);
+    if (n > 0) {
+        snprintf(buf, buflen, "%s", dirs[0]);
+        return;
+    }
+    snprintf(buf, buflen, "%s", probe);
 }
 
 /* The suffix inside "Name (TAG)", or an empty string. */

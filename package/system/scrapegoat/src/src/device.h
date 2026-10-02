@@ -134,6 +134,7 @@ int scan_console_dirs(bool show_hidden, console_dir **out);
 
 /* Scan ROMs in a console directory. Returns count, caller frees *out. */
 int scan_roms(const char *console_path, bool show_hidden, rom_file **out);
+int zlyme_dump_paths(void);
 
 /* ── Artwork helpers ──────────────────────────────────────────── */
 

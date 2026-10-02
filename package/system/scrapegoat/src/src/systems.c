@@ -2,6 +2,7 @@
 
 #include "cJSON.h"
 #include "device.h"
+#include "zlyme_paths.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -478,6 +479,12 @@ static bool resolve_catalog_path(char *buf, size_t buflen) {
         }
     }
 
+    /* launch.sh starts in the pak directory, which holds resources/. */
+    if (access("resources/systems.json", R_OK) == 0) {
+        snprintf(buf, buflen, "%s", "resources/systems.json");
+        return true;
+    }
+
 #ifdef PLATFORM_MAC
     /* Development convenience: run from the repository root. */
     const char *repo = "resources/systems.json";
@@ -534,43 +541,6 @@ static bool load_catalog(void) {
 
 /* ── Folder keys ──────────────────────────────────────────────── */
 
-/* Resolve relative spelling without following symlinks. Dot components are
- * allowed in the SD-root prefix, but never in the folder key underneath it. */
-static bool absolute_path(const char *in, char *out, size_t outlen,
-                          const char *rom_root) {
-    char input[PATH_MAX], cwd[PATH_MAX];
-    if (in[0] != '/' && !getcwd(cwd, sizeof(cwd)))
-        return false;
-    int len = in[0] == '/'
-        ? snprintf(input, sizeof(input), "%s", in)
-        : snprintf(input, sizeof(input), "%s/%s", cwd, in);
-    if (len < 0 || (size_t)len >= sizeof(input) || outlen < 2)
-        return false;
-
-    snprintf(out, outlen, "/");
-    char *save = NULL;
-    for (char *part = strtok_r(input, "/", &save); part;
-         part = strtok_r(NULL, "/", &save)) {
-        size_t used = strlen(out);
-        if (strcmp(part, ".") == 0 || strcmp(part, "..") == 0) {
-            size_t root_len = rom_root ? strlen(rom_root) : 0;
-            if (root_len && strncmp(out, rom_root, root_len) == 0
-                && (out[root_len] == '/' || out[root_len] == '\0'))
-                return false;
-            if (part[1] == '.' && used > 1) {
-                char *slash = strrchr(out, '/');
-                slash[slash == out ? 1 : 0] = '\0';
-            }
-            continue;
-        }
-        len = snprintf(out + used, outlen - used, "%s%s",
-                       used == 1 ? "" : "/", part);
-        if (len < 0 || (size_t)len >= outlen - used)
-            return false;
-    }
-    return true;
-}
-
 static bool key_is_safe(const char *key) {
     if (!key || !key[0] || key[0] == '/')
         return false;
@@ -590,38 +560,13 @@ static bool key_is_safe(const char *key) {
     return true;
 }
 
-static bool strip_root(const char *root, const char *path,
-                       char *buf, size_t buflen) {
-    size_t root_len = strlen(root);
-    if (root_len == 0 || strncmp(path, root, root_len) != 0)
-        return false;
-    const char *rest = path + root_len;
-    if (rest[0] != '/')
-        return false;   /* "Roms2/..." must not match "Roms" */
-    rest++;
-    if (strlen(rest) >= buflen)
-        return false;
-    snprintf(buf, buflen, "%s", rest);
-    return key_is_safe(buf);
-}
-
 bool systems_folder_key(const char *console_path, char *buf, size_t buflen) {
-    if (!console_path || !console_path[0] || !buf || buflen == 0)
+    if (!zlyme_folder_key(console_path, buf, buflen)) {
+        if (buf && buflen)
+            buf[0] = '\0';
         return false;
-    buf[0] = '\0';
-
-    char roms[PATH_MAX];
-    get_roms_path(roms, sizeof(roms));
-
-    char root[PATH_MAX];
-    char path[PATH_MAX];
-    if (absolute_path(roms, root, sizeof(root), NULL)
-        && absolute_path(console_path, path, sizeof(path), root)
-        && strip_root(root, path, buf, buflen))
-        return true;
-
-    buf[0] = '\0';
-    return false;
+    }
+    return key_is_safe(buf);
 }
 
 /* ── Override storage ─────────────────────────────────────────── */
@@ -746,6 +691,7 @@ static void ov_compact(override_set *set) {
 /* ── Override loading ─────────────────────────────────────────── */
 
 static void load_overrides(void) {
+    zlyme_import_legacy();
     get_system_overrides_path(overrides_path, sizeof(overrides_path));
     if (access(overrides_path, F_OK) != 0)
         return;   /* absent is normal */

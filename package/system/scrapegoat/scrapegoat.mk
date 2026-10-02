@@ -26,8 +26,6 @@ SCRAPEGOAT_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image libcurl openssl zlib
 SCRAPEGOAT_CREDENTIALS = $(SCRAPEGOAT_PKGDIR)/credentials.local
 
 define SCRAPEGOAT_BUILD_CMDS
-	cp -f $(SCRAPEGOAT_PKGDIR)/zlyme_paths.c $(SCRAPEGOAT_PKGDIR)/zlyme_paths.h \
-		$(@D)/src/
 	defs=""; \
 	if [ -f $(SCRAPEGOAT_CREDENTIALS) ]; then \
 		. $(SCRAPEGOAT_CREDENTIALS); \

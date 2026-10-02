@@ -1,5 +1,6 @@
 #include "device.h"
 #include "systems.h"
+#include "zlyme_paths.h"
 #include "md5.h"
 #include "cJSON.h"
 #include "miniz.h"
@@ -116,22 +117,19 @@ void get_roms_path(char *buf, size_t buflen) {
 }
 
 void get_cheats_path(char *buf, size_t buflen) {
-    snprintf(buf, buflen, "%s/Cheats", get_sdcard_path());
+    zlyme_cheats_root(buf, buflen);
 }
 
 void get_cheat_repo_path(char *buf, size_t buflen) {
-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/libretro-database",
-             get_sdcard_path());
+    zlyme_cheat_repo_path(buf, buflen);
 }
 
 void get_settings_path(char *buf, size_t buflen) {
-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/settings.json",
-             get_sdcard_path());
+    zlyme_settings_path(buf, buflen);
 }
 
 void get_system_overrides_path(char *buf, size_t buflen) {
-    snprintf(buf, buflen, "%s/.userdata/shared/ScrapeGoat/system_overrides.json",
-             get_sdcard_path());
+    zlyme_overrides_path(buf, buflen);
 }
 
 /* ── Executable location ─────────────────────────────────── */
@@ -311,36 +309,31 @@ static int console_cmp(const void *a, const void *b) {
 }
 
 int scan_console_dirs(bool show_hidden, console_dir **out) {
-    char roms_path[PATH_MAX];
-    get_roms_path(roms_path, sizeof(roms_path));
+    char system_dirs[64][PATH_MAX];
+    int system_count = zlyme_system_dirs(system_dirs, 64);
+    int count = 0;
+    int capacity = 64;
+    console_dir *consoles = malloc(sizeof(console_dir) * (size_t)capacity);
+    int s;
 
-    DIR *d = opendir(roms_path);
-    if (!d) {
+    if (!consoles) {
         *out = NULL;
         return 0;
     }
 
-    int count = 0;
-    int capacity = 64;
-    console_dir *consoles = malloc(sizeof(console_dir) * (size_t)capacity);
-
-    struct dirent *entry;
-    while ((entry = readdir(d)) != NULL) {
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' ||
-            (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
-            continue;
-
-        /* Only directories */
+    for (s = 0; s < system_count; s++) {
         char full_path[PATH_MAX];
-        snprintf(full_path, sizeof(full_path), "%s/%s", roms_path, entry->d_name);
+        const char *name;
         struct stat st;
+
+        snprintf(full_path, sizeof(full_path), "%s", system_dirs[s]);
+        name = strrchr(full_path, '/');
+        name = name ? name + 1 : full_path;
         if (stat(full_path, &st) != 0 || !S_ISDIR(st.st_mode))
             continue;
 
         if (is_shortcut_folder(full_path))
             continue;
-
-        const char *name = entry->d_name;
 
         if (!show_hidden) {
             if (is_hidden(name))
@@ -378,7 +371,6 @@ int scan_console_dirs(bool show_hidden, console_dir **out) {
         extract_display_name(base_name, c->display, sizeof(c->display));
         c->is_disabled = disabled;
     }
-    closedir(d);
 
     qsort(consoles, (size_t)count, sizeof(console_dir), console_cmp);
     *out = consoles;
@@ -495,7 +487,9 @@ static void free_name_map(name_map *m) {
 /* Internal recursive scanner */
 static int scan_roms_internal(const char *dir_path, bool show_hidden,
                               rom_file **out, int *count, int *capacity,
-                              const name_map *map) {
+                              const name_map *map, int depth) {
+    if (depth > 8)
+        return 0;
     DIR *d = opendir(dir_path);
     if (!d) return -1;
 
@@ -567,7 +561,7 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
                 r->is_disabled = disabled;
             } else {
                 /* Plain subfolder — recurse */
-                scan_roms_internal(full_path, show_hidden, out, count, capacity, map);
+                scan_roms_internal(full_path, show_hidden, out, count, capacity, map, depth + 1);
             }
             continue;
         }
@@ -595,16 +589,79 @@ static int scan_roms_internal(const char *dir_path, bool show_hidden,
     return 0;
 }
 
+static void disambiguate_roms(rom_file *roms, int count) {
+    int i, j;
+
+    for (i = 0; i < count; i++) {
+        int collided = 0;
+        for (j = 0; j < count; j++) {
+            if (i != j && strcmp(roms[i].display, roms[j].display) == 0) {
+                collided = 1;
+                break;
+            }
+        }
+        if (collided)
+            zlyme_collision_label(roms[i].label, sizeof(roms[i].label),
+                                  roms[i].display, roms[i].path);
+    }
+}
+
 int scan_roms(const char *console_path, bool show_hidden, rom_file **out) {
+    char dirs[8][PATH_MAX];
+    int dir_count = zlyme_rom_dirs(console_path, dirs, 8);
     int count = 0;
     int capacity = 256;
-    *out = malloc(sizeof(rom_file) * (size_t)capacity);
+    int i;
 
-    name_map map = load_name_map(console_path);
-    scan_roms_internal(console_path, show_hidden, out, &count, &capacity, &map);
-    free_name_map(&map);
+    *out = malloc(sizeof(rom_file) * (size_t)capacity);
+    if (dir_count == 0 && console_path && console_path[0]) {
+        snprintf(dirs[0], PATH_MAX, "%s", console_path);
+        dir_count = 1;
+    }
+    for (i = 0; i < dir_count; i++) {
+        name_map map = load_name_map(dirs[i]);
+        scan_roms_internal(dirs[i], show_hidden, out, &count, &capacity, &map, 0);
+        free_name_map(&map);
+    }
+    disambiguate_roms(*out, count);
     qsort(*out, (size_t)count, sizeof(rom_file), rom_cmp);
     return count;
+}
+
+int zlyme_dump_paths(void) {
+    char roots[8][PATH_MAX];
+    char state[PATH_MAX];
+    char cheats[PATH_MAX];
+    int root_count = zlyme_library_roots(roots, 8);
+    console_dir *consoles = NULL;
+    int console_count;
+    int i;
+
+    for (i = 0; i < root_count; i++)
+        printf("library %s\n", roots[i]);
+    zlyme_state_root(state, sizeof(state));
+    zlyme_cheats_root(cheats, sizeof(cheats));
+    printf("state %s\n", state);
+    printf("cheats %s\n", cheats);
+
+    console_count = scan_console_dirs(false, &consoles);
+    for (i = 0; i < console_count; i++) {
+        rom_file *roms = NULL;
+        int rom_count;
+        int r;
+
+        printf("system %s %s\n", consoles[i].tag, consoles[i].path);
+        rom_count = scan_roms(consoles[i].path, false, &roms);
+        for (r = 0; r < rom_count; r++) {
+            char art[PATH_MAX];
+            zlyme_artwork_path(roms[r].path, roms[r].display, art, sizeof(art));
+            printf("rom %s art %s cheat %s/%s/%s.cht\n",
+                   roms[r].path, art, cheats, consoles[i].tag, roms[r].display);
+        }
+        free(roms);
+    }
+    free(consoles);
+    return 0;
 }
 
 /* ── Artwork helpers ─────────────────────────────────────── */
@@ -618,24 +675,7 @@ bool artwork_exists(const char *rom_path, const char *display_name) {
 
 void artwork_src_path(const char *rom_path, const char *display_name,
                       char *buf, size_t buflen) {
-    /* Find the directory containing the ROM */
-    char dir[PATH_MAX];
-    snprintf(dir, sizeof(dir), "%s", rom_path);
-    char *slash = strrchr(dir, '/');
-    if (slash) *slash = '\0';
-
-    /* For folder-based ROMs, dir IS the ROM path's parent */
-    struct stat st;
-    if (stat(rom_path, &st) == 0 && S_ISDIR(st.st_mode))
-        snprintf(dir, sizeof(dir), "%s", rom_path);
-
-    /* Actually, Go code uses filepath.Dir(romPath) which for a dir gives its parent.
-     * Let's fix: for folder ROMs the path IS the folder, Dir gives parent. */
-    snprintf(dir, sizeof(dir), "%s", rom_path);
-    slash = strrchr(dir, '/');
-    if (slash) *slash = '\0';
-
-    snprintf(buf, buflen, "%s/.media/%s.png", dir, display_name);
+    zlyme_artwork_path(rom_path, display_name, buf, buflen);
 }
 
 /* ── Manual helpers ──────────────────────────────────────── */
@@ -901,6 +941,7 @@ void free_settings(app_settings *s) {
 app_settings load_settings(void) {
     app_settings defaults = default_settings();
     char path[PATH_MAX];
+    zlyme_import_legacy();
     get_settings_path(path, sizeof(path));
 
     FILE *f = fopen(path, "rb");

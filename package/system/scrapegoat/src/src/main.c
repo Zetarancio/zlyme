@@ -66,6 +66,9 @@ static void configure_desktop_nextui_preview(void) {
 #endif
 
 int main(int argc, char *argv[]) {
+    if (argc > 1 && strcmp(argv[1], "zlyme-paths") == 0)
+        return zlyme_dump_paths();
+
     /* Background daemon mode: headless, no UI */
     if (argc > 1 && strcmp(argv[1], "--daemon") == 0) {
         int ready_fd = -1;
@@ -90,7 +93,9 @@ int main(int argc, char *argv[]) {
     cfg.window_title = "ScrapeGoat";
     cfg.log_path = ap_resolve_log_path("scrapegoat");
     cfg.is_nextui = true;
-    cfg.cpu_speed = AP_CPU_SPEED_MENU;
+    /* zlyme-governor owns clocks. Apostrophe's my355 path is a no-op,
+     * and the default preset does not ask it to change anything. */
+    cfg.cpu_speed = AP_CPU_SPEED_DEFAULT;
 
 #ifndef PLATFORM_MAC
     /* On device: use system font (Apostrophe resolves from NextUI theme) */

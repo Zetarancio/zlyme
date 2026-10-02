@@ -7,6 +7,7 @@
  */
 
 #include "daemon.h"
+#include "zlyme_paths.h"
 #include "screenscraper.h"
 #include "systems.h"
 #include "cJSON.h"
@@ -35,8 +36,7 @@
 /* ── Path helpers ────────────────────────────────────────── */
 
 static void daemon_dir(char *buf, size_t len) {
-    snprintf(buf, len, "%s/.userdata/shared/ScrapeGoat/daemon",
-             get_sdcard_path());
+    zlyme_daemon_dir(buf, len);
 }
 
 static void daemon_pid_path(char *buf, size_t len) {
