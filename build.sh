@@ -167,6 +167,7 @@ in_container() {
         -e SCREENSCRAPER_DEV_ID \
         -e SCREENSCRAPER_DEV_PASSWORD \
         -e ZLYME_REQUIRE_SCRAPEGOAT_CREDENTIALS \
+        -e ZLYME_IMAGE_DATE \
         -v "${REPO}:/zlyme/src:ro" \
         -v "${ZLYME_BUILDROOT}:/zlyme/buildroot" \
         -v "${ZLYME_OUTPUT}:/zlyme/output" \
@@ -240,6 +241,17 @@ mkdir -p "${ZLYME_OUTPUT}" "${ZLYME_DL}" "${ZLYME_CCACHE}"
 fetch_buildroot
 ensure_docker
 build_container
+
+# One UTC date for this invocation. An explicit override must already be
+# YYYY-MM-DD; a bad value stops the build instead of writing a partial stamp.
+if [ -z "${ZLYME_IMAGE_DATE:-}" ]; then
+    ZLYME_IMAGE_DATE=$(date -u +%Y-%m-%d)
+fi
+# shellcheck disable=SC1091
+. "${REPO}/board/my355/image-date.sh"
+zlyme_require_image_date || die "ZLYME_IMAGE_DATE must be YYYY-MM-DD (got ${ZLYME_IMAGE_DATE})"
+export ZLYME_IMAGE_DATE
+say "image date ${ZLYME_IMAGE_DATE}"
 
 if [ "${ACTION}" = shell ]; then
     exec in_container bash

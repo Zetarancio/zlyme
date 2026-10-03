@@ -168,7 +168,7 @@ fi
 # first_run path.
 # Keep PRETTY_NAME so About → OS stays the Buildroot string.
 pm_short_version() {
-	local root="" date="" zver="" verfile=""
+	local root="" zver="" verfile=""
 	root="${BR2_EXTERNAL_ZLYME_PATH:-}"
 	if [ -z "$root" ]; then
 		root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -183,12 +183,12 @@ pm_short_version() {
 		echo "post-build: ZLYME_VERSION is empty" >&2
 		return 1
 	fi
-	if [ -f "${TARGET_DIR}/usr/share/nextui/build-date.txt" ]; then
-		date=$(tr -d '\r\n' < "${TARGET_DIR}/usr/share/nextui/build-date.txt")
-	fi
-	if [ -n "$date" ]; then
-		zver="$zver ($date)"
-	fi
+	# The NextUI package install date is not the OS image date.
+	# This string uses the date from this build.sh invocation.
+	# shellcheck disable=SC1091
+	. "$(cd "$(dirname "$0")" && pwd)/image-date.sh"
+	zlyme_require_image_date || return 1
+	zver="$zver (${ZLYME_IMAGE_DATE})"
 	printf '%s\n' "$zver"
 }
 pm_os_release() {

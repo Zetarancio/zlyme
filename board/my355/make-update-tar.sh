@@ -19,7 +19,9 @@ ver="unknown"
 if [ -d "${ROOT}/.git" ]; then
 	ver=$(git -C "$ROOT" describe --always --dirty --abbrev=12 2>/dev/null || git -C "$ROOT" rev-parse --short=12 HEAD)
 fi
-stamp=$(date -u +%Y%m%d)
+# shellcheck disable=SC1091
+. "${BOARD_DIR}/image-date.sh"
+stamp=$(zlyme_image_stamp)
 
 need=(
 	"${BINARIES_DIR}/Image.gz"
