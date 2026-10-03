@@ -303,7 +303,11 @@ stage_delta() {
 		return 1
 	}
 	log "reconstructing squashfs from delta (base $delta_base)"
-	if ! tar -xOf "$tarf" zlyme.patch.zst | zstd -d --memory=2048MB --patch-from="$BOOT/zlyme" -o "$work/zlyme.new" -f; then
+	# --memory accepts a root-sized window. It also raises zstd's limit
+	# above the base file, so the automatic mmap does not run and zstd
+	# copies the squashfs into RAM. That copy is OOM-killed on this 1 GiB
+	# device. --mmap-dict keeps /boot/zlyme file-backed.
+	if ! tar -xOf "$tarf" zlyme.patch.zst | zstd -d --memory=2048MB --mmap-dict --patch-from="$BOOT/zlyme" -o "$work/zlyme.new" -f; then
 		cleanup_reconstruct
 		mark_fail apply "zstd reconstruction failed; current OS was not modified"
 	fi

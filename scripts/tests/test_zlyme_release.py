@@ -131,6 +131,26 @@ class DeltaRoundTripTests(unittest.TestCase):
             handle.write(b"different-base\n")
         rel.zstd_patch(old, new, patch)
         self.assertTrue(rel.round_trip_ok(old, new, patch))
+        seen = {}
+
+        def fake_run(cmd, capture_output=False):
+            seen["cmd"] = list(cmd)
+
+            class Result:
+                returncode = 0
+
+            return Result()
+
+        original = rel.subprocess.run
+        rel.subprocess.run = fake_run
+        try:
+            self.assertEqual(rel.zstd_apply(old, patch, os.path.join(directory, "unused")), 0)
+        finally:
+            rel.subprocess.run = original
+        self.assertEqual(
+            seen["cmd"][:4],
+            ["zstd", "-d", "--memory=2048MB", "--mmap-dict"],
+        )
         decoded = os.path.join(directory, "bad")
         self.assertNotEqual(rel.zstd_apply(wrong, patch, decoded), 0)
         self.assertFalse(os.path.exists(decoded) and os.path.getsize(decoded) == os.path.getsize(new))

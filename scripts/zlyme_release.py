@@ -169,13 +169,14 @@ def zstd_patch(old_path, new_path, patch_path):
 def zstd_apply(old_path, patch_path, out_path):
     """Return the zstd exit code. Non-zero means the patch was rejected.
 
-    A root-sized patch window sits just above zstd's default decoder cap,
-    so the apply allows a 2 GiB window. The frame still allocates only the
-    window it was compressed with.
+    --memory=2048MB accepts a root-sized window. That limit is larger than
+    the base squashfs, so zstd would otherwise malloc a second copy of it.
+    The 1 GiB Flip OOM-kills that copy. --mmap-dict keeps the base file-backed.
+    The frame still allocates the window it was compressed with.
     """
     result = subprocess.run(
         [
-            "zstd", "-d", "--memory=2048MB",
+            "zstd", "-d", "--memory=2048MB", "--mmap-dict",
             "--patch-from=%s" % old_path, patch_path, "-o", out_path, "-f",
         ],
         capture_output=True,

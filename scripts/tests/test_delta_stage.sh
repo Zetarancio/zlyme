@@ -3,6 +3,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 UPDATE="$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-update"
+grep -q 'zstd -d --memory=2048MB --mmap-dict --patch-from=' "$UPDATE"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
