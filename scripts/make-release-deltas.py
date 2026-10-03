@@ -22,6 +22,19 @@ def _die(msg):
     raise SystemExit(1)
 
 
+def _delta_filename(version, root_sha256):
+    """Physical delta name. Version is metadata; the root hash keeps two
+    bases that share a version from overwriting one file."""
+    try:
+        rel.parse_version(version)
+    except rel.ReleaseError as exc:
+        _die(str(exc))
+    digest = (root_sha256 or "").lower()
+    if len(digest) < 12 or any(ch not in "0123456789abcdef" for ch in digest[:12]):
+        _die("base root hash is not usable in a delta filename")
+    return "zlyme-my355-delta-%s-%s.tar" % (version, digest[:12])
+
+
 def _full_tar(images_dir):
     found = []
     for name in sorted(os.listdir(images_dir)):
@@ -49,7 +62,7 @@ def _download(url, dest, token):
     request = urllib.request.Request(url, headers={"User-Agent": "zlyme-release"})
     if token:
         request.add_header("Authorization", "Bearer %s" % token)
-    with urllib.request.urlopen(request, timeout=120) as response, open(dest, "wb") as handle:
+    with urllib.request.urlopen(request, timeout=300) as response, open(dest, "wb") as handle:
         while True:
             chunk = response.read(1024 * 1024)
             if not chunk:
@@ -114,8 +127,9 @@ def _load_historical_bases(repo, token, target_version, work):
         digest = rel.sha256_file(tar_path)
         if digest != data["full"]["sha256"]:
             _die("full OTA hash mismatch for %s" % data["version"])
-        root_path = os.path.join(work, "root-%s" % data["version"])
-        rel.extract_member(tar_path, "zlyme", root_path)
+        root_path = os.path.join(work, "root-%s" % data["root"]["sha256"])
+        if not os.path.exists(root_path):
+            rel.extract_member(tar_path, "zlyme", root_path)
         root_digest = rel.sha256_file(root_path)
         if root_digest != data["root"]["sha256"]:
             _die("root hash mismatch for %s" % data["version"])
@@ -126,7 +140,15 @@ def _load_historical_bases(repo, token, target_version, work):
                 "root_sha256": root_digest,
             }
         )
-    return bases
+    unique = []
+    seen = set()
+    for base in bases:
+        digest = base["root_sha256"]
+        if digest in seen:
+            continue
+        seen.add(digest)
+        unique.append(base)
+    return unique
 
 
 def _write_release(images_dir, version, source_sha, bases):
@@ -140,7 +162,12 @@ def _write_release(images_dir, version, source_sha, bases):
     root_size = os.path.getsize(root_path)
     deltas = []
     if not rel.is_baseline(version):
+        seen_roots = set()
         for base in bases:
+            digest = base.get("root_sha256") or ""
+            if digest in seen_roots:
+                continue
+            seen_roots.add(digest)
             fields = {
                 "TYPE": "delta",
                 "SCHEMA": "1",
@@ -152,7 +179,7 @@ def _write_release(images_dir, version, source_sha, bases):
                 "TARGET_SIZE": str(root_size),
                 "PATCH": "zlyme.patch.zst",
             }
-            delta_name = "zlyme-my355-delta-%s.tar" % base["version"]
+            delta_name = _delta_filename(base["version"], base["root_sha256"])
             delta_path = os.path.join(images_dir, delta_name)
             try:
                 size = rel.build_delta_tar(full_tar, base["root_path"], root_path, delta_path, fields)
@@ -161,8 +188,8 @@ def _write_release(images_dir, version, source_sha, bases):
             if not rel.under_cutoff(size, full_size):
                 os.remove(delta_path)
                 print(
-                    "omit delta from %s: %d bytes is at least %.0f%% of the full OTA"
-                    % (base["version"], size, rel.DELTA_SIZE_RATIO * 100),
+                    "omit delta from %s %s: %d bytes is at least %.0f%% of the full OTA"
+                    % (base["version"], base["root_sha256"][:12], size, rel.DELTA_SIZE_RATIO * 100),
                     file=sys.stderr,
                 )
                 continue

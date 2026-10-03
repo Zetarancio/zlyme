@@ -303,7 +303,7 @@ stage_delta() {
 		return 1
 	}
 	log "reconstructing squashfs from delta (base $delta_base)"
-	if ! tar -xOf "$tarf" zlyme.patch.zst | zstd -d --patch-from="$BOOT/zlyme" -o "$work/zlyme.new" -f; then
+	if ! tar -xOf "$tarf" zlyme.patch.zst | zstd -d --memory=2048MB --patch-from="$BOOT/zlyme" -o "$work/zlyme.new" -f; then
 		cleanup_reconstruct
 		mark_fail apply "zstd reconstruction failed; current OS was not modified"
 	fi

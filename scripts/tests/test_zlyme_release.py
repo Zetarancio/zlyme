@@ -109,6 +109,11 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(kind, "full")
         self.assertTrue(gh.is_legacy_full_tar("zlyme-my355-20260930-abc.tar"))
         self.assertFalse(gh.is_legacy_full_tar("zlyme-my355-delta-zlyme43.tar"))
+        self.assertFalse(
+            gh.is_legacy_full_tar(
+                "zlyme-my355-delta-zlyme43-0123456789ab.tar"
+            )
+        )
 
 
 class DeltaRoundTripTests(unittest.TestCase):
@@ -263,6 +268,48 @@ class ReleaseWriterTests(unittest.TestCase):
         self.assertEqual(data["deltas"][0]["from_version"], "zlyme43")
         self.assertEqual(data["deltas"][0]["from_sha256"], bases[0]["root_sha256"])
         self.assertLess(data["deltas"][0]["size"], int(data["full"]["size"] * rel.DELTA_SIZE_RATIO))
+        self.assertIn(bases[0]["root_sha256"][:12], data["deltas"][0]["file"])
+
+    def test_same_version_distinct_roots_do_not_overwrite(self):
+        spec = importlib.util.spec_from_file_location(
+            "make_release_deltas_roots",
+            os.path.join(ROOT, "scripts", "make-release-deltas.py"),
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        directory = tempfile.mkdtemp()
+        images = self._images(directory, b"A" * 200000 + b"target\n")
+        old_a = b"A" * 200000 + b"base-a\n"
+        old_b = b"A" * 200000 + b"base-b\n"
+        path_a = os.path.join(directory, "old-a")
+        path_b = os.path.join(directory, "old-b")
+        path_a_copy = os.path.join(directory, "old-a-copy")
+        for path, body in ((path_a, old_a), (path_b, old_b), (path_a_copy, old_a)):
+            with open(path, "wb") as handle:
+                handle.write(body)
+        bases = [
+            {"version": "zlyme43", "root_path": path_a, "root_sha256": rel.sha256_file(path_a)},
+            {"version": "zlyme43", "root_path": path_b, "root_sha256": rel.sha256_file(path_b)},
+            {"version": "zlyme43", "root_path": path_a_copy, "root_sha256": rel.sha256_file(path_a_copy)},
+        ]
+        module._write_release(images, "zlyme43.1", "abc123", bases)
+        with open(os.path.join(images, "release-manifest.json"), "r", encoding="utf-8") as handle:
+            data = json_load(handle)
+        self.assertEqual(len(data["deltas"]), 2)
+        by_sha = {item["from_sha256"]: item for item in data["deltas"]}
+        self.assertEqual(set(by_sha), {bases[0]["root_sha256"], bases[1]["root_sha256"]})
+        names = [item["file"] for item in data["deltas"]]
+        self.assertEqual(len(set(names)), 2)
+        for base in bases[:2]:
+            entry = by_sha[base["root_sha256"]]
+            self.assertEqual(entry["from_version"], "zlyme43")
+            self.assertIn(base["root_sha256"][:12], entry["file"])
+            self.assertTrue(entry["file"].startswith("zlyme-my355-delta-zlyme43-"))
+            self.assertTrue(os.path.isfile(os.path.join(images, entry["file"])))
+            kind, chosen = rel.choose_transport(data, base["root_sha256"])
+            self.assertEqual(kind, "delta")
+            self.assertEqual(chosen["from_sha256"], base["root_sha256"])
+            self.assertEqual(chosen["file"], entry["file"])
 
 
 def json_load(handle):

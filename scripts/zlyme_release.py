@@ -167,9 +167,17 @@ def zstd_patch(old_path, new_path, patch_path):
 
 
 def zstd_apply(old_path, patch_path, out_path):
-    """Return the zstd exit code. Non-zero means the patch was rejected."""
+    """Return the zstd exit code. Non-zero means the patch was rejected.
+
+    A root-sized patch window sits just above zstd's default decoder cap,
+    so the apply allows a 2 GiB window. The frame still allocates only the
+    window it was compressed with.
+    """
     result = subprocess.run(
-        ["zstd", "-d", "--patch-from=%s" % old_path, patch_path, "-o", out_path, "-f"],
+        [
+            "zstd", "-d", "--memory=2048MB",
+            "--patch-from=%s" % old_path, patch_path, "-o", out_path, "-f",
+        ],
         capture_output=True,
     )
     return result.returncode
