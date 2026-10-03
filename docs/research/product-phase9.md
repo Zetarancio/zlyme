@@ -581,6 +581,12 @@ Known from that run:
 
 Cheats stop before the Libretro database clone. The log is `cheats: git binary not found: /usr/lib/zlyme/zcrapegoat/resources/bin/git`. The bundled `git` and `git-remote-https` are in the PAK, and the launcher already exports that directory as `GIT_EXEC_PATH`. This artifact looks beside the executable instead. No other focused check on this image was reported. PortMaster's earlier acceptance is unchanged. Phase 9 stays open.
 
+## Live result of 4d4b110
+
+The maintainer installed `zlyme-my355-20261003-4d4b110b32ea.tar` (`4d4b110b32ead08908504c687df4aaa9da3d4d5d`). `/boot/zlyme` is SHA-256 `8d9bcf918053f20702cb78164823aeb85d47672f3e5389028dbd77287fc3747a`, which is that image. The cheat log selected `/storage/Tools/my355/ZcrapeGoat.pak/resources/bin/git` and did not keep Git's fatal text.
+
+On that device the PAK Git is the image copy (`5b3317865c045a3d357a3c582450c36fb2f45476a909103a144ebce5311afb28`), `git --version` is 2.53.0, and `--exec-path` is the PAK `resources/bin`. `git-remote-https` runs. The production checkout `/storage/.config/ZcrapeGoat/libretro-database` was absent. One `ls-remote` of the public Libretro database failed with `fatal: unable to access 'https://github.com/libretro/libretro-database.git/': Could not resolve host: github.com` while the link was unstable. After name resolution worked, the same `ls-remote` returned `HEAD`, and a clone with ZcrapeGoat's options into `libretro-database.debug` exited 0. That directory was removed. Phase 9 stays open.
+
 ## Current ZcrapeGoat build
 
 An earlier draft of this record described `package/system/scrapegoat`, the patch `0001-zlyme-libraries.patch`, copied state from `.userdata/shared/ScrapeGoat`, and PortMaster selected text `#FFD7B0`. That draft is not the current build. `daebc6f` accepted the orange `#FC9C14` selection. The pale color remains only as the `1f5dab` hardware note above.
