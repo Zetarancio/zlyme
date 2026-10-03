@@ -45,8 +45,8 @@ if [ -d "$ROOT/package/system/nextui/paks/Emus/RUFFLE.pak" ]; then
 	fail=1
 fi
 grep -F -q 'paks/Emus/RUFFLE.pak' "$ROOT/package/system/nextui/nextui.mk"
-grep -F -q 'zlyme43' "$ROOT/ZLYME_VERSION" || {
-	echo "product version file changed" >&2
+grep -F -q 'zlyme44' "$ROOT/ZLYME_VERSION" || {
+	echo "product version file is not zlyme44" >&2
 	fail=1
 }
 grep -F -q 'RUFFLE_PERFORMANCE=0' \

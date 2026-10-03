@@ -1845,7 +1845,7 @@ After the product work, in order:
 
 1. Finish the Phase 9 product changes on `phase-9-product`: remove Artwork Scraper and Cheat Downloader, make ZcrapeGoat the sole scraper and cheat integration, replace the cloned PortMaster theme with the `Zlyme` scheme, and add the stale-PAK post-update cleanup.
 2. Reconcile the README with the last non-prerelease GitHub release, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Ignore `zlyme43 (2026-09-28)` because that release is a prerelease. The README must describe the user-facing behavior the final image actually ships: emulators, Tools/PAKs, Settings, and install/update steps. Do not describe deferred or experimental work as supported. Ride-along README edits during the phase do not replace this pass. Keep joystick text to calibration, deadzone, the stick test, rumble, and that built-in controls work in games. GPIO, UART, force-feedback, and InputPlumber topology stay in the technical docs. Remove or rewrite the claim that core pinning and per-emulator performance settings are the SpruceOS policy; Zlyme's current policy is not that per-system Smart table. Run the dead-file audit in the same reconciliation, limited to files Phase 9 made obsolete.
-3. Keep the product version at `zlyme43`. Do not bump it in the closure candidate, and do not attach a build date to `ZLYME_VERSION`. Artifact filenames and the displayed build date are generated when the image is built.
+3. The closure candidate is `zlyme44`, a new baseline. Do not attach a build date to `ZLYME_VERSION`. Artifact filenames and the displayed build date are generated when the image is built. `zlyme44` publishes a full OTA and a manifest with zero deltas. Later `zlyme44.1` and `zlyme44.2` may publish same-major deltas. `zlyme45` is the next full baseline. A delta applies only when `from_sha256` equals the SHA-256 of the installed squashfs.
 4. Local validation does not wipe the Buildroot output tree. Clean and rebuild the Phase 9 packages that remain shipped, and the packages this pass changes, then build one incremental image with `./build.sh --config zlyme_my355_defconfig`. Do not dispatch GitHub Actions for that proof.
 5. The maintainer installs that one local OTA. Phase 9 is not closed, and `phase-9-product` does not move, until that image is hardware-accepted.
 6. After that acceptance, `phase-9-product` may fast-forward into `main`.
@@ -1859,7 +1859,7 @@ product work and README reconciliation
         |
         v
 targeted package rebuilds, one local incremental OTA
-(product version stays zlyme43)
+(product version is zlyme44, a full baseline)
         |
         v
 maintainer hardware acceptance of that local image
@@ -1879,7 +1879,7 @@ Phase 9 implementation closure   remote clean build
                                  stable release)
 ```
 
-`ZLYME_VERSION` stays `zlyme43`. Dates belong on the artifact that was built that day, not on the version name.
+`ZLYME_VERSION` is `zlyme44`. Dates belong on the artifact that was built that day, not on the version name. Earlier `zlyme43` images stay historical. The published `zlyme43` GitHub release is a prerelease and is left as it is.
 
 Status, 2026-10-02: the maintainer installed `zlyme-my355-20261001-f0143dd5b067.tar` and accepted GZDoom controls and saves, Cheat Downloader navigation, Music song download and radio, Ruffle launch and `Saves/FLASH` persistence, ROM-driven system visibility, and Create game folders under Settings → System → Storage. That acceptance does not keep Artwork Scraper or Cheat Downloader. The maintainer then installed `zlyme-my355-20261002-1f5dab487ee4.tar`. No other accepted surface regressed, and the stale Artwork Scraper, Cheat Downloader, and Weston test PAK cleanup was not reported as regressed. ScrapeGoat did not open: the launcher built a log path from the binary path and died before the program started. PortMaster's Zlyme selected text was too close to white.
 
