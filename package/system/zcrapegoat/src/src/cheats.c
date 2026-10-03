@@ -376,6 +376,12 @@ int run_git_capture(const char **argv, char *out, size_t cap) {
     return -1;
 }
 
+static void note_git_stderr_line(const char *line,
+                                 cheat_progress_fn set_progress,
+                                 float progress_scale,
+                                 float progress_offset,
+                                 int *got_real_progress);
+
 static int run_git_streaming(const char **argv, const char *cwd,
                              atomic_int *interrupt_signal,
                              cheat_progress_fn set_progress,
@@ -458,15 +464,12 @@ static int run_git_streaming(const char **argv, const char *cwd,
         char *start = buf;
         for (char *p = buf; p < buf + buf_pos; p++) {
             if (*p == '\r' || *p == '\n') {
+                char sep = *p;
                 *p = '\0';
-                if (p > start) {
-                    float progress = parse_git_progress(start);
-                    if (progress >= 0.0f && set_progress) {
-                        got_real_progress = 1;
-                        set_progress(progress_offset + progress * progress_scale);
-                    }
-                }
-                if (*p == '\r' && (p + 1) < buf + buf_pos && *(p + 1) == '\n')
+                if (p > start)
+                    note_git_stderr_line(start, set_progress, progress_scale,
+                                         progress_offset, &got_real_progress);
+                if (sep == '\r' && (p + 1) < buf + buf_pos && *(p + 1) == '\n')
                     p++;
                 start = p + 1;
             }
@@ -476,6 +479,11 @@ static int run_git_streaming(const char **argv, const char *cwd,
         if (remaining > 0 && start != buf)
             memmove(buf, start, remaining);
         buf_pos = remaining;
+    }
+    if (buf_pos > 0) {
+        buf[buf_pos] = '\0';
+        note_git_stderr_line(buf, set_progress, progress_scale,
+                             progress_offset, &got_real_progress);
     }
 
     close(pipe_fd[0]);
@@ -487,7 +495,41 @@ static int run_git_streaming(const char **argv, const char *cwd,
         return CHEAT_OP_CANCELLED;
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
         return CHEAT_OP_OK;
+    if (WIFEXITED(status))
+        fprintf(stderr, "cheats: git exited %d\n", WEXITSTATUS(status));
+    else
+        fprintf(stderr, "cheats: git exited without a status\n");
     return CHEAT_OP_ERROR;
+}
+
+/* Progress ticks stay on the bar. Fatal and other non-progress lines stay
+   in the PAK log. Authorization text is not copied. */
+static int git_stderr_is_noise(const char *line) {
+    if (!line || !line[0])
+        return 1;
+    if (parse_git_progress(line) >= 0.0f)
+        return 1;
+    if (strncmp(line, "remote: Counting objects:", 25) == 0 ||
+        strncmp(line, "remote: Compressing objects:", 28) == 0 ||
+        strncmp(line, "remote: Enumerating objects:", 28) == 0)
+        return 1;
+    if (strstr(line, "Authorization:") != NULL)
+        return 1;
+    return 0;
+}
+
+static void note_git_stderr_line(const char *line,
+                                 cheat_progress_fn set_progress,
+                                 float progress_scale,
+                                 float progress_offset,
+                                 int *got_real_progress) {
+    float progress = parse_git_progress(line);
+    if (progress >= 0.0f && set_progress) {
+        *got_real_progress = 1;
+        set_progress(progress_offset + progress * progress_scale);
+    }
+    if (!git_stderr_is_noise(line))
+        fprintf(stderr, "cheats: git: %s\n", line);
 }
 
 /* ── Sparse checkout management ───────────────────────────── */
