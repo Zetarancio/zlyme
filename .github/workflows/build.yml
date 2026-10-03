@@ -56,9 +56,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: zlyme-my355-*
           merge-multiple: true
@@ -123,9 +123,10 @@ jobs:
             --repo "${{ github.repository }}"
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('zlyme-{0}', github.run_id) }}
+          target_commitish: ${{ github.sha }}
           name: ${{ steps.title.outputs.name }}
           prerelease: false
           make_latest: true
