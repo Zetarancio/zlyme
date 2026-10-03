@@ -78,43 +78,122 @@ static int parent_dir(const char *path, char *dir, size_t dirlen) {
     return 0;
 }
 
-const char *get_git_bin(void) {
-#ifdef PLATFORM_MAC
-    struct stat st;
-    if (stat("/usr/bin/git", &st) == 0)
-        return "/usr/bin/git";
-    return "git";
-#else
-    static _Thread_local char buf[PATH_MAX];
-    const char *inherited = getenv("GIT_EXEC_PATH");
+static int join_file(char *buf, size_t buflen, const char *dir, const char *name) {
+    size_t n;
+    int slash;
+    size_t name_len;
+    if (!buf || buflen == 0 || !dir || !dir[0] || !name || !name[0])
+        return -1;
+    n = strlen(dir);
+    name_len = strlen(name);
+    slash = dir[n - 1] == '/';
+    if (n + (slash ? 0 : 1) + name_len >= buflen)
+        return -1;
+    memcpy(buf, dir, n);
+    if (!slash)
+        buf[n++] = '/';
+    memcpy(buf + n, name, name_len + 1);
+    return 0;
+}
+
+/* execve does not search PATH, so every selected Git is an absolute path. */
+static int copy_resolved(const char *path, char *buf, size_t buflen) {
+    char *resolved;
+    int n;
+    if (!git_file_usable(path) || !buf || buflen == 0)
+        return -1;
+    resolved = realpath(path, NULL);
+    if (!resolved)
+        return -1;
+    n = snprintf(buf, buflen, "%s", resolved);
+    free(resolved);
+    if (n < 0 || (size_t)n >= buflen) {
+        buf[0] = '\0';
+        return -1;
+    }
+    return 0;
+}
+
+#ifndef PLATFORM_MAC
+static int exe_resources_git(char *buf, size_t buflen) {
     char exe[PATH_MAX];
+    char dir[PATH_MAX];
+    char candidate[PATH_MAX];
     ssize_t len;
     char *slash;
 
-    if (git_join(buf, sizeof(buf), inherited) == 0 && git_file_usable(buf))
-        return buf;
-
     len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
     if (len <= 0)
-        return "git";
+        return -1;
     exe[len] = '\0';
     slash = strrchr(exe, '/');
-    if (slash)
-        *slash = '\0';
-    snprintf(buf, sizeof(buf), "%s/resources/bin/git", exe);
-    return buf;
+    if (!slash || slash == exe)
+        return -1;
+    *slash = '\0';
+    if (snprintf(dir, sizeof(dir), "%s/resources/bin", exe) >= (int)sizeof(dir))
+        return -1;
+    if (git_join(candidate, sizeof(candidate), dir) != 0)
+        return -1;
+    return copy_resolved(candidate, buf, buflen);
+}
 #endif
+
+static int git_from_path(char *buf, size_t buflen) {
+    const char *path = getenv("PATH");
+    char *copy;
+    char *cursor;
+    if (!path || !path[0] || !buf || buflen == 0)
+        return -1;
+    copy = strdup(path);
+    if (!copy)
+        return -1;
+    cursor = copy;
+    while (cursor) {
+        char *colon = strchr(cursor, ':');
+        char candidate[PATH_MAX];
+        const char *entry;
+        if (colon)
+            *colon = '\0';
+        entry = cursor[0] ? cursor : ".";
+        if (git_join(candidate, sizeof(candidate), entry) == 0 &&
+            copy_resolved(candidate, buf, buflen) == 0) {
+            free(copy);
+            return 0;
+        }
+        if (!colon)
+            break;
+        cursor = colon + 1;
+    }
+    free(copy);
+    return -1;
+}
+
+const char *get_git_bin(void) {
+    static _Thread_local char buf[PATH_MAX];
+#ifdef PLATFORM_MAC
+    if (copy_resolved("/usr/bin/git", buf, sizeof(buf)) == 0)
+        return buf;
+    if (git_file_usable("/usr/bin/git"))
+        return "/usr/bin/git";
+#else
+    const char *inherited = getenv("GIT_EXEC_PATH");
+    char probe[PATH_MAX];
+
+    if (git_join(probe, sizeof(probe), inherited) == 0 &&
+        copy_resolved(probe, buf, sizeof(buf)) == 0)
+        return buf;
+    if (exe_resources_git(buf, sizeof(buf)) == 0)
+        return buf;
+#endif
+    if (git_from_path(buf, sizeof(buf)) == 0)
+        return buf;
+    return NULL;
 }
 
 int check_git_available(void) {
     const char *git = get_git_bin();
-    struct stat st;
-    if (stat(git, &st) != 0) {
-        fprintf(stderr, "cheats: git binary not found: %s\n", git);
-        return -1;
-    }
-    if (S_ISDIR(st.st_mode)) {
-        fprintf(stderr, "cheats: git path is a directory: %s\n", git);
+    if (!git || !git[0] || !git_file_usable(git)) {
+        fprintf(stderr, "cheats: git binary not found\n");
         return -1;
     }
     return 0;
@@ -167,16 +246,32 @@ static char **build_git_env(void) {
     int idx = 0;
 
     /* The bundled helpers are static. Keep the inherited library path and
-       do not invent a resources/lib directory beside the executable. */
-    if (git_join(probe, sizeof(probe), inherited) == 0 && git_file_usable(probe)) {
-        snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s", inherited);
-        have_exec = 1;
-    } else {
+       do not invent a resources/lib directory beside the executable.
+       GIT_EXEC_PATH is the directory of a PAK, executable-relative, or
+       PATH Git that actually ships its helpers beside the binary. A system
+       Git keeps its compiled-in helper directory. */
+    {
         const char *git = get_git_bin();
         char dir[PATH_MAX];
-        if (parent_dir(git, dir, sizeof(dir)) == 0) {
-            snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s", dir);
-            have_exec = 1;
+        char inherited_git[PATH_MAX];
+        char exe_git[PATH_MAX];
+        char remote[PATH_MAX];
+        int bundled = 0;
+        if (git && parent_dir(git, dir, sizeof(dir)) == 0) {
+            if (git_join(probe, sizeof(probe), inherited) == 0 &&
+                copy_resolved(probe, inherited_git, sizeof(inherited_git)) == 0 &&
+                strcmp(inherited_git, git) == 0)
+                bundled = 1;
+            if (exe_resources_git(exe_git, sizeof(exe_git)) == 0 &&
+                strcmp(exe_git, git) == 0)
+                bundled = 1;
+            if (join_file(remote, sizeof(remote), dir, "git-remote-https") == 0 &&
+                git_file_usable(remote))
+                bundled = 1;
+            if (bundled) {
+                snprintf(exec_path, sizeof(exec_path), "GIT_EXEC_PATH=%s", dir);
+                have_exec = 1;
+            }
         }
     }
 
@@ -496,6 +591,8 @@ int init_cheat_repo(atomic_int *interrupt_signal,
         set_message("Cloning cheat database...");
 
     const char *git = get_git_bin();
+    if (!git)
+        return -1;
     const char *argv[] = {
         git,
         "-c", "http.connectTimeout=10",
@@ -542,6 +639,8 @@ int ensure_system_checked_out(const char *libretro_dir_name,
         set_message(message);
 
     const char *git = get_git_bin();
+    if (!git)
+        return -1;
     const char *argv[] = {
         git,
         "-c", "http.connectTimeout=10",
@@ -568,6 +667,8 @@ int update_cheat_repo(atomic_int *interrupt_signal,
         set_message("Updating cheat database...");
 
     const char *git = get_git_bin();
+    if (!git)
+        return -1;
 
     /* Fetch with blob filter so only tree/commit objects are transferred,
        matching the --filter=blob:none used at clone time.  No --depth=1 here:
