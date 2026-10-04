@@ -124,7 +124,7 @@ Settings → System → Advanced:
 
 ### Update
 
-Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. What happens after the download is in the [README](../README.md#updating).
+Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. What happens after the download is in the [README](../README.md#update).
 
 ## ZcrapeGoat
 
