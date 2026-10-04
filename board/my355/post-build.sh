@@ -9,6 +9,25 @@ fail=0
 note() { echo "post-build: $*" >&2; fail=1; }
 info() { echo "post-build: $*" >&2; }
 
+# A missing Buildroot config cannot prove a package was left out.
+# Treat the symbol as selected so the product image still fails closed.
+br2_selected() {
+	local sym=$1
+	if [ -z "${BR2_CONFIG:-}" ] || [ ! -f "${BR2_CONFIG}" ]; then
+		return 0
+	fi
+	grep -qx "${sym}=y" "${BR2_CONFIG}"
+}
+
+chmod_if() {
+	local f
+	for f in "$@"; do
+		if [ -e "$f" ]; then
+			chmod 0755 "$f"
+		fi
+	done
+}
+
 shopt -s nullglob
 moddirs=("${TARGET_DIR}"/lib/modules/*/)
 shopt -u nullglob
@@ -17,17 +36,24 @@ if [ ${#moddirs[@]} -ne 1 ]; then
 	note "expected exactly one /lib/modules/<release>, found ${#moddirs[@]}"
 else
 	moddir="${moddirs[0]}"
-	# miyoo-flip-gamepad is the Flip gamepad.
-	for m in 8733bu rtl8733bu_power miyoo-flip-gamepad; do
-		found=$(find "${moddir}" -name "${m}.ko" -print -quit)
-		[ -n "${found}" ] || note "kernel module ${m}.ko is missing"
-	done
-	sd="${moddir}modules.softdep"
-	if [ -r "${sd}" ]; then
-		grep -q '^softdep rtl8733bu_power post: 8733bu$' "${sd}" ||
-			note "modules.softdep does not order 8733bu after rtl8733bu_power"
-	else
-		note "${sd} is missing"
+	if br2_selected BR2_PACKAGE_RTL8733BU; then
+		found=$(find "${moddir}" -name '8733bu.ko' -print -quit)
+		[ -n "${found}" ] || note "kernel module 8733bu.ko is missing"
+	fi
+	if br2_selected BR2_PACKAGE_RTL8733BU_POWER; then
+		found=$(find "${moddir}" -name 'rtl8733bu_power.ko' -print -quit)
+		[ -n "${found}" ] || note "kernel module rtl8733bu_power.ko is missing"
+		sd="${moddir}modules.softdep"
+		if [ -r "${sd}" ]; then
+			grep -q '^softdep rtl8733bu_power post: 8733bu$' "${sd}" ||
+				note "modules.softdep does not order 8733bu after rtl8733bu_power"
+		else
+			note "${sd} is missing"
+		fi
+	fi
+	if br2_selected BR2_PACKAGE_MIYOO_FLIP_GAMEPAD; then
+		found=$(find "${moddir}" -name 'miyoo-flip-gamepad.ko' -print -quit)
+		[ -n "${found}" ] || note "kernel module miyoo-flip-gamepad.ko is missing"
 	fi
 fi
 
@@ -39,11 +65,16 @@ if [ -e "${TARGET_DIR}/usr/bin/nextui.elf" ]; then
 	done
 fi
 
-for f in lib/firmware/rtl_bt/rtl8723fu_fw.bin \
-	 lib/firmware/rtl_bt/rtl8723fu_config.bin \
-	 lib/firmware/regulatory.db; do
-	[ -s "${TARGET_DIR}/${f}" ] || note "${f} is missing or empty"
-done
+if br2_selected BR2_PACKAGE_RTL8723FU_FIRMWARE; then
+	for f in lib/firmware/rtl_bt/rtl8723fu_fw.bin \
+		 lib/firmware/rtl_bt/rtl8723fu_config.bin; do
+		[ -s "${TARGET_DIR}/${f}" ] || note "${f} is missing or empty"
+	done
+fi
+if br2_selected BR2_PACKAGE_WIRELESS_REGDB; then
+	[ -s "${TARGET_DIR}/lib/firmware/regulatory.db" ] || \
+		note "lib/firmware/regulatory.db is missing or empty"
+fi
 
 for f in etc/init.d/S00vardirs; do
 	if [ -e "${TARGET_DIR}/${f}" ]; then
@@ -84,7 +115,7 @@ mkdir -p "${TARGET_DIR}/roms/ports" "${TARGET_DIR}/opt/system/Tools"
 # OS Roms made mount --bind overlay the OS card and duplicate the list.
 ln -sfn /usr/share/portmaster/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
 
-chmod 0755 \
+chmod_if \
 	"${TARGET_DIR}/usr/sbin/zlyme-led" \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage" \
 	"${TARGET_DIR}/usr/sbin/zlyme-storage-udev" \
@@ -105,13 +136,19 @@ else
 	note "wget curl wrapper missing from fsoverlay"
 fi
 [ -e "${TARGET_DIR}/etc/init.d/S50sshd" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S50sshd"
-[ -e "${TARGET_DIR}/usr/sbin/sshd" ] || [ -e "${TARGET_DIR}/usr/bin/sshd" ] || \
-	note "sshd is missing (BR2_PACKAGE_OPENSSH)"
-[ -e "${TARGET_DIR}/usr/bin/scp" ] || note "scp is missing (OpenSSH client)"
+if br2_selected BR2_PACKAGE_OPENSSH; then
+	[ -e "${TARGET_DIR}/usr/sbin/sshd" ] || [ -e "${TARGET_DIR}/usr/bin/sshd" ] || \
+		note "sshd is missing (BR2_PACKAGE_OPENSSH)"
+	[ -e "${TARGET_DIR}/usr/bin/scp" ] || note "scp is missing (OpenSSH client)"
+fi
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-ctl" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-ctl"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-audio" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-audio"
-[ -e "${TARGET_DIR}/usr/sbin/zlyme-jackd" ] || note "zlyme-jackd is missing"
-[ -e "${TARGET_DIR}/usr/sbin/zlyme-keylidmon" ] || note "zlyme-keylidmon is missing"
+if br2_selected BR2_PACKAGE_ZLYME_JACKD; then
+	[ -e "${TARGET_DIR}/usr/sbin/zlyme-jackd" ] || note "zlyme-jackd is missing"
+fi
+if br2_selected BR2_PACKAGE_ZLYME_KEYLIDMON; then
+	[ -e "${TARGET_DIR}/usr/sbin/zlyme-keylidmon" ] || note "zlyme-keylidmon is missing"
+fi
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-btsink" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-btsink"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-radios" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-radios"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-combo" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-combo"
@@ -263,14 +300,26 @@ if [ -n "$ref_ko" ] && command -v readelf >/dev/null 2>&1; then
 	fi
 fi
 
-if [ -e "${TARGET_DIR}/sbin/modprobe" ]; then
-	case "$(readlink -f "${TARGET_DIR}/sbin/modprobe")" in
-		*/kmod) ;;
-		*/busybox) note "modprobe is busybox, which ignores blacklist and softdep" ;;
-		*) note "modprobe resolves to something unexpected" ;;
-	esac
-else
-	note "no modprobe on the target"
+if br2_selected BR2_PACKAGE_KMOD; then
+	if [ -e "${TARGET_DIR}/sbin/modprobe" ]; then
+		case "$(readlink -f "${TARGET_DIR}/sbin/modprobe")" in
+			*/kmod) ;;
+			*/busybox) note "modprobe is busybox, which ignores blacklist and softdep" ;;
+			*) note "modprobe resolves to something unexpected" ;;
+		esac
+	else
+		note "no modprobe on the target"
+	fi
+fi
+
+# The overlay blacklists panfrost so the product Mali stack can bind.
+# A bring-up config that builds Mesa panfrost and does not select that
+# stack keeps the driver.
+if ! br2_selected BR2_PACKAGE_GPUDRIVER && ! br2_selected BR2_PACKAGE_LIBMALI; then
+	if [ -f "${TARGET_DIR}/etc/modprobe.d/zlyme-gpu.conf" ]; then
+		info "removing panfrost blacklist; this config has no Mali stack"
+		rm -f "${TARGET_DIR}/etc/modprobe.d/zlyme-gpu.conf"
+	fi
 fi
 
 # Fluidsynth 2.4 saw SDL3 cmake files in staging (Qt leftover) and
@@ -319,9 +368,11 @@ rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/ScrapeGoat.pak"
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp
 # from the binaries that actually ship.
-paks_ver="$(cd "$(dirname "$0")/../../package/system/nextui" && pwd)/paks-version.sh"
-sh "$paks_ver" \
-	"${TARGET_DIR}/usr/share/nextui/paks" \
-	"${TARGET_DIR}/usr/share/nextui/paks-version.txt"
+if br2_selected BR2_PACKAGE_NEXTUI; then
+	paks_ver="$(cd "$(dirname "$0")/../../package/system/nextui" && pwd)/paks-version.sh"
+	sh "$paks_ver" \
+		"${TARGET_DIR}/usr/share/nextui/paks" \
+		"${TARGET_DIR}/usr/share/nextui/paks-version.txt"
+fi
 
 exit "${fail}"
