@@ -69,7 +69,7 @@ Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/document
 
 Decided, not shipped:
 
-- **(c) Suspend RTC timer.** A periodic timed wake is not product policy. `zlyme44.1` should stop writing `+86400` to `/sys/class/rtc/rtc0/wakealarm` and should still clear a stale alarm before `mem`. `package/system/nextui/zlyme/suspend` on `zlyme44` still programs the timer. No Miyoo Flip 24-hour sleep limit is documented. `CHANGELOG.md` states that as source behavior.
+- **(c) Suspend RTC timer.** `zlyme44` clears `/sys/class/rtc/rtc0/wakealarm` and then writes `+86400` before every `mem`. That alarm management came from timed suspend testing. No Miyoo Flip 24-hour sleep limit is documented. `zlyme44.1` removes all of it from the production suspend helper: the helper does not read, clear, or replace `rtc0/wakealarm`, and an alarm programmed by the user or another program is preserved. RTC support stays enabled, and RTC wake remains a valid hardware wake source. `package/system/nextui/zlyme/suspend` on `zlyme44` still programs the timer. `CHANGELOG.md` states that as shipped `zlyme44` behavior. This documentation branch does not change `suspend`.
 
 Still open:
 
