@@ -20,4 +20,6 @@ The normal path remains small and low-overhead.
 
 Software without direct-KMS support needs an explicit compatibility runtime.
 
+Phase 1 settled two owners of that runtime. Zlyme's temporary Weston, built without Xwayland, runs native Wayland clients and Wine through `zlyme-weston-run`. PortMaster's WestonPack brings Xwayland for X11 ports and stays owned by PortMaster. Details are in `docs/ARCHITECTURE.md` §8.
+
 Application exit must correctly release display/seat resources so NextUI can recover.

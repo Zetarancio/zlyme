@@ -1,6 +1,7 @@
 # Historical research dump (2026-09-10), before the curated ship list
 # existed. The ship list that was current then is docs/archive/PLAN.md
 # section 11. Do not treat this file as what the image builds.
+# The shipped list is the "Systems" table in README.md.
 
 Yes. After checking the current ROCKNIX, KNULLI, ArkOS and SpruceOS configurations, I would revise the earlier recommendation slightly.
 

@@ -32,4 +32,4 @@ The first frame still happens before management starts. If InputPlumber is absen
 
 External controllers are independent composites from a generic joystick rule. They are not physically validated on this unit.
 
-Phase 4D still retargets emulators and other applications.
+Phase 4D completed on 2026-09-28. Shipped emulators and other applications use the virtual xb360 pad.

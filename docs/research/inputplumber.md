@@ -1,6 +1,6 @@
 # InputPlumber
 
-Date of the original study: 2026-09-14 / 2026-09-15. Updated 2026-09-26.
+Date of the original study: 2026-09-14 / 2026-09-15. Updated 2026-09-28 (Phase 4 closed).
 
 ## Current decision
 
@@ -290,7 +290,7 @@ is Anbernic gpio-keys / ADC plus YAML keyed on the DT **model**. That is
 not the Flip. The Flip pad is UART `retrogame_joypad` (ROCKNIX serial
 `.ko`, Zlyme patch 0002). Sticks are userspace `miyoo_inputd` on ttyS1
 in stock; we use the kernel driver instead. See
-`RESEARCH-JOYPAD-DRIVER.md`.
+`docs/research/joypad-driver.md`.
 
 ## What an obscure USB/BT pad does on Zlyme today
 

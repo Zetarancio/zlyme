@@ -1,5 +1,9 @@
 # Miyoo Flip gamepad
 
+> Status: historical Phase 3 record. It replaced a 2026-09-14 note on 2026-09-23, and Phase 3 closed on 2026-09-25. Each section is a dated checkpoint and describes the tree at that point.
+> Phase 4 (closed 2026-09-28) gave InputPlumber application ownership of the pad. Shipped applications read the virtual xb360 pad, not this device ([ADR 0005](../decisions/0005-controller-ownership.md)). Phase 9 raised the fresh Rumble Strength default from 30% to 40%.
+> For the shipped behavior, read [docs/ARCHITECTURE.md](../ARCHITECTURE.md) §10.
+
 The original 2026-09-23 Phase 3A section was research-only. No driver, DTS, or kernel patch was changed for that entry. Later sections append implementation and physical validation for Phase 3B and Phase 3C.
 
 This document replaces the 2026-09-14 note that said to keep the ROCKNIX serial module. That recommendation is obsolete. The target is a Zlyme driver for the Flip's actual hardware.

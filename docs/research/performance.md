@@ -1,3 +1,8 @@
+> Status: historical brainstorm, undated. It was first tracked on 2026-09-19 as `NOTES/OPTIMIZATION-RESEARCH.md`, before Phase 0. These are generic RK3566 suggestions, not Zlyme policy, and several were not adopted.
+> The shipped kernel uses `CONFIG_PREEMPT=y` (not `PREEMPT_DYNAMIC`), `HZ_250`, the `performance` default cpufreq governor, and `DEBUG_KERNEL=y` (`board/my355/linux/linux.config`, `board/my355/linux/my355.fragment`). There is no separate release kernel.
+> Runtime CPU, GPU, and DMC policy is `zlyme-governor` ([docs/DEVICE_PORTING.md](../DEVICE_PORTING.md)). Phase 9 added the Spruce per-system CPU floors. GPU and DMC stay `simple_ondemand` in game. DMC is the Phase 7 external module `package/drivers/rk3568-dmc`, not a kernel patch.
+> Measure before adopting anything here ([AGENTS.md](../../AGENTS.md) "Performance").
+
 Yes. On an RK3566 handheld, I would optimize the kernel less like a “desktop gaming kernel” and more like an **appliance kernel with aggressive device-specific power/performance control**.
 
 The biggest gains will not come from `-O3`. They will come from **CPU/GPU/DDR frequency management, removing jitter, avoiding useless drivers/workqueues, and having a very small board-specific configuration**.

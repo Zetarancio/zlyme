@@ -1,5 +1,10 @@
 # Deep suspend — Phase 6A
 
+> Status: historical Phase 6 record, 2026-09-28 to 2026-09-29. The opening and the sections before "Phase 6B implementation" are Phase 6A research, written before anything was enabled. Later sections record 6B to 6D and the closure.
+> Phase 6 then shipped `1011a`/`1011b` (`rockchip,pm-rk3568`, `CONFIG_ROCKCHIP_PM_CONFIG=y`) with `vdd_logic` off in mem suspend, and closed on runtime `b709719a` ("Phase 6 closure" below).
+> Phase 7 replaced the `1012a`/`1012b` DMC patches this note describes with the external module `package/drivers/rk3568-dmc`.
+> For the shipped behavior, read [docs/ARCHITECTURE.md](../ARCHITECTURE.md) "Hardware source of truth" and `board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts`.
+
 Research only. No driver, DTS node, Kconfig symbol, or regulator policy was activated. No OTA was built. `vdd_logic` stays `regulator-on-in-suspend`. RK817 `005` was not applied.
 
 Date: 2026-09-28. Branch `phase-6-deep-suspend` at the start of this note: `d2094007a8661b722611b12d3de767700f0cd873`. Accepted runtime baseline remains `8119387e0fdb729f1f013bed9dbc48c76e37a1df`.

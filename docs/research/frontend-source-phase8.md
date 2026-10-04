@@ -1,5 +1,10 @@
 # Frontend source — Phase 8
 
+> Status: historical Phase 8 record, 2026-09-30, started at `baadc22b`. The opening and "Current frontend architecture" describe the vendored tree before the migration.
+> Phase 8 then created the `Zetarancio/NextUI` fork (branch `zlyme`), switched `nextui.mk` to a pinned git fetch, vendored minui-list and minui-presenter, made ZLYMEBOOT read-only, and unmounted `/storage` before forced shutdown. It closed on runtime `7a0fc397`.
+> Phase 9 moved the NextUI pin and removed Artwork Scraper, ScrapeGoat.pak, and Weston.pak, which "Image audit" still lists. ZcrapeGoat replaced ScrapeGoat.
+> For the shipped behavior, read [docs/ARCHITECTURE.md](../ARCHITECTURE.md) §5 to §7 and §11, and [docs/MAINTENANCE.md](../MAINTENANCE.md) "NextUI fork".
+
 Research only. No NextUI fork was created, no Buildroot recipe was switched off `SITE_METHOD=local`, and no shutdown code was changed.
 
 Date: 2026-09-30. Branch `phase-8-nextui` at the start of this note: `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. `main` and `origin/main` were the same commit. Working tree was clean.

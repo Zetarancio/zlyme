@@ -1,5 +1,9 @@
 # Weston runtime choice
 
+> Status: historical Phase 1 record, 2026-09-22. Phase 1 closed on 2026-09-23. Alex the Allegator 2 ran through PortMaster's WestonPack with Xwayland. Wine 11 ran from an ext4 prefix image through native `winewayland.drv` on Zlyme's temporary Weston, which ships without Xwayland. The last paragraph below was written before those results.
+> Phase 9 removed the Weston test PAK from the image. Weston and `zlyme-weston-run` stay.
+> For the shipped behavior, read [docs/ARCHITECTURE.md](../ARCHITECTURE.md) §8, [docs/OPERATIONS.md](../OPERATIONS.md) "DRM ownership", and [ADR 0002](../decisions/0002-direct-kms.md).
+
 Phase 1 needs a temporary Wayland compositor for clients that cannot use KMSDRM. It is not a boot service and it is not the normal NextUI or RetroArch path.
 
 ## What PortMaster uses

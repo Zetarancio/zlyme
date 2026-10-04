@@ -1,5 +1,9 @@
 # Kernel patch audit — Phase 2A
 
+> Status: historical Phase 2 record, 2026-09-23, base `56cc4c38`. The 2A paragraphs at the top predate the 2B classification and the 2C removals further down, which took the stack from 45 to 18 Linux patches.
+> Later phases changed that stack. Phase 5 is in [kernel-patch-audit-phase5.md](kernel-patch-audit-phase5.md). Phase 6 added `1011a`/`1011b` and enabled deep suspend. Phase 7 removed `1012a`/`1012b` for `package/drivers/rk3568-dmc`, so `CONFIG_ARM_RK3568_DMC_DEVFREQ` no longer exists.
+> The shipped stack is the 16 patches under `board/my355/linux/patches/`. The procedure is [docs/MAINTENANCE.md](../MAINTENANCE.md) "Kernel and board patches".
+
 Research only. This note pins the evidence used to look at Zlyme's current my355 Linux patches. It does not classify those patches A–F, and it does not remove, replace, or import any patch.
 
 Normative architecture stays in `docs/ARCHITECTURE.md` and `docs/UPSTREAMS.md`. ROCKNIX is comparison evidence.

@@ -4,7 +4,9 @@ Status: Accepted
 
 ## Context
 
-The current implementation has several Miyoo Flip assumptions in otherwise global locations: Linux/U-Boot hooks, NextUI platform selection, update prefix/DTB checks, and RK817-specific helpers.
+When this was decided (2026-09-21), the implementation had several Miyoo Flip assumptions in otherwise global locations: Linux/U-Boot hooks, NextUI platform selection, update prefix/DTB checks, and RK817-specific helpers.
+
+The hooks, the platform selection, and the update prefix/DTB checks moved behind these boundaries the same day (`80eef38`, `bc2accb`, `837fff5`).
 
 ## Decision
 
