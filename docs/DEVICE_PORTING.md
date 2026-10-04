@@ -6,7 +6,7 @@ This document defines how a future Zlyme device should be added.
 
 It does **not** mean Zlyme currently supports more than the Miyoo Flip.
 
-Current support:
+Supported:
 
 ```text
 my355 — Miyoo Flip — supported
@@ -51,14 +51,16 @@ configs/zlyme_<device>_minimal_defconfig
 board/<device>/
 ├── board.mk
 ├── fsoverlay/
+│   └── usr/share/zlyme/device.conf
 ├── linux/
 ├── uboot/
 ├── genimage.cfg
 ├── post-build.sh
 ├── post-image.sh
-├── make-update-tar.sh
-└── device.conf
+└── make-update-tar.sh
 ```
+
+`board/my355` also has `extlinux.conf`, `zlyme-boot.conf`, `image-date.sh`, `assert-input-rootfs.sh`, `pre-update.sh`, `post-update.sh`, and the `sdl3-stub` sources. `build.sh` sources `board/my355/image-date.sh` by that literal path.
 
 Not all devices must use the same bootloader/image layout.
 
@@ -82,20 +84,7 @@ Avoid restoring unqualified `zlyme_defconfig` once multiple targets exist.
 
 ## Buildroot device selection
 
-Use a small Zlyme target choice in the external Kconfig.
-
-For now it contains only Miyoo Flip:
-
-```text
-choice
-    prompt "Zlyme target device"
-    default BR2_ZLYME_DEVICE_MY355
-
-config BR2_ZLYME_DEVICE_MY355
-    bool "Miyoo Flip (my355)"
-
-endchoice
-```
+The external `Config.in` has a Zlyme target choice with one entry, `BR2_ZLYME_DEVICE_MY355`.
 
 This is a dispatch seam, not a promise of another target.
 
@@ -103,23 +92,7 @@ A defconfig explicitly selects the device.
 
 ## Board make integration
 
-Move Miyoo Flip-only kernel/U-Boot hooks out of the global `external.mk` into:
-
-```text
-board/my355/board.mk
-```
-
-Then global `external.mk` should look conceptually like:
-
-```make
-include $(sort $(wildcard $(BR2_EXTERNAL_ZLYME_PATH)/package/*/*/*.mk))
-
-ifeq ($(BR2_ZLYME_DEVICE_MY355),y)
-include $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/board.mk
-endif
-
-# only genuinely global package/toolchain workarounds below
-```
+Miyoo Flip-only kernel and U-Boot hooks are in `board/my355/board.mk`. `external.mk` includes every package `.mk`, then includes `board/my355/board.mk` only when `BR2_ZLYME_DEVICE_MY355=y`. Only genuinely global package and toolchain workarounds follow.
 
 When another device exists, add another dispatch clause.
 
@@ -135,7 +108,7 @@ Every board should install:
 
 The file is shell-readable and immutable in the squashfs.
 
-For my355:
+For my355 (`board/my355/fsoverlay/usr/share/zlyme/device.conf`):
 
 ```sh
 ZLYME_DEVICE_ID=my355
@@ -158,10 +131,13 @@ Where useful, device implementations provide stable commands.
 ### `zlyme-audio`
 
 Owns:
-- sink discovery;
-- local codec routing;
-- volume;
-- optional HDMI/Bluetooth selection semantics.
+- sink discovery and selection: `codec`, `hdmi`, `bt`, and `auto` (= `codec`);
+- the shared volume `FlipVolume`;
+- the saved sink in `/storage/.config/audio.conf`.
+
+Verbs: `list`, `get`, `set {auto|codec|hdmi|bt}`, `status`, `getSystemVolume`, `setSystemVolume {mute|unmute|mute-toggle|[+-]N}`, `test`, `export`.
+
+Speaker versus headphones is not a `zlyme-audio` choice. `zlyme-jackd` follows the jack switch and owns `Playback Mux`.
 
 Generic code must not know `rk817ext`, `Playback Mux`, or `FlipVolume`.
 
@@ -173,38 +149,48 @@ Owns:
 - DMC/memory policy where present;
 - optional CPU hotplug/affinity policy.
 
-Generic launchers request semantic profiles such as:
+An emulator launcher passes its system tag:
 
 ```text
-smart
-play
-heavy
-idle
+zlyme-governor emu <tag>
 ```
 
-They should not know RK3566 sysfs paths.
+`emu <tag>` applies the SpruceOS per-system CPU floor, resolved to the lowest my355 OPP at or above it, on top of the `play` profile. A tag with no Spruce floor keeps `heavy` (PS2, GC, Wii) or `play`. Other callers request a semantic profile:
+
+```text
+smart        the NextUI list (NextUI CPU_SPEED_AUTO)
+play         Tools PAKs such as PortMaster, Files, and Moonlight
+heavy        heavy consoles, 1104 MHz floor
+idle         screen-off sleep (NextUI CPU_SPEED_POWERSAVE)
+performance  heavy, or overclock when the boost flag is on
+overclock    allows the 1992 MHz OPP; serial debug only
+auto         alias of smart
+powersave    alias of idle
+```
+
+`ZLYME_GOVERNOR` in the environment replaces the whole mode, including `emu`. `--policy <tag>` and `--resolve-floor <kHz>` print the decision without writing sysfs.
+
+Callers must not know RK3566 sysfs paths.
+
+The implementation is `package/system/nextui/zlyme/governor.sh`, installed by the nextui package as `/usr/sbin/zlyme-governor`. It is RK3566/my355-specific (OPP list, core hotplug, DMC rates) even though it does not live under `board/my355`. `gpudriver` (`package/system/gpudriver`) is in the same position. A second device must move or parameterize both.
 
 ### `zlyme-led`
 
-Owns board LED behavior.
+Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `off`, `charging`, `discharging`, `poweroff`, `flash`, `watch`, `list`. `ledcontrol` is a symlink to it.
 
 ### `zlyme-halt`
 
-Owns safe shutdown/reboot details specific to the device/storage layout.
+Owns safe shutdown/reboot details specific to the device/storage layout. `zlyme-halt [poweroff|reboot]` is exec'd by `nextui-session`.
 
 ### `zlyme-update`
 
-May have common logic, but must consume device metadata for artifact identity and required boot files.
+`zlyme-update` is board code (`board/my355/fsoverlay/usr/sbin/zlyme-update`). It takes the filename prefix and the DTB name from `device.conf`. Update identity is described under "Update compatibility" below.
 
 ## Frontend platform contract
 
-The selected device defines the NextUI platform name.
+The selected device defines the NextUI platform name. my355 maps to `workspace/my355`.
 
-Current:
-
-```text
-my355 -> workspace/my355
-```
+The hidden string `BR2_PACKAGE_NEXTUI_PLATFORM` in `Config.in` defaults to `my355` from the device choice. `nextui.mk` builds `workspace/$(BR2_PACKAGE_NEXTUI_PLATFORM)` and stops when the string is empty. `post-build.sh` checks it against `ZLYME_NEXTUI_PLATFORM` in `device.conf`.
 
 Do not hardcode:
 
@@ -214,15 +200,9 @@ NEXTUI_PLATFORM = my355
 
 as a universal package constant.
 
-Prefer a hidden Buildroot string derived from the selected device, for example:
-
-```text
-BR2_PACKAGE_NEXTUI_PLATFORM="my355"
-```
-
-and consume that in `nextui.mk`.
-
 A future device can then add its own NextUI platform directory without forking the package recipe.
+
+Runtime code does not read the platform from `device.conf`. `nextui-session` sets `PLATFORM=my355` and `DEVICE=my355` and uses `/storage/Emus/my355` and `/storage/Tools/my355`. `rc.late` copies the NextUI log to `/storage/.config/nextui/my355/logs`. A second device must derive those from `device.conf`.
 
 ## Board overlay vs common overlay
 
@@ -240,6 +220,8 @@ Keep in `board/my355/fsoverlay`:
 - device-specific governor/sysfs logic;
 - joypad/lid/LED behavior;
 - board-specific boot/update hooks.
+
+Known exceptions: `zlyme-governor` ships from the nextui package and `gpudriver` from its own package, both under `package/system`. See `zlyme-governor` above.
 
 Candidates for a future common overlay:
 - generic logging helpers;
@@ -262,11 +244,9 @@ For inherently Miyoo-specific packages, use an explicit dependency such as:
 depends on BR2_ZLYME_DEVICE_MY355
 ```
 
-Examples to audit:
-- `zlyme-jackd`;
-- `zlyme-keylidmon` if its implementation depends on the my355 platform;
-- `gpudriver`;
-- RK3566/RTL8733BU/joypad-specific driver packages.
+Packages gated on `BR2_ZLYME_DEVICE_MY355`: `zlyme-jackd`, `zlyme-keylidmon`, `zlyme-input`, `miyoo-flip-gamepad`, `rtl8733bu-power`, and `rk3568-dmc`.
+
+Not gated: `gpudriver` and `libmali` depend only on `mali-kbase`, which depends only on the kernel. `rtl8733bu` and `rtl8723fu-firmware` are not gated either. Those are open audit items, not a decision that they are board-independent.
 
 Generic emulator packages should normally remain independent of the device symbol.
 
@@ -283,9 +263,17 @@ The updater should verify at least:
 
 Never accept another device's update because filenames partially overlap.
 
-A full OTA is a tar that contains the squashfs member `zlyme`, the device DTB, `Image.gz`, and `VERSION`. A delta OTA carries the same boot members plus `DELTA-MANIFEST` and `zlyme.patch.zst`, and it does not also contain `zlyme`. The manifest names the device, the base squashfs hash, and the target hash and size. `my355` is the device value shipped today.
+A full OTA is a tar that contains the squashfs member `zlyme`, the device DTB, `Image.gz`, and `VERSION`. A delta OTA carries the same boot members plus `DELTA-MANIFEST` and `zlyme.patch.zst`, and it does not also contain `zlyme`. The manifest names the device, the base squashfs hash, and the target hash and size.
 
-Generic updater code reads the filename prefix, DTB name, and board identity from device metadata. Those are not universal constants. A future device needs its own prefix, DTB, and identity, and it must reject a my355 full tar and a my355 delta tar. Do not add that second device until it exists.
+What each piece checks today:
+
+- `zlyme-update` picks only `${ZLYME_UPDATE_PREFIX}-*.tar` from `/storage/.update`. A full tar must contain the members `${ZLYME_DTB}`, `zlyme`, and `Image.gz`. A full tar has no device field. Its identity is the filename prefix plus the DTB member.
+- For a delta, `zlyme-update` requires `DEVICE=my355`. That value is a literal in the script, not `ZLYME_DEVICE_ID`.
+- Settings (`github-release.py`) accepts a `release-manifest.json` only when its `device` equals `ZLYME_DEVICE_ID` from `device.conf`.
+- The release scripts `scripts/zlyme_release.py` and `scripts/make-release-deltas.py` write and check the literal `my355`, and name deltas `zlyme-my355-delta-*`.
+- Initramfs deletes leftover `zlyme-my355-*` tars by that literal name.
+
+The prefix and DTB already come from device metadata. The delta `DEVICE` literal, the release-script literals, and the initramfs cleanup names are the seam a second device must parameterize from `ZLYME_DEVICE_ID` and `ZLYME_UPDATE_PREFIX`. That device must also reject a my355 full tar and a my355 delta tar. Do not add that second device until it exists.
 
 Staging and the reboot commit are in `docs/ARCHITECTURE.md`. The operator steps are in `docs/OPERATIONS.md`.
 
@@ -295,7 +283,7 @@ With one device, keep CI simple.
 
 When a second device is actually added, convert build jobs to a matrix keyed by defconfig/device.
 
-Do not add empty CI matrix entries now.
+Do not add CI matrix entries for a device that does not exist.
 
 ## Porting checklist
 
@@ -339,4 +327,6 @@ Examples/candidates:
 
 Keep board-specific DTS, OPP/voltage policy, module ordering, and enablement in the board layer.
 
-Do not mark a package as `depends on BR2_ZLYME_DEVICE_MY355` if its implementation is intentionally SoC-family reusable. Instead make the board select it.
+For a package whose implementation is intentionally SoC-family reusable, the target shape is a board `select` rather than `depends on BR2_ZLYME_DEVICE_MY355`.
+
+`rk3568-dmc` does not follow that shape. Its `Config.in` has `depends on BR2_ZLYME_DEVICE_MY355`, its help text names the Miyoo Flip, and `configs/zlyme_my355_defconfig` enables it directly. Its OPP and SIP contract has been validated only on the Flip. A second RK356x board changes that gate when it exists.

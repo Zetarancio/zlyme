@@ -31,6 +31,8 @@ Prefer explicit code and narrow interfaces over framework-building.
 
 ## Required context
 
+This section is the agent reading list. `.cursor/rules/zlyme-core.mdc` keeps only a short summary that defers to it.
+
 Before making code changes, read:
 
 - `docs/ENGINEERING_PRINCIPLES.md`
@@ -57,11 +59,11 @@ For live-device and recovery work also read:
 
 - `docs/OPERATIONS.md`
 
-For sequencing planned project work, read:
+For sequencing project work, read:
 
 - `docs/ROADMAP.md`
 
-`ROADMAP.md` is non-normative: it describes planned work, not current architecture. Do not implement a later roadmap phase unless the active task asks for it.
+`ROADMAP.md` is non-normative: it records phase sequencing and phase acceptance history, not current architecture. Do not implement a later roadmap phase unless the active task asks for it.
 
 Architecture documents state what the system is and why. This file states how changes should be made.
 
@@ -82,6 +84,18 @@ Preserve these unless the task explicitly requires changing them:
 - The curated emulator model is intentional. Do not add alternate cores merely because they exist.
 - Hardware safety, thermal protection, and filesystem integrity outrank benchmark results.
 - Do not redistribute ROMs, BIOS files, keys, commercial software, firmware, or vendor binaries without verifying redistribution rights.
+
+## Superseded designs
+
+These were replaced. Do not revive them.
+
+- The ROCKNIX joypad package (`rocknix-joypad`, `rocknix-singleadc-joypad`). The built-in pad is `miyoo-flip-gamepad`, and applications read InputPlumber's virtual `xb360` pads. `board/my355/post-build.sh` deletes leftover modules.
+- A mergerfs pool of `/storage/Roms`. Each card is its own library, and the active libraries are listed in `/run/zlyme/libraries`. `package/system/mergerfs` is dormant: still sourced from `package/system/Config.in`, selected by no defconfig, and its help text still describes the old pool.
+- The Artwork Scraper and Cheat Downloader tools. ZcrapeGoat replaced both. `board/my355/post-update.sh` removes old card copies.
+- A cloned PortMaster theme directory (`PortMaster/themes/Zlyme`). Zlyme is a color scheme inside PortMaster's default theme.
+- KNULLI/Batocera `/userdata` paths and NextUI `/mnt/SDCARD/.userdata/shared` paths. `/userdata` does not exist on the read-only root. `/mnt/SDCARD` is a symlink to `/storage`, so a copied `.userdata` path silently writes onto the OS card. Persistent configuration is `/storage/.config/<owner>`. NextUI's own state is `/storage/.config/nextui/shared` and `/storage/.config/nextui/my355`.
+- A permanent compositor. Weston runs for one application at a time through `zlyme-weston-run`. WestonPack belongs to PortMaster.
+- Patching `/boot/zlyme` in place. A delta reconstructs a new root under `/storage/.update/reconstruct`, and initramfs copies the verified `pending/zlyme` on reboot. `/boot` stays read-only at runtime. Writes go through `zlyme-boot-write`.
 
 ## Device-boundary rule
 

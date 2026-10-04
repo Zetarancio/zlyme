@@ -194,9 +194,9 @@ Choose the interface that exposes the least implementation detail while remainin
 When hardware behavior is uncertain, make the experiment easy to back out.
 
 Examples:
-- selectable old/new joypad module during migration;
+- keeping the old joypad module selectable while the new one was proven;
 - optional Weston runtime rather than a permanent compositor;
-- optional InputPlumber before making it a boot-critical dependency.
+- starting InputPlumber after the first frame instead of putting it on the boot path.
 
 Do not make five irreversible architecture changes in one experiment.
 
@@ -227,7 +227,7 @@ Kernel drivers should expose hardware mechanisms.
 Userspace should own policy where practical.
 
 Examples:
-- input driver reports input; InputPlumber may later define composite-controller policy;
+- input driver reports input; InputPlumber defines composite-controller policy;
 - kernel/devfreq exposes frequency control; `zlyme-governor` chooses gaming profiles;
 - DRM exposes display; launcher policy decides when a temporary Weston session is used.
 

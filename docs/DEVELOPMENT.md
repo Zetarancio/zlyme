@@ -1,8 +1,8 @@
 # Zlyme development guide
 
-## Current target
+## Target
 
-Zlyme currently supports only:
+Zlyme supports only:
 
 ```text
 Miyoo Flip
@@ -18,11 +18,25 @@ Zlyme is a Buildroot external tree.
 
 Buildroot is pinned by `build.sh`. Do not develop against Buildroot master unless a task explicitly changes the project baseline.
 
-The build runs inside the pinned Docker environment.
+The build runs inside the Docker container built from `Dockerfile`. Its base image is pinned by digest. Its apt packages are not version-pinned.
 
 ZcrapeGoat may embed ScreenScraper developer credentials. Local builds read `package/system/zcrapegoat/credentials.local` (gitignored). The official GitHub build reads the Actions secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. `build.sh` forwards those environment names into Docker and does not put the values on the command line. Do not commit or log the values. The credential-bearing compile sets `CCACHE_DISABLE=1` so the persistent CI ccache cannot store them. A build with neither source still compiles; the official GitHub build fails closed if either secret is missing.
 
 Buildroot builds the target cross-toolchain. Target software is cross-compiled; do not execute target binaries through QEMU as part of normal compilation.
+
+## Pinned baseline
+
+The source column is authoritative. Update this table when a pin changes.
+
+| Component | Version | Source |
+| --- | --- | --- |
+| Buildroot | `2026.02.3` | `BUILDROOT_VERSION` in `build.sh` |
+| Linux | `7.0.2` | `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` in `configs/zlyme_my355_defconfig` |
+| U-Boot | `2026.01`, board defconfig `quartz64-a-rk3566` | `BR2_TARGET_UBOOT_CUSTOM_VERSION_VALUE` in the defconfig |
+| BL31 | `rk3568_bl31_v1.44.elf` | `BR2_PACKAGE_ROCKCHIP_RKBIN_BL31_FILENAME` in the defconfig |
+| TPL | `rk3566_ddr_1056MHz_v1.23.bin` | `BR2_PACKAGE_ROCKCHIP_RKBIN_TPL_FILENAME` in the defconfig |
+
+Both defconfigs carry the same kernel, U-Boot, and rkbin lines. The rkbin commit itself comes from the Buildroot version. TPL and BL31 must be a matching pair. On a normal card boot only BL31 from that pair runs, because the Miyoo SPI-NAND preloader has already done DDR init. The product version is the `ZLYME_VERSION` file. The NextUI pin is `NEXTUI_VERSION` (`docs/MAINTENANCE.md`).
 
 ## Defconfigs
 
@@ -33,9 +47,11 @@ configs/zlyme_my355_minimal_defconfig
 configs/zlyme_my355_defconfig
 ```
 
-`./build.sh` with no `--config` builds the minimal image. That is the bring-up/debug base.
+`./build.sh` with no `--config` builds the minimal image unless `ZLYME_DEFCONFIG` is set. That is the bring-up/debug base. `storage.sh.example` sets `ZLYME_DEFCONFIG=zlyme_my355_defconfig`.
 
-The output tree records the defconfig that configured it in `.zlyme-defconfig`. A later run reapplies the requested defconfig when that record is missing or different, when `.config` is missing, or when the defconfig file is newer than `.config`. `menuconfig` and `savedefconfig` are not wiped when the recorded selection already matches.
+The output tree records the defconfig that configured it in `.zlyme-defconfig`. A later run reapplies the requested defconfig when that record is missing or different, when `.config` is missing, or when the defconfig file is newer than `.config`. A `menuconfig` change is not wiped when the recorded selection already matches and the defconfig file is older than `.config`.
+
+To change configuration, edit `configs/*_defconfig` directly, then run `build.sh` again. The edited file is newer than `.config`, so `build.sh` reapplies it. Use `menuconfig` to explore a symbol and its dependencies, then copy the line into the defconfig by hand. Do not use `savedefconfig`. `build.sh` mounts the repository read-only at `/zlyme/src`, and `BR2_DEFCONFIG` points into that mount, so it cannot write the file. Buildroot's minimal output would also drop the defconfig comments.
 
 `./build.sh --config zlyme_my355_defconfig` is the product image: frontend, emulators, PortMaster, Wine/Box64, and the other services.
 
@@ -56,25 +72,41 @@ Typical operations:
 ./build.sh --config <defconfig>
 ./build.sh menuconfig
 ./build.sh linux-rebuild
-./build.sh savedefconfig
+./build.sh <pkg>-dirclean
 ./build.sh --check
 ./build.sh --loops
+./build.sh --shell
+./build.sh --clean
+./build.sh --rebuild-image
 ```
+
+Any other make target is passed through to Buildroot. `--clean` deletes the build tree and keeps downloads and ccache. It refuses a directory that is not named `output`. `--shell` opens a shell in the build container. `--rebuild-image` rebuilds the container. A build with no make target, and every passed-through target except `*config`, writes `output/build.log`. The file is overwritten at the start of each run.
+
+Paths come from the environment: `ZLYME_BUILDROOT`, `ZLYME_OUTPUT`, `ZLYME_DL`, `ZLYME_CCACHE`, and `ZLYME_DEFCONFIG`. The defaults are `./buildroot`, `./output`, `./dl`, `./.ccache`, and the minimal defconfig.
 
 Do not run two builds against the same output tree simultaneously.
 
-A full product-image invocation fingerprints the local `nextui`,
-`minui-list`, `minui-presenter`, `zlyme-keylidmon`, OpenBOR, and PPSSPP
-package inputs. When one changes, `build.sh` uses that package's Buildroot
-`-dirclean` target before building the image. `minui-list` also watches
-`package/system/nextui/nextui.mk`, because the helpers link objects built
-from that pin. `minui-presenter` watches that same file and the
-`minui-list` package, because it compiles minui-list's vendored parson
-source. The downloaded NextUI tree is not fingerprinted.
-Buildroot's ordinary `-reinstall` target copies scripts but can leave a
-previously compiled C binary in the package build directory. Use the normal
-full image invocation after source edits; package-only targets remain useful
-for diagnosis and do not run this source refresh.
+## Source fingerprints
+
+Buildroot copies a local package's source once and does not notice a later edit. A build with no make target runs `refresh_compiled_package` in `build.sh` for each of these packages when it is enabled:
+
+| Package | Fingerprinted paths |
+| --- | --- |
+| `nextui` | `package/system/nextui`, `package/system/zlyme-input/virtpad.h` |
+| `minui-list` | `package/system/minui-list`, `package/system/nextui/nextui.mk` |
+| `minui-presenter` | `package/system/minui-presenter`, `package/system/minui-list`, `package/system/nextui/nextui.mk` |
+| `zcrapegoat` | `package/system/zcrapegoat` |
+| `zlyme-keylidmon` | `package/system/zlyme-keylidmon`, `package/system/zlyme-input/virtpad.h`, `package/system/nextui/nextui.mk` |
+| `openbor` | `package/emulators/openbor` |
+| `ppsspp` | `package/emulators/ppsspp` |
+
+When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh.
+
+Other local packages are not fingerprinted: `zlyme-input`, `zlyme-jackd`, `miyoo-flip-gamepad`, `rk3568-dmc`, `rtl8733bu-power`, `gpudriver`, `pico8`, and `rtl8723fu-firmware`. After editing one of those, run `./build.sh <pkg>-dirclean` or `./build.sh <pkg>-rebuild` before the image build. `<pkg>-reinstall` copies the source again but can keep a previously compiled binary.
+
+Files that a downloaded package installs from its own package directory are not fingerprinted either, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again.
+
+Some inputs sit outside every package fingerprint and are reapplied on every image build: `ZLYME_VERSION`, the `board/my355/*.sh` scripts, and `board/my355/fsoverlay`. Buildroot's `target-finalize` copies the overlay and reruns post-build on every build. The overlay copy does not delete. A file removed from `board/my355/fsoverlay` stays in `output/target` until `post-build.sh` removes it explicitly or the output tree is rebuilt.
 
 The my355 post-image hook extracts the application input path from the newly
 packed squashfs and compares scripts, configuration seeds, and the controller
@@ -92,7 +124,7 @@ Keep:
 
 as separate paths.
 
-`storage.sh` remains a local/machine-specific convenience wrapper and should not contain repository-wide assumptions.
+For machine-local paths, copy `storage.sh.example` to `storage.sh` (gitignored) and run that instead of `build.sh`. It must not contain repository-wide assumptions.
 
 ## Reproducibility
 
@@ -105,20 +137,15 @@ For packages:
 - provide hashes where Buildroot can verify them;
 - avoid network access from build/install steps.
 
+Most downloaded packages, including the emulators and libretro cores, have no `.hash` file. Add one when changing a package's version.
+
 Do not silently upgrade dependencies.
 
 ## Package sourcing policy
 
 The package's own upstream is the version authority. KNULLI and ROCKNIX are packaging references, not the source of truth. Compare version, dependencies, options, patches, and license before adopting anything. `docs/UPSTREAMS.md` and `docs/MAINTENANCE.md` own that procedure.
 
-Hardware facts do not come from Knulli merely because it has a similar SoC.
-
-For Miyoo Flip hardware:
-- working Zlyme behavior;
-- the dedicated Miyoo Flip hardware research;
-- the working ROCKNIX-derived hardware implementation
-
-take precedence.
+Hardware facts do not come from KNULLI merely because it has a similar SoC. For Miyoo Flip hardware the device wiki comes first. Current ROCKNIX is comparison evidence, and the archived Zetarancio/distribution fork is historical evidence. `docs/UPSTREAMS.md` owns that authority model.
 
 ## Image date
 
@@ -126,17 +153,17 @@ take precedence.
 
 ## Release artifacts
 
-A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. The GitHub release job does. A baseline such as `zlyme44` publishes zero deltas. A later point release may add same-major deltas selected by the installed root hash.
-
-The accepted Phase 9 runtime is `337ccbce2587393463a4b49c551f94e33e318e44`. Documentation commits after that SHA are not a substitute for it. The clean `Build` workflow dispatched from that SHA is the release artifact. A local OTA is not that artifact.
+A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. The GitHub release job does. A local OTA is not a release artifact. The release and delta policy and the accepted runtime SHA are in `docs/MAINTENANCE.md`.
 
 ## Build container
 
 GitHub Actions pulls or publishes `ghcr.io/<owner>/zlyme-build:latest`. GHCR requires a lowercase repository name, so the workflow lowercases `GITHUB_REPOSITORY_OWNER` before building the image path. For this repository the path is `ghcr.io/zetarancio/zlyme-build:latest`. Login still uses `github.actor`. The `Docker image` workflow rebuilds that container when `Dockerfile` or `.github/workflows/docker-image.yml` changes.
 
+`build.sh` reuses a local `zlyme-build` image only when its `zlyme.dockerfile` label equals the SHA-256 of `Dockerfile`. Neither workflow passes that label to `docker build`, so `build.sh` rebuilds the container in every CI build stage even after a successful GHCR pull.
+
 ## Package layout
 
-Current top-level package categories:
+Top-level package categories:
 
 ```text
 package/
@@ -158,17 +185,24 @@ Device-specific packages may stay where they are, but should declare their devic
 - selected-board dispatch;
 - genuinely global Buildroot workarounds.
 
-Miyoo Flip U-Boot/Linux hooks belong in:
+Miyoo Flip U-Boot/Linux hooks live in:
 
 ```text
 board/my355/board.mk
 ```
 
-This is the highest-value structural change for future device support.
+`external.mk` includes it only when `BR2_ZLYME_DEVICE_MY355=y`.
 
 ## Compiler policy
 
-The current tree has deliberate Cortex-A55 and package optimization choices.
+Both defconfigs build userspace at `-O3` (`BR2_OPTIMIZE_3=y`) with `BR2_TARGET_OPTIMIZATION="-pipe -fsigned-char -mcpu=cortex-a55+crc+crypto+fp+simd+rcpc"`. The kernel keeps its own `-O2`.
+
+These packages are pinned back to `-O2` in their own `.mk` with `$(filter-out -O3,…) -O2`:
+
+- `package/emulators/libretro-genesisplusgx/libretro-genesisplusgx.mk`;
+- `package/emulators/libretro-dosbox-pure/libretro-dosbox-pure.mk`.
+
+A new pin goes in the package `.mk` with a comment that says why.
 
 Do not change global optimization policy as cleanup.
 
@@ -197,23 +231,26 @@ Do not move board-specific kernel/U-Boot mutation back into global code after it
 
 When reconfiguring the kernel, remember that out-of-tree modules may require rebuild/dirclean if the module ABI changes.
 
-A change that touches only the board DTS, and does not change kernel source, kernel config, modules, or the root filesystem, does not need a full image or a new OTA for the experiment. The boot volume is the vfat labeled `ZLYMEBOOT`, mounted at `/boot` by `S12bootfs`. Extlinux loads `FDT /rk3566-miyoo-flip.dtb` from that volume, so the live file is `/boot/rk3566-miyoo-flip.dtb`.
+A change that touches only the board DTS, and does not change kernel source, kernel config, modules, or the root filesystem, does not need a full image or a new OTA for the experiment. The boot volume is the vfat labeled `ZLYMEBOOT`. Initramfs mounts it read-only at `/boot`. `S12bootfs` is the fallback mount and also keeps it read-only. Extlinux loads `FDT /rk3566-miyoo-flip.dtb` from that volume, so the live file is `/boot/rk3566-miyoo-flip.dtb`. Every runtime write to `/boot` goes through `zlyme-boot-write`, which remounts it read-write for one command and then back to read-only.
 
 1. Rebuild only that DTB in the existing Buildroot kernel tree.
-2. Decompile it and confirm the intended property change, and that nothing else in the suspend node moved.
-3. Copy it to `/boot/rk3566-miyoo-flip.dtb` on the Flip. Leave the previous file aside as `/boot/rk3566-miyoo-flip.dtb.bak` first.
-4. Compare SHA-256 of the built file and `/boot/rk3566-miyoo-flip.dtb`.
-5. Reboot.
-6. Test.
+2. Decompile it and confirm the intended property change, and that nothing outside the intended node moved.
+3. Copy it to `/tmp` on the Flip.
+4. Through `zlyme-boot-write`, keep the previous file as `/boot/rk3566-miyoo-flip.dtb.bak` and copy the new one over `/boot/rk3566-miyoo-flip.dtb`.
+5. Compare SHA-256 of the built file and `/boot/rk3566-miyoo-flip.dtb`.
+6. Reboot.
+7. Test.
 
 ```sh
 ./build.sh --config zlyme_my355_defconfig linux-rebuild
 sha256sum output/images/rk3566-miyoo-flip.dtb
-scp output/images/rk3566-miyoo-flip.dtb root@192.168.0.108:/tmp/rk3566-miyoo-flip.dtb
-ssh root@192.168.0.108 'cp -a /boot/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb.bak && cp -a /tmp/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb && sha256sum /boot/rk3566-miyoo-flip.dtb && reboot'
+scp output/images/rk3566-miyoo-flip.dtb root@<flip-ip>:/tmp/rk3566-miyoo-flip.dtb
+ssh root@<flip-ip> 'zlyme-boot-write sh -c "cp -a /boot/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb.bak && cp -a /tmp/rk3566-miyoo-flip.dtb /boot/rk3566-miyoo-flip.dtb" && sha256sum /boot/rk3566-miyoo-flip.dtb && reboot'
 ```
 
-`linux-rebuild` is the supported entry that recompiles this DTB in the existing tree and installs it to `output/images/`. It can also relink `Image`. If `Image` was not part of the experiment, do not copy it. A later accepted release can still be a normal full image.
+To undo the experiment, copy the `.bak` file back the same way.
+
+`linux-rebuild` is the supported entry that recompiles this DTB in the existing tree and installs it to `output/images/`. It can also relink `Image`. If `Image` was not part of the experiment, do not copy it. A release still ships a full image. The DTB-only copy is an experiment, not a release.
 
 ## Image safety
 
@@ -248,7 +285,7 @@ Avoid:
 
 Prefer small daemons or scripts with narrow responsibilities.
 
-Current useful interface pattern:
+Interface pattern:
 
 ```text
 frontend / PAK / generic service
@@ -288,6 +325,8 @@ full image build when relevant
 real-device test when hardware behavior changed
 ```
 
+Host-side tests live in `scripts/tests/`. Run one directly, for example `sh scripts/tests/test_delta_stage.sh` or `python3 scripts/tests/test_doc_links.py`. The image build also asserts on its own: `build.sh` fails when a defconfig `=y` line does not survive kconfig, `post-build.sh` checks the radio and gamepad modules and the NextUI platform, and `assert-input-rootfs.sh` checks the packed squashfs.
+
 Do not claim hardware validation based on compilation.
 
 ## Documentation workflow
@@ -296,9 +335,12 @@ Use:
 - `ARCHITECTURE.md` for stable system design;
 - `DEVICE_PORTING.md` for extension contracts;
 - `OPERATIONS.md` for durable live-device/recovery facts;
+- `UPSTREAMS.md` for source selection and provenance;
+- `MAINTENANCE.md` for the maintainer index and release policy;
+- `ROADMAP.md` for phase sequencing and acceptance history;
 - `LOGBOOK.md` for chronological engineering history;
 - `research/` for alternatives and experiments;
-- ADRs for major choices that future maintainers might otherwise "simplify" away.
+- ADRs in `docs/decisions/` for major choices that future maintainers might otherwise "simplify" away.
 
 Research records alternatives.
 

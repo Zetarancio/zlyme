@@ -15,4 +15,4 @@ Before changing a recipe:
 4. Keep Zlyme's direct KMS, input, audio, and storage contracts. Persistence is `/storage/.config`, per-library content roots, and the application's own contract. Do not rewrite another distribution's paths into a guessed userdata location.
 5. Put an adopted patch next to the `.mk`. Buildroot does not apply `package/foo/patches/`.
 
-Hardware (kernel, DTS, drivers, mixer names) stays the device wiki and the current ROCKNIX comparison, not KNULLI.
+Hardware facts (kernel, DTS, drivers, mixer names) come from the device wiki. Official ROCKNIX is comparison evidence for RK3566 kernel, DTS, and driver work, not an authority. KNULLI is not a hardware source. `docs/UPSTREAMS.md` owns that model.

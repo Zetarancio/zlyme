@@ -21,6 +21,8 @@ Use this to establish:
 - license changes;
 - relevant upstream fixes.
 
+For an upstream without releases, a commit that ROCKNIX or KNULLI already carries may be chosen. Record both the upstream commit and the distribution revision that carries it. gpSP is the current example (see Compared revisions).
+
 ### Buildroot packaging patterns for handhelds
 
 Strong references:
@@ -44,13 +46,16 @@ Do not assume their architecture is Zlyme's architecture.
 
 ### Miyoo Flip hardware
 
-Authority:
+This document owns the hardware-authority model. Other documents link here.
 
-```text
-Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
-current known-good Zlyme behavior for implementation state
-primary evidence cited by the device wiki
-```
+| Source | Role |
+| --- | --- |
+| `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` (the device wiki) and the primary evidence it cites | Hardware and firmware authority |
+| This Zlyme repository | Authority for current implementation state |
+| Upstream Linux for the selected kernel | Whether kernel behavior is upstream, backported, changed, or obsolete |
+| Official ROCKNIX (`next`) | Comparison evidence for RK3566 kernel, DTS, and driver work |
+| `Zetarancio/distribution` | Historical evidence only |
+| KNULLI | Not a hardware source |
 
 The device wiki is distribution-independent after its documentation refactor. Treat its hardware/firmware conclusions as the canonical device reference.
 
@@ -58,7 +63,11 @@ The device wiki is distribution-independent after its documentation refactor. Tr
 
 Do not take board facts from KNULLI or another RK3566 handheld simply because the SoC is similar.
 
-## Current KNULLI repository
+### Policy data from another distribution
+
+`zlyme-governor emu <tag>` uses the per-system `scaling_min_freq` values from SpruceOS `2b7bc4a79359de14ea4d4f00da9801a937e2846d` (`Emu/*/config.json`). Each value is resolved to the lowest my355 OPP at or above it. That table is the only thing taken from SpruceOS. Do not copy Spruce's governor, core layout, or DMC policy.
+
+## KNULLI repository
 
 Use the active repository:
 
@@ -78,7 +87,7 @@ External upstream reference:
 https://github.com/ROCKNIX/distribution
 ```
 
-Use official ROCKNIX for generic RK3566, kernel, driver, emulator, and packaging comparisons when relevant.
+Use official ROCKNIX for generic RK3566, kernel, driver, emulator, and packaging comparisons when relevant. Use its `next` branch and pin the commit you compared.
 
 Historical Miyoo Flip implementation evidence:
 
@@ -190,7 +199,22 @@ hardware testing still required
 
 ## Compared revisions
 
-These are the trees Phase 0 checked, not a promise to track them. Local clone paths are not part of the contract; the remotes are.
+These are recorded comparisons, not a promise to track any tree. Local clone paths are not part of the contract; the remotes are.
+
+### Revisions current code depends on
+
+| Role | Remote | Revision | Used for |
+| --- | --- | --- | --- |
+| NextUI fork | `Zetarancio/NextUI` | `70344ade993c4c5e64f7a2e7ff719474d088f470` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
+| NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
+| ROCKNIX | `ROCKNIX/distribution` `next` | `a55d58a1209b35e287dd55a3aad67a5543b467ce` | carries gpSP `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the `package/emulators/libretro-gpsp` pin |
+| KNULLI | `knulli-cfw/knulli-linux` `knulli-main` | `6a23957a19a1df18989ac6aa5e9fff003ae611ed` | carries the older gpSP `d6decfa3`; compared, not adopted |
+| SpruceOS | `spruceUI/spruceOS` | `2b7bc4a79359de14ea4d4f00da9801a937e2846d` | CPU floor table in `package/system/nextui/zlyme/governor.sh` |
+| ROCKNIX | `ROCKNIX/distribution` | `fe127fad01f6006bea1734ebde87d1c02cc6d256` | RK817 patch `001`, applied as local `0003`; `002`, `005`, `008` not adopted |
+
+The gpSP comparison is in `docs/research/product-phase9.md`. The RK817 dispositions are in `docs/research/kernel-patch-audit-phase5.md` and `docs/research/deep-suspend-phase6.md`. ZcrapeGoat's import is recorded below.
+
+### Phase 0 comparison snapshot
 
 | Role | Remote | Revision seen |
 | --- | --- | --- |
@@ -201,7 +225,7 @@ These are the trees Phase 0 checked, not a promise to track them. Local clone pa
 | BaseOS | `apommel/baseos-my355` | `85b67b4` |
 | KNULLI | `knulli-cfw/knulli-linux` | `0b1fd94` |
 
-The longer comparison notes, including which tip each clone was behind, stay in `docs/archive/NOTES.md`.
+The SpruceOS row is the Phase 0 snapshot. The governor table uses `2b7bc4a` above. The longer Phase 0 notes, including which tip each clone was behind, stay in `docs/archive/NOTES.md`.
 
 ## Safe agent request
 

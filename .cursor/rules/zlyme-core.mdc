@@ -5,28 +5,15 @@ alwaysApply: true
 
 # Zlyme core rule
 
-Read and follow `AGENTS.md` and `docs/ENGINEERING_PRINCIPLES.md`.
+Read and follow `AGENTS.md`. It owns the reading list. In short:
 
-Before architectural, device, boot, graphics, audio, storage, update, packaging, or runtime changes, read:
+- every code change: `docs/ENGINEERING_PRINCIPLES.md`;
+- architectural, device, boot, graphics, audio, storage, update, packaging, or runtime changes: `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`;
+- build, package, and toolchain work: `docs/DEVELOPMENT.md` and `docs/UPSTREAMS.md`;
+- maintenance, upstream intake, kernel patches, and releases: `docs/MAINTENANCE.md`;
+- live Miyoo Flip behavior and recovery: `docs/OPERATIONS.md`.
 
-- `docs/ARCHITECTURE.md`
-- `docs/DEVICE_PORTING.md`
-
-For design/refactoring work also read:
-
-- `docs/ENGINEERING_PRINCIPLES.md`
-
-For build/package changes also read:
-
-- `docs/DEVELOPMENT.md`
-- `docs/UPSTREAMS.md`
-- `docs/MAINTENANCE.md`
-
-For maintenance, upstream intake, kernel patches, and release work also read `docs/MAINTENANCE.md`.
-
-For live Miyoo Flip behavior and recovery procedures also read:
-
-- `docs/OPERATIONS.md`
+If this summary and `AGENTS.md` differ, `AGENTS.md` wins.
 
 Important constraints:
 
@@ -36,6 +23,6 @@ Important constraints:
 - Do not move unrelated code during a focused change.
 - Never claim real-device validation unless it actually occurred.
 
-`docs/ROADMAP.md` describes planned work only. Do not treat later roadmap phases as current architecture or implement them unless the active task requests them.
+`docs/ROADMAP.md` records phase sequencing and phase acceptance history. It is not the current architecture. Do not implement a later phase unless the task asks for it.
 
 For major migrations, read `docs/ROADMAP.md` and work on only the requested phase.
