@@ -76,6 +76,9 @@ need_cmd() {
 # Galaxy lockup for the whole extract/copy. persist so the reboot that
 # commits the squashfs also starts initramfs on galaxy, not slime.
 show_galaxy() {
+	# persist keeps the boot splash up across the apply reboot by creating
+	# /boot/zlyme-splash.progress. test-stage uses this same path, so a
+	# test has to clear that flag before a reboot. It is not a root write.
 	if [ -x /usr/sbin/zlyme-splash-progress ]; then
 		zlyme-splash-progress on persist || true
 	else
