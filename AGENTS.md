@@ -49,6 +49,10 @@ For build/package/toolchain work also read:
 - `docs/DEVELOPMENT.md`
 - `docs/UPSTREAMS.md`
 
+For maintenance, kernel-patch review, package updates, vendored helpers, the NextUI fork, and releases, also read:
+
+- `docs/MAINTENANCE.md`
+
 For live-device and recovery work also read:
 
 - `docs/OPERATIONS.md`

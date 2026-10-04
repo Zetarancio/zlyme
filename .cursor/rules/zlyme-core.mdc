@@ -20,6 +20,9 @@ For build/package changes also read:
 
 - `docs/DEVELOPMENT.md`
 - `docs/UPSTREAMS.md`
+- `docs/MAINTENANCE.md`
+
+For maintenance, upstream intake, kernel patches, and release work also read `docs/MAINTENANCE.md`.
 
 For live Miyoo Flip behavior and recovery procedures also read:
 

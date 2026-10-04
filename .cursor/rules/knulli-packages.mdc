@@ -1,15 +1,18 @@
 ---
-description: Take emulator recipes and patches from Knulli before writing our own
+description: How to update emulators, cores, and libraries without copying another distro
 alwaysApply: true
 ---
 
-# Knulli first for packages
+# Package updates
 
-Knulli is Buildroot + Batocera recipes. For **emulators, cores, and libraries**, do not invent a patch or a `.mk` from scratch.
+The package's own upstream is the version and source authority. Active KNULLI and ROCKNIX trees are packaging references. A local checkout of either is optional. Do not require a developer-specific absolute path.
 
-1. Search `~/Downloads/knulli-linux/knulli-linux/package/` (`batocera/emulators/`, `emulators/`, `batocera/libraries/`, `batocera/utils/`).
-2. Copy their recipe and `*.patch` files. Put patches **next to the `.mk`** — Buildroot does not apply `package/foo/patches/`.
-3. Refresh hunks only so `patch -F0` applies. Replace Batocera `/userdata` with NextUI `/mnt/SDCARD/.userdata/shared`. Drop X11/Wayland/Vulkan pieces we do not ship.
-4. Write a new patch only if Knulli has no equivalent, or theirs cannot be refreshed.
+Before changing a recipe:
 
-Hardware (kernel, DTS, drivers, mixer names) stays ROCKNIX / the device wiki, not Knulli.
+1. Read `docs/MAINTENANCE.md` and `docs/UPSTREAMS.md`.
+2. Compare version, dependencies, options, patches, and license with Zlyme's current package.
+3. Classify a borrowed patch before adopting it. Do not copy a patch stack wholesale.
+4. Keep Zlyme's direct KMS, input, audio, and storage contracts. Persistence is `/storage/.config`, per-library content roots, and the application's own contract. Do not rewrite another distribution's paths into a guessed userdata location.
+5. Put an adopted patch next to the `.mk`. Buildroot does not apply `package/foo/patches/`.
+
+Hardware (kernel, DTS, drivers, mixer names) stays the device wiki and the current ROCKNIX comparison, not KNULLI.
