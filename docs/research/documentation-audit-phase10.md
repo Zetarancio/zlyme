@@ -669,7 +669,16 @@ Nothing here was changed or tested on hardware. Each item is maintainer review (
 
 ## Hardware wiki synchronization plan
 
-The wiki is `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` at `b08e335d31fca41383e01176390914c3d4550ec5`, the same pin as `docs/UPSTREAMS.md:197`. It was read but not edited in Phase 10 so far. Runtime evidence for the sync is `337ccbce2587393463a4b49c551f94e33e318e44`. Wording guidance is the Phase 10 documentation SHA: `<to be filled at review>`. `docs/ROADMAP.md` names this work "10C. Wiki synchronization".
+The wiki is `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` at `b08e335d31fca41383e01176390914c3d4550ec5`, the same pin as `docs/UPSTREAMS.md:197`. This plan was written against that pin. `docs/ROADMAP.md` names the work "10C. Wiki synchronization". The result is recorded below.
+
+### Synchronization result
+
+- Zlyme runtime evidence: `337ccbce2587393463a4b49c551f94e33e318e44`. That is the hardware-accepted runtime that Build run `37164297221` built cleanly. The run succeeded and published the stable release `zlyme-37164297221`, `zlyme44 (2026-10-04)`.
+- Zlyme documentation content used for the wiki wording: `d2e2496b7fe935d5123d082d1ef28b6ac28ed139` on `phase-10-maintenance`. It is not a hardware-tested runtime. Later Zlyme commits, including this record, are bookkeeping and were not the sync source.
+- Wiki commits on `main`, from `b08e335d31fca41383e01176390914c3d4550ec5`: `4ea7548041d63387c80a26b2152330a2bfbf4181` ("docs: synchronize the Zlyme zlyme44 implementation") and `609ec338b6d3bf7b34d8dc70ad27c3adea7d8f8a` ("docs: document the current Zlyme install path"). Fourteen Markdown pages changed. No evidence file, log, or dump changed.
+- Not done in this sync, and waiting on the maintainer: the multiboot distro-table row, the DDR v1.18 with BL31 v1.44 data point, and any boot-message claim that needs a fresh serial capture. The hardware-fact conflicts below stay open.
+- Zlyme Installer (`Zetarancio/zlymeOS-Installer`): a fork of `spruceUI/spruceOS-Installer`. SundownerSport made the first Zlyme adaptation (`9400fc625eae57729f83f5bc2eeba2724a94a8c1`). The Zlyme branch is `zlyme-installer`. Its README now leads with the Zlyme Installer (`a7393d60c5d03956315f237ddf1430e9b2ad3e1c`). On 2026-10-04 only prereleases were published: `beta-zlyme-installer` and `beta-main`. The `beta-zlyme-installer` tag points at `main` (`ab3d7cf86b62093a984f076d05b402db024b536b`), not at the branch it was built from. The repository's default branch is still `main`, which shows the SpruceOS README.
+- The clean-build root differs from the locally accepted one. The published `zlyme44` root SHA-256 is `a831ad6aa8e2543a44fd8810ec4d76a18b317deebaf8dfcdaaec23b7011f650b`. The accepted local image was `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`. The source SHA is the same. A later delta built against the published root does not match a device that still runs the local image, so that device gets the full OTA.
 
 Constraints a Phase 10E edit must preserve:
 
