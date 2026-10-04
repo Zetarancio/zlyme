@@ -3,13 +3,22 @@
 # Persist flags under /storage/.config/zlyme/. Init scripts call
 # `want`; Settings calls get/set.
 
-. /etc/zlyme.conf
+# shellcheck disable=SC1091
+. "${ZLYME_CONF:-/etc/zlyme.conf}"
 
 DIR="${ZLYME_CFG}/zlyme"
 # Defaults when the file is absent. Keep in sync with S15bootpart seed.
+# boost and merge are retired. A leftover file is ignored.
+retired() {
+	case "$1" in
+		boost|merge) return 0 ;;
+	esac
+	return 1
+}
+
 default_of() {
 	case "$1" in
-		wifi|bluetooth|ssh|otg|hdmi|sd2|merge) echo on ;;
+		wifi|bluetooth|ssh|otg|hdmi|sd2) echo on ;;
 		samba|syncthing) echo off ;;
 		gpu) echo libmali ;;
 		display_mode) echo "" ;;
@@ -18,7 +27,6 @@ default_of() {
 		led) echo battery ;;
 		cpu_gov) echo schedutil ;;
 		gpu_gov) echo simple_ondemand ;;
-		boost) echo off ;;
 		zram) echo on ;;
 		logs) echo off ;;
 		update_channel) echo releases ;;
@@ -29,6 +37,10 @@ default_of() {
 get() {
 	name=$1
 	val=""
+	if retired "$name"; then
+		default_of "$name"
+		return
+	fi
 	if [ -r "$DIR/$name" ]; then
 		val=$(tr -d ' \t\r\n' < "$DIR/$name")
 	fi
@@ -48,12 +60,21 @@ want() {
 setv() {
 	name=$1
 	val=$2
+	if retired "$name"; then
+		rm -f "$DIR/$name"
+		return 0
+	fi
 	mkdir -p "$DIR" 2>/dev/null
 	printf '%s\n' "$val" > "$DIR/$name"
 }
 
 toggle() {
 	name=$1
+	if retired "$name"; then
+		rm -f "$DIR/$name"
+		echo off
+		return 0
+	fi
 	if want "$name"; then
 		setv "$name" off
 		echo off
@@ -148,16 +169,6 @@ apply_hdmi_mode() {
 	return 0
 }
 
-apply_merge() {
-	[ -x /usr/sbin/zlyme-storage ] && /usr/sbin/zlyme-storage merge
-}
-
-apply_boost() {
-	# Sysfs boost is owned by governor profiles. This only exists so
-	# `zlyme-ctl apply-boost` is a documented no-op after set.
-	return 0
-}
-
 apply_logs() {
 	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs apply
 }
@@ -167,9 +178,6 @@ apply_settings() {
 	apply_gov
 	apply_led
 	apply_zram
-	apply_boost
-	# Merge and DRM mode belong to S17 / NextUI. Calling mergerfs
-	# from S18 after an OTA sat behind S17's flock.
 }
 
 cmd=$1
@@ -185,18 +193,16 @@ case "$cmd" in
 	apply-led) apply_led ;;
 	apply-gov) apply_gov ;;
 	apply-zram) apply_zram ;;
-	apply-boost) apply_boost ;;
 	apply-logs) apply_logs ;;
 	apply-hdmi-mode) apply_hdmi_mode ;;
-	apply-merge) apply_merge ;;
 	apply-settings) apply_settings ;;
 	status)
-		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 boost zram merge logs update_channel; do
+		for n in wifi bluetooth ssh samba syncthing gpu display_mode refresh undervolt led otg hdmi sd2 zram logs update_channel; do
 			printf '%s=%s\n' "$n" "$(get "$n")"
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-boost|apply-logs|apply-hdmi-mode|apply-merge|apply-settings|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-logs|apply-hdmi-mode|apply-settings|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

@@ -50,6 +50,8 @@ printf '%s\n' 'ShowHidden=false' 'FontFile=custom.ttf' > "$shared/vtree/config.i
 printf '%s\n' 'network={' > "$cfg/wpa_supplicant.conf"
 printf '%s\n' 'paired' > "$cfg/bluetooth.tar"
 printf '%s\n' 'off' > "$zlyme/hdmi"
+printf '%s\n' 'on' > "$zlyme/boost"
+printf '%s\n' 'on' > "$zlyme/merge"
 printf '%s\n' 'l2' > "$zlyme/undervolt"
 printf '%s\n' 'gain=70' > "$zlyme/miyoo-flip-gamepad/rumble.config"
 printf '%s\n' 'off' > "$zlyme/ssh"
@@ -70,6 +72,12 @@ printf '%s\n' 'pm' > "$cfg/PortMaster/control.txt"
 "$BIN" settings
 
 test ! -e "$zlyme/hdmi"
+test ! -e "$zlyme/boost"
+test ! -e "$zlyme/merge"
+if grep -q 'apply-merge' "$work/apply.log"; then
+	echo "reset still applies merge" >&2
+	exit 1
+fi
 test ! -e "$zlyme/ssh"
 test ! -e "$zlyme/undervolt"
 test ! -e "$shared/vtree/config.ini"

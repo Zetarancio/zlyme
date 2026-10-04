@@ -77,7 +77,6 @@ apply_now() {
 	run_apply zlyme-ctl apply-refresh || return 1
 	run_apply zlyme-ctl apply-hdmi-mode || return 1
 	run_apply zlyme-ctl apply-logs || return 1
-	run_apply zlyme-ctl apply-merge || return 1
 	run_apply zlyme-ctl apply-gov || return 1
 	# Boot-time flags. Writing the overlay line now does not reboot.
 	run_apply zlyme-ctl apply-overlays || return 1

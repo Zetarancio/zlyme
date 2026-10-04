@@ -59,11 +59,15 @@ seed() {
 	# seed, so a fresh card otherwise has nowhere obvious to put one.
 	[ -d "$ZLYME_STORAGE/.update" ] || mkdir -p "$ZLYME_STORAGE/.update" 2>/dev/null
 
-	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on boost=off zram=on merge=on logs=off update_channel=releases; do
+	for kv in wifi=on bluetooth=on ssh=on samba=off syncthing=off gpu=libmali refresh=60 undervolt=off led=battery otg=on hdmi=on sd2=on zram=on logs=off update_channel=releases; do
 		n=${kv%%=*}
 		v=${kv#*=}
 		[ -e "$ZLYME_CFG/zlyme/$n" ] && continue
 		printf '%s\n' "$v" > "$ZLYME_CFG/zlyme/$n" 2>/dev/null
+	done
+	# Retired settings. An older card may still have the files.
+	for n in boost merge; do
+		[ -f "$ZLYME_CFG/zlyme/$n" ] && rm -f "$ZLYME_CFG/zlyme/$n"
 	done
 
 	for f in wpa_supplicant.conf.example retroarch/retroarch.cfg; do

@@ -8,7 +8,7 @@
 #                4 cores, schedutil 408-1800, DMC 528-1056
 #   heavy        PSP/NDS/DC/N64/Saturn/PS2/GC/Wii: 4c, schedutil 1104-1800
 #   performance  same as heavy (NextUI CPU_SPEED_PERFORMANCE)
-#   overclock    1992 when zlyme-ctl boost is on (serial debug only)
+#   overclock    1992 when ZLYME_CPU_BOOST=1 (serial debug only)
 #   idle         lid: 2 cores, conservative 408-1104, DMC 324
 #   auto         smart
 #   powersave    idle
