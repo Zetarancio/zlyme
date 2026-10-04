@@ -283,7 +283,11 @@ The updater should verify at least:
 
 Never accept another device's update because filenames partially overlap.
 
-A future format may include an explicit manifest, but do not invent one until the current updater needs it.
+A full OTA is a tar that contains the squashfs member `zlyme`, the device DTB, `Image.gz`, and `VERSION`. A delta OTA carries the same boot members plus `DELTA-MANIFEST` and `zlyme.patch.zst`, and it does not also contain `zlyme`. The manifest names the device, the base squashfs hash, and the target hash and size. `my355` is the device value shipped today.
+
+Generic updater code reads the filename prefix, DTB name, and board identity from device metadata. Those are not universal constants. A future device needs its own prefix, DTB, and identity, and it must reject a my355 full tar and a my355 delta tar. Do not add that second device until it exists.
+
+Staging and the reboot commit are in `docs/ARCHITECTURE.md`. The operator steps are in `docs/OPERATIONS.md`.
 
 ## CI
 

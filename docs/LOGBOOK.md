@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-04 — Phase 9 accepted, Phase 10 started
+
+Phase 9 implementation is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer accepted the installed image `zlyme44 (2026-10-03)`, root SHA-256 `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`. That acceptance included a fresh ZcrapeGoat cheat at `/storage/Cheats/GB/Mole Mania.cht`. An earlier root-sized delta on `7796b98` was OOM-killed because zstd copied the squashfs into RAM. `337ccbce` maps that file with `--mmap-dict`. The installed updater then reconstructed the previous root, left `/boot` unchanged, and cleaned back to `queued=no`. `main` was fast-forwarded to that SHA. Build run `37164297221` is the clean-build release gate. Two `Docker image` runs failed earlier because `ghcr.io/Zetarancio/zlyme-build:latest` is not a legal OCI name. That is a CI naming issue, not a Phase 9 runtime defect. Phase 10 documentation is on `phase-10-maintenance`. The hardware wiki was not edited.
+
 ## 2026-09-30 — Phase 9 is planned, not started
 
 `main` is the Phase 8 closure. `phase-9-product` adds the governor and gpSP investigation, the `zlyme40 (2026-09-23)` README gate, and a Phase 10 maintenance outline. No governor code, gpSP pin, or README product text changed. Phase 10 has no branch.

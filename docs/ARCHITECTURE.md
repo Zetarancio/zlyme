@@ -195,13 +195,13 @@ That directory is the OS-card home for application and system configuration. Exa
 - `/storage/.config/syncthing` for Syncthing's persistent home;
 - `/storage/.config/<application>` for an emulator or tool, or a NextUI subtree that NextUI itself owns.
 
-Per-library content stays on the library that holds it:
+Mounted libraries are the lines in `/run/zlyme/libraries`. Content stays on the library that holds it:
 
 - `$library/Roms` for games;
-- `$library/Saves` for saves and per-game companion data;
-- `$library/Bios` for BIOS files.
+- `$library/Saves` for saves. Existing saves are searched on every mounted library. The game card wins a duplicate, and a new save is created on the game card;
+- `$library/Bios` for BIOS files. The running game sees a union of those folders. A duplicate path uses the copy on the game card.
 
-User media is not configuration. Music and podcasts stay `/storage/Music` and `/storage/Podcasts`. Installed cheat files stay on the Cheats content path.
+User media is not configuration. Music and podcasts stay `/storage/Music` and `/storage/Podcasts`. Installed cheats stay `/storage/Cheats`. ZcrapeGoat state stays `/storage/.config/ZcrapeGoat`.
 
 Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs. Optional system logs stay under `/storage/.logs` when logging is enabled.
 
@@ -211,7 +211,17 @@ Image layout is a board concern. A future device may use another boot layout whi
 
 ## 7. Update architecture
 
-For `my355`, OTA is file-based:
+A published release may include `release-manifest.json` beside the full OTA. Settings verifies that manifest. The SHA-256 of the installed `/boot/zlyme` selects a delta whose `from_sha256` matches. No match means the full OTA. A baseline version publishes no deltas. A point version may publish direct deltas for that same major. The displayed version string is not the selector.
+
+A delta tar carries `DELTA-MANIFEST` and `zlyme.patch.zst` in place of the squashfs member. Reconstruction runs under `/storage/.update/reconstruct`. The decoder uses the installed squashfs as a file-backed dictionary:
+
+```text
+zstd -d --memory=2048MB --mmap-dict --patch-from
+```
+
+The reconstructed file is kept only when its SHA-256 and size match the manifest. That file is `/storage/.update/pending/zlyme`. A `zlyme.new` file is not a pending update. `/boot/zlyme` is not patched in place.
+
+Full and delta staging then share one commit path:
 
 ```text
 update tar on /storage
@@ -227,15 +237,9 @@ reboot
 initramfs replaces /boot/zlyme
 ```
 
-Routine OTA does not implicitly rewrite U-Boot.
+Routine OTA does not rewrite U-Boot.
 
-The update framework must identify artifacts by device. Generic updater logic should read device metadata for:
-
-- update filename prefix;
-- required DTB name;
-- board identity.
-
-Never allow an update for one device to be accepted by another merely because both contain a file named `zlyme`.
+The updater identifies artifacts by device metadata: filename prefix, required DTB name, and board identity. A my355 full or delta artifact must not be accepted by another device merely because both contain a member named `zlyme`.
 
 ## 8. Graphics
 
@@ -336,6 +340,8 @@ Frontend and emulator launch code should consume normal Linux input/SDL interfac
 ## 11. Frontend and PAK runtime
 
 Zlyme is the OS. NextUI is the current frontend.
+
+ZcrapeGoat is the built-in artwork, manual, and cheat tool. Its tree is a vendored upstream import plus ordinary Zlyme commits, not a patch stack. It reads `/run/zlyme/libraries`. Artwork stays beside the ROM. Cheats stay on `/storage/Cheats`.
 
 The launcher lifecycle is approximately:
 

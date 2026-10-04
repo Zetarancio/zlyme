@@ -1,6 +1,8 @@
 # Product polish — Phase 9
 
-This file records the Phase 9 decisions and what was actually verified. Earlier sections are the research and the passes that led here. The closure section at the end is the current process. Hardware acceptance of the final local image is still required before `phase-9-product` moves to `main`. The remote clean build is the reproducibility and release-artifact gate. It does not have to finish before that merge, and a failure there still blocks treating a stable release as valid.
+This file records the Phase 9 decisions and what was actually verified. Earlier sections are the research and the passes that led here, including intermediate failures. Those failures stay as history.
+
+Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer installed that image and hardware-accepted it. The displayed product is `zlyme44 (2026-10-03)`. The installed root SHA-256 is `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`. `main` was fast-forwarded to that exact SHA. GitHub Actions Build run [37164297221](https://github.com/Zetarancio/zlyme/actions/runs/37164297221) was dispatched from that SHA and is the reproducibility and release-artifact gate. This note does not record that run as a successful stable release unless GitHub shows success.
 
 Date of the original notes: 2026-09-30, at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed.
 
@@ -73,7 +75,14 @@ Reproducibility of the squashfs is still a final Phase 9 release check. This tra
 
 The final release gate should also run one realistic zstd-delta benchmark on Zlyme-sized squashfs inputs. Record the old root size, the new root size, the patch size, the patch/full ratio, encode time, decode time, peak decoder RSS if practical, and the round-trip target SHA. That measurement is release validation. It does not block the current product work.
 
-On the installed `7796b98` image, `ZLYME_UPDATE_TEST=1 zlyme-update test-stage` of a real root-sized delta was OOM-killed inside `zstd` and left `/boot/zlyme` unchanged. That updater did not pass `--mmap-dict`. The same patch, piped into `zstd -d --memory=2048MB --mmap-dict --patch-from=/boot/zlyme`, reconstructed the target squashfs on `/storage` with no new OOM. The updater in this tree now passes that flag. That updated script has not itself been staged on the device. Put a test tar at `/storage/.config/zlyme/delta-test.tar`. Do not put it in `/tmp`, and do not put it under `/storage/.update/`, where a reboot can queue it. `/tmp` may be tmpfs and must not hold the test delta while memory is being measured. Pending and reconstruct directories created for a test are removed in the same session, before any reboot. `test-stage` does call `zlyme-splash-progress on persist`, so it creates `/boot/zlyme-splash.progress` for the duration of the run. That flag is not a root or kernel write. Remove it in the same session.
+Hardware record of the root-sized delta path:
+
+1. On the installed `7796b98` image, `test-stage` of a real root-sized delta was OOM-killed inside `zstd`. That updater allowed a large window and did not pass `--mmap-dict`, so zstd copied the squashfs into RAM. `/boot/zlyme` was unchanged.
+2. The same patch, decoded with `--mmap-dict` so the installed root stayed file-backed, reconstructed the target on `/storage` with no new OOM.
+3. `337ccbce` added `--mmap-dict` to the updater.
+4. After that image was installed (root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`), `ZLYME_UPDATE_TEST=1 zlyme-update test-stage` of a new delta whose target was the `7796b98` root exited 0. `pending/zlyme` matched `9ddb8c88a9e94d876e7fa7bc367f54b6b45462fd1d94d8eb492f972a674e670c` and was 653897728 bytes. No new OOM occurred. The boot payload hashes were unchanged. Cleanup removed the test pending tree, the splash flag, and the test tar. `zlyme-update status` returned to `queued=no`. The same image had already shown a fresh ZcrapeGoat cheat download and `/storage/Cheats/GB/Mole Mania.cht`.
+
+`test-stage` is not a user command. It calls the normal stage path, so it creates `/boot/zlyme-splash.progress` for the run. That flag is not a root or kernel write. A test `pending` tree must be removed before reboot. Do not put a test tar under `/storage/.update`. `/tmp` may be tmpfs and must not hold the test delta while memory is measured.
 
 ```text
 PHASE 9A GPSP UPDATE = BUILD VERIFIED

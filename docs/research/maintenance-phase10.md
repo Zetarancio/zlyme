@@ -1,6 +1,6 @@
 # Phase 10 — maintenance outline
 
-Planning only. Phase 10 may start on `main` after the Phase 9 merge and the dispatch of the remote clean build. Do not wait for that remote build to finish, and do not create its branch from this note. Complete the Zlyme documentation in this repository first. The hardware-wiki agent runs only after that documentation exists. Do not add `docs/MAINTENANCE.md` until that phase. The roadmap summary is in `docs/ROADMAP.md`.
+Phase 10 has started. This file is the planning outline and stays that way. The canonical procedure is `docs/MAINTENANCE.md`. The hardware-wiki agent runs only after the Zlyme documentation in this repository exists. Runtime evidence remains `337ccbce2587393463a4b49c551f94e33e318e44`. The roadmap summary is in `docs/ROADMAP.md`.
 
 ## 10A. Zlyme documentation and comments
 

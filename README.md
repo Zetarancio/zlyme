@@ -2,11 +2,11 @@
 
 **Low latency. High viscosity.**
 
-Zlyme is a custom OS for the **Miyoo Flip** based on buildroot, running mainline kernel and latest software available. It's engineered to ooze, cultured for speed. Hardware facts come from this device, emulator recipes are harvested where they already exist. The set is curated so it fits the Flip, instead of shipping a hundred cores nobody on this board will use. 
+Zlyme is a custom OS for the **Miyoo Flip** based on buildroot and a mainline kernel. Emulators and tools are pinned known-good revisions, not whatever upstream published last. It's engineered to ooze, cultured for speed. Hardware facts come from this device, emulator recipes are harvested where they already exist. The set is curated so it fits the Flip, instead of shipping a hundred cores nobody on this board will use. 
 
 The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI) (itself from [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman)). There is no desktop and no compositor. It is engineered for fast boot.
 
-**Everything on the device works:** Wi-Fi, Bluetooth (including audio and controller), HDMI, sleep, the lid, analog sticks, the headphone jack, USB OTG, and both SD slots are supported. It feature a dynamic scaling ram driver to save battery when playing light games, does not drain while off.
+Supported on the Flip: Wi-Fi, Bluetooth audio and controllers, HDMI, sleep, the lid, analog sticks, the headphone jack, USB OTG, and both SD slots. Memory clocks scale down for light games. The device does not drain while off.
 
 Pull requests and other contributions are welcome, if needed other systems will be supported.
 
@@ -52,7 +52,7 @@ Each community pak below was ported (paths, Flip joystick, this image’s binari
 Native PICO-8 / Splore uses the Raspberry Pi build you bought from Lexaloffle. Put `pico8_64` and `pico8.dat` together in `Bios/PICO/` on the main card, the second SD card, or another mounted library. The Splore row appears in the Pico-8 folder of the library that holds that pair. Carts downloaded inside Splore show up in the Pico-8 list. Zlyme does not include or download those files. Fake-8 does not need them.
 - **Settings → System → Joysticks** — stick test, manual calibration, live deadzone, and Rumble Strength. Printed A and B are fixed: A is the east button and B is the south button. A fresh install uses displayed 40% motor gain. A saved value is kept. **Settings → System → Haptic feedback** defaults to on and only turns NextUI's own pulses on or off. The calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 
-Zlyme uses its own Miyoo Flip gamepad driver. Buttons are GPIO-backed. The two analog sticks use the Flip UART protocol. Settings provides stick testing, calibration, a deadzone for each stick, Rumble Strength, and Test Rumble. Rumble is standard Linux force feedback. Switch replacement sticks are not called physically validated.
+Settings provides stick testing, calibration, a deadzone for each stick, Rumble Strength, and Test Rumble. Switch replacement sticks are not called physically validated.
 
 **Settings → Update** pulls a GitHub release (or prerelease) tar, shows notes, draws a progress bar, and only queues the file after sha256 matches. A later point release may also offer a delta; the device rebuilds a full root image and checks it before the reboot. Local builds ship the full tar only.
 
@@ -63,7 +63,7 @@ The Flip will not boot an SD OS until you change how it starts. Without one of t
 1. **apommel-multiboot** (recommended). Repairs the vendor preloader. No card → stock. Bootable card → that OS. Follow the [wiki how-to](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md). The on-device app is [apommel-multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/tree/main/preloader-stock-rocknix/App/apommel-multiboot) in that repo. See the wiki for the supported OS list.
 2. **Erase the preloader.** Then the Flip always boots from SD (or enter MASKROM mode if none is inserted). Wiki: [stock ↔ SD-boot without opening the device](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/stock-rocknix-without-disassembly.md).
 
-Download latest release .img file.
+Download a published Zlyme `.img` release. A documentation update on its own is not a new OS release.
 
 Flash `zlyme.img` onto a dedicated OS card (Balena Etcher or any image writer). Do not flash over a card that already has games. Put that card in the **right** slot (next to power).
 

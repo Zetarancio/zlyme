@@ -109,7 +109,7 @@ Do not silently upgrade dependencies.
 
 ## Package sourcing policy
 
-For emulator/core/library recipes, first inspect established Buildroot/Batocera/Knulli packaging before writing a custom recipe.
+The package's own upstream is the version authority. KNULLI and ROCKNIX are packaging references, not the source of truth. Compare version, dependencies, options, patches, and license before adopting anything. `docs/UPSTREAMS.md` and `docs/MAINTENANCE.md` own that procedure.
 
 Hardware facts do not come from Knulli merely because it has a similar SoC.
 
@@ -119,6 +119,20 @@ For Miyoo Flip hardware:
 - the working ROCKNIX-derived hardware implementation
 
 take precedence.
+
+## Image date
+
+`build.sh` sets `ZLYME_IMAGE_DATE` once, at the start of a real build, to UTC `YYYY-MM-DD` when the variable is unset. The displayed OS string and the OTA stamp both come from that value. The NextUI package date in `/usr/share/nextui/build-date.txt` is package metadata and is not the OS date. An explicit override must round-trip through `board/my355/image-date.sh` as a real calendar date. `ZLYME_VERSION` stays the product name, such as `zlyme44`, with no date attached.
+
+## Release artifacts
+
+A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. The GitHub release job does. A baseline such as `zlyme44` publishes zero deltas. A later point release may add same-major deltas selected by the installed root hash.
+
+The accepted Phase 9 runtime is `337ccbce2587393463a4b49c551f94e33e318e44`. Documentation commits after that SHA are not a substitute for it. The clean `Build` workflow dispatched from that SHA is the release artifact. A local OTA is not that artifact.
+
+## Build container
+
+GitHub Actions pulls or publishes `ghcr.io/<owner>/zlyme-build:latest`. GHCR requires a lowercase repository name, so the workflow lowercases `GITHUB_REPOSITORY_OWNER` before building the image path. For this repository the path is `ghcr.io/zetarancio/zlyme-build:latest`. Login still uses `github.actor`. The `Docker image` workflow rebuilds that container when `Dockerfile` or `.github/workflows/docker-image.yml` changes.
 
 ## Package layout
 

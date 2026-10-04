@@ -1,6 +1,6 @@
 # Upstream and package-update policy
 
-This document tells an agent how to research package/emulator updates without blindly copying another distribution.
+This document tells an agent how to research package/emulator updates without blindly copying another distribution. The short index is `docs/MAINTENANCE.md`.
 
 ## Source hierarchy
 

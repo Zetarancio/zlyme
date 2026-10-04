@@ -176,13 +176,15 @@ Resource cleanup is part of compatibility.
 
 ## Updates
 
-Current OTA artifacts are my355-specific.
+Current OTA artifacts are my355-specific. `zlyme-update status` prints `storage=`, `queued=yes` or `queued=no`, `failed=` when a failure file exists, and `pending/zlyme=yes` when a reconstructed or extracted root is waiting for reboot. `root=squashfs-file` means `/boot/zlyme` is present.
 
-The updater stages payload on `/storage`, writes current boot artifacts to the boot volume, and commits the squashfs on reboot through initramfs.
+Settings selects a delta only when `from_sha256` equals the SHA-256 of the installed `/boot/zlyme`. Otherwise it uses the full OTA. A baseline release has no deltas. Reconstruction writes the new root under `/storage/.update/reconstruct` and moves it to `/storage/.update/pending/zlyme` only after the hash and size match. `/boot/zlyme` stays the running system until initramfs copies the pending file on reboot. Kernel, DTB, and overlays are written to the boot volume at apply time. A routine OTA does not rewrite U-Boot. `zlyme-update uboot` is a separate command.
 
-Routine update does not automatically flash U-Boot.
+`test-stage` is not a user command. It runs only when `ZLYME_UPDATE_TEST=1`. It uses the same stage path, so it can create `/boot/zlyme-splash.progress` for the duration of the run. That flag is not a root or kernel write. A test `pending` directory must be removed before any reboot. Do not leave a test tar under `/storage/.update`, where a reboot can queue it.
 
-Treat bootloader writes as a separate explicitly requested operation with strict target validation.
+On the 1 GiB Flip, a root-sized `--patch-from` decode has to map the installed squashfs (`--mmap-dict`). The same decode without that flag mallocs a second copy of the root and was OOM-killed. `--memory=2048MB` only raises the window cap. It does not allocate 2 GiB by itself.
+
+Failure leaves `FAILED` and does not replace `/boot/zlyme`. Clear a known failed attempt before starting another, and do not delete an unexplained failure just to retry. Bootloader writes stay a separate explicit operation with a checked target. Recovery is a new full OTA or the existing boot files, not an in-place patch of the live squashfs.
 
 ## Performance checks
 
