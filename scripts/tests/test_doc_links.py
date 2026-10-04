@@ -17,11 +17,20 @@ DOCS = (
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
     "docs/ENGINEERING_PRINCIPLES.md",
+    "docs/USER_GUIDE.md",
+    "docs/decisions/0006-root-image-lifecycle.md",
+    "docs/research/README.md",
+    "docs/research/documentation-audit-phase10.md",
 )
-# Logbook and roadmap name old paths and the hardware wiki. Link targets
-# in this repository are still checked. Backtick paths are checked only
-# in the current-contract documents.
-PATH_DOCS = set(DOCS) - {"docs/ROADMAP.md", "docs/LOGBOOK.md"}
+# Logbook, roadmap, and the audit record name old paths, file:line
+# citations, and the hardware wiki. Link targets in this repository are
+# still checked. Backtick paths are checked only in the current-contract
+# documents.
+PATH_DOCS = set(DOCS) - {
+    "docs/ROADMAP.md",
+    "docs/LOGBOOK.md",
+    "docs/research/documentation-audit-phase10.md",
+}
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 TICK = re.compile(r"`([^`\n]+)`")
 REPO_PREFIXES = (
