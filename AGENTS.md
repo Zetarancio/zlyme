@@ -96,7 +96,7 @@ Preserve these unless the task explicitly requires changing them:
 These were replaced. Do not revive them.
 
 - The ROCKNIX joypad package (`rocknix-joypad`, `rocknix-singleadc-joypad`). The built-in pad is `miyoo-flip-gamepad`, and applications read InputPlumber's virtual `xb360` pads. `board/my355/post-build.sh` deletes leftover modules.
-- A mergerfs pool of `/storage/Roms`. Each card is its own library, and the active libraries are listed in `/run/zlyme/libraries`. `package/system/mergerfs` is dormant: still sourced from `package/system/Config.in`, selected by no defconfig, and its help text still describes the old pool.
+- A mergerfs pool of `/storage/Roms`. Each card is its own library, and the active libraries are listed in `/run/zlyme/libraries`. The mergerfs package is not in the tree.
 - The Artwork Scraper and Cheat Downloader tools. ZcrapeGoat replaced both. `board/my355/post-update.sh` removes old card copies.
 - A cloned PortMaster theme directory (`PortMaster/themes/Zlyme`). Zlyme is a color scheme inside PortMaster's default theme.
 - KNULLI/Batocera `/userdata` paths and NextUI `/mnt/SDCARD/.userdata/shared` paths. `/userdata` does not exist on the read-only root. `/mnt/SDCARD` is a symlink to `/storage`, so a copied `.userdata` path silently writes onto the OS card. Persistent configuration is `/storage/.config/<owner>`. NextUI's own state is `/storage/.config/nextui/shared` and `/storage/.config/nextui/my355`.
