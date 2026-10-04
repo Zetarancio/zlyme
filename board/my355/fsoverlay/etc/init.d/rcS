@@ -50,12 +50,6 @@ for i in /etc/init.d/S??*; do
 	# Skip scripts that are no-ops on a normal boot (same idea as
 	# BASEOS not spawning update when /data/update/state is absent).
 	case "$base" in
-		S12bootfs)
-			if grep -q ' /boot ' /proc/mounts; then
-				boot_mark "skip $base"
-				continue
-			fi
-			;;
 		S13resize)
 			if ! grep -qE '^[ ]*autoresize[ ]*=[ ]*true[ ]*$' /boot/zlyme-boot.conf 2>/dev/null; then
 				boot_mark "skip $base"

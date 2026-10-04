@@ -4,7 +4,8 @@ config BR2_PACKAGE_ZLYME_INITRAMFS
 	default n
 	help
 	  Tiny static busybox initramfs. Embedded in the kernel Image.
-	  Mounts LABEL=ZLYMEBOOT and LABEL=ZLYME, copies pending/zlyme
+	  Mounts the primary boot and storage partitions after checking
+	  their labels, copies pending/zlyme
 	  over the live FAT file if present, loop-mounts zlyme, then
 	  switch_root.
 

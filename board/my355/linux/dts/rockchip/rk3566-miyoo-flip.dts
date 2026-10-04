@@ -1003,11 +1003,11 @@
 	vref-supply = <&vcc_1v8>;
 };
 
-/* SD slot 0 (primary):
- * (miyoo355_fw_20250509213001): max 150 MHz, UHS-I SDR12/SDR25 only (no SDR50).
- * Slot 0 and slot 1 share vqmmc (vccio_sd); a single I/O voltage rail for both.
- * Use cards that match voltage: both 3.3V (e.g. high-speed or SDR12/SDR25) or both
- * 1.8V (UHS-I after switch). Mixing 3.3V and 1.8V cards in the two slots is unsafe. */
+/* SD slot 0 (primary, sdmmc0):
+ * UHS-I SDR12, SDR25, SDR50, and SDR104 stay enabled. The board notes
+ * keep those modes on the right-hand slot. Slot 0 and slot 1 share
+ * vqmmc (vccio_sd). Mixing a 3.3 V card with a 1.8 V card is unsafe,
+ * so slot 1 stays high-speed only and does not request UHS. */
 &sdmmc0 {
 	max-frequency = <150000000>;
 	no-sdio;

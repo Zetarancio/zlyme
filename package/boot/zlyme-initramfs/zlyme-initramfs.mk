@@ -47,6 +47,9 @@ define ZLYME_INITRAMFS_INSTALL_TARGET_CMDS
 	mkdir -p $(INITRAMFS_DIR)
 	$(INSTALL) -D -m 0755 $(ZLYME_INITRAMFS_PKGDIR)/init \
 		$(INITRAMFS_DIR)/init
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/fsoverlay/usr/share/zlyme/device.conf \
+		$(INITRAMFS_DIR)/usr/share/zlyme/device.conf
 	$(ZLYME_INITRAMFS_MAKE_ENV) $(MAKE) $(ZLYME_INITRAMFS_MAKE_OPTS) -C $(@D) install
 	$(TARGET_CC) -static -Os -o $(INITRAMFS_DIR)/zlyme-splash \
 		$(ZLYME_INITRAMFS_PKGDIR)/splash.c

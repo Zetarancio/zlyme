@@ -1,38 +1,89 @@
 #!/bin/sh
-# Mount the exFAT partition (label ZLYME) and seed .config. Never fail the boot.
+# Mount the primary exFAT partition and seed .config.
+# The device node selects the card. The label confirms it.
+# Never mount a second card that happens to use the same label.
 
-. /etc/zlyme.conf
+CONF=${ZLYME_OS_CONF:-/etc/zlyme.conf}
+# shellcheck disable=SC1090
+. "$CONF"
 
-STORAGE_LABEL="ZLYME"
+MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+IDENT=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
+if [ -r "$IDENT" ]; then
+	# shellcheck disable=SC1090
+	. "$IDENT"
+fi
+
+dev_label() {
+	line=$(blkid "$1" 2>/dev/null) || return 1
+	case "$line" in
+		*LABEL=\"*)
+			rest=${line#*LABEL=\"}
+			label=${rest%%\"*}
+			;;
+		*) return 1 ;;
+	esac
+	[ -n "$label" ] || return 1
+	printf '%s\n' "$label"
+}
+
+canon() {
+	if [ -e "$1" ]; then
+		readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
+		return 0
+	fi
+	printf '%s\n' "$1"
+}
+
+same_dev() {
+	[ -n "$1" ] && [ -n "$2" ] || return 1
+	[ "$(canon "$1")" = "$(canon "$2")" ]
+}
+
+mount_source() {
+	point=$1
+	found=""
+	while read -r dev mp _rest; do
+		[ "$mp" = "$point" ] || continue
+		found=$dev
+		break
+	done < "$MOUNTS"
+	[ -n "$found" ] || return 1
+	printf '%s\n' "$found"
+}
 
 start() {
 	printf "Mounting %s: " "$ZLYME_STORAGE"
 
-	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
-		echo "already mounted"
+	if [ -z "${ZLYME_STORAGE_DEVICE:-}" ] || [ -z "${ZLYME_STORAGE_LABEL:-}" ]; then
+		echo "FAIL (storage identity unset)"
+		return 1
+	fi
+
+	src=$(mount_source "$ZLYME_STORAGE" || true)
+	if [ -n "$src" ]; then
+		got=$(dev_label "$src" || true)
+		if ! same_dev "$src" "$ZLYME_STORAGE_DEVICE" || [ "$got" != "$ZLYME_STORAGE_LABEL" ]; then
+			echo "FAIL ($src is not $ZLYME_STORAGE_DEVICE $ZLYME_STORAGE_LABEL)"
+			return 1
+		fi
+		echo "already mounted ($src)"
 	else
-		dev=
-		if [ -b /dev/mmcblk0p3 ]; then
-			dev=/dev/mmcblk0p3
-		else
-			dev=$(blkid | sed -n "s|^\([^:]*\):.*LABEL=\"${STORAGE_LABEL}\".*|\1|p" | head -n 1)
+		got=$(dev_label "$ZLYME_STORAGE_DEVICE" || true)
+		if [ "$got" != "$ZLYME_STORAGE_LABEL" ]; then
+			echo "FAIL ($ZLYME_STORAGE_DEVICE is not $ZLYME_STORAGE_LABEL)"
+			return 1
 		fi
-
-		if [ -z "$dev" ]; then
-			echo "no filesystem labelled ${STORAGE_LABEL}"
-			return 0
-		fi
-
-		if mount -t exfat -o rw,noatime "$dev" "$ZLYME_STORAGE" 2>/dev/null; then
-			echo "OK ($dev)"
+		if mount -t exfat -o rw,noatime "$ZLYME_STORAGE_DEVICE" "$ZLYME_STORAGE" 2>/dev/null; then
+			echo "OK ($ZLYME_STORAGE_DEVICE)"
 		else
-			echo "FAIL ($dev)"
-			return 0
+			echo "FAIL ($ZLYME_STORAGE_DEVICE)"
+			return 1
 		fi
 	fi
 	_up=0
 	read -r _up _rest < /proc/uptime || true
-	echo "$_up S15-mounted" >> /tmp/boot-timing
+	echo "$_up S15-mounted" >> "${ZLYME_BOOT_TIMING:-/tmp/boot-timing}"
 
 	# /etc/localtime points here. The file must exist before rcS
 	# reaches NextUI. The rest of the seed stays off the critical path.
@@ -81,7 +132,7 @@ seed() {
 }
 
 stop() {
-	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
+	if grep -q " $ZLYME_STORAGE " "$MOUNTS"; then
 		printf "Unmounting %s: " "$ZLYME_STORAGE"
 		umount "$ZLYME_STORAGE" 2>/dev/null && echo "OK" || echo "FAIL"
 	fi

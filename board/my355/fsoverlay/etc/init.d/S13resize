@@ -9,10 +9,19 @@
 # /Image.gz). Comment autoresize only on a later boot that already sees
 # a grown ZLYME.
 
-. /etc/zlyme.conf
+CONF=${ZLYME_OS_CONF:-/etc/zlyme.conf}
+# shellcheck disable=SC1090
+. "$CONF"
 
-LOG="/tmp/resize.log"
-BOOTCONF="/boot/zlyme-boot.conf"
+MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+IDENT=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
+if [ -r "$IDENT" ]; then
+	# shellcheck disable=SC1090
+	. "$IDENT"
+fi
+
+LOG=${ZLYME_RESIZE_LOG:-/tmp/resize.log}
+BOOTCONF=${ZLYME_BOOT_CONF:-/boot/zlyme-boot.conf}
 
 disk_of() {
 	# /dev/mmcblk0p4 -> /dev/mmcblk0 ; /dev/sda1 -> /dev/sda
@@ -27,8 +36,42 @@ part_num_of() {
 	echo "$1" | sed -e 's/.*[^0-9]//'
 }
 
-label_dev() {
-	blkid | sed -n "s|^\\([^:]*\\):.*LABEL=\"$1\".*|\\1|p" | head -n 1
+dev_label() {
+	line=$(blkid "$1" 2>/dev/null) || return 1
+	case "$line" in
+		*LABEL=\"*)
+			rest=${line#*LABEL=\"}
+			label=${rest%%\"*}
+			;;
+		*) return 1 ;;
+	esac
+	[ -n "$label" ] || return 1
+	printf '%s\n' "$label"
+}
+
+canon() {
+	if [ -e "$1" ]; then
+		readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
+		return 0
+	fi
+	printf '%s\n' "$1"
+}
+
+same_dev() {
+	[ -n "$1" ] && [ -n "$2" ] || return 1
+	[ "$(canon "$1")" = "$(canon "$2")" ]
+}
+
+mount_source() {
+	point=$1
+	found=""
+	while read -r dev mp _rest; do
+		[ "$mp" = "$point" ] || continue
+		found=$dev
+		break
+	done < "$MOUNTS"
+	[ -n "$found" ] || return 1
+	printf '%s\n' "$found"
 }
 
 part_size_mb() {
@@ -50,7 +93,7 @@ say() {
 
 umount_path() {
 	p=$1
-	grep -q " $p " /proc/mounts || return 0
+	grep -q " $p " "$MOUNTS" || return 0
 	umount "$p" >>"$LOG" 2>&1
 }
 
@@ -68,22 +111,22 @@ start() {
 		return 0
 	fi
 
-	PART=$(label_dev ZLYME)
-	if [ -z "$PART" ]; then
-		for cand in /dev/mmcblk0p3 /dev/mmcblk1p3; do
-			[ -b "$cand" ] || continue
-			boot=$(label_dev ZLYMEBOOT)
-			if [ -n "$boot" ]; then
-				bdisk=$(disk_of "$boot")
-				[ "$(disk_of "$cand")" = "$bdisk" ] || continue
-			fi
-			PART=$cand
-			break
-		done
-	fi
-	if [ -z "$PART" ]; then
+	# The live mounts name the card. A cloned ZLYME label is not a target.
+	boot_src=$(mount_source "$ZLYME_BOOT") || return 0
+	stor_src=$(mount_source "$ZLYME_STORAGE") || return 0
+	same_dev "$boot_src" "${ZLYME_BOOT_DEVICE:-}" || return 0
+	same_dev "$stor_src" "${ZLYME_STORAGE_DEVICE:-}" || return 0
+	[ "$(disk_of "$boot_src")" = "${ZLYME_OS_DISK:-}" ] || return 0
+	[ "$(disk_of "$stor_src")" = "${ZLYME_OS_DISK:-}" ] || return 0
+	got=$(dev_label "$stor_src" || true)
+	[ "$got" = "${ZLYME_STORAGE_LABEL:-}" ] || return 0
+
+	if [ "${ZLYME_RESIZE_TEST:-}" = 1 ]; then
+		echo "resize=$stor_src"
 		return 0
 	fi
+
+	PART=$stor_src
 
 	PARTSIZE=$(part_size_mb "$PART")
 	# Already grown. Latch the trigger; never mkfs a games card.
@@ -115,7 +158,7 @@ start() {
 
 	# ROCKNIX: umount storage only. Never touch /boot.
 	umount_path "$ZLYME_STORAGE"
-	if grep -q " $ZLYME_STORAGE " /proc/mounts; then
+	if grep -q " $ZLYME_STORAGE " "$MOUNTS"; then
 		say "storage busy"
 		return 0
 	fi

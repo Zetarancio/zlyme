@@ -1,34 +1,92 @@
 #!/bin/sh
-# Mount the boot vfat (label ZLYMEBOOT) at /boot. Initramfs usually
-# already moved it here, read-only. Writers go through zlyme-boot-write.
-# Never fail the boot. Do not mount it read-write just because Settings
-# sometimes edits extlinux.
+# Mount the primary boot vfat at /boot. Initramfs usually already
+# moved it here, read-only. The device node selects the card and the
+# label confirms it. Writers go through zlyme-boot-write. Do not
+# mount it read-write just because Settings sometimes edits extlinux.
+# A mount from any other device is not treated as the boot volume.
+
+MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+IDENT=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
+if [ -r "$IDENT" ]; then
+	# shellcheck disable=SC1090
+	. "$IDENT"
+fi
+BOOT=${ZLYME_BOOT:-/boot}
+
+dev_label() {
+	line=$(blkid "$1" 2>/dev/null) || return 1
+	case "$line" in
+		*LABEL=\"*)
+			rest=${line#*LABEL=\"}
+			label=${rest%%\"*}
+			;;
+		*) return 1 ;;
+	esac
+	[ -n "$label" ] || return 1
+	printf '%s\n' "$label"
+}
+
+canon() {
+	if [ -e "$1" ]; then
+		readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
+		return 0
+	fi
+	printf '%s\n' "$1"
+}
+
+same_dev() {
+	[ -n "$1" ] && [ -n "$2" ] || return 1
+	[ "$(canon "$1")" = "$(canon "$2")" ]
+}
+
+mount_source() {
+	point=$1
+	found=""
+	while read -r dev mp _rest; do
+		[ "$mp" = "$point" ] || continue
+		found=$dev
+		break
+	done < "$MOUNTS"
+	[ -n "$found" ] || return 1
+	printf '%s\n' "$found"
+}
 
 start() {
 	printf "Mounting boot: "
-	if grep -q " /boot " /proc/mounts; then
-		mount -o remount,ro /boot 2>/dev/null || true
-		echo "already mounted"
+	if [ -z "${ZLYME_BOOT_DEVICE:-}" ] || [ -z "${ZLYME_BOOT_LABEL:-}" ]; then
+		echo "FAIL (boot identity unset)"
+		return 1
+	fi
+	src=$(mount_source "$BOOT" || true)
+	if [ -n "$src" ]; then
+		got=$(dev_label "$src" || true)
+		if ! same_dev "$src" "$ZLYME_BOOT_DEVICE" || [ "$got" != "$ZLYME_BOOT_LABEL" ]; then
+			echo "FAIL ($src is not $ZLYME_BOOT_DEVICE $ZLYME_BOOT_LABEL)"
+			return 1
+		fi
+		mount -o remount,ro "$BOOT" 2>/dev/null || true
+		echo "already mounted ($src)"
 		return 0
 	fi
-	mkdir -p /boot
-	dev=$(blkid | sed -n 's|^\([^:]*\):.*LABEL="ZLYMEBOOT".*|\1|p' | head -n 1)
-	if [ -z "$dev" ]; then
-		echo "no ZLYMEBOOT"
-		return 0
+	mkdir -p "$BOOT"
+	got=$(dev_label "$ZLYME_BOOT_DEVICE" || true)
+	if [ "$got" != "$ZLYME_BOOT_LABEL" ]; then
+		echo "FAIL ($ZLYME_BOOT_DEVICE is not $ZLYME_BOOT_LABEL)"
+		return 1
 	fi
-	if mount -t vfat -o ro,noatime,utf8 "$dev" /boot 2>/dev/null; then
-		echo "OK ($dev)"
+	if mount -t vfat -o ro,noatime,utf8 "$ZLYME_BOOT_DEVICE" "$BOOT" 2>/dev/null; then
+		echo "OK ($ZLYME_BOOT_DEVICE)"
 	else
-		echo "FAIL ($dev)"
+		echo "FAIL ($ZLYME_BOOT_DEVICE)"
+		return 1
 	fi
 	return 0
 }
 
 stop() {
-	if grep -q " /boot " /proc/mounts; then
+	if mount_source "$BOOT" >/dev/null; then
 		printf "Unmounting boot: "
-		umount /boot 2>/dev/null && echo "OK" || echo "FAIL"
+		umount "$BOOT" 2>/dev/null && echo "OK" || echo "FAIL"
 	fi
 	return 0
 }

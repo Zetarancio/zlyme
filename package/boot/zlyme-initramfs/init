@@ -1,11 +1,23 @@
 #!/bin/ash
-# Mount LABEL=ZLYMEBOOT read-only. If ZLYME has a staged squashfs, open
-# the vfat, copy it over /zlyme, and close the vfat again. Then
-# loop-mount zlyme read-only and switch_root.
+# Mount the primary boot partition read-only after its label matches.
+# If that card's storage has a staged squashfs, open the vfat, copy it
+# over /zlyme, and close the vfat again. Then loop-mount zlyme
+# read-only and switch_root. A second card with the same labels is
+# not a boot or storage candidate.
+
+IDENT=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
+MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+if [ -r "$IDENT" ]; then
+	# shellcheck disable=SC1090
+	. "$IDENT"
+fi
 
 log() {
 	echo "zlyme-init: $*"
 	# Do not scribble on the panel while the lockup is up.
+	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
+		return 0
+	fi
 	if [ -f /zlyme-splash.progress ] || [ -f /boot_root/zlyme-splash.progress ]; then
 		return 0
 	fi
@@ -27,7 +39,7 @@ mount_point_ro() {
 			esac
 			return 1
 		fi
-	done < /proc/mounts
+	done < "$MOUNTS"
 	return 1
 }
 
@@ -64,32 +76,76 @@ mount_storage() {
 	mount -t exfat -o rw,noatime "$1" /storage_root 2>/dev/null
 }
 
-# Initramfs busybox sleep is whole seconds. GPT nodes appear a few
-# hundred ms after mmcblk0. Wait for the nodes, then mount only by
-# LABEL= (vfat on ZLYMEBOOT, exfat on ZLYME). Trying p1 as exFAT was
-# the FIT partition and printed "Failed to mount exFAT" every boot.
-wait_mount() {
-	fn=$1
-	spec=$2
+dev_label() {
+	line=$(blkid "$1" 2>/dev/null) || return 1
+	case "$line" in
+		*LABEL=\"*)
+			rest=${line#*LABEL=\"}
+			label=${rest%%\"*}
+			;;
+		*) return 1 ;;
+	esac
+	[ -n "$label" ] || return 1
+	printf '%s\n' "$label"
+}
+
+# Initramfs busybox sleep is whole seconds. The GPT node appears a
+# few hundred ms after the disk. Wait for that exact node. Do not
+# scan for a label: a cloned card carries the same strings.
+node_ready() {
+	dev=$1
+	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
+		[ -e "$dev" ]
+		return
+	fi
 	n=0
 	while [ "$n" -lt 400 ]; do
-		if [ -b /dev/mmcblk0p1 ] || [ -b /dev/mmcblk0p2 ] || \
-			[ -b /dev/mmcblk1p1 ] || [ -b /dev/mmcblk1p2 ]; then
-			if "$fn" "$spec"; then
-				return 0
-			fi
-		fi
+		[ -b "$dev" ] && return 0
 		n=$((n + 1))
 	done
 	n=0
 	while [ "$n" -lt 20 ]; do
-		if "$fn" "$spec"; then
-			return 0
-		fi
+		[ -b "$dev" ] && return 0
 		n=$((n + 1))
 		sleep 1
 	done
 	return 1
+}
+
+select_os_volumes() {
+	[ -n "${ZLYME_BOOT_DEVICE:-}" ] || return 1
+	[ -n "${ZLYME_STORAGE_DEVICE:-}" ] || return 1
+	[ -n "${ZLYME_BOOT_LABEL:-}" ] || return 1
+	[ -n "${ZLYME_STORAGE_LABEL:-}" ] || return 1
+
+	if ! node_ready "$ZLYME_BOOT_DEVICE"; then
+		log "boot device $ZLYME_BOOT_DEVICE did not appear"
+		return 1
+	fi
+	got=$(dev_label "$ZLYME_BOOT_DEVICE" || true)
+	if [ "$got" != "$ZLYME_BOOT_LABEL" ]; then
+		log "boot device $ZLYME_BOOT_DEVICE is not $ZLYME_BOOT_LABEL"
+		return 1
+	fi
+	if ! mount_boot "$ZLYME_BOOT_DEVICE"; then
+		log "could not mount $ZLYME_BOOT_DEVICE"
+		return 1
+	fi
+
+	if ! node_ready "$ZLYME_STORAGE_DEVICE"; then
+		log "storage device $ZLYME_STORAGE_DEVICE did not appear"
+		return 0
+	fi
+	got=$(dev_label "$ZLYME_STORAGE_DEVICE" || true)
+	if [ "$got" != "$ZLYME_STORAGE_LABEL" ]; then
+		log "storage device $ZLYME_STORAGE_DEVICE is not $ZLYME_STORAGE_LABEL"
+		return 0
+	fi
+	if ! mount_storage "$ZLYME_STORAGE_DEVICE"; then
+		log "could not mount $ZLYME_STORAGE_DEVICE"
+		return 0
+	fi
+	return 0
 }
 
 commit_update() {
@@ -121,6 +177,19 @@ commit_update() {
 }
 
 do_root() {
+	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
+		if ! select_os_volumes; then
+			return 1
+		fi
+		if grep -q ' /storage_root ' "$MOUNTS"; then
+			echo "storage=${ZLYME_STORAGE_DEVICE}"
+		else
+			echo "storage=none"
+		fi
+		echo "boot=${ZLYME_BOOT_DEVICE}"
+		return 0
+	fi
+
 	mkdir -p /boot_root /storage_root /new_root /sys /proc /dev || return 1
 	mount -t proc -o nodev,noexec,nosuid proc /proc || return 1
 	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
@@ -139,13 +208,6 @@ do_root() {
 	# The ramdisk still paints immediately. The splash process retries
 	# /boot_root/*.anim, so the boot volume does not need to be mounted
 	# first and must not be guessed by partition number.
-	read -r cmdline < /proc/cmdline
-	label=ZLYMEBOOT
-	for param in ${cmdline}; do
-		case ${param} in
-			label=*) label=${param#label=} ;;
-		esac
-	done
 	splash_pid=
 	if [ -x /zlyme-splash ]; then
 		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
@@ -159,12 +221,11 @@ do_root() {
 		fi
 	}
 
-	# A mount that appeared before the label check is not identity.
-	if grep -q " /boot_root " /proc/mounts; then
+	# A mount that appeared before the identity check is not the card.
+	if grep -q " /boot_root " "$MOUNTS"; then
 		umount /boot_root 2>/dev/null || true
 	fi
-	if ! wait_mount mount_boot "LABEL=${label}"; then
-		log "could not mount LABEL=${label}"
+	if ! select_os_volumes; then
 		return 1
 	fi
 	if [ -f /boot_root/zlyme-splash.progress ]; then
@@ -172,7 +233,7 @@ do_root() {
 	fi
 
 	pending=0
-	if wait_mount mount_storage "LABEL=ZLYME"; then
+	if grep -q " /storage_root " "$MOUNTS"; then
 		if [ -f /storage_root/.update/pending/zlyme ]; then
 			pending=1
 		fi
@@ -220,7 +281,7 @@ do_root() {
 	fi
 
 	if [ ! -e /boot_root/zlyme ]; then
-		log "no /zlyme on ${label}"
+		log "no /zlyme on ${ZLYME_BOOT_DEVICE}"
 		return 1
 	fi
 
@@ -254,5 +315,8 @@ do_root() {
 
 if ! do_root; then
 	log "failed, dropping to ash"
+	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
+		exit 1
+	fi
 	exec /bin/ash
 fi
