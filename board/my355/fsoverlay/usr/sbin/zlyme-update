@@ -835,8 +835,12 @@ reapply_once() {
 	# S17 held the lock; S18 waited, splash stuck, and this file
 	# survived so the next boot hung the same way.
 	rm -f "$REAPPLY"
+	# Reapply the profile already chosen. Forcing smart here races a
+	# game that started after the first frame.
+	if [ -x /usr/sbin/zlyme-governor ]; then
+		zlyme-governor resume || true
+	fi
 	if [ -x /usr/sbin/zlyme-ctl ]; then
-		zlyme-ctl apply-gov || true
 		zlyme-ctl apply-led || true
 		zlyme-ctl apply-zram || true
 	fi

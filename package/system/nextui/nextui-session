@@ -293,6 +293,16 @@ wine_prefix_cleanup() {
 	/usr/sbin/zlyme-wine-prefix cleanup || true
 }
 
+# List and return-to-frontend clocks. A pak's launch.sh applies its
+# own profile after nextui.elf has exited, so this cannot race it.
+apply_frontend_governor() {
+	if [ -x /usr/sbin/zlyme-governor ]; then
+		/usr/sbin/zlyme-governor smart || true
+	elif [ -x /usr/share/nextui/bin/governor.sh ]; then
+		/usr/share/nextui/bin/governor.sh smart || true
+	fi
+}
+
 # setsid so MENU+Start can SIGTERM the pak group. Arm the helper before
 # any BlueZ work so a hung bluetoothctl cannot leave the panel stuck.
 run_pak_cmd() {
@@ -402,6 +412,20 @@ fi
 
 rm -f /tmp/poweroff /tmp/reboot
 
+# rk3568_dmc is coldplugged after the first frame. Reapply the profile
+# that is current then. Do not force smart: a game may already own it.
+(
+	_n=0
+	while [ "$_n" -lt 150 ]; do
+		[ -e /sys/class/devfreq/dmc/governor ] && break
+		sleep 0.2
+		_n=$((_n + 1))
+	done
+	if [ -e /sys/class/devfreq/dmc/governor ] && [ -x /usr/sbin/zlyme-governor ]; then
+		/usr/sbin/zlyme-governor resume || true
+	fi
+) &
+
 EXEC_PATH=/tmp/nextui_exec
 NEXT_PATH=/tmp/next
 touch "$EXEC_PATH"
@@ -441,6 +465,7 @@ while [ -f "$EXEC_PATH" ]; do
 	fi
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
+	apply_frontend_governor
 	nextui.elf >> /tmp/nextui.txt 2>&1
 	if [ "$LOGS_ON" = 1 ] && [ -f /tmp/nextui.txt ] && [ -x /usr/sbin/zlyme-logs ]; then
 		_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=

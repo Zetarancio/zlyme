@@ -126,8 +126,8 @@ do_root() {
 	mount -t sysfs -o nodev,noexec,nosuid sysfs /sys || return 1
 	mount -t devtmpfs none /dev 2>/dev/null || true
 
-	# Full A55s for MMC wait + squashfs loop. rcS sets this again;
-	# S27led (after first-flip) puts schedutil back.
+	# Full A55s for MMC wait + squashfs loop. rcS sets this again.
+	# nextui-session applies smart before the list. S27led is LEDs only.
 	for g in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
 		[ -w "$g" ] && echo performance > "$g"
 	done

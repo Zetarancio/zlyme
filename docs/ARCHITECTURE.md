@@ -160,7 +160,7 @@ Settings in the NextUI fork calls `zlyme-ctl`, `zlyme-reset`, and `zlyme-led`. N
 
 Speaker/headphone routing is not a command. The `zlyme-jackd` daemon owns it. `zlyme-audio` reports and selects the sink.
 
-`zlyme-governor` holds my355 knowledge: the RK3566 CPU OPP list, the DMC rates, and core hotplug. It is installed by the NextUI package from `package/system/nextui/zlyme/governor.sh`, not from `board/my355`. Emulator PAKs call `zlyme-governor emu <tag>`, NextUI's my355 platform code calls it for its CPU speed modes, and `zlyme-ctl apply-gov` sets `smart`.
+`zlyme-governor` holds my355 knowledge: the RK3566 CPU OPP list, the DMC rates, and core hotplug. It is installed by the NextUI package from `package/system/nextui/zlyme/governor.sh`, not from `board/my355`. `nextui-session` applies `smart` before each `nextui.elf` start, which is the list and the return from a pak. Emulator PAKs call `zlyme-governor emu <tag>`. NextUI's my355 platform code sets `idle` on the way into sleep and `smart` in `PWR_exitSleep` when the frontend resumes. In a pak, `zlyme-keylidmon` sets `idle` around mem and then `resume`, which reapplies the pak profile. `S27led` only drives the LEDs. A late DMC probe and `zlyme-update reapply` call `resume`, which reapplies the profile already recorded. `zlyme-ctl apply-gov` still means frontend `smart`. It is a manual or reset action; no boot service calls it.
 
 For the Miyoo Flip, these implementations may know about RK817, DMC, VOP2, GPIOs, regulator overlays, and the RTL8733BU.
 

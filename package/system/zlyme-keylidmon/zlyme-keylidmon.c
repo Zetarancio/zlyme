@@ -196,11 +196,13 @@ static void do_mem_sleep(void)
 {
 	if (menu_owns_keys())
 		return;
+	run_command("/usr/sbin/zlyme-governor idle >/dev/null 2>&1");
 	run_command("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 	if (access("/usr/share/nextui/bin/suspend", X_OK) == 0)
 		run_command("/usr/share/nextui/bin/suspend");
 	else
 		run_command("echo mem > /sys/power/state");
+	run_command("/usr/sbin/zlyme-governor resume >/dev/null 2>&1");
 	run_command("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
 	/*
 	 * The wake press is delivered as KEY_POWER=1 after mem returns.

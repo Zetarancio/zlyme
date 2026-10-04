@@ -21,12 +21,55 @@
 # the lowest mainline OPP that is not below that request. ZLYME_GOVERNOR
 # still replaces the whole mode, including emu.
 
+# The product boost setting is gone. An old flag file is ignored.
+# ZLYME_CPU_BOOST=1 remains a serial-debug request for the 1992 profile.
 boost_on() {
-	val=""
-	if command -v zlyme-ctl >/dev/null 2>&1; then
-		val=$(zlyme-ctl get boost 2>/dev/null | tr -d ' \t\r\n')
+	[ "${ZLYME_CPU_BOOST:-}" = 1 ]
+}
+
+# One apply at a time, so a late DMC resume cannot land Smart over a
+# profile the launcher just wrote. Resume re-execs this script and
+# keeps the same lock.
+gov_lock_acquire() {
+	dir=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
+	if [ "${ZLYME_GOVERNOR_LOCKED:-}" = 1 ]; then
+		trap 'rm -rf "${ZLYME_GOVERNOR_LOCK_DIR:-$dir}"' EXIT INT TERM
+		return 0
 	fi
-	[ "$val" = "on" ] || [ "$val" = "1" ] || [ "$val" = "yes" ]
+	mkdir -p "$(dirname "$dir")" 2>/dev/null || true
+	n=0
+	limit=${ZLYME_GOVERNOR_LOCK_TRIES:-50}
+	while ! mkdir "$dir" 2>/dev/null; do
+		n=$((n + 1))
+		if [ -f "$dir/pid" ]; then
+			op=$(tr -d ' \t\r\n' < "$dir/pid" 2>/dev/null || true)
+			if [ -z "$op" ] || ! kill -0 "$op" 2>/dev/null; then
+				rm -rf "$dir"
+				continue
+			fi
+		else
+			rm -rf "$dir"
+			continue
+		fi
+		if [ "$n" -gt "$limit" ]; then
+			echo "zlyme-governor: lock busy" >&2
+			exit 1
+		fi
+		sleep 0.1
+	done
+	printf '%s\n' "$$" > "$dir/pid"
+	export ZLYME_GOVERNOR_LOCKED=1
+	export ZLYME_GOVERNOR_LOCK_DIR=$dir
+	trap 'rm -rf "$ZLYME_GOVERNOR_LOCK_DIR"' EXIT INT TERM
+}
+
+remember_profile() {
+	case "$1" in
+		idle|resume|"") return 0 ;;
+	esac
+	file=${ZLYME_GOVERNOR_PROFILE:-/run/zlyme/governor.profile}
+	mkdir -p "$(dirname "$file")" 2>/dev/null || true
+	printf '%s\n' "$1" > "$file" 2>/dev/null || true
 }
 
 sys_write() {
@@ -249,13 +292,45 @@ if [ "${1:-}" = "--policy" ]; then
 	exit 0
 fi
 
+gov_lock_acquire
+
 mode=${ZLYME_GOVERNOR:-${1:-smart}}
 case "$mode" in
 	auto) mode=smart ;;
 	powersave) mode=idle ;;
+	resume)
+		# Keep the space in "emu <tag>". Stripping all whitespace
+		# would turn that record into a single token and fall back
+		# to smart over a running game.
+		profile=${ZLYME_GOVERNOR_PROFILE:-/run/zlyme/governor.profile}
+		saved=
+		if [ -f "$profile" ]; then
+			IFS= read -r saved < "$profile" || saved=
+		fi
+		case "$saved" in
+			smart|play|heavy|performance|overclock|auto|powersave)
+				exec "$0" "$saved"
+				;;
+			emu\ *)
+				tag=${saved#emu }
+				case "$tag" in
+					*[!A-Za-z0-9]*|"") exec "$0" smart ;;
+					*) exec "$0" emu "$tag" ;;
+				esac
+				;;
+			*)
+				exec "$0" smart
+				;;
+		esac
+		;;
 	emu)
 		shift
 		tag=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
+		remember_profile "emu $tag"
+		if [ "${ZLYME_GOVERNOR_DRY:-}" = 1 ]; then
+			printf '%s\n' "emu $tag"
+			exit 0
+		fi
 		if spruce=$(spruce_floor "$tag"); then
 			profile_play "$(resolve_floor "$spruce")"
 			exit 0
@@ -272,6 +347,12 @@ case "$mode" in
 		fi
 		;;
 esac
+
+remember_profile "$mode"
+if [ "${ZLYME_GOVERNOR_DRY:-}" = 1 ]; then
+	printf '%s\n' "$mode"
+	exit 0
+fi
 
 case "$mode" in
 	smart) profile_smart ;;
