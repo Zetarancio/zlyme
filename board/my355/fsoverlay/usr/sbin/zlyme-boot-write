@@ -1,13 +1,19 @@
 #!/bin/sh
 # One write transaction against the boot vfat, then put it back read-only.
-# Nested calls (a command that itself calls zlyme-boot-write) share the
-# outer transaction. A dead pid file is not a held transaction.
+# The lock is an atomic mkdir. The outer owner remounts read-write.
+# A descendant of that owner shares the transaction. An unrelated
+# caller waits, then fails if the wait expires. It never runs inside
+# the holder's remount. A dead owner is removed and the next caller
+# starts a new transaction.
 
 BOOT=${ZLYME_BOOT:-/boot}
-MARK=/run/zlyme-boot-write.pid
+MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+LOCK=${ZLYME_BOOT_WRITE_LOCK:-/run/zlyme-boot-write.lock}
+WAIT=${ZLYME_BOOT_WRITE_TIMEOUT:-15}
+role=none
 
 mounted() {
-	grep -q " ${BOOT} " /proc/mounts
+	grep -q " ${BOOT} " "$MOUNTS"
 }
 
 is_ro() {
@@ -18,21 +24,97 @@ is_ro() {
 			esac
 			return 1
 		fi
-	done < /proc/mounts
+	done < "$MOUNTS"
 	return 1
 }
 
-holder_alive() {
-	[ -f "$MARK" ] || return 1
-	pid=$(cat "$MARK" 2>/dev/null) || return 1
+lock_owner() {
+	[ -f "$LOCK/owner" ] || return 1
+	pid=$(tr -d ' \t\r\n' < "$LOCK/owner")
 	[ -n "$pid" ] || return 1
-	kill -0 "$pid" 2>/dev/null
+	printf '%s\n' "$pid"
+}
+
+owner_alive() {
+	kill -0 "$1" 2>/dev/null
+}
+
+is_ancestor_owner() {
+	owner=$1
+	cur=$$
+	i=0
+	while [ "$i" -lt 40 ]; do
+		[ "$cur" = "$owner" ] && return 0
+		[ "$cur" = 1 ] && return 1
+		[ "$cur" = 0 ] && return 1
+		ppid=$(awk '/^PPid:/ { print $2 }' "/proc/$cur/status" 2>/dev/null) || return 1
+		[ -n "$ppid" ] || return 1
+		cur=$ppid
+		i=$((i + 1))
+	done
+	return 1
+}
+
+drop_stale_lock() {
+	pid=$(lock_owner || true)
+	if [ -n "$pid" ] && owner_alive "$pid"; then
+		return 1
+	fi
+	rm -rf "$LOCK"
+	return 0
 }
 
 close_boot() {
 	sync
 	mount -o remount,ro "$BOOT" 2>/dev/null || true
 	is_ro
+}
+
+on_exit() {
+	[ "$role" = owner ] || return 0
+	status=$?
+	role=closed
+	trap - EXIT INT TERM
+	if ! close_boot; then
+		rm -rf "$LOCK"
+		echo "zlyme-boot-write: $BOOT stayed writable" >&2
+		exit 1
+	fi
+	rm -rf "$LOCK"
+	exit "$status"
+}
+
+acquire_lock() {
+	end=$(( $(date +%s) + WAIT ))
+	while true; do
+		if mkdir "$LOCK" 2>/dev/null; then
+			if ! printf '%s\n' "$$" > "$LOCK/owner"; then
+				rm -rf "$LOCK"
+				echo "zlyme-boot-write: could not record the lock owner" >&2
+				exit 1
+			fi
+			role=owner
+			return 0
+		fi
+		pid=$(lock_owner || true)
+		if [ -z "$pid" ] || ! owner_alive "$pid"; then
+			drop_stale_lock || true
+			if [ "$(date +%s)" -ge "$end" ]; then
+				echo "zlyme-boot-write: $BOOT lock is stale and could not be cleared" >&2
+				exit 1
+			fi
+			continue
+		fi
+		if is_ancestor_owner "$pid"; then
+			role=nested
+			return 0
+		fi
+		if [ "$(date +%s)" -ge "$end" ]; then
+			echo "zlyme-boot-write: $BOOT is busy (pid $pid)" >&2
+			exit 1
+		fi
+		sleep 0.2
+	done
 }
 
 if [ "$#" -eq 0 ]; then
@@ -45,27 +127,22 @@ if ! mounted; then
 	exit 1
 fi
 
-if holder_alive; then
+mkdir -p "$(dirname "$LOCK")" 2>/dev/null || true
+acquire_lock
+
+if [ "$role" = nested ]; then
 	"$@"
 	exit $?
 fi
 
-mkdir -p /run
-printf '%s\n' "$$" > "$MARK" || exit 1
+trap on_exit EXIT INT TERM
 
 if ! mount -o remount,rw "$BOOT"; then
-	rm -f "$MARK"
+	role=closed
+	rm -rf "$LOCK"
 	echo "zlyme-boot-write: remount read-write failed" >&2
 	exit 1
 fi
 
 "$@"
-rc=$?
-
-if ! close_boot; then
-	rm -f "$MARK"
-	echo "zlyme-boot-write: $BOOT stayed writable" >&2
-	exit 1
-fi
-rm -f "$MARK"
-exit "$rc"
+exit $?
