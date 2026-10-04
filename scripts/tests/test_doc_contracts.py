@@ -21,6 +21,22 @@ CANONICAL = (
     "docs/ENGINEERING_PRINCIPLES.md",
 )
 PRODUCT = "configs/zlyme_my355_defconfig"
+# The stale canonical sentence that an earlier, format-bound check missed.
+STALE_RUMBLE = (
+    "- Settings owns calibration, deadzone, and displayed Rumble Strength. "
+    "The product default is displayed 30%, mapped to `FF_GAIN` by the "
+    "userspace curve."
+)
+
+
+def rumble_defaults(text):
+    """Percentages stated as the default or fresh-install Rumble Strength."""
+    found = []
+    for line in text.splitlines():
+        if "rumble" not in line.lower():
+            continue
+        found += re.findall(r"(?:default|fresh install)\D{0,60}?(\d+)\s?%", line, re.I)
+    return found
 MINIMAL = "configs/zlyme_my355_minimal_defconfig"
 
 
@@ -97,13 +113,16 @@ def main():
         "package/system/nextui/zlyme/gamepad-ff/ff_gain.h",
         r"^#define FF_DEFAULT_GAIN_PERCENT (\d+)$",
     )
-    arch = re.findall(r"(\d+)% \(`FF_DEFAULT_GAIN_PERCENT`\)", read("docs/ARCHITECTURE.md"))
-    guide = re.findall(r"Rumble Strength[^\n]*?fresh install uses (\d+)%", read("docs/USER_GUIDE.md"))
-    if not arch or not guide:
-        bad.append("rumble default is no longer stated where this test looks")
-    for found in arch + guide:
-        if found != gain:
-            bad.append("rumble default %s%% in docs, FF_DEFAULT_GAIN_PERCENT is %s" % (found, gain))
+    if rumble_defaults(STALE_RUMBLE) != ["30"]:
+        bad.append("rumble check no longer sees the stale 30% sentence")
+    for rel in CANONICAL:
+        stated = rumble_defaults(read(rel))
+        if rel in ("docs/ARCHITECTURE.md", "docs/USER_GUIDE.md") and not stated:
+            bad.append("%s no longer states the Rumble Strength default" % rel)
+        for found in stated:
+            if found != gain:
+                bad.append("%s says the Rumble Strength default is %s%%, FF_DEFAULT_GAIN_PERCENT is %s"
+                           % (rel, found, gain))
 
     # The Zlyme Installer links to github.com/Zetarancio/zlyme#install.
     if not re.search(r"^## Install$", read("README.md"), re.M):
