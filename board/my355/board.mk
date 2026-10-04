@@ -85,12 +85,6 @@ define ZLYME_LINUX_COPY_PANEL
 endef
 LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_COPY_PANEL
 
-# Extra dtsi files the kernel patches expect. Not installed as our dtb.
-define ZLYME_LINUX_COPY_DTS_OVERRIDES
-	$(Q)$(call SYSTEM_RSYNC,$(ZLYME_LINUX_DIR)/dts-overrides,$(@D)/arch/arm64/boot/dts/)
-endef
-LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_COPY_DTS_OVERRIDES
-
 define ZLYME_LINUX_INJECT
 	grep -q panel-generic-dsi $(@D)/drivers/gpu/drm/panel/Makefile || \
 		echo 'obj-y += panel-generic-dsi.o' >> $(@D)/drivers/gpu/drm/panel/Makefile
