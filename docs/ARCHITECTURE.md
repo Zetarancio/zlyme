@@ -120,7 +120,9 @@ ZLYME_BOOT_LABEL=ZLYMEBOOT
 ZLYME_STORAGE_LABEL=ZLYME
 ```
 
-`post-build.sh`, `post-image.sh`, `make-update-tar.sh`, `zlyme-update`, and the Settings release lookup read it.
+`post-build.sh`, `post-image.sh`, `make-update-tar.sh`, `zlyme-update`, and the Settings release lookup read it. The initramfs carries the same file.
+
+`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the my355 OS card. The right-hand slot is `sdmmc0`, which the kernel names `/dev/mmcblk0`. Those paths select the disk and the boot and storage partitions. The labels confirm the nodes. A cloned card repeats the labels, so boot, storage, resize, and raw bootloader writes do not search by label.
 
 Only put values here that generic code genuinely needs.
 
@@ -190,7 +192,7 @@ Image.gz + rk3566-miyoo-flip.dtb + FDTOVERLAYS
   v
 Linux 7.0.2 with the embedded Zlyme initramfs
   v
-mount ZLYMEBOOT read-only, mount ZLYME
+mount /dev/mmcblk0p2 read-only when its label is ZLYMEBOOT, then /dev/mmcblk0p3 when its label is ZLYME
   v
 if ZLYME/.update/pending/zlyme exists: open /boot read-write,
 copy it over /boot/zlyme, run pending/post-update.sh, close /boot read-only
@@ -214,7 +216,7 @@ The TPL and BL31 come from rkbin and must be a matching pair. On a normal boot t
 
 U-Boot is mainline 2026.01 from the `quartz64-a-rk3566` defconfig. The `board.mk` hook switches it to the local Flip control DTS, sets `BOOTDELAY=-2`, adds the preboot `my355 fg` fuel-gauge helper (U-Boot patch `006`), and strips PCI, SATA, NVMe, Ethernet, SDHCI, and USB. U-Boot patch `002` sets the SPL boot order to `sdmmc0`.
 
-The kernel command line is `label=ZLYMEBOOT earlycon quiet console=ttyS2,1500000n8`. `zlyme-ctl apply-overlays` writes the `FDTOVERLAYS` line from Settings flags: the HDMI, OTG, and SD2 disable overlays and the CPU undervolt level.
+The kernel command line is `label=ZLYMEBOOT earlycon quiet console=ttyS2,1500000n8`. The initramfs does not use that `label=` argument to choose a card. `zlyme-ctl apply-overlays` writes the `FDTOVERLAYS` line from Settings flags: the HDMI, OTG, and SD2 disable overlays and the CPU undervolt level.
 
 The initramfs is a static BusyBox `1.36.1` `/init` that `board.mk` embeds through `CONFIG_INITRAMFS_SOURCE`. It also starts the framebuffer splash, and writes a boot dmesg when `/boot/zlyme-logs` asks for one. That is the only other reason it opens `/boot` read-write.
 
@@ -241,9 +243,9 @@ The Miyoo Flip image (`board/my355/genimage.cfg`) uses:
 - no rootfs GPT partition;
 - root squashfs (zstd, 1 MiB blocks) stored as a file named `zlyme` on `ZLYMEBOOT`.
 
-The flashed `ZLYME` is a 32 MiB exFAT seed. A fresh `zlyme-boot.conf` has `autoresize=true`, so on the first boot `S13resize` grows the partition to the card (`sgdisk -e`, `parted resizepart 100%`), reformats it with `mkfs.exfat -L ZLYME`, and runs `reboot -f`. The next boot sees a grown `ZLYME` and comments out the trigger. `S15bootpart` mounts `ZLYME` if the initramfs did not already move it to `/storage`, ensures the timezone file, and seeds `.config`, `.update/`, and the default flags in the background. `docs/OPERATIONS.md` has the operator view.
+The flashed `ZLYME` is a 32 MiB exFAT seed. A fresh `zlyme-boot.conf` has `autoresize=true`. On the first boot `S13resize` grows the storage partition (`sgdisk -e`, `parted resizepart 100%`), reformats it with `mkfs.exfat -L ZLYME`, and runs `reboot -f`, but only when `/boot` and `/storage` are already the primary nodes above and the storage label is `ZLYME`. If that is not true, it leaves `autoresize=true` and does not format. The next boot that can prove the identity, and already sees a grown volume, comments out the trigger. `S15bootpart` mounts the primary storage node if the initramfs did not already move it to `/storage`. It does not seed a different card. It ensures the timezone file and seeds `.config`, `.update/`, and the default flags in the background. `docs/OPERATIONS.md` has the operator view.
 
-`/boot` is read-only at runtime. The squashfs loop is backed read-only by `/boot/zlyme`, which lets the vfat be remounted without `EBUSY`. Every runtime write to `/boot` goes through `zlyme-boot-write`: remount read-write, run one command, sync, remount read-only, and verify. Nested calls share the outer transaction.
+`/boot` is read-only at runtime. The squashfs loop is backed read-only by `/boot/zlyme`, which lets the vfat be remounted without `EBUSY`. Every runtime write to `/boot` goes through `zlyme-boot-write`. It refuses the remount unless the mounted source is the primary boot partition. The lock is a regular file: the owner PID is written privately and published with `ln`. A descendant shares that transaction. The helper returns the wrapped command's status when `/boot` is read-only again. If that remount fails, it poisons the lock until reboot and returns failure.
 
 The writable persistent filesystem is `/storage` (`ZLYME`). Frontend power-off and reboot exec `zlyme-halt`, which leaves `/boot` mounted, moves off `/storage`, and unmounts that exFAT volume with a normal `umount` before `reboot -f` or `poweroff -f`. A shell `poweroff` or `reboot` takes BusyBox's `::shutdown:` path (`rcK`, then `umount -a -r`) instead.
 
@@ -311,7 +313,7 @@ initramfs replaces /boot/zlyme and runs pending/post-update.sh
 rc.late runs zlyme-update reapply (governor, LED, zram)
 ```
 
-Routine OTA does not rewrite U-Boot. The tar's `idbloader.img` and `u-boot.itb` are parked in `/storage/.update/bootloader/` for an explicit `zlyme-update uboot`.
+Routine OTA does not rewrite U-Boot. The tar's `idbloader.img` and `u-boot.itb` are parked in `/storage/.update/bootloader/` for an explicit `zlyme-update uboot`. That command writes only when `/boot` is the primary boot partition on the primary disk, that disk's logical block size is 512 bytes, and the one `uboot` partition on that disk starts at LBA 16384 and can hold the payload. Host checks resolve the target and do not write. A Flip write is still untested.
 
 A tar that fails the structural checks is deleted. A tar that fails to apply is moved to `/storage/.update/failed/`, `FAILED` records the reason, and the old root keeps running.
 
@@ -515,7 +517,7 @@ Needed before frontend operation, such as essential display/input/storage policy
 ```text
 S10udevd         udevd without coldplug
 S11modules       modules-load.d: miyoo-flip-gamepad (Buildroot initscripts)
-S12bootfs        /boot read-only (skipped when the initramfs mounted it)
+S12bootfs        confirm /boot is the primary boot partition and keep it read-only
 S12splash        restart the splash from the squashfs
 S13resize        first-boot storage grow (skipped unless autoresize=true)
 S15bootpart      mount /storage, timezone file, background seed

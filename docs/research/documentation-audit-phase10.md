@@ -772,23 +772,26 @@ Original findings stay in "Suspected runtime and build issues". The Phase 10 col
 
 | Item | Phase 10 docs branch | zlyme44.1-maintenance |
 | --- | --- | --- |
-| (a) `zlyme-update uboot` can pick the wrong disk | open, confirmed safety defect | fixed in source: the write is bound to the disk behind `/boot` and fails closed |
-| (b) Initramfs can mount the second card as boot | open | fixed in source: mount only the expected boot label |
+| (a) `zlyme-update uboot` can pick the wrong disk | open, confirmed safety defect | implemented, host-tested, awaiting Flip validation: primary boot node, 512-byte sectors, and the disk behind `/boot`; no raw write was run |
+| (b) Initramfs can mount the second card as boot | open | implemented, host-tested, awaiting Flip validation: primary device nodes; the label is a check; no second-card fallback |
 | (c) Suspend arms a 24 h RTC wake | decided, not shipped | fixed in source: the helper does not touch `rtc0/wakealarm`; programmed alarms are preserved |
 | (d) Minimal build expected to fail post-build | open | fixed in source: assertions follow the selected config; a real minimal build is the remaining proof |
-| (e) `zlyme-boot-write` is not a lock | open | fixed in source: `mkdir` transaction lock |
-| (f) Late governor reset after the first frame | open | fixed in source: the session owns Smart; late paths call `resume` |
+| (e) `zlyme-boot-write` is not a lock | open | implemented, host-tested: PID file published with `ln`; wrapped status preserved; failed read-only remount poisons the lock |
+| (f) Late governor reset after the first frame | open | implemented, host-tested: the session owns Smart; late paths call `resume`; the governor lock is the same PID file |
 | (g) Unfingerprinted local packages | open | fixed in source: local packages are fingerprinted |
-| (h) OTA pack failure is non-fatal | open | fixed in source: a product image without its OTA fails |
+| (h) OTA pack failure is non-fatal | open | implemented, host-tested: pack failure removes that invocation's `zlyme.img` and does not publish a partial tar or checksum; no product image was built |
 | (i) LED watcher polls every 2 s | deferred | deferred: measure cost before changing it |
-| (j) SD slot 2 enables UHS modes | open, confirmed DTS regression | fixed in source on `sdmmc1` only; both-slot Flip check still required |
+| (j) SD slot 2 enables UHS modes | open, confirmed DTS regression | implemented on `sdmmc1` only; `sdmmc0` keeps UHS and its comment matches; both-slot Flip check still required |
 | (k) Dormant mergerfs is still selectable | open | fixed in source: package removed |
 | (l) `board.mk` copies unused `dts-overrides` | open | fixed in source: hook and files removed; clean kernel extract is the proof |
 | (m) Literal `my355` in generic paths | deferred | deferred until a second device exists |
 | (n) Card writes with logs off | deferred | deferred: deliberate diagnostic tradeoff |
 | (o) GHCR builder image always rebuilt | open | fixed in source: the workflow publishes the Dockerfile digest label |
 | (p) Residual `boost` and `merge` flags | open | fixed in source: retired, leftover files ignored or deleted |
-| (q) `sleep 0.4` and `mmcblk0p3` preference | split | deferred: PortMaster sleep stays; the `mmcblk0p3` preference stays open |
+| (q) `sleep 0.4` and `mmcblk0p3` preference | split | PortMaster sleep stays deferred; storage identity is implemented, host-tested, awaiting Flip validation |
+
+On 2026-10-05 the `zlyme44.1-maintenance` column was corrected again for the lock publication race, duplicate filesystem labels, bootloader identity, and failed product artifacts. Those rows are host-tested. They are not Flip-accepted. No product image, minimal image, or raw disk write was run for that correction.
+
 - **SHAs.** Runtime evidence is `337ccbce2587393463a4b49c551f94e33e318e44`. The wiki's Zlyme wording still cites documentation `d2e2496b7fe935d5123d082d1ef28b6ac28ed139`. The follow-up wiki commits used release and evidence facts already in that tree, plus the live GitHub release state.
 
 ## Historical references kept

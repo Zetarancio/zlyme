@@ -243,7 +243,7 @@ Do not move board-specific kernel/U-Boot mutation back into global code after it
 
 When reconfiguring the kernel, remember that out-of-tree modules may require rebuild/dirclean if the module ABI changes.
 
-A change that touches only the board DTS, and does not change kernel source, kernel config, modules, or the root filesystem, does not need a full image or a new OTA for the experiment. The boot volume is the vfat labeled `ZLYMEBOOT`. Initramfs mounts it read-only at `/boot`. `S12bootfs` is the fallback mount and also keeps it read-only. Extlinux loads `FDT /rk3566-miyoo-flip.dtb` from that volume, so the live file is `/boot/rk3566-miyoo-flip.dtb`. Every runtime write to `/boot` goes through `zlyme-boot-write`, which remounts it read-write for one command and then back to read-only.
+A change that touches only the board DTS, and does not change kernel source, kernel config, modules, or the root filesystem, does not need a full image or a new OTA for the experiment. The boot volume is `/dev/mmcblk0p2`, the primary card's FAT, and its label is `ZLYMEBOOT`. Initramfs mounts that node read-only at `/boot` after the label matches. `S12bootfs` checks the same identity and keeps the volume read-only. `zlyme-boot-write` refuses a different source. Extlinux loads `FDT /rk3566-miyoo-flip.dtb` from that volume, so the live file is `/boot/rk3566-miyoo-flip.dtb`. Every runtime write to `/boot` goes through `zlyme-boot-write`, which remounts it read-write for one command and then back to read-only.
 
 1. Rebuild only that DTB in the existing Buildroot kernel tree.
 2. Decompile it and confirm the intended property change, and that nothing outside the intended node moved.

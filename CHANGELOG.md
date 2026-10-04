@@ -11,15 +11,11 @@ Point release `zlyme44.1` on the `zlyme44` baseline. It is not published. The `z
 ### Fixed
 
 - Suspend no longer reads or writes the RTC wake alarm. The 24-hour alarm that `zlyme44` programmed is gone, and an alarm set on purpose is left in place.
-- `zlyme-update uboot` writes the bootloader on the disk that holds `/boot`. It refuses a target it cannot prove.
-- Boot waits for the `ZLYMEBOOT` volume. A second card is not mounted as the boot volume because it happens to be partition 2.
+- `zlyme-update uboot` writes the bootloader only on the right-hand card, and only when `/boot` is that card's boot partition and the disk uses 512-byte logical sectors. It refuses a target it cannot prove.
+- Boot, storage, and the first-boot resize use the right-hand card. The `ZLYMEBOOT` and `ZLYME` labels confirm those partitions. A second card with the same labels is left alone.
 - The second SD slot stays at high-speed signaling. Both slots share one I/O-voltage rail, and a UHS switch on the second slot was dropping the other card.
 - A game started right after boot, or right after an update reboot, keeps that game's CPU profile. Returning to the list uses Smart again.
-- A product image build stops when the update tar cannot be packed.
-
-### Changed
-
-- `./build.sh` with `zlyme_my355_minimal_defconfig` can finish. That image is the bring-up tree: Wi-Fi, SSH, audio, and Panfrost, without the frontend, the gamepad module, or the Mali stack.
+- A product image build stops when the update tar cannot be packed. That failed build does not keep a finished-looking disk image or a partial update archive.
 
 ### Removed
 

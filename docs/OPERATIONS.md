@@ -27,16 +27,19 @@ The reliable host setup established during bring-up uses `stty` to set 1500000 b
 
 ## Boot identity
 
-The DTB name and both labels come from `board/my355/fsoverlay/usr/share/zlyme/device.conf`:
+The DTB name, the OS-card nodes, and both labels come from `board/my355/fsoverlay/usr/share/zlyme/device.conf`:
 
 ```text
 kernel DTB:     rk3566-miyoo-flip.dtb
+OS disk:        /dev/mmcblk0
+boot partition: /dev/mmcblk0p2
+storage:        /dev/mmcblk0p3
 boot label:     ZLYMEBOOT
 storage label:  ZLYME
 root payload:   zlyme (squashfs file on boot FAT)
 ```
 
-MMC numbering is not a stable identity. Prefer labels/partition names.
+The right-hand slot is the OS card. The device nodes select it. The labels confirm the partitions and are not unique across cards. Boot, storage, first-boot resize, and `zlyme-update uboot` do not follow a second card that repeats those labels. This is implemented and host-tested. It is awaiting Flip validation with both cards installed.
 
 ## Image layout
 
@@ -59,7 +62,7 @@ A critical historical finding:
 - the proven sequence grows/reformats storage and reboots;
 - protect the boot FAT from unnecessary partition-table reprobe activity.
 
-Treat this as filesystem-integrity-sensitive code.
+Treat this as filesystem-integrity-sensitive code. `S13resize` runs only when the mounted `/boot` and `/storage` are the primary nodes in Boot identity and the storage label is `ZLYME`. Otherwise it leaves `autoresize=true` and does not partition or format. That guard is host-tested and awaiting Flip validation.
 
 ## Persistent state
 
@@ -223,7 +226,7 @@ OTA artifacts are named `zlyme-my355-*` and carry the my355 DTB. `zlyme-update s
 - `pending/zlyme=yes (reboot to commit)` when a reconstructed or extracted root is waiting for reboot;
 - `root=squashfs-file` when `/boot/zlyme` is present, otherwise `root=other`.
 
-Settings selects a delta only when `from_sha256` equals the SHA-256 of the installed `/boot/zlyme`. Otherwise it uses the full OTA. A baseline release has no deltas. Reconstruction writes the new root under `/storage/.update/reconstruct` and moves it to `/storage/.update/pending/zlyme` only after the hash and size match. `/boot/zlyme` stays the running system until initramfs copies the pending file on reboot. Kernel, DTB, and overlays are written to the boot volume at apply time. A routine OTA does not rewrite U-Boot. `zlyme-update uboot` is a separate command.
+Settings selects a delta only when `from_sha256` equals the SHA-256 of the installed `/boot/zlyme`. Otherwise it uses the full OTA. A baseline release has no deltas. Reconstruction writes the new root under `/storage/.update/reconstruct` and moves it to `/storage/.update/pending/zlyme` only after the hash and size match. `/boot/zlyme` stays the running system until initramfs copies the pending file on reboot. Kernel, DTB, and overlays are written to the boot volume at apply time. A routine OTA does not rewrite U-Boot. `zlyme-update uboot` is a separate command. It writes only the primary card, and only when `/boot` is that card's boot partition and the disk reports 512-byte logical sectors. Host checks do not write. A Flip write has not been run.
 
 `test-stage` is not a user command. It runs only when `ZLYME_UPDATE_TEST=1`. It uses the same stage path, so it can create `/boot/zlyme-splash.progress` for the duration of the run. That flag is not a root or kernel write. A test `pending` directory must be removed before any reboot. Do not leave a test tar under `/storage/.update`, where a reboot can queue it.
 
