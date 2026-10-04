@@ -18,6 +18,9 @@ DOCS = (
     "docs/LOGBOOK.md",
     "docs/ENGINEERING_PRINCIPLES.md",
     "docs/USER_GUIDE.md",
+    "docs/WRITING.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
     "docs/decisions/0006-root-image-lifecycle.md",
     "docs/research/README.md",
     "docs/research/documentation-audit-phase10.md",
@@ -48,6 +51,21 @@ def exists(path):
     return os.path.exists(os.path.join(ROOT, path))
 
 
+def anchors(path):
+    """GitHub heading slugs for a Markdown file, outside code fences."""
+    found = set()
+    fenced = False
+    for line in open(os.path.join(ROOT, path), encoding="utf-8"):
+        if line.startswith("```"):
+            fenced = not fenced
+            continue
+        match = None if fenced else re.match(r"#{1,6} +(.+?) *#* *$", line)
+        if match:
+            slug = re.sub(r"[^\w\- ]", "", match.group(1).strip().lower())
+            found.add(slug.replace(" ", "-"))
+    return found
+
+
 def main():
     bad = []
     for rel in DOCS:
@@ -57,12 +75,13 @@ def main():
         for target in LINK.findall(text):
             if target.startswith(("http://", "https://", "mailto:")):
                 continue
-            path = target.split("#", 1)[0]
-            if not path:
-                continue
-            resolved = os.path.normpath(os.path.join(base, path))
+            path, _, fragment = target.partition("#")
+            resolved = os.path.normpath(os.path.join(base, path)) if path else rel
             if not exists(resolved):
                 bad.append("%s -> %s" % (rel, target))
+                continue
+            if fragment and resolved.endswith(".md") and fragment not in anchors(resolved):
+                bad.append("%s -> %s (no such heading)" % (rel, target))
         if rel not in PATH_DOCS:
             continue
         for lineno, line in enumerate(text.splitlines(), 1):

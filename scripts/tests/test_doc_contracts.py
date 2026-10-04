@@ -105,6 +105,10 @@ def main():
         if found != gain:
             bad.append("rumble default %s%% in docs, FF_DEFAULT_GAIN_PERCENT is %s" % (found, gain))
 
+    # The Zlyme Installer links to github.com/Zetarancio/zlyme#install.
+    if not re.search(r"^## Install$", read("README.md"), re.M):
+        bad.append("README.md has no '## Install' heading for the installer's #install link")
+
     if bad:
         print("\n".join(bad), file=sys.stderr)
         return 1
