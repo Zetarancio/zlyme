@@ -65,12 +65,19 @@ int main(void) {
     need(has_suffix(&systems, "/roms/SNES") || has_suffix(&systems, "/SNES"), "snes on lowercase roms");
     {
         int i, gb = 0;
-        for (i = 0; i < systems.count; i++)
-            if (strcmp(strrchr(systems.item[i], '/') + 1, "Game Boy (GB)") == 0)
+        const char *gb_path = NULL;
+        for (i = 0; i < systems.count; i++) {
+            const char *base = strrchr(systems.item[i], '/') + 1;
+            if (strcmp(base, "Game Boy (GB)") == 0) {
                 gb++;
+                gb_path = systems.item[i];
+            }
+        }
         need(gb == 1, "one logical gb row");
-        need(strncmp(systems.item[0], sd1, strlen(sd1)) == 0 ||
-             strstr(systems.item[0], "Game Boy") == NULL || 1, "listed");
+        /* Same folder name on a later library is not a second row.
+         * The listed path is the earlier library, wherever it sits. */
+        need(gb_path && strncmp(gb_path, sd1, strlen(sd1)) == 0,
+             "duplicate system keeps the earlier library");
     }
     zlyme_strlist_free(&systems);
 
