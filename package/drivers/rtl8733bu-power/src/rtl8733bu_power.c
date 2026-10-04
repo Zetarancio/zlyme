@@ -25,6 +25,9 @@
  * Power for suspend is dropped by the driver rather than left to userspace;
  * see the comment above rtl8733bu_power_suspend_late() for why it has to be
  * the late phase.
+ *
+ * Origin: Zetarancio, archived distribution fork fbd8dd154530, 2026-02-26.
+ * GPL-2.0-only. Not an official ROCKNIX driver.
  */
 
 #include <linux/delay.h>
@@ -239,5 +242,5 @@ module_platform_driver(rtl8733bu_power_driver);
 
 MODULE_SOFTDEP("post: 8733bu");
 MODULE_DESCRIPTION("RTL8733BU WiFi/BT GPIO power via rfkill; power off when both blocked");
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("ROCKNIX");
+MODULE_LICENSE("GPL v2");
+MODULE_AUTHOR("Zetarancio");

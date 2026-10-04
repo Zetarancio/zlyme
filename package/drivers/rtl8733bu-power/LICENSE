@@ -1,9 +1,12 @@
 rtl8733bu-power
 ===============
 
-Original Zlyme source in this directory.
+Written by Zetarancio for the archived Miyoo Flip distribution fork
+(Zetarancio/distribution, fbd8dd1545309950b0e13a495c659501549a957c,
+2026-02-26) and later imported into Zlyme. This is not original Zlyme
+source, and it is not an official ROCKNIX driver.
 SPDX-License-Identifier: GPL-2.0-only
-Copyright (c) 2026 Zlyme contributors
+Copyright (c) 2026 Zetarancio
 
 GNU GENERAL PUBLIC LICENSE
 Version 2, June 1991
