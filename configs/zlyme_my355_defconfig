@@ -62,7 +62,7 @@ BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/l
 BR2_LINUX_KERNEL_IMAGE=y
 BR2_PACKAGE_ZLYME_INITRAMFS=y
 
-# DTS tree (keeps rockchip/ so rk3566.dtsi resolves). dtb line is in external.mk.
+# DTS tree (keeps rockchip/ so rk3566.dtsi resolves). dtb line is in board/my355/board.mk.
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
 BR2_LINUX_KERNEL_CUSTOM_DTS_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/dts"
 
@@ -126,7 +126,7 @@ BR2_PACKAGE_WPA_SUPPLICANT_PASSPHRASE=y
 # iw, for bring-up.
 BR2_PACKAGE_IW=y
 
-# SSH (SFTP). Host key on tmpfs; S27sshd starts before NextUI.
+# SSH (SFTP). Host key on tmpfs; rc.late starts S50sshd after the first frame.
 BR2_PACKAGE_OPENSSL=y
 BR2_PACKAGE_OPENSSH=y
 
@@ -145,7 +145,7 @@ BR2_PACKAGE_PARTED=y
 BR2_PACKAGE_GPTFDISK=y
 BR2_PACKAGE_GPTFDISK_SGDISK=y
 
-# GPU: Mesa Panfrost, KMSDRM + GBM + EGL, no X11/Wayland.
+# GPU: Mesa Panfrost, KMSDRM + GBM + EGL, no X11. Wayland is for the temporary Weston.
 # MESA3D_LLVM is required by Buildroot's panfrost option (else it is dropped).
 # LLVM is not used in the GL client; see external.mk.
 BR2_PACKAGE_MESA3D=y
@@ -179,7 +179,7 @@ BR2_PACKAGE_ALSA_UTILS_SPEAKER_TEST=y
 BR2_PACKAGE_BLUEZ_ALSA=y
 BR2_PACKAGE_ZLYME_JACKD=y
 
-# zlyme_defconfig = zlyme_minimal plus emulators. Keep the shared lines in step.
+# zlyme_my355_defconfig = zlyme_my355_minimal plus emulators. Keep the shared lines in step.
 # SDL2: KMSDRM for the frontend. Wayland is only for a temporary Weston client.
 BR2_PACKAGE_SDL2=y
 BR2_PACKAGE_SDL2_OPENGLES=y
@@ -313,7 +313,7 @@ BR2_PACKAGE_AETHERSX2=y
 BR2_PACKAGE_DOLPHIN_EMU=y
 
 # Temporary DRM Weston for clients that cannot use KMSDRM.
-# Not a boot service. Xwayland stays off until the tracer is proven.
+# Not a boot service. No Xwayland: PortMaster's WestonPack brings its own.
 BR2_PACKAGE_WESTON=y
 BR2_PACKAGE_WESTON_DEFAULT_DRM=y
 BR2_PACKAGE_WESTON_DRM=y

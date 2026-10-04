@@ -33,7 +33,7 @@
 		stdout-path = "serial2:1500000n8";
 	};
 
-	/* No adc-keys: volume buttons are on GPIO; saradc ch0 is owned by joypad. */
+	/* No adc-keys: volume buttons are on GPIO; the sticks are on UART1. */
 
 	/* LCD backlight: PWM4, mainline pwm-backlight.
 	 * Stock miyoo355_fw_20250509213001 lcd_frequencies.json offers selectable PWM modes:
@@ -328,7 +328,8 @@
 
 	/*
 	 * BL31 suspend ABI. The mask matches the stock firmware DTB (0x5ec / 0x10).
-	 * rk8xx-core still owns the RK817 sleep pin. vdd_logic stays on in this image.
+	 * rk8xx-core still owns the RK817 sleep pin. vdd_logic is off in mem
+	 * suspend, which needs ARMOFF_LOGOFF in this mask.
 	 */
 	rockchip_suspend: rockchip-suspend {
 		compatible = "rockchip,pm-rk3568";
@@ -995,7 +996,7 @@
 	status = "okay";
 };
 
-/* SARADC: used by joypad driver for analog stick data (ch0).
+/* SARADC: no consumer in this DTS; the sticks are on UART1.
  * vref-supply sets the ADC reference voltage. */
 &saradc {
 	status = "okay";
@@ -1111,17 +1112,18 @@
 	rockchip,hw-tshut-polarity = <0>;
 };
 
-/* UART1 analog sticks. CTS pinmux and DMA stay as on the known-good
- * board. Phase 3B does not remove them. The child claims the port via
- * serdev, so /dev/ttyS1 is not created. Protocol flow control is off.
+/* UART1 analog sticks. CTS pinmux and DMA match stock and are not
+ * proven removable. The child claims the port via serdev, so
+ * /dev/ttyS1 is not created. Protocol flow control is off.
  */
 &uart1 {
 	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart1m0_xfer &uart1m0_ctsn>;
 
-	/* Phase 3B tracer. Debounce 10 ms is the stock interval, not a
-	 * final constant. No calibration and no SDL mapping in here.
+	/* One input device: UART sticks, GPIO buttons, PWM5 rumble.
+	 * Debounce 10 ms is the stock interval. Calibration lives in
+	 * userspace files; no SDL mapping in here.
 	 */
 	gamepad {
 		compatible = "miyoo,flip-gamepad";
@@ -1490,7 +1492,7 @@
 				<1 RK_PB1 RK_FUNC_GPIO &pcfg_pull_down>,
 				<1 RK_PB2 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
-		/* GPIO0 D2–D7: D0/D1 excluded (uart2, needed for deep sleep resume). */
+		/* GPIO0 D2–D7: D0/D1 excluded (uart2m0, the debug console). */
 		unused_gpio0_d_pins: unused-gpio0-d-pins {
 			rockchip,pins =
 				<0 RK_PD2 RK_FUNC_GPIO &pcfg_pull_down>,
