@@ -28,39 +28,136 @@ boost_on() {
 }
 
 # One apply at a time, so a late DMC resume cannot land Smart over a
-# profile the launcher just wrote. Resume re-execs this script and
-# keeps the same lock.
-gov_lock_acquire() {
-	dir=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
-	if [ "${ZLYME_GOVERNOR_LOCKED:-}" = 1 ]; then
-		trap 'rm -rf "${ZLYME_GOVERNOR_LOCK_DIR:-$dir}"' EXIT INT TERM
+# profile the launcher just wrote. The lock is a regular file. The
+# owner PID is written privately and published with ln, so another
+# caller cannot see an empty lock and delete it. Resume re-execs this
+# script; the new image trusts the lock only when it still names this
+# PID. A signal exits instead of dropping the lock and applying further.
+gov_role=none
+gov_lock=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
+
+gov_lock_owner() {
+	[ -f "$gov_lock" ] || return 1
+	[ -d "$gov_lock" ] && return 1
+	pid=$(tr -d ' \t\r\n' < "$gov_lock" 2>/dev/null) || return 1
+	[ -n "$pid" ] || return 1
+	printf '%s\n' "$pid"
+}
+
+gov_numeric_pid() {
+	case "$1" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	return 0
+}
+
+gov_owner_alive() {
+	gov_numeric_pid "$1" || return 1
+	kill -0 "$1" 2>/dev/null
+}
+
+gov_reclaim_dead() {
+	want=$1
+	gov_numeric_pid "$want" || return 1
+	aside="${gov_lock}.stale.$$"
+	rm -f "$aside"
+	mv "$gov_lock" "$aside" 2>/dev/null || return 1
+	cur=$(tr -d ' \t\r\n' < "$aside" 2>/dev/null || true)
+	if [ "$cur" = "$want" ] && ! gov_owner_alive "$want"; then
+		rm -f "$aside"
 		return 0
 	fi
-	mkdir -p "$(dirname "$dir")" 2>/dev/null || true
+	if [ ! -e "$gov_lock" ]; then
+		mv "$aside" "$gov_lock" 2>/dev/null || rm -f "$aside"
+	else
+		rm -f "$aside"
+	fi
+	return 1
+}
+
+gov_lock_cleanup() {
+	status=$?
+	trap - EXIT INT TERM HUP
+	if [ "$gov_role" != owner ]; then
+		exit "$status"
+	fi
+	gov_role=closed
+	cur=$(gov_lock_owner || true)
+	if [ "$cur" = "$$" ]; then
+		rm -f "$gov_lock"
+	fi
+	exit "$status"
+}
+
+gov_lock_traps() {
+	trap gov_lock_cleanup EXIT
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+	trap 'exit 129' HUP
+}
+
+gov_lock_fail() {
+	echo "zlyme-governor: $*" >&2
+	exit 1
+}
+
+gov_lock_acquire() {
+	gov_lock=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
+	export ZLYME_GOVERNOR_LOCK=$gov_lock
+	if [ "${ZLYME_GOVERNOR_LOCKED:-}" = 1 ]; then
+		cur=$(gov_lock_owner || true)
+		if [ "$cur" != "$$" ]; then
+			gov_lock_fail "inherited lock is not pid $$"
+		fi
+		gov_role=owner
+		gov_lock_traps
+		return 0
+	fi
+	if [ -d "$gov_lock" ]; then
+		gov_lock_fail "lock is not a PID file"
+	fi
+	mkdir -p "$(dirname "$gov_lock")" 2>/dev/null || true
 	n=0
 	limit=${ZLYME_GOVERNOR_LOCK_TRIES:-50}
-	while ! mkdir "$dir" 2>/dev/null; do
-		n=$((n + 1))
-		if [ -f "$dir/pid" ]; then
-			op=$(tr -d ' \t\r\n' < "$dir/pid" 2>/dev/null || true)
-			if [ -z "$op" ] || ! kill -0 "$op" 2>/dev/null; then
-				rm -rf "$dir"
-				continue
+	while true; do
+		if [ -d "$gov_lock" ]; then
+			gov_lock_fail "lock is not a PID file"
+		fi
+		tmp="${gov_lock}.$$"
+		rm -f "$tmp"
+		if ! printf '%s\n' "$$" > "$tmp"; then
+			rm -f "$tmp"
+			gov_lock_fail "could not record the lock owner"
+		fi
+		if ln "$tmp" "$gov_lock" 2>/dev/null && [ -f "$gov_lock" ]; then
+			owned=$(gov_lock_owner || true)
+			rm -f "$tmp"
+			if [ "$owned" = "$$" ]; then
+				export ZLYME_GOVERNOR_LOCKED=1
+				gov_role=owner
+				gov_lock_traps
+				return 0
 			fi
-		else
-			rm -rf "$dir"
+		fi
+		rm -f "$tmp"
+		op=$(gov_lock_owner || true)
+		if ! gov_numeric_pid "$op"; then
+			gov_lock_fail "lock is malformed"
+		fi
+		if ! gov_owner_alive "$op"; then
+			gov_reclaim_dead "$op" || true
+			n=$((n + 1))
+			if [ "$n" -gt "$limit" ]; then
+				gov_lock_fail "lock is stale and could not be cleared"
+			fi
 			continue
 		fi
+		n=$((n + 1))
 		if [ "$n" -gt "$limit" ]; then
-			echo "zlyme-governor: lock busy" >&2
-			exit 1
+			gov_lock_fail "lock busy"
 		fi
 		sleep 0.1
 	done
-	printf '%s\n' "$$" > "$dir/pid"
-	export ZLYME_GOVERNOR_LOCKED=1
-	export ZLYME_GOVERNOR_LOCK_DIR=$dir
-	trap 'rm -rf "$ZLYME_GOVERNOR_LOCK_DIR"' EXIT INT TERM
 }
 
 remember_profile() {
@@ -349,6 +446,14 @@ case "$mode" in
 esac
 
 remember_profile "$mode"
+# Test seam. A signal during this hold must exit with the lock still
+# covering the apply, not drop the lock and continue into the profile.
+if [ -n "${ZLYME_GOVERNOR_HOLD:-}" ]; then
+	sleep "$ZLYME_GOVERNOR_HOLD"
+fi
+if [ -n "${ZLYME_GOVERNOR_MARK:-}" ]; then
+	printf '%s\n' "$mode" >> "$ZLYME_GOVERNOR_MARK"
+fi
 if [ "${ZLYME_GOVERNOR_DRY:-}" = 1 ]; then
 	printf '%s\n' "$mode"
 	exit 0
