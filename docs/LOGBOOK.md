@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-04 — Phase 10 final review corrections
+
+Independent review fixed four things. The README lid line now leaves deep suspend to the power button. The changelog drops an unsupported popularity claim. The rumble contract check reads any canonical default statement instead of one exact wording. `docs/MAINTENANCE.md` now routes the open validation debt. The installer beta tag now follows the commit it builds (`93b5784`, run `37193153995`). Installer `V1.8.0` is published, with its tag at `678f644` and binaries built at `b33d31b`. The installer default branch is still `main` and needs an admin change. Wiki `main` is `02a099a`, with Zlyme multiboot recorded as expected but not recorded as tested.
+
 ## 2026-10-04 — Hardware wiki synchronized to zlyme44
 
 The Miyoo Flip hardware wiki now carries a pinned Zlyme snapshot. Runtime evidence is `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme-37164297221`). The wording came from Zlyme documentation `d2e2496b7fe935d5123d082d1ef28b6ac28ed139`. The wiki commits are `4ea7548` and `609ec33` on `main`. The Zlyme Installer README on `zlyme-installer` now leads with Zlyme (`a7393d6`). Installer builds are still prereleases, and that repository's default branch still shows the SpruceOS README. Phase 10 stays open for review.
