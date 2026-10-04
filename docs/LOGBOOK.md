@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-04 — Hardware wiki synchronized to zlyme44
+
+The Miyoo Flip hardware wiki now carries a pinned Zlyme snapshot. Runtime evidence is `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme-37164297221`). The wording came from Zlyme documentation `d2e2496b7fe935d5123d082d1ef28b6ac28ed139`. The wiki commits are `4ea7548` and `609ec33` on `main`. The Zlyme Installer README on `zlyme-installer` now leads with Zlyme (`a7393d6`). Installer builds are still prereleases, and that repository's default branch still shows the SpruceOS README. Phase 10 stays open for review.
+
 ## 2026-10-04 — zlyme44 is the first stable release
 
 Build run `37164297221` built `337ccbce2587393463a4b49c551f94e33e318e44` from a clean tree and succeeded. It published `zlyme44 (2026-10-04)` as tag `zlyme-37164297221`. The release is not a draft and not a prerelease, and the tag points at that SHA. The assets are `zlyme.img`, `zlyme-my355-20261004-337ccbce2587.tar` with its `.sha256`, and `release-manifest.json`. The Phase 9 release gate is closed. The release body is only the generated compare link. The human changelog starts in `CHANGELOG.md`.
