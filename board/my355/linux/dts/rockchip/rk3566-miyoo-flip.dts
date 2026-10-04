@@ -1028,8 +1028,11 @@
 	status = "okay";
 };
 
-/* SD slot 1 (secondary): 
- * (miyoo355_fw_20250509213001):max 150 MHz, no UHS modes (high-speed only). */
+/* SD slot 1 (secondary):
+ * Stock 20250509213001: max 150 MHz, high-speed only.
+ * Both slots share vccio_sd. A UHS 1.8 V switch on this slot
+ * drops the card in the other slot. Leave UHS properties off.
+ */
 &sdmmc1 {
 	max-frequency = <150000000>;
 	no-sdio;
@@ -1038,10 +1041,6 @@
 	keep-power-in-suspend;
 	cap-sd-highspeed;
 	disable-wp;
-	sd-uhs-sdr12;
-	sd-uhs-sdr25;
-	sd-uhs-sdr50;
-	sd-uhs-sdr104;
 	vmmc-supply = <&vcc_sd2>;
 	vqmmc-supply = <&vccio_sd>;
 	pinctrl-names = "default";
