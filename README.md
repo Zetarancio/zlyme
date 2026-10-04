@@ -35,7 +35,7 @@ Out of the box the Flip boots stock firmware from internal storage and ignores t
 
 ### 2. Write the OS card with the Zlyme Installer
 
-The [Zlyme Installer](https://github.com/Zetarancio/zlymeOS-Installer) is the easy way. Download it from that repository's Releases page (the current build is labelled beta), run it, pick your card. It fetches the latest Zlyme release, takes the `zlyme.img`, writes it to the card as a raw disk image, and reminds you about the preloader. There are builds for Windows, macOS and Linux. They aren't code-signed, so your OS will grumble once.
+The [Zlyme Installer](https://github.com/Zetarancio/zlymeOS-Installer) is the easy way. Grab it from that repository's [Releases page](https://github.com/Zetarancio/zlymeOS-Installer/releases), run it, pick your card. It fetches the latest Zlyme release, takes the `zlyme.img`, writes it to the card as a raw disk image, and reminds you about the preloader. There are builds for Windows, macOS and Linux. They aren't code-signed, so your OS will grumble once.
 
 It's a fork of the [SpruceOS Installer](https://github.com/spruceUI/spruceOS-Installer). [SundownerSport](https://github.com/Sundownersport) kindly made the original Zlyme adaptation.
 
