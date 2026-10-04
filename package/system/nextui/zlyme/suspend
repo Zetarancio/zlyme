@@ -1,9 +1,10 @@
 #!/bin/sh
-# NextUI BIN_PATH/suspend. Radios already stopped in PWR_enterSleep.
-# RTC wakealarm plus mem, same path as ROCKNIX sleep.sh / serial proof.
+# NextUI BIN_PATH/suspend. Radios already stopped before this runs.
+# A previous image or a manual RTC test may have left an alarm. Clear
+# it so suspend does not wake on that timer. Do not program a new one.
+# The RTC device stays available for anything that asks for it.
 if [ -e /sys/class/rtc/rtc0/wakealarm ]; then
 	echo 0 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true
-	echo +86400 > /sys/class/rtc/rtc0/wakealarm 2>/dev/null || true
 fi
 sync
 echo mem > /sys/power/state
