@@ -14,6 +14,28 @@ grep -q "FDT /${ZLYME_DTB}" "${BOARD_DIR}/extlinux.conf" || {
 	exit 1
 }
 
+# A product image without its OTA is an incomplete build. ZLYME_SKIP_OTA=1
+# is the only skip, and no supported defconfig sets it. ZLYME_OTA_PACKER
+# and ZLYME_POST_IMAGE_TEST=pack let a host test fail this step before
+# mkfs or genimage.
+pack_product_ota() {
+	if [ "${ZLYME_SKIP_OTA:-}" = 1 ]; then
+		echo "post-image: OTA packaging skipped (ZLYME_SKIP_OTA=1)" >&2
+		return 0
+	fi
+	local packer="${ZLYME_OTA_PACKER:-${BOARD_DIR}/make-update-tar.sh}"
+	if [ ! -x "${packer}" ]; then
+		echo "post-image: OTA packer is not executable: ${packer}" >&2
+		return 1
+	fi
+	"${packer}" "${BINARIES_DIR}"
+}
+
+if [ "${ZLYME_POST_IMAGE_TEST:-}" = pack ]; then
+	pack_product_ota
+	exit 0
+fi
+
 install -D -m 0644 "${BOARD_DIR}/extlinux.conf" \
 	"${BINARIES_DIR}/extlinux/extlinux.conf"
 install -D -m 0644 "${BOARD_DIR}/zlyme-boot.conf" \
@@ -84,7 +106,4 @@ echo "post-image: squashfs ${sq_bytes} bytes as FAT file zlyme on 1300M ZLYMEBOO
 support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
 # Versioned OTA tar + sha256 next to zlyme.img. The device pak mv's it
 # to /storage/.update/zlyme-my355-update.tar. Do not Etcher over a games card.
-if [ -x "${BOARD_DIR}/make-update-tar.sh" ]; then
-	"${BOARD_DIR}/make-update-tar.sh" "${BINARIES_DIR}" || \
-		echo "post-image: update tar skipped" >&2
-fi
+pack_product_ota
