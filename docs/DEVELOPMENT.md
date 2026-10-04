@@ -171,7 +171,7 @@ A local `./build.sh` writes a full OTA only. It does not write `release-manifest
 
 GitHub Actions pulls or publishes `ghcr.io/<owner>/zlyme-build:latest`. GHCR requires a lowercase repository name, so the workflow lowercases `GITHUB_REPOSITORY_OWNER` before building the image path. For this repository the path is `ghcr.io/zetarancio/zlyme-build:latest`. Login still uses `github.actor`. The `Docker image` workflow rebuilds that container when `Dockerfile` or `.github/workflows/docker-image.yml` changes.
 
-`build.sh` reuses a local `zlyme-build` image only when its `zlyme.dockerfile` label equals the SHA-256 of `Dockerfile`. Neither workflow passes that label to `docker build`, so `build.sh` rebuilds the container in every CI build stage even after a successful GHCR pull.
+`build.sh` and the Docker image workflow both take the Dockerfile digest as the first field of `sha256sum` on `Dockerfile`. That workflow publishes `zlyme-build:latest` with the label `zlyme.dockerfile` set to the digest, and it checks the built image's label before the push. The build stage pulls that image and tags it `zlyme-build`. If the pull fails, the stage builds a local image from the current `Dockerfile` without the label. `build.sh` reuses the local image when its `zlyme.dockerfile` label equals the digest of the `Dockerfile` in the tree. A missing label or a different digest makes `build.sh` build the container from that `Dockerfile` and set the same label. Reuse depends on that comparison.
 
 ## Package layout
 
