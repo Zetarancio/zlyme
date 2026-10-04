@@ -599,6 +599,33 @@ resolve_uboot_target() {
 		echo "zlyme-update: ERROR: cannot resolve the disk behind $bootname" >&2
 		return 1
 	}
+	want_boot=$(basename "${ZLYME_BOOT_DEVICE:-}")
+	want_disk=$(basename "${ZLYME_OS_DISK:-}")
+	if [ -z "$want_boot" ] || [ -z "$want_disk" ]; then
+		echo "zlyme-update: ERROR: primary OS card identity is unset" >&2
+		return 1
+	fi
+	if [ "$bootname" != "$want_boot" ]; then
+		echo "zlyme-update: ERROR: $BOOT is $spec, expected ${ZLYME_BOOT_DEVICE}" >&2
+		return 1
+	fi
+	if [ "$disk" != "$want_disk" ]; then
+		echo "zlyme-update: ERROR: $BOOT is on $disk, expected $want_disk" >&2
+		return 1
+	fi
+	dreal=$(block_realpath "$disk") || {
+		echo "zlyme-update: ERROR: cannot read $disk" >&2
+		return 1
+	}
+	if [ ! -f "$dreal/queue/logical_block_size" ]; then
+		echo "zlyme-update: ERROR: $disk has no logical block size" >&2
+		return 1
+	fi
+	lbs=$(read_sys_num "$dreal/queue/logical_block_size")
+	if [ "$lbs" != "$SECTOR" ]; then
+		echo "zlyme-update: ERROR: $disk logical block size is ${lbs:-missing}, need $SECTOR" >&2
+		return 1
+	fi
 	parts=$(uboot_parts_on_disk "$disk" || true)
 	count=0
 	part=""

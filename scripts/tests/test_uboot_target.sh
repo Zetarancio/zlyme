@@ -10,8 +10,9 @@ trap 'rm -rf "$work"' EXIT
 
 add_disk() {
 	disk=$1
-	mkdir -p "$work/sys/devices/$disk/$disk" "$work/sys/class/block"
+	mkdir -p "$work/sys/devices/$disk/$disk/queue" "$work/sys/class/block"
 	ln -sfn "../../devices/$disk/$disk" "$work/sys/class/block/$disk"
+	printf '512\n' > "$work/sys/devices/$disk/$disk/queue/logical_block_size"
 }
 
 add_part() {
@@ -82,6 +83,26 @@ expect_ok
 add_disk mmcblk1
 add_part mmcblk1 mmcblk1p1 16384 8192 uboot
 add_part mmcblk1 mmcblk1p2 32768 262144 boot
+expect_ok
+
+mount_boot mmcblk1p2
+expect_fail
+mount_boot mmcblk0p2
+expect_ok
+
+mount_boot mmcblk0p1
+expect_fail
+mount_boot mmcblk0p2
+expect_ok
+
+printf '4096\n' > "$work/sys/devices/mmcblk0/mmcblk0/queue/logical_block_size"
+expect_fail
+printf '512\n' > "$work/sys/devices/mmcblk0/mmcblk0/queue/logical_block_size"
+expect_ok
+
+rm -f "$work/sys/devices/mmcblk0/mmcblk0/queue/logical_block_size"
+expect_fail
+printf '512\n' > "$work/sys/devices/mmcblk0/mmcblk0/queue/logical_block_size"
 expect_ok
 
 rm -f "$work/sys/devices/mmcblk0/mmcblk0/mmcblk0p1/uevent"
