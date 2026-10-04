@@ -10,7 +10,7 @@ Nothing user-visible yet.
 
 ## [zlyme44] - 2026-10-04
 
-The first stable release, built from `337ccbce2587393463a4b49c551f94e33e318e44` by a clean GitHub Actions build. The entries compare it with `zlyme40 (2026-09-23)`, the development build most people ran before it.
+The first stable release, built from `337ccbce2587393463a4b49c551f94e33e318e44` by a clean GitHub Actions build. The entries compare it with the development prerelease `zlyme40 (2026-09-23)`, the baseline the Phase 9 README review was checked against.
 
 ### Added
 

@@ -155,6 +155,8 @@ Hardware facts do not come from KNULLI merely because it has a similar SoC. For 
 
 A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. The GitHub release job does. A local OTA is not a release artifact. The release and delta policy and the accepted runtime SHA are in `docs/MAINTENANCE.md`.
 
+`ZLYME_IMAGE_DATE` is part of the OS metadata inside the squashfs. Two builds of the same source on different dates therefore produce different root hashes. The `zlyme44` hardware candidate was built on 2026-10-03 and the clean release on 2026-10-04, from the same SHA. Byte-identical roots across build dates are not the reproducibility requirement. The release gate is a clean build that succeeds from the accepted source SHA under this date contract. A delta applies only to the exact root SHA-256 its manifest names. A device still running a local build gets the full OTA, and the version string never selects a delta.
+
 ## Build container
 
 GitHub Actions pulls or publishes `ghcr.io/<owner>/zlyme-build:latest`. GHCR requires a lowercase repository name, so the workflow lowercases `GITHUB_REPOSITORY_OWNER` before building the image path. For this repository the path is `ghcr.io/zetarancio/zlyme-build:latest`. Login still uses `github.actor`. The `Docker image` workflow rebuilds that container when `Dockerfile` or `.github/workflows/docker-image.yml` changes.
