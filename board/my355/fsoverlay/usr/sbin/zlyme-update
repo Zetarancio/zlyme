@@ -479,32 +479,155 @@ install_boot() {
 	log "squashfs stays at $PENDING/zlyme until initramfs"
 }
 
-# GPT name "uboot" at 8M; idbloader sits at 32K, outside the table.
-# Resolve the parent disk at runtime. apply_files never calls this.
-uboot_part_dev() {
-	if [ -b /dev/disk/by-partlabel/uboot ]; then
-		readlink -f /dev/disk/by-partlabel/uboot
-		return 0
+# Bootloader writes go to the disk that holds the mounted boot volume.
+# Never the first GPT name "uboot" on the system: SD2 or USB can carry
+# another one. Host tests point ZLYME_SYS_BLOCK and ZLYME_PROC_MOUNTS
+# at a synthetic tree. ZLYME_UPDATE_TEST=1 may resolve the target and
+# must not raw-write.
+SYS_BLOCK=${ZLYME_SYS_BLOCK:-/sys/class/block}
+PROC_MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
+UBOOT_START_LBA=16384
+IDBLOADER_LBA=64
+SECTOR=512
+
+boot_mount_spec() {
+	found=""
+	while read -r dev point _rest; do
+		[ "$point" = "$BOOT" ] || continue
+		found=$dev
+		break
+	done < "$PROC_MOUNTS"
+	[ -n "$found" ] || return 1
+	printf '%s\n' "$found"
+}
+
+block_name_of() {
+	spec=$1
+	case "$spec" in
+		/dev/*) ;;
+		*) return 1 ;;
+	esac
+	if [ -L "$spec" ]; then
+		spec=$(readlink -f "$spec") || return 1
 	fi
-	for ue in /sys/class/block/*/uevent; do
-		[ -f "$ue" ] || continue
-		if grep -qx 'PARTNAME=uboot' "$ue"; then
-			printf '/dev/%s\n' "$(basename "$(dirname "$ue")")"
-			return 0
-		fi
-	done
-	dev=$(blkid 2>/dev/null | sed -n 's|^\([^:]*\):.*PARTLABEL="uboot".*|\1|p' | head -n 1)
-	if [ -n "$dev" ] && [ -b "$dev" ]; then
-		printf '%s\n' "$dev"
-		return 0
-	fi
+	name=$(basename "$spec")
+	[ -n "$name" ] && [ "$name" != / ] && [ "$name" != . ] && [ "$name" != dev ] || return 1
+	printf '%s\n' "$name"
+}
+
+block_realpath() {
+	name=$1
+	[ -e "$SYS_BLOCK/$name" ] || return 1
+	readlink -f "$SYS_BLOCK/$name" 2>/dev/null || return 1
+}
+
+parent_disk_name() {
+	name=$1
+	real=$(block_realpath "$name") || return 1
+	[ -f "$real/partition" ] || return 1
+	parent=$(basename "$(dirname "$real")")
+	[ -n "$parent" ] && [ "$parent" != "$name" ] || return 1
+	preal=$(block_realpath "$parent") || return 1
+	[ -f "$preal/partition" ] && return 1
+	printf '%s\n' "$parent"
+}
+
+part_named_uboot() {
+	real=$1
+	[ -f "$real/uevent" ] || return 1
+	grep -qx 'PARTNAME=uboot' "$real/uevent" && return 0
+	grep -qx 'PARTLABEL=uboot' "$real/uevent" && return 0
 	return 1
 }
 
-parent_block() {
-	name=$(basename "$1")
-	real=$(readlink -f "/sys/class/block/$name" 2>/dev/null) || return 1
-	printf '/dev/%s\n' "$(basename "$(dirname "$real")")"
+uboot_parts_on_disk() {
+	disk=$1
+	for ent in "$SYS_BLOCK"/*; do
+		[ -e "$ent" ] || continue
+		name=$(basename "$ent")
+		[ "$name" = "$disk" ] && continue
+		real=$(block_realpath "$name") || continue
+		[ -f "$real/partition" ] || continue
+		parent=$(parent_disk_name "$name") || continue
+		[ "$parent" = "$disk" ] || continue
+		part_named_uboot "$real" || continue
+		printf '%s\n' "$name"
+	done
+}
+
+read_sys_num() {
+	tr -d ' \t\r\n' < "$1"
+}
+
+uboot_geometry_ok() {
+	part=$1
+	lsz=$2
+	fsz=$3
+	real=$(block_realpath "$part") || return 1
+	[ -f "$real/start" ] && [ -f "$real/size" ] || return 1
+	start=$(read_sys_num "$real/start")
+	sectors=$(read_sys_num "$real/size")
+	case "$start" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	case "$sectors" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ "$start" -eq "$UBOOT_START_LBA" ] || return 1
+	end=$((IDBLOADER_LBA * SECTOR + lsz))
+	limit=$((start * SECTOR))
+	[ "$end" -le "$limit" ] || return 1
+	cap=$((sectors * SECTOR))
+	[ "$cap" -ge "$fsz" ] || return 1
+	printf '%s %s\n' "$start" "$sectors"
+}
+
+# Prints "disk part start sectors" for the one uboot partition on the
+# disk behind $BOOT. Fails closed on every ambiguous or unproven case.
+resolve_uboot_target() {
+	lsz=$1
+	fsz=$2
+	spec=$(boot_mount_spec) || {
+		echo "zlyme-update: ERROR: $BOOT is not mounted" >&2
+		return 1
+	}
+	bootname=$(block_name_of "$spec") || {
+		echo "zlyme-update: ERROR: boot device is not a /dev node: $spec" >&2
+		return 1
+	}
+	disk=$(parent_disk_name "$bootname") || {
+		echo "zlyme-update: ERROR: cannot resolve the disk behind $bootname" >&2
+		return 1
+	}
+	parts=$(uboot_parts_on_disk "$disk" || true)
+	count=0
+	part=""
+	for name in $parts; do
+		count=$((count + 1))
+		part=$name
+	done
+	if [ "$count" -eq 0 ]; then
+		echo "zlyme-update: ERROR: no uboot partition on $disk" >&2
+		return 1
+	fi
+	if [ "$count" -ne 1 ]; then
+		echo "zlyme-update: ERROR: $disk has $count uboot partitions" >&2
+		return 1
+	fi
+	again=$(parent_disk_name "$part") || {
+		echo "zlyme-update: ERROR: uboot partition $part has no parent" >&2
+		return 1
+	}
+	if [ "$again" != "$disk" ]; then
+		echo "zlyme-update: ERROR: uboot partition $part is not on $disk" >&2
+		return 1
+	fi
+	geo=$(uboot_geometry_ok "$part" "$lsz" "$fsz") || {
+		echo "zlyme-update: ERROR: uboot geometry on $part is not the 8 MiB slot" >&2
+		return 1
+	}
+	set -- $geo
+	printf '%s %s %s %s\n' "$disk" "$part" "$1" "$2"
 }
 
 stage_uboot_from_tar() {
@@ -540,10 +663,14 @@ install_uboot() {
 	if [ "$fsz" -gt $((4 * 1024 * 1024)) ]; then
 		fail "u-boot.itb ($fsz) is larger than the 4M uboot part"
 	fi
-	part=$(uboot_part_dev) || fail "no GPT partition named uboot"
-	disk=$(parent_block "$part") || fail "no parent disk for $part"
-	[ -b "$disk" ] || fail "parent disk is not a block device: $disk"
-	log "writing idbloader ($lsz) and FIT ($fsz) to $disk"
+	[ "${ZLYME_UPDATE_TEST:-}" = 1 ] && fail "refusing raw bootloader write in test mode"
+	target=$(resolve_uboot_target "$lsz" "$fsz") || fail "refusing bootloader target"
+	set -- $target
+	disk=/dev/$1
+	part=/dev/$2
+	[ -b "$part" ] || fail "uboot partition is not a block device: $part"
+	[ -b "$disk" ] || fail "boot disk is not a block device: $disk"
+	log "writing idbloader ($lsz) and FIT ($fsz) to $disk (partition $part)"
 	# 32K = 64*512; 8M = 16384*512. Block device, not a partition node.
 	dd if="$loader" of="$disk" bs=512 seek=64 conv=fsync
 	dd if="$fit" of="$disk" bs=512 seek=16384 conv=fsync
@@ -752,6 +879,14 @@ case "$cmd" in
 		;;
 	uboot)
 		install_uboot "${1:-}"
+		;;
+	uboot-target)
+		[ "${ZLYME_UPDATE_TEST:-}" = 1 ] || fail "uboot-target is not a user command"
+		lsz=${ZLYME_UBOOT_LOADER_BYTES:-4096}
+		fsz=${ZLYME_UBOOT_FIT_BYTES:-4096}
+		target=$(resolve_uboot_target "$lsz" "$fsz") || exit 1
+		set -- $target
+		printf 'disk=/dev/%s\npart=/dev/%s\nstart=%s\nsectors=%s\n' "$1" "$2" "$3" "$4"
 		;;
 	dry-run)
 		dry_run "${1:?tar}"
