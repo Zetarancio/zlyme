@@ -55,6 +55,12 @@ For maintenance, kernel-patch review, package updates, vendored helpers, the Nex
 
 - `docs/MAINTENANCE.md`
 
+For README, user-guide, changelog, release-note, or other prose work also read:
+
+- `docs/WRITING.md`
+
+`docs/WRITING.md` owns prose style and the README and changelog rules. `CONTRIBUTING.md` is the entry point for human contributors. This file stays the operating contract.
+
 For live-device and recovery work also read:
 
 - `docs/OPERATIONS.md`

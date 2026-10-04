@@ -14,6 +14,9 @@ This is the maintainer index. The documents below own the detail. This page says
 | Which source is the hardware authority | `docs/UPSTREAMS.md` |
 | Pinned Buildroot, Linux, U-Boot, BL31; compiler `-O2` pins | `docs/DEVELOPMENT.md` |
 | Governor CPU floors (SpruceOS-derived) | `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md` |
+| How docs, the README, and the changelog are written | `docs/WRITING.md` |
+| How a person starts contributing | `CONTRIBUTING.md` |
+| What changed in each release, for users | `CHANGELOG.md` |
 | Which phase is active | `docs/ROADMAP.md` |
 | Why a past choice was made | `docs/decisions/` and `docs/research/` |
 
@@ -54,4 +57,4 @@ This section owns the release and delta policy. The code is `scripts/zlyme_relea
 - Each delta is round-trip verified. A delta at or above 70% of the full OTA size is not published.
 - Settings picks the smallest delta whose `from_sha256` exactly matches the installed `/boot/zlyme` SHA-256, otherwise the full OTA. The displayed version string does not select anything.
 
-`./build.sh` writes a full OTA only. The GitHub release job writes `release-manifest.json` and any deltas. The clean GitHub `Build` from the accepted implementation SHA is the release artifact. Release notes describe accepted user behavior, not this log. Architecture of the apply path is in `docs/ARCHITECTURE.md`. The device runbook is in `docs/OPERATIONS.md`.
+`./build.sh` writes a full OTA only. The GitHub release job writes `release-manifest.json` and any deltas. The clean GitHub `Build` from the accepted implementation SHA is the release artifact. Release notes describe accepted user behavior, not this log. They match the `CHANGELOG.md` entry, under the rules in `docs/WRITING.md`. Architecture of the apply path is in `docs/ARCHITECTURE.md`. The device runbook is in `docs/OPERATIONS.md`.

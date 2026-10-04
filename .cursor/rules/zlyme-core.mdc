@@ -11,7 +11,8 @@ Read and follow `AGENTS.md`. It owns the reading list. In short:
 - architectural, device, boot, graphics, audio, storage, update, packaging, or runtime changes: `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`;
 - build, package, and toolchain work: `docs/DEVELOPMENT.md` and `docs/UPSTREAMS.md`;
 - maintenance, upstream intake, kernel patches, and releases: `docs/MAINTENANCE.md`;
-- live Miyoo Flip behavior and recovery: `docs/OPERATIONS.md`.
+- live Miyoo Flip behavior and recovery: `docs/OPERATIONS.md`;
+- README, user guide, changelog, release notes, or other prose: `docs/WRITING.md`.
 
 If this summary and `AGENTS.md` differ, `AGENTS.md` wins.
 

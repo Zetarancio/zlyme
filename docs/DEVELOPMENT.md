@@ -340,7 +340,10 @@ Use:
 - `ROADMAP.md` for phase sequencing and acceptance history;
 - `LOGBOOK.md` for chronological engineering history;
 - `research/` for alternatives and experiments;
-- ADRs in `docs/decisions/` for major choices that future maintainers might otherwise "simplify" away.
+- ADRs in `docs/decisions/` for major choices that future maintainers might otherwise "simplify" away;
+- `USER_GUIDE.md` for detailed end-user operation;
+- `../CHANGELOG.md` for user-visible changes per release;
+- `WRITING.md` for how all of the above is written. It owns the README and changelog rules.
 
 Research records alternatives.
 
