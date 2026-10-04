@@ -136,36 +136,39 @@ do_root() {
 	# on fb0. Leave it running across switch_root until S12splash
 	# restarts it from the squashfs copy (initramfs splash cannot
 	# see /usr/share/zlyme). NextUI kills it when KMSDRM takes the panel.
-	# One try at FAT first so an OTA reboot paints galaxy, not slime.
-	if [ -b /dev/mmcblk0p2 ]; then
-		mount_boot /dev/mmcblk0p2 || true
-	elif [ -b /dev/mmcblk1p2 ]; then
-		mount_boot /dev/mmcblk1p2 || true
-	fi
+	# The ramdisk still paints immediately. The splash process retries
+	# /boot_root/*.anim, so the boot volume does not need to be mounted
+	# first and must not be guessed by partition number.
 	read -r cmdline < /proc/cmdline
-	# Graphical splash for every product boot. The progress flag
-	# flips this process to the update animation.
-	if [ -f /boot_root/zlyme-splash.progress ]; then
-		: > /zlyme-splash.progress
-	fi
-	if [ -x /zlyme-splash ]; then
-		# Stills from the ramdisk. Anims appear on FAT at
-		# /boot_root once MMC is up; splash loads them then.
-		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
-			/progress.rgb565 /boot_root/progress.anim &
-	fi
 	label=ZLYMEBOOT
 	for param in ${cmdline}; do
 		case ${param} in
 			label=*) label=${param#label=} ;;
 		esac
 	done
-
-	if ! grep -q " /boot_root " /proc/mounts; then
-		if ! wait_mount mount_boot "LABEL=${label}"; then
-			log "could not mount LABEL=${label}"
-			return 1
+	splash_pid=
+	if [ -x /zlyme-splash ]; then
+		/zlyme-splash /splash.rgb565 /boot_root/splash.anim \
+			/progress.rgb565 /boot_root/progress.anim &
+		splash_pid=$!
+	fi
+	splash_progress() {
+		: > /zlyme-splash.progress
+		if [ -n "$splash_pid" ]; then
+			kill -USR1 "$splash_pid" 2>/dev/null || true
 		fi
+	}
+
+	# A mount that appeared before the label check is not identity.
+	if grep -q " /boot_root " /proc/mounts; then
+		umount /boot_root 2>/dev/null || true
+	fi
+	if ! wait_mount mount_boot "LABEL=${label}"; then
+		log "could not mount LABEL=${label}"
+		return 1
+	fi
+	if [ -f /boot_root/zlyme-splash.progress ]; then
+		splash_progress
 	fi
 
 	pending=0
@@ -193,8 +196,8 @@ do_root() {
 			fi
 		else
 			if [ "$pending" -eq 1 ]; then
-				: > /zlyme-splash.progress
 				: > /boot_root/zlyme-splash.progress
+				splash_progress
 				commit_update || log "copy failed, keeping current zlyme"
 			fi
 			if [ "$logs" -eq 1 ]; then
