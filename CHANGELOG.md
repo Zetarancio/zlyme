@@ -6,7 +6,24 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-Nothing user-visible yet.
+Point release `zlyme44.1` on the `zlyme44` baseline. It is not published. The `zlyme44` notes below stay the description of the shipped release.
+
+### Fixed
+
+- Suspend no longer reads or writes the RTC wake alarm. The 24-hour alarm that `zlyme44` programmed is gone, and an alarm set on purpose is left in place.
+- `zlyme-update uboot` writes the bootloader on the disk that holds `/boot`. It refuses a target it cannot prove.
+- Boot waits for the `ZLYMEBOOT` volume. A second card is not mounted as the boot volume because it happens to be partition 2.
+- The second SD slot stays at high-speed signaling. Both slots share one I/O-voltage rail, and a UHS switch on the second slot was dropping the other card.
+- A game started right after boot, or right after an update reboot, keeps that game's CPU profile. Returning to the list uses Smart again.
+- A product image build stops when the update tar cannot be packed.
+
+### Changed
+
+- `./build.sh` with `zlyme_my355_minimal_defconfig` can finish. That image is the bring-up tree: Wi-Fi, SSH, audio, and Panfrost, without the frontend, the gamepad module, or the Mali stack.
+
+### Removed
+
+- The unused mergerfs package. Libraries stay separate cards.
 
 ## [zlyme44] - 2026-10-04
 

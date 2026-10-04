@@ -47,7 +47,9 @@ configs/zlyme_my355_minimal_defconfig
 configs/zlyme_my355_defconfig
 ```
 
-`./build.sh` with no `--config` builds the minimal image unless `ZLYME_DEFCONFIG` is set. That is the bring-up/debug base. `storage.sh.example` sets `ZLYME_DEFCONFIG=zlyme_my355_defconfig`.
+`./build.sh` with no `--config` builds the minimal image unless `ZLYME_DEFCONFIG` is set. That is the bring-up/debug base: the kernel, Wi-Fi, SSH, audio, and Mesa Panfrost, without the frontend, the gamepad module, `zlyme-keylidmon`, or the Mali stack. `post-build.sh` checks a package only when the active config selects it. `storage.sh.example` sets `ZLYME_DEFCONFIG=zlyme_my355_defconfig`.
+
+A product image build fails if `make-update-tar.sh` fails. `ZLYME_SKIP_OTA=1` is the only way to finish an image without an update tar, and neither defconfig sets it.
 
 The output tree records the defconfig that configured it in `.zlyme-defconfig`. A later run reapplies the requested defconfig when that record is missing or different, when `.config` is missing, or when the defconfig file is newer than `.config`. A `menuconfig` change is not wiped when the recorded selection already matches and the defconfig file is older than `.config`.
 

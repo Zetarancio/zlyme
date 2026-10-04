@@ -65,28 +65,28 @@ The installer is a separate repository, `Zetarancio/zlymeOS-Installer`, branch `
 
 ## Open validation debt
 
-Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/documentation-audit-phase10.md` ("Finding triage"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read that entry first. Hardware-facing items still need a real Flip when the audit says so. None of the source fixes below are in `zlyme44`.
+Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/documentation-audit-phase10.md` ("Finding triage" and "zlyme44.1 maintenance dispositions"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read the original finding first. Published `zlyme44` (`337ccbce2587393463a4b49c551f94e33e318e44`) still has the source the original findings describe. The fixes below are on `zlyme44.1-maintenance`. They are not published, and none of them has been accepted on a Flip yet.
 
-Decided, not shipped:
+Fixed in source on `zlyme44.1-maintenance`:
 
-- **(c) Suspend RTC timer.** `zlyme44` clears `/sys/class/rtc/rtc0/wakealarm` and then writes `+86400` before every `mem`. That alarm management came from timed suspend testing. No Miyoo Flip 24-hour sleep limit is documented. `zlyme44.1` removes all of it from the production suspend helper: the helper does not read, clear, or replace `rtc0/wakealarm`, and an alarm programmed by the user or another program is preserved. RTC support stays enabled, and RTC wake remains a valid hardware wake source. `package/system/nextui/zlyme/suspend` on `zlyme44` still programs the timer. `CHANGELOG.md` states that as shipped `zlyme44` behavior. This documentation branch does not change `suspend`.
+- **(a)** `zlyme-update uboot` resolves the disk that backs `/boot`, requires exactly one `uboot` partition on that disk, and checks the 8 MiB / LBA 16384 geometry before any raw write. It refuses an ambiguous or unprovable target. `ZLYME_UPDATE_TEST=1 uboot-target` reports the choice and does not write.
+- **(b)** The initramfs mounts `LABEL=<expected boot label>` only. The splash starts from the still in the ramdisk and picks up the boot-volume animation after that mount.
+- **(c)** The suspend helper does not read, clear, or replace `/sys/class/rtc/rtc0/wakealarm`. `zlyme44` still clears that node and writes `+86400`. No Miyoo Flip 24-hour sleep limit is documented. An alarm programmed by the user or another program is preserved. The `zlyme44` changelog line stays the description of the published helper.
+- **(d)** `post-build.sh` requires the gamepad module, `zlyme-keylidmon`, firmware, ssh, jackd, and the NextUI pak stamp only when the active config selects them. A minimal config that builds Mesa Panfrost and does not select the Mali stack drops the panfrost blacklist. The minimal image remains the bring-up target.
+- **(e)** `zlyme-boot-write` takes an atomic `mkdir` lock. A descendant of the owner shares the remount. An unrelated caller waits or fails. The owner remounts `/boot` read-only on the way out.
+- **(f)** `nextui-session` applies Smart before each `nextui.elf` start. A late DMC probe and `zlyme-update reapply` call `resume`. `S27led` only drives the LEDs. In a pak, `zlyme-keylidmon` sets Idle around mem and then resumes the pak profile.
+- **(g)** Every `SITE_METHOD = local` package is in the `build.sh` fingerprint list, or named with a rationale in `scripts/tests/fingerprint-exceptions.txt`. There are no exceptions.
+- **(h)** A failed OTA pack fails the product image. `ZLYME_SKIP_OTA=1` is the only skip, and no supported defconfig sets it.
+- **(j)** `&sdmmc1` keeps `cap-sd-highspeed` and has no `sd-uhs-*` properties. `&sdmmc0` is unchanged. Both-slot Flip checks are still required. The wiki's shared-rail warning stays.
+- **(k)** The mergerfs package is gone. Historical ROADMAP and LOGBOOK text stays.
+- **(l)** `board.mk` no longer copies `dts-overrides`. The foreign DTS files are gone. A clean kernel extract is the proof that nothing still includes them.
+- **(o)** `.github/workflows/docker-image.yml` labels `zlyme-build:latest` with `zlyme.dockerfile` set to the SHA-256 of `Dockerfile`, the same value `build.sh` checks.
+- **(p)** `S15bootpart` does not seed `boost` or `merge`. `zlyme-ctl` ignores those names and deletes leftover files. Settings reset still deletes them. `zlyme-storage merge` remains a library-list refresh.
+- **Provenance.** `rtl8733bu-power` is credited to Zetarancio, archived fork `fbd8dd1545309950b0e13a495c659501549a957c` (2026-02-26), under GPL-2.0-only. It is not described as original Zlyme source or as an official ROCKNIX driver.
 
-Still open:
+Deferred. These are not part of `zlyme44.1`:
 
-- **(a)** `zlyme-update uboot` writes to the parent disk of the first `uboot` partition it finds. It does not prove that disk holds the live `/boot`.
-- **(b)** For the early splash, the initramfs mounts `mmcblk0p2` or `mmcblk1p2` without a label check, then skips the `LABEL=ZLYMEBOOT` search.
-- **(d)** The minimal defconfig, which `build.sh` uses by default, does not select the gamepad module or `zlyme-keylidmon`, and `post-build.sh` requires both. It is expected to fail. It was not built.
-- **(e)** `zlyme-boot-write` treats any live PID marker as a nested owner. Overlapping writers are not excluded.
-- **(f)** `S27led` runs `zlyme-ctl apply-gov` after the first frame, so a game started in that window can be reset to Smart. The same apply runs again after an OTA boot.
-- **(g)** Several local compiled packages are outside the `build.sh` source fingerprints (`docs/DEVELOPMENT.md`, Source fingerprints).
-- **(h)** `post-image.sh` treats a failed OTA pack as non-fatal, so the image build can succeed without an OTA.
-- **(i)** The LED watcher polls every 2 seconds. No wakeup cost has been measured.
-- **(j)** The DTS enables UHS modes on SD slot 2. The hardware wiki records UHS removed from slot 2 because both slots share the I/O-voltage rail.
-- **(k)** `package/system/mergerfs` is dormant but still selectable.
-- **(l)** `board.mk` copies unused foreign `dts-overrides` into the kernel tree.
-- **(m)** Literal `my355` remains in several generic-looking paths. It matters when a second device exists.
-- **(n)** Boot timing and NextUI emergency snapshots are copied to the card even when system logs are off.
-- **(o)** The GHCR builder image is built without the `zlyme.dockerfile` digest label that `build.sh` checks.
-- **(p)** Seeded `boost` and `merge` state remains after those settings were removed.
-- **(q)** `portmaster-launch` sleeps 0.4 s, and `S15bootpart` prefers `/dev/mmcblk0p3` over `LABEL=ZLYME`. The PortMaster delay stays until its readiness condition is known. The partition preference is still open.
-- **Provenance.** `rtl8733bu_power.c` declares `MODULE_AUTHOR("ROCKNIX")`, while its `LICENSE` calls the driver original Zlyme source. That pair is false; the correction belongs with the driver metadata, not in `zlyme44`.
+- **(i)** The LED watcher still polls every 2 seconds. Change it only after measuring the cost.
+- **(m)** Literal `my355` in generic-looking paths matters when a second device exists.
+- **(n)** Boot-timing and NextUI emergency snapshots are still copied when system logs are off. That is a deliberate diagnostic tradeoff.
+- **(q)** PortMaster's `sleep 0.4` stays until the readiness condition it covers is known. `S15bootpart` preferring `/dev/mmcblk0p3` over `LABEL=ZLYME` is still open.

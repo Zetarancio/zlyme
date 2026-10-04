@@ -8,7 +8,7 @@ build=$ROOT/build.sh
 helper=$ROOT/board/my355/image-date.sh
 
 version=$(tr -d ' \t\r\n' < "$ROOT/ZLYME_VERSION")
-test "$version" = zlyme44
+python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import zlyme_release; zlyme_release.parse_version(sys.argv[2])' "$ROOT/scripts" "$version"
 
 if grep -q 'build-date.txt' "$post"; then
 	echo "OS version still reads NextUI build-date.txt" >&2
@@ -33,7 +33,7 @@ ZLYME_IMAGE_DATE=$sample
 zlyme_require_image_date
 stamp=$(zlyme_image_stamp)
 test "$stamp" = 20240704
-test "$(printf '%s (%s)' "$version" "$ZLYME_IMAGE_DATE")" = "zlyme44 (2024-07-04)"
+test "$(printf '%s (%s)' "$version" "$ZLYME_IMAGE_DATE")" = "$version ($sample)"
 
 fail_date() {
 	if ZLYME_IMAGE_DATE=$1 zlyme_require_image_date >/dev/null 2>&1; then
