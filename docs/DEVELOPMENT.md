@@ -99,10 +99,18 @@ Buildroot copies a local package's source once and does not notice a later edit.
 | `zlyme-keylidmon` | `package/system/zlyme-keylidmon`, `package/system/zlyme-input/virtpad.h`, `package/system/nextui/nextui.mk` |
 | `openbor` | `package/emulators/openbor` |
 | `ppsspp` | `package/emulators/ppsspp` |
+| `zlyme-input` | `package/system/zlyme-input` |
+| `zlyme-jackd` | `package/system/zlyme-jackd` |
+| `miyoo-flip-gamepad` | `package/drivers/miyoo-flip-gamepad` |
+| `rk3568-dmc` | `package/drivers/rk3568-dmc` |
+| `rtl8733bu-power` | `package/drivers/rtl8733bu-power` |
+| `gpudriver` | `package/system/gpudriver` |
+| `pico8` | `package/emulators/pico8` |
+| `rtl8723fu-firmware` | `package/drivers/rtl8723fu-firmware` |
 
 When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh.
 
-Other local packages are not fingerprinted: `zlyme-input`, `zlyme-jackd`, `miyoo-flip-gamepad`, `rk3568-dmc`, `rtl8733bu-power`, `gpudriver`, `pico8`, and `rtl8723fu-firmware`. After editing one of those, run `./build.sh <pkg>-dirclean` or `./build.sh <pkg>-rebuild` before the image build. `<pkg>-reinstall` copies the source again but can keep a previously compiled binary.
+Every package with `SITE_METHOD = local` is in this table. A local package that must stay out of it is named in `scripts/tests/fingerprint-exceptions.txt` with a rationale. There are no such exceptions. `<pkg>-reinstall` copies the source again but can keep a previously compiled binary.
 
 Files that a downloaded package installs from its own package directory are not fingerprinted either, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again.
 

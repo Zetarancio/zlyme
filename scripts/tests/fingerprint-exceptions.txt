@@ -1,0 +1,3 @@
+# Local packages that refresh_compiled_package does not cover.
+# One exception per line: package-directory<TAB>rationale
+# A rationale is required. Blank lines and # comments are ignored.

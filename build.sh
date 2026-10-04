@@ -367,6 +367,25 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
         package/system/nextui/nextui.mk
     refresh_compiled_package openbor BR2_PACKAGE_OPENBOR package/emulators/openbor
     refresh_compiled_package ppsspp BR2_PACKAGE_PPSSPP package/emulators/ppsspp
+    # Every SITE_METHOD=local package. The package directory includes the
+    # recipe, so a .mk change dircleans too. Firmware blobs in these
+    # directories are the installed bytes, so they count.
+    refresh_compiled_package zlyme-input BR2_PACKAGE_ZLYME_INPUT \
+        package/system/zlyme-input
+    refresh_compiled_package zlyme-jackd BR2_PACKAGE_ZLYME_JACKD \
+        package/system/zlyme-jackd
+    refresh_compiled_package miyoo-flip-gamepad BR2_PACKAGE_MIYOO_FLIP_GAMEPAD \
+        package/drivers/miyoo-flip-gamepad
+    refresh_compiled_package rk3568-dmc BR2_PACKAGE_RK3568_DMC \
+        package/drivers/rk3568-dmc
+    refresh_compiled_package rtl8733bu-power BR2_PACKAGE_RTL8733BU_POWER \
+        package/drivers/rtl8733bu-power
+    refresh_compiled_package gpudriver BR2_PACKAGE_GPUDRIVER \
+        package/system/gpudriver
+    refresh_compiled_package pico8 BR2_PACKAGE_PICO8 \
+        package/emulators/pico8
+    refresh_compiled_package rtl8723fu-firmware BR2_PACKAGE_RTL8723FU_FIRMWARE \
+        package/drivers/rtl8723fu-firmware
     say "building ${ZLYME_DEFCONFIG}"
     logged_make
     say "images in ${ZLYME_OUTPUT}/images"
