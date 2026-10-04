@@ -58,3 +58,29 @@ This section owns the release and delta policy. The code is `scripts/zlyme_relea
 - Settings picks the smallest delta whose `from_sha256` exactly matches the installed `/boot/zlyme` SHA-256, otherwise the full OTA. The displayed version string does not select anything.
 
 `./build.sh` writes a full OTA only. The GitHub release job writes `release-manifest.json` and any deltas. The clean GitHub `Build` from the accepted implementation SHA is the release artifact. Release notes describe accepted user behavior, not this log. They match the `CHANGELOG.md` entry, under the rules in `docs/WRITING.md`. Architecture of the apply path is in `docs/ARCHITECTURE.md`. The device runbook is in `docs/OPERATIONS.md`.
+
+Published `zlyme44` is `zlyme-37164297221`, built by run `37164297221` from `337ccbce2587393463a4b49c551f94e33e318e44`, with zero deltas. Its root differs from the locally accepted image because the build dates differ (`docs/DEVELOPMENT.md`, Release artifacts).
+
+The installer is a separate repository, `Zetarancio/zlymeOS-Installer`, branch `zlyme-installer`. Build All Platforms moves only the reused `beta-zlyme-installer` tag to the commit it builds, and the platform builds refuse to upload a different commit. Create Latest Release targets that exact commit. Later commits may touch only Markdown or the release workflow. The first normal release, `V1.8.0`, predates that fix. Its tag is at `678f6440f1409dbf0e824fb4e3d6d4a1499d23c0`, and its binaries were built at `b33d31b42b3726305724e7b59c3b397d1bdc6edd`. Between those commits only the README and the release workflow changed.
+
+## Open validation debt
+
+These are open questions from the Phase 10 audit, not confirmed defects. The evidence and the full list are in `docs/research/documentation-audit-phase10.md` ("Suspected runtime and build issues"). Before a change touches one of these paths, resolve or validate the item first, on a real Flip when it is hardware-facing.
+
+Safety-sensitive:
+
+- `zlyme-update uboot` writes to the parent disk of the first `uboot` partition it finds. It does not prove that disk holds the live `/boot`.
+- For the early splash, the initramfs mounts `mmcblk0p2` or `mmcblk1p2` without a label check, then skips the `LABEL=ZLYMEBOOT` search.
+- The DTS enables UHS modes on SD slot 2. The hardware wiki records UHS removed from slot 2 because both slots share the I/O-voltage rail.
+
+Needs a decision:
+
+- The suspend helper arms a 24 h RTC wake before every suspend. No reason is recorded. `CHANGELOG.md` lists the wake as a known limitation.
+- `rtl8733bu_power.c` declares `MODULE_AUTHOR("ROCKNIX")`, while its `LICENSE` calls it original Zlyme source. The provenance needs a maintainer answer.
+
+Build and maintenance:
+
+- The minimal defconfig, which `build.sh` uses by default, does not select the gamepad module or `zlyme-keylidmon`, and `post-build.sh` requires both. It is expected to fail. It was not built.
+- Several local compiled packages are outside the `build.sh` source fingerprints (`docs/DEVELOPMENT.md`, Source fingerprints).
+- `post-image.sh` treats a failed OTA pack as non-fatal, so the image build can succeed without an OTA.
+- `package/system/mergerfs` is dormant but still selectable.
