@@ -35,7 +35,27 @@ for f in "${need[@]}"; do
 done
 
 stage=$(mktemp -d)
-trap 'rm -rf "$stage"' EXIT
+part=""
+sumpart=""
+out=""
+published=0
+cleanup_pack() {
+	status=$?
+	rm -rf "$stage"
+	if [ -n "$part" ]; then
+		rm -f "$part"
+	fi
+	if [ -n "$sumpart" ]; then
+		rm -f "$sumpart"
+	fi
+	# Only the tar this invocation published. An older differently
+	# named artifact is left where it is.
+	if [ "$status" -ne 0 ] && [ "$published" = 1 ]; then
+		rm -f "$out" "${out}.sha256"
+	fi
+	exit "$status"
+}
+trap cleanup_pack EXIT
 mkdir -p "$stage/overlays" "$stage/extlinux"
 
 install -m 0644 "${BINARIES_DIR}/Image.gz" "$stage/Image.gz"
@@ -62,12 +82,20 @@ install -m 0755 "${BOARD_DIR}/post-update.sh" "$stage/post-update.sh"
 
 base="${ZLYME_UPDATE_PREFIX}-${stamp}-${ver}.tar"
 out="${BINARIES_DIR}/${base}"
-# shellcheck disable=SC2086
-tar -C "$stage" -cf "$out" $ota_files
+part="${out}.part"
+sumpart="${out}.sha256.part"
+rm -f "$part" "$sumpart"
 rm -f "${BINARIES_DIR}/${ZLYME_UPDATE_PREFIX}-update.tar"
+# shellcheck disable=SC2086
+tar -C "$stage" -cf "$part" $ota_files
+mv "$part" "$out"
+part=""
+published=1
 (
 	cd "${BINARIES_DIR}"
-	sha256sum "${base}" > "${base}.sha256"
+	sha256sum "${base}" > "${base}.sha256.part"
 )
+mv "$sumpart" "${out}.sha256"
+sumpart=""
 echo "make-update-tar: $out"
 echo "make-update-tar: ${out}.sha256"
