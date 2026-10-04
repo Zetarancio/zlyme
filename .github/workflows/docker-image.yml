@@ -1,5 +1,6 @@
-# Build and push ghcr.io/<owner>/zlyme-build:latest
-# Replace nothing: github.repository_owner is the org/user after you push.
+# Build and push ghcr.io/<owner>/zlyme-build:latest.
+# GHCR repository names must be lowercase. The GitHub owner keeps its
+# real spelling for login; only the image path is lowercased.
 
 name: Docker image
 
@@ -26,7 +27,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          img="ghcr.io/${{ github.repository_owner }}/zlyme-build:latest"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          img="ghcr.io/${owner}/zlyme-build:latest"
           docker build -t "$img" - < Dockerfile
           docker push "$img"

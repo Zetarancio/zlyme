@@ -88,8 +88,11 @@ jobs:
           fi
 
       - name: Pull or build zlyme-build
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          img="ghcr.io/${{ github.repository_owner }}/zlyme-build:latest"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          img="ghcr.io/${owner}/zlyme-build:latest"
           if ! docker pull "$img"; then
             docker build -t zlyme-build - < Dockerfile
           else
