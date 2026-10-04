@@ -16,6 +16,13 @@ for f in "$docker" "$stage"; do
 	grep -q 'username: ${{ github.actor }}' "$f"
 done
 
+grep -q 'id=$(sha256sum Dockerfile | awk '"'"'{print $1}'"'"')' "$docker"
+grep -q 'docker build --label "zlyme.dockerfile=${id}"' "$docker"
+grep -q 'index .Config.Labels "zlyme.dockerfile"' "$docker"
+grep -q 'test "$have" = "$id"' "$docker"
+grep -q 'sha256sum "${REPO}/Dockerfile"' "$ROOT/build.sh"
+grep -q -- '--label "zlyme.dockerfile=${id}"' "$ROOT/build.sh"
+
 img=$(GITHUB_REPOSITORY_OWNER=Zetarancio bash -c 'owner="${GITHUB_REPOSITORY_OWNER,,}"; printf "%s\n" "ghcr.io/${owner}/zlyme-build:latest"')
 test "$img" = "ghcr.io/zetarancio/zlyme-build:latest"
 echo "ci container image ok"

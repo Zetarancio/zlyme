@@ -32,5 +32,8 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           img="ghcr.io/${owner}/zlyme-build:latest"
-          docker build -t "$img" - < Dockerfile
+          id=$(sha256sum Dockerfile | awk '{print $1}')
+          docker build --label "zlyme.dockerfile=${id}" -t "$img" - < Dockerfile
+          have=$(docker image inspect -f '{{ index .Config.Labels "zlyme.dockerfile" }}' "$img")
+          test "$have" = "$id"
           docker push "$img"
