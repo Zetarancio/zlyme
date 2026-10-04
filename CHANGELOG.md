@@ -45,7 +45,7 @@ The first stable release, built from `337ccbce2587393463a4b49c551f94e33e318e44` 
 
 - The Miyoo Flip is the only supported device.
 - Closing the lid while a game runs blanks the screen and stops the radios but does not deep-suspend. Use the power button.
-- A suspended Flip wakes itself after 24 hours.
+- The zlyme44 suspend helper still programs a 24-hour RTC alarm left over from suspend testing. This is software policy, not a Miyoo Flip hardware sleep limit; a 24-hour suspend was not part of hardware acceptance.
 - Replacement Switch-style sticks have not been tested on hardware.
 - CPU undervolt stays off unless you turn it on.
 
