@@ -1,6 +1,6 @@
 # Zlyme user guide
 
-The [README](../README.md) is the front door: what Zlyme is, installation, updates, controls, and the systems table. This guide owns detailed end-user operation on the Miyoo Flip. [OPERATIONS.md](OPERATIONS.md) covers maintainer and device operations, and [DEVELOPMENT.md](DEVELOPMENT.md) covers building. Settings labels below follow the pinned Zlyme NextUI fork and can change when that pin moves.
+The [README](../README.md) is the front door: what Zlyme is, how to install it, where games go, updates, controls, the systems table, and how to experiment and contribute. This guide owns detailed end-user operation on the Miyoo Flip. [OPERATIONS.md](OPERATIONS.md) covers maintainer and device operations, and [DEVELOPMENT.md](DEVELOPMENT.md) covers building. Settings labels below follow the pinned Zlyme NextUI fork and can change when that pin moves.
 
 ## Libraries and storage
 
@@ -150,6 +150,8 @@ Logs are off by default. Turn on Settings → System → Advanced → System log
 When something fails, copy that folder off the card, or fetch `/storage/.logs` over SSH.
 
 ## Custom paks
+
+Why you'd do this, and how to send something back, is in the README's [User Systems and Tools and the Right to Experiment](../README.md#user-systems-and-tools-and-the-right-to-experiment) and [CONTRIBUTING.md](../CONTRIBUTING.md). The rules:
 
 - Stock copies live on the OS card at `Tools/my355/` and `Emus/my355/`.
 - An update replaces only pak names that exist in the image. Extra folders you add are left alone. Example: edits to `GBA.pak` are overwritten on the next update. A copy renamed to `GBA2.pak` survives, but its games must sit in `Roms/… (GBA2)/`. Every system pairs `TAG.pak` with `Roms/… (TAG)/` the same way.
