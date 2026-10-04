@@ -474,7 +474,7 @@ Disposition terms:
 - **Implementation:** `.github/workflows/{build.yml,build-stage.yml,docker-image.yml}`, `.github/zlyme-cache.md`, `scripts/{make-release-deltas.py,zlyme_release.py}`, `scripts/tests/{test_release_tag_target.sh,test_ci_container_image.sh}`.
 - **Invariant:** `Build` is manual only. It runs three ccache-carrying stages and publishes a non-prerelease tag `zlyme-<run_id>` at `github.sha` with the full tar, sha256, manifest, deltas, and `zlyme.img`. The remote clean build is the release gate, not hardware acceptance.
 - **History:** `1432f2a91236` first CI; `94d740a2802c` three stages; `7b39f4a21ed7` manual only; `a794c895779d` full release; `2193d7a0cdfc` deltas; `3267f78512d6` tag pinned to the source SHA; `d070dfef8283` zlyme44 baseline; `59a75beaa25e` lowercase GHCR owner.
-- **Hardware acceptance:** n/a. Build run `37164297221` is the stable-release gate (ROADMAP:13). Its outcome is not recorded in the tree.
+- **Hardware acceptance:** n/a. Build run `37164297221` built `337ccbce2587393463a4b49c551f94e33e318e44` cleanly and succeeded, and published the stable release `zlyme-37164297221` (`zlyme44 (2026-10-04)`), tag at that SHA, zero deltas. That run is the release gate, not hardware acceptance.
 - **Canonical owner:** `docs/DEVELOPMENT.md` "Release artifacts", "Build container"; `docs/MAINTENANCE.md` "Releases"; `docs/DEVICE_PORTING.md` "CI".
 - **Wiki owner:** n/a.
 - **Findings:** DEVELOPMENT:133-135 implies the GHCR image is reused; without the `zlyme.dockerfile` label `build.sh` rebuilds it (V9, inferred). OTA pack failure costs a stage instead of failing the job (issue (h)). DEVICE_PORTING:298 "now".
