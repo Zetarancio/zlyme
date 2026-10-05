@@ -6,7 +6,8 @@ Tiny static busybox plus /init, embedded in the kernel Image.
 Busybox 1.36.1 is GPL-2.0. The kconfig and recipe layout come from
 Knulli knulli-initramfs (Batocera/Knulli, GPL-2.0). /init is a Zlyme
 simplification of Knulli's init (no overlay, squashfs file named
-zlyme on LABEL=ZLYMEBOOT).
+zlyme). It mounts the primary boot node and checks that its label
+is ZLYMEBOOT.
 
   https://busybox.net/
   https://github.com/knulli-cfw/distribution

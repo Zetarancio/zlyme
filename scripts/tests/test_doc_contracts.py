@@ -104,10 +104,11 @@ def main():
         for line in read(conf).splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     )
-    block = re.search(r"```sh\n(ZLYME_DEVICE_ID=.*?)```", read("docs/ARCHITECTURE.md"), re.S)
-    got = sorted(line.strip() for line in block.group(1).splitlines() if line.strip()) if block else []
-    if got != want:
-        bad.append("docs/ARCHITECTURE.md device.conf block differs from %s" % conf)
+    for rel in ("docs/ARCHITECTURE.md", "docs/DEVICE_PORTING.md"):
+        block = re.search(r"```sh\n(ZLYME_DEVICE_ID=.*?)```", read(rel), re.S)
+        got = sorted(line.strip() for line in block.group(1).splitlines() if line.strip()) if block else []
+        if got != want:
+            bad.append("%s device.conf block differs from %s" % (rel, conf))
 
     gain = source(
         "package/system/nextui/zlyme/gamepad-ff/ff_gain.h",

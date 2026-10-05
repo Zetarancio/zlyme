@@ -122,7 +122,7 @@ ZLYME_STORAGE_LABEL=ZLYME
 
 `post-build.sh`, `post-image.sh`, `make-update-tar.sh`, `zlyme-update`, and the Settings release lookup read it. The initramfs carries the same file.
 
-`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the my355 OS card. The right-hand slot is `sdmmc0`, which the kernel names `/dev/mmcblk0`. Those paths select the disk and the boot and storage partitions. The labels confirm the nodes. A cloned card repeats the labels, so boot, storage, resize, and raw bootloader writes do not search by label.
+`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. They are not a requirement that another board use MMC or these names. The right-hand slot is `sdmmc0`. The my355 DTS aliases `mmc0` to `&sdmmc0` and `mmc1` to `&sdmmc1`. Linux 7.0.2 uses that `mmc` alias as the MMC host index, and the MMC block driver names the disk `mmcblkN` from that index, so this tree makes the right slot `/dev/mmcblk0`. `genimage.cfg` then places GPT partition 1 as `uboot`, partition 2 as `boot` (`ZLYMEBOOT`), and partition 3 as `storage` (`ZLYME`). The paths select those nodes. The labels confirm them. A cloned card repeats the labels, so boot, storage, resize, and raw bootloader writes do not search by label.
 
 Only put values here that generic code genuinely needs.
 
@@ -216,7 +216,7 @@ The TPL and BL31 come from rkbin and must be a matching pair. On a normal boot t
 
 U-Boot is mainline 2026.01 from the `quartz64-a-rk3566` defconfig. The `board.mk` hook switches it to the local Flip control DTS, sets `BOOTDELAY=-2`, adds the preboot `my355 fg` fuel-gauge helper (U-Boot patch `006`), and strips PCI, SATA, NVMe, Ethernet, SDHCI, and USB. U-Boot patch `002` sets the SPL boot order to `sdmmc0`.
 
-The kernel command line is `label=ZLYMEBOOT earlycon quiet console=ttyS2,1500000n8`. The initramfs does not use that `label=` argument to choose a card. `zlyme-ctl apply-overlays` writes the `FDTOVERLAYS` line from Settings flags: the HDMI, OTG, and SD2 disable overlays and the CPU undervolt level.
+The kernel command line is `earlycon quiet console=ttyS2,1500000n8`, with `console=` last so serial is `/dev/console`. It does not carry a `label=` key. The initramfs selects `/dev/mmcblk0p2` from device metadata and checks the filesystem label. `zlyme-ctl apply-overlays` writes the `FDTOVERLAYS` line from Settings flags: the HDMI, OTG, and SD2 disable overlays and the CPU undervolt level.
 
 The initramfs is a static BusyBox `1.36.1` `/init` that `board.mk` embeds through `CONFIG_INITRAMFS_SOURCE`. It also starts the framebuffer splash, and writes a boot dmesg when `/boot/zlyme-logs` asks for one. That is the only other reason it opens `/boot` read-write.
 

@@ -118,9 +118,14 @@ ZLYME_DTB=rk3566-miyoo-flip.dtb
 ZLYME_NEXTUI_PLATFORM=my355
 ZLYME_PORTMASTER_HW_DEVICE=miyoo-flip
 ZLYME_UPDATE_PREFIX=zlyme-my355
+ZLYME_OS_DISK=/dev/mmcblk0
+ZLYME_BOOT_DEVICE=/dev/mmcblk0p2
+ZLYME_STORAGE_DEVICE=/dev/mmcblk0p3
 ZLYME_BOOT_LABEL=ZLYMEBOOT
 ZLYME_STORAGE_LABEL=ZLYME
 ```
+
+`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. Another board does not have to use MMC or these names. `docs/ARCHITECTURE.md` records why these nodes are stable on this board.
 
 Do not place secrets or mutable user settings here.
 
@@ -184,7 +189,7 @@ Owns safe shutdown/reboot details specific to the device/storage layout. `zlyme-
 
 ### `zlyme-update`
 
-`zlyme-update` is board code (`board/my355/fsoverlay/usr/sbin/zlyme-update`). It takes the filename prefix and the DTB name from `device.conf`. Update identity is described under "Update compatibility" below.
+`zlyme-update` is board code (`board/my355/fsoverlay/usr/sbin/zlyme-update`). It takes the filename prefix and the DTB name from `device.conf`. On my355, the raw bootloader path also uses `ZLYME_OS_DISK` and `ZLYME_BOOT_DEVICE` from that file. Update identity is described under "Update compatibility" below.
 
 ## Frontend platform contract
 
@@ -268,6 +273,7 @@ A full OTA is a tar that contains the squashfs member `zlyme`, the device DTB, `
 What each piece checks today:
 
 - `zlyme-update` picks only `${ZLYME_UPDATE_PREFIX}-*.tar` from `/storage/.update`. A full tar must contain the members `${ZLYME_DTB}`, `zlyme`, and `Image.gz`. A full tar has no device field. Its identity is the filename prefix plus the DTB member.
+- On my355, `zlyme-update uboot` also requires the mounted boot volume to be `ZLYME_BOOT_DEVICE` on `ZLYME_OS_DISK`. Those paths are this board's OS-card identity. They are not a requirement that another device use MMC or these names.
 - For a delta, `zlyme-update` requires `DEVICE=my355`. That value is a literal in the script, not `ZLYME_DEVICE_ID`.
 - Settings (`github-release.py`) accepts a `release-manifest.json` only when its `device` equals `ZLYME_DEVICE_ID` from `device.conf`.
 - The release scripts `scripts/zlyme_release.py` and `scripts/make-release-deltas.py` write and check the literal `my355`, and name deltas `zlyme-my355-delta-*`.
