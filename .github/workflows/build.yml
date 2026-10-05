@@ -10,14 +10,23 @@
 #
 # Secrets: GH_PAT (classic PAT, repo + workflow) to write the ccache repo.
 # Optional variable CACHE_REPO (default zlyme-cache).
-# Releases upload the full OTA, its sha256, zlyme.img, release-manifest.json,
-# and any same-major delta tars the release job verified. Local builds do not
-# generate deltas.
+# A dispatch builds the image and uploads the stage artifacts. It publishes
+# a stable release only when publish_release is true. The default is a
+# candidate build: no GitHub release, and /releases/latest stays as it is.
+# A published release uploads the full OTA, its sha256, zlyme.img,
+# release-manifest.json, and any same-major delta tars the release job
+# verified. Local builds do not generate deltas.
 
 name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the stable/latest release after a successful build
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: zlyme-build
@@ -52,7 +61,9 @@ jobs:
 
   release:
     needs: [stage-a, stage-b, stage-c]
-    if: always() && !cancelled() && (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
+    if: >-
+      always() && !cancelled() && inputs.publish_release == true &&
+      (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

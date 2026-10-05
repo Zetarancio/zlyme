@@ -163,7 +163,9 @@ Hardware facts do not come from KNULLI merely because it has a similar SoC. For 
 
 ## Release artifacts
 
-A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. The GitHub release job does. A local OTA is not a release artifact. The release and delta policy and the accepted runtime SHA are in `docs/MAINTENANCE.md`.
+A local `./build.sh` writes a full OTA only. It does not write `release-manifest.json` or a delta. A local OTA is not a release artifact. The release and delta policy and the accepted runtime SHA are in `docs/MAINTENANCE.md`.
+
+The GitHub `Build` workflow is manual. A dispatch builds the product image and uploads the stage artifacts. It publishes a GitHub release only when `publish_release` is true. That input defaults to false, so a normal dispatch is a candidate build and does not change `/releases/latest`. A clean build candidate is not hardware acceptance. Publication is an explicit action. With `publish_release` true, the release job writes `release-manifest.json` and any deltas, then publishes a stable release (`prerelease: false`, `make_latest: true`). Only that explicitly published, validated release is the public stable/latest release.
 
 `ZLYME_IMAGE_DATE` is part of the OS metadata inside the squashfs. Two builds of the same source on different dates therefore produce different root hashes. The `zlyme44` hardware candidate was built on 2026-10-03 and the clean release on 2026-10-04, from the same SHA. Byte-identical roots across build dates are not the reproducibility requirement. The release gate is a clean build that succeeds from the accepted source SHA under this date contract. A delta applies only to the exact root SHA-256 its manifest names. A device still running a local build gets the full OTA, and the version string never selects a delta.
 
