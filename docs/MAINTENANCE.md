@@ -65,9 +65,9 @@ The installer is a separate repository, `Zetarancio/zlymeOS-Installer`, branch `
 
 ## Open validation debt
 
-Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/documentation-audit-phase10.md` ("Finding triage" and "zlyme44.1 maintenance dispositions"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read the original finding first. Published `zlyme44` (`337ccbce2587393463a4b49c551f94e33e318e44`) still has the source the original findings describe. The fixes below are on `zlyme44.1-maintenance`. They are not published, and none of them has been accepted on a Flip yet.
+Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/documentation-audit-phase10.md` ("Finding triage" and "zlyme44.1 maintenance dispositions"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read the original finding first. Published `zlyme44` (`337ccbce2587393463a4b49c551f94e33e318e44`) still has the source the original findings describe. The fixes below are in the `zlyme44.1` source. They were developed on `zlyme44.1-maintenance`. They are not a published release, and none of them has been accepted on a Flip yet.
 
-Fixed in source on `zlyme44.1-maintenance`:
+Fixed in the `zlyme44.1` source:
 
 - **(a)** `zlyme-update uboot` resolves the disk that backs `/boot`, requires that mount to be `ZLYME_BOOT_DEVICE` on `ZLYME_OS_DISK`, requires exactly one `uboot` partition on that disk, checks the 8 MiB / LBA 16384 geometry, and refuses a disk whose logical block size is not 512 bytes. `ZLYME_UPDATE_TEST=1 uboot-target` reports the choice and does not write. Implemented and host-tested. Awaiting Flip validation. No raw write was run.
 - **(b)** The initramfs mounts `ZLYME_BOOT_DEVICE` and `ZLYME_STORAGE_DEVICE` after each node's label matches. It does not search by label and does not substitute the second card. The splash starts from the still in the ramdisk and picks up the boot-volume animation after the boot FAT mounts. Implemented and host-tested. Awaiting Flip validation with both cards installed.

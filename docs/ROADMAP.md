@@ -8,7 +8,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Current phase
 
-Phase 10 is the active repository phase: documentation and maintenance in this tree. The hardware wiki is a later pass.
+Phase 10 source and documentation review is closed. `zlyme44.1` is the maintenance candidate that follows published `zlyme44`. A product build and Miyoo Flip validation are the gates after this source closure. `zlyme44.1` is not published and is not hardware-accepted. The hardware wiki is a later pass.
 
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
@@ -1899,7 +1899,7 @@ Closure, 2026-10-04: implementation is closed at `337ccbce2587393463a4b49c551f94
 
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 
-This is not a product-feature phase. It has started. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. Complete the Zlyme documentation in this repository before any hardware-wiki edit. The wiki agent uses `337ccbce2587393463a4b49c551f94e33e318e44` as runtime evidence and the Phase 10 documentation SHA as documentation guidance. It does not edit against an uncommitted tree. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate. It does not close Phase 10.
+This is not a product-feature phase. Status, 2026-10-05: the documentation, maintainability, and source-review work is closed by the `zlyme44.1` closure series. `zlyme44.1` is the resulting maintenance candidate. Product build proof and Miyoo Flip validation are separate gates after this source closure. `zlyme44.1` is not published and is not hardware-accepted. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. Complete the Zlyme documentation in this repository before any hardware-wiki edit. The wiki agent uses `337ccbce2587393463a4b49c551f94e33e318e44` as runtime evidence and the Phase 10 documentation SHA as documentation guidance. It does not edit against an uncommitted tree. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate. It does not close Phase 10.
 
 ### 10A. Zlyme documentation and comments
 
