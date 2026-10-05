@@ -51,6 +51,18 @@ mount_source() {
 	printf '%s\n' "$found"
 }
 
+is_ro() {
+	point=$1
+	while read -r _dev mp _fstype opts _rest; do
+		[ "$mp" = "$point" ] || continue
+		case "$opts" in
+			ro|ro,*) return 0 ;;
+		esac
+		return 1
+	done < "$MOUNTS"
+	return 1
+}
+
 start() {
 	printf "Mounting boot: "
 	if [ -z "${ZLYME_BOOT_DEVICE:-}" ] || [ -z "${ZLYME_BOOT_LABEL:-}" ]; then
@@ -65,6 +77,10 @@ start() {
 			return 1
 		fi
 		mount -o remount,ro "$BOOT" 2>/dev/null || true
+		if ! is_ro "$BOOT"; then
+			echo "FAIL ($src stayed writable)"
+			return 1
+		fi
 		echo "already mounted ($src)"
 		return 0
 	fi
@@ -75,6 +91,10 @@ start() {
 		return 1
 	fi
 	if mount -t vfat -o ro,noatime,utf8 "$ZLYME_BOOT_DEVICE" "$BOOT" 2>/dev/null; then
+		if ! is_ro "$BOOT"; then
+			echo "FAIL ($ZLYME_BOOT_DEVICE stayed writable)"
+			return 1
+		fi
 		echo "OK ($ZLYME_BOOT_DEVICE)"
 	else
 		echo "FAIL ($ZLYME_BOOT_DEVICE)"

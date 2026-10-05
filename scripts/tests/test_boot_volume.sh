@@ -110,6 +110,9 @@ esac
 case "$opt" in
 	remount,rw|remount,ro)
 		mode=${opt#remount,}
+		if [ "$mode" = ro ] && [ "${ZLYME_S12_RO_STUCK:-}" = 1 ]; then
+			exit 0
+		fi
 		awk -v mp="$pos1" -v mode="$mode" '
 			BEGIN { OFS = " " }
 			$2 == mp { $4 = mode }
@@ -120,7 +123,11 @@ case "$opt" in
 		;;
 esac
 if [ -n "$pos2" ]; then
-	printf '%s %s fake rw 0 0\n' "$pos1" "$pos2" >> "$ZLYME_PROC_MOUNTS"
+	mode=rw
+	case "$opt" in
+		ro|ro,*) mode=ro ;;
+	esac
+	printf '%s %s fake %s 0 0\n' "$pos1" "$pos2" "$mode" >> "$ZLYME_PROC_MOUNTS"
 fi
 exit 0
 EOF
@@ -221,6 +228,7 @@ touch "$pstor"
 reset_io
 out=$(ZLYME_BOOT=$work/mnt/boot "$s12" start)
 printf '%s\n' "$out" | grep -q "OK ($pboot)"
+grep -q ' ro ' "$work/mounts"
 grep -F -qx "$pboot" "$work/mount.log"
 assert_no_clone
 
@@ -228,8 +236,23 @@ reset_io
 printf '%s %s vfat ro 0 0\n' "$pboot" "$work/mnt/boot" > "$work/mounts"
 out=$(ZLYME_BOOT=$work/mnt/boot "$s12" start)
 printf '%s\n' "$out" | grep -q 'already mounted'
+grep -q ' ro ' "$work/mounts"
 grep -F -qx "$work/mnt/boot" "$work/mount.log"
 assert_no_clone
+
+reset_io
+printf '%s %s vfat rw 0 0\n' "$pboot" "$work/mnt/boot" > "$work/mounts"
+set +e
+out=$(ZLYME_S12_RO_STUCK=1 ZLYME_BOOT=$work/mnt/boot "$s12" start)
+status=$?
+set -e
+if [ "$status" -eq 0 ]; then
+	echo "S12 reported success while /boot stayed writable" >&2
+	printf '%s\n' "$out" >&2
+	exit 1
+fi
+printf '%s\n' "$out" | grep -q 'stayed writable'
+grep -q ' rw ' "$work/mounts"
 
 reset_io
 printf '%s %s vfat ro 0 0\n' "$sboot" "$work/mnt/boot" > "$work/mounts"
