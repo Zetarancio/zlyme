@@ -16,20 +16,59 @@ grep -q '^ZLYME_BOOT_DEVICE=/dev/mmcblk0p2$' "$conf"
 grep -q '^ZLYME_STORAGE_DEVICE=/dev/mmcblk0p3$' "$conf"
 grep -q '^ZLYME_BOOT_LABEL=ZLYMEBOOT$' "$conf"
 
+# Walk each partition block. A block with in-partition-table = false is
+# outside the GPT. The in-table order is the partition numbers.
 awk '
-	$1 == "partition" && $2 == "uboot" { u = NR }
-	$1 == "partition" && $2 == "boot" { b = NR }
-	$1 == "partition" && $2 == "storage" { s = NR }
-	END {
-		if (!(u && b && s && u < b && b < s))
-			exit 1
+function flush() {
+	if (name == "")
+		return
+	if (block ~ /in-partition-table = false/) {
+		out_n++
+		out_name[out_n] = name
+		out_off[name] = offset
+	} else {
+		gpt_n++
+		gpt_name[gpt_n] = name
+		gpt_off[name] = offset
+		gpt_size[name] = size
 	}
-' "$gen"
-grep -q 'offset = 8M' "$gen"
-grep -q 'size = 4M' "$gen"
-grep -q 'offset = 12M' "$gen"
+	name = ""
+	block = ""
+	offset = ""
+	size = ""
+}
+$1 == "partition" && $2 ~ /^[A-Za-z0-9_]+$/ {
+	flush()
+	name = $2
+	next
+}
+name != "" {
+	block = block $0 "\n"
+	if ($1 == "offset")
+		offset = $3
+	if ($1 == "size")
+		size = $3
+	if ($0 ~ /^[[:space:]]*}[[:space:]]*$/)
+		flush()
+}
+END {
+	flush()
+	if (out_n != 1 || out_name[1] != "idbloader" || out_off["idbloader"] != "32K")
+		exit 1
+	if (gpt_n != 3)
+		exit 1
+	if (gpt_name[1] != "uboot" || gpt_off["uboot"] != "8M" || gpt_size["uboot"] != "4M")
+		exit 1
+	if (gpt_name[2] != "boot" || gpt_off["boot"] != "12M")
+		exit 1
+	if (gpt_name[3] != "storage")
+		exit 1
+}
+' "$gen" || {
+	echo "genimage GPT numbering does not match p1 uboot, p2 boot, p3 storage" >&2
+	exit 1
+}
 grep -q 'label = "ZLYMEBOOT"' "$gen"
-grep -q 'in-partition-table = false' "$gen"
 
 append=$(sed -n 's/^[[:space:]]*APPEND //p' "$ext")
 if [ "$append" != "earlycon quiet console=ttyS2,1500000n8" ]; then
