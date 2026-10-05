@@ -24,6 +24,9 @@ seed_target() {
 	: > "$t/usr/sbin/sshd"
 	: > "$t/usr/bin/scp"
 	: > "$t/usr/sbin/zlyme-jackd"
+	printf '%s\n' '#!/bin/sh' 'exit 0' > "$t/bin/busybox"
+	chmod 0755 "$t/bin/busybox"
+	ln -s ../../bin/busybox "$t/usr/bin/flock"
 	: > "$t/usr/bin/kmod"
 	ln -s ../usr/bin/kmod "$t/sbin/modprobe"
 	printf '%s\n' 'NAME="Buildroot"' > "$t/usr/lib/os-release"
@@ -104,5 +107,17 @@ then
 	exit 1
 fi
 grep -q 'miyoo-flip-gamepad.ko is missing' "$work/closed.err"
+
+seed_target "$work/noflock"
+rm -f "$work/noflock/usr/bin/flock"
+if env -u HOST_DIR \
+	BR2_CONFIG="$minimal_cfg" \
+	ZLYME_IMAGE_DATE=2026-10-04 \
+	bash "$post" "$work/noflock" >"$work/noflock.out" 2>"$work/noflock.err"
+then
+	echo "missing busybox flock was accepted" >&2
+	exit 1
+fi
+grep -q 'busybox flock applet is missing' "$work/noflock.err"
 
 echo "post-build config ok"

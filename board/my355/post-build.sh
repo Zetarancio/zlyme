@@ -312,6 +312,21 @@ if br2_selected BR2_PACKAGE_KMOD; then
 	fi
 fi
 
+# zlyme-boot-write and zlyme-governor take an exclusive BusyBox flock.
+# The pinned target config enables it, and neither defconfig overrides
+# BR2_PACKAGE_BUSYBOX_CONFIG. The initramfs BusyBox is a separate build
+# and does not need this applet. Both product and minimal images use
+# the normal target.
+flock_bin="${TARGET_DIR}/usr/bin/flock"
+if [ ! -L "${flock_bin}" ] || [ ! -x "${flock_bin}" ]; then
+	note "busybox flock applet is missing"
+else
+	case "$(readlink "${flock_bin}")" in
+		*busybox) ;;
+		*) note "flock is not the busybox applet" ;;
+	esac
+fi
+
 # The overlay blacklists panfrost so the product Mali stack can bind.
 # A bring-up config that builds Mesa panfrost and does not select that
 # stack keeps the driver.

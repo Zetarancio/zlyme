@@ -776,7 +776,7 @@ Original findings stay in "Suspected runtime and build issues". The Phase 10 col
 | (b) Initramfs can mount the second card as boot | open | implemented, host-tested, awaiting Flip validation: primary device nodes; the label is a check; no second-card fallback |
 | (c) Suspend arms a 24 h RTC wake | decided, not shipped | fixed in source: the helper does not touch `rtc0/wakealarm`; programmed alarms are preserved |
 | (d) Minimal build expected to fail post-build | open | fixed in source: assertions follow the selected config; a real minimal build is the remaining proof |
-| (e) `zlyme-boot-write` is not a lock | open | implemented, host-tested: PID file published with `ln`; wrapped status preserved; failed read-only remount poisons the lock |
+| (e) `zlyme-boot-write` is not a lock | open | implemented, host-tested: exclusive `flock` for one transaction; wrapped status preserved; failed read-only remount leaves a `/run` marker |
 | (f) Late governor reset after the first frame | open | implemented, host-tested: the session owns Smart; late paths call `resume`; the governor lock is the same PID file |
 | (g) Unfingerprinted local packages | open | fixed in source: local packages are fingerprinted |
 | (h) OTA pack failure is non-fatal | open | implemented, host-tested: pack failure removes that invocation's `zlyme.img` and does not publish a partial tar or checksum; no product image was built |

@@ -337,7 +337,7 @@ reset_io
 printf '%s %s vfat ro 0 0\n' "$pboot" "$work/mnt/boot" > "$work/mounts"
 ZLYME_BOOT=$work/mnt/boot "$writer" true
 grep -q ' ro ' "$work/mounts"
-[ ! -e "$ZLYME_BOOT_WRITE_LOCK" ]
+flock -n "$ZLYME_BOOT_WRITE_LOCK" true
 assert_no_clone
 
 echo "boot volume ok"

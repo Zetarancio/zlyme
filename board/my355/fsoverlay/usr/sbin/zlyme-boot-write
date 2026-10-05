@@ -1,19 +1,22 @@
 #!/bin/sh
 # One write transaction against the boot vfat, then put it back read-only.
-# The lock is a regular file. The owner PID is written to a private file
-# and published with ln, so the canonical name never appears empty.
-# A descendant of that owner shares the transaction. An unrelated
-# caller waits, then fails if the wait expires. A dead numeric owner
-# can be reclaimed. A malformed lock is left in place. If /boot cannot
-# be returned read-only, the lock is poisoned until reboot.
+# Ownership is an exclusive flock on an empty file under /run. The kernel
+# drops that lock when this process exits. The file is not a PID record.
+# Do not call this helper from inside another zlyme-boot-write: the inner
+# call waits for a lock the outer call holds until the inner returns.
+#
+# INT, TERM, and HUP are ignored once the volume is writable. BusyBox ash
+# keeps an empty trap (SIG_IGN) across the fork that runs the command, so
+# the write is not killed in the middle of the FAT update. SIGKILL cannot
+# be caught. If read-only cannot be restored, a separate /run marker
+# refuses later transactions until reboot.
 
 BOOT=${ZLYME_BOOT:-/boot}
 MOUNTS=${ZLYME_PROC_MOUNTS:-/proc/mounts}
 LOCK=${ZLYME_BOOT_WRITE_LOCK:-/run/zlyme-boot-write.lock}
+POISON=${ZLYME_BOOT_WRITE_POISON:-/run/zlyme-boot-write.poison}
 WAIT=${ZLYME_BOOT_WRITE_TIMEOUT:-15}
 IDENT=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
-role=none
-child=
 
 if [ -r "$IDENT" ]; then
 	# shellcheck disable=SC1090
@@ -63,139 +66,44 @@ is_ro() {
 	return 1
 }
 
-lock_owner() {
-	[ -f "$LOCK" ] || return 1
-	[ -d "$LOCK" ] && return 1
-	pid=$(tr -d ' \t\r\n' < "$LOCK" 2>/dev/null) || return 1
-	[ -n "$pid" ] || return 1
-	printf '%s\n' "$pid"
-}
-
-numeric_pid() {
-	case "$1" in
-		''|*[!0-9]*) return 1 ;;
-	esac
-	return 0
-}
-
-owner_alive() {
-	numeric_pid "$1" || return 1
-	kill -0 "$1" 2>/dev/null
-}
-
-is_ancestor_owner() {
-	owner=$1
-	cur=$$
-	i=0
-	while [ "$i" -lt 40 ]; do
-		[ "$cur" = "$owner" ] && return 0
-		[ "$cur" = 1 ] && return 1
-		[ "$cur" = 0 ] && return 1
-		ppid=$(awk '/^PPid:/ { print $2 }' "/proc/$cur/status" 2>/dev/null) || return 1
-		[ -n "$ppid" ] || return 1
-		cur=$ppid
-		i=$((i + 1))
-	done
-	return 1
-}
-
-# Move a dead owner's lock aside and delete it only if that content is
-# still the dead PID. A live replacement published at the canonical
-# name is left alone.
-reclaim_dead() {
-	want=$1
-	numeric_pid "$want" || return 1
-	aside="${LOCK}.stale.$$"
-	rm -f "$aside"
-	mv "$LOCK" "$aside" 2>/dev/null || return 1
-	cur=$(tr -d ' \t\r\n' < "$aside" 2>/dev/null || true)
-	if [ "$cur" = "$want" ] && ! owner_alive "$want"; then
-		rm -f "$aside"
-		return 0
-	fi
-	if [ ! -e "$LOCK" ]; then
-		mv "$aside" "$LOCK" 2>/dev/null || rm -f "$aside"
-	else
-		rm -f "$aside"
-	fi
-	return 1
-}
-
-close_boot() {
-	sync
-	mount -o remount,ro "$BOOT" 2>/dev/null || true
-	is_ro
-}
-
-poison_lock() {
-	printf '%s\n' poison > "$LOCK" 2>/dev/null || true
-}
-
-cleanup() {
-	status=$?
-	trap - EXIT INT TERM HUP
-	if [ "$role" != owner ]; then
-		exit "$status"
-	fi
-	role=closed
-	if ! close_boot; then
-		poison_lock
-		echo "zlyme-boot-write: $BOOT stayed writable" >&2
-		exit 1
-	fi
-	cur=$(lock_owner || true)
-	if [ "$cur" = "$$" ]; then
-		rm -f "$LOCK"
-	fi
-	exit "$status"
-}
-
 fail_closed() {
 	echo "zlyme-boot-write: $*" >&2
 	exit 1
 }
 
+mark_poison() {
+	printf '%s\n' 'boot fat stayed writable' > "$POISON" 2>/dev/null || true
+}
+
+restore_ro() {
+	mount -o remount,ro "$BOOT" 2>/dev/null || true
+	is_ro
+}
+
 acquire_lock() {
+	mkdir -p "$(dirname "$LOCK")" 2>/dev/null || fail_closed "could not create the lock directory"
+	# A failed exec redirection exits this shell before the if can run.
+	if [ -d "$LOCK" ]; then
+		fail_closed "could not open the boot lock"
+	fi
+	exec 9>>"$LOCK" || fail_closed "could not open the boot lock"
+	if flock -n 9; then
+		return 0
+	fi
+	if [ "$WAIT" -eq 0 ]; then
+		echo "zlyme-boot-write: $BOOT is busy" >&2
+		exit 1
+	fi
 	end=$(( $(date +%s) + WAIT ))
 	while true; do
-		if [ -d "$LOCK" ]; then
-			fail_closed "$BOOT lock is not a PID file"
-		fi
-		tmp="${LOCK}.$$"
-		rm -f "$tmp"
-		if ! printf '%s\n' "$$" > "$tmp"; then
-			rm -f "$tmp"
-			fail_closed "could not record the lock owner"
-		fi
-		if ln "$tmp" "$LOCK" 2>/dev/null && [ -f "$LOCK" ]; then
-			owned=$(lock_owner || true)
-			rm -f "$tmp"
-			if [ "$owned" = "$$" ]; then
-				role=owner
-				return 0
-			fi
-		fi
-		rm -f "$tmp"
-		pid=$(lock_owner || true)
-		if ! numeric_pid "$pid"; then
-			fail_closed "$BOOT lock is malformed"
-		fi
-		if ! owner_alive "$pid"; then
-			reclaim_dead "$pid" || true
-			if [ "$(date +%s)" -ge "$end" ]; then
-				fail_closed "$BOOT lock is stale and could not be cleared"
-			fi
-			continue
-		fi
-		if is_ancestor_owner "$pid"; then
-			role=nested
+		sleep 0.2
+		if flock -n 9; then
 			return 0
 		fi
 		if [ "$(date +%s)" -ge "$end" ]; then
-			echo "zlyme-boot-write: $BOOT is busy (pid $pid)" >&2
+			echo "zlyme-boot-write: $BOOT is busy" >&2
 			exit 1
 		fi
-		sleep 0.2
 	done
 }
 
@@ -209,55 +117,45 @@ if ! mounted; then
 	exit 1
 fi
 
-if [ -z "${ZLYME_BOOT_DEVICE:-}" ]; then
-	echo "zlyme-boot-write: ZLYME_BOOT_DEVICE is unset" >&2
-	exit 1
-fi
-src=$(mount_dev) || {
-	echo "zlyme-boot-write: $BOOT is not mounted" >&2
-	exit 1
-}
-if ! same_dev "$src" "$ZLYME_BOOT_DEVICE"; then
-	echo "zlyme-boot-write: $BOOT is $src, expected $ZLYME_BOOT_DEVICE" >&2
-	exit 1
-fi
-
-mkdir -p "$(dirname "$LOCK")" 2>/dev/null || true
 acquire_lock
 
-if [ "$role" = nested ]; then
-	"$@"
-	exit $?
+if [ -e "$POISON" ]; then
+	fail_closed "$BOOT was left writable; reboot before another write"
 fi
 
-# A signal must leave this transaction. Waiting in the foreground would
-# defer the trap until the wrapped command finished and then keep going.
-stop_for() {
-	code=$1
-	if [ -n "$child" ]; then
-		kill "$child" 2>/dev/null || true
-	fi
-	exit "$code"
-}
+if [ -z "${ZLYME_BOOT_DEVICE:-}" ]; then
+	fail_closed "ZLYME_BOOT_DEVICE is unset"
+fi
+src=$(mount_dev) || fail_closed "$BOOT is not mounted"
+if ! same_dev "$src" "$ZLYME_BOOT_DEVICE"; then
+	fail_closed "$BOOT is $src, expected $ZLYME_BOOT_DEVICE"
+fi
 
-trap cleanup EXIT
-trap 'stop_for 130' INT
-trap 'stop_for 143' TERM
-trap 'stop_for 129' HUP
+if ! is_ro; then
+	if ! restore_ro; then
+		mark_poison
+		fail_closed "$BOOT was already writable and could not be restored"
+	fi
+fi
+
+# Ignored here, and inherited by the command. Do not install a handler
+# that kills the write so this script can exit sooner.
+trap '' INT TERM HUP
 
 if ! mount -o remount,rw "$BOOT"; then
-	cur=$(lock_owner || true)
-	if [ "$cur" = "$$" ]; then
-		rm -f "$LOCK"
+	if ! is_ro; then
+		mark_poison
 	fi
-	role=closed
-	echo "zlyme-boot-write: remount read-write failed" >&2
-	exit 1
+	fail_closed "remount read-write failed"
 fi
 
-"$@" &
-child=$!
-wait "$child"
+"$@"
 status=$?
-child=
+
+sync
+if ! restore_ro; then
+	mark_poison
+	echo "zlyme-boot-write: $BOOT stayed writable" >&2
+	exit 1
+fi
 exit "$status"
