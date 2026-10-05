@@ -28,74 +28,10 @@ boost_on() {
 }
 
 # One apply at a time, so a late DMC resume cannot land Smart over a
-# profile the launcher just wrote. The lock is a regular file. The
-# owner PID is written privately and published with ln, so another
-# caller cannot see an empty lock and delete it. Resume re-execs this
-# script; the new image trusts the lock only when it still names this
-# PID. A signal exits instead of dropping the lock and applying further.
-gov_role=none
-gov_lock=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
-
-gov_lock_owner() {
-	[ -f "$gov_lock" ] || return 1
-	[ -d "$gov_lock" ] && return 1
-	pid=$(tr -d ' \t\r\n' < "$gov_lock" 2>/dev/null) || return 1
-	[ -n "$pid" ] || return 1
-	printf '%s\n' "$pid"
-}
-
-gov_numeric_pid() {
-	case "$1" in
-		''|*[!0-9]*) return 1 ;;
-	esac
-	return 0
-}
-
-gov_owner_alive() {
-	gov_numeric_pid "$1" || return 1
-	kill -0 "$1" 2>/dev/null
-}
-
-gov_reclaim_dead() {
-	want=$1
-	gov_numeric_pid "$want" || return 1
-	aside="${gov_lock}.stale.$$"
-	rm -f "$aside"
-	mv "$gov_lock" "$aside" 2>/dev/null || return 1
-	cur=$(tr -d ' \t\r\n' < "$aside" 2>/dev/null || true)
-	if [ "$cur" = "$want" ] && ! gov_owner_alive "$want"; then
-		rm -f "$aside"
-		return 0
-	fi
-	if [ ! -e "$gov_lock" ]; then
-		mv "$aside" "$gov_lock" 2>/dev/null || rm -f "$aside"
-	else
-		rm -f "$aside"
-	fi
-	return 1
-}
-
-gov_lock_cleanup() {
-	status=$?
-	trap - EXIT INT TERM HUP
-	if [ "$gov_role" != owner ]; then
-		exit "$status"
-	fi
-	gov_role=closed
-	cur=$(gov_lock_owner || true)
-	if [ "$cur" = "$$" ]; then
-		rm -f "$gov_lock"
-	fi
-	exit "$status"
-}
-
-gov_lock_traps() {
-	trap gov_lock_cleanup EXIT
-	trap 'exit 130' INT
-	trap 'exit 143' TERM
-	trap 'exit 129' HUP
-}
-
+# profile the launcher just wrote. The lock is an exclusive flock on an
+# empty file. The kernel drops it when this process exits, including
+# when a signal kills the apply. Resume reads the saved profile and
+# applies it here; it does not re-exec.
 gov_lock_fail() {
 	echo "zlyme-governor: $*" >&2
 	exit 1
@@ -103,55 +39,15 @@ gov_lock_fail() {
 
 gov_lock_acquire() {
 	gov_lock=${ZLYME_GOVERNOR_LOCK:-/run/zlyme/governor.lock}
-	export ZLYME_GOVERNOR_LOCK=$gov_lock
-	if [ "${ZLYME_GOVERNOR_LOCKED:-}" = 1 ]; then
-		cur=$(gov_lock_owner || true)
-		if [ "$cur" != "$$" ]; then
-			gov_lock_fail "inherited lock is not pid $$"
-		fi
-		gov_role=owner
-		gov_lock_traps
-		return 0
-	fi
+	mkdir -p "$(dirname "$gov_lock")" 2>/dev/null || gov_lock_fail "could not create the lock directory"
+	# A failed exec redirection exits this shell before the if can run.
 	if [ -d "$gov_lock" ]; then
-		gov_lock_fail "lock is not a PID file"
+		gov_lock_fail "could not open the governor lock"
 	fi
-	mkdir -p "$(dirname "$gov_lock")" 2>/dev/null || true
+	exec 8>>"$gov_lock" || gov_lock_fail "could not open the governor lock"
 	n=0
 	limit=${ZLYME_GOVERNOR_LOCK_TRIES:-50}
-	while true; do
-		if [ -d "$gov_lock" ]; then
-			gov_lock_fail "lock is not a PID file"
-		fi
-		tmp="${gov_lock}.$$"
-		rm -f "$tmp"
-		if ! printf '%s\n' "$$" > "$tmp"; then
-			rm -f "$tmp"
-			gov_lock_fail "could not record the lock owner"
-		fi
-		if ln "$tmp" "$gov_lock" 2>/dev/null && [ -f "$gov_lock" ]; then
-			owned=$(gov_lock_owner || true)
-			rm -f "$tmp"
-			if [ "$owned" = "$$" ]; then
-				export ZLYME_GOVERNOR_LOCKED=1
-				gov_role=owner
-				gov_lock_traps
-				return 0
-			fi
-		fi
-		rm -f "$tmp"
-		op=$(gov_lock_owner || true)
-		if ! gov_numeric_pid "$op"; then
-			gov_lock_fail "lock is malformed"
-		fi
-		if ! gov_owner_alive "$op"; then
-			gov_reclaim_dead "$op" || true
-			n=$((n + 1))
-			if [ "$n" -gt "$limit" ]; then
-				gov_lock_fail "lock is stale and could not be cleared"
-			fi
-			continue
-		fi
+	while ! flock -n 8; do
 		n=$((n + 1))
 		if [ "$n" -gt "$limit" ]; then
 			gov_lock_fail "lock busy"
@@ -391,38 +287,46 @@ fi
 
 gov_lock_acquire
 
+pending_tag=
 mode=${ZLYME_GOVERNOR:-${1:-smart}}
+if [ "$mode" = resume ]; then
+	# Keep the space in "emu <tag>". Stripping all whitespace
+	# would turn that record into a single token and fall back
+	# to smart over a running game.
+	profile=${ZLYME_GOVERNOR_PROFILE:-/run/zlyme/governor.profile}
+	saved=
+	if [ -f "$profile" ]; then
+		IFS= read -r saved < "$profile" || saved=
+	fi
+	case "$saved" in
+		smart|play|heavy|performance|overclock|auto|powersave)
+			mode=$saved
+			;;
+		emu\ *)
+			tag=${saved#emu }
+			case "$tag" in
+				*[!A-Za-z0-9]*|"") mode=smart ;;
+				*)
+					mode=emu
+					pending_tag=$tag
+					;;
+			esac
+			;;
+		*)
+			mode=smart
+			;;
+	esac
+fi
 case "$mode" in
 	auto) mode=smart ;;
 	powersave) mode=idle ;;
-	resume)
-		# Keep the space in "emu <tag>". Stripping all whitespace
-		# would turn that record into a single token and fall back
-		# to smart over a running game.
-		profile=${ZLYME_GOVERNOR_PROFILE:-/run/zlyme/governor.profile}
-		saved=
-		if [ -f "$profile" ]; then
-			IFS= read -r saved < "$profile" || saved=
-		fi
-		case "$saved" in
-			smart|play|heavy|performance|overclock|auto|powersave)
-				exec "$0" "$saved"
-				;;
-			emu\ *)
-				tag=${saved#emu }
-				case "$tag" in
-					*[!A-Za-z0-9]*|"") exec "$0" smart ;;
-					*) exec "$0" emu "$tag" ;;
-				esac
-				;;
-			*)
-				exec "$0" smart
-				;;
-		esac
-		;;
 	emu)
-		shift
-		tag=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
+		if [ -n "$pending_tag" ]; then
+			tag=$(printf '%s' "$pending_tag" | tr 'A-Z' 'a-z')
+		else
+			shift
+			tag=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
+		fi
 		remember_profile "emu $tag"
 		if [ "${ZLYME_GOVERNOR_DRY:-}" = 1 ]; then
 			printf '%s\n' "emu $tag"
@@ -446,8 +350,8 @@ case "$mode" in
 esac
 
 remember_profile "$mode"
-# Test seam. A signal during this hold must exit with the lock still
-# covering the apply, not drop the lock and continue into the profile.
+# Test seam. Sleeping here holds the flock across the apply. A signal
+# can kill the process; the kernel releases the lock.
 if [ -n "${ZLYME_GOVERNOR_HOLD:-}" ]; then
 	sleep "$ZLYME_GOVERNOR_HOLD"
 fi
