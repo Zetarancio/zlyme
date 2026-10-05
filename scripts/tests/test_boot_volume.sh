@@ -362,5 +362,10 @@ ZLYME_BOOT=$work/mnt/boot "$writer" true
 grep -q ' ro ' "$work/mounts"
 flock -n "$ZLYME_BOOT_WRITE_LOCK" true
 assert_no_clone
+if grep -q 'mkfs.exfat -L ZLYME ' "$s13"; then
+	echo "S13 still formats with a literal storage label" >&2
+	exit 1
+fi
+grep -q 'mkfs.exfat -L "\$ZLYME_STORAGE_LABEL"' "$s13"
 
 echo "boot volume ok"

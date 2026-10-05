@@ -187,7 +187,7 @@ start() {
 	sleep 2
 	echo "sysfs size=$(cat /sys/class/block/$(basename "$PART")/size 2>/dev/null) sectors" >>"$LOG"
 
-	if ! mkfs.exfat -L ZLYME "$PART" >>"$LOG" 2>&1; then
+	if ! mkfs.exfat -L "$ZLYME_STORAGE_LABEL" "$PART" >>"$LOG" 2>&1; then
 		say "mkfs.exfat failed"
 		return 0
 	fi
