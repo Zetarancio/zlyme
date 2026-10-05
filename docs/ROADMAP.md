@@ -8,7 +8,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Current phase
 
-Phase 10 source and documentation review is closed. `zlyme44.1` is the maintenance candidate that follows published `zlyme44`. A product build and Miyoo Flip validation are the gates after this source closure. `zlyme44.1` is not published and is not hardware-accepted. The hardware wiki is a later pass.
+Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65` (`zlyme44.1 (2026-10-05)`). `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` is the outstanding clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. No `zlyme44.2` implementation has started. `zlyme44.1-maintenance` stays at the accepted runtime SHA. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published.
 
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
@@ -1899,7 +1899,7 @@ Closure, 2026-10-04: implementation is closed at `337ccbce2587393463a4b49c551f94
 
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 
-This is not a product-feature phase. Status, 2026-10-05: the documentation, maintainability, and source-review work is closed by the `zlyme44.1` closure series. `zlyme44.1` is the resulting maintenance candidate. Product build proof and Miyoo Flip validation are separate gates after this source closure. `zlyme44.1` is not published and is not hardware-accepted. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. Complete the Zlyme documentation in this repository before any hardware-wiki edit. The wiki agent uses `337ccbce2587393463a4b49c551f94e33e318e44` as runtime evidence and the Phase 10 documentation SHA as documentation guidance. It does not edit against an uncommitted tree. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate. It does not close Phase 10.
+This is not a product-feature phase. Closure, 2026-10-06: Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65`. `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` was dispatched from that SHA with `publish_release=false` and remains the clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. No `zlyme44.2` implementation has started. `zlyme44.1-maintenance` remains the frozen release-source branch at the accepted SHA. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate.
 
 ### 10A. Zlyme documentation and comments
 
@@ -1911,14 +1911,14 @@ Review Zlyme-owned code in this repository. Comments explain hardware quirks, sa
 
 ### 10C. Wiki synchronization
 
-`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` already has `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, a hardware-versus-implementation hierarchy, and a test for what belongs in the wiki. Keep that model. The gap is content. `docs/implementations/zlyme.md` still says no Zlyme snapshot is recorded and does not claim deep suspend, the replacement joypad driver, InputPlumber, current DMC packaging, or the Weston runtime. Update that page only after the Phase 10 Zlyme documentation in this repository is done. Runtime behavior is the Phase 9 implementation SHA. Wording guidance is the later Phase 10 documentation SHA. Do not paste the Zlyme architecture manual into the wiki.
+`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` already has `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, a hardware-versus-implementation hierarchy, and a test for what belongs in the wiki. Keep that model. The published wiki snapshot is `zlyme44`. Do not update that page for an unpublished `zlyme44.1` candidate. After `zlyme44.1` is published, one sync moves the Zlyme snapshot to that release, records the retained U-Boot 2026.01 / BL31 v1.44 / no-OP-TEE serial proof and the accepted shared-card SD2 behavior, and keeps this ownership boundary. Do not paste the Zlyme architecture manual into the wiki.
 
 Ownership stays split. Hardware, electrical, protocol, and firmware facts stay in the wiki. Zlyme packaging, init, policy, frontend, and build architecture stay in this repository. A short statement of how Zlyme implements a hardware mechanism goes in `docs/implementations/zlyme.md` with `Last synchronized against Zlyme <release / exact SHA>`. Joypad protocol stays in the wiki; the driver, InputPlumber topology, and calibration plumbing stay here. BL31/SIP and `vdd_logic` constraints stay in the wiki; the DTS and runtime stay here. The RK3566/RK3568 V2 DMC protocol stays in the wiki; the external module and its policy stay here. Do not mirror Markdown both ways. Historical ROCKNIX evidence stays historical.
 
 ### Gate
 
 - Zlyme and the wiki name the same ownership boundaries.
-- The wiki Zlyme page uses the Phase 9 implementation SHA for runtime evidence and the Phase 10 documentation SHA for wording.
+- The wiki Zlyme page uses the Phase 9 implementation SHA for runtime evidence and the Phase 10 documentation SHA for wording. Wiki synchronization with published `zlyme44.1` waits until that release exists. It is not open Phase 10 work.
 - Hardware facts found during the roadmap are on the wiki page that owns them.
 - Historical ROCKNIX evidence is still marked historical.
 - Non-obvious Zlyme-owned code has short comments, and obvious code does not.
