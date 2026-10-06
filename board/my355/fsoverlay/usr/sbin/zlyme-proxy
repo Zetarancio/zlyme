@@ -206,7 +206,10 @@ cmd_set() {
 	# shellcheck disable=SC2064
 	trap "rm -f '$tmp'" EXIT HUP INT TERM
 	printf 'enabled=%s\nprotocol=%s\nhost=%s\nport=%s\n' "$en" "$proto" "$h" "$p" > "$tmp"
-	chmod 640 "$tmp" || return 1
+	# Restrictive on a POSIX filesystem. /storage is exFAT, which does
+	# not store this mode, so a rejected chmod must not block the write.
+	# The mode is not a confidentiality control. This file has no secret.
+	chmod 640 "$tmp" 2>/dev/null || true
 	mv -f "$tmp" "$conf"
 	trap - EXIT HUP INT TERM
 }
@@ -220,11 +223,11 @@ cmd_test() {
 		echo "Proxy test failed."
 		return 1
 	fi
-	# A small GitHub HTTPS request. Discard curl's own text so a
+	# A small GitHub HTTPS request. Drop curl's own text so a
 	# failure does not echo the proxy URL.
 	if curl -sS -o /dev/null --connect-timeout 8 --max-time 20 \
 		--proxy "$url" --noproxy "$bypass" \
-		https://github.com/robots.txt
+		https://github.com/robots.txt 2>/dev/null
 	then
 		echo "Proxy test succeeded."
 		return 0
