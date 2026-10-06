@@ -8,6 +8,9 @@ set -eu
 
 STATE=/run/zlyme-wine
 TMPFS_SIZE=1024k
+WINE_PE=/usr/lib/wine-amd64/lib/wine
+# Bump when the shipped PE trees change. A matching stamp skips the copy.
+PE_SEED="wine-11.6-amd64-wow64"
 
 log() {
 	echo "zlyme-wine-prefix: $*" >&2
@@ -54,6 +57,82 @@ link_devices() {
 	ln -sfn / "$dos/z:"
 }
 
+# exFAT cannot store the symlinks wineboot uses for builtin DLLs, and
+# its copy is partial: syswow64 can lack user32.dll and the rest of the
+# 32-bit import closure. A 32-bit GUI then dies with c0000135. Copy any
+# missing PE builtin into system32 and syswow64. Existing files stay.
+seed_dir() {
+	src=$1
+	dst=$2
+	[ -d "$src" ] || return 0
+	mkdir -p "$dst"
+	list=$(mktemp)
+	ls "$src" >"$list" || {
+		rm -f "$list"
+		return 1
+	}
+	while IFS= read -r base; do
+		[ -n "$base" ] || continue
+		[ -f "$src/$base" ] || continue
+		[ -e "$dst/$base" ] && continue
+		cp -f "$src/$base" "$dst/$base" || {
+			rm -f "$list"
+			return 1
+		}
+	done <"$list"
+	rm -f "$list"
+}
+
+seed_builtins() {
+	prefix=$1
+	stamp="$prefix/.zlyme-pe-seed"
+	if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$PE_SEED" ]; then
+		return 0
+	fi
+	seed_dir "$WINE_PE/x86_64-windows" "$prefix/drive_c/windows/system32" || return 1
+	seed_dir "$WINE_PE/i386-windows" "$prefix/drive_c/windows/syswow64" || return 1
+	seed_winsxs "$prefix" || return 1
+	printf '%s\n' "$PE_SEED" >"$stamp"
+}
+
+# wineboot writes the x86 common-controls manifest, then symlinks
+# comctl32.dll into winsxs. exFAT drops the symlink, so the directory
+# never appears and a 32-bit GUI fails with c0000135. Copy the builtin
+# next to any x86 manifest that does not already have its file, and
+# create the common-controls assembly before the first wineboot.
+seed_winsxs() {
+	prefix=$1
+	winsxs="$prefix/drive_c/windows/winsxs"
+	src="$WINE_PE/i386-windows"
+	asm="x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef"
+	if [ -f "$src/comctl32.dll" ]; then
+		mkdir -p "$winsxs/$asm"
+		if [ ! -f "$winsxs/$asm/comctl32.dll" ]; then
+			cp -f "$src/comctl32.dll" "$winsxs/$asm/comctl32.dll" || return 1
+		fi
+	fi
+	man="$winsxs/manifests"
+	[ -d "$man" ] || return 0
+	for manifest in "$man"/x86_*.manifest; do
+		[ -f "$manifest" ] || continue
+		name=$(basename "$manifest" .manifest)
+		dest="$winsxs/$name"
+		mkdir -p "$dest"
+		list=$(mktemp)
+		sed -n 's/.*<file name="\([^"]*\)".*/\1/p' "$manifest" >"$list"
+		while IFS= read -r dll; do
+			[ -n "$dll" ] || continue
+			[ -f "$dest/$dll" ] && continue
+			[ -f "$src/$dll" ] || continue
+			cp -f "$src/$dll" "$dest/$dll" || {
+				rm -f "$list"
+				return 1
+			}
+		done <"$list"
+		rm -f "$list"
+	done
+}
+
 holders() {
 	dos=$1
 	prefix=$2
@@ -98,7 +177,10 @@ quiesce() {
 prepare_cmd() {
 	prefix=$(prefix_dir)
 	dos=$(dosdevices_dir)
-	mkdir -p "$prefix" "$dos" "$STATE"
+	# c: is a symlink to drive_c. Create the directory first. A dangling
+	# symlink makes wineboot fail with ERROR_PATH_NOT_FOUND on C:\windows.
+	mkdir -p "$prefix/drive_c" "$dos" "$STATE"
+	seed_builtins "$prefix" || return 1
 	printf '%s\n' "$prefix" > "$STATE/prefix"
 	if mounted_at "$dos"; then
 		if ! owned_tmpfs "$dos"; then
