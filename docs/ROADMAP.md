@@ -1942,7 +1942,7 @@ Proxy lives at Settings → Network → Proxy: Off/On, HTTP or SOCKS5, host, por
 
 The updater may download and reinstall the running release. The same `zlymeNN.M` warns and still allows it. An available root SHA-256 that equals the installed `/boot/zlyme` says the exact firmware is already installed and still allows a deliberate redownload. Delta selection stays the existing `from_sha256` match. Filename and date heuristics are not the decision when the release metadata is present.
 
-Release notes show the full body in a scrolling view: Up/Down, L1/R1 page, B back. A short OTA preamble stays outside that body. Empty notes and notes the metadata fallback could not retrieve are different sentences.
+Release notes show the release body in a scrolling view, with NextUI's normal button hints. B goes back, Up and Down scroll a line, and L1 and R1 scroll a page. Empty notes and notes the metadata fallback could not retrieve are different sentences.
 
 GitHub Actions keeps the full build log artifact. The job console streams Buildroot `>>>` lifecycle lines and useful error lines while the build is running. The filter does not replace the build's exit status. The staged ccache, timeout, and retry behavior stay as they are.
 

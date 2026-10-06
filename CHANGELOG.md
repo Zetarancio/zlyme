@@ -16,7 +16,7 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 
 - Settings stays the first Tools entry. The name on screen is still Settings.
 - Update can download the release you are already running. It says when the version matches, and when the firmware file itself matches, and it still lets you reinstall.
-- Release notes scroll. A release with no notes is not the same message as notes that could not be fetched.
+- Release notes scroll, with the usual button hints. A release with no notes is not the same message as notes that could not be fetched.
 
 ### Fixed
 
