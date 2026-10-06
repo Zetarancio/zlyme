@@ -205,7 +205,7 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 
 | Role | Remote | Revision | Used for |
 | --- | --- | --- | --- |
-| NextUI fork | `Zetarancio/NextUI` | `70344ade993c4c5e64f7a2e7ff719474d088f470` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
+| NextUI fork | `Zetarancio/NextUI` | `d219e67c6456377cf3637ddbd7574508772caf6b` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
 | NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
 | ROCKNIX | `ROCKNIX/distribution` `next` | `a55d58a1209b35e287dd55a3aad67a5543b467ce` | carries gpSP `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the `package/emulators/libretro-gpsp` pin |
 | KNULLI | `knulli-cfw/knulli-linux` `knulli-main` | `6a23957a19a1df18989ac6aa5e9fff003ae611ed` | carries the older gpSP `d6decfa3`; compared, not adopted |
