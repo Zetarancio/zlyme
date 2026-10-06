@@ -1,7 +1,9 @@
 # Locally computed. A mismatch fails the Buildroot download.
 sha256  8570d046e96dffdca9ffd0005bc9da1bdf7a617d2a47e58e150cc415ebf9dcdd  libretro-mkxp-z-650cb0888a07d0b5044e131160ddfa53feaf595b-git4.tar.gz
 sha256  0507679dff16814b74516cd969a9b16d2ced1347388024bc7966264648c78bfb  wasi-sdk-30.0-x86_64-linux.tar.gz
+sha256  6f2977942308d91b0123978da3c6a0d6fce780994b3b020008c617e26764ea40  wasi-sdk-30.0-arm64-linux.tar.gz
 sha256  e959f2170af4c20c552e9de3a0253704d6a9d2766e8fdb88e4d6ac4bae9388fe  binaryen-version_123-x86_64-linux.tar.gz
+sha256  4b6bd61ba6cd3b18c993b4657d93426c782f9b91b74be0d38018cd8be1319376  binaryen-version_123-aarch64-linux.tar.gz
 sha256  6d650d880522555321c88400718fa44030309d765e0603ee3e1bd620d24f6e6b  v3_3_10.tar.gz
 sha256  36aa73bacb91a33bdcebab0473ca1779ce608205a8ba20774ac67b5e753a575e  1.0.37.tar.gz
 sha256  fa240dbf262be053f3898006d502d514936c818e422afdcf33921c63bed9bf2e  0.2.5.tar.gz
