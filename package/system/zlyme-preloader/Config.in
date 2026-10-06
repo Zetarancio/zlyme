@@ -1,0 +1,11 @@
+config BR2_PACKAGE_ZLYME_PRELOADER
+	bool "zlyme preloader recovery"
+	depends on BR2_ZLYME_DEVICE_MY355
+	select BR2_PACKAGE_MTD
+	select BR2_PACKAGE_MTD_FLASH_ERASE
+	select BR2_PACKAGE_MTD_NANDWRITE
+	select BR2_PACKAGE_MTD_MTDINFO
+	select BR2_PACKAGE_PYTHON3
+	help
+	  Fail-closed restore and erase for the Flip preloader.
+	  The Tools pak calls zlyme-preloader. It does not run at boot.

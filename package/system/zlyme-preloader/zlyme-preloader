@@ -1,0 +1,271 @@
+#!/bin/sh
+# Fail-closed preloader recovery for the Miyoo Flip running Zlyme.
+#
+# Zlyme's kernel exports one SPI NAND partition, label "preloader",
+# 0x0 size 0x200000 (board/my355/linux/dts/.../rk3566-miyoo-flip.dts).
+# That is mtd0. Stock's apommel installer instead sees "spl" as mtd5
+# because it runs on stock. This tool does not retarget mtd5.
+#
+# ZLYME_PRELOADER_TEST=1 reads a fixture tree at ZLYME_PRELOADER_ROOT
+# and never opens a real /dev/mtd node. The Tools pak does not set it.
+
+set -eu
+
+SIZE=2097152
+ERASE=131072
+WRITE=2048
+OOB=64
+MIN_BATTERY=25
+IMAGE_PY=/usr/lib/zlyme/preloader_image.py
+
+TEST=${ZLYME_PRELOADER_TEST:-0}
+ROOT=${ZLYME_PRELOADER_ROOT:-}
+
+log() { printf 'zlyme-preloader: %s\n' "$*" >&2; }
+die() { log "$*"; exit 1; }
+
+if [ "$TEST" = 1 ]; then
+	[ -n "$ROOT" ] && [ -d "$ROOT" ] || die "fixture root is missing"
+	IMAGE_PY=${ZLYME_PRELOADER_IMAGE_PY:-$IMAGE_PY}
+fi
+
+p() {
+	if [ "$TEST" = 1 ]; then
+		printf '%s%s' "$ROOT" "$1"
+	else
+		printf '%s' "$1"
+	fi
+}
+
+act() {
+	if [ "$TEST" = 1 ]; then
+		printf '%s\n' "$*" >> "$ROOT/actions.log"
+	fi
+}
+
+need_tool() {
+	command -v "$1" >/dev/null 2>&1 || die "missing $1"
+}
+
+read_text() {
+	# Device-tree files are NUL-terminated.
+	tr -d '\000' < "$(p "$1")"
+}
+
+identity() {
+	conf=$(p /usr/share/zlyme/device.conf)
+	[ -r "$conf" ] || die "device.conf is missing"
+	# shellcheck disable=SC1090
+	. "$conf"
+	[ "${ZLYME_DEVICE_ID:-}" = "my355" ] || die "platform is not my355"
+	model=$(read_text /proc/device-tree/model)
+	[ "$model" = "Miyoo Flip" ] || die "model is not Miyoo Flip"
+	comp=$(read_text /proc/device-tree/compatible | tr '\n' ' ')
+	case "$comp" in
+		*miyoo,flip*) ;;
+		*) die "compatible does not include miyoo,flip" ;;
+	esac
+	case "$comp" in
+		*rockchip,rk3566*) ;;
+		*) die "compatible does not include rockchip,rk3566" ;;
+	esac
+}
+
+# Prints the device node, /dev/mtd0, after the partition checks.
+mtd_node() {
+	table=$(p /proc/mtd)
+	[ -r "$table" ] || die "no mtd table"
+	# One data line. Header is "dev:".
+	data=$(awk 'NR>1 && NF { print }' "$table")
+	[ -n "$data" ] || die "no mtd partitions"
+	lines=$(printf '%s\n' "$data" | wc -l | tr -d ' ')
+	[ "$lines" = "1" ] || die "expected one mtd partition, found $lines"
+	# mtd0: 00200000 00020000 "preloader"
+	set -- $data
+	dev=$1
+	sz=$2
+	er=$3
+	name=$4
+	dev=${dev%:}
+	name=$(printf '%s' "$name" | tr -d '"')
+	[ "$dev" = "mtd0" ] || die "preloader is not mtd0"
+	[ "$name" = "preloader" ] || die "mtd0 is not named preloader"
+	[ "$sz" = "00200000" ] || die "proc size is not 2 MiB"
+	[ "$er" = "00020000" ] || die "proc erase size is not 128 KiB"
+	sys=$(p /sys/class/mtd/mtd0)
+	[ "$(cat "$sys/name")" = "preloader" ] || die "sysfs name is not preloader"
+	[ "$(cat "$sys/type")" = "nand" ] || die "mtd type is not nand"
+	[ "$(cat "$sys/size")" = "$SIZE" ] || die "sysfs size is not $SIZE"
+	[ "$(cat "$sys/erasesize")" = "$ERASE" ] || die "erase size is not $ERASE"
+	[ "$(cat "$sys/writesize")" = "$WRITE" ] || die "write size is not $WRITE"
+	[ "$(cat "$sys/oobsize")" = "$OOB" ] || die "oob size is not $OOB"
+	[ "$(cat "$sys/bad_blocks")" = "0" ] || die "preloader has bad blocks"
+	printf '%s\n' /dev/mtd0
+}
+
+power_ok() {
+	capf=$(p /sys/class/power_supply/battery/capacity)
+	[ -r "$capf" ] || die "battery capacity is unreadable"
+	cap=$(cat "$capf")
+	case "$cap" in
+		*[!0-9]*) die "battery capacity is not a number" ;;
+	esac
+	ac=0
+	dir=$(p /sys/class/power_supply)
+	for s in "$dir"/*/online; do
+		[ -r "$s" ] || continue
+		[ "$(cat "$s")" = "1" ] && ac=1
+	done
+	if [ "$cap" -lt "$MIN_BATTERY" ] && [ "$ac" != "1" ]; then
+		die "battery ${cap}% and no charger"
+	fi
+	log "battery ${cap}%, charger $ac"
+}
+
+validate_image() {
+	img=$1
+	[ -f "$img" ] || die "no image $img"
+	[ "$(wc -c < "$img" | tr -d ' ')" = "$SIZE" ] || die "image size is not $SIZE"
+	need_tool python3
+	python3 "$IMAGE_PY" "$img" || die "image structure refused"
+}
+
+sha_file() {
+	sha256sum "$1" | awk '{print $1}'
+}
+
+boot_dir() {
+	if [ "$TEST" = 1 ]; then
+		printf '%s\n' "$ROOT/boot"
+	else
+		printf '%s\n' /boot
+	fi
+}
+
+current_dir() {
+	if [ "$TEST" = 1 ]; then
+		printf '%s\n' "$ROOT/storage/.config/zlyme/preloader-backups"
+	else
+		printf '%s\n' /storage/.config/zlyme/preloader-backups
+	fi
+}
+
+# Prints the one original backup path.
+find_original() {
+	dir=$(boot_dir)
+	[ -d "$dir" ] || die "boot directory is missing"
+	set -- "$dir"/mtd5-original-*.img
+	if [ ! -e "$1" ]; then
+		die "no original preloader backup"
+	fi
+	if [ "$#" -ne 1 ]; then
+		die "more than one original preloader backup"
+	fi
+	base=$(basename "$1")
+	want=${base#mtd5-original-}
+	want=${want%.img}
+	[ "$base" != "$want" ] || die "backup name is not mtd5-original-<sha256>.img"
+	[ "${#want}" -eq 64 ] || die "backup name is not mtd5-original-<sha256>.img"
+	case "$want" in
+		*[!0-9a-f]*) die "backup name is not mtd5-original-<sha256>.img" ;;
+	esac
+	got=$(sha_file "$1")
+	[ "$want" = "$got" ] || die "backup filename hash does not match the file"
+	validate_image "$1"
+	printf '%s\n' "$1"
+}
+
+read_live() {
+	out=$1
+	if [ "$TEST" = 1 ]; then
+		cp "$(p /live/preloader.img)" "$out" || die "could not read fixture preloader"
+	else
+		dd if="${DEV}ro" of="$out" bs="$WRITE" status=none || die "could not read preloader"
+	fi
+	[ "$(wc -c < "$out" | tr -d ' ')" = "$SIZE" ] || die "live preloader size is not $SIZE"
+}
+
+save_current() {
+	dir=$(current_dir)
+	mkdir -p "$dir" || die "could not create the current-backup directory"
+	tmp=$(mktemp)
+	read_live "$tmp"
+	sum=$(sha_file "$tmp")
+	dest="$dir/preloader-current-$sum.img"
+	cp "$tmp" "$dest" || { rm -f "$tmp"; die "could not write the current backup"; }
+	sync
+	[ "$(sha_file "$dest")" = "$sum" ] || { rm -f "$tmp"; die "current backup did not verify"; }
+	rm -f "$tmp"
+	act "CURRENT_BACKUP $dest"
+	log "current preloader saved as $dest"
+}
+
+require_tools() {
+	need_tool flash_erase
+	need_tool nandwrite
+	need_tool mtdinfo
+	need_tool dd
+	need_tool sha256sum
+}
+
+prepare() {
+	identity
+	DEV=$(mtd_node)
+	power_ok
+	require_tools
+	act "GATES $DEV"
+}
+
+read_back_matches() {
+	want=$1
+	tmp=$(mktemp)
+	read_live "$tmp"
+	got=$(sha_file "$tmp")
+	rm -f "$tmp"
+	[ "$got" = "$want" ]
+}
+
+cmd_status() {
+	prepare
+	log "preloader $DEV size $SIZE erase $ERASE"
+	if orig=$(find_original 2>/tmp/zlyme-preloader-find.err); then
+		log "original backup $orig"
+	else
+		log "original backup: $(cat /tmp/zlyme-preloader-find.err)"
+	fi
+	rm -f /tmp/zlyme-preloader-find.err
+}
+
+cmd_restore() {
+	prepare
+	orig=$(find_original)
+	want=$(sha_file "$orig")
+	save_current
+	act "CMD flash_erase $DEV 0 0"
+	flash_erase "$DEV" 0 0 || die "flash_erase failed"
+	act "CMD nandwrite -p $DEV $orig"
+	nandwrite -p "$DEV" "$orig" || die "nandwrite failed"
+	read_back_matches "$want" || die "readback mismatch"
+	act "READBACK ok"
+	log "restored original preloader"
+}
+
+cmd_erase() {
+	prepare
+	save_current
+	act "CMD flash_erase $DEV 0 0"
+	flash_erase "$DEV" 0 0 || die "flash_erase failed"
+	act "ERASE ok"
+	log "preloader erased; the next power-on is expected to enter MASKROM"
+	log "Zlyme will not reboot"
+}
+
+case "${1:-}" in
+	status) cmd_status ;;
+	restore) cmd_restore ;;
+	erase-maskrom) cmd_erase ;;
+	*)
+		log "usage: zlyme-preloader status|restore|erase-maskrom"
+		exit 2
+		;;
+esac
