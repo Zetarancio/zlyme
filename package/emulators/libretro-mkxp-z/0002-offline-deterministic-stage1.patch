@@ -1,5 +1,5 @@
 --- a/libretro/Makefile	2026-10-06 11:48:50.919257027 +0200
-+++ b/libretro/Makefile	2026-10-06 12:35:47.547978752 +0200
++++ b/libretro/Makefile	2026-10-06 13:06:33.634414662 +0200
 @@ -14,7 +14,6 @@
  CTAGS ?= ctags
  RUBY ?= ruby
@@ -23,7 +23,7 @@
  	cp $^ $(LIBDIR)/preload/
 -	cd $(LIBDIR)/preload && $(ZIP) -r $@ *
 +	find $(LIBDIR)/preload -exec touch -d @0 {} +
-+	cd $(LIBDIR)/preload && $(ZIP) -X -r $@ *
++	cd $(LIBDIR)/preload && find . ! -type d | LC_ALL=C sort | $(ZIP) -X -q -@ $@
  	rm -r $(LIBDIR)/preload
  
  # Ruby (targets WASI)
@@ -45,7 +45,7 @@
  	rm -f $(OUTDIR)/dist.zip
 -	cd $(LIBDIR)/_Dist && $(ZIP) -r $(OUTDIR)/dist.zip *
 +	find $(LIBDIR)/_Dist -exec touch -d @0 {} +
-+	cd $(LIBDIR)/_Dist && $(ZIP) -X -r $(OUTDIR)/dist.zip *
++	cd $(LIBDIR)/_Dist && find . ! -type d | LC_ALL=C sort | $(ZIP) -X -q -@ $(OUTDIR)/dist.zip
  	rm -r $(LIBDIR)/_Dist
  
  $(LIBDIR)/Dist/bin/ruby: $(RUBY_SRC)/Makefile ruby-bindings.h
