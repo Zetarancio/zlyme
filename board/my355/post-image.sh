@@ -115,6 +115,9 @@ fi
 [ -s "${BINARIES_DIR}/progress.anim" ] ||
 	{ echo "post-image: progress.anim is missing (rasterize branding, rebuild zlyme-initramfs)" >&2
 	  exit 1; }
+[ -s "${BINARIES_DIR}/miyoo355_fw.img" ] ||
+	{ echo "post-image: miyoo355_fw.img is missing (my355-fw-installer)" >&2
+	  exit 1; }
 
 sq_bytes=$(wc -c < "${BINARIES_DIR}/zlyme")
 echo "post-image: squashfs ${sq_bytes} bytes as FAT file zlyme on 1300M ZLYMEBOOT"

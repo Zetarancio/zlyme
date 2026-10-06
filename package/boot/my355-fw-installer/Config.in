@@ -1,0 +1,7 @@
+config BR2_PACKAGE_MY355_FW_INSTALLER
+	bool "my355 stock preloader installer image"
+	default y if BR2_ZLYME_DEVICE_MY355
+	help
+	  Build miyoo355_fw.img from a pinned apommel/baseos-my355
+	  revision. Stock firmware runs this installer. It is not a
+	  preloader binary and it is not installed into the rootfs.

@@ -1,1 +1,2 @@
 source "$BR2_EXTERNAL_ZLYME_PATH/package/boot/zlyme-initramfs/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/boot/my355-fw-installer/Config.in"
