@@ -1,0 +1,90 @@
+--- a/src/core.cpp	2026-10-06 10:41:58.379662617 +0200
++++ b/src/core.cpp	2026-10-06 10:41:58.379849914 +0200
+@@ -849,6 +849,55 @@
+     }
+ }
+ 
++
++struct GameRootCount {
++    int dirs;
++    char name[256];
++};
++
++/* Game.ini or Data/Scripts.rxdata marks a project root. */
++static bool game_marker_at(const std::string &root) {
++    if (PHYSFS_exists((root + "/Game.ini").c_str())) {
++        return true;
++    }
++    return PHYSFS_exists((root + "/Data/Scripts.rxdata").c_str()) != 0;
++}
++
++/* One level of /Game. A second directory, or a name that does not fit,
++ * makes the archive ambiguous and leaves it unchanged. */
++static PHYSFS_EnumerateCallbackResult count_game_root(void *data, const char *origdir, const char *fname) {
++    (void)origdir;
++    GameRootCount *st = static_cast<GameRootCount *>(data);
++    if (fname == nullptr || fname[0] == '\0' || fname[0] == '.') {
++        return PHYSFS_ENUM_OK;
++    }
++    PHYSFS_Stat stat;
++    std::string path = std::string("/Game/") + fname;
++    if (!PHYSFS_stat(path.c_str(), &stat) || stat.filetype != PHYSFS_FILETYPE_DIRECTORY) {
++        return PHYSFS_ENUM_OK;
++    }
++    st->dirs++;
++    if (st->dirs == 1) {
++        size_t n = std::strlen(fname);
++        if (n == 0 || n >= sizeof st->name) {
++            st->dirs = 2;
++            return PHYSFS_ENUM_STOP;
++        }
++        std::memcpy(st->name, fname, n + 1);
++    }
++    if (st->dirs > 1) {
++        return PHYSFS_ENUM_STOP;
++    }
++    return PHYSFS_ENUM_OK;
++}
++
++static bool archive_game_path(const std::string &lower) {
++    auto ends = [&](const char *ext, size_t n) {
++        return lower.length() >= n && std::strcmp(lower.c_str() + (lower.length() - n), ext) == 0;
++    };
++    return ends(".mkxpz", sizeof ".mkxpz" - 1) || ends(".zip", sizeof ".zip" - 1) || ends(".7z", sizeof ".7z" - 1);
++}
++
+ static bool init_sandbox() {
+     deinit_sandbox();
+ 
+@@ -991,6 +1040,21 @@
+             return false;
+         }
+ 
++        /* Archive root stays mounted when it already contains the project.
++         * One wrapper directory is promoted with PHYSFS_setRoot. Anything
++         * else, including a failed setRoot, keeps the mount and fails later
++         * the same way a missing Game.ini always has. */
++        if (archive_game_path(parsed_game_path_lower) && !game_marker_at("/Game")) {
++            GameRootCount counted{};
++            if (PHYSFS_enumerate("/Game", count_game_root, &counted) != 0 && counted.dirs == 1) {
++                std::string wrapped = std::string("/Game/") + counted.name;
++                if (game_marker_at(wrapped)) {
++                    std::string sub = std::string("/") + counted.name;
++                    PHYSFS_setRoot(parsed_game_path.c_str(), sub.c_str());
++                }
++            }
++        }
++
+         conf.emplace();
+         set_core_options(*conf, preload_scripts, postload_scripts);
+ 
+@@ -1275,7 +1339,8 @@
+                     output.resize(output_length);
+                 }
+ 
+-                save_path_subdir.append("/mkxp-z/Saves/");
++                // The libretro save directory is already the per-system folder.
++                save_path_subdir.append("/Saves/");
+                 save_path_subdir.append(output.data(), output_length);
+             }
+ 
