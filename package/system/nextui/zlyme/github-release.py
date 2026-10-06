@@ -250,7 +250,67 @@ def scrape_html(repo):
         )
     if not any(is_legacy_full_tar(a["name"]) or a["name"] == MANIFEST_NAME for a in assets):
         return None
-    return {"tag_name": tag, "assets": assets, "prerelease": True, "body": ""}
+    return {
+        "tag_name": tag,
+        "assets": assets,
+        "prerelease": True,
+        "body": "",
+        "body_status": "unavailable",
+    }
+
+
+_VERSION_TOKEN = re.compile(r"zlyme[0-9]+(?:\.[0-9]+)?")
+
+
+def version_token(text):
+    match = _VERSION_TOKEN.search(text or "")
+    return match.group(0) if match else ""
+
+
+def notes_status(rel):
+    """present, empty, or unavailable. Empty is not the fallback failure."""
+    if rel.get("body_status") == "unavailable":
+        return "unavailable"
+    body = rel.get("body")
+    if body is None or not str(body).strip():
+        return "empty"
+    return "present"
+
+
+def installed_version_text():
+    override = os.environ.get("ZLYME_INSTALLED_VERSION")
+    if override:
+        return override
+    try:
+        with open("/etc/os-release", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith("VERSION="):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return read_one("/usr/share/zlyme/version")
+
+
+def installed_root_sha():
+    override = os.environ.get("ZLYME_INSTALLED_ROOT")
+    if override:
+        return override.strip().lower()
+    if os.path.isfile("/boot/zlyme"):
+        return sha256_file("/boot/zlyme")
+    return ""
+
+
+def install_match(name, tag, target_root, installed_ver, installed_root):
+    """Classify only. Callers still allow a deliberate redownload."""
+    root = (target_root or "").strip().lower()
+    have = (installed_root or "").strip().lower()
+    if _HEX64.match(root) and _HEX64.match(have) and root == have:
+        return "exact-root"
+    avail = version_token(name) or version_token(tag)
+    inst = version_token(installed_ver)
+    if avail and inst and avail == inst:
+        return "same-version"
+    return "different"
 
 
 def emit_rel(rel, use_auth, tar_a=None, sha_a=None, extra=None):
@@ -284,6 +344,18 @@ def emit_rel(rel, use_auth, tar_a=None, sha_a=None, extra=None):
     sys.stdout.write("SHA_URL=%s\n" % (sha_a.get("browser_download_url") or ""))
     sys.stdout.write("SHA_ID=%s\n" % sha_id)
     sys.stdout.write("BODY_FILE=%s\n" % BODY_FILE)
+    sys.stdout.write("BODY_STATUS=%s\n" % notes_status(rel))
+    target_root = str((extra or {}).get("TARGET_ROOT_SHA256") or "")
+    sys.stdout.write(
+        "MATCH=%s\n"
+        % install_match(
+            name,
+            tag,
+            target_root,
+            installed_version_text(),
+            installed_root_sha(),
+        )
+    )
     for key, value in (extra or {}).items():
         sys.stdout.write("%s=%s\n" % (key, value))
 
