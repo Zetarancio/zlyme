@@ -1,0 +1,348 @@
+#!/bin/sh
+# Phase 11C: installer image, preloader gates, and apommel patcher parity.
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+PRE=$ROOT/package/system/zlyme-preloader/zlyme-preloader
+PY=$ROOT/package/system/zlyme-preloader/preloader_image.py
+GEN=$ROOT/board/my355/genimage.cfg
+POST=$ROOT/board/my355/post-image.sh
+TAR=$ROOT/board/my355/make-update-tar.sh
+DEF=$ROOT/configs/zlyme_my355_defconfig
+fail() { echo "phase11c: $*" >&2; exit 1; }
+
+[ -x "$PRE" ] || fail "backend is not executable"
+grep -q 'miyoo355_fw.img' "$GEN" || fail "genimage does not list the installer"
+grep -q 'miyoo355_fw.img' "$POST" || fail "post-image does not require the installer"
+if grep -q 'miyoo355_fw.img' "$TAR"; then
+	fail "OTA packer must not ship the installer"
+fi
+grep -q 'BR2_PACKAGE_MY355_FW_INSTALLER=y' "$DEF" || fail "installer package is off"
+grep -q 'BR2_PACKAGE_ZLYME_PRELOADER=y' "$DEF" || fail "recovery package is off"
+grep -q 'BR2_PACKAGE_MTD_FLASH_ERASE=y' "$DEF" || fail "flash_erase is off"
+grep -q 'BR2_PACKAGE_MTD_NANDWRITE=y' "$DEF" || fail "nandwrite is off"
+grep -q 'BR2_PACKAGE_MTD_MTDINFO=y' "$DEF" || fail "mtdinfo is off"
+grep -q '# BR2_PACKAGE_MTD_NANDDUMP is not set' "$DEF" || fail "nanddump is not disabled"
+grep -q 'Cancel' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "ui has no cancel"
+grep -q 'ERASE PRELOADER TO MASKROM' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "erase confirmation text"
+grep -q 'RESTORE STOCK PRELOADER' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "restore confirmation text"
+# Cancel is the first menu line, which minui-list selects by default.
+awk '
+	/choose "Preloader Recovery"/ { p=1 }
+	p && /"Cancel"/ { print; exit }
+' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" | grep -q Cancel || fail "cancel is not the default"
+
+# --- installer bytes, when the pinned tree is available ---
+tree=${ZLYME_APOMMEL_TREE:-}
+if [ -z "$tree" ] && [ -d /tmp/apommel-tree ]; then
+	tree=$(echo /tmp/apommel-tree/baseos-my355-e09d37bb0f03c34e564d61bd02164f332d8515a8)
+fi
+if [ -n "$tree" ] && [ -f "$tree/tools/preloader-installer/mkfwimg.py" ]; then
+	a=$(mktemp)
+	b=$(mktemp)
+	python3 "$tree/tools/preloader-installer/mkfwimg.py" "$a" >/dev/null
+	python3 "$tree/tools/preloader-installer/mkfwimg.py" "$b" >/dev/null
+	ha=$(sha256sum "$a" | awk '{print $1}')
+	hb=$(sha256sum "$b" | awk '{print $1}')
+	[ "$ha" = "$hb" ] || fail "installer generations differ"
+	[ "$(wc -c < "$a" | tr -d ' ')" = "28672" ] || fail "installer size"
+	python3 - "$a" <<'PY'
+import sys
+p=open(sys.argv[1],"rb").read()
+head=p.split(b"\n", 2)
+assert head[0]==b"model:miyoo355", head[0]
+assert head[1]==b"version:baseos-preloader-1", head[1]
+PY
+	[ "$ha" = "39f8705c42c21a5d6af6b8133138e05e7fe26b46a4693e8c6ce65ba60dee6800" ] || fail "unexpected installer hash $ha"
+	if command -v xxd >/dev/null 2>&1 && [ -f "$tree/tests/make_preloader_fixture.py" ]; then
+		work=$(mktemp -d)
+		python3 "$tree/tests/make_preloader_fixture.py" "$work/fixture.img"
+		python3 "$tree/tools/mkpreloader.py" "$work/fixture.img" "$work/py.img" >/dev/null
+		AWK_SCRIPT="$tree/tools/preloader-installer/fdtpatch.awk" \
+			sh "$tree/tools/preloader-installer/patch-preloader.sh" \
+			"$work/fixture.img" "$work/sh.img" >/dev/null
+		cmp "$work/py.img" "$work/sh.img" || fail "patchers disagree"
+		if python3 "$tree/tools/mkpreloader.py" "$work/sh.img" "$work/again.img" >/dev/null 2>&1; then
+			fail "python patcher accepted an already-patched image"
+		fi
+		if AWK_SCRIPT="$tree/tools/preloader-installer/fdtpatch.awk" \
+			sh "$tree/tools/preloader-installer/patch-preloader.sh" \
+			"$work/sh.img" "$work/again.img" >/dev/null 2>&1; then
+			fail "shell patcher accepted an already-patched image"
+		fi
+		cp "$work/fixture.img" "$work/bad.img"
+		printf '\xde\xad' | dd of="$work/bad.img" bs=1 seek=140000 conv=notrunc status=none
+		if python3 "$tree/tools/mkpreloader.py" "$work/bad.img" "$work/nope.img" >/dev/null 2>&1; then
+			fail "python patcher accepted a corrupt image"
+		fi
+		if AWK_SCRIPT="$tree/tools/preloader-installer/fdtpatch.awk" \
+			sh "$tree/tools/preloader-installer/patch-preloader.sh" \
+			"$work/bad.img" "$work/nope.img" >/dev/null 2>&1; then
+			fail "shell patcher accepted a corrupt image"
+		fi
+		GOOD=$work/fixture.img
+		rm -rf "$work/py.img" "$work/sh.img" "$work/again.img" "$work/nope.img" "$work/bad.img"
+	else
+		fail "xxd or the apommel fixture generator is missing"
+	fi
+else
+	fail "pinned apommel tree is not available"
+fi
+
+# --- fixture runner ---
+BIN=$(mktemp -d)
+cat > "$BIN/flash_erase" <<'EOF'
+#!/bin/sh
+root=${ZLYME_PRELOADER_ROOT:?}
+printf 'flash_erase %s\n' "$*" >> "$root/actions.log"
+[ -f "$root/fail-erase" ] && exit 1
+exit 0
+EOF
+cat > "$BIN/nandwrite" <<'EOF'
+#!/bin/sh
+root=${ZLYME_PRELOADER_ROOT:?}
+printf 'nandwrite %s\n' "$*" >> "$root/actions.log"
+[ -f "$root/fail-nandwrite" ] && exit 1
+img=
+prev=
+for a in "$@"; do
+	if [ "$prev" = "-p" ]; then
+		:
+	fi
+	img=$a
+	prev=$a
+done
+cp "$img" "$root/live/preloader.img"
+if [ -f "$root/fail-readback" ]; then
+	python3 - "$root/live/preloader.img" <<'PY'
+import sys
+f=open(sys.argv[1],"r+b")
+f.seek(0)
+b=f.read(1)
+f.seek(0)
+f.write(bytes([(b[0] ^ 0xff)]))
+PY
+fi
+exit 0
+EOF
+cat > "$BIN/mtdinfo" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+cat > "$BIN/dd" <<'EOF'
+#!/bin/sh
+echo "real dd must not run in a fixture" >&2
+exit 99
+EOF
+chmod 0755 "$BIN"/*
+
+new_fix() {
+	fix=$(mktemp -d)
+	mkdir -p "$fix/usr/share/zlyme" "$fix/proc/device-tree" \
+		"$fix/sys/class/mtd/mtd0" "$fix/sys/class/power_supply/battery" \
+		"$fix/sys/class/power_supply/ac" "$fix/boot" "$fix/live" \
+		"$fix/storage/.config/zlyme/preloader-backups"
+	printf '%s\n' 'ZLYME_DEVICE_ID=my355' > "$fix/usr/share/zlyme/device.conf"
+	printf 'Miyoo Flip' > "$fix/proc/device-tree/model"
+	printf 'miyoo,flip\0rockchip,rk3566\0' > "$fix/proc/device-tree/compatible"
+	printf '%s\n' 'dev:    size   erasesize  name' > "$fix/proc/mtd"
+	printf '%s\n' 'mtd0: 00200000 00020000 "preloader"' >> "$fix/proc/mtd"
+	printf 'preloader' > "$fix/sys/class/mtd/mtd0/name"
+	printf 'nand' > "$fix/sys/class/mtd/mtd0/type"
+	printf '2097152' > "$fix/sys/class/mtd/mtd0/size"
+	printf '131072' > "$fix/sys/class/mtd/mtd0/erasesize"
+	printf '2048' > "$fix/sys/class/mtd/mtd0/writesize"
+	printf '64' > "$fix/sys/class/mtd/mtd0/oobsize"
+	printf '0' > "$fix/sys/class/mtd/mtd0/bad_blocks"
+	printf '80' > "$fix/sys/class/power_supply/battery/capacity"
+	printf '0' > "$fix/sys/class/power_supply/battery/online"
+	printf '0' > "$fix/sys/class/power_supply/ac/online"
+	cp "$GOOD" "$fix/live/preloader.img"
+	sum=$(sha256sum "$GOOD" | awk '{print $1}')
+	cp "$GOOD" "$fix/boot/mtd5-original-$sum.img"
+	: > "$fix/actions.log"
+	printf '%s\n' "$fix"
+}
+
+run() {
+	fix=$1
+	shift
+	set +e
+	ZLYME_PRELOADER_TEST=1 \
+	ZLYME_PRELOADER_ROOT="$fix" \
+	ZLYME_PRELOADER_IMAGE_PY="$PY" \
+	PATH="$BIN:$PATH" \
+		"$PRE" "$@" >"$fix/out" 2>"$fix/err"
+	rc=$?
+	set -e
+	printf '%s\n' "$rc"
+}
+
+no_cmd() {
+	fix=$1
+	if grep -q '^flash_erase \|^nandwrite ' "$fix/actions.log"; then
+		fail "$2 ran a destructive command"
+	fi
+}
+
+base=$(new_fix)
+rc=$(run "$base" status)
+[ "$rc" = "0" ] || fail "status rc=$rc $(cat "$base/err")"
+no_cmd "$base" status
+
+# wrong platform
+fix=$(new_fix)
+printf '%s\n' 'ZLYME_DEVICE_ID=other' > "$fix/usr/share/zlyme/device.conf"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong platform was accepted"
+no_cmd "$fix" "wrong platform"
+
+fix=$(new_fix)
+printf 'Other' > "$fix/proc/device-tree/model"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong model was accepted"
+no_cmd "$fix" "wrong model"
+
+fix=$(new_fix)
+printf '%s\n' 'dev:    size   erasesize  name' > "$fix/proc/mtd"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "missing partition was accepted"
+no_cmd "$fix" "missing partition"
+
+fix=$(new_fix)
+printf '%s\n' 'dev:    size   erasesize  name' > "$fix/proc/mtd"
+printf '%s\n' 'mtd5: 00200000 00020000 "spl"' >> "$fix/proc/mtd"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "spl/mtd5 was accepted"
+no_cmd "$fix" "spl not mtd0"
+
+fix=$(new_fix)
+printf '1048576' > "$fix/sys/class/mtd/mtd0/size"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong size was accepted"
+no_cmd "$fix" "wrong size"
+
+fix=$(new_fix)
+printf '65536' > "$fix/sys/class/mtd/mtd0/erasesize"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong geometry was accepted"
+no_cmd "$fix" "wrong geometry"
+
+fix=$(new_fix)
+printf '1' > "$fix/sys/class/mtd/mtd0/bad_blocks"
+rc=$(run "$fix" erase-maskrom)
+[ "$rc" != "0" ] || fail "bad blocks were accepted"
+no_cmd "$fix" "bad blocks"
+
+fix=$(new_fix)
+printf '10' > "$fix/sys/class/power_supply/battery/capacity"
+printf '0' > "$fix/sys/class/power_supply/ac/online"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "low battery was accepted"
+no_cmd "$fix" "low battery"
+
+fix=$(new_fix)
+printf '10' > "$fix/sys/class/power_supply/battery/capacity"
+printf '1' > "$fix/sys/class/power_supply/ac/online"
+rc=$(run "$fix" status)
+[ "$rc" = "0" ] || fail "charger did not allow low battery"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "missing backup was accepted"
+no_cmd "$fix" "missing backup"
+
+fix=$(new_fix)
+sum=$(sha256sum "$GOOD" | awk '{print $1}')
+cp "$GOOD" "$fix/boot/mtd5-original-$sum.img"
+cp "$GOOD" "$fix/boot/mtd5-original-${sum}.img.bak" 2>/dev/null || true
+# second distinct name that still matches the glob and exists
+cp "$GOOD" "$fix/boot/mtd5-original-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.img"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "ambiguous backups were accepted"
+no_cmd "$fix" "ambiguous backups"
+
+fix=$(new_fix)
+sum=$(sha256sum "$GOOD" | awk '{print $1}')
+cp "$GOOD" "$fix/boot/mtd5-original-${sum%?}0.img"
+rm -f "$fix"/boot/mtd5-original-"$sum".img
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong filename hash was accepted"
+no_cmd "$fix" "filename hash"
+
+fix=$(new_fix)
+sum=$(sha256sum "$GOOD" | awk '{print $1}')
+dd if=/dev/zero of="$fix/boot/mtd5-original-$sum.img" bs=2097152 count=1 status=none
+# filename hash will not match zeros; also size is wrong if we truncate
+rm -f "$fix"/boot/mtd5-original-"$sum".img
+printf 'short' > "$fix/boot/mtd5-original-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.img"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "short backup was accepted"
+no_cmd "$fix" "short backup"
+
+fix=$(new_fix)
+# corrupt the only backup's payload but keep the name hash wrong on purpose
+sum=$(sha256sum "$GOOD" | awk '{print $1}')
+cp "$GOOD" "$fix/boot/wrong-name.img"
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$GOOD" "$fix/boot/mtd5-original-$sum.img"
+printf '\x00\x00' | dd of="$fix/boot/mtd5-original-$sum.img" bs=1 seek=140000 conv=notrunc status=none
+# hash no longer matches the name, which is the first refusal
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "corrupt backup was accepted"
+no_cmd "$fix" "corrupt backup"
+
+fix=$(new_fix)
+rm -rf "$fix/storage"
+printf 'not-a-directory' > "$fix/storage"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "backup write failure was accepted"
+no_cmd "$fix" "current backup failure"
+
+fix=$(new_fix)
+: > "$fix/fail-erase"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "erase failure was accepted"
+grep -q '^flash_erase ' "$fix/actions.log" || fail "erase was not attempted"
+grep -q '^nandwrite ' "$fix/actions.log" && fail "nandwrite ran after erase failure"
+
+fix=$(new_fix)
+: > "$fix/fail-nandwrite"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "nandwrite failure was accepted"
+grep -q '^READBACK ok' "$fix/actions.log" && fail "readback claimed success"
+
+fix=$(new_fix)
+: > "$fix/fail-readback"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "readback mismatch was accepted"
+
+fix=$(new_fix)
+rc=$(run "$fix" restore)
+[ "$rc" = "0" ] || fail "restore failed: $(cat "$fix/err")"
+grep -q '^GATES /dev/mtd0' "$fix/actions.log" || fail "gates missing"
+grep -q '^CURRENT_BACKUP ' "$fix/actions.log" || fail "current backup missing"
+grep -q '^flash_erase /dev/mtd0 0 0' "$fix/actions.log" || fail "erase args"
+grep -q '^nandwrite -p /dev/mtd0 ' "$fix/actions.log" || fail "nandwrite args"
+# gates and current backup before the erase
+awk '
+	/^GATES / { g=NR }
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { e=NR }
+	END { exit !(g && c && e && g < c && c < e) }
+' "$fix/actions.log" || fail "destructive command ran before the gates"
+
+fix=$(new_fix)
+rc=$(run "$fix" erase-maskrom)
+[ "$rc" = "0" ] || fail "erase failed: $(cat "$fix/err")"
+grep -q '^flash_erase /dev/mtd0 0 0' "$fix/actions.log" || fail "maskrom erase missing"
+grep -q '^nandwrite ' "$fix/actions.log" && fail "erase-maskrom wrote an image"
+grep -q '^ERASE ok' "$fix/actions.log" || fail "erase did not record success"
+awk '
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { e=NR }
+	END { exit !(c && e && c < e) }
+' "$fix/actions.log" || fail "erase ran before the current backup"
+
+echo "phase11c: ok"
