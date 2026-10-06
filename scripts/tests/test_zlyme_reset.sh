@@ -55,6 +55,7 @@ printf '%s\n' 'on' > "$zlyme/merge"
 printf '%s\n' 'l2' > "$zlyme/undervolt"
 printf '%s\n' 'gain=70' > "$zlyme/miyoo-flip-gamepad/rumble.config"
 printf '%s\n' 'off' > "$zlyme/ssh"
+printf '%s\n' 'enabled=1' 'protocol=http' 'host=proxy.example' 'port=8080' > "$zlyme/proxy.conf"
 printf '%s\n' 'hostkey' > "$cfg/ssh/key"
 printf '%s\n' 'gzdoom-user' > "$shared/configs/gzdoom/gzdoom.ini"
 printf '%s\n' 'cart' > "$shared/Pico-8-native/cdata.p8"
@@ -72,6 +73,7 @@ printf '%s\n' 'pm' > "$cfg/PortMaster/control.txt"
 "$BIN" settings
 
 test ! -e "$zlyme/hdmi"
+test ! -e "$zlyme/proxy.conf"
 test ! -e "$zlyme/boost"
 test ! -e "$zlyme/merge"
 if grep -q 'apply-merge' "$work/apply.log"; then

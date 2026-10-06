@@ -144,6 +144,41 @@ static size_t curl_write_cb(void *ptr, size_t size, size_t nmemb, void *userdata
     return total;
 }
 
+/* Read zlyme-proxy curl-args. Empty proxy disables a stale environment. */
+static void ss_apply_zlyme_proxy(CURL *curl) {
+    FILE *fp;
+    char lines[4][300];
+    int n = 0;
+    int i;
+    const char *proxy = NULL;
+    const char *noproxy = NULL;
+
+    if (!curl)
+        return;
+    fp = popen("zlyme-proxy curl-args", "r");
+    if (!fp)
+        return;
+    while (n < 4 && fgets(lines[n], (int)sizeof lines[n], fp)) {
+        size_t len = strlen(lines[n]);
+        while (len > 0 && (lines[n][len - 1] == '\n' || lines[n][len - 1] == '\r'))
+            lines[n][--len] = '\0';
+        n++;
+    }
+    pclose(fp);
+    for (i = 0; i + 1 < n; i++) {
+        if (strcmp(lines[i], "--proxy") == 0)
+            proxy = lines[i + 1];
+        else if (strcmp(lines[i], "--noproxy") == 0)
+            noproxy = lines[i + 1];
+    }
+    if (proxy && proxy[0])
+        curl_easy_setopt(curl, CURLOPT_PROXY, proxy);
+    else
+        curl_easy_setopt(curl, CURLOPT_PROXY, "");
+    if (noproxy && noproxy[0])
+        curl_easy_setopt(curl, CURLOPT_NOPROXY, noproxy);
+}
+
 /* Perform a GET request with retries and exponential backoff.
  * Returns the HTTP response code, -1 on error, and -2 when cancelled. */
 static int http_get(const ss_client *client, const char *url, const char *user_agent,
@@ -171,6 +206,7 @@ static int http_get(const ss_client *client, const char *url, const char *user_a
     }
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    ss_apply_zlyme_proxy(curl);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, user_agent);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, out_buf);

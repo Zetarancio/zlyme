@@ -46,6 +46,22 @@ def ca_args():
     return ["--insecure"]
 
 
+def proxy_curl_args():
+    """argv from zlyme-proxy. A missing helper or a bad file means no proxy."""
+    try:
+        proc = subprocess.run(
+            ["zlyme-proxy", "curl-args"],
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return ["--noproxy", "*"]
+    if proc.returncode != 0:
+        return ["--noproxy", "*"]
+    args = [line.strip() for line in (proc.stdout or "").splitlines() if line.strip()]
+    return args or ["--noproxy", "*"]
+
+
 def curl_meta():
     return [
         "curl",
@@ -57,7 +73,7 @@ def curl_meta():
         "30",
         "-A",
         "zlyme-update",
-    ] + ca_args()
+    ] + proxy_curl_args() + ca_args()
 
 
 def http_get(url, dest, token=""):

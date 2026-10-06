@@ -23,6 +23,10 @@ reset_flags() {
 			rm -f "$zlyme/$n"
 		fi
 	done
+	# Proxy is one multi-field file, not a zlyme-ctl flag.
+	if [ -f "$zlyme/proxy.conf" ]; then
+		rm -f "$zlyme/proxy.conf"
+	fi
 }
 
 reset_ui() {

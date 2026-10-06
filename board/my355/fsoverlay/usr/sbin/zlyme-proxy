@@ -1,0 +1,247 @@
+#!/bin/sh
+# Application HTTP/SOCKS proxy for clients that honor it.
+#
+# Canonical file: /storage/.config/zlyme/proxy.conf
+#   enabled=0|1
+#   protocol=http|socks5
+#   host=
+#   port=
+# The file is data. It is never sourced. A malformed file produces no
+# proxy. SOCKS uses socks5h so the proxy resolves names. Local names
+# stay direct. There is no username or password in this version.
+#
+# ZLYME_PROXY_CONF overrides the path (host tests).
+
+set -eu
+
+conf=${ZLYME_PROXY_CONF:-/storage/.config/zlyme/proxy.conf}
+bypass='localhost,127.0.0.1,::1'
+
+enabled=0
+protocol=http
+host=
+port=
+valid=1
+
+is_host() {
+	h=$1
+	[ -n "$h" ] || return 1
+	[ "${#h}" -le 253 ] || return 1
+	case $h in
+	\[*\])
+		inner=${h#\[}
+		inner=${inner%\]}
+		[ -n "$inner" ] || return 1
+		case $inner in
+		*[!0-9A-Fa-f:.]*) return 1 ;;
+		esac
+		;;
+	*[!A-Za-z0-9._-]*) return 1 ;;
+	esac
+	return 0
+}
+
+is_port() {
+	p=$1
+	case $p in
+	''|*[!0-9]*) return 1 ;;
+	esac
+	n=$p
+	while [ "${n#0}" != "$n" ]; do
+		n=${n#0}
+	done
+	[ -n "$n" ] || n=0
+	[ "$n" -ge 1 ] && [ "$n" -le 65535 ]
+}
+
+normalize_enabled() {
+	case $1 in
+	1|on|true|yes) printf '1' ;;
+	0|off|false|no|'') printf '0' ;;
+	*) printf 'bad' ;;
+	esac
+}
+
+load_conf() {
+	enabled=0
+	protocol=http
+	host=
+	port=
+	valid=1
+	[ -f "$conf" ] || return 0
+	# A directory, or anything that is not a regular file, is not a config.
+	[ -f "$conf" ] || {
+		valid=0
+		enabled=0
+		return 0
+	}
+	while IFS= read -r line || [ -n "$line" ]; do
+		case $line in
+		''|\#*) continue ;;
+		esac
+		key=${line%%=*}
+		val=${line#*=}
+		case $key in
+		enabled) enabled=$val ;;
+		protocol) protocol=$val ;;
+		host) host=$val ;;
+		port) port=$val ;;
+		*) ;;
+		esac
+	done < "$conf"
+	en=$(normalize_enabled "$enabled")
+	if [ "$en" = bad ]; then
+		valid=0
+		enabled=0
+		case $protocol in
+		http|socks5) ;;
+		*) protocol=http ;;
+		esac
+		return 0
+	fi
+	enabled=$en
+	case $protocol in
+	http|socks5) ;;
+	*)
+		valid=0
+		enabled=0
+		protocol=http
+		return 0
+		;;
+	esac
+	if [ "$enabled" = 1 ]; then
+		if ! is_host "$host" || ! is_port "$port"; then
+			valid=0
+			enabled=0
+		fi
+	fi
+}
+
+proxy_url() {
+	load_conf
+	[ "$enabled" = 1 ] && [ "$valid" = 1 ] || return 1
+	case $protocol in
+	http) printf 'http://%s:%s' "$host" "$port" ;;
+	socks5) printf 'socks5h://%s:%s' "$host" "$port" ;;
+	*) return 1 ;;
+	esac
+}
+
+cmd_get() {
+	load_conf
+	printf 'enabled=%s\n' "$enabled"
+	printf 'protocol=%s\n' "$protocol"
+	printf 'host=%s\n' "$host"
+	printf 'port=%s\n' "$port"
+	printf 'valid=%s\n' "$valid"
+}
+
+cmd_env() {
+	url=$(proxy_url) || {
+		# Drop a proxy inherited from a parent. Emit no URL.
+		printf '%s\n' \
+			'unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY'
+		return 0
+	}
+	q=\'
+	printf "export http_proxy=%s%s%s\n" "$q" "$url" "$q"
+	printf "export https_proxy=%s%s%s\n" "$q" "$url" "$q"
+	printf "export HTTP_PROXY=%s%s%s\n" "$q" "$url" "$q"
+	printf "export HTTPS_PROXY=%s%s%s\n" "$q" "$url" "$q"
+	printf "export all_proxy=%s%s%s\n" "$q" "$url" "$q"
+	printf "export ALL_PROXY=%s%s%s\n" "$q" "$url" "$q"
+	printf "export no_proxy=%s%s%s\n" "$q" "$bypass" "$q"
+	printf "export NO_PROXY=%s%s%s\n" "$q" "$bypass" "$q"
+}
+
+cmd_curl_args() {
+	url=$(proxy_url) || {
+		printf '%s\n' '--noproxy' '*'
+		return 0
+	}
+	printf '%s\n' '--proxy' "$url" '--noproxy' "$bypass"
+}
+
+cmd_set() {
+	en=$(normalize_enabled "${1:-}")
+	proto=${2:-http}
+	h=${3:-}
+	p=${4:-}
+	if [ "$en" = bad ]; then
+		echo "Proxy enabled must be on or off." >&2
+		return 1
+	fi
+	case $proto in
+	http|socks5) ;;
+	*)
+		echo "Protocol must be HTTP or SOCKS5." >&2
+		return 1
+		;;
+	esac
+	if [ "$en" = 1 ]; then
+		if ! is_host "$h"; then
+			echo "Host is required." >&2
+			return 1
+		fi
+		if ! is_port "$p"; then
+			echo "Port must be 1-65535." >&2
+			return 1
+		fi
+	else
+		# Keep a previously typed host when turning the proxy off,
+		# but do not store a value the parser would reject later.
+		if [ -n "$h" ] && ! is_host "$h"; then
+			echo "Host is not valid." >&2
+			return 1
+		fi
+		if [ -n "$p" ] && ! is_port "$p"; then
+			echo "Port must be 1-65535." >&2
+			return 1
+		fi
+	fi
+	dir=$(dirname "$conf")
+	mkdir -p "$dir" || return 1
+	umask 077
+	tmp=$(mktemp "$dir/proxy.conf.XXXXXX") || return 1
+	# shellcheck disable=SC2064
+	trap "rm -f '$tmp'" EXIT HUP INT TERM
+	printf 'enabled=%s\nprotocol=%s\nhost=%s\nport=%s\n' "$en" "$proto" "$h" "$p" > "$tmp"
+	chmod 640 "$tmp" || return 1
+	mv -f "$tmp" "$conf"
+	trap - EXIT HUP INT TERM
+}
+
+cmd_test() {
+	url=$(proxy_url) || {
+		echo "Proxy is off or the configuration is invalid."
+		return 1
+	}
+	if ! command -v curl >/dev/null 2>&1; then
+		echo "Proxy test failed."
+		return 1
+	fi
+	# A small GitHub HTTPS request. Discard curl's own text so a
+	# failure does not echo the proxy URL.
+	if curl -sS -o /dev/null --connect-timeout 8 --max-time 20 \
+		--proxy "$url" --noproxy "$bypass" \
+		https://github.com/robots.txt
+	then
+		echo "Proxy test succeeded."
+		return 0
+	fi
+	echo "Proxy test failed."
+	return 1
+}
+
+usage() {
+	echo "usage: zlyme-proxy {get|env|curl-args|test|set ENABLED PROTOCOL HOST PORT}" >&2
+}
+
+case ${1:-} in
+get) cmd_get ;;
+env) cmd_env ;;
+curl-args) cmd_curl_args ;;
+test) cmd_test ;;
+set) shift; cmd_set "$@" ;;
+*) usage; exit 2 ;;
+esac

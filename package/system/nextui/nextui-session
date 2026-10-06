@@ -326,10 +326,21 @@ run_pak_cmd() {
 			pak_env='[ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh; '
 			;;
 	esac
+	# One launch boundary for every pak. The helper reads proxy.conf
+	# at this moment. Settings itself reads the file again per request,
+	# because this process is already running when the user edits it.
+	proxy_env=
+	if [ -x /usr/sbin/zlyme-proxy ]; then
+		proxy_env=$(/usr/sbin/zlyme-proxy env 2>/dev/null || true)
+		if [ -n "$proxy_env" ]; then
+			proxy_env="$proxy_env
+"
+		fi
+	fi
 	if [ "$LOGS_ON" = 1 ]; then
-		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" &
+		setsid sh -c "${pak_env}${proxy_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" &
 	else
-		setsid sh -c "${pak_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" >> "$SESSION_LOG" 2>&1 &
+		setsid sh -c "${pak_env}${proxy_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" >> "$SESSION_LOG" 2>&1 &
 	fi
 	_pak_pid=$!
 	_hk=
