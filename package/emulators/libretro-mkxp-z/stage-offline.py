@@ -97,6 +97,28 @@ def stage_wrap(src, dl, name, archive_name):
         apply_diffs(dest, filesdir, diffs.split(","))
 
 
+# Official tag v3_3_10 of ruby/ruby. mkxp-z reads the Ruby constant
+# RUBY_REVISION, which version.c defines as RUBY_FULL_REVISION. That
+# string is 40 hex digits, one byte per pair, for uint8_t ruby_revision[20].
+RUBY_TAG_COMMIT = "343ea050023cfc0374fdea6fdf625b2f57b716a4"
+RUBY_RELEASE_DATETIME = "2025-10-23T10:00:15Z"
+
+
+def write_ruby_revision(ruby):
+    if len(RUBY_TAG_COMMIT) != 40 or any(c not in "0123456789abcdef" for c in RUBY_TAG_COMMIT):
+        raise SystemExit("pinned Ruby revision is not 40 hex digits")
+    year, month, day = (2025, 10, 23)
+    text = (
+        f'#define RUBY_REVISION "{RUBY_TAG_COMMIT[:10]}"\n'
+        f'#define RUBY_FULL_REVISION "{RUBY_TAG_COMMIT}"\n'
+        f'#define RUBY_RELEASE_DATETIME "{RUBY_RELEASE_DATETIME}"\n'
+        f"#define RUBY_RELEASE_YEAR {year}\n"
+        f"#define RUBY_RELEASE_MONTH {month}\n"
+        f"#define RUBY_RELEASE_DAY {day}\n"
+    )
+    (ruby / "revision.h").write_text(text)
+
+
 def stage_host(src, dl, entries):
     libretro = src / "libretro"
     downloads = libretro / "build" / "downloads"
@@ -123,6 +145,9 @@ def stage_host(src, dl, entries):
     text = gc.read_text()
     if include not in text:
         gc.write_text(text + include)
+    # GitHub tag v3_3_10. mkxp reads the Ruby constant RUBY_REVISION, which
+    # is RUBY_FULL_REVISION: 40 hex characters, 20 bytes.
+    write_ruby_revision(ruby)
     guess = dl / by_role["host-guess"]
     sub = dl / by_role["host-sub"]
     tool = ruby / "tool"
