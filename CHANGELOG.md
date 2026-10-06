@@ -6,7 +6,17 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-Point release `zlyme44.1` on the `zlyme44` baseline. It is not published. The `zlyme44` notes below stay the description of the shipped release.
+Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. The unpublished `zlyme44.1` fixes stay listed here until that release is published. The `zlyme44` notes below stay the description of the shipped release.
+
+### Added
+
+- Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
+
+### Changed
+
+- Settings stays the first Tools entry. The name on screen is still Settings.
+- Update can download the release you are already running. It says when the version matches, and when the firmware file itself matches, and it still lets you reinstall.
+- Release notes scroll. A release with no notes is not the same message as notes that could not be fetched.
 
 ### Fixed
 

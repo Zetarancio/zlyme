@@ -88,6 +88,19 @@ Settings opens from Tools. When you leave it after a change that needs a restart
 
 SSH, Samba, and Syncthing apply immediately.
 
+### Proxy
+
+Settings → Network → Proxy is an application proxy for online services on a network that requires one. It is not a VPN, and it does not change how the Flip joins Wi-Fi.
+
+- **Proxy**: Off or On. Off is the default. Applications then connect directly.
+- **Protocol**: HTTP, or SOCKS5. SOCKS5 asks the proxy to resolve names.
+- **Host** and **Port**: the proxy address. There is no username or password.
+- **Test proxy**: a short HTTPS request to GitHub. It reports success or failure and does not print the address.
+
+Update, ZcrapeGoat, PortMaster, and other tools and games launched from the list use it when the program honors a normal HTTP, HTTPS, or SOCKS proxy. Wi-Fi association, DHCP, and arbitrary UDP (including Moonlight's game stream) do not.
+
+`localhost`, `127.0.0.1`, and `::1` stay direct. Turn Proxy off to stop using it. Reset Settings removes the saved proxy as well. Games, saves, and Wi-Fi networks stay.
+
 ### Game
 
 Besides its game options, this page holds cleanup actions. Each one counts what it would remove and asks before deleting.
@@ -124,7 +137,7 @@ Settings → System → Advanced:
 
 ### Update
 
-Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. What happens after the download is in the [README](../README.md#update).
+Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. **Notes** shows the whole release text. Up and Down scroll, L1 and R1 move a page, and B goes back. If the release has no notes, it says so. If the notes could not be fetched, it says they could not be retrieved. Those are different. If this version is already installed, or the exact firmware file is already on the card, the download asks before it starts and still lets you reinstall. What happens after the download is in the [README](../README.md#update).
 
 ## ZcrapeGoat
 

@@ -153,6 +153,7 @@ zlyme-storage       library mounts and library list        board overlay
 zlyme-update        OTA verify, stage, apply               board overlay
 zlyme-boot-write    one write transaction on /boot         board overlay
 zlyme-ctl           Settings and system flags, apply-*     board overlay
+zlyme-proxy         application HTTP/SOCKS proxy           board overlay
 zlyme-reset         Reset Settings and Factory Reset       board overlay
 zlyme-radios        radio stop and start around sleep      board overlay
 zlyme-input         InputPlumber ownership and order       zlyme-input package
@@ -161,7 +162,7 @@ zlyme-weston-run    per-launch Weston for one client       board overlay
 gpudriver           GPU stack selection at boot            gpudriver package
 ```
 
-Settings in the NextUI fork calls `zlyme-ctl`, `zlyme-reset`, and `zlyme-led`. NextUI's sleep path and `zlyme-keylidmon` call `zlyme-radios`. `nextui-session` calls `zlyme-input ensure`, `zlyme-drm-release`, and `zlyme-halt`. `S15gpudriver` calls `gpudriver`.
+Settings in the NextUI fork calls `zlyme-ctl`, `zlyme-proxy`, `zlyme-reset`, and `zlyme-led`. NextUI's sleep path and `zlyme-keylidmon` call `zlyme-radios`. `nextui-session` calls `zlyme-input ensure`, `zlyme-drm-release`, and `zlyme-halt`. `S15gpudriver` calls `gpudriver`.
 
 Speaker/headphone routing is not a command. The `zlyme-jackd` daemon owns it. `zlyme-audio` reports and selects the sink.
 
@@ -484,9 +485,9 @@ workspace/my355/
 
 Frontend behavior comes from the `Zetarancio/NextUI` fork at the exact commit pinned by `NEXTUI_VERSION` in `package/system/nextui/nextui.mk`. The fork records its LoveRetro base in `UPSTREAM`. `nextui.elf`, `settings.elf`, the `PWR_*` sleep path, the my355 platform code, and the Settings menus (GPU, Joysticks, update, reset) live in that fork, not in this repository. The Zlyme side is `package/system/nextui/`: `nextui-session`, the `zlyme/` helpers, and the stock PAKs. A frontend change is a fork commit plus a pin change. `docs/MAINTENANCE.md` describes that workflow.
 
-Settings stores Zlyme policy as one file per flag, `/storage/.config/zlyme/<name>`, through `zlyme-ctl get` and `set`. Init scripts read the same flags with `zlyme-ctl want`. An empty or missing file means the default in `zlyme-ctl`, which matches the `S15bootpart` seed.
+Settings stores Zlyme policy as one file per flag, `/storage/.config/zlyme/<name>`, through `zlyme-ctl get` and `set`. Init scripts read the same flags with `zlyme-ctl want`. An empty or missing file means the default in `zlyme-ctl`, which matches the `S15bootpart` seed. The application proxy is the exception: one file, `/storage/.config/zlyme/proxy.conf`, read and written by `zlyme-proxy`. The updater asks that helper on each request. `nextui-session` applies it to the environment of a pak at launch. It is not a transparent tunnel.
 
-Reset Settings runs `zlyme-reset settings`. It deletes an explicit list of Zlyme flags, the NextUI settings file, the timezone, and the Files (VTree) config. It then recreates the timezone and card defaults and asks the owning scripts to apply the restored defaults. Games, saves, Wi-Fi networks, and paired Bluetooth devices stay. Factory Reset runs `zlyme-reset factory`: the same reset plus a `factory-reset` marker, which makes the next `nextui-session` start overwrite the stock Tools and Emus PAKs on the card. Personal content stays.
+Reset Settings runs `zlyme-reset settings`. It deletes an explicit list of Zlyme flags, `proxy.conf`, the NextUI settings file, the timezone, and the Files (VTree) config. It then recreates the timezone and card defaults and asks the owning scripts to apply the restored defaults. Games, saves, Wi-Fi networks, and paired Bluetooth devices stay. Factory Reset runs `zlyme-reset factory`: the same reset plus a `factory-reset` marker, which makes the next `nextui-session` start overwrite the stock Tools and Emus PAKs on the card. Personal content stays.
 
 ## 12. Emulator model
 

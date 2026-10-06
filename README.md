@@ -64,7 +64,7 @@ Which BIOS copy wins, where new saves go, multi-disc playlists and box art are i
 
 ## Update
 
-**Settings → Update** checks the newest release on the channel you chose (Releases or Prereleases) and shows its notes. It downloads the update and queues it only after the SHA-256 matches. If your system exactly matches the base of a smaller delta update, it may grab that instead, rebuild a complete system image from it, and check that image too. Nothing on the running system changes until the reboot that installs it. Games, BIOS, saves and settings stay.
+**Settings → Update** checks the newest release on the channel you chose (Releases or Prereleases) and shows its notes, which scroll. It downloads the update and queues it only after the SHA-256 matches. If that version is already installed, or the card already has that exact firmware, it says so and still lets you download it again. If your system exactly matches the base of a smaller delta update, it may grab that instead, rebuild a complete system image from it, and check that image too. Nothing on the running system changes until the reboot that installs it. Games, BIOS, saves and settings stay.
 
 Doing it by hand: copy the full `zlyme-my355-<date>-<sha>.tar` from a release (not a delta) into `/storage/.update` and reboot.
 
@@ -90,7 +90,7 @@ Speaker and headphones switch by themselves. Bluetooth audio follows the headset
 
 ## Settings and Tools
 
-**Settings** is part of Zlyme's NextUI fork and opens from Tools. Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone and **Update** are in there. Hardware switches (GPU, ZRAM, USB OTG, HDMI, the second SD slot, system logs, CPU undervolt) sit under System → Advanced. Undervolt stays off unless you turn it on. Logs are off until you enable System → Advanced → System logs; then they go to `/storage/.logs`. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
+**Settings** is part of Zlyme's NextUI fork and opens from Tools. It is the first entry there. Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone and **Update** are in there. On a restricted network, Settings → Network → Proxy can send online services through an HTTP or SOCKS proxy. That is not a VPN. Hardware switches (GPU, ZRAM, USB OTG, HDMI, the second SD slot, system logs, CPU undervolt) sit under System → Advanced. Undervolt stays off unless you turn it on. Logs are off until you enable System → Advanced → System logs; then they go to `/storage/.logs`. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
 
 The community tools below were adapted to Zlyme's paths, controls and bundled binaries.
 
