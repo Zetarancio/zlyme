@@ -1966,6 +1966,14 @@ Wine's first 44.2 runtime is Kron4ek 11.6 `amd64-wow64` (vanilla), SHA-256 `0455
 
 Gate: one OTA. Check that OpenBOR no longer writes into the ROM directory, that MKXP-Z opens a root archive and a one-directory archive, and that Wine runs one 32-bit and one 64-bit program, keeps the prefix across a restart, and returns to NextUI. GL4ES and MIDI are not part of this check.
 
+Hardware-accepted on 2026-10-06. Zlyme source `cdf7f6f4fff73687c173f532e7cb05bdd9d23e67`. Root SHA-256 `80436cfe3e22637efe240d809fbcdd33c84fe3a735c869ea6f6cb25c6a9097e6`. Image version `zlyme44.2 (2026-10-06)`.
+
+OpenBOR launches, does not use the ROM directory as its working directory, and does not leave runtime files there. Return to NextUI still works.
+
+MKXP-Z visibly ran Knight Blade, a one-wrapper archive, and Legionwood Tale of the Two Swords, an archive-root project. That is the layout gate. It is not a claim that every RPG Maker game works. Knight Blade later asks for Standard RTP MIDI, and the WASI FluidSynth `stat` stub blocks that lookup. Witch's House ships an MP3 that libsndfile rejects. Some titles call Win32API functions the libretro sandbox does not provide. Missing-font warnings are not layout failures.
+
+Wine 11.6 `amd64-wow64` under Box64 `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` showed a visible window for `zlyme-notepad64.exe`, `zlyme-notepad32.exe`, and PuTTY x64. 64-bit and 32-bit `cmd.exe /c ver` both exited 0. The exFAT prefix stayed. The `dosdevices` tmpfs was mounted for the launch and gone afterward. NextUI returned with no leftover Weston, wineserver, or Box64. PuTTY x86 can hit an intermittent `c0000409` fast-fail. The 7-Zip 26.04 x86 installer can stay running without a window the maintainer can use. Neither of those is the base WoW64 GUI path. GL4ES, MIDI, DXVK, gamepad-to-mouse, and Box32 stay out of this phase. This does not accept the `zlyme44.2` product.
+
 ### 11C — Installation, preloader recovery, and the hardware wiki
 
 Stock-assisted preparation replaces the old user-facing apommel multiboot steps. `miyoo355_fw.img` is not a foreign preloader. Stock runs the installer. The installer reads that unit's preloader, patches the relevant `/pinctrl` data, backs up the original, verifies it, and writes the repaired image. Attribution to `apommel/baseos-my355` stays. Ship `miyoo355_fw.img` on `ZLYMEBOOT`. Generate it from pinned upstream source when that fits the build. Otherwise pin the exact artifact, version, hash, and provenance. Leaving the file on the boot FAT after a successful run is acceptable when stock ignores an already-patched unit. The README and the install guide retire multiboot as the recommended install.
