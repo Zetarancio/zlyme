@@ -8,7 +8,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Current phase
 
-Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65` (`zlyme44.1 (2026-10-05)`). `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` is the outstanding clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. No `zlyme44.2` implementation has started. `zlyme44.1-maintenance` stays at the accepted runtime SHA. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published.
+Phase 11 is underway. It is `zlyme44.2`: related user-facing fixes, separate commits, and a small number of OTA candidates. Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65` (`zlyme44.1 (2026-10-05)`). `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` is the outstanding clean-build and release gate for that release. Finishing that run is release administration, not unfinished Phase 10 implementation. The statement that no `zlyme44.2` work had started was the state at Phase 10 closure. Phase 11 is the work that follows it. `zlyme44.1-maintenance` stays frozen at the accepted runtime SHA. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. A `zlyme44.2` runtime is not hardware-accepted until the maintainer accepts it.
 
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
@@ -1899,7 +1899,7 @@ Closure, 2026-10-04: implementation is closed at `337ccbce2587393463a4b49c551f94
 
 ## 10 — Documentation, maintainability, and cross-repository knowledge
 
-This is not a product-feature phase. Closure, 2026-10-06: Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65`. `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` was dispatched from that SHA with `publish_release=false` and remains the clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. No `zlyme44.2` implementation has started. `zlyme44.1-maintenance` remains the frozen release-source branch at the accepted SHA. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate.
+This is not a product-feature phase. Closure, 2026-10-06: Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65`. `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` was dispatched from that SHA with `publish_release=false` and remains the clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. At this closure, no `zlyme44.2` implementation had started. Phase 11 is the `zlyme44.2` work that follows it. `zlyme44.1-maintenance` remains the frozen release-source branch at the accepted SHA. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate.
 
 ### 10A. Zlyme documentation and comments
 
@@ -1925,6 +1925,63 @@ Ownership stays split. Hardware, electrical, protocol, and firmware facts stay i
 - Update procedures are reachable from `AGENTS.md`.
 - Documentation cleanup did not change a technical conclusion or a runtime feature.
 - Links and paths were checked.
+
+## 11 — zlyme44.2 user-facing reliability and compatibility
+
+Related user-visible fixes ship as a few OTA candidates. Each subphase still uses separate commits. Miyoo Flip (`my355`) stays the only device. `/boot` stays read-only at runtime. The squashfs root stays read-only. Persistent state stays under `/storage` with the owners already documented. Host tests stay in the repository and are not installed into the image.
+
+`ZLYME_VERSION` for this phase is `zlyme44.2`. The date stays on the image, not on that name.
+
+### 11A — Settings, network, updater, and build UX
+
+One candidate covers Settings order, an application proxy, updater reinstall wording, scrollable release notes, and live build progress.
+
+Settings stays `Settings.pak`. The visible label stays `Settings`. NextUI's existing `map.txt` alias `000) Settings` sorts it before the other Tools entries. Those stay alphabetical. No separate C sort. The stored entry keeps the `000)` prefix; display strips it.
+
+Proxy lives at Settings → Network → Proxy: Off/On, HTTP or SOCKS5, host, port, and Test proxy. No username or password. SOCKS uses `socks5h://` so name lookup can go through the proxy. `localhost`, `127.0.0.1`, and `::1` stay direct. One file, `/storage/.config/zlyme/proxy.conf`, is the canonical config. `zlyme-proxy` parses it, writes it by atomic replace, and fails closed on a malformed file. The file is not evaluated as shell. The updater reads it when it makes a request. `nextui-session` applies the validated environment once, at pak launch. Changing the setting does not rewrite the environment of the already-running NextUI process. This is an application HTTP/HTTPS/SOCKS proxy for clients that honor it. It is not a VPN, and it does not cover Wi-Fi association, DHCP, or arbitrary UDP.
+
+The updater may download and reinstall the running release. The same `zlymeNN.M` warns and still allows it. An available root SHA-256 that equals the installed `/boot/zlyme` says the exact firmware is already installed and still allows a deliberate redownload. Delta selection stays the existing `from_sha256` match. Filename and date heuristics are not the decision when the release metadata is present.
+
+Release notes show the full body in a scrolling view: Up/Down, L1/R1 page, B back. A short OTA preamble stays outside that body. Empty notes and notes the metadata fallback could not retrieve are different sentences.
+
+GitHub Actions keeps the full build log artifact. The job console streams Buildroot `>>>` lifecycle lines and useful error lines while the build is running. The filter does not replace the build's exit status. The staged ccache, timeout, and retry behavior stay as they are.
+
+The README carries a short proxy and update note. The user guide carries the proxy steps.
+
+Gate: host tests, the affected NextUI and Zlyme components compile, no tests in the rootfs, and one local `zlyme44.2` OTA. The maintainer's device check covers Settings order, proxy, same-version update, and scrolling notes. That check is not done by the image build.
+
+### 11B — Compatibility and runtime
+
+OpenBOR, MKXP-Z, and Wine share one emulator/runtime OTA so they can be tested together.
+
+OpenBOR's upstream defaults create `Paks`, `Saves`, `Logs`, and `ScreenShots` relative to the working directory. Zlyme currently starts it from the ROM directory, so those directories land in `Roms/OpenBOR (OPENBOR)/`. The ROM directory stays content and media. Saves and logs follow the existing library ownership. Prefer a small upstream-compatible patch that honors directory overrides from the environment and keeps upstream's defaults when those variables are unset. Update the cleanup that assumes saves sit beside the ROM. Do not fork OpenBOR broadly.
+
+The MKXP-Z hardware log already shows Mali GLES 3.1. The launch failure is a missing game root: `/Game` without `Game.ini` and `Data/Scripts.rxdata`. The pinned white-axe core already treats project markers differently from archives. Fix the launcher and content-root contract. Support a single harmless top-level directory inside an archive only if that is the failure in front of us. Keep saves and RTP on the existing Zlyme paths. Fonts and FluidSynth wait until the game root starts. The README describes the layout that actually works.
+
+Wine evidence from a working package is a measurement, not a tree to copy. The path stays NextUI, release DRM, application-scoped Weston, Wine, Weston exits, NextUI recovers DRM. Weston does not stay running. Do not replace Zlyme's Mali stack with binaries from that package. Order: measure an `amd64-wow64` Wine in place of the Kron4ek 11.0 ordinary `amd64` runtime; try Wine 11.6 amd64-wow64 first, because that is the build exercised on a Flip; keep Box64 v0.4.4 unless a measurement says otherwise; put normal prefix files on the selected persistent library and use a tiny tmpfs only for `dosdevices`, recreating `c:` and `z:` at launch, and drop the fixed 1 GiB ext4 loop container if that path holds; prove one 32-bit and one 64-bit program before compatibility layers; add GL4ES only as a Wine-scoped library, never as system `libGL`, and check current GL4ES before carrying a texture patch; add MIDI and FluidSynth only with understood provenance and without a questionable proprietary SoundFont; optional gamepad-to-mouse uses the existing application controller path. Do not treat "every Wine newer than 11.6 OOMs" as a fact. That is one observation and it needs a measurement.
+
+Gate: one OTA. Check OpenBOR's ROM directory and saves, MKXP-Z launch and save, Wine 32-bit and 64-bit smoke, prefix persistence across a restart, and NextUI → Weston/Wine → NextUI. GL4ES and MIDI are in that check only if they were implemented.
+
+### 11C — Installation, preloader recovery, and the hardware wiki
+
+Stock-assisted preparation replaces the old user-facing apommel multiboot steps. `miyoo355_fw.img` is not a foreign preloader. Stock runs the installer. The installer reads that unit's preloader, patches the relevant `/pinctrl` data, backs up the original, verifies it, and writes the repaired image. Attribution to `apommel/baseos-my355` stays. Ship `miyoo355_fw.img` on `ZLYMEBOOT`. Generate it from pinned upstream source when that fits the build. Otherwise pin the exact artifact, version, hash, and provenance. Leaving the file on the boot FAT after a successful run is acceptable when stock ignores an already-patched unit. The README and the install guide retire multiboot as the recommended install.
+
+Recovery adds the Buildroot MTD tools the safe path needs: `flash_erase`, `nandwrite`, and `mtdinfo`. There is no general NAND flashing UI. Two operations, both fail closed: restore the stock preloader from a valid per-device backup, and erase the preloader on purpose to enter MASKROM. Checks, as they apply: my355 identity, the exact MTD partition name, expected size and geometry, battery and charger, a readable backup of the expected size, backup and readback hashes, bad blocks, an explicit destructive confirmation, and no fallback to a device that only roughly matches. Fixture and dry-run tests cover validation and the command line. Automated testing does not erase or restore a live preloader. The maintainer runs those two operations and reports the result. The automated gate is build, static, and fixture proof. Destructive acceptance is `MANUAL — MAINTAINER REPORT REQUIRED`.
+
+The hardware wiki `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` follows its own `AGENTS.md`. Retire multiboot as the recommended Zlyme install, keep the attribution and the history, document the stock-assisted `miyoo355_fw.img` method, and update eraser and restore guidance. Document the Linux-host xrock workaround the maintainer supplied (smaller bulk chunks, a longer timeout, chunked large receives) only after checking the current xrock source. If Zlyme keeps a patch, ship the patch file. Describe it as a Flip-tested workaround for Linux bulk-transfer failures, not as an upstream xrock requirement. Do not update `docs/implementations/zlyme.md` to call a `zlyme44.2` runtime hardware-accepted before the maintainer accepts it.
+
+### 11D — zlyme44.2 release and a real partial OTA
+
+Prerequisite: `zlyme44.1` is a published stable release with a valid `release-manifest.json`.
+
+Closure order: finish 11A–11C; one final local 44.2 candidate; maintainer hardware acceptance; merge the accepted source; a clean GitHub build; publish only after that build passes. The release tooling must see published 44.1 as an eligible same-major base. The release contains a 44.1-root delta unless the 70% size policy correctly omits it. On a device running that exact published 44.1 root, the updater selects the delta by `from_sha256`, reconstructs a complete 44.2 squashfs under `/storage`, and the reconstructed SHA-256 equals the published 44.2 root. The existing boot-apply path copies that verified root. Nothing patches `/boot/zlyme` in place. A root that matches no delta base falls back to the full OTA. The 44.2 changelog and release notes describe accepted behavior only after this gate.
+
+### Gate
+
+- 11A, 11B, and 11C each have their own candidate and the checks named above.
+- 11C erase and restore on a Flip are `MANUAL — MAINTAINER REPORT REQUIRED`.
+- 11D does not publish `zlyme44.2` before the clean GitHub build, and it does not write release notes before the partial-OTA gate.
+- `zlyme44.1-maintenance` stays at `6a398b311310246ef6a5515ed72805c6f58d787d` until 44.1 publication work, which is separate from this phase.
 
 ## Suggested commit/checkpoint rhythm
 
