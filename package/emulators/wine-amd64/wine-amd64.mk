@@ -2,13 +2,15 @@
 #
 # wine-amd64
 #
-# Kron4ek prebuilt x86_64 Wine. Lives under /usr/lib/wine-amd64 so it
-# does not mix with aarch64 /usr/lib. box64 runs the loader.
+# Kron4ek Wine 11.6 amd64-wow64, vanilla. The package directory stays
+# wine-amd64. amd64-wow64 runs 32-bit PE without a host i386 multilib.
+# The tree lives under /usr/lib/wine-amd64 so it does not mix with
+# aarch64 /usr/lib. box64 runs the loader.
 #
 ################################################################################
 
-WINE_AMD64_VERSION = 11.0
-WINE_AMD64_SOURCE = wine-$(WINE_AMD64_VERSION)-amd64.tar.xz
+WINE_AMD64_VERSION = 11.6
+WINE_AMD64_SOURCE = wine-$(WINE_AMD64_VERSION)-amd64-wow64.tar.xz
 WINE_AMD64_SITE = https://github.com/Kron4ek/Wine-Builds/releases/download/$(WINE_AMD64_VERSION)
 WINE_AMD64_LICENSE = LGPL-2.1+
 WINE_AMD64_DEPENDENCIES = box64 libxkbcommon e2fsprogs
