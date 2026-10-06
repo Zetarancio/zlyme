@@ -1,0 +1,120 @@
+--- a/engine/sdl/sdlport.c	2026-10-06 10:41:12.961160735 +0200
++++ b/engine/sdl/sdlport.c	2026-10-06 10:41:12.961341230 +0200
+@@ -67,6 +67,35 @@
+     exit(reset);
+ }
+ 
++
++/* dirExists copies into MAX_LABEL_LEN-1 bytes and does not add a NUL
++ * when that copy fills the buffer. Keep the relative default unless the
++ * override fits and has no control bytes. */
++static void apply_dir_override(char *dest, const char *envname)
++{
++	const char *val;
++	size_t i, n;
++
++	val = getenv(envname);
++	if(val == NULL || val[0] == '\0')
++	{
++		return;
++	}
++	n = strlen(val);
++	if(n >= (size_t)(MAX_LABEL_LEN - 1))
++	{
++		return;
++	}
++	for(i = 0; i < n; i++)
++	{
++		if((unsigned char)val[i] < 32)
++		{
++			return;
++		}
++	}
++	memcpy(dest, val, n + 1);
++}
++
+ int main(int argc, char *argv[])
+ {
+ #ifndef SKIP_CODE
+@@ -132,6 +161,11 @@
+     chdir(rootDir);
+ #endif
+ 
++	apply_dir_override(paksDir, "OPENBOR_PAKS_DIR");
++	apply_dir_override(savesDir, "OPENBOR_SAVES_DIR");
++	apply_dir_override(logsDir, "OPENBOR_LOGS_DIR");
++	apply_dir_override(screenShotsDir, "OPENBOR_SCREENSHOTS_DIR");
++
+ 	dirExists(paksDir, 1);
+ 	dirExists(savesDir, 1);
+ 	dirExists(logsDir, 1);
+--- a/engine/source/utils.c	2026-10-06 10:41:12.961268235 +0200
++++ b/engine/source/utils.c	2026-10-06 10:41:12.961411631 +0200
+@@ -70,6 +70,44 @@
+ #define MKDIR(x) mkdir(x, 0777)
+ #endif
+ 
++
++#ifdef SDL
++/* logsDir stays "Logs" when OPENBOR_LOGS_DIR is unset. A path that does
++ * not fit this buffer keeps the relative Logs/ default. */
++static char *bor_log_path(int engine)
++{
++	static char path[MAX_LABEL_LEN];
++	const char *leaf = engine ? "OpenBorLog.txt" : "ScriptLog.txt";
++	int n = snprintf(path, sizeof(path), "%s/%s", logsDir, leaf);
++
++	if(n < 0 || (size_t)n >= sizeof(path))
++	{
++		snprintf(path, sizeof(path), "./Logs/%s", leaf);
++	}
++	return path;
++}
++
++static void copy_sdl_root_path(char *buf, char *name)
++{
++	if(strcmp(name, "Saves") == 0)
++	{
++		strcpy(buf, savesDir);
++		strcat(buf, "/");
++		return;
++	}
++	strcpy(buf, "./");
++	strcat(buf, name);
++	strcat(buf, "/");
++}
++
++static void copy_sdl_paks_path(char *buf, char *name)
++{
++	strcpy(buf, paksDir);
++	strcat(buf, "/");
++	strcat(buf, name);
++}
++#endif
++
+ #ifdef WII
+ #define CHECK_LOGFILE(type)  type ? fileExists(getFullPath("Logs/OpenBorLog.txt")) : fileExists(getFullPath("Logs/ScriptLog.txt"))
+ #define OPEN_LOGFILE(type)   type ? fopen(getFullPath("Logs/OpenBorLog.txt"), "wt") : fopen(getFullPath("Logs/ScriptLog.txt"), "wt")
+@@ -95,6 +133,14 @@
+ #define COPY_ROOT_PATH(buf, name) strncpy(buf, rootDir, strlen(rootDir)); strncat(buf, name, strlen(name)); strncat(buf, "/", 1);
+ #define COPY_PAKS_PATH(buf, name) strncpy(buf, paksDir, strlen(paksDir)); strncat(buf, "/", 1); strncat(buf, name, strlen(name));
+ #else
++#ifdef SDL
++#define CHECK_LOGFILE(type)  (type) ? fileExists(bor_log_path(1)) : fileExists(bor_log_path(0))
++#define OPEN_LOGFILE(type)   (type) ? fopen(bor_log_path(1), "wt") : fopen(bor_log_path(0), "wt")
++#define APPEND_LOGFILE(type) (type) ? fopen(bor_log_path(1), "at") : fopen(bor_log_path(0), "at")
++#define READ_LOGFILE(type)   (type) ? fopen(bor_log_path(1), "rt") : fopen(bor_log_path(0), "rt")
++#define COPY_ROOT_PATH(buf, name) copy_sdl_root_path((buf), (name))
++#define COPY_PAKS_PATH(buf, name) copy_sdl_paks_path((buf), (name))
++#else
+ #define CHECK_LOGFILE(type)  type ? fileExists("./Logs/OpenBorLog.txt") : fileExists("./Logs/ScriptLog.txt")
+ #define OPEN_LOGFILE(type)   type ? fopen("./Logs/OpenBorLog.txt", "wt") : fopen("./Logs/ScriptLog.txt", "wt")
+ #define APPEND_LOGFILE(type) type ? fopen("./Logs/OpenBorLog.txt", "at") : fopen("./Logs/ScriptLog.txt", "at")
+@@ -102,6 +148,7 @@
+ #define COPY_ROOT_PATH(buf, name) strcpy(buf, "./"); strcat(buf, name); strcat(buf, "/");
+ #define COPY_PAKS_PATH(buf, name) strcpy(buf, "./Paks/"); strcat(buf, name);
+ #endif
++#endif
+ 
+ void debugBuf(unsigned char *buf, size_t size, int columns)
+ {

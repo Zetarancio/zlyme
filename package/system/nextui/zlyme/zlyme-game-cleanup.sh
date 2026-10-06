@@ -171,17 +171,8 @@ do_orphan_saves() {
 				note_save "$f"
 			done >> "$cands"
 		done
-		# OpenBOR .sav next to the pak (launch.sh cds to the ROM dir)
-		for roms in "$root/Roms" "$root/roms"; do
-			[ -d "$roms" ] || continue
-			find "$roms" -type d \( -name '*OPENBOR*' -o -name '*OpenBOR*' \) 2>/dev/null |
-			while IFS= read -r od; do
-				find "$od" -maxdepth 2 -type f -name '*.sav' 2>/dev/null |
-				while IFS= read -r f; do
-					note_save "$f"
-				done >> "$cands"
-			done
-		done
+		# OpenBOR saves live in Saves/OPENBOR. Files left in the ROM
+		# folder are not collected and not deleted.
 		filter_unmatched "$stems" "$cands"
 		# PortMaster savedata: sibling of a missing .sh
 		for ports in "$root/Roms/Ports (PORTS)" "$root/Roms/ports" "$root/roms/ports"; do
