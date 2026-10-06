@@ -58,3 +58,4 @@ wrap freetype 526ec5c47b9ebccc4754c85ac0c0cdf7c85a5e9b.tar.gz
 wrap theora 8e4808736e9c181b971306cc3f05df9e61354004.tar.gz
 wrap priority-deque 7475dacb65d112a4de7e5c24fe32cfffc2264fa9.tar.gz
 wrap theoraplay 672cf6d7591009612123e90a192e6f3cd9f532c2.tar.gz
+wrap picosha2 161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29.tar.gz

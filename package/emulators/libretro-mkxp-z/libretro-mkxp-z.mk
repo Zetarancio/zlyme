@@ -84,7 +84,8 @@ LIBRETRO_MKXP_Z_EXTRA_DOWNLOADS = \
 	https://github.com/freetype/freetype/archive/526ec5c47b9ebccc4754c85ac0c0cdf7c85a5e9b.tar.gz \
 	https://github.com/xiph/theora/archive/8e4808736e9c181b971306cc3f05df9e61354004.tar.gz \
 	https://github.com/nmcclatchey/Priority-Deque/archive/7475dacb65d112a4de7e5c24fe32cfffc2264fa9.tar.gz \
-	https://github.com/icculus/theoraplay/archive/672cf6d7591009612123e90a192e6f3cd9f532c2.tar.gz
+	https://github.com/icculus/theoraplay/archive/672cf6d7591009612123e90a192e6f3cd9f532c2.tar.gz \
+	https://github.com/okdshin/PicoSHA2/archive/161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29.tar.gz
 
 HOST_LIBRETRO_MKXP_Z_EXTRA_DOWNLOADS = \
 	https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-30/$(LIBRETRO_MKXP_Z_WASI_SDK) \
@@ -146,7 +147,8 @@ HOST_LIBRETRO_MKXP_Z_EXTRA_DOWNLOADS = \
 	https://github.com/freetype/freetype/archive/526ec5c47b9ebccc4754c85ac0c0cdf7c85a5e9b.tar.gz \
 	https://github.com/xiph/theora/archive/8e4808736e9c181b971306cc3f05df9e61354004.tar.gz \
 	https://github.com/nmcclatchey/Priority-Deque/archive/7475dacb65d112a4de7e5c24fe32cfffc2264fa9.tar.gz \
-	https://github.com/icculus/theoraplay/archive/672cf6d7591009612123e90a192e6f3cd9f532c2.tar.gz
+	https://github.com/icculus/theoraplay/archive/672cf6d7591009612123e90a192e6f3cd9f532c2.tar.gz \
+	https://github.com/okdshin/PicoSHA2/archive/161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29.tar.gz
 # Cross file sets wrap_mode=nodownload; the CLI wins. Every wrap the GLES
 # libretro build actually configures is extracted by stage-offline.py from
 # EXTRA_DOWNLOADS. A missing tree fails configure instead of cloning.

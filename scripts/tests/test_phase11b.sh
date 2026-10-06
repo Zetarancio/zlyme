@@ -251,6 +251,8 @@ if grep -E '^\+' "$MKXP_STAGE1" | grep -q '/dev/urandom'; then
 	fail "stage1 patch still reads /dev/urandom"
 fi
 grep -q sha256sum "$MKXP_STAGE1" || fail "stage1 markers are not a digest"
+grep -q 'touch -d @0' "$MKXP_STAGE1" || fail "embedded zip timestamps are not fixed"
+grep -q 'ZIP) -X' "$MKXP_STAGE1" || fail "zip still stores host extra fields"
 # Every staged archive is hash-checked. A missing line fails the build.
 while read -r role name archive; do
 	case "$role" in

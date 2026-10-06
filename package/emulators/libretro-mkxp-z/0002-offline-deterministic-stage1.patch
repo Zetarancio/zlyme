@@ -1,5 +1,5 @@
 --- a/libretro/Makefile	2026-10-06 11:48:50.919257027 +0200
-+++ b/libretro/Makefile	2026-10-06 11:48:50.920527824 +0200
++++ b/libretro/Makefile	2026-10-06 12:35:47.547978752 +0200
 @@ -14,7 +14,6 @@
  CTAGS ?= ctags
  RUBY ?= ruby
@@ -17,7 +17,17 @@
  WASI_CC := $(WASI_SDK)/bin/clang
  WASI_CXX := $(WASI_SDK)/bin/clang++
  WASI_LD := $(WASI_SDK)/bin/clang
-@@ -152,8 +149,10 @@
+@@ -131,7 +128,8 @@
+ 	mkdir -p $(LIBDIR)/preload
+ 	mkdir -p $(OUTDIR)
+ 	cp $^ $(LIBDIR)/preload/
+-	cd $(LIBDIR)/preload && $(ZIP) -r $@ *
++	find $(LIBDIR)/preload -exec touch -d @0 {} +
++	cd $(LIBDIR)/preload && $(ZIP) -X -r $@ *
+ 	rm -r $(LIBDIR)/preload
+ 
+ # Ruby (targets WASI)
+@@ -152,8 +150,10 @@
  	$(WASM2C) $(LIBDIR)/Dist/bin/ruby -n ruby --num-outputs=$(MKXPZ_RUBY_NUM_OUTPUTS) -o $(OUTDIR)/ruby/mkxp-sandbox-ruby.c
  	# Find all the function types declared using `FUNC_TYPE_DECL_EXTERN_T` and redeclare them as macros to fix the "initializer element is not constant" compilation error that occurs when using GCC versions earlier than 8.1.0
  	rm -f $(OUTDIR)/ruby/mkxp-sandbox-ruby-func-types.h
@@ -29,7 +39,17 @@
  	done
  	$(SED) -i 's/ *# *define * FUNC_TYPE_DECL_EXTERN_T *([^()]).*/#define FUNC_TYPE_DECL_EXTERN_T(x)/g' $(OUTDIR)/ruby/mkxp-sandbox-ruby-impl.h
  	$(SED) -i 's/ *# *define * FUNC_TYPE_EXTERN_T *([^()]).*/#define FUNC_TYPE_EXTERN_T(x) const char _mkxp_unused_##x[]/g' $(OUTDIR)/ruby/mkxp-sandbox-ruby-impl.h
-@@ -231,28 +230,12 @@
+@@ -186,7 +186,8 @@
+ 	cp $(RUBY_SRC)/COPYING $(LIBDIR)/_Dist/lib/ruby
+ 	cp $(RUBY_SRC)/COPYING.ja $(LIBDIR)/_Dist/lib/ruby
+ 	rm -f $(OUTDIR)/dist.zip
+-	cd $(LIBDIR)/_Dist && $(ZIP) -r $(OUTDIR)/dist.zip *
++	find $(LIBDIR)/_Dist -exec touch -d @0 {} +
++	cd $(LIBDIR)/_Dist && $(ZIP) -X -r $(OUTDIR)/dist.zip *
+ 	rm -r $(LIBDIR)/_Dist
+ 
+ $(LIBDIR)/Dist/bin/ruby: $(RUBY_SRC)/Makefile ruby-bindings.h
+@@ -231,28 +232,12 @@
  		--disable-install-doc
  
  $(RUBY_SRC)/configure: $(RUBY_SRC)/configure.ac
@@ -61,7 +81,7 @@
  
  # WABT (targets the build machine)
  
-@@ -337,13 +320,10 @@
+@@ -337,13 +322,10 @@
  		$< > $@
  
  $(WASM2C_SRC) $(DOWNLOADS)/wabt/src/config.h.in &:
@@ -77,7 +97,7 @@
  
  # libyaml (targets WASI)
  
-@@ -357,8 +337,7 @@
+@@ -357,8 +339,7 @@
  	cd $(DOWNLOADS)/libyaml && $(AUTORECONF) -i
  
  $(DOWNLOADS)/libyaml/configure.ac:
@@ -87,7 +107,7 @@
  
  # zlib (targets WASI)
  
-@@ -369,11 +348,9 @@
+@@ -369,11 +350,9 @@
  	cd $(DOWNLOADS)/zlib && CHOST=linux $(WASI_TOOLCHAIN) CFLAGS='$(WASI_CFLAGS)' CXXFLAGS='$(WASI_CXXFLAGS)' LDFLAGS='$(WASI_LDFLAGS)' ./configure --static
  
  $(DOWNLOADS)/zlib/configure:
