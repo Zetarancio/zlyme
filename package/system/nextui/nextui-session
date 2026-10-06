@@ -144,6 +144,33 @@ copy_stock_paks() {
 	done
 }
 
+# map.txt is not a pak directory, so the stock copy does not install it.
+# Keep a user map's other lines. Settings.pak always uses the seed alias
+# so it sorts first and still displays as Settings.
+ensure_tools_map() {
+	seed_map=$seed/paks/Tools/map.txt
+	dest=/storage/Tools/my355/map.txt
+	[ -f "$seed_map" ] || return 0
+	mkdir -p /storage/Tools/my355 || return 0
+	line=$(grep '^Settings.pak	' "$seed_map" | head -n 1)
+	[ -n "$line" ] || return 0
+	if [ ! -f "$dest" ]; then
+		cp "$seed_map" "$dest"
+		return 0
+	fi
+	tmp=$(mktemp /tmp/zlyme-map.XXXXXX) || return 0
+	awk -v line="$line" '
+		BEGIN { found = 0 }
+		$0 ~ /^Settings\.pak\t/ { print line; found = 1; next }
+		{ print }
+		END { if (!found) print line }
+	' "$dest" > "$tmp" || {
+		rm -f "$tmp"
+		return 0
+	}
+	mv -f "$tmp" "$dest"
+}
+
 stock_paks_ready() {
 	[ ! -f "$lock" ] || return 1
 	[ "$factory" = 1 ] && return 1
@@ -420,6 +447,8 @@ else
 		rm -f /storage/.config/zlyme/paks-copy-reboot
 	fi
 fi
+
+ensure_tools_map
 
 rm -f /tmp/poweroff /tmp/reboot
 
