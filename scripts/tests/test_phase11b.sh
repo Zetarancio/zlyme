@@ -175,6 +175,11 @@ grep -q 'BOX64_VERSION = 2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a' "$BOX64" || f
 grep -q 'BOX32=OFF' "$BOX64" || fail "box32"
 grep -q 'TMPFS_SIZE=1024k' "$WINE_PREFIX" || fail "tmpfs size"
 grep -q '/dosdevices' "$WINE_PREFIX" || fail "dosdevices"
+grep -q 'mkdir -p "$prefix/drive_c"' "$WINE_PREFIX" || fail "drive_c"
+grep -q 'i386-windows' "$WINE_PREFIX" || fail "syswow64 seed"
+grep -q 'x86_64-windows' "$WINE_PREFIX" || fail "system32 seed"
+grep -q '.zlyme-pe-seed' "$WINE_PREFIX" || fail "pe seed stamp"
+grep -q 'winsxs' "$WINE_PREFIX" || fail "winsxs seed"
 grep -q 'ln -sfn ../drive_c' "$WINE_PREFIX" || fail "c: link"
 grep -q 'ln -sfn / ' "$WINE_PREFIX" || fail "z: link"
 grep -q 'prepare) prepare_cmd' "$WINE_PREFIX" || fail "prepare"
@@ -262,6 +267,17 @@ while read -r role name archive; do
 	grep -q "  $archive\$" "$MKXP_HASH" || fail "no hash for $archive"
 done < "$MKXP_LIST"
 grep -q '  wasi-sdk-30.0-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no wasi hash"
+grep -q '  wasi-sdk-30.0-arm64-linux.tar.gz$' "$MKXP_HASH" || fail "no arm64 wasi hash"
 grep -q '  binaryen-version_123-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no binaryen hash"
+grep -q '  binaryen-version_123-aarch64-linux.tar.gz$' "$MKXP_HASH" || fail "no aarch64 binaryen hash"
+# mkxp reads RUBY_REVISION as 40 hex digits: uint8_t ruby_revision[20].
+rev=$(sed -n 's/^RUBY_TAG_COMMIT = "\([0-9a-f]*\)"$/\1/p' \
+	"$ROOT/package/emulators/libretro-mkxp-z/stage-offline.py")
+[ "$rev" = "343ea050023cfc0374fdea6fdf625b2f57b716a4" ] || fail "ruby tag commit"
+# shellcheck disable=SC2016
+[ "$(printf '%s' "$rev" | wc -c)" -eq 40 ] || fail "ruby revision length"
+printf '%s\n' "$rev" | grep -Eq '^[0-9a-f]{40}$' || fail "ruby revision hex"
+grep -q 'RUBY_FULL_REVISION "{RUBY_TAG_COMMIT}"' \
+	"$ROOT/package/emulators/libretro-mkxp-z/stage-offline.py" || fail "full revision not staged"
 
 echo "phase11b: ok"
