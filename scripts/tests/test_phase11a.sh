@@ -33,13 +33,39 @@ grep -qx 'localhost,127.0.0.1,::1' "$work/http.args"
 "$PROXY" set 1 http proxy.example 0 >/dev/null 2>&1 && fail "port 0 accepted"
 "$PROXY" set 1 http proxy.example 65536 >/dev/null 2>&1 && fail "port 65536 accepted"
 "$PROXY" set 1 http 'bad;host' 80 >/dev/null 2>&1 && fail "host metacharacter accepted"
+# The line and argv protocol rejects whitespace, quotes, and control bytes.
+# Bracketed IPv6 stays usable. A bare colon cannot smuggle a port.
+"$PROXY" set 1 http 'bad host' 80 >/dev/null 2>&1 && fail "host space accepted"
+"$PROXY" set 1 http 'bad/host' 80 >/dev/null 2>&1 && fail "host slash accepted"
+"$PROXY" set 1 http 'bad@host' 80 >/dev/null 2>&1 && fail "host at-sign accepted"
+"$PROXY" set 1 http "bad'host" 80 >/dev/null 2>&1 && fail "host quote accepted"
+"$PROXY" set 1 http '$(id)' 80 >/dev/null 2>&1 && fail "host command substitution accepted"
+"$PROXY" set 1 http '`id`' 80 >/dev/null 2>&1 && fail "host backtick accepted"
+"$PROXY" set 1 http '2001:db8::1' 80 >/dev/null 2>&1 && fail "unbracketed IPv6 accepted"
+"$PROXY" set 1 http "$(printf 'bad\nhost.example')" 80 >/dev/null 2>&1 && fail "host newline accepted"
+"$PROXY" set 1 http "$(printf 'bad\rhost.example')" 80 >/dev/null 2>&1 && fail "host CR accepted"
+"$PROXY" set 1 http "$(printf 'bad\001host.example')" 80 >/dev/null 2>&1 && fail "host control character accepted"
+"$PROXY" set 1 socks5 '[2001:db8::1]' 1080
+"$PROXY" curl-args | grep -Fqx 'socks5h://[2001:db8::1]:1080' || fail "bracketed IPv6 URL"
 printf '%s\n' 'enabled=1' 'protocol=ftp' 'host=a' 'port=1' > "$ZLYME_PROXY_CONF"
 "$PROXY" env | grep -q '://' && fail "malformed config emitted a proxy URL"
 "$PROXY" get | grep -qx 'enabled=0'
 "$PROXY" get | grep -qx 'valid=0'
-# A hand-written bad file is mode-independent; a set() file is restrictive.
+# A newline inside a stored value splits into another line. It must not
+# become an extra curl argument or a second proxy URL.
+printf '%s\n' 'enabled=1' 'protocol=http' 'host=ok.example' '--proxy' 'http://evil.example' 'port=80' > "$ZLYME_PROXY_CONF"
+"$PROXY" curl-args > "$work/split.args"
+grep -q 'evil.example' "$work/split.args" && fail "split line became a proxy URL"
+grep -qx 'http://ok.example:80' "$work/split.args"
+printf 'enabled=1\nprotocol=http\nhost=bad host\nport=80\n' > "$ZLYME_PROXY_CONF"
+"$PROXY" env | grep -q '://' && fail "spaced host emitted a proxy URL"
+printf 'enabled=1\nprotocol=http\nhost=proxy.example\r\nport=80\n' > "$ZLYME_PROXY_CONF"
+"$PROXY" env | grep -q '://' && fail "CR host emitted a proxy URL"
+# /storage is exFAT. A POSIX mode is not the confidentiality contract.
 "$PROXY" set 0 http proxy.example 8080
-stat -c %a "$ZLYME_PROXY_CONF" | grep -qx 640 || fail "proxy.conf mode"
+grep -q 'not a confidentiality control' "$PROXY" || fail "mode comment missing"
+grep -n '\beval\b' "$PROXY" && fail "proxy helper uses eval"
+grep -q '2>/dev/null' "$PROXY" || fail "proxy test can print the address"
 
 # Settings keeps its visible name and sorts first. Other names stay alpha.
 map=$ROOT/package/system/nextui/paks/Tools/map.txt
@@ -137,8 +163,34 @@ notes=$nextui/workspace/all/settings/zlymeupdate.cpp
 list=$nextui/workspace/all/nextui/nextui.c
 if [ -f "$notes" ]; then
 	grep -q 'lines < 10' "$notes" && fail "release notes still truncate at ten lines"
+	grep -q 'The update installs on reboot' "$notes" && fail "notes preamble is still present"
+	grep -q 'B back' "$notes" && fail "notes still draw a plain-text hint"
+	grep -q 'GFX_blitButtonGroup' "$notes" || fail "notes do not use the native hint row"
+	grep -q '"U/D"' "$notes" || fail "notes hint is missing U/D"
+	grep -q '"L1/R1"' "$notes" || fail "notes hint is missing L1/R1"
+	grep -q '"SCROLL"' "$notes" || fail "notes hint is missing SCROLL"
+	grep -q '"PAGE"' "$notes" || fail "notes hint is missing PAGE"
+	grep -q '"B"' "$notes" || fail "notes hint is missing B"
+	grep -q '"BACK"' "$notes" || fail "notes hint is missing BACK"
+	awk '
+		/class ReleaseNotesView/,/^InputReactionHint do_notes/ {
+			if ($0 ~ /BTN_A/) found = 1
+		}
+		END { exit found ? 0 : 1 }
+	' "$notes" && fail "notes view still dismisses on A"
+	awk '
+		/class ReleaseNotesView/,/^InputReactionHint do_notes/ {
+			if ($0 ~ /BTN_B/) b = 1
+			if ($0 ~ /BTN_UP/) u = 1
+			if ($0 ~ /BTN_DOWN/) d = 1
+			if ($0 ~ /BTN_L1/) l = 1
+			if ($0 ~ /BTN_R1/) r = 1
+		}
+		END { exit (b && u && d && l && r) ? 0 : 1 }
+	' "$notes" || fail "notes view lost a scroll or back key"
 	grep -q 'Release notes could not be retrieved.' "$notes" || fail "missing unavailable sentence"
 	grep -q 'No notes in this release.' "$notes" || fail "missing empty-notes sentence"
+	grep -q 'Check for an update first.' "$notes" || fail "missing check-first sentence"
 	grep -q 'This release version is already installed.' "$notes" || fail "missing same-version warning"
 	grep -q 'This exact firmware is already installed.' "$notes" || fail "missing exact-root warning"
 	grep -q 'Download/reinstall it anyway?' "$notes" || fail "reinstall is not offered"
@@ -178,6 +230,16 @@ grep -q '124|137|143' "$stage" || fail "timeout continue removed"
 # Host tests are not packaged.
 if grep -RIn 'scripts/tests' "$ROOT/package" "$ROOT/board" >/dev/null 2>&1; then
 	fail "a package or board script references scripts/tests"
+fi
+# zlyme-proxy is the only parser. Reset deletes the file. The session
+# comment names it and does not open it.
+if grep -RIn 'proxy\.conf' "$ROOT/package" "$ROOT/board" >/dev/null 2>&1; then
+	hits=$(grep -RIn 'proxy\.conf' "$ROOT/package" "$ROOT/board" || true)
+	extra=$(printf '%s\n' "$hits" \
+		| grep -v '/usr/sbin/zlyme-proxy:' \
+		| grep -v 'zlyme-reset:' \
+		| grep -v 'The helper reads proxy.conf' || true)
+	[ -z "$extra" ] || fail "another component parses proxy.conf: $extra"
 fi
 
 echo phase11a-ok
