@@ -50,7 +50,9 @@ The my355 image uses:
 - exFAT `ZLYME`;
 - no rootfs GPT partition.
 
-The squashfs root is a file on `ZLYMEBOOT`.
+The squashfs root is a file on `ZLYMEBOOT`. A fresh image also puts `miyoo355_fw.img` at the FAT root. Stock consumes that installer. An ordinary OTA does not write it.
+
+`zlyme-preloader` is the only NAND writer in the image, and only after Tools → Preloader Recovery confirms it. `status` is safe to read. `restore` and `erase-maskrom` erase `mtd0` (`preloader`, 2 MiB) and, for restore, `nandwrite` the verified backup. Battery must be at least 25%, or lower only while a charger `online` file reads `1`. The tool refuses a wrong model, a second MTD partition, bad blocks, or a backup whose filename hash, size, or RKNS IDB hashes do not match. Erase does not reboot. Do not run those commands from SSH as a test.
 
 ## First-boot resize
 

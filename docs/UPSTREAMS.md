@@ -205,6 +205,7 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 
 | Role | Remote | Revision | Used for |
 | --- | --- | --- | --- |
+| Stock preloader installer | `apommel/baseos-my355` | `e09d37bb0f03c34e564d61bd02164f332d8515a8` | `MY355_FW_INSTALLER_VERSION`. MIT. `mkfwimg.py` writes `miyoo355_fw.img`. To bump: review the upstream diff, change the pin and `.hash`, rebuild, compare `miyoo355_fw.img`, rerun `scripts/tests/test_phase11c.sh`. Do not track `main` |
 | NextUI fork | `Zetarancio/NextUI` | `bbaafd5aa894d90f75517e7f56c4b35791b19ae8` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
 | NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
 | OpenBOR | `DCurrent/openbor` | `v7533` | `OPENBOR_VERSION`. Directory overrides are `package/emulators/openbor/0003-runtime-directories.patch` |

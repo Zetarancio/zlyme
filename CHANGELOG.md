@@ -10,6 +10,8 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 
 ### Added
 
+- A fresh card image includes `miyoo355_fw.img` on the boot partition. Stock runs that installer and patches this unit's own preloader so the Flip can boot from the card. An update does not copy that file and does not touch the preloader.
+- Tools → Preloader Recovery can restore the stock preloader from `mtd5-original-<sha256>.img`, or erase the preloader so the next power-on is expected to enter MASKROM. Both screens start on cancel. Zlyme does not reboot after an erase.
 - Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
 
 ### Changed

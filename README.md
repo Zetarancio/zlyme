@@ -28,10 +28,16 @@ The gory details, register by register, live in the [Miyoo Flip hardware wiki](h
 
 ### 1. Let the Flip boot from SD
 
-Out of the box the Flip boots stock firmware from internal storage and ignores the card. Change that first, one of two ways:
+Out of the box the Flip boots stock firmware from internal storage and ignores the card. A fresh `zlyme.img` carries `miyoo355_fw.img` on the boot partition. That file is [apommel](https://github.com/apommel)'s installer from [baseos-my355](https://github.com/apommel/baseos-my355), built from a pinned commit. It is not a replacement preloader.
 
-- **apommel-multiboot** (recommended). Repairs the vendor preloader. No card in, the Flip boots stock. A bootable card in, it boots that. Follow the [wiki how-to](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md); the on-device app is [apommel-multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/tree/main/preloader-stock-rocknix/App/apommel-multiboot) in that repo.
-- **Erase the preloader.** Destructive. From then on the Flip always boots from SD, or drops into MASKROM mode when no card is in. Wiki: [stock ↔ SD-boot without opening the device](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/stock-rocknix-without-disassembly.md).
+1. Write `zlyme.img` to the card (the next section).
+2. Put the card in the **right** slot, next to power. Stock looks for `miyoo355_fw.img` on a card it can see. The installer reboots into the card when that card is in the right-hand slot.
+3. Boot **stock**. Stock runs the installer. The installer reads this unit's own preloader, saves `mtd5-original-<sha256>.img` on the card, patches only the SPL `/pinctrl` data, checks the write, and leaves the DDR blob and SPL code alone.
+4. Boot again from the card. No card, the Flip still boots stock.
+
+Writing the image does not modify internal NAND. Stock is what consumes `miyoo355_fw.img`. Zlyme does not do that write during boot or during an update.
+
+The older manual [apommel-multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md) app is the historical way to do the same repair. Erasing the preloader, so the Flip always boots from SD or drops into MASKROM, stays a separate destructive choice: [stock ↔ SD-boot without opening the device](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/stock-rocknix-without-disassembly.md). On a Zlyme card, Tools → Preloader Recovery can restore that backup or erase the preloader. Those screens default to cancel.
 
 ### 2. Write the OS card with the Zlyme Installer
 

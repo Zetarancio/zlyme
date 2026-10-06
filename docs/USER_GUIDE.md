@@ -2,6 +2,18 @@
 
 The [README](../README.md) is the front door: what Zlyme is, how to install it, where games go, updates, controls, the systems table, and how to experiment and contribute. This guide owns detailed end-user operation on the Miyoo Flip. [OPERATIONS.md](OPERATIONS.md) covers maintainer and device operations, and [DEVELOPMENT.md](DEVELOPMENT.md) covers building. Settings labels below follow the pinned Zlyme NextUI fork and can change when that pin moves.
 
+## Card preparation and preloader recovery
+
+The install steps are in the [README](../README.md#install). Stock, not Zlyme, runs `miyoo355_fw.img` and writes the patched preloader. An update inside Zlyme does not repeat that.
+
+Tools → Preloader Recovery has two operations. Both lists start on Cancel. B also goes back.
+
+Restore stock preloader writes `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. The name's hash has to match the file.
+
+Erase preloader clears that same partition and leaves the Flip powered on. The next time you power it on, it is expected to enter MASKROM instead of booting the card. Do not pick that unless you mean to recover from a PC.
+
+The battery has to be at least 25%, unless a charger is connected.
+
 ## Libraries and storage
 
 - The OS card is `/storage`. It holds your settings in `/storage/.config` and is also a library.
