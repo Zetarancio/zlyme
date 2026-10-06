@@ -111,17 +111,33 @@ jobs:
             echo "ScreenScraper developer credentials are required for this build" >&2
             exit 1
           fi
-          chmod +x ./build.sh
+          chmod +x ./build.sh scripts/ci/stream-build-log.sh
           set +e
           mkdir -p output
-          # Full log is the artifact. The job console keeps the tail so a
-          # failure is still visible without a multi-megabyte Actions log.
-          timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}" \
-            > output/zlyme-build.log 2>&1
+          start_epoch=$(date +%s)
+          # Full log is the artifact. The console streams lifecycle lines.
+          # stream-build-log.sh returns the build status, not grep's.
+          bash scripts/ci/stream-build-log.sh output/zlyme-build.log \
+            timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}"
           rc=$?
-          tail -n 120 output/zlyme-build.log || true
+          elapsed=$(( $(date +%s) - start_epoch ))
           echo "source=${{ github.sha }}"
-          ls -l output/images/zlyme-my355-*.tar output/images/zlyme.img 2>/dev/null || true
+          echo "elapsed_s=${elapsed}"
+          if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+            echo "image=produced"
+          else
+            echo "image=absent"
+          fi
+          ls -l output/images/zlyme-my355-*.tar output/images/zlyme-my355-*.sha256 output/images/zlyme.img 2>/dev/null || true
+          if command -v ccache >/dev/null 2>&1; then
+            CCACHE_DIR="${GITHUB_WORKSPACE:-$PWD}/.ccache" ccache -s || true
+          fi
+          if ! compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+            case "$rc" in
+              124|137|143) ;;
+              *) tail -n 40 output/zlyme-build.log || true ;;
+            esac
+          fi
           docker ps -aq | xargs -r docker stop || true
           docker ps -aq | xargs -r docker rm -f || true
           if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
