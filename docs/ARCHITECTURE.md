@@ -159,6 +159,7 @@ zlyme-radios        radio stop and start around sleep      board overlay
 zlyme-input         InputPlumber ownership and order       zlyme-input package
 zlyme-drm-release   drop DRM master before a pak           nextui package
 zlyme-weston-run    per-launch Weston for one client       board overlay
+zlyme-wine-prefix   Wine prefix and dosdevices tmpfs    wine-amd64 package
 gpudriver           GPU stack selection at boot            gpudriver package
 ```
 
@@ -276,7 +277,7 @@ Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's private databa
 
 Diagnostic logs are off by default. With the Settings `logs` flag on, `zlyme-logs` keeps five boot generations under `/storage/.logs`, `pak-log.sh` keeps three launches per PAK, and the initramfs writes a boot dmesg. With logs off, the session log stays in `/tmp`. Two files reach the card on every boot regardless of that flag: `rc.late` copies `/tmp/boot-timing` to `/storage/.config/zlyme/boot-timing` and `/tmp/nextui.txt` to `/storage/.config/nextui/my355/logs/nextui.txt` six times, 5 s apart, so a hung panel still leaves evidence after the card is pulled.
 
-`/storage` remains exFAT. Wine needs a POSIX prefix, so Zlyme stores one Wine-owned ext4 image under `/storage/.config` and loop-mounts it only while Wine runs. That does not change the storage partition format and is not a general image-file mechanism. A dirty-unmount message from an earlier boot is not a reason to change shutdown: `zlyme-halt` already syncs and unmounts `/storage` with a normal `umount` before `reboot -f` or `poweroff -f`. Checking the volume is an offline maintenance step.
+`/storage` remains exFAT. Wine's prefix is the directory `/storage/.config/nextui/<platform>/wine-prefix/`. `dosdevices` is a 1 MiB tmpfs (`size=1024k`): `c:` points at `../drive_c` and `z:` points at `/`. Those two links have to be symlinks, and exFAT does not keep them. The rest of the prefix is ordinary files on the card. An update deletes the exact file `/storage/.config/nextui/my355/wine-prefix.ext4` and does not open it. The kernel config already has `CONFIG_NTSYNC=y`. Wine 11.6 does not require NTSYNC. A dirty-unmount message from an earlier boot is not a reason to change shutdown: `zlyme-halt` already syncs and unmounts `/storage` with a normal `umount` before `reboot -f` or `poweroff -f`. Checking the volume is an offline maintenance step.
 
 Image layout is a board concern. A future device may use another boot layout while preserving the higher-level Zlyme runtime contracts.
 
@@ -347,7 +348,7 @@ The boot splash runs on fb0. The initramfs starts it, `S12splash` restarts it fr
 
 Applications that cannot use direct KMS may launch an isolated compatibility environment for the duration of that application. Two cases exist.
 
-Native Wayland clients use Zlyme's own per-launch Weston through `zlyme-weston-run`. `WINE.pak` is its only user. That Weston build (DRM backend, kiosk shell) does not ship Xwayland and is not a boot service.
+Native Wayland clients use Zlyme's own per-launch Weston through `zlyme-weston-run`. `WINE.pak` is its only user. Wine 11.6 (`amd64-wow64`) runs there under Box64. That Weston build (DRM backend, kiosk shell) does not ship Xwayland and is not a boot service.
 
 ```text
 NextUI releases DRM

@@ -211,7 +211,7 @@ After the app exits, NextUI must be able to take DRM again. No temporary Weston,
 
 PortMaster may mount WestonPack at `/tmp/weston` for one port. MENU+START can kill that port's process group, so NextUI's session cleans the mount, including binds underneath it, before the frontend resumes. A later boot should not show a WestonPack, `seatd`, or Xwayland process left from that launch.
 
-Wine keeps its prefix in `/storage/.config/nextui/<platform>/wine-prefix.ext4`. The card filesystem is exFAT, so the prefix is an ext4 image and is loop-mounted at `/run/zlyme-wine/prefix` only while Wine runs. Cleanup stops that prefix's wineserver, unmounts, then detaches the loop device that still points at this image. That cleanup belongs to the session, because MENU+START can kill the pak before an in-pak trap runs.
+Wine's prefix directory is `/storage/.config/nextui/<platform>/wine-prefix/`. `zlyme-wine-prefix prepare` creates it, mounts a 1 MiB tmpfs on `dosdevices`, and links `c:` to `../drive_c` and `z:` to `/`. `cleanup` stops the wineserver for that prefix and unmounts `dosdevices` only when `/proc/mounts` shows a tmpfs on that exact path. The session calls `cleanup`, because MENU+START can kill the pak before a launcher trap runs. Prefix files on the card stay. An update removes `/storage/.config/nextui/my355/wine-prefix.ext4` when that file is present.
 
 Resource cleanup is part of compatibility.
 

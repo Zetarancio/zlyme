@@ -30,6 +30,14 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 - Zlyme looks for existing saves on every mounted card. If more than one card has a save for the game, the card that holds the game wins.
 - If no card has a save for the game yet, Zlyme keeps that system's saves together. It uses the game's card when that card already has saves for the system, then another card that does. Otherwise the new save is created on the game's card.
 - A Flash game keeps its companion data in that library's `Saves/FLASH/flash_data`.
+- OpenBOR saves are in that library's `Saves/OPENBOR`. The engine's paks, screenshots, and log folder are not created in the ROM directory.
+- RPG Maker XP, VX, and Ace saves are in `Saves/MKXPZ`.
+
+## OpenBOR, RPG Maker, and Windows
+
+- An OpenBOR `.pak` stays in `Roms/OpenBOR (OPENBOR)/`. Starting it does not create `Paks`, `Saves`, `Logs`, or `ScreenShots` there.
+- An RPG Maker XP, VX, or Ace game can be a project file (`.ini`, `.json`, `.rxproj`, `.rvproj`, `.rvproj2`), a `.mkxpz`, or a `.zip` / `.7z`. The project can sit at the archive root or in one top folder. A `.mkxp` file is not a game this core accepts.
+- A Windows game uses Wine 11.6 WoW64 under Box64, in a temporary Weston. Its prefix is `/storage/.config/nextui/my355/wine-prefix`. An update deletes an old `wine-prefix.ext4` next to that directory and leaves the new prefix in place.
 
 ## Multi-disc games
 

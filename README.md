@@ -156,15 +156,18 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 | Flash                   | Ruffle Handheld (SilverPsychoo)                      | `Roms/Flash (FLASH)/`                             | `.swf`                                                                       | —                                                                                           |
 | Ports                   | PortMaster                                           | `Roms/Ports (PORTS)/`                             | `.sh` only                                                                   | —                                                                                           |
 | RPG Maker 2000/2003     | EasyRPG Player (libretro)                            | `Roms/RPG Maker 2000-2003 (EASYRPG)/`             | `.zip` `.lzh` `.ldb` `.easyrpg`; folders with `RPG_RT.ldb` or `*.easyrpg`    | `rtp/2000` `rtp/2003` (optional)                                                            |
-| RPG Maker XP / VX / Ace | mkxp-z (libretro)                                    | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/`               | `.rxproj` `.rvproj` `.rvproj2` `.mkxp` `.mkxpz` `.zip` `.7z`                 | `mkxp-z/RTP` (optional)                                                                     |
+| RPG Maker XP / VX / Ace | mkxp-z (libretro)                                    | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/`               | `.ini` `.json` `.rxproj` `.rvproj` `.rvproj2` `.mkxpz` `.zip` `.7z`          | `mkxp-z/RTP` (optional)                                                                     |
 | ScummVM                 | ScummVM                                              | `Roms/ScummVM (SCUMMVM)/`                         | `.scummvm` `.svm` `.zip`; game folders                                       | —                                                                                           |
 | OpenBOR                 | OpenBOR                                              | `Roms/OpenBOR (OPENBOR)/`                         | `.pak`                                                                       | —                                                                                           |
 | Daphne                  | Hypseus Singe                                        | `Roms/Daphne (DAPHNE)/`                           | `.txt` `.daphne` `.singe`                                                    | —                                                                                           |
-| Windows                 | Wine (x86-64 via Box64, in its own temporary Weston) | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
+| Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston          | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
 
 - **PSP:** PPSSPP renders with OpenGL, or with Vulkan when you pick it in PPSSPP and the Mali driver is active.
 - **Pico-8:** native PICO-8 is the Raspberry Pi build you bought from Lexaloffle. Zlyme doesn't include or download it. Fake-08 doesn't need it. Setup and Splore: [user guide](docs/USER_GUIDE.md#pico-8-and-splore).
 - **Multi-disc games** use an `.m3u` playlist: [user guide](docs/USER_GUIDE.md#multi-disc-games).
+- **OpenBOR** saves go in the library `Saves/OPENBOR` folder. The engine does not create its runtime folders in the ROM directory.
+- **RPG Maker XP, VX, and Ace** accept a project file, or a `.zip`, `.7z`, or `.mkxpz` with the project at the archive root or in one top folder.
+- **Windows** games use Kron4ek Wine 11.6 WoW64 under Box64 0.4.4. The prefix is `/storage/.config/nextui/my355/wine-prefix`. An update deletes an older `wine-prefix.ext4`.
 
 ## User Systems and Tools and the Right to Experiment
 
@@ -213,6 +216,7 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355).
 - Flash games run on [Ruffle Handheld](https://github.com/SilverPsychoo/Ruffle-Handheld) v4.2 by SilverPsychoo.
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
+- Discord user `lazydog` for the Wine compatibility suggestion that prompted the zlyme44.2 WoW64 and prefix rework.
 
 ## License
 

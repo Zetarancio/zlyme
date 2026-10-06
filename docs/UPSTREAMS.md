@@ -207,6 +207,10 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 | --- | --- | --- | --- |
 | NextUI fork | `Zetarancio/NextUI` | `bbaafd5aa894d90f75517e7f56c4b35791b19ae8` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
 | NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
+| OpenBOR | `DCurrent/openbor` | `v7533` | `OPENBOR_VERSION`. Directory overrides are `package/emulators/openbor/0003-runtime-directories.patch` |
+| mkxp-z | `white-axe/mkxp-z` | `650cb0888a07d0b5044e131160ddfa53feaf595b` | `LIBRETRO_MKXP_Z_VERSION`. One wrapper directory is `0001-one-wrapper-archive-root.patch` |
+| Wine | `Kron4ek/Wine-Builds` | `11.6` asset `wine-11.6-amd64-wow64.tar.xz` | SHA-256 `045549657b513c2fb191734b0434c81000b36ba4d482d1688bf99f80a8ee07a5` in `wine-amd64.hash`. Vanilla `amd64-wow64`, not staging |
+| Box64 | `ptitSeb/box64` | `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` (v0.4.4) | `BOX64_VERSION`. `BOX32=OFF` |
 | ROCKNIX | `ROCKNIX/distribution` `next` | `a55d58a1209b35e287dd55a3aad67a5543b467ce` | carries gpSP `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the `package/emulators/libretro-gpsp` pin |
 | KNULLI | `knulli-cfw/knulli-linux` `knulli-main` | `6a23957a19a1df18989ac6aa5e9fff003ae611ed` | carries the older gpSP `d6decfa3`; compared, not adopted |
 | SpruceOS | `spruceUI/spruceOS` | `2b7bc4a79359de14ea4d4f00da9801a937e2846d` | CPU floor table in `package/system/nextui/zlyme/governor.sh` |
