@@ -213,4 +213,52 @@ thanks=$(awk '/^## Thanks$/{f=1; next} /^## License$/{f=0} f' "$README")
 printf '%s\n' "$thanks" | grep -q 'lazydog' || fail "lazydog credit"
 printf '%s\n' "$thanks" | grep -q 'Wine' || fail "lazydog credit is not the Wine note"
 
+# OpenBOR SDL helpers format into a bounded buffer. The non-SDL branch
+# still has the upstream strcpy macros.
+python3 - "$OPENBOR_PATCH" << 'PY'
+import sys
+from pathlib import Path
+text = Path(sys.argv[1]).read_text()
+start = text.find("static void sdl_format_path")
+end = text.find("#endif", text.find("static void copy_sdl_paks_path"))
+body = text[start:end]
+if "snprintf" not in body or "strcpy" in body or "strcat" in body:
+    raise SystemExit("openbor SDL path helpers are not bounded")
+if "n + 1 > limit" not in text or "borExit(1)" not in text:
+    raise SystemExit("openbor overflow does not fail closed")
+print("openbor paths bounded")
+PY
+
+MKXP_MK=$ROOT/package/emulators/libretro-mkxp-z/libretro-mkxp-z.mk
+MKXP_LIST=$ROOT/package/emulators/libretro-mkxp-z/mkxp-offline.list
+MKXP_HASH=$ROOT/package/emulators/libretro-mkxp-z/libretro-mkxp-z.hash
+MKXP_STAGE1=$ROOT/package/emulators/libretro-mkxp-z/0002-offline-deterministic-stage1.patch
+for f in "$MKXP_LIST" "$MKXP_HASH" "$MKXP_STAGE1"; do
+	[ -f "$f" ] || fail "missing $f"
+done
+if grep -n wget "$MKXP_MK" >/dev/null; then
+	fail "mkxp recipe still runs wget"
+fi
+# Configure and build commands must not fetch. Download URLs stay in
+# EXTRA_DOWNLOADS, which Buildroot fetches before the build.
+awk '
+	/^define / { grab = ($2 ~ /CONFIGURE_CMDS|BUILD_CMDS|INSTALL_TARGET_CMDS|STAGE_WRAP/) }
+	grab { print }
+	/^endef$/ { grab = 0 }
+' "$MKXP_MK" | grep -E 'wget|curl |git clone' && fail "mkxp build commands fetch"
+grep -q -- '--wrap-mode=nodownload' "$MKXP_MK" || fail "meson can still download wraps"
+if grep -E '^\+' "$MKXP_STAGE1" | grep -q '/dev/urandom'; then
+	fail "stage1 patch still reads /dev/urandom"
+fi
+grep -q sha256sum "$MKXP_STAGE1" || fail "stage1 markers are not a digest"
+# Every staged archive is hash-checked. A missing line fails the build.
+while read -r role name archive; do
+	case "$role" in
+		\#*|"") continue ;;
+	esac
+	grep -q "  $archive\$" "$MKXP_HASH" || fail "no hash for $archive"
+done < "$MKXP_LIST"
+grep -q '  wasi-sdk-30.0-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no wasi hash"
+grep -q '  binaryen-version_123-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no binaryen hash"
+
 echo "phase11b: ok"
