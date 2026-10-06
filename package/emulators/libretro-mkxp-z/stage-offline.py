@@ -143,6 +143,11 @@ def stage_host(src, dl, entries):
     git_apply(downloads / "wabt", libretro / "wasm2c-data-segments.patch")
     extract_archive(dl / by_role["host-yaml"], downloads / "libyaml")
     extract_archive(dl / by_role["host-zlib"], downloads / "zlib")
+    # The release tree ships a Makefile without an install rule.
+    # Drop it so the stage1 Makefile runs ./configure.
+    zlib_make = downloads / "zlib" / "Makefile"
+    if zlib_make.exists():
+        zlib_make.unlink()
     pico = downloads / "picosha2"
     pico.mkdir(parents=True, exist_ok=True)
     shutil.copy2(dl / by_role["host-picosha2"], pico / "picosha2.h")
