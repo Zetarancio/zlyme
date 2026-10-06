@@ -164,6 +164,7 @@ PY
 
 # Wine 11.6 amd64-wow64, Box64 unchanged, exFAT prefix, exact ext4 delete.
 grep -q 'WINE_AMD64_VERSION = 11.6' "$WINE_MK" || fail "wine version"
+grep -q 'rm -rf $(TARGET_DIR)/usr/lib/wine-amd64' "$WINE_MK" || fail "wine install merges"
 grep -q 'wine-$(WINE_AMD64_VERSION)-amd64-wow64.tar.xz' "$WINE_MK" || fail "wine asset"
 grep -q '045549657b513c2fb191734b0434c81000b36ba4d482d1688bf99f80a8ee07a5' "$WINE_HASH" || fail "wine hash"
 grep -q 'wine-11.6-amd64-wow64.tar.xz' "$WINE_HASH" || fail "wine hash name"

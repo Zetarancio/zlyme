@@ -28,6 +28,9 @@ WINE_AMD64_STRIP_COMPONENTS = 1
 WINE_AMD64_BIN_ARCH_EXCLUDE = /usr/lib/wine-amd64
 
 define WINE_AMD64_INSTALL_TARGET_CMDS
+	# cp -a merges. A previous Wine build left i386-unix here, and
+	# 11.6 amd64-wow64 does not ship that directory.
+	rm -rf $(TARGET_DIR)/usr/lib/wine-amd64
 	mkdir -p $(TARGET_DIR)/usr/lib/wine-amd64
 	cp -a $(@D)/bin $(@D)/lib $(@D)/share $(TARGET_DIR)/usr/lib/wine-amd64/
 	$(INSTALL) -D -m 0755 $(WINE_AMD64_PKGDIR)/wine.sh \
