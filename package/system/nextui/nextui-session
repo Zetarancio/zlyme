@@ -306,8 +306,9 @@ portmaster_cleanup() {
 }
 
 # WINE.pak execs zlyme-weston-run, which stays in this pak group.
-# wineserver can still outlive the group. The prefix helper is the
-# unmount path; it does not share PortMaster's /tmp/weston cleanup.
+# wineserver can still outlive the group. The prefix helper unmounts
+# only this prefix's dosdevices tmpfs. It does not share PortMaster's
+# /tmp/weston cleanup.
 wine_pak_cmd() {
 	case "$1" in
 		*WINE.pak/launch.sh*) return 0 ;;

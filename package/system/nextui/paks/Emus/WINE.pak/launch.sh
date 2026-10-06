@@ -11,12 +11,12 @@ command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev
 if command -v zlyme-audio >/dev/null 2>&1; then
 	eval "$(zlyme-audio export 2>/dev/null)" || true
 fi
-# Prefix mount is undone by nextui-session. This script is replaced by
-# exec, and MENU+START can kill the group before an EXIT trap runs.
+# dosdevices cleanup belongs to nextui-session. This script is replaced
+# by exec, and MENU+START can kill the group before an EXIT trap runs.
 # winebus.so dlopens SDL2 (SDL_GameControllerOpen). The pak hint hides
 # the physical pad. The uinput xb360 node is what that SDL backend
 # exposes as XInput and DirectInput. hidraw does not see it.
-prefix=$(zlyme-wine-prefix mount) || exit $?
+prefix=$(zlyme-wine-prefix prepare) || exit $?
 export WINEPREFIX="$prefix"
 unset DISPLAY
 exec zlyme-weston-run wine "$ROM"

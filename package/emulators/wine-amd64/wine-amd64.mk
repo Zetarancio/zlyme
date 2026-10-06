@@ -13,7 +13,7 @@ WINE_AMD64_VERSION = 11.6
 WINE_AMD64_SOURCE = wine-$(WINE_AMD64_VERSION)-amd64-wow64.tar.xz
 WINE_AMD64_SITE = https://github.com/Kron4ek/Wine-Builds/releases/download/$(WINE_AMD64_VERSION)
 WINE_AMD64_LICENSE = LGPL-2.1+
-WINE_AMD64_DEPENDENCIES = box64 libxkbcommon e2fsprogs
+WINE_AMD64_DEPENDENCIES = box64 libxkbcommon
 
 # external.mk is included after package/*/*.mk, so this runs after
 # upstream libxkbcommon has set -Denable-xkbregistry=false. Wine's
