@@ -1,6 +1,8 @@
 # Reboot into MASKROM
 
-> Status: research, 2026-10-07. Nothing here is implemented. Shipped boot and preloader behavior stays in [docs/ARCHITECTURE.md](../ARCHITECTURE.md) and [docs/OPERATIONS.md](../OPERATIONS.md).
+> Status: research, 2026-10-07. The measurements below stay as they were taken. A later implementation is not a result of this file until the maintainer sees `2207:350a` from it. Shipped boot and preloader behavior stays in [docs/ARCHITECTURE.md](../ARCHITECTURE.md) and [docs/OPERATIONS.md](../OPERATIONS.md).
+>
+> Later the same day, the maintainer proved `zlyme-preloader restore` on the Flip. A completed preloader erase was not USB MASKROM. The shell experiment in this file stored the flag and did not enumerate `2207:350a`. That Linux path remains a hypothesis. A later Zlyme U-Boot `rbrom` and a kernel restart command named `maskrom` copy the same store-and-reset pair. They are not results of this file until a host sees `2207:350a` from them.
 
 The question was why erasing the SPI preloader no longer ends in USB MASKROM, and how a running system can request that mode the way stock U-Boot's `rbrom` does.
 

@@ -33,4 +33,4 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [documentation-audit-phase10.md](documentation-audit-phase10.md) | 10, 2026-10-04 | Phase 10 full-history documentation audit and hardware-wiki synchronization plan. |
 | [emulators.md](emulators.md) | before Phase 0, 2026-09-10 | Distribution core comparison and benchmark plan from before the curated list. Not the shipped set. |
 | [performance.md](performance.md) | before Phase 0, undated | Generic RK3566 kernel and runtime tuning brainstorm. Not adopted policy. |
-| [maskrom-entry.md](maskrom-entry.md) | 2026-10-07 | How stock `rbrom` on serial recovered a board that no longer reached USB MASKROM, why the same request from a running Zlyme shell did not reproduce `2207:350a`, and a proposed U-Boot command. Not implemented. |
+| [maskrom-entry.md](maskrom-entry.md) | 2026-10-07 | How stock `rbrom` on serial recovered a board that no longer reached USB MASKROM, and why a running Zlyme shell did not reproduce `2207:350a`. The shell path stays unproven. |
