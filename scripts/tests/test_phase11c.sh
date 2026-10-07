@@ -208,6 +208,28 @@ rc=$(run "$base" status)
 [ "$rc" = "0" ] || fail "status rc=$rc $(cat "$base/err")"
 no_cmd "$base" status
 
+rc=$(run "$base" status-machine)
+[ "$rc" = "0" ] || fail "status-machine rc=$rc $(cat "$base/err")"
+grep -q '^preloader=valid$' "$base/out" || fail "status-machine preloader $(cat "$base/out")"
+grep -q '^backup=available$' "$base/out" || fail "status-machine backup $(cat "$base/out")"
+grep -q '^battery=80$' "$base/out" || fail "status-machine battery $(cat "$base/out")"
+grep -q '^charger=off$' "$base/out" || fail "status-machine charger $(cat "$base/out")"
+if grep -q '^error=' "$base/out"; then
+	fail "status-machine reported an error $(cat "$base/out")"
+fi
+if grep -q 'zlyme-preloader:' "$base/out"; then
+	fail "status-machine leaked a human log line"
+fi
+no_cmd "$base" status-machine
+
+fix=$(new_fix)
+printf '10' > "$fix/sys/class/power_supply/battery/capacity"
+printf '0' > "$fix/sys/class/power_supply/ac/online"
+rc=$(run "$fix" status-machine)
+[ "$rc" != "0" ] || fail "low battery status-machine was accepted"
+grep -q '^error=battery 10% and no charger$' "$fix/out" || fail "status-machine error $(cat "$fix/out")"
+no_cmd "$fix" "low battery status-machine"
+
 # wrong platform
 fix=$(new_fix)
 printf '%s\n' 'ZLYME_DEVICE_ID=other' > "$fix/usr/share/zlyme/device.conf"
@@ -530,6 +552,13 @@ if [ -d /home/ale/NextUI/.git ]; then
 	git -C /home/ale/NextUI grep -q 'RESTORE STOCK PRELOADER' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no restore confirmation"
 	git -C /home/ale/NextUI grep -q 'REBOOT TO MASKROM' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no maskrom confirmation"
 	git -C /home/ale/NextUI grep -q 'zlyme-maskrom' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call zlyme-maskrom"
+	git -C /home/ale/NextUI grep -q 'status-machine' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call status-machine"
+	git -C /home/ale/NextUI grep -q 'StaticMenuItem' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI status is not a fixed page"
+	if git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
+		/^static InputReactionHint recovery_status/,/^static InputReactionHint recovery_restore_now/
+	' | grep -q showOverlay; then
+		fail "preloader status still uses an overlay"
+	fi
 	if git -C /home/ale/NextUI grep -q 'erase-preloader' "$head" -- workspace/all/settings/zlymemenu.cpp; then
 		fail "pinned NextUI exposes erase-preloader"
 	fi

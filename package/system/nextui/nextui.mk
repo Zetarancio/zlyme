@@ -12,7 +12,8 @@
 ################################################################################
 
 # Settings -> System -> Advanced -> Recovery is in this pin.
-NEXTUI_VERSION = 2ef0f4e7ef623460c71f06ddf37ea4203b657f0d
+# Preloader status is a fixed page of zlyme-preloader status-machine.
+NEXTUI_VERSION = 1b5ef591d894bd44accad8d84955bb580506377d
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

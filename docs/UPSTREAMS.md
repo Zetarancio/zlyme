@@ -206,7 +206,7 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 | Role | Remote | Revision | Used for |
 | --- | --- | --- | --- |
 | Stock preloader installer | `apommel/baseos-my355` | `e09d37bb0f03c34e564d61bd02164f332d8515a8` | `MY355_FW_INSTALLER_VERSION`. MIT. `mkfwimg.py` writes `miyoo355_fw.img`. `post-image.sh` writes `miyoo355_fw.img.sha256`. The Build workflow uploads both. The OTA does not. To bump: review the upstream diff, change the pin and `.hash`, rebuild, compare `miyoo355_fw.img`, rerun `scripts/tests/test_phase11c.sh`. Do not track `main` |
-| NextUI fork | `Zetarancio/NextUI` | `2ef0f4e7ef623460c71f06ddf37ea4203b657f0d` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
+| NextUI fork | `Zetarancio/NextUI` | `1b5ef591d894bd44accad8d84955bb580506377d` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
 | NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
 | OpenBOR | `DCurrent/openbor` | `v7533` | `OPENBOR_VERSION`. Directory overrides are `package/emulators/openbor/0003-runtime-directories.patch` |
 | mkxp-z | `white-axe/mkxp-z` | `650cb0888a07d0b5044e131160ddfa53feaf595b` | `LIBRETRO_MKXP_Z_VERSION`. One wrapper directory is `0001-one-wrapper-archive-root.patch` |

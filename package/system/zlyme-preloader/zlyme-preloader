@@ -304,6 +304,63 @@ cmd_status() {
 	rm -f /tmp/zlyme-preloader-find.err
 }
 
+# One key=value line per fact. Settings reads this. It is not a shell script.
+cmd_status_machine() {
+	tmp=$(mktemp)
+	rc=0
+	# die() exits. A subshell keeps that exit in this command.
+	( cmd_status ) >"$tmp" 2>&1 || rc=$?
+	preloader=
+	backup=
+	battery=
+	charger=
+	error=
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+		"zlyme-preloader: battery "*)
+			rest=${line#"zlyme-preloader: battery "}
+			case "$rest" in
+			[0-9]*%", charger "[01] | [0-9][0-9]*%", charger "[01] | 100%", charger "[01])
+				battery=${rest%%\%*}
+				bit=${rest##*charger }
+				if [ "$bit" = "1" ]; then
+					charger=charging
+				else
+					charger=off
+				fi
+				;;
+			*)
+				error=${line#"zlyme-preloader: "}
+				;;
+			esac
+			;;
+		"zlyme-preloader: preloader "*)
+			# Partition identity passed. This is not a NAND content hash.
+			preloader=valid
+			;;
+		"zlyme-preloader: original backup available:"*)
+			backup=available
+			;;
+		"zlyme-preloader: original backup unavailable:"*)
+			backup=unavailable
+			;;
+		"zlyme-preloader: "*)
+			error=${line#"zlyme-preloader: "}
+			;;
+		esac
+	done <"$tmp"
+	rm -f "$tmp"
+	[ -n "$preloader" ] && printf 'preloader=%s\n' "$preloader"
+	[ -n "$backup" ] && printf 'backup=%s\n' "$backup"
+	[ -n "$battery" ] && printf 'battery=%s\n' "$battery"
+	[ -n "$charger" ] && printf 'charger=%s\n' "$charger"
+	if [ "$rc" != 0 ]; then
+		[ -n "$error" ] || error="status failed"
+		printf 'error=%s\n' "$error"
+		return "$rc"
+	fi
+}
+
 cmd_restore() {
 	prepare
 	orig=$(find_original)
@@ -349,10 +406,11 @@ cmd_erase() {
 
 case "${1:-}" in
 	status) cmd_status ;;
+	status-machine) cmd_status_machine ;;
 	restore) cmd_restore ;;
 	erase-preloader) cmd_erase ;;
 	*)
-		log "usage: zlyme-preloader status|restore|erase-preloader"
+		log "usage: zlyme-preloader status|status-machine|restore|erase-preloader"
 		exit 2
 		;;
 esac
