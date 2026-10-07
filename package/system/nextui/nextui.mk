@@ -11,7 +11,8 @@
 # License: PolyForm Noncommercial 1.0.0
 ################################################################################
 
-NEXTUI_VERSION = bbaafd5aa894d90f75517e7f56c4b35791b19ae8
+# Settings -> System -> Advanced -> Recovery is in this pin.
+NEXTUI_VERSION = 2ef0f4e7ef623460c71f06ddf37ea4203b657f0d
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
