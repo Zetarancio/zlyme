@@ -125,7 +125,7 @@ ZLYME_BOOT_LABEL=ZLYMEBOOT
 ZLYME_STORAGE_LABEL=ZLYME
 ```
 
-`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. Another board does not have to use MMC or these names. `docs/ARCHITECTURE.md` records why these nodes are stable on this board.
+`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. Another board does not have to use MMC or these names. `docs/ARCHITECTURE.md` records why these nodes are stable on this board. On this board Linux `mmcblk0` and U-Boot `mmc 1` are the same `sdmmc0` controller, because pinned `rk356x-u-boot.dtsi` reserves `mmc 0` for `sdhci`.
 
 Do not place secrets or mutable user settings here.
 

@@ -11,13 +11,14 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 ### Added
 
 - A fresh card image includes `miyoo355_fw.img` on the boot partition. Stock runs that installer and patches this unit's own preloader so the Flip can boot from the card. An update does not copy that file and does not touch the preloader.
-- Settings → System → Advanced → Recovery shows preloader status on a fixed page, restores the stock preloader from `mtd5-original-<sha256>.img`, or requests a reboot to USB MASKROM. Restore and reboot each ask twice and start on Cancel. Reboot to MASKROM does not erase the preloader, and that reboot is not hardware-proven. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
+- Settings → System → Advanced → Recovery shows preloader status on a fixed page, restores the stock preloader from `mtd5-original-<sha256>.img`, or requests a reboot to USB MASKROM. Restore and reboot each ask twice and start on Cancel. Reboot to MASKROM does not erase the preloader, and that reboot is not hardware-proven. If this unit has no original backup, restore can use one bundled stock image only when the installed preloader is the known counterpart of that image. Any other preloader is refused. The bundled file is Miyoo vendor firmware, and a public release is not yet cleared to ship it. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
 - Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
 
 ### Changed
 
 - A failed stock preloader restore rolls back to the preloader that was installed before the attempt. A failed erase does the same. Erasing the preloader does not by itself enter USB MASKROM when a bootable card is inserted.
-- Reboot to MASKROM stores one request on the boot partition and then uses an ordinary restart. If that request cannot be written, the device stays up and Settings shows the error. If the restart does not start, the request stays queued for the next boot.
+- Reboot to MASKROM stores one request on the boot partition and then uses an ordinary restart. If that request cannot be written, the device stays up and Settings shows the error. If the restart does not start, the request stays queued for the next boot. On 2026-10-07 the fixed status page was readable. The same image's MASKROM request was still on the card after reboot, so that request was not consumed. The corrected bootloader has not been tried on a Flip.
+- Preloader status says when the original backup is missing, and whether the bundled stock fallback matches this unit. It does not show hashes.
 - OpenBOR keeps saves in `Saves/OPENBOR`. Its paks, screenshots, and engine logs stay out of the ROM folder.
 - RPG Maker XP, VX, and Ace open a `.zip`, `.7z`, or `.mkxpz` whose project is in one top folder, and still open a project that already sits at the archive root. The extensions on the system list match the core: `.ini`, `.json`, `.rxproj`, `.rvproj`, `.rvproj2`, `.mkxpz`, `.zip`, `.7z`.
 - Windows games use Kron4ek Wine 11.6 WoW64 under Box64 0.4.4. The prefix is files on the card at `/storage/.config/nextui/my355/wine-prefix`, with a 1 MiB temporary `dosdevices` folder. An update removes `wine-prefix.ext4`.
