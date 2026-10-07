@@ -517,23 +517,42 @@ wf=$(ls "$ROOT/.github/workflows/"*.yml "$ROOT/.github/workflows/"*.yaml 2>/dev/
 # The product workflows stay build.yml, build-stage.yml, and docker-image.yml.
 [ "$wf" = 3 ] || fail "workflow count is $wf"
 MASK=$ROOT/package/system/zlyme-maskrom/zlyme-maskrom.c
-grep -q 'LINUX_REBOOT_CMD_RESTART2' "$MASK" || fail "helper does not use restart2"
-grep -q '"maskrom"' "$MASK" || fail "helper command string"
-if grep -E '/dev/mem|devmem' "$MASK" "$PRE" >/dev/null; then
-	fail "recovery userspace uses devmem"
+HDR=$ROOT/board/my355/uboot/maskrom_request.h
+UBP=$ROOT/board/my355/uboot/patches/uboot/008-my355-maskrom-request.patch
+if grep -q 'LINUX_REBOOT_CMD_RESTART2' "$MASK"; then
+	fail "helper still uses restart2"
+fi
+if grep -q '"maskrom"' "$MASK"; then
+	fail "helper still passes a maskrom restart string"
+fi
+if grep -E '0x[0-9a-fA-F]{3,}|PMUGRF|CRU_GLB|0xfdc|0xfdd' "$MASK" >/dev/null; then
+	fail "helper contains a physical register address"
+fi
+if grep -E '/dev/mem|devmem|/dev/mmcblk' "$MASK" "$PRE" >/dev/null; then
+	fail "recovery userspace uses devmem or a raw boot partition"
 fi
 if grep -q 'erase-preloader' "$MASK"; then
 	fail "maskrom helper erases the preloader"
 fi
+grep -q 'zlyme-boot-write' "$MASK" || fail "helper does not use the boot writer"
+grep -q 'LINUX_REBOOT_CMD_RESTART' "$MASK" || fail "helper does not use an ordinary restart"
+grep -q 'ZLYME-MASKROM-1' "$MASK" || fail "helper magic"
+grep -q '/zlyme-maskrom.request' "$MASK" || fail "helper request path"
 grep -q 'BR2_PACKAGE_ZLYME_MASKROM=y' "$DEF" || fail "maskrom helper package is off"
-DRV=$ROOT/board/my355/linux/patches/20-rk3566/linux/1014-soc-rockchip-miyoo-flip-maskrom-restart.patch
-grep -q 'strcmp(cmd, "maskrom")' "$DRV" || fail "restart handler does not match maskrom"
-grep -q 'return NOTIFY_DONE' "$DRV" || fail "non-maskrom path missing"
-grep -q '0xef08a53c' "$DRV" || fail "download flag missing"
-grep -q '0xfdb9' "$DRV" || fail "cru reset value missing"
-grep -q 'miyoo,flip-maskrom-restart' "$ROOT/board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts" || fail "dts node missing"
-if grep -l 'register_restart_handler' "$ROOT/board/my355/linux/patches/"*/*/*.patch 2>/dev/null | grep -v 1014-soc-rockchip-miyoo-flip-maskrom-restart; then
-	fail "another patch registers a restart handler"
+if [ -e "$ROOT/board/my355/linux/patches/20-rk3566/linux/1014-soc-rockchip-miyoo-flip-maskrom-restart.patch" ]; then
+	fail "direct maskrom kernel patch remains"
+fi
+if grep -q 'miyoo,flip-maskrom-restart' "$ROOT/board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts"; then
+	fail "direct maskrom dts node remains"
+fi
+if grep -q 'CONFIG_MIYOO_FLIP_MASKROM_RESTART' "$ROOT/board/my355/linux/linux.config"; then
+	fail "direct maskrom kernel config remains"
+fi
+if grep -R -l 'miyoo-flip-maskrom' "$ROOT/board/my355/linux" >/dev/null 2>&1; then
+	fail "direct maskrom driver source remains"
+fi
+if grep -l 'register_restart_handler' "$ROOT/board/my355/linux/patches/"*/*/*.patch 2>/dev/null; then
+	fail "a patch registers a restart handler"
 fi
 # The stock PSCI and clock restart handlers are not patched.
 if grep -R -l 'psci_sys_reset' "$ROOT/board/my355/linux/patches" >/dev/null 2>&1; then
@@ -544,6 +563,108 @@ if grep -R 'rockchip_restart_notify' "$ROOT/board/my355/linux/patches" >/dev/nul
 fi
 grep -q 'CONFIG_CMD_RBROM=y' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "uboot rbrom config"
 grep -q 'CONFIG_BOOTDELAY=-2' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "bootdelay changed"
+preboot='blkcache configure 32 32; my355 maskrom-request; my355 fg'
+grep -q "$preboot" "$ROOT/board/my355/board.mk" || fail "board preboot"
+grep -q "$preboot" "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "defconfig preboot"
+# maskrom-request is before the fuel gauge, so a missing marker still reaches fg.
+case $preboot in
+	*"my355 maskrom-request; my355 fg"*) ;;
+	*) fail "preboot order" ;;
+esac
+grep -q 'ZLYME-MASKROM-1' "$HDR" || fail "uboot magic"
+grep -q '/zlyme-maskrom.request' "$HDR" || fail "uboot request path"
+grep -q 'fs_set_blk_dev("mmc", "0:2", FS_TYPE_FAT)' "$UBP" || fail "primary volume binding"
+if grep -q 'fs_set_blk_dev("mmc", "1' "$UBP"; then
+	fail "maskrom request searches the second card"
+fi
+if grep -E 'nand|mtd|/dev/mmc|mmcblk' "$HDR" "$UBP" "$MASK" >/dev/null; then
+	fail "maskrom request names NAND or a raw device"
+fi
+if grep -E '0xef08a53c|0xfdb9|0xfdc20200' "$UBP" "$HDR" >/dev/null; then
+	fail "uboot request duplicates reset constants"
+fi
+grep -q 'set_back_to_bootrom_dnl_flag' "$UBP" || fail "shared rbrom body missing"
+grep -q 'return zlyme_rbrom' "$UBP" || fail "maskrom-request does not use shared rbrom"
+# The BootROM flag lives in zlyme_rbrom, which the subcommand calls only
+# after maskrom_request_consume returns ENTER.
+awk '
+	/static int do_my355_maskrom/,/return CMD_RET_SUCCESS;/ {
+		print
+	}
+' "$UBP" | grep -q 'if (rc == MASKROM_ENTER)' || fail "rbrom is not gated on consumption"
+if awk '
+	/static int do_my355_maskrom/,/return CMD_RET_SUCCESS;/ {
+		print
+	}
+' "$UBP" | grep -q 'set_back_to_bootrom_dnl_flag'; then
+	fail "subcommand sets the bootrom flag itself"
+fi
+
+fix=$(mktemp -d)
+trap 'rm -rf "$fix"' EXIT
+cc=${CC:-gcc}
+"$cc" -Wall -Wextra -Werror -std=c11 -I"$ROOT/board/my355/uboot" \
+	-o "$fix/maskrom-request-test" "$ROOT/scripts/tests/maskrom_request_test.c"
+"$fix/maskrom-request-test" | grep -q 'maskrom-request-test: ok' || fail "marker decision fixture"
+"$cc" -Wall -Wextra -Werror -std=gnu99 -o "$fix/zlyme-maskrom" "$MASK"
+cat > "$fix/writer" << 'EOF'
+#!/bin/sh
+mode=${ZLYME_WRITER_MODE:-ok}
+if [ "$mode" = fail ]; then
+	exit 1
+fi
+if [ "$mode" = corrupt ]; then
+	printf '%s' 'not-the-request' > "$ZLYME_BOOT/zlyme-maskrom.request"
+	exit 0
+fi
+exec "$1" --write
+EOF
+chmod +x "$fix/writer"
+boot=$fix/boot
+mkdir -p "$boot"
+run_mask() {
+	mode=$1
+	fail_reboot=${2:-}
+	: > "$fix/reboot.log"
+	: > "$fix/err"
+	set +e
+	if [ -n "$fail_reboot" ]; then
+		ZLYME_MASKROM_REBOOT_FAIL=1
+		export ZLYME_MASKROM_REBOOT_FAIL
+	else
+		unset ZLYME_MASKROM_REBOOT_FAIL
+	fi
+	ZLYME_MASKROM_TEST=1 \
+		ZLYME_BOOT="$boot" \
+		ZLYME_BOOT_WRITE="$fix/writer" \
+		ZLYME_MASKROM_LOG="$fix/reboot.log" \
+		ZLYME_WRITER_MODE="$mode" \
+		"$fix/zlyme-maskrom" >"$fix/out" 2>"$fix/err"
+	rc=$?
+	set -e
+	printf '%s\n' "$rc"
+}
+rm -f "$boot/zlyme-maskrom.request"
+rc=$(run_mask fail)
+[ "$rc" = 1 ] || fail "write failure rc=$rc"
+grep -q 'the request was not written' "$fix/err" || fail "write failure text"
+grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "write failure requested reboot"
+[ ! -e "$boot/zlyme-maskrom.request" ] || fail "write failure left a request"
+rc=$(run_mask corrupt)
+[ "$rc" = 1 ] || fail "verify failure rc=$rc"
+grep -q 'the request did not verify' "$fix/err" || fail "verify failure text"
+grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "verify failure requested reboot"
+rc=$(run_mask ok)
+[ "$rc" = 0 ] || fail "request success rc=$rc $(cat "$fix/err")"
+printf '%s' 'ZLYME-MASKROM-1' > "$fix/expect"
+cmp -s "$fix/expect" "$boot/zlyme-maskrom.request" || fail "request bytes"
+grep -q 'ordinary-reboot' "$fix/reboot.log" || fail "success did not request an ordinary reboot"
+rm -f "$boot/zlyme-maskrom.request"
+rc=$(run_mask ok 1)
+[ "$rc" = 1 ] || fail "reboot failure rc=$rc"
+grep -q 'MASKROM is queued for the next boot' "$fix/err" || fail "queued text"
+grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "failed reboot still counted as started"
+cmp -s "$fix/expect" "$boot/zlyme-maskrom.request" || fail "queued request was dropped"
 grep -q 'Settings -> System -> Advanced -> Recovery' "$ROOT/package/system/nextui/nextui.mk" || fail "pin does not name the native Recovery page"
 pin=$(sed -n 's/^NEXTUI_VERSION = //p' "$ROOT/package/system/nextui/nextui.mk")
 if [ -d /home/ale/NextUI/.git ]; then
