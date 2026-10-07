@@ -8,4 +8,5 @@ config BR2_PACKAGE_ZLYME_PRELOADER
 	select BR2_PACKAGE_PYTHON3
 	help
 	  Fail-closed restore and erase for the Flip preloader.
-	  The Tools pak calls zlyme-preloader. It does not run at boot.
+	  Settings calls restore. erase-preloader is CLI-only.
+	  It does not run at boot.

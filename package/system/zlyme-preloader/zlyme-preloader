@@ -7,7 +7,7 @@
 # because it runs on stock. This tool does not retarget mtd5.
 #
 # ZLYME_PRELOADER_TEST=1 reads a fixture tree at ZLYME_PRELOADER_ROOT
-# and never opens a real /dev/mtd node. The Tools pak does not set it.
+# and never opens a real /dev/mtd node. The Settings page does not set it.
 
 set -eu
 
@@ -297,9 +297,9 @@ cmd_status() {
 	prepare
 	log "preloader $DEV size $SIZE erase $ERASE"
 	if orig=$(find_original 2>/tmp/zlyme-preloader-find.err); then
-		log "original backup $orig"
+		log "original backup available: $orig"
 	else
-		log "original backup: $(cat /tmp/zlyme-preloader-find.err)"
+		log "original backup unavailable: $(cat /tmp/zlyme-preloader-find.err)"
 	fi
 	rm -f /tmp/zlyme-preloader-find.err
 }
@@ -325,17 +325,21 @@ cmd_restore() {
 cmd_erase() {
 	prepare
 	save_current
-	# flash_erase's own status is the MASKROM result. Do not treat a
+	# flash_erase's own status is the erase result. Do not treat a
 	# read of 0xff as proof: ECC on this NAND can report an error or
-	# corrected data for an erased page.
+	# corrected data for an erased page. A finished erase is not USB
+	# MASKROM. BootROM can load another loader, including a Zlyme
+	# card idbloader.
 	act "CMD flash_erase $DEV 0 0"
 	if flash_erase "$DEV" 0 0; then
 		act "ERASE ok"
-		log "preloader erased; the next power-on is expected to enter MASKROM"
+		log "preloader erased"
+		log "BootROM can try another boot source"
+		log "a bootable SD idbloader can start instead of USB MASKROM"
 		log "Zlyme will not reboot"
 		return 0
 	fi
-	log "flash_erase failed; this is not MASKROM success"
+	log "flash_erase failed; the preloader was not erased"
 	if rollback_current; then
 		log "Erase failed; previous preloader restored and verified."
 		exit 3
@@ -346,9 +350,9 @@ cmd_erase() {
 case "${1:-}" in
 	status) cmd_status ;;
 	restore) cmd_restore ;;
-	erase-maskrom) cmd_erase ;;
+	erase-preloader) cmd_erase ;;
 	*)
-		log "usage: zlyme-preloader status|restore|erase-maskrom"
+		log "usage: zlyme-preloader status|restore|erase-preloader"
 		exit 2
 		;;
 esac
