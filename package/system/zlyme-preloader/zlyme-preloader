@@ -208,6 +208,35 @@ current_dir() {
 	fi
 }
 
+# Recovery state is separate from the stock-restore backup. The manifest
+# names the pre-recovery image. It is not a signature: disarm recomputes
+# the recovery image from that file and compares the bytes.
+recovery_dir() {
+	if [ "$TEST" = 1 ]; then
+		printf '%s\n' "$ROOT/storage/.config/zlyme/preloader-recovery"
+	else
+		printf '%s\n' /storage/.config/zlyme/preloader-recovery
+	fi
+}
+
+manifest_path() {
+	printf '%s/manifest.json\n' "$(recovery_dir)"
+}
+
+publish_boot() {
+	src=$1
+	name=$2
+	case "$name" in
+		*/* | "") die "boot publication name is not a file name" ;;
+	esac
+	if [ "$TEST" = 1 ]; then
+		cp "$src" "$(boot_dir)/$name"
+		act "BOOT_WRITE $name"
+		return
+	fi
+	zlyme-boot-write cp "$src" "/boot/$name"
+}
+
 # Prints the one original backup path.
 find_original() {
 	dir=$(boot_dir)
@@ -481,6 +510,92 @@ cmd_restore() {
 	critical_failure restore
 }
 
+# Read the live preloader, keep that exact image, and derive the
+# right-slot recovery image. This does not erase or program NAND.
+cmd_prepare_recovery() {
+	prepare
+	dir=$(recovery_dir)
+	mkdir -p "$dir" || die "could not create the recovery directory"
+	save_current
+	rec=$(mktemp)
+	man=$(mktemp)
+	note=$(mktemp)
+	if ! python3 "$IMAGE_PY" derive "$CURRENT" "$rec"; then
+		rm -f "$rec" "$man" "$note"
+		die "this preloader is not a supported recovery source"
+	fi
+	if ! python3 "$IMAGE_PY" recovery-manifest "$CURRENT" "$rec" >"$man"; then
+		rm -f "$rec" "$man" "$note"
+		die "recovery manifest was refused"
+	fi
+	sum=$(sha_file "$rec")
+	# save_current reuses dir, so take the recovery directory again.
+	dest="$(recovery_dir)/recovery-$sum.img"
+	cp "$rec" "$dest" || { rm -f "$rec" "$man" "$note"; die "could not store the recovery image"; }
+	sync
+	[ "$(sha_file "$dest")" = "$sum" ] || { rm -f "$rec" "$man" "$note"; die "recovery image did not verify"; }
+	cp "$man" "$(manifest_path)"
+	sync
+	base=$(basename "$CURRENT")
+	cat >"$note" <<EOF
+device: Miyoo Flip / my355
+source SHA-256: $(sha_file "$CURRENT")
+recovery SHA-256: $sum
+source size: $SIZE
+role: pre-recovery source backup
+xrock recovery prerequisite: enter MASKROM 2207:350a, load the RK3566 DDR plus usbplug or a combined loader, then run xrock flash
+command that would restore it:
+xrock flash write 0 $base
+NOT EXECUTED DURING RECOVERY PREPARATION
+EOF
+	publish_boot "$CURRENT" "$base"
+	publish_boot "$note" "${base%.img}.txt"
+	publish_boot "$(manifest_path)" preloader-recovery-manifest.json
+	rm -f "$rec" "$man" "$note"
+	act "PREPARE_RECOVERY $dest"
+	log "recovery preloader prepared"
+	log "NAND was not written"
+	log "Zlyme will not reboot"
+}
+
+# Restore the pre-recovery image only when the live NAND image is the
+# byte-for-byte derivative of that saved file. The current recovery
+# image is the rollback target. The source backup is left in place.
+cmd_disarm_recovery() {
+	prepare
+	live=$(mktemp)
+	read_live "$live"
+	validate_image "$live"
+	man=$(manifest_path)
+	if [ ! -f "$man" ]; then
+		rm -f "$live"
+		die "recovery manifest is missing"
+	fi
+	if ! origin=$(python3 "$IMAGE_PY" recovery-source "$man" "$live" "$(current_dir)"); then
+		rm -f "$live"
+		die "recovery binding refused"
+	fi
+	rm -f "$live"
+	[ -f "$origin" ] || die "source backup is missing"
+	save_current
+	if [ "$CURRENT" = "$origin" ]; then
+		die "rollback image is the source backup"
+	fi
+	ddr_compatible "$CURRENT" "$origin"
+	if write_and_verify "$origin"; then
+		act "READBACK target ok"
+		log "disarmed recovery preloader"
+		log "Zlyme will not reboot"
+		return 0
+	fi
+	log "disarm write failed"
+	if rollback_current; then
+		log "Disarm failed; recovery preloader restored and verified."
+		exit 3
+	fi
+	critical_failure disarm
+}
+
 cmd_erase() {
 	prepare
 	save_current
@@ -511,8 +626,10 @@ case "${1:-}" in
 	status-machine) cmd_status_machine ;;
 	restore) cmd_restore ;;
 	erase-preloader) cmd_erase ;;
+	prepare-recovery) cmd_prepare_recovery ;;
+	disarm-recovery) cmd_disarm_recovery ;;
 	*)
-		log "usage: zlyme-preloader status|status-machine|restore|erase-preloader"
+		log "usage: zlyme-preloader status|status-machine|restore|erase-preloader|prepare-recovery|disarm-recovery"
 		exit 2
 		;;
 esac

@@ -885,4 +885,480 @@ if [ -d /home/ale/NextUI/.git ]; then
 	' | grep -q Cancel || fail "native confirmation does not start on Cancel"
 fi
 
+# Recovery preloader reversal. Fixtures only. restore stays fail-closed.
+RECOVERY_SHA=f7d9a25255080ac19e88df88d1232bf45a90bdf2e86c9f7e23b73d32a003f367
+BANNER='U-Boot SPL 2017.09 (Nov 02 2024 - 15:59:04)'
+
+reseal_idb() {
+	python3 - "$1" <<'PY'
+import hashlib, sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (131072, 524288):
+    for i in (0, 1):
+        entry = base + 0x78 + i * 0x58
+        off = int.from_bytes(data[entry:entry + 2], "little")
+        count = int.from_bytes(data[entry + 2:entry + 4], "little")
+        start = base + off * 512
+        blob = bytes(data[start:start + count * 512])
+        data[entry + 0x18:entry + 0x38] = hashlib.sha256(blob).digest()
+open(sys.argv[1], "wb").write(data)
+PY
+}
+
+# A preloader-current file is not a restore source, even when it is valid.
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$KNOWN" "$fix/live/preloader.img"
+install_stock "$fix"
+stock_sum=$(sha256sum "$STOCK_IMG" | awk '{print $1}')
+cp "$STOCK_IMG" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$stock_sum.img"
+rc=$(run "$fix" restore)
+[ "$rc" = "0" ] || fail "stock fallback beside a current backup rc=$rc $(cat "$fix/err")"
+awk '/^nandwrite / { if (index($0, "preloader-stock.img") == 0 || index($0, "preloader-current-") != 0) bad=1 } END { exit bad }' \
+	"$fix/actions.log" || fail "restore used preloader-current $(cat "$fix/actions.log")"
+
+fix=$(new_fix)
+rc=$(run "$fix" prepare-recovery)
+[ "$rc" != "0" ] || fail "synthetic SPL was accepted as a recovery source"
+grep -q 'this preloader is not a supported recovery source' "$fix/err" || fail "synthetic refusal $(cat "$fix/err")"
+no_cmd "$fix" "synthetic prepare"
+
+fix=$(new_fix)
+cp "$KNOWN" "$fix/live/preloader.img"
+rc=$(run "$fix" prepare-recovery)
+[ "$rc" = "0" ] || fail "prepare-recovery rc=$rc $(cat "$fix/err")"
+grep -q 'NAND was not written' "$fix/err" || fail "prepare did not say NAND was untouched"
+grep -q 'Zlyme will not reboot' "$fix/err" || fail "prepare rebooted in its text"
+no_cmd "$fix" "prepare-recovery"
+grep -q '^PREPARE_RECOVERY ' "$fix/actions.log" || fail "prepare did not record the image"
+src_sum=$(sha256sum "$KNOWN" | awk '{print $1}')
+src_file="$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img"
+[ -f "$src_file" ] || fail "prepare did not keep the source backup"
+cmp -s "$KNOWN" "$src_file" || fail "source backup is not the live image"
+cmp -s "$KNOWN" "$fix/live/preloader.img" || fail "prepare wrote the live preloader"
+rec_file="$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+[ -f "$rec_file" ] || fail "recovery image missing"
+[ "$(sha256sum "$rec_file" | awk '{print $1}')" = "$RECOVERY_SHA" ] || fail "recovery image sha"
+man="$fix/storage/.config/zlyme/preloader-recovery/manifest.json"
+python3 - "$man" "$src_sum" "$RECOVERY_SHA" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+assert doc["schema"] == 1
+assert doc["design"] == "right-sd-v1"
+assert doc["device"] == "my355"
+assert doc["source_sha256"] == sys.argv[2]
+assert doc["recovery_sha256"] == sys.argv[3]
+assert doc["source_backup"] == "preloader-current-" + sys.argv[2] + ".img"
+assert "sig" not in doc
+PY
+boot_src="$fix/boot/preloader-current-$src_sum.img"
+cmp -s "$src_file" "$boot_src" || fail "FAT source copy differs"
+grep -q 'NOT EXECUTED DURING RECOVERY PREPARATION' "$fix/boot/preloader-current-$src_sum.txt" || fail "FAT note"
+grep -q "xrock flash write 0 preloader-current-$src_sum.img" "$fix/boot/preloader-current-$src_sum.txt" || fail "FAT restore command"
+cmp -s "$man" "$fix/boot/preloader-recovery-manifest.json" || fail "FAT manifest copy"
+prepared=$fix
+
+# Honest manifest, live image still the normal preloader.
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$KNOWN" "$fix/live/preloader.img"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "normal preloader was disarmed"
+grep -q 'live preloader is not the recovery image' "$fix/err" || fail "normal live text $(cat "$fix/err")"
+no_cmd "$fix" "already normal"
+
+# Successful disarm restores the source and leaves that backup in place.
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+: > "$fix/actions.log"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" = "0" ] || fail "disarm rc=$rc $(cat "$fix/err")"
+grep -q 'disarmed recovery preloader' "$fix/err" || fail "disarm text"
+grep -q 'Zlyme will not reboot' "$fix/err" || fail "disarm rebooted in its text"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" = "$src_sum" ] || fail "disarm left $live"
+cmp -s "$src_file" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" || fail "disarm rewrote the source backup"
+[ -f "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$RECOVERY_SHA.img" ] || fail "rollback copy missing"
+awk -v src="$src_sum" '
+	/^GATES / { g=NR }
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { if (!e) e=NR; ne++ }
+	/^nandwrite / { if (!n) n=NR; nn++; if (index($0, src) == 0) bad=1 }
+	/^READBACK target ok$/ { t=NR }
+	END { exit !(g && c && e && n && t && g < c && c < e && e < n && n < t && ne == 1 && nn == 1 && !bad) }
+' "$fix/actions.log" || fail "disarm order $(cat "$fix/actions.log")"
+# The same fixture's current-backup must not satisfy restore once the
+# recovery image is what NAND holds and no original backup is present.
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+install_stock "$fix"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "restore accepted the recovery image"
+grep -q 'does not exactly match this preloader revision' "$fix/err" || fail "restore refusal $(cat "$fix/err")"
+no_cmd "$fix" "restore of recovery image"
+
+fix=$(new_fix)
+cp "$rec_file" "$fix/live/preloader.img"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "missing manifest was accepted"
+grep -q 'recovery manifest is missing' "$fix/err" || fail "missing manifest text $(cat "$fix/err")"
+no_cmd "$fix" "missing manifest"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+printf '{\n' > "$fix/storage/.config/zlyme/preloader-recovery/manifest.json"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "malformed manifest was accepted"
+grep -q 'recovery manifest is malformed' "$fix/err" || fail "malformed text $(cat "$fix/err")"
+no_cmd "$fix" "malformed manifest"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+doc = json.load(open(p))
+doc["device"] = "other"
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "wrong manifest device was accepted"
+grep -q 'recovery manifest device is not my355' "$fix/err" || fail "wrong device text $(cat "$fix/err")"
+no_cmd "$fix" "wrong manifest device"
+
+fix=$(new_fix)
+printf '%s\n' 'ZLYME_DEVICE_ID=other' > "$fix/usr/share/zlyme/device.conf"
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "wrong platform disarm was accepted"
+grep -q 'platform is not my355' "$fix/err" || fail "platform text $(cat "$fix/err")"
+no_cmd "$fix" "wrong platform disarm"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+doc = json.load(open(p))
+doc["recovery_sha256"] = "0" * 64
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "live sha mismatch was accepted"
+grep -q 'live preloader is not the recovery image' "$fix/err" || fail "live sha text $(cat "$fix/err")"
+no_cmd "$fix" "live sha mismatch"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+rm -f "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "missing source was accepted"
+grep -q 'source backup is missing' "$fix/err" || fail "missing source text $(cat "$fix/err")"
+no_cmd "$fix" "missing source"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+printf '\x5a' | dd of="$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" bs=1 seek=200 conv=notrunc status=none
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "source sha mismatch was accepted"
+grep -q 'source backup sha does not match the manifest' "$fix/err" || fail "source sha text $(cat "$fix/err")"
+no_cmd "$fix" "source sha mismatch"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+# Corrupt the DDR payload and leave its stored hash stale.
+entry = 131072 + 0x78
+off = int.from_bytes(data[entry:entry + 2], "little")
+data[131072 + off * 512 + 32] ^= 0x5A
+open(sys.argv[1], "wb").write(data)
+PY
+bad=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" | awk '{print $1}')
+mv "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" \
+	"$fix/storage/.config/zlyme/preloader-backups/preloader-current-$bad.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$bad" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["source_sha256"] = sha
+doc["source_backup"] = "preloader-current-" + sha + ".img"
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "invalid source structure was accepted"
+grep -q 'fails its SHA-256' "$fix/err" || fail "invalid source text $(cat "$fix/err")"
+no_cmd "$fix" "invalid source structure"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+printf '\x00' | dd of="$fix/live/preloader.img" bs=1 seek=140000 conv=notrunc status=none
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "invalid live structure was accepted"
+grep -q 'image structure refused' "$fix/err" || fail "invalid live text $(cat "$fix/err")"
+no_cmd "$fix" "invalid live structure"
+
+# DDR bytes differ. The manifest is updated to the altered source hash
+# so only the DDR comparison can refuse it.
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" <<'PY'
+import hashlib, sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (131072, 524288):
+    entry = base + 0x78
+    off = int.from_bytes(data[entry:entry + 2], "little")
+    count = int.from_bytes(data[entry + 2:entry + 4], "little")
+    start = base + off * 512
+    data[start + 32] ^= 0x5A
+    blob = bytes(data[start:start + count * 512])
+    data[entry + 0x18:entry + 0x38] = hashlib.sha256(blob).digest()
+open(sys.argv[1], "wb").write(data)
+PY
+bad=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" | awk '{print $1}')
+mv "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" \
+	"$fix/storage/.config/zlyme/preloader-backups/preloader-current-$bad.img"
+python3 - "$PY" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$bad.img" \
+	"$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$bad" <<'PY'
+import hashlib, json, sys
+py, img, man, sha = sys.argv[1:]
+ns = {"__name__": "preloader_image"}
+exec(open(py).read(), ns)
+data = open(img, "rb").read()
+_ddr, _spl = ns["_paired"](data)
+doc = json.load(open(man))
+doc["source_sha256"] = sha
+doc["source_backup"] = "preloader-current-" + sha + ".img"
+doc["source_ddr_sha256"] = hashlib.sha256(_ddr).hexdigest()
+json.dump(doc, open(man, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "DDR mismatch was accepted"
+grep -q 'DDR payload does not match the source backup' "$fix/err" || fail "DDR text $(cat "$fix/err")"
+no_cmd "$fix" "DDR mismatch"
+
+# Same executable and DDR as this unit, but the stock DTB. A consistent
+# manifest must still refuse it: derive(stock) is not the live image.
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+rm -f "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img"
+stock_sum=$(sha256sum "$STOCK_IMG" | awk '{print $1}')
+cp "$STOCK_IMG" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$stock_sum.img"
+python3 - "$PY" "$STOCK_IMG" "$rec_file" \
+	"$fix/storage/.config/zlyme/preloader-recovery/manifest.json" <<'PY'
+import hashlib, json, sys
+py, stock, live, man = sys.argv[1:]
+ns = {"__name__": "preloader_image"}
+exec(open(py).read(), ns)
+data = open(stock, "rb").read()
+ddr, spl = ns["_paired"](data)
+doc = json.load(open(man))
+sha = hashlib.sha256(data).hexdigest()
+doc["source_sha256"] = sha
+doc["source_backup"] = "preloader-current-" + sha + ".img"
+doc["source_ddr_sha256"] = hashlib.sha256(ddr).hexdigest()
+doc["executable_sha256"] = hashlib.sha256(spl[0]["payload"][:ns["DTB_OFF"]]).hexdigest()
+doc["recovery_sha256"] = hashlib.sha256(open(live, "rb").read()).hexdigest()
+json.dump(doc, open(man, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "stock source was authorized by the manifest"
+grep -q 'live recovery image is not the derivative of the source backup' "$fix/err" || fail "stock source text $(cat "$fix/err")"
+no_cmd "$fix" "arbitrary stock source"
+
+# Forged recovery hash equal to the five-entry source. The extra boot
+# devices are still in that image, so it is not the derivative.
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$KNOWN" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$src_sum" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "five-entry image was accepted as the recovery image"
+grep -q 'live recovery image is not the derivative of the source backup' "$fix/err" || fail "extra boot device text $(cat "$fix/err")"
+no_cmd "$fix" "additional boot device"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live-mmc.img"
+python3 - "$fix/live-mmc.img" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+old = b"/dwmmc@fe2b0000\x00"
+new = b"/sdhci@fe310000\x00"
+found = 0
+idx = 0
+while True:
+    at = data.find(old, idx)
+    if at < 0:
+        break
+    if data[at + len(old):at + len(old) + 4] == b"\x00\x00\x00\x02":
+        data[at:at + len(old)] = new
+        found += 1
+    idx = at + 1
+if found != 2:
+    raise SystemExit(f"boot-order sites {found}")
+open(sys.argv[1], "wb").write(data)
+PY
+reseal_idb "$fix/live-mmc.img"
+mmc_sum=$(sha256sum "$fix/live-mmc.img" | awk '{print $1}')
+cp "$fix/live-mmc.img" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$mmc_sum" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "wrong MMC boot order was accepted"
+grep -q 'live recovery image is not the derivative of the source backup' "$fix/err" || fail "wrong MMC text $(cat "$fix/err")"
+no_cmd "$fix" "wrong MMC"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live-exec.img"
+python3 - "$fix/live-exec.img" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (0x2E000, 0x8E000):
+    data[base + 0x100] ^= 0x5A
+open(sys.argv[1], "wb").write(data)
+PY
+reseal_idb "$fix/live-exec.img"
+exec_sum=$(sha256sum "$fix/live-exec.img" | awk '{print $1}')
+cp "$fix/live-exec.img" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$exec_sum" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "changed executable was accepted"
+grep -q 'recovery image changed SPL executable bytes' "$fix/err" || fail "executable text $(cat "$fix/err")"
+no_cmd "$fix" "changed executable"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$KNOWN" "$fix/live-banner.img"
+python3 - "$fix/live-banner.img" "$BANNER" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+old = sys.argv[2].encode()
+new = old[:-1] + b"5"
+if data.count(old) != 2:
+    raise SystemExit(f"banner count {data.count(old)}")
+data = data.replace(old, new)
+open(sys.argv[1], "wb").write(data)
+PY
+reseal_idb "$fix/live-banner.img"
+banner_sum=$(sha256sum "$fix/live-banner.img" | awk '{print $1}')
+rm -f "$fix"/storage/.config/zlyme/preloader-backups/*
+cp "$fix/live-banner.img" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$banner_sum.img"
+cp "$fix/live-banner.img" "$fix/live/preloader.img"
+python3 - "$PY" "$fix/live-banner.img" \
+	"$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$banner_sum" <<'PY'
+import hashlib, json, sys
+py, img, man, sha = sys.argv[1:]
+ns = {"__name__": "preloader_image"}
+exec(open(py).read(), ns)
+data = open(img, "rb").read()
+ddr, spl = ns["_paired"](data)
+doc = json.load(open(man))
+doc["source_sha256"] = sha
+doc["recovery_sha256"] = sha
+doc["source_backup"] = "preloader-current-" + sha + ".img"
+doc["source_ddr_sha256"] = hashlib.sha256(ddr).hexdigest()
+doc["executable_sha256"] = hashlib.sha256(spl[0]["payload"][:ns["DTB_OFF"]]).hexdigest()
+json.dump(doc, open(man, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "other SPL banner was accepted"
+grep -q 'different SPL build' "$fix/err" || fail "other SPL text $(cat "$fix/err")"
+no_cmd "$fix" "other SPL build"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+doc = json.load(open(p))
+doc["source_backup"] = "../preloader-current-" + doc["source_sha256"] + ".img"
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "path escape was accepted"
+grep -q 'source backup name is not the source sha' "$fix/err" || fail "path escape text $(cat "$fix/err")"
+no_cmd "$fix" "manifest path escape"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+printf '10' > "$fix/sys/class/power_supply/battery/capacity"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "low battery disarm was accepted"
+grep -q 'battery 10% and no charger' "$fix/err" || fail "battery text $(cat "$fix/err")"
+no_cmd "$fix" "disarm battery"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+printf '1' > "$fix/sys/class/mtd/mtd0/bad_blocks"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" != "0" ] || fail "bad block disarm was accepted"
+grep -q 'preloader has bad blocks' "$fix/err" || fail "bad block text $(cat "$fix/err")"
+no_cmd "$fix" "disarm bad blocks"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+before=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")
+printf '3\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" = "3" ] || fail "disarm nandwrite failure rc=$rc $(cat "$fix/err")"
+grep -q 'Disarm failed; recovery preloader restored and verified.' "$fix/err" || fail "disarm rollback text $(cat "$fix/err")"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" = "$RECOVERY_SHA" ] || fail "rollback did not keep the recovery image"
+[ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "failed disarm changed the source backup"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" || fail "disarm rollback did not verify"
+awk -v cur="preloader-current-$RECOVERY_SHA.img" '
+	/^ROLLBACK$/ { r=1; next }
+	r && /^nandwrite / { if (index($0, cur) == 0) bad=1; n++ }
+	END { exit !(r && n && !bad) }
+' "$fix/actions.log" || fail "rollback wrote a different image $(cat "$fix/actions.log")"
+
+fix=$(new_fix)
+cp -a "$prepared/storage/." "$fix/storage/"
+cp "$rec_file" "$fix/live/preloader.img"
+before=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")
+printf '6\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" disarm-recovery)
+[ "$rc" = "1" ] || fail "disarm double failure rc=$rc $(cat "$fix/err")"
+grep -q 'CRITICAL: disarm failed and rollback could not be verified.' "$fix/err" || fail "critical disarm text $(cat "$fix/err")"
+grep -q 'MASKROM/xrock recovery may be required' "$fix/err" || fail "critical disarm omitted xrock"
+[ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "double failure changed the source backup"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "double failure claimed rollback"
+
 echo "phase11c: ok"
