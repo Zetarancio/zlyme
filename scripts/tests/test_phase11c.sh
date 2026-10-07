@@ -196,6 +196,27 @@ run() {
 	printf '%s\n' "$rc"
 }
 
+# Optional SHA and path overrides. Empty values leave the production pins.
+run_fb() {
+	fix=$1
+	cmd=$2
+	stock_sha=${3:-}
+	patched_sha=${4:-}
+	stock_file=${5:-}
+	set +e
+	ZLYME_PRELOADER_TEST=1 \
+	ZLYME_PRELOADER_ROOT="$fix" \
+	ZLYME_PRELOADER_IMAGE_PY="$PY" \
+	ZLYME_PRELOADER_STOCK_SHA="$stock_sha" \
+	ZLYME_PRELOADER_PATCHED_SHA="$patched_sha" \
+	ZLYME_PRELOADER_STOCK="$stock_file" \
+	PATH="$BIN:$PATH" \
+		"$PRE" "$cmd" >"$fix/out" 2>"$fix/err"
+	rc=$?
+	set -e
+	printf '%s\n' "$rc"
+}
+
 no_cmd() {
 	fix=$1
 	if grep -q '^flash_erase \|^nandwrite ' "$fix/actions.log"; then
@@ -216,6 +237,9 @@ grep -q '^battery=80$' "$base/out" || fail "status-machine battery $(cat "$base/
 grep -q '^charger=off$' "$base/out" || fail "status-machine charger $(cat "$base/out")"
 if grep -q '^error=' "$base/out"; then
 	fail "status-machine reported an error $(cat "$base/out")"
+fi
+if grep -q '^fallback=' "$base/out"; then
+	fail "status-machine named a fallback while a backup exists $(cat "$base/out")"
 fi
 if grep -q 'zlyme-preloader:' "$base/out"; then
 	fail "status-machine leaked a human log line"
@@ -291,6 +315,8 @@ fix=$(new_fix)
 rm -f "$fix"/boot/mtd5-original-*.img
 rc=$(run "$fix" restore)
 [ "$rc" != "0" ] || fail "missing backup was accepted"
+grep -q 'does not exactly match this preloader revision' "$fix/err" || fail "missing backup refusal $(cat "$fix/err")"
+grep -q 'Restore refused' "$fix/err" || fail "missing backup did not refuse"
 no_cmd "$fix" "missing backup"
 
 fix=$(new_fix)
@@ -301,6 +327,7 @@ cp "$GOOD" "$fix/boot/mtd5-original-${sum}.img.bak" 2>/dev/null || true
 cp "$GOOD" "$fix/boot/mtd5-original-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.img"
 rc=$(run "$fix" restore)
 [ "$rc" != "0" ] || fail "ambiguous backups were accepted"
+grep -q 'more than one original preloader backup' "$fix/err" || fail "ambiguous backup fell through $(cat "$fix/err")"
 no_cmd "$fix" "ambiguous backups"
 
 fix=$(new_fix)
@@ -483,6 +510,156 @@ live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
 orig=$(sha256sum "$GOOD" | awk '{print $1}')
 [ "$live" = "$orig" ] || fail "successful restore did not leave the stock image"
 
+STOCK_IMG=$ROOT/package/system/zlyme-preloader/preloader-stock.img
+PROV=$ROOT/package/system/zlyme-preloader/preloader-stock.PROVENANCE
+STOCK_SHA=$(sed -n 's/^STOCK_SHA=//p' "$PRE")
+PATCHED_SHA=$(sed -n 's/^PATCHED_SHA=//p' "$PRE")
+[ -f "$STOCK_IMG" ] || fail "bundled stock image is missing"
+[ "$(sha256sum "$STOCK_IMG" | awk '{print $1}')" = "$STOCK_SHA" ] || fail "bundled stock sha"
+[ "$(md5sum "$STOCK_IMG" | awk '{print $1}')" = "1d525e6e6c89bd788b5245c90c97833b" ] || fail "bundled stock md5"
+grep -q "$STOCK_SHA" "$PROV" || fail "provenance sha"
+grep -q 'c126d3235face9ddca5bf021258a84758dca543c' "$PROV" || fail "provenance wiki commit"
+grep -q 'preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img' "$PROV" || fail "provenance path"
+grep -q "$PATCHED_SHA" "$PROV" || fail "provenance patched fingerprint"
+grep -q '/usr/share/zlyme/recovery/preloader-stock.img' "$PRE" || fail "stock install path"
+grep -q 'preloader-stock.img' "$ROOT/package/system/zlyme-preloader/zlyme-preloader.mk" || fail "package does not install the stock image"
+if grep -q 'preloader-patched.img' "$ROOT/package/system/zlyme-preloader/zlyme-preloader.mk"; then
+	fail "package installs the patched image"
+fi
+if [ -e "$ROOT/package/system/zlyme-preloader/preloader-patched.img" ]; then
+	fail "patched image is in the package tree"
+fi
+# The SHA overrides are reached only when the fixture switch is on.
+awk '
+	/expected_stock_sha\(\)/ { f=1 }
+	f && /ZLYME_PRELOADER_STOCK_SHA/ { saw=1 }
+	f && /\[ "\$TEST" = 1 \]/ { gate=1 }
+	f && /^}/ { exit !(saw && gate) }
+' "$PRE" || fail "stock sha override is not test-only"
+WIKI=${ZLYME_WIKI_TREE:-/run/media/ale/SPCC/Cursor/MIYOO-FLIP/Steward-fu-FLIP}
+KNOWN=$WIKI/preloader-stock-rocknix/App/apommel-multiboot/preloader-patched.img
+[ -f "$KNOWN" ] || fail "known patched preloader is not available"
+[ "$(sha256sum "$KNOWN" | awk '{print $1}')" = "$PATCHED_SHA" ] || fail "known patched fingerprint"
+
+install_stock() {
+	mkdir -p "$1/usr/share/zlyme/recovery"
+	cp "$STOCK_IMG" "$1/usr/share/zlyme/recovery/preloader-stock.img"
+}
+
+# Per-device backup wins even when the live image is the known patched
+# counterpart and the bundled stock file is installed.
+fix=$(new_fix)
+cp "$KNOWN" "$fix/live/preloader.img"
+sum=$(sha256sum "$STOCK_IMG" | awk '{print $1}')
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$STOCK_IMG" "$fix/boot/mtd5-original-$sum.img"
+install_stock "$fix"
+rc=$(run "$fix" restore)
+[ "$rc" = "0" ] || fail "per-device backup restore rc=$rc $(cat "$fix/err")"
+awk '/^nandwrite / { if (index($0, "mtd5-original-") == 0 || index($0, "preloader-stock.img") != 0) bad=1 } END { exit bad }' "$fix/actions.log" \
+	|| fail "per-device backup did not win $(cat "$fix/actions.log")"
+awk '
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { e=NR }
+	END { exit !(c && e && c < e) }
+' "$fix/actions.log" || fail "per-device restore erased before the current backup"
+
+# Two backups still refuse, including when the fallback would otherwise match.
+fix=$(new_fix)
+cp "$KNOWN" "$fix/live/preloader.img"
+sum=$(sha256sum "$STOCK_IMG" | awk '{print $1}')
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$STOCK_IMG" "$fix/boot/mtd5-original-$sum.img"
+cp "$STOCK_IMG" "$fix/boot/mtd5-original-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.img"
+install_stock "$fix"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "ambiguous backup used the fallback"
+grep -q 'more than one original preloader backup' "$fix/err" || fail "ambiguous fallback reason $(cat "$fix/err")"
+no_cmd "$fix" "ambiguous fallback"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$KNOWN" "$fix/live/preloader.img"
+install_stock "$fix"
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "compatible fallback status rc=$rc $(cat "$fix/err")"
+grep -q '^backup=unavailable$' "$fix/out" || fail "compatible status backup $(cat "$fix/out")"
+grep -q '^fallback=compatible$' "$fix/out" || fail "compatible status fallback $(cat "$fix/out")"
+rc=$(run "$fix" restore)
+[ "$rc" = "0" ] || fail "stock fallback restore rc=$rc $(cat "$fix/err")"
+grep -q 'using bundled stock fallback' "$fix/err" || fail "fallback was not selected"
+grep -q 'restored stock fallback' "$fix/err" || fail "fallback restore text"
+awk '/^nandwrite / { if (index($0, "preloader-stock.img") == 0) bad=1 } END { exit bad }' "$fix/actions.log" \
+	|| fail "fallback did not write the bundled image"
+awk '
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { if (!e) e=NR }
+	/^nandwrite / { n=NR }
+	END { exit !(c && e && n && c < e && e < n) }
+' "$fix/actions.log" || fail "fallback erased before the current backup"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" = "$STOCK_SHA" ] || fail "fallback did not leave the stock image"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$KNOWN" "$fix/live/preloader.img"
+printf '\x5a' | dd of="$fix/live/preloader.img" bs=1 seek=2097151 conv=notrunc status=none
+install_stock "$fix"
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "one-byte status rc=$rc $(cat "$fix/err")"
+grep -q '^backup=unavailable$' "$fix/out" || fail "one-byte status backup"
+grep -q '^fallback=incompatible$' "$fix/out" || fail "one-byte status fallback $(cat "$fix/out")"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "one-byte difference was accepted"
+grep -q 'does not exactly match this preloader revision' "$fix/err" || fail "one-byte refusal $(cat "$fix/err")"
+no_cmd "$fix" "one-byte difference"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+python3 - "$KNOWN" "$fix/live/preloader.img" <<'PY'
+import hashlib, sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (131072, 524288):
+    entry = base + 0x78 + 0x58
+    off = int.from_bytes(data[entry:entry + 2], "little")
+    count = int.from_bytes(data[entry + 2:entry + 4], "little")
+    start = base + off * 512
+    data[start + 64] ^= 0x5A
+    blob = bytes(data[start:start + count * 512])
+    data[entry + 0x18:entry + 0x38] = hashlib.sha256(blob).digest()
+open(sys.argv[2], "wb").write(data)
+PY
+python3 "$PY" "$fix/live/preloader.img" || fail "ddr-only image is not a preloader"
+python3 "$PY" ddr "$fix/live/preloader.img" "$STOCK_IMG" || fail "ddr-only image does not share DDR"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" != "$PATCHED_SHA" ] || fail "ddr-only image still matches the fingerprint"
+install_stock "$fix"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "ddr-only match was accepted"
+grep -q 'does not exactly match this preloader revision' "$fix/err" || fail "ddr-only refusal $(cat "$fix/err")"
+grep -q 'DDR payload does not match' "$fix/err" && fail "ddr-only was decided by the DDR check"
+no_cmd "$fix" "ddr-only match"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$KNOWN" "$fix/live/preloader.img"
+mkdir -p "$fix/usr/share/zlyme/recovery"
+cp "$GOOD" "$fix/usr/share/zlyme/recovery/preloader-stock.img"
+rc=$(run "$fix" restore)
+[ "$rc" != "0" ] || fail "wrong stock sha was accepted"
+grep -q 'bundled stock preloader hash does not match' "$fix/err" || fail "stock sha refusal $(cat "$fix/err")"
+no_cmd "$fix" "wrong stock sha"
+
+fix=$(new_fix)
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$KNOWN" "$fix/live/preloader.img"
+dd if=/dev/zero of="$fix/bad-stock.img" bs=2097152 count=1 status=none
+badsha=$(sha256sum "$fix/bad-stock.img" | awk '{print $1}')
+rc=$(run_fb "$fix" restore "$badsha" "" "$fix/bad-stock.img")
+[ "$rc" != "0" ] || fail "invalid stock structure was accepted"
+grep -q 'image structure refused' "$fix/err" || fail "structure refusal $(cat "$fix/err")"
+no_cmd "$fix" "invalid stock structure"
+
 fix=$(new_fix)
 rc=$(run "$fix" erase-preloader)
 [ "$rc" = "0" ] || fail "erase failed: $(cat "$fix/err")"
@@ -573,10 +750,21 @@ case $preboot in
 esac
 grep -q 'ZLYME-MASKROM-1' "$HDR" || fail "uboot magic"
 grep -q '/zlyme-maskrom.request' "$HDR" || fail "uboot request path"
-grep -q 'fs_set_blk_dev("mmc", "0:2", FS_TYPE_FAT)' "$UBP" || fail "primary volume binding"
-if grep -q 'fs_set_blk_dev("mmc", "1' "$UBP"; then
-	fail "maskrom request searches the second card"
+DTSI=$ROOT/output/build/uboot-2026.01/arch/arm/dts/rk356x-u-boot.dtsi
+[ -f "$DTSI" ] || fail "staged rk356x-u-boot.dtsi is missing"
+grep -q 'mmc0 = &sdhci;' "$DTSI" || fail "staged mmc0 is not sdhci"
+sdmmc=$(sed -n 's/^[[:space:]]*mmc\([0-9][0-9]*\)[[:space:]]*=[[:space:]]*&sdmmc0;.*/\1/p' "$DTSI")
+[ "$sdmmc" = "1" ] || fail "staged sdmmc0 alias is mmc${sdmmc:-missing}"
+grep -q "fs_set_blk_dev(\"mmc\", \"${sdmmc}:2\", FS_TYPE_FAT)" "$UBP" || fail "consumer is not mmc ${sdmmc}:2"
+if grep -q 'fs_set_blk_dev("mmc", "0:2"' "$UBP"; then
+	fail "consumer still opens mmc 0:2"
 fi
+grep -q 'found on mmc1:2' "$UBP" || fail "found diagnostic"
+grep -q 'consumed, entering rbrom' "$UBP" || fail "consumed diagnostic"
+grep -q 'invalid marker, booting normally' "$UBP" || fail "invalid diagnostic"
+grep -q 'could not consume marker, booting normally' "$UBP" || fail "stuck diagnostic"
+grep -q 'u-boot,spl-boot-order = &sdmmc0;' "$ROOT/board/my355/uboot/dts/rk3566-miyoo-flip-u-boot.dtsi" || fail "spl boot order changed"
+grep -q 'mmc0 = &sdmmc0;' "$ROOT/board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts" || fail "linux mmc0 alias changed"
 if grep -E 'nand|mtd|/dev/mmc|mmcblk' "$HDR" "$UBP" "$MASK" >/dev/null; then
 	fail "maskrom request names NAND or a raw device"
 fi
@@ -588,17 +776,24 @@ grep -q 'return zlyme_rbrom' "$UBP" || fail "maskrom-request does not use shared
 # The BootROM flag lives in zlyme_rbrom, which the subcommand calls only
 # after maskrom_request_consume returns ENTER.
 awk '
-	/static int do_my355_maskrom/,/return CMD_RET_SUCCESS;/ {
+	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ {
 		print
 	}
 ' "$UBP" | grep -q 'if (rc == MASKROM_ENTER)' || fail "rbrom is not gated on consumption"
 if awk '
-	/static int do_my355_maskrom/,/return CMD_RET_SUCCESS;/ {
+	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ {
 		print
 	}
 ' "$UBP" | grep -q 'set_back_to_bootrom_dnl_flag'; then
 	fail "subcommand sets the bootrom flag itself"
 fi
+awk '
+	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ { print }
+' "$UBP" | awk '
+	/MASKROM_BOOT/ { boot=NR }
+	/found on mmc/ { found=NR }
+	END { exit !(boot && found && boot < found) }
+' || fail "a missing marker prints a diagnostic"
 
 fix=$(mktemp -d)
 trap 'rm -rf "$fix"' EXIT
@@ -675,6 +870,8 @@ if [ -d /home/ale/NextUI/.git ]; then
 	git -C /home/ale/NextUI grep -q 'zlyme-maskrom' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call zlyme-maskrom"
 	git -C /home/ale/NextUI grep -q 'status-machine' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call status-machine"
 	git -C /home/ale/NextUI grep -q 'StaticMenuItem' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI status is not a fixed page"
+	git -C /home/ale/NextUI grep -q '"Fallback"' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no fallback row"
+	git -C /home/ale/NextUI grep -q 'Not compatible' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no incompatible fallback label"
 	if git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
 		/^static InputReactionHint recovery_status/,/^static InputReactionHint recovery_restore_now/
 	' | grep -q showOverlay; then
