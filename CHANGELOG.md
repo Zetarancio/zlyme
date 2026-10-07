@@ -11,12 +11,12 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 ### Added
 
 - A fresh card image includes `miyoo355_fw.img` on the boot partition. Stock runs that installer and patches this unit's own preloader so the Flip can boot from the card. An update does not copy that file and does not touch the preloader.
-- Tools → Preloader Recovery can restore the stock preloader from `mtd5-original-<sha256>.img`, or erase the preloader so the next power-on is expected to enter MASKROM. Both screens start on cancel. Zlyme does not reboot after an erase.
+- Settings → System → Advanced → Recovery shows preloader status, restores the stock preloader from `mtd5-original-<sha256>.img`, or reboots into USB MASKROM. Restore and reboot each ask twice and start on Cancel. Reboot to MASKROM does not erase the preloader. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
 - Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
 
 ### Changed
 
-- Preloader Recovery rolls a failed stock restore back to the preloader that was installed before the attempt. A failed erase does the same and does not claim MASKROM.
+- A failed stock preloader restore rolls back to the preloader that was installed before the attempt. A failed erase does the same. Erasing the preloader does not by itself enter USB MASKROM when a bootable card is inserted.
 - OpenBOR keeps saves in `Saves/OPENBOR`. Its paks, screenshots, and engine logs stay out of the ROM folder.
 - RPG Maker XP, VX, and Ace open a `.zip`, `.7z`, or `.mkxpz` whose project is in one top folder, and still open a project that already sits at the archive root. The extensions on the system list match the core: `.ini`, `.json`, `.rxproj`, `.rvproj`, `.rvproj2`, `.mkxpz`, `.zip`, `.7z`.
 - Windows games use Kron4ek Wine 11.6 WoW64 under Box64 0.4.4. The prefix is files on the card at `/storage/.config/nextui/my355/wine-prefix`, with a 1 MiB temporary `dosdevices` folder. An update removes `wine-prefix.ext4`.
@@ -36,6 +36,7 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 
 ### Removed
 
+- Tools → Preloader Recovery. Recovery is Settings → System → Advanced → Recovery.
 - The unused mergerfs package. Libraries stay separate cards.
 
 ## [zlyme44] - 2026-10-04
