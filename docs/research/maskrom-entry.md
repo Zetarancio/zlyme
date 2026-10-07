@@ -3,6 +3,8 @@
 > Status: research, 2026-10-07. The measurements below stay as they were taken. A later implementation is not a result of this file until the maintainer sees `2207:350a` from it. Shipped boot and preloader behavior stays in [docs/ARCHITECTURE.md](../ARCHITECTURE.md) and [docs/OPERATIONS.md](../OPERATIONS.md).
 >
 > Later the same day, the maintainer proved `zlyme-preloader restore` on the Flip. A completed preloader erase was not USB MASKROM. The shell experiment in this file stored the flag and did not enumerate `2207:350a`. That Linux path remains a hypothesis. A later Zlyme U-Boot `rbrom` and a kernel restart command named `maskrom` copy the same store-and-reset pair. They are not results of this file until a host sees `2207:350a` from them.
+>
+> The evening of 2026-10-07, one serial run of `/usr/sbin/zlyme-maskrom` on root `14b2cd609ba37d66a6414627026af2da30001064429674d16aaa0def5bf97a03` logged `Restarting system with command 'maskrom'` and then the UART stayed silent. The host did not see `2207:350a`. The USB gadget was `not attached` before the request. That is not MASKROM success, and it is not a normal reboot. A one-shot scratch register for a U-Boot `rbrom` handoff was not found. The direct Linux path stays the implementation.
 
 The question was why erasing the SPI preloader no longer ends in USB MASKROM, and how a running system can request that mode the way stock U-Boot's `rbrom` does.
 
@@ -126,3 +128,31 @@ Separate from the reboot flag. After `rbrom`, `xrock extra maskrom` and `xrock f
 The kernel log on hub port `usb 5-1.4` (Genesys `05e3:0610`) is the cause. At 16:09:53 the port failed to enable (`error -71`, "Maybe the USB cable is bad?") and power-cycled. At 16:16:46, during the write, the device disconnected and enumerated again as `2207:350a`. The loader was gone. `rock.c` prints `usb bulk send error` when `libusb_bulk_transfer` on the OUT endpoint fails, and `usb bulk recv error` on the IN endpoint. This was the OUT path. The write is capped at `sector_total`, so the image being 512 KiB larger than the reported capacity is not what aborted it.
 
 The chunk patch was already installed. Another chunk size does not repair a port the kernel has already failed to enable. The bottom USB-C has to sit on a motherboard port for the retry, and `xrock extra maskrom` plus `xrock flash` have to be run again before `flash write`, because the failed write left the SoC in MASKROM.
+
+## Direct Linux restart, evening of 2026-10-07
+
+The installed root was `14b2cd609ba37d66a6414627026af2da30001064429674d16aaa0def5bf97a03`, from a fresh `zlyme.img` rather than an OTA. Source was `d05bcd39dc57156a4ecb6191d50d29d6076f08f4`. UART was `/dev/ttyUSB0` (FTDI `0403:6001`, `A50285BI`) at 1500000 8N1, on the AMD xHCI at `0000:c4:00.3`. That is not the Genesys hub that had logged USB `error -71`.
+
+Before the request, `sha256sum /boot/zlyme` matched that root. `uname` was `Linux zlyme 7.0.2`. The command line was `earlycon quiet console=ttyS2,1500000n8`. `dmesg` had no maskrom line, which matches a probe that prints only on failure. `/sys/bus/platform/drivers/miyoo-flip-maskrom/maskrom-restart` was bound. The live node `/proc/device-tree/maskrom-restart` had `rockchip,pmugrf` phandle `0x5f` (`syscon@fdc20000`, `rockchip,rk3568-pmugrf`) and `rockchip,cru` phandle `0x10` (the CRU at `0xfdd20000`). `devmem 0xfdc20200` read `0x5242C300`. `/sys/class/udc/fcc00000.usb/state` was `not attached`.
+
+The only device command was `sync`, then `/usr/sbin/zlyme-maskrom`. The kernel printed:
+
+```text
+[  797.416352] reboot: Restarting system with command 'maskrom'
+```
+
+Nothing after that for the rest of the capture: no `DDR`, no SPL banner, no `U-Boot 2026.01`. Host `lsusb` never showed `2207:350a`. A black screen and a silent UART are not MASKROM. The missing id also cannot prove the ROM stayed out of download mode, because the gadget was already `not attached`. Two different failures still fit the log: the CRU write did not produce a usable reset from that Linux state, or a reset did return toward the boot ROM and the USB recovery path was not viable. This capture does not choose between them.
+
+A normal reboot on this board prints DDR. This was not that. The priority-192 handler is registered and the command reached `kernel_restart`. Linux `drivers/clk/rockchip/clk.c` `rockchip_restart_notify` already does `writel(0xfdb9, rst_base + reg_restart)` at priority 128, and `clk-rk3568.c` registers that with `RK3568_GLB_SRST_FST`. The Zlyme handler repeats that write only when the command is exactly `maskrom`. The value `0xfdb9` is the same word U-Boot uses for a cold sysreset. This run is not evidence that the constant is wrong.
+
+The board stayed silent. No second reset, no watchdog, and no NAND command was sent. A physical reset is how it comes back. The preloader was not erased by this request.
+
+## PMU OS registers, and why a U-Boot handoff was not added
+
+`OS_REG0` at `0xfdc20200` is `ROCKCHIP_BOOT_MODE_REG`. SPL consumes `BOOT_BROM_DOWNLOAD` there and `setup_boot_mode()` later stores `BOOT_NORMAL`. It cannot also hold a private request that must still be present when U-Boot runs.
+
+`OS_REG2` (`0xfdc20208`) and `OS_REG3` (`0xfdc2020c`) are the DRAM geometry words. U-Boot `sdram_rk3568.c` passes `&pmugrf->pmu_os_reg2` to `rockchip_sdram_size()`, which reads that word and the next. Linux `include/soc/rockchip/rk3568_grf.h` defines `RK3568_PMUGRF_OS_REG2` as `0x208` and `RK3568_PMUGRF_OS_REG3` as `0x20c`, and `rockchip-dfi.c` reads both. The hardware wiki records the same pair.
+
+`OS_REG1` (`0xfdc20204`) and `OS_REG4` through `OS_REG11` (`0xfdc20210` through `0xfdc2022c`) have no reference in U-Boot 2026.01's RK3568 code, Linux 7.0.2's RK3568 headers, the Zlyme patches, the pinned apommel tree, or the RK3566/RK3568 rkbin release notes. The absolute addresses are also absent from `rk3568_bl31_v1.44.elf` and `rk3566_ddr_1056MHz_v1.23.bin`. Those binaries do not embed the PMUGRF base as a little-endian immediate either, so a base-plus-offset use would not show up in that search. Survival of a private word across the DDR blob was not measured. RK3562 release notes, a different SoC, say `OS_REG0` can be cleared by NPOR and that they moved a maskrom flag to `OS_REG8`. That is not an RK3568 allocation.
+
+No register in this window is both unused and shown to survive an ordinary reset. A file on the boot FAT was not used: it would have to be removed before `rbrom`, or a failed entry would request MASKROM again on the next boot. The two-stage idea, a private marker plus a normal reboot plus U-Boot `rbrom`, stays undesigned until a scratch word is actually shown to be free. The Linux handler is still the only MASKROM path.
