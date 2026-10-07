@@ -115,7 +115,7 @@ int main(void)
 
 	reset_fs("");
 	rc = maskrom_request_consume(&ops);
-	bad |= expect("empty", rc, MASKROM_REJECT, logbuf);
+	bad |= expect("empty", rc, MASKROM_INVALID, logbuf);
 	if (strstr(logbuf, "unlink"))
 		bad |= expect("empty-kept", 1, 0, logbuf);
 	if (!file_set)
@@ -123,26 +123,26 @@ int main(void)
 
 	reset_fs("not-the-magic");
 	rc = maskrom_request_consume(&ops);
-	bad |= expect("corrupt", rc, MASKROM_REJECT, logbuf);
+	bad |= expect("corrupt", rc, MASKROM_INVALID, logbuf);
 	if (!file_set || strcmp(file, "not-the-magic") != 0)
 		bad |= expect("corrupt-kept", 1, 0, logbuf);
 
 	reset_fs(ZLYME_MASKROM_MAGIC "\n");
 	rc = maskrom_request_consume(&ops);
-	bad |= expect("newline", rc, MASKROM_REJECT, logbuf);
+	bad |= expect("newline", rc, MASKROM_INVALID, logbuf);
 
 	fail_unlink = 1;
 	reset_fs(ZLYME_MASKROM_MAGIC);
 	fail_unlink = 1;
 	rc = maskrom_request_consume(&ops);
-	bad |= expect("unlink-fail", rc, MASKROM_REJECT, logbuf);
+	bad |= expect("unlink-fail", rc, MASKROM_STUCK, logbuf);
 	if (!file_set)
 		bad |= expect("unlink-fail-kept", 0, 1, logbuf);
 
 	reset_fs(ZLYME_MASKROM_MAGIC);
 	exists_after_unlink = 1;
 	rc = maskrom_request_consume(&ops);
-	bad |= expect("still-there", rc, MASKROM_REJECT, logbuf);
+	bad |= expect("still-there", rc, MASKROM_STUCK, logbuf);
 
 	reset_fs(ZLYME_MASKROM_MAGIC);
 	rc = maskrom_request_consume(&ops);

@@ -13,7 +13,7 @@ diff --git a/cmd/my355.c b/cmd/my355.c
  #include <membuf.h>
  #include <asm/global_data.h>
  #include <linux/string.h>
-@@ -22,6 +24,80 @@
+@@ -22,6 +24,89 @@
  
  DECLARE_GLOBAL_DATA_PTR;
  
@@ -21,8 +21,10 @@ diff --git a/cmd/my355.c b/cmd/my355.c
 +
 +static int maskrom_open(void)
 +{
-+	/* mmc0 partition 2 is the right-hand ZLYMEBOOT volume. */
-+	return fs_set_blk_dev("mmc", "0:2", FS_TYPE_FAT);
++	/* rk356x-u-boot.dtsi reserves mmc0 for sdhci and mmc1 for sdmmc0.
++	 * Partition 2 of that sdmmc0 slot is the ZLYMEBOOT volume.
++	 */
++	return fs_set_blk_dev("mmc", "1:2", FS_TYPE_FAT);
 +}
 +
 +static int maskrom_exists(void)
@@ -76,10 +78,17 @@ diff --git a/cmd/my355.c b/cmd/my355.c
 +	(void)argc;
 +	(void)argv;
 +	rc = maskrom_request_consume(&maskrom_ops);
-+	if (rc == MASKROM_ENTER)
++	if (rc == MASKROM_BOOT)
++		return CMD_RET_SUCCESS;
++	printf("my355 maskrom-request: found on mmc1:2\n");
++	if (rc == MASKROM_ENTER) {
++		printf("my355 maskrom-request: consumed, entering rbrom\n");
 +		return zlyme_rbrom(cmdtp, flag, 0, NULL);
-+	if (rc == MASKROM_REJECT)
-+		printf("my355 maskrom-request: marker not consumed, booting normally\n");
++	}
++	if (rc == MASKROM_INVALID)
++		printf("my355 maskrom-request: invalid marker, booting normally\n");
++	else
++		printf("my355 maskrom-request: could not consume marker, booting normally\n");
 +	return CMD_RET_SUCCESS;
 +}
 +
@@ -94,7 +103,7 @@ diff --git a/cmd/my355.c b/cmd/my355.c
  static int do_my355_mark(struct cmd_tbl *cmdtp, int flag, int argc,
  			 char *const argv[])
  {
-@@ -284,10 +360,12 @@
+@@ -284,10 +369,12 @@
  	"my355 log <addr> <max> - copy the console record to <addr>;\n"
  	"                        its length goes in $my355_logsize\n"
  	"my355 cpu <MHz>        - raise vdd_cpu if needed, then set the core clock\n"

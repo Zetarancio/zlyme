@@ -5,8 +5,8 @@
  *
  * BaseOS origin/mainline-uboot 5cb0dac. Zlyme also ships
  * rk3566-miyoo-flip-u-boot.dtsi so SPL boot order stays SD-only while SFC
- * remains in Kconfig. That dtsi includes rk356x-u-boot.dtsi (pre-reloc tags
- * and mmc1 = sdmmc0).
+ * remains in Kconfig. That dtsi includes rk356x-u-boot.dtsi (pre-reloc tags,
+ * mmc0 = sdhci, mmc1 = sdmmc0). Linux names that same sdmmc0 slot mmcblk0.
  */
 
 /dts-v1/;

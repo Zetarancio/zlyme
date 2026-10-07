@@ -14,12 +14,14 @@
 #define ZLYME_MASKROM_PATH "/zlyme-maskrom.request"
 
 enum {
-	/* No marker, or the boot volume could not be opened. */
+	/* No marker, or the boot volume could not be opened. No message. */
 	MASKROM_BOOT = 0,
 	/* Marker consumed and proven gone. Caller may rbrom. */
 	MASKROM_ENTER = 1,
+	/* A file was there and its bytes were not the magic. Left in place. */
+	MASKROM_INVALID = 2,
 	/* A file was there and was not proven gone. Do not rbrom. */
-	MASKROM_REJECT = 2
+	MASKROM_STUCK = 3
 };
 
 struct maskrom_fs {
@@ -62,23 +64,25 @@ static inline int maskrom_request_consume(const struct maskrom_fs *fs)
 		return MASKROM_BOOT;
 
 	if (fs->open_volume() != 0)
-		return MASKROM_REJECT;
-	if (fs->size(&size) != 0 || size != fs->magic_len)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
+	if (fs->size(&size) != 0)
+		return MASKROM_STUCK;
+	if (size != fs->magic_len)
+		return MASKROM_INVALID;
 	if (fs->open_volume() != 0)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	if (fs->read(buf, fs->magic_len, &nread) != 0 || nread != fs->magic_len)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	if (memcmp(buf, fs->magic, (size_t)fs->magic_len) != 0)
-		return MASKROM_REJECT;
+		return MASKROM_INVALID;
 	if (fs->open_volume() != 0)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	if (fs->unlink() != 0)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	if (fs->open_volume() != 0)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	if (fs->exists() != 0)
-		return MASKROM_REJECT;
+		return MASKROM_STUCK;
 	return MASKROM_ENTER;
 }
 
