@@ -82,11 +82,12 @@ grep -q 'MKXPZ: ini json rxproj rvproj rvproj2 mkxpz zip 7z' "$ROM_EXTS" || fail
 if grep '^MKXPZ:' "$ROM_EXTS" | grep -E '(^| )mkxp( |$)' >/dev/null; then
 	fail "rom-exts still lists .mkxp"
 fi
-if grep 'RPG Maker XP / VX / Ace' "$README" | grep -E '\.mkxp([^z]|$)' >/dev/null; then
-	fail "README still lists .mkxp"
+GUIDE=$ROOT/docs/USER_GUIDE.md
+if grep 'RPG Maker XP / VX / Ace' "$GUIDE" | grep -E '\.mkxp([^z]|$)' >/dev/null; then
+	fail "user guide still lists .mkxp"
 fi
 for ext in '.ini' '.json' '.rxproj' '.rvproj' '.rvproj2' '.mkxpz' '.zip' '.7z'; do
-	grep 'RPG Maker XP / VX / Ace' "$README" | grep -q "$ext" || fail "README missing $ext"
+	grep 'RPG Maker XP / VX / Ace' "$GUIDE" | grep -q "$ext" || fail "user guide missing $ext"
 done
 if grep -E 'migrate|legacy' "$MKXP_PATCH" >/dev/null; then
 	fail "mkxp patch has migration"
