@@ -52,7 +52,7 @@ The my355 image uses:
 
 The squashfs root is a file on `ZLYMEBOOT`. A fresh image also puts `miyoo355_fw.img` at the FAT root. Stock consumes that installer. An ordinary OTA does not write it.
 
-`zlyme-preloader` is the only NAND writer in the image, and only after Tools → Preloader Recovery confirms it. `status` is safe to read. `restore` and `erase-maskrom` erase `mtd0` (`preloader`, 2 MiB) and, for restore, `nandwrite` the verified backup. Battery must be at least 25%, or lower only while a charger `online` file reads `1`. The tool refuses a wrong model, a second MTD partition, bad blocks, or a backup whose filename hash, size, or RKNS IDB hashes do not match. Erase does not reboot. Do not run those commands from SSH as a test.
+`zlyme-preloader` is the only NAND writer in the image, and only after Tools → Preloader Recovery confirms it. `status` is safe to read. `restore` and `erase-maskrom` erase `mtd0` (`preloader`, 2 MiB) and, for restore, `nandwrite` the verified backup. Battery must be at least 25%, or lower only while a charger `online` file reads `1`. The tool refuses a wrong model, a second MTD partition, bad blocks, a current preloader that fails the RKNS checks, or a backup whose filename hash, size, or RKNS IDB hashes do not match. Restore also refuses a backup whose DDR payload differs from the current preloader. A failed restore write tries three times, then writes the saved current preloader back and checks that readback. That rollback is not a successful stock restore. A failed erase is not MASKROM success; it tries the same rollback. Erase success is `flash_erase`'s own status, not a read of `0xff`. Neither command reboots. Do not run those commands from SSH as a test.
 
 ## First-boot resize
 

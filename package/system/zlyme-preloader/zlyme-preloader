@@ -16,7 +16,11 @@ ERASE=131072
 WRITE=2048
 OOB=64
 MIN_BATTERY=25
+# install.sh in the pinned apommel tree retries a write three times,
+# then retries restoring the previous image three times.
+WRITE_ATTEMPTS=3
 IMAGE_PY=/usr/lib/zlyme/preloader_image.py
+CURRENT=
 
 TEST=${ZLYME_PRELOADER_TEST:-0}
 ROOT=${ZLYME_PRELOADER_ROOT:-}
@@ -122,12 +126,22 @@ power_ok() {
 	log "battery ${cap}%, charger $ac"
 }
 
-validate_image() {
+image_ok() {
 	img=$1
-	[ -f "$img" ] || die "no image $img"
-	[ "$(wc -c < "$img" | tr -d ' ')" = "$SIZE" ] || die "image size is not $SIZE"
+	[ -f "$img" ] || return 1
+	[ "$(wc -c < "$img" | tr -d ' ')" = "$SIZE" ] || return 1
 	need_tool python3
-	python3 "$IMAGE_PY" "$img" || die "image structure refused"
+	python3 "$IMAGE_PY" "$img"
+}
+
+validate_image() {
+	image_ok "$1" || die "image structure refused: $1"
+}
+
+# Entry 0 of each RKNS copy is the DDR blob. The /pinctrl repair
+# changes the SPL, so the whole image is not required to match.
+ddr_compatible() {
+	python3 "$IMAGE_PY" ddr "$1" "$2" || die "DDR payload does not match this unit"
 }
 
 sha_file() {
@@ -196,8 +210,62 @@ save_current() {
 	sync
 	[ "$(sha_file "$dest")" = "$sum" ] || { rm -f "$tmp"; die "current backup did not verify"; }
 	rm -f "$tmp"
+	# Refuse before any erase when the installed image is not a preloader.
+	validate_image "$dest"
+	CURRENT=$dest
 	act "CURRENT_BACKUP $dest"
 	log "current preloader saved as $dest"
+}
+
+# Erase, write, and read back one image. A failing flash_erase is a
+# failed attempt: its status is not ignored, and nandwrite does not run
+# for that attempt. Success is an exact 2 MiB SHA-256 match.
+write_and_verify() {
+	img=$1
+	image_ok "$img" || return 1
+	expect=$(sha_file "$img")
+	n=0
+	while [ "$n" -lt "$WRITE_ATTEMPTS" ]; do
+		n=$((n + 1))
+		log "write attempt $n of $img"
+		act "CMD flash_erase $DEV 0 0"
+		if ! flash_erase "$DEV" 0 0; then
+			log "flash_erase failed"
+			continue
+		fi
+		act "CMD nandwrite -p $DEV $img"
+		if ! nandwrite -p "$DEV" "$img"; then
+			log "nandwrite failed"
+			continue
+		fi
+		if read_back_matches "$expect"; then
+			return 0
+		fi
+		log "readback mismatch"
+	done
+	return 1
+}
+
+# Rollback uses the saved current image, never the requested target.
+# One pass of write_and_verify is already three attempts.
+rollback_current() {
+	act "ROLLBACK"
+	log "rolling back $CURRENT"
+	if write_and_verify "$CURRENT"; then
+		act "ROLLBACK_READBACK ok"
+		return 0
+	fi
+	return 1
+}
+
+critical_failure() {
+	what=$1
+	log "CRITICAL: $what failed and rollback could not be verified."
+	log "do not assume internal boot works"
+	log "backup preserved at $CURRENT"
+	log "sha256 $(sha_file "$CURRENT")"
+	log "MASKROM/xrock recovery may be required"
+	exit 1
 }
 
 require_tools() {
@@ -239,25 +307,40 @@ cmd_status() {
 cmd_restore() {
 	prepare
 	orig=$(find_original)
-	want=$(sha_file "$orig")
 	save_current
-	act "CMD flash_erase $DEV 0 0"
-	flash_erase "$DEV" 0 0 || die "flash_erase failed"
-	act "CMD nandwrite -p $DEV $orig"
-	nandwrite -p "$DEV" "$orig" || die "nandwrite failed"
-	read_back_matches "$want" || die "readback mismatch"
-	act "READBACK ok"
-	log "restored original preloader"
+	ddr_compatible "$CURRENT" "$orig"
+	if write_and_verify "$orig"; then
+		act "READBACK target ok"
+		log "restored original preloader"
+		return 0
+	fi
+	log "restore write failed"
+	if rollback_current; then
+		log "Restore failed; previous preloader restored and verified."
+		exit 3
+	fi
+	critical_failure restore
 }
 
 cmd_erase() {
 	prepare
 	save_current
+	# flash_erase's own status is the MASKROM result. Do not treat a
+	# read of 0xff as proof: ECC on this NAND can report an error or
+	# corrected data for an erased page.
 	act "CMD flash_erase $DEV 0 0"
-	flash_erase "$DEV" 0 0 || die "flash_erase failed"
-	act "ERASE ok"
-	log "preloader erased; the next power-on is expected to enter MASKROM"
-	log "Zlyme will not reboot"
+	if flash_erase "$DEV" 0 0; then
+		act "ERASE ok"
+		log "preloader erased; the next power-on is expected to enter MASKROM"
+		log "Zlyme will not reboot"
+		return 0
+	fi
+	log "flash_erase failed; this is not MASKROM success"
+	if rollback_current; then
+		log "Erase failed; previous preloader restored and verified."
+		exit 3
+	fi
+	critical_failure erase
 }
 
 case "${1:-}" in

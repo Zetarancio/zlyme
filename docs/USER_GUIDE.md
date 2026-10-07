@@ -8,7 +8,7 @@ The install steps are in the [README](../README.md#install). Stock, not Zlyme, r
 
 Tools → Preloader Recovery has two operations. Both lists start on Cancel. B also goes back.
 
-Restore stock preloader writes `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. The name's hash has to match the file.
+Restore stock preloader writes `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. The name's hash has to match the file, and the DDR initializer in that backup has to match the preloader already installed. If the write does not verify, Zlyme tries to put the saved current preloader back. That is a failed restore, not a completed one.
 
 Erase preloader clears that same partition and leaves the Flip powered on. The next time you power it on, it is expected to enter MASKROM instead of booting the card. Do not pick that unless you mean to recover from a PC.
 

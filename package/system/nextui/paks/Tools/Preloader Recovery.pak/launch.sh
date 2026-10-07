@@ -65,10 +65,18 @@ Cancel is the next default."
 			"Cancel" \
 			"RESTORE STOCK PRELOADER")
 		[ "$ok" = "RESTORE STOCK PRELOADER" ] || exit 0
-		if /usr/sbin/zlyme-preloader restore; then
+		result=$work/result
+		if /usr/sbin/zlyme-preloader restore >"$result" 2>&1; then
 			show_message "Restore finished. The readback hash matched the backup."
+		elif grep -q 'previous preloader restored and verified' "$result"; then
+			show_message "Restore failed; previous preloader restored and verified."
+			exit 1
 		else
-			show_message "Restore did not finish. Nothing was reported as success. See the pak log."
+			show_message "CRITICAL: restore failed and rollback could not be verified.
+
+Do not assume internal boot works.
+The backup is preserved under /storage/.config/zlyme/preloader-backups/.
+MASKROM/xrock recovery may be required."
 			exit 1
 		fi
 		;;
@@ -84,10 +92,18 @@ The current preloader is saved first. Cancel is the next default."
 			"Cancel" \
 			"ERASE PRELOADER TO MASKROM")
 		[ "$ok" = "ERASE PRELOADER TO MASKROM" ] || exit 0
-		if /usr/sbin/zlyme-preloader erase-maskrom; then
+		result=$work/result
+		if /usr/sbin/zlyme-preloader erase-maskrom >"$result" 2>&1; then
 			show_message "Preloader erase finished. Leave the device powered on until you choose the next power action. MASKROM is expected on the next power-on."
+		elif grep -q 'previous preloader restored and verified' "$result"; then
+			show_message "Erase failed; previous preloader restored and verified."
+			exit 1
 		else
-			show_message "Erase did not finish. It was not reported as success."
+			show_message "CRITICAL: erase failed and rollback could not be verified.
+
+Do not assume internal boot works.
+The backup is preserved under /storage/.config/zlyme/preloader-backups/.
+MASKROM/xrock recovery may be required."
 			exit 1
 		fi
 		;;
