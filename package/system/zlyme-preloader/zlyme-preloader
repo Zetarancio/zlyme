@@ -21,6 +21,12 @@ MIN_BATTERY=25
 WRITE_ATTEMPTS=3
 IMAGE_PY=/usr/lib/zlyme/preloader_image.py
 CURRENT=
+# Wiki pair, Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
+# c126d3235face9ddca5bf021258a84758dca543c
+# preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img
+STOCK_SHA=dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
+# Fingerprint of that tree's preloader-patched.img. The file is not installed.
+PATCHED_SHA=ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d
 
 TEST=${ZLYME_PRELOADER_TEST:-0}
 ROOT=${ZLYME_PRELOADER_ROOT:-}
@@ -146,6 +152,44 @@ ddr_compatible() {
 
 sha_file() {
 	sha256sum "$1" | awk '{print $1}'
+}
+
+# Test fixtures may point these at stand-ins. A normal boot ignores them.
+expected_stock_sha() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK_SHA:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_STOCK_SHA"
+		return
+	fi
+	printf '%s\n' "$STOCK_SHA"
+}
+
+expected_patched_sha() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_PATCHED_SHA:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_PATCHED_SHA"
+		return
+	fi
+	printf '%s\n' "$PATCHED_SHA"
+}
+
+stock_path() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_STOCK"
+		return
+	fi
+	p /usr/share/zlyme/recovery/preloader-stock.img
+}
+
+# 0 only for the exact known patched image plus the matching stock file.
+stock_fallback_compatible() {
+	tmp=$(mktemp)
+	read_live "$tmp"
+	live=$(sha_file "$tmp")
+	rm -f "$tmp"
+	[ "$live" = "$(expected_patched_sha)" ] || return 1
+	stock=$(stock_path)
+	[ -f "$stock" ] || return 1
+	[ "$(sha_file "$stock")" = "$(expected_stock_sha)" ] || return 1
+	image_ok "$stock"
 }
 
 boot_dir() {
@@ -296,12 +340,19 @@ read_back_matches() {
 cmd_status() {
 	prepare
 	log "preloader $DEV size $SIZE erase $ERASE"
-	if orig=$(find_original 2>/tmp/zlyme-preloader-find.err); then
+	errf=$(mktemp)
+	if orig=$(find_original 2>"$errf"); then
 		log "original backup available: $orig"
 	else
-		log "original backup unavailable: $(cat /tmp/zlyme-preloader-find.err)"
+		log "original backup unavailable: $(cat "$errf")"
+		if grep -qx 'zlyme-preloader: no original preloader backup' "$errf" \
+			&& stock_fallback_compatible; then
+			log "stock fallback compatible"
+		else
+			log "stock fallback not compatible"
+		fi
 	fi
-	rm -f /tmp/zlyme-preloader-find.err
+	rm -f "$errf"
 }
 
 # One key=value line per fact. Settings reads this. It is not a shell script.
@@ -312,6 +363,7 @@ cmd_status_machine() {
 	( cmd_status ) >"$tmp" 2>&1 || rc=$?
 	preloader=
 	backup=
+	fallback=
 	battery=
 	charger=
 	error=
@@ -344,6 +396,12 @@ cmd_status_machine() {
 		"zlyme-preloader: original backup unavailable:"*)
 			backup=unavailable
 			;;
+		"zlyme-preloader: stock fallback compatible")
+			fallback=compatible
+			;;
+		"zlyme-preloader: stock fallback not compatible")
+			fallback=incompatible
+			;;
 		"zlyme-preloader: "*)
 			error=${line#"zlyme-preloader: "}
 			;;
@@ -352,6 +410,7 @@ cmd_status_machine() {
 	rm -f "$tmp"
 	[ -n "$preloader" ] && printf 'preloader=%s\n' "$preloader"
 	[ -n "$backup" ] && printf 'backup=%s\n' "$backup"
+	[ -n "$fallback" ] && printf 'fallback=%s\n' "$fallback"
 	[ -n "$battery" ] && printf 'battery=%s\n' "$battery"
 	[ -n "$charger" ] && printf 'charger=%s\n' "$charger"
 	if [ "$rc" != 0 ]; then
@@ -361,14 +420,57 @@ cmd_status_machine() {
 	fi
 }
 
+# Prints one image path. A per-device backup wins. The bundled stock
+# file is used only when that backup is absent and the live preloader
+# is the one known patched image. Every other reason still refuses.
+select_stock_fallback() {
+	tmp=$(mktemp)
+	read_live "$tmp"
+	live=$(sha_file "$tmp")
+	rm -f "$tmp"
+	if [ "$live" != "$(expected_patched_sha)" ]; then
+		die "Original preloader backup is unavailable. The bundled stock fallback does not exactly match this preloader revision. Restore refused."
+	fi
+	stock=$(stock_path)
+	[ -f "$stock" ] || die "bundled stock preloader is missing"
+	got=$(sha_file "$stock")
+	[ "$got" = "$(expected_stock_sha)" ] || die "bundled stock preloader hash does not match"
+	validate_image "$stock"
+	log "using bundled stock fallback"
+	printf '%s\n' "$stock"
+}
+
+select_restore_image() {
+	errf=$(mktemp)
+	set +e
+	orig=$(find_original 2>"$errf")
+	rc=$?
+	set -e
+	if [ "$rc" = 0 ]; then
+		rm -f "$errf"
+		printf '%s\n' "$orig"
+		return 0
+	fi
+	reason=$(sed -n 's/^zlyme-preloader: //p' "$errf" | head -n 1)
+	rm -f "$errf"
+	if [ "$reason" != "no original preloader backup" ]; then
+		[ -n "$reason" ] || reason="original preloader backup was not usable"
+		die "$reason"
+	fi
+	select_stock_fallback
+}
+
 cmd_restore() {
 	prepare
-	orig=$(find_original)
+	orig=$(select_restore_image)
 	save_current
 	ddr_compatible "$CURRENT" "$orig"
 	if write_and_verify "$orig"; then
 		act "READBACK target ok"
-		log "restored original preloader"
+		case "$orig" in
+			*/preloader-stock.img) log "restored stock fallback" ;;
+			*) log "restored original preloader" ;;
+		esac
 		return 0
 	fi
 	log "restore write failed"

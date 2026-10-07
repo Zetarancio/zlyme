@@ -13,8 +13,9 @@
 
 # Settings -> System -> Advanced -> Recovery is in this pin.
 # Preloader status is a fixed page of zlyme-preloader status-machine.
+# A missing original backup can show whether the stock fallback matches.
 # A failed MASKROM request shows the helper's own error.
-NEXTUI_VERSION = 514031da6d9418223adfeb341e789a1e47c6d665
+NEXTUI_VERSION = aa5c08051d03ef2b2a59fb8f0813f03e55de59e1
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

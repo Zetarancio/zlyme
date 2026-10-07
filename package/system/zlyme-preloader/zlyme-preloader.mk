@@ -10,8 +10,10 @@
 ZLYME_PRELOADER_VERSION = local
 ZLYME_PRELOADER_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-preloader
 ZLYME_PRELOADER_SITE_METHOD = local
-ZLYME_PRELOADER_LICENSE = MIT
-ZLYME_PRELOADER_LICENSE_FILES = LICENSE
+# MIT covers the script and the checker. preloader-stock.img is Miyoo
+# vendor firmware; preloader-stock.PROVENANCE records the missing grant.
+ZLYME_PRELOADER_LICENSE = MIT, LicenseRef-Miyoo-vendor-preloader-unspecified
+ZLYME_PRELOADER_LICENSE_FILES = LICENSE preloader-stock.PROVENANCE
 ZLYME_PRELOADER_DEPENDENCIES = python3 mtd
 
 define ZLYME_PRELOADER_INSTALL_TARGET_CMDS
@@ -19,6 +21,10 @@ define ZLYME_PRELOADER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-preloader
 	$(INSTALL) -D -m 0755 $(@D)/preloader_image.py \
 		$(TARGET_DIR)/usr/lib/zlyme/preloader_image.py
+	$(INSTALL) -D -m 0644 $(@D)/preloader-stock.img \
+		$(TARGET_DIR)/usr/share/zlyme/recovery/preloader-stock.img
+	$(INSTALL) -D -m 0644 $(@D)/preloader-stock.PROVENANCE \
+		$(TARGET_DIR)/usr/share/zlyme/recovery/preloader-stock.PROVENANCE
 endef
 
 $(eval $(generic-package))

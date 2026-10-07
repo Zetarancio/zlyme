@@ -1,0 +1,38 @@
+preloader-stock.img
+
+This file is Miyoo vendor firmware: the stock SPI preloader (DDR init and SPL),
+2 MiB. The Zlyme script in this package is MIT. That license does not cover
+this image.
+
+Source repository:
+  Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
+Pinned wiki commit:
+  c126d3235face9ddca5bf021258a84758dca543c
+Source path:
+  preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img
+Introducing commit:
+  8ef495f5711ce13645e9c68df63b7d7a9934cf7e
+SHA-256:
+  dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
+Historical MD5:
+  1d525e6e6c89bd788b5245c90c97833b
+
+The wiki documents this image as byte-identical to the first 2 MiB of
+spi_20241119160817.img. It also documents that more than one stock SPL build
+exists, so this file is not a universal stock preloader.
+
+Known patched counterpart, fingerprint only. That file is not installed:
+  preloader-stock-rocknix/App/apommel-multiboot/preloader-patched.img
+  SHA-256 ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d
+  Historical MD5 c2009762b1704d5ed2ebbfa4346e6ecc
+
+zlyme-preloader may write this image only when no per-device
+mtd5-original-<sha256>.img exists and the installed preloader matches that
+patched fingerprint, and only after the usual structure and DDR checks.
+
+Redistribution: the wiki records where the bytes came from. It does not
+contain a license, a copyright grant, or permission from Miyoo to
+redistribute this preloader. A sentence in the wiki calls a shared DRAM blob
+technically redistributable because it matches public rkbin and other units.
+That is not a license for this image. Do not treat a public Zlyme release as
+cleared to ship it until that grant exists.
