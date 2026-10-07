@@ -23,16 +23,17 @@ grep -q 'BR2_PACKAGE_MTD_FLASH_ERASE=y' "$DEF" || fail "flash_erase is off"
 grep -q 'BR2_PACKAGE_MTD_NANDWRITE=y' "$DEF" || fail "nandwrite is off"
 grep -q 'BR2_PACKAGE_MTD_MTDINFO=y' "$DEF" || fail "mtdinfo is off"
 grep -q '# BR2_PACKAGE_MTD_NANDDUMP is not set' "$DEF" || fail "nanddump is not disabled"
-grep -q 'Cancel' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "ui has no cancel"
-grep -q 'ERASE PRELOADER TO MASKROM' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "erase confirmation text"
-grep -q 'RESTORE STOCK PRELOADER' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "restore confirmation text"
-grep -q 'previous preloader restored and verified' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "rollback message missing"
-grep -q 'CRITICAL: restore failed and rollback could not be verified' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "critical restore message missing"
-# Cancel is the first menu line, which minui-list selects by default.
-awk '
-	/choose "Preloader Recovery"/ { p=1 }
-	p && /"Cancel"/ { print; exit }
-' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" | grep -q Cancel || fail "cancel is not the default"
+if [ -e "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak" ]; then
+	fail "Preloader Recovery pak is still in the tree"
+fi
+grep -q 'erase-preloader) cmd_erase' "$PRE" || fail "erase-preloader missing"
+if grep -q 'erase-maskrom' "$PRE"; then
+	fail "erase-maskrom name remains"
+fi
+grep -q 'a bootable SD idbloader can start instead of USB MASKROM' "$PRE" || fail "erase does not explain SD boot"
+if grep -q 'expected to enter MASKROM' "$PRE"; then
+	fail "erase still claims MASKROM"
+fi
 
 # --- installer bytes, when the pinned tree is available ---
 tree=${ZLYME_APOMMEL_TREE:-}
@@ -247,7 +248,7 @@ no_cmd "$fix" "wrong geometry"
 
 fix=$(new_fix)
 printf '1' > "$fix/sys/class/mtd/mtd0/bad_blocks"
-rc=$(run "$fix" erase-maskrom)
+rc=$(run "$fix" erase-preloader)
 [ "$rc" != "0" ] || fail "bad blocks were accepted"
 no_cmd "$fix" "bad blocks"
 
@@ -323,7 +324,7 @@ rc=$(run "$fix" restore)
 [ "$rc" != "0" ] || fail "corrupt current preloader was accepted"
 no_cmd "$fix" "corrupt current"
 grep -q '^CURRENT_BACKUP ' "$fix/actions.log" && fail "corrupt current was treated as a ready backup"
-rc=$(run "$fix" erase-maskrom)
+rc=$(run "$fix" erase-preloader)
 [ "$rc" != "0" ] || fail "corrupt current was accepted for erase"
 no_cmd "$fix" "corrupt current erase"
 
@@ -461,10 +462,10 @@ orig=$(sha256sum "$GOOD" | awk '{print $1}')
 [ "$live" = "$orig" ] || fail "successful restore did not leave the stock image"
 
 fix=$(new_fix)
-rc=$(run "$fix" erase-maskrom)
+rc=$(run "$fix" erase-preloader)
 [ "$rc" = "0" ] || fail "erase failed: $(cat "$fix/err")"
 grep -q '^flash_erase /dev/mtd0 0 0' "$fix/actions.log" || fail "maskrom erase missing"
-grep -q '^nandwrite ' "$fix/actions.log" && fail "erase-maskrom wrote an image"
+grep -q '^nandwrite ' "$fix/actions.log" && fail "erase-preloader wrote an image"
 grep -q '^ERASE ok' "$fix/actions.log" || fail "erase did not record success"
 grep -q '^ROLLBACK$' "$fix/actions.log" && fail "successful erase rolled back"
 awk '
@@ -475,9 +476,66 @@ awk '
 
 fix=$(new_fix)
 printf '1\n' > "$fix/fail-erase-first"
-rc=$(run "$fix" erase-maskrom)
+rc=$(run "$fix" erase-preloader)
 [ "$rc" = "3" ] || fail "maskrom erase failure rc=$rc $(cat "$fix/err")"
 grep -q '^ERASE ok' "$fix/actions.log" && fail "failed erase claimed MASKROM success"
 rollback_used_current "$fix" "maskrom erase failure"
+
+# Release asset, native recovery, and the maskrom restart. None of this
+# talks to a Flip.
+grep -q 'miyoo355_fw.img.sha256' "$POST" || fail "sha256 is not generated"
+grep -q 'sha256sum miyoo355_fw.img' "$POST" || fail "sha256 command"
+grep -q 'miyoo355_fw.img.sha256' "$ROOT/.github/workflows/build-stage.yml" || fail "stage upload omits the installer hash"
+grep -q 'miyoo355_fw.img$' "$ROOT/.github/workflows/build.yml" || fail "release upload omits the installer"
+grep -q 'miyoo355_fw.img.sha256' "$ROOT/.github/workflows/build.yml" || fail "release upload omits the installer hash"
+if [ -e "$ROOT/.github/workflows/miyoo355-fw.yml" ] || [ -e "$ROOT/.github/workflows/installer.yml" ]; then
+	fail "a second installer workflow was added"
+fi
+wf=$(ls "$ROOT/.github/workflows/"*.yml "$ROOT/.github/workflows/"*.yaml 2>/dev/null | wc -l)
+# The product workflows stay build.yml, build-stage.yml, and docker-image.yml.
+[ "$wf" = 3 ] || fail "workflow count is $wf"
+MASK=$ROOT/package/system/zlyme-maskrom/zlyme-maskrom.c
+grep -q 'LINUX_REBOOT_CMD_RESTART2' "$MASK" || fail "helper does not use restart2"
+grep -q '"maskrom"' "$MASK" || fail "helper command string"
+if grep -E '/dev/mem|devmem' "$MASK" "$PRE" >/dev/null; then
+	fail "recovery userspace uses devmem"
+fi
+if grep -q 'erase-preloader' "$MASK"; then
+	fail "maskrom helper erases the preloader"
+fi
+grep -q 'BR2_PACKAGE_ZLYME_MASKROM=y' "$DEF" || fail "maskrom helper package is off"
+DRV=$ROOT/board/my355/linux/patches/20-rk3566/linux/1014-soc-rockchip-miyoo-flip-maskrom-restart.patch
+grep -q 'strcmp(cmd, "maskrom")' "$DRV" || fail "restart handler does not match maskrom"
+grep -q 'return NOTIFY_DONE' "$DRV" || fail "non-maskrom path missing"
+grep -q '0xef08a53c' "$DRV" || fail "download flag missing"
+grep -q '0xfdb9' "$DRV" || fail "cru reset value missing"
+grep -q 'miyoo,flip-maskrom-restart' "$ROOT/board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts" || fail "dts node missing"
+if grep -l 'register_restart_handler' "$ROOT/board/my355/linux/patches/"*/*/*.patch 2>/dev/null | grep -v 1014-soc-rockchip-miyoo-flip-maskrom-restart; then
+	fail "another patch registers a restart handler"
+fi
+# The stock PSCI and clock restart handlers are not patched.
+if grep -R -l 'psci_sys_reset' "$ROOT/board/my355/linux/patches" >/dev/null 2>&1; then
+	fail "a patch edits the PSCI restart handler"
+fi
+if grep -R 'rockchip_restart_notify' "$ROOT/board/my355/linux/patches" >/dev/null 2>&1; then
+	fail "a patch edits the clock restart handler"
+fi
+grep -q 'CONFIG_CMD_RBROM=y' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "uboot rbrom config"
+grep -q 'CONFIG_BOOTDELAY=-2' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "bootdelay changed"
+grep -q 'Settings -> System -> Advanced -> Recovery' "$ROOT/package/system/nextui/nextui.mk" || fail "pin does not name the native Recovery page"
+pin=$(sed -n 's/^NEXTUI_VERSION = //p' "$ROOT/package/system/nextui/nextui.mk")
+if [ -d /home/ale/NextUI/.git ]; then
+	head=$(git -C /home/ale/NextUI rev-parse HEAD)
+	[ "$head" = "$pin" ] || fail "NextUI checkout $head is not the pin $pin"
+	git -C /home/ale/NextUI grep -q 'RESTORE STOCK PRELOADER' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no restore confirmation"
+	git -C /home/ale/NextUI grep -q 'REBOOT TO MASKROM' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no maskrom confirmation"
+	git -C /home/ale/NextUI grep -q 'zlyme-maskrom' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call zlyme-maskrom"
+	if git -C /home/ale/NextUI grep -q 'erase-preloader' "$head" -- workspace/all/settings/zlymemenu.cpp; then
+		fail "pinned NextUI exposes erase-preloader"
+	fi
+	git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
+		/rows.push_back\(new MenuItem\{ListItemType::Button, "Cancel"/ { print; exit }
+	' | grep -q Cancel || fail "native confirmation does not start on Cancel"
+fi
 
 echo "phase11c: ok"
