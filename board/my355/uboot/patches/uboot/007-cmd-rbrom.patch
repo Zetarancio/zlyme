@@ -1,0 +1,53 @@
+Add a stock-shaped `rbrom` command. It stores BOOT_BROM_DOWNLOAD and
+calls the existing reset. CONFIG_BOOTDELAY stays -2, so a key still
+cannot reach the prompt. This is not the Settings path.
+
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -1649,6 +1649,13 @@ config CMD_MY355
+ 	  the boot script can save to the card. For a unit with no serial
+ 	  console attached.
+ 
++config CMD_RBROM
++	bool "rbrom - reset into Rockchip bootrom USB download"
++	help
++	  Store BOOT_BROM_DOWNLOAD and reset, the same pair stock U-Boot
++	  uses. The early SPL returns to the boot ROM. This does not
++	  erase SPI.
++
+ config CMD_PCI
+ 	bool "pci - Access PCI devices"
+ 	help
+diff --git a/cmd/Makefile b/cmd/Makefile
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -143,6 +143,7 @@ obj-$(CONFIG_CMD_NVEDIT_EFI) += nvedit_efi.o
+ obj-$(CONFIG_CMD_ONENAND) += onenand.o
+ obj-$(CONFIG_CMD_OSD) += osd.o
+ obj-$(CONFIG_CMD_MY355) += my355.o
++obj-$(CONFIG_CMD_RBROM) += rbrom.o
+ obj-$(CONFIG_CMD_PART) += part.o
+ obj-$(CONFIG_CMD_PCAP) += pcap.o
+ ifdef CONFIG_PCI
+diff --git a/cmd/rbrom.c b/cmd/rbrom.c
+new file mode 100644
+--- /dev/null
++++ b/cmd/rbrom.c
+@@ -0,0 +1,16 @@
++// SPDX-License-Identifier: GPL-2.0+
++#include <command.h>
++
++void set_back_to_bootrom_dnl_flag(void);
++
++static int do_rbrom(struct cmd_tbl *cmdtp, int flag, int argc,
++		    char *const argv[])
++{
++	set_back_to_bootrom_dnl_flag();
++	return do_reset(cmdtp, flag, argc, argv);
++}
++
++U_BOOT_CMD(rbrom, 1, 0, do_rbrom,
++	   "reset into Rockchip bootrom USB download",
++	   ""
++);

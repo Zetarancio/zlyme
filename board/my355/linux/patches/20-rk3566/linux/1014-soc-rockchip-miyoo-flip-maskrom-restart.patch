@@ -1,0 +1,185 @@
+From: Zetarancio <zetarancio@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 00:00:00 +0000
+Subject: [PATCH] soc: rockchip: Miyoo Flip maskrom restart command
+
+The restart handler runs only when the reboot command is exactly
+"maskrom". Any other command returns NOTIFY_DONE without touching
+registers, so the existing PSCI reset (priority 129) still owns a
+normal reboot. The rockchip clock restart handler is unchanged.
+
+On "maskrom" the handler stores BOOT_BROM_DOWNLOAD in PMUGRF OS_REG0
+and then writes the RK3568 first global reset. That is the stock
+U-Boot rbrom sequence. The early SPL save_boot_params() path is what
+returns to the boot ROM. Priority 192 runs before PSCI, because a
+PSCI SYSTEM_RESET does not perform this store-and-CRU sequence.
+
+Constants checked against Linux 7.0.2 and U-Boot 2026.01:
+PMUGRF 0xfdc20000, OS_REG0 offset 0x200, BOOT_BROM_DOWNLOAD
+0xef08a53c, CRU 0xfdd20000, GLB_SRST_FST 0xd4, value 0xfdb9.
+
+The driver binds only to miyoo,flip-maskrom-restart. The Flip DTS is
+the only node.
+
+---
+ drivers/soc/rockchip/Kconfig                    |  10 +
+ drivers/soc/rockchip/Makefile                   |   1 +
+ drivers/soc/rockchip/miyoo-flip-maskrom.c       | 126 ++++++++++++++++++++++++
+ 3 files changed, 127 insertions(+)
+
+diff --git a/drivers/soc/rockchip/Kconfig b/drivers/soc/rockchip/Kconfig
+--- a/drivers/soc/rockchip/Kconfig
++++ b/drivers/soc/rockchip/Kconfig
+@@ -39,4 +39,13 @@ config ROCKCHIP_PM_CONFIG
+ 	  This is the rockchip,pm-rk3568 firmware interface. It does not
+ 	  cover other Rockchip SoCs and it does not change regulators.
+ 
++config MIYOO_FLIP_MASKROM_RESTART
++	bool "Miyoo Flip reboot-to-maskrom restart handler"
++	depends on ARCH_ROCKCHIP && OF && MFD_SYSCON
++	default y
++	help
++	  Handle the restart command "maskrom" on a Miyoo Flip. Ordinary
++	  reboot commands are ignored by this handler. The driver probes
++	  only when a miyoo,flip-maskrom-restart node is present.
++
+ endif
+diff --git a/drivers/soc/rockchip/Makefile b/drivers/soc/rockchip/Makefile
+--- a/drivers/soc/rockchip/Makefile
++++ b/drivers/soc/rockchip/Makefile
+@@ -5,4 +5,5 @@
+ obj-$(CONFIG_ROCKCHIP_GRF) += grf.o
+ obj-$(CONFIG_ROCKCHIP_IODOMAIN) += io-domain.o
+ obj-$(CONFIG_ROCKCHIP_DTPM) += dtpm.o
+ obj-$(CONFIG_ROCKCHIP_PM_CONFIG) += rockchip-pm-config.o
++obj-$(CONFIG_MIYOO_FLIP_MASKROM_RESTART) += miyoo-flip-maskrom.o
+diff --git a/drivers/soc/rockchip/miyoo-flip-maskrom.c b/drivers/soc/rockchip/miyoo-flip-maskrom.c
+new file mode 100644
+--- /dev/null
++++ b/drivers/soc/rockchip/miyoo-flip-maskrom.c
+@@ -0,0 +1,126 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Miyoo Flip restart into the Rockchip boot ROM USB download mode.
++ *
++ * Stock U-Boot rbrom stores BOOT_BROM_DOWNLOAD and then takes the
++ * normal reset. U-Boot's SPL save_boot_params() observes that word
++ * and returns to the ROM before it changes the CPU state the ROM
++ * needs. A PSCI SYSTEM_RESET does not do this, which is why storing
++ * the flag and calling the ordinary Linux reboot path stays in the
++ * installed SPL.
++ *
++ * This handler reacts only to the restart command "maskrom".
++ */
++
++#include <linux/io.h>
++#include <linux/mfd/syscon.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_address.h>
++#include <linux/platform_device.h>
++#include <linux/processor.h>
++#include <linux/reboot.h>
++#include <linux/regmap.h>
++#include <linux/string.h>
++
++/* grf_rk3568.h: pmu_os_reg0 is at 0x200 inside PMUGRF (0xfdc20000). */
++#define MIYOO_PMU_OS_REG0		0x200
++/* arch/arm/include/asm/arch-rockchip/boot_mode.h */
++#define MIYOO_BOOT_BROM_DOWNLOAD	0xef08a53cU
++/* cru_rk3568.h glb_srst_fst, and clk.h RK3568_GLB_SRST_FST. */
++#define MIYOO_CRU_GLB_SRST_FST		0xd4
++/* drivers/clk/rockchip/clk.c and U-Boot sysreset_rockchip.c cold reset. */
++#define MIYOO_CRU_GLB_SRST_FST_VALUE	0xfdb9
++
++/*
++ * PSCI registers its restart handler at priority 129 and returns
++ * NOTIFY_DONE after SYSTEM_RESET. 192 runs first. A non-maskrom
++ * command returns NOTIFY_DONE with no MMIO, so PSCI still resets.
++ */
++#define MIYOO_MASKROM_RESTART_PRIO	192
++
++static struct regmap *miyoo_pmugrf;
++static void __iomem *miyoo_cru;
++
++static int miyoo_maskrom_restart(struct notifier_block *nb,
++				 unsigned long mode, void *cmd)
++{
++	unsigned int val;
++	int ret;
++
++	if (!cmd || strcmp(cmd, "maskrom") != 0)
++		return NOTIFY_DONE;
++
++	if (!miyoo_pmugrf || !miyoo_cru)
++		return NOTIFY_DONE;
++
++	ret = regmap_write(miyoo_pmugrf, MIYOO_PMU_OS_REG0,
++			   MIYOO_BOOT_BROM_DOWNLOAD);
++	if (ret)
++		return NOTIFY_DONE;
++
++	ret = regmap_read(miyoo_pmugrf, MIYOO_PMU_OS_REG0, &val);
++	if (ret || val != MIYOO_BOOT_BROM_DOWNLOAD)
++		return NOTIFY_DONE;
++
++	/* Finish the PMUGRF store before the CRU reset write. */
++	wmb();
++	writel(MIYOO_CRU_GLB_SRST_FST_VALUE,
++	       miyoo_cru + MIYOO_CRU_GLB_SRST_FST);
++
++	while (1)
++		cpu_relax();
++
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block miyoo_maskrom_nb = {
++	.notifier_call = miyoo_maskrom_restart,
++	.priority = MIYOO_MASKROM_RESTART_PRIO,
++};
++
++static int miyoo_maskrom_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct device_node *cru_np;
++	int ret;
++
++	miyoo_pmugrf = syscon_regmap_lookup_by_phandle(dev->of_node,
++						      "rockchip,pmugrf");
++	if (IS_ERR(miyoo_pmugrf))
++		return dev_err_probe(dev, PTR_ERR(miyoo_pmugrf),
++				     "pmugrf syscon missing\n");
++
++	cru_np = of_parse_phandle(dev->of_node, "rockchip,cru", 0);
++	if (!cru_np)
++		return dev_err_probe(dev, -ENODEV, "cru phandle missing\n");
++
++	miyoo_cru = of_iomap(cru_np, 0);
++	of_node_put(cru_np);
++	if (!miyoo_cru)
++		return dev_err_probe(dev, -ENOMEM, "cru map failed\n");
++
++	ret = register_restart_handler(&miyoo_maskrom_nb);
++	if (ret) {
++		iounmap(miyoo_cru);
++		miyoo_cru = NULL;
++		return dev_err_probe(dev, ret, "restart handler failed\n");
++	}
++
++	return 0;
++}
++
++static const struct of_device_id miyoo_maskrom_of_match[] = {
++	{ .compatible = "miyoo,flip-maskrom-restart" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, miyoo_maskrom_of_match);
++
++static struct platform_driver miyoo_maskrom_driver = {
++	.probe = miyoo_maskrom_probe,
++	.driver = {
++		.name = "miyoo-flip-maskrom",
++		.of_match_table = miyoo_maskrom_of_match,
++	},
++};
++builtin_platform_driver(miyoo_maskrom_driver);
