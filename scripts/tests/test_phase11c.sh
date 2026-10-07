@@ -26,6 +26,8 @@ grep -q '# BR2_PACKAGE_MTD_NANDDUMP is not set' "$DEF" || fail "nanddump is not 
 grep -q 'Cancel' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "ui has no cancel"
 grep -q 'ERASE PRELOADER TO MASKROM' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "erase confirmation text"
 grep -q 'RESTORE STOCK PRELOADER' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "restore confirmation text"
+grep -q 'previous preloader restored and verified' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "rollback message missing"
+grep -q 'CRITICAL: restore failed and rollback could not be verified' "$ROOT/package/system/nextui/paks/Tools/Preloader Recovery.pak/launch.sh" || fail "critical restore message missing"
 # Cancel is the first menu line, which minui-list selects by default.
 awk '
 	/choose "Preloader Recovery"/ { p=1 }
@@ -58,6 +60,7 @@ PY
 		work=$(mktemp -d)
 		python3 "$tree/tests/make_preloader_fixture.py" "$work/fixture.img"
 		python3 "$tree/tools/mkpreloader.py" "$work/fixture.img" "$work/py.img" >/dev/null
+		PATCHED=$work/py.img
 		AWK_SCRIPT="$tree/tools/preloader-installer/fdtpatch.awk" \
 			sh "$tree/tools/preloader-installer/patch-preloader.sh" \
 			"$work/fixture.img" "$work/sh.img" >/dev/null
@@ -81,7 +84,8 @@ PY
 			fail "shell patcher accepted a corrupt image"
 		fi
 		GOOD=$work/fixture.img
-		rm -rf "$work/py.img" "$work/sh.img" "$work/again.img" "$work/nope.img" "$work/bad.img"
+		[ -f "$PATCHED" ] || fail "patched fixture missing"
+		rm -rf "$work/sh.img" "$work/again.img" "$work/nope.img" "$work/bad.img"
 	else
 		fail "xxd or the apommel fixture generator is missing"
 	fi
@@ -95,25 +99,38 @@ cat > "$BIN/flash_erase" <<'EOF'
 #!/bin/sh
 root=${ZLYME_PRELOADER_ROOT:?}
 printf 'flash_erase %s\n' "$*" >> "$root/actions.log"
-[ -f "$root/fail-erase" ] && exit 1
+n=0
+[ -f "$root/erase-n" ] && n=$(cat "$root/erase-n")
+n=$((n + 1))
+printf '%s\n' "$n" > "$root/erase-n"
+limit=0
+[ -f "$root/fail-erase-first" ] && limit=$(cat "$root/fail-erase-first")
+[ "$n" -le "$limit" ] && exit 1
 exit 0
 EOF
 cat > "$BIN/nandwrite" <<'EOF'
 #!/bin/sh
 root=${ZLYME_PRELOADER_ROOT:?}
 printf 'nandwrite %s\n' "$*" >> "$root/actions.log"
-[ -f "$root/fail-nandwrite" ] && exit 1
+n=0
+[ -f "$root/nand-n" ] && n=$(cat "$root/nand-n")
+n=$((n + 1))
+printf '%s\n' "$n" > "$root/nand-n"
+limit=0
+[ -f "$root/fail-nandwrite-first" ] && limit=$(cat "$root/fail-nandwrite-first")
+[ "$n" -le "$limit" ] && exit 1
 img=
-prev=
 for a in "$@"; do
-	if [ "$prev" = "-p" ]; then
-		:
-	fi
 	img=$a
-	prev=$a
 done
 cp "$img" "$root/live/preloader.img"
-if [ -f "$root/fail-readback" ]; then
+r=0
+[ -f "$root/read-n" ] && r=$(cat "$root/read-n")
+r=$((r + 1))
+printf '%s\n' "$r" > "$root/read-n"
+rlimit=0
+[ -f "$root/fail-readback-first" ] && rlimit=$(cat "$root/fail-readback-first")
+if [ "$r" -le "$rlimit" ]; then
 	python3 - "$root/live/preloader.img" <<'PY'
 import sys
 f=open(sys.argv[1],"r+b")
@@ -157,7 +174,7 @@ new_fix() {
 	printf '80' > "$fix/sys/class/power_supply/battery/capacity"
 	printf '0' > "$fix/sys/class/power_supply/battery/online"
 	printf '0' > "$fix/sys/class/power_supply/ac/online"
-	cp "$GOOD" "$fix/live/preloader.img"
+	cp "$PATCHED" "$fix/live/preloader.img"
 	sum=$(sha256sum "$GOOD" | awk '{print $1}')
 	cp "$GOOD" "$fix/boot/mtd5-original-$sum.img"
 	: > "$fix/actions.log"
@@ -301,37 +318,147 @@ rc=$(run "$fix" restore)
 no_cmd "$fix" "current backup failure"
 
 fix=$(new_fix)
-: > "$fix/fail-erase"
+printf '\x00' | dd of="$fix/live/preloader.img" bs=1 seek=140000 conv=notrunc status=none
 rc=$(run "$fix" restore)
-[ "$rc" != "0" ] || fail "erase failure was accepted"
-grep -q '^flash_erase ' "$fix/actions.log" || fail "erase was not attempted"
-grep -q '^nandwrite ' "$fix/actions.log" && fail "nandwrite ran after erase failure"
+[ "$rc" != "0" ] || fail "corrupt current preloader was accepted"
+no_cmd "$fix" "corrupt current"
+grep -q '^CURRENT_BACKUP ' "$fix/actions.log" && fail "corrupt current was treated as a ready backup"
+rc=$(run "$fix" erase-maskrom)
+[ "$rc" != "0" ] || fail "corrupt current was accepted for erase"
+no_cmd "$fix" "corrupt current erase"
 
 fix=$(new_fix)
-: > "$fix/fail-nandwrite"
+other=$fix/other.img
+python3 - "$GOOD" "$other" <<'PY'
+import hashlib, struct, sys
+src, dst = sys.argv[1], sys.argv[2]
+data = bytearray(open(src, "rb").read())
+for base in (131072, 524288):
+    entry = base + 0x78
+    off, count = struct.unpack_from("<HH", data, entry)
+    start = base + off * 512
+    length = count * 512
+    data[start] ^= 0x5A
+    data[entry + 0x18:entry + 0x38] = hashlib.sha256(data[start:start + length]).digest()
+open(dst, "wb").write(data)
+PY
+sum=$(sha256sum "$other" | awk '{print $1}')
+rm -f "$fix"/boot/mtd5-original-*.img
+cp "$other" "$fix/boot/mtd5-original-$sum.img"
 rc=$(run "$fix" restore)
-[ "$rc" != "0" ] || fail "nandwrite failure was accepted"
-grep -q '^READBACK ok' "$fix/actions.log" && fail "readback claimed success"
+[ "$rc" != "0" ] || fail "DDR mismatch was accepted"
+no_cmd "$fix" "DDR mismatch"
+grep -q 'DDR payload' "$fix/err" || fail "DDR mismatch did not say why"
+
+# First N flash_erase/nandwrite/readback operations fail, then succeed.
+# Three target attempts, then rollback.
+rollback_used_current() {
+	fix=$1
+	cur=$(awk '/^CURRENT_BACKUP / { print $2; exit }' "$fix/actions.log")
+	[ -n "$cur" ] && [ -f "$cur" ] || fail "$2 lost the current backup"
+	awk -v cur="$cur" '
+		/^ROLLBACK$/ { r=1; next }
+		r && /^nandwrite / {
+			n++
+			if (index($0, cur) == 0) bad=1
+			if (index($0, "mtd5-original-") > 0) bad=1
+		}
+		END { exit !(r && n && !bad) }
+	' "$fix/actions.log" || fail "$2 rollback did not write the current backup"
+	live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+	want=$(sha256sum "$cur" | awk '{print $1}')
+	orig=$(sha256sum "$GOOD" | awk '{print $1}')
+	[ "$live" = "$want" ] || fail "$2 live image is not the pre-operation backup"
+	[ "$live" != "$orig" ] || fail "$2 rollback wrote the stock candidate"
+	grep -q '^READBACK target ok$' "$fix/actions.log" && fail "$2 claimed the stock restore"
+	grep -q 'previous preloader restored and verified' "$fix/err" || fail "$2 missing rollback message"
+	awk '
+		/^GATES / { g=NR }
+		/^CURRENT_BACKUP / { c=NR }
+		/^flash_erase / { if (!e) e=NR }
+		/^ROLLBACK$/ { r=NR }
+		/^ROLLBACK_READBACK ok$/ { b=NR }
+		END { exit !(g && c && e && r && b && g < c && c < e && e < r && r < b) }
+	' "$fix/actions.log" || fail "$2 command order"
+}
 
 fix=$(new_fix)
-: > "$fix/fail-readback"
+printf '3\n' > "$fix/fail-erase-first"
 rc=$(run "$fix" restore)
-[ "$rc" != "0" ] || fail "readback mismatch was accepted"
+[ "$rc" = "3" ] || fail "erase failure rc=$rc $(cat "$fix/err")"
+rollback_used_current "$fix" "erase failure"
+awk '/^ROLLBACK$/ { exit } /^nandwrite / { bad=1 } END { exit bad }' "$fix/actions.log" \
+	|| fail "nandwrite ran on a failed target erase"
+
+fix=$(new_fix)
+printf '3\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" restore)
+[ "$rc" = "3" ] || fail "nandwrite failure rc=$rc $(cat "$fix/err")"
+rollback_used_current "$fix" "nandwrite failure"
+grep -q '^READBACK target ok$' "$fix/actions.log" && fail "nandwrite failure claimed target readback"
+
+fix=$(new_fix)
+printf '3\n' > "$fix/fail-readback-first"
+rc=$(run "$fix" restore)
+[ "$rc" = "3" ] || fail "readback mismatch rc=$rc $(cat "$fix/err")"
+rollback_used_current "$fix" "readback mismatch"
+
+fix=$(new_fix)
+printf '6\n' > "$fix/fail-erase-first"
+rc=$(run "$fix" restore)
+[ "$rc" = "1" ] || fail "rollback erase failure rc=$rc"
+grep -q '^ROLLBACK$' "$fix/actions.log" || fail "rollback erase case did not roll back"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "rollback erase claimed success"
+grep -q '^nandwrite ' "$fix/actions.log" && fail "nandwrite ran when rollback erase failed"
+grep -q 'CRITICAL: restore failed and rollback could not be verified' "$fix/err" || fail "critical erase message"
+cur=$(awk '/^CURRENT_BACKUP / { print $2; exit }' "$fix/actions.log")
+[ -f "$cur" ] || fail "rollback erase failure deleted the backup"
+grep -q "backup preserved at $cur" "$fix/err" || fail "critical message omitted the backup path"
+
+fix=$(new_fix)
+printf '6\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" restore)
+[ "$rc" = "1" ] || fail "rollback nandwrite failure rc=$rc"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "rollback nandwrite claimed success"
+grep -q 'CRITICAL: restore failed and rollback could not be verified' "$fix/err" || fail "critical nandwrite message"
+cur=$(awk '/^CURRENT_BACKUP / { print $2; exit }' "$fix/actions.log")
+[ -f "$cur" ] || fail "rollback nandwrite failure deleted the backup"
+awk -v cur="$cur" '
+	/^ROLLBACK$/ { r=1; next }
+	r && /^nandwrite / { if (index($0, cur) == 0) bad=1; n++ }
+	END { exit !(r && n && !bad) }
+' "$fix/actions.log" || fail "failed rollback nandwrite was not the current backup"
+
+fix=$(new_fix)
+printf '6\n' > "$fix/fail-readback-first"
+rc=$(run "$fix" restore)
+[ "$rc" = "1" ] || fail "rollback readback failure rc=$rc"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "rollback readback claimed success"
+grep -q 'CRITICAL: restore failed and rollback could not be verified' "$fix/err" || fail "critical readback message"
+cur=$(awk '/^CURRENT_BACKUP / { print $2; exit }' "$fix/actions.log")
+[ -f "$cur" ] || fail "rollback readback failure deleted the backup"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+want=$(sha256sum "$cur" | awk '{print $1}')
+[ "$live" != "$want" ] || fail "rollback readback mismatch still matched the backup"
 
 fix=$(new_fix)
 rc=$(run "$fix" restore)
 [ "$rc" = "0" ] || fail "restore failed: $(cat "$fix/err")"
-grep -q '^GATES /dev/mtd0' "$fix/actions.log" || fail "gates missing"
-grep -q '^CURRENT_BACKUP ' "$fix/actions.log" || fail "current backup missing"
-grep -q '^flash_erase /dev/mtd0 0 0' "$fix/actions.log" || fail "erase args"
-grep -q '^nandwrite -p /dev/mtd0 ' "$fix/actions.log" || fail "nandwrite args"
-# gates and current backup before the erase
+grep -q '^READBACK target ok$' "$fix/actions.log" || fail "target readback missing"
+grep -q '^ROLLBACK$' "$fix/actions.log" && fail "successful restore rolled back"
 awk '
 	/^GATES / { g=NR }
 	/^CURRENT_BACKUP / { c=NR }
-	/^flash_erase / { e=NR }
-	END { exit !(g && c && e && g < c && c < e) }
-' "$fix/actions.log" || fail "destructive command ran before the gates"
+	/^flash_erase / { if (!e) e=NR; ne++ }
+	/^nandwrite / { if (!n) n=NR; nn++ }
+	/^READBACK target ok$/ { t=NR }
+	END { exit !(g && c && e && n && t && g < c && c < e && e < n && n < t && ne == 1 && nn == 1) }
+' "$fix/actions.log" || fail "successful restore order"
+awk '/^nandwrite / { if (index($0, "mtd5-original-") == 0) bad=1 } END { exit bad }' "$fix/actions.log" \
+	|| fail "successful restore did not write the stock candidate"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+orig=$(sha256sum "$GOOD" | awk '{print $1}')
+[ "$live" = "$orig" ] || fail "successful restore did not leave the stock image"
 
 fix=$(new_fix)
 rc=$(run "$fix" erase-maskrom)
@@ -339,10 +466,18 @@ rc=$(run "$fix" erase-maskrom)
 grep -q '^flash_erase /dev/mtd0 0 0' "$fix/actions.log" || fail "maskrom erase missing"
 grep -q '^nandwrite ' "$fix/actions.log" && fail "erase-maskrom wrote an image"
 grep -q '^ERASE ok' "$fix/actions.log" || fail "erase did not record success"
+grep -q '^ROLLBACK$' "$fix/actions.log" && fail "successful erase rolled back"
 awk '
 	/^CURRENT_BACKUP / { c=NR }
-	/^flash_erase / { e=NR }
-	END { exit !(c && e && c < e) }
+	/^flash_erase / { e=NR; n++ }
+	END { exit !(c && e && c < e && n == 1) }
 ' "$fix/actions.log" || fail "erase ran before the current backup"
+
+fix=$(new_fix)
+printf '1\n' > "$fix/fail-erase-first"
+rc=$(run "$fix" erase-maskrom)
+[ "$rc" = "3" ] || fail "maskrom erase failure rc=$rc $(cat "$fix/err")"
+grep -q '^ERASE ok' "$fix/actions.log" && fail "failed erase claimed MASKROM success"
+rollback_used_current "$fix" "maskrom erase failure"
 
 echo "phase11c: ok"
