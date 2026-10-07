@@ -2,8 +2,8 @@
 #
 # zlyme-maskrom
 #
-# Asks the kernel to restart with command "maskrom". Not a NAND writer
-# and not a boot service.
+# Writes one ZLYMEBOOT request and then asks for an ordinary restart.
+# Not a NAND writer and not a boot service.
 #
 ################################################################################
 

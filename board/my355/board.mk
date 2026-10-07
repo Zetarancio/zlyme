@@ -22,7 +22,7 @@ define ZLYME_UBOOT_FLIP_CONFIG
 	$(SED) '/^CONFIG_USE_PREBOOT=/d' $(@D)/.config
 	$(SED) '/^CONFIG_PREBOOT=/d' $(@D)/.config
 	echo 'CONFIG_USE_PREBOOT=y' >> $(@D)/.config
-	echo 'CONFIG_PREBOOT="blkcache configure 32 32; my355 fg"' >> $(@D)/.config
+	echo 'CONFIG_PREBOOT="blkcache configure 32 32; my355 maskrom-request; my355 fg"' >> $(@D)/.config
 	grep -qx 'CONFIG_BOOTSTAGE=y' $(@D)/.config || \
 		echo 'CONFIG_BOOTSTAGE=y' >> $(@D)/.config
 	grep -qx 'CONFIG_CMD_MY355=y' $(@D)/.config || \
@@ -57,6 +57,10 @@ define ZLYME_UBOOT_FLIP_CONFIG
 	$(SED) 's/^CONFIG_PHY_ROCKCHIP_NANENG_COMBOPHY=y/# CONFIG_PHY_ROCKCHIP_NANENG_COMBOPHY is not set/' $(@D)/.config
 	grep -qx 'CONFIG_ROCKCHIP_SFC=y' $(@D)/.config || { \
 		echo "zlyme: U-Boot .config lost CONFIG_ROCKCHIP_SFC=y" >&2; exit 1; }
+	grep -qx 'CONFIG_FS_FAT=y' $(@D)/.config || { \
+		echo "zlyme: U-Boot .config lost CONFIG_FS_FAT=y" >&2; exit 1; }
+	grep -qx 'CONFIG_FAT_WRITE=y' $(@D)/.config || { \
+		echo "zlyme: U-Boot .config lost CONFIG_FAT_WRITE=y" >&2; exit 1; }
 	grep -qx 'CONFIG_DEFAULT_DEVICE_TREE="rk3566-miyoo-flip"' $(@D)/.config || { \
 		echo "zlyme: U-Boot .config lost Flip control tree" >&2; exit 1; }
 	if grep -q '^CONFIG_OF_UPSTREAM=y' $(@D)/.config; then \
@@ -73,6 +77,9 @@ define ZLYME_UBOOT_COPY_DTS
 		$(@D)/arch/arm/dts/rk3566-miyoo-flip.dts
 	$(INSTALL) -D -m 0644 $(ZLYME_UBOOT_DTS)/rk3566-miyoo-flip-u-boot.dtsi \
 		$(@D)/arch/arm/dts/rk3566-miyoo-flip-u-boot.dtsi
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/uboot/maskrom_request.h \
+		$(@D)/cmd/maskrom_request.h
 endef
 UBOOT_PRE_BUILD_HOOKS += ZLYME_UBOOT_COPY_DTS
 

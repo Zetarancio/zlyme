@@ -33,17 +33,6 @@
 		stdout-path = "serial2:1500000n8";
 	};
 
-	/*
-	 * Restart command "maskrom" only. Ordinary reboot stays on PSCI.
-	 * The handler stores the boot-ROM download flag and pulses the
-	 * CRU first reset. It does not erase the preloader.
-	 */
-	maskrom-restart {
-		compatible = "miyoo,flip-maskrom-restart";
-		rockchip,pmugrf = <&pmugrf>;
-		rockchip,cru = <&cru>;
-	};
-
 	/* No adc-keys: volume buttons are on GPIO; the sticks are on UART1. */
 
 	/* LCD backlight: PWM4, mainline pwm-backlight.
