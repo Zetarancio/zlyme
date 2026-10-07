@@ -118,6 +118,14 @@ fi
 [ -s "${BINARIES_DIR}/miyoo355_fw.img" ] ||
 	{ echo "post-image: miyoo355_fw.img is missing (my355-fw-installer)" >&2
 	  exit 1; }
+# Two spaces, then the basename. Same bytes every time for the same image.
+(
+	cd "${BINARIES_DIR}"
+	sha256sum miyoo355_fw.img > miyoo355_fw.img.sha256
+) || {
+	echo "post-image: could not hash miyoo355_fw.img" >&2
+	exit 1
+}
 
 sq_bytes=$(wc -c < "${BINARIES_DIR}/zlyme")
 echo "post-image: squashfs ${sq_bytes} bytes as FAT file zlyme on 1300M ZLYMEBOOT"
