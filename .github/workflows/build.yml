@@ -14,10 +14,10 @@
 # a stable release only when publish_release is true. The default is a
 # candidate build: no GitHub release, and /releases/latest stays as it is.
 # A published release uploads the full OTA, its sha256, zlyme.img,
-# release-manifest.json, miyoo355_fw.img and its sha256, and any
-# same-major delta tars the release job verified. The installer is not
-# part of the OTA or release-manifest.json. Local builds do not generate
-# deltas.
+# release-manifest.json, miyoo355_fw.img and its sha256, the standalone
+# preloader helpers and their sha256 files, and any same-major delta tars
+# the release job verified. None of the miyoo355_fw images are part of the
+# OTA or release-manifest.json. Local builds do not generate deltas.
 
 name: Build
 
@@ -150,6 +150,12 @@ jobs:
             output/images/zlyme.img
             output/images/miyoo355_fw.img
             output/images/miyoo355_fw.img.sha256
+            output/images/miyoo355_fw-multiboot.img
+            output/images/miyoo355_fw-multiboot.img.sha256
+            output/images/miyoo355_fw-maskrom.img
+            output/images/miyoo355_fw-maskrom.img.sha256
+            output/images/miyoo355_fw-restore.img
+            output/images/miyoo355_fw-restore.img.sha256
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

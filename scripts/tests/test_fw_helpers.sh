@@ -1,0 +1,436 @@
+#!/bin/sh
+# Host checks for the stock-side preloader helper images.
+# No NAND, no device, no U-Boot.
+set -eu
+
+ROOT=$(CDPATH='' cd -- "$(dirname "$0")/../.." && pwd)
+ZLYME="$ROOT/package/boot/my355-fw-installer/zlyme"
+APOMMEL="${ZLYME_APOMMEL_TREE:-$ROOT/output/build/my355-fw-installer-e09d37bb0f03c34e564d61bd02164f332d8515a8/tools/preloader-installer}"
+STOCK="$ROOT/package/system/zlyme-preloader/preloader-stock.img"
+PY="$ROOT/package/system/zlyme-preloader/preloader_image.py"
+MKPRE="$ROOT/output/build/my355-fw-installer-e09d37bb0f03c34e564d61bd02164f332d8515a8/tools/mkpreloader.py"
+GEN="$ROOT/board/my355/genimage.cfg"
+POST="$ROOT/board/my355/post-image.sh"
+TAR="$ROOT/board/my355/make-update-tar.sh"
+UNIT_RECOVERY=f7d9a25255080ac19e88df88d1232bf45a90bdf2e86c9f7e23b73d32a003f367
+UNIT_STOCK=dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
+
+fail() { echo "fw-helpers: $*" >&2; exit 1; }
+
+[ -f "$APOMMEL/mkfwimg.py" ] || fail "pinned apommel tree is missing: $APOMMEL"
+[ -f "$STOCK" ] || fail "preloader-stock.img is missing"
+command -v shellcheck >/dev/null 2>&1 || fail "shellcheck is required"
+command -v python3 >/dev/null 2>&1 || fail "python3 is required"
+
+shellcheck -s sh -x "$ZLYME/install-maskrom.sh" "$ZLYME/install-restore.sh" \
+	"$ZLYME/apply-boot-order.sh" "$ZLYME/check-image.sh" || fail "shellcheck"
+sh -n "$ZLYME/common.sh" || fail "common.sh syntax"
+python3 -m py_compile "$ZLYME/pack-fwimg.py" || fail "pack-fwimg.py"
+
+for src in "$ZLYME"/*.sh "$ZLYME"/*.awk "$ZLYME"/*.py "$ZLYME"/NOTICE "$ZLYME"/LICENSE; do
+	[ -e "$src" ] || continue
+	if grep -q "$UNIT_RECOVERY" "$src" || grep -q "$UNIT_STOCK" "$src"; then
+		fail "$(basename "$src") embeds a unit preloader hash"
+	fi
+done
+if grep -q -- '--force' "$ZLYME"/*.sh; then
+	fail "a helper accepts --force"
+fi
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+python3 "$APOMMEL/mkfwimg.py" "$work/a.img" >/dev/null
+python3 "$APOMMEL/mkfwimg.py" "$work/b.img" >/dev/null
+cmp -s "$work/a.img" "$work/b.img" || fail "multiboot pack is not deterministic"
+cp -a "$work/a.img" "$work/miyoo355_fw.img"
+cp -a "$work/a.img" "$work/miyoo355_fw-multiboot.img"
+cmp -s "$work/miyoo355_fw.img" "$work/miyoo355_fw-multiboot.img" || fail "multiboot alias differs"
+if [ -s "$ROOT/output/images/miyoo355_fw.img" ]; then
+	cmp -s "$work/miyoo355_fw.img" "$ROOT/output/images/miyoo355_fw.img" || fail "fresh multiboot image differs from the last built miyoo355_fw.img"
+fi
+
+pack() {
+	python3 "$ZLYME/pack-fwimg.py" --apommel "$APOMMEL" --mode "$1" --version "$2" "$3"
+}
+pack maskrom zlyme-maskrom-1 "$work/miyoo355_fw-maskrom.img" >/dev/null
+pack maskrom zlyme-maskrom-1 "$work/miyoo355_fw-maskrom-again.img" >/dev/null
+cmp -s "$work/miyoo355_fw-maskrom.img" "$work/miyoo355_fw-maskrom-again.img" || fail "maskrom pack is not deterministic"
+pack restore zlyme-restore-1 "$work/miyoo355_fw-restore.img" >/dev/null
+pack restore zlyme-restore-1 "$work/miyoo355_fw-restore-again.img" >/dev/null
+cmp -s "$work/miyoo355_fw-restore.img" "$work/miyoo355_fw-restore-again.img" || fail "restore pack is not deterministic"
+
+for img in miyoo355_fw.img miyoo355_fw-multiboot.img miyoo355_fw-maskrom.img miyoo355_fw-restore.img; do
+	[ -s "$work/$img" ] || fail "missing $img"
+	(cd "$work" && sha256sum "$img" > "$img.sha256")
+	(cd "$work" && sha256sum -c "$img.sha256") >/dev/null || fail "checksum $img"
+	python3 - "$work/$img" "$UNIT_RECOVERY" "$UNIT_STOCK" << 'PY' || fail "helper contains a unit image hash"
+import pathlib, sys
+blob = pathlib.Path(sys.argv[1]).read_bytes()
+for needle in sys.argv[2:]:
+    if needle.encode() in blob:
+        raise SystemExit(1)
+PY
+done
+
+header() { dd if="$1" bs=512 count=1 2>/dev/null | tr -d '\0'; }
+printf '%s' "$(header "$work/miyoo355_fw.img")" | grep -q 'version:baseos-preloader-1' || fail "multiboot version changed"
+printf '%s' "$(header "$work/miyoo355_fw-maskrom.img")" | grep -q 'version:zlyme-maskrom-1' || fail "maskrom version"
+printf '%s' "$(header "$work/miyoo355_fw-restore.img")" | grep -q 'version:zlyme-restore-1' || fail "restore version"
+
+grep -q '"miyoo355_fw.img"' "$GEN" || fail "genimage dropped the normal installer"
+if grep -q 'miyoo355_fw-multiboot.img\|miyoo355_fw-maskrom.img\|miyoo355_fw-restore.img' "$GEN"; then
+	fail "genimage contains a standalone helper"
+fi
+if grep -q 'miyoo355_fw' "$TAR"; then
+	fail "OTA packer mentions a firmware helper"
+fi
+for name in miyoo355_fw-multiboot.img miyoo355_fw-maskrom.img miyoo355_fw-restore.img; do
+	grep -q "$name" "$POST" || fail "post-image does not hash $name"
+	grep -q "$name" "$ROOT/.github/workflows/build.yml" || fail "release upload omits $name"
+	grep -q "$name" "$ROOT/.github/workflows/build-stage.yml" || fail "stage upload omits $name"
+done
+for tarfile in "$ROOT"/output/images/zlyme-my355-*.tar; do
+	[ -e "$tarfile" ] || continue
+	if tar -tf "$tarfile" | grep -q 'miyoo355_fw'; then
+		fail "OTA archive contains a firmware helper: $tarfile"
+	fi
+done
+
+python3 - "$STOCK" "$MKPRE" "$PY" "$work/expect-recovery.img" "$work/expect-patched.img" << 'PY'
+import importlib.util, pathlib, sys
+stock_path, mk_path, py_path, rec_path, patched_path = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("mkpreloader", mk_path)
+mk = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mk)
+spec = importlib.util.spec_from_file_location("preloader_image", py_path)
+pi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pi)
+raw = pathlib.Path(stock_path).read_bytes()
+patched, _notes = mk.patch(raw)
+recovery = pi.derive_bytes(patched)
+pathlib.Path(patched_path).write_bytes(patched)
+pathlib.Path(rec_path).write_bytes(recovery)
+order = pi._boot_order(pi._fdt(pi._paired(recovery)[1][0]["payload"]))[1]
+if order != [pi.RIGHT_SLOT]:
+    raise SystemExit("recovery order")
+PY
+
+extract() {
+	dest=$1
+	img=$2
+	rm -rf "$dest"
+	mkdir -p "$dest"
+	dd if="$img" bs=512 skip=16 2>/dev/null | tar -x -C "$dest"
+	[ -f "$dest/install.sh" ] || fail "payload has no install.sh"
+}
+
+prepare_fix() {
+	fix=$1
+	live=$2
+	rm -rf "$fix"
+	mkdir -p "$fix/bin" "$fix/card" "$fix/power/ac"
+	cp "$live" "$fix/mtd"
+	cp "$live" "$fix/mtdro"
+	sha256sum "$live" | cut -c1-64 > "$fix/live.sha"
+	printf 'mtd5: 00200000 00020000 "spl"\n' > "$fix/proc-mtd"
+	echo 80 > "$fix/power/battery"
+	echo 0 > "$fix/power/ac/online"
+	echo ok > "$fix/write-mode"
+	: > "$fix/erases"
+	cat > "$fix/bin/flash_erase" << EOF
+#!/bin/sh
+printf x >> "$fix/erases"
+exit 0
+EOF
+	cat > "$fix/bin/nandwrite" << EOF
+#!/bin/sh
+src=\$3
+mode=\$(cat "$fix/write-mode")
+live=\$(cat "$fix/live.sha")
+got=\$(sha256sum "\$src" | cut -c1-64)
+if [ "\$mode" = fail-both ] || { [ "\$mode" = fail-target ] && [ "\$got" != "\$live" ]; }; then
+	dd if=/dev/zero of="$fix/mtd" bs=2048 count=1024 status=none
+else
+	cp "\$src" "$fix/mtd"
+fi
+cp "$fix/mtd" "$fix/mtdro"
+exit 0
+EOF
+	chmod 755 "$fix/bin/flash_erase" "$fix/bin/nandwrite"
+}
+
+run_helper() {
+	fix=$1
+	payload=$2
+	env CARD="$fix/card" MTD="$fix/mtd" PROC_MTD="$fix/proc-mtd" \
+		BATTERY_CAPACITY="$fix/power/battery" POWER_ROOT="$fix/power" \
+		PATH="$fix/bin:$PATH" \
+		sh "$payload/install.sh"
+}
+
+erases() { wc -c < "$1/erases" | tr -d ' '; }
+
+extract "$work/maskrom-root" "$work/miyoo355_fw-maskrom.img"
+extract "$work/restore-root" "$work/miyoo355_fw-restore.img"
+
+# Multiboot behavior stays the pinned installer: the descriptive file is that image.
+cmp -s "$work/miyoo355_fw.img" "$work/miyoo355_fw-multiboot.img"
+
+# MASKROM from an original stock preloader. No prior multiboot backup.
+prepare_fix "$work/fix" "$STOCK"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "maskrom from stock rc=$rc $(cat "$work/fix/err") $(cat "$work/fix/card/zlyme-fw.log")"
+cmp -s "$work/fix/mtdro" "$work/expect-recovery.img" || fail "maskrom from stock did not derive the recovery image"
+stock_sha=$(sha256sum "$STOCK" | cut -c1-64)
+cmp -s "$work/fix/card/mtd5-original-$stock_sha.img" "$STOCK" || fail "original backup is not the live stock image"
+[ "$(erases "$work/fix")" -ge 1 ] || fail "maskrom from stock did not write"
+grep -q 'readback verified' "$work/fix/card/zlyme-fw.log" || fail "maskrom success was not logged"
+
+# Same bytes when the live image is already the repaired preloader and the original backup is present.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "maskrom from repaired rc=$rc $(cat "$work/fix/card/zlyme-fw.log")"
+cmp -s "$work/fix/mtdro" "$work/expect-recovery.img" || fail "maskrom from repaired differs"
+
+# Already the recovery image: no erase.
+prepare_fix "$work/fix" "$work/expect-recovery.img"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "already-recovery rc=$rc"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "already-recovery erased"
+cmp -s "$work/fix/mtdro" "$work/expect-recovery.img" || fail "already-recovery changed NAND"
+grep -q 'nothing was written' "$work/fix/card/zlyme-fw.log" || fail "already-recovery did not refuse the write"
+
+# Unsupported banner, hashes resealed, copies still identical.
+python3 - "$STOCK" "$PY" "$work/bad-banner.img" << 'PY'
+import hashlib, importlib.util, pathlib, sys
+stock, py_path, out = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("preloader_image", py_path)
+pi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pi)
+raw = bytearray(pathlib.Path(stock).read_bytes())
+found = pi._parse(bytes(raw))
+spl = [item for item in found if item["index"] == 1]
+payload = bytearray(spl[0]["payload"])
+at = payload.find(pi.SPL_BANNER.encode())
+if at < 0:
+    raise SystemExit("banner missing")
+payload[at + 10] ^= 0x01
+digest = hashlib.sha256(payload).digest()
+for item in spl:
+    raw[item["start"]:item["start"] + len(payload)] = payload
+    raw[item["entry"] + 0x18:item["entry"] + 0x38] = digest
+pathlib.Path(out).write_bytes(raw)
+PY
+prepare_fix "$work/fix" "$work/bad-banner.img"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "bad banner was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "bad banner erased"
+grep -q 'Nov 02 2024' "$work/fix/card/zlyme-fw.log" || fail "bad banner did not name the SPL check"
+cmp -s "$work/fix/mtdro" "$work/bad-banner.img" || fail "bad banner changed NAND"
+
+# Malformed magic.
+python3 - "$STOCK" "$work/bad-magic.img" << 'PY'
+import pathlib, sys
+raw = bytearray(pathlib.Path(sys.argv[1]).read_bytes())
+raw[131072:131076] = b"XXXX"
+pathlib.Path(sys.argv[2]).write_bytes(raw)
+PY
+prepare_fix "$work/fix" "$work/bad-magic.img"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "bad magic was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "bad magic erased"
+
+# Internally valid but disagreeing SPL copies.
+python3 - "$work/expect-patched.img" "$PY" "$work/mismatch.img" << 'PY'
+import hashlib, importlib.util, pathlib, sys
+src, py_path, out = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("preloader_image", py_path)
+pi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pi)
+raw = bytearray(pathlib.Path(src).read_bytes())
+found = pi._parse(bytes(raw))
+spl = [item for item in found if item["index"] == 1]
+payload = bytearray(spl[1]["payload"])
+payload[80] ^= 0x5A
+digest = hashlib.sha256(payload).digest()
+item = spl[1]
+raw[item["start"]:item["start"] + len(payload)] = payload
+raw[item["entry"] + 0x18:item["entry"] + 0x38] = digest
+pathlib.Path(out).write_bytes(raw)
+PY
+prepare_fix "$work/fix" "$work/mismatch.img"
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "mismatched copies were accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "mismatched copies erased"
+grep -q 'SPL copies disagree' "$work/fix/card/zlyme-fw.log" || fail "mismatch did not name the copy check"
+
+# No image argument.
+prepare_fix "$work/fix" "$STOCK"
+set +e
+env CARD="$work/fix/card" MTD="$work/fix/mtd" PROC_MTD="$work/fix/proc-mtd" \
+	BATTERY_CAPACITY="$work/fix/power/battery" POWER_ROOT="$work/fix/power" \
+	PATH="$work/fix/bin:$PATH" \
+	sh "$work/maskrom-root/install.sh" /tmp/not-an-image >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "maskrom accepted an image argument"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "image argument erased"
+
+# RESTORE the per-device original from a repaired preloader.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "restore from repaired rc=$rc $(cat "$work/fix/card/zlyme-fw.log")"
+cmp -s "$work/fix/mtdro" "$STOCK" || fail "restore did not write the saved original"
+grep -q "saved original preloader is installed" "$work/fix/card/zlyme-fw.log" || fail "restore success text"
+
+# RESTORE from the recovery derivative.
+prepare_fix "$work/fix" "$work/expect-recovery.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "restore from recovery rc=$rc $(cat "$work/fix/card/zlyme-fw.log")"
+cmp -s "$work/fix/mtdro" "$STOCK" || fail "restore from recovery did not write the original"
+
+# Filename hash mismatch.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "hash mismatch was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "hash mismatch erased"
+grep -q 'does not match its name' "$work/fix/card/zlyme-fw.log" || fail "hash mismatch text"
+
+# Two originals.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+other=$(sha256sum "$work/expect-patched.img" | cut -c1-64)
+cp "$work/expect-patched.img" "$work/fix/card/mtd5-original-$other.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "two originals were accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "two originals erased"
+grep -q 'more than one' "$work/fix/card/zlyme-fw.log" || fail "two originals text"
+
+# Hash matches, structure does not.
+python3 - "$work/garbage.img" << 'PY'
+import pathlib, sys
+pathlib.Path(sys.argv[1]).write_bytes(bytes([7]) * 2097152)
+PY
+garbage_sha=$(python3 -c 'import hashlib,pathlib,sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "$work/garbage.img")
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$work/garbage.img" "$work/fix/card/mtd5-original-$garbage_sha.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "garbage backup was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "garbage backup erased"
+
+# DDR mismatch before erase.
+python3 - "$STOCK" "$PY" "$work/other-ddr.img" << 'PY'
+import hashlib, importlib.util, pathlib, sys
+src, py_path, out = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("preloader_image", py_path)
+pi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pi)
+raw = bytearray(pathlib.Path(src).read_bytes())
+found = pi._parse(bytes(raw))
+ddr = [item for item in found if item["index"] == 0]
+payload = bytearray(ddr[0]["payload"])
+payload[32] ^= 0x11
+digest = hashlib.sha256(payload).digest()
+for item in ddr:
+    raw[item["start"]:item["start"] + len(payload)] = payload
+    raw[item["entry"] + 0x18:item["entry"] + 0x38] = digest
+pathlib.Path(out).write_bytes(raw)
+PY
+other_sha=$(sha256sum "$work/other-ddr.img" | cut -c1-64)
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$work/other-ddr.img" "$work/fix/card/mtd5-original-$other_sha.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "DDR mismatch was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "DDR mismatch erased"
+grep -q 'DDR' "$work/fix/card/zlyme-fw.log" || fail "DDR mismatch text"
+cmp -s "$work/fix/mtdro" "$work/expect-patched.img" || fail "DDR mismatch changed NAND"
+
+# No backup.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "missing backup was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "missing backup erased"
+grep -q 'no mtd5-original' "$work/fix/card/zlyme-fw.log" || fail "missing backup text"
+
+# A current-image backup cannot masquerade as the original.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/preloader-current-$stock_sha.img"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "preloader-current was accepted as an original"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "preloader-current erased"
+
+# Target write fails, rollback restores the previous image.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+echo fail-target > "$work/fix/write-mode"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "failed write reported success"
+grep -q 'previous preloader was restored' "$work/fix/card/zlyme-fw.log" || fail "rollback text"
+grep -q 'saved original preloader is installed' "$work/fix/card/zlyme-fw.log" && fail "failed write claimed restore"
+cmp -s "$work/fix/mtdro" "$work/expect-patched.img" || fail "rollback did not restore the previous image"
+
+# Target and rollback both fail.
+prepare_fix "$work/fix" "$work/expect-patched.img"
+cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+echo fail-both > "$work/fix/write-mode"
+set +e
+run_helper "$work/fix" "$work/restore-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "double failure reported success"
+grep -q 'CRITICAL:' "$work/fix/card/zlyme-fw.log" || fail "critical text"
+grep -q 'previous preloader was restored' "$work/fix/card/zlyme-fw.log" && fail "double failure claimed rollback"
+cmp -s "$work/fix/mtdro" "$work/expect-patched.img" && fail "double failure left the previous image in place"
+cmp -s "$work/fix/mtdro" "$STOCK" && fail "double failure left the target in place"
+
+echo "fw-helpers: ok"

@@ -188,6 +188,12 @@ jobs:
             output/images/zlyme.img
             output/images/miyoo355_fw.img
             output/images/miyoo355_fw.img.sha256
+            output/images/miyoo355_fw-multiboot.img
+            output/images/miyoo355_fw-multiboot.img.sha256
+            output/images/miyoo355_fw-maskrom.img
+            output/images/miyoo355_fw-maskrom.img.sha256
+            output/images/miyoo355_fw-restore.img
+            output/images/miyoo355_fw-restore.img.sha256
           if-no-files-found: error
 
       # Save before prune so the next stage of this run keeps the full cache.

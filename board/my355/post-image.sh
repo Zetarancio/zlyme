@@ -115,15 +115,25 @@ fi
 [ -s "${BINARIES_DIR}/progress.anim" ] ||
 	{ echo "post-image: progress.anim is missing (rasterize branding, rebuild zlyme-initramfs)" >&2
 	  exit 1; }
-[ -s "${BINARIES_DIR}/miyoo355_fw.img" ] ||
-	{ echo "post-image: miyoo355_fw.img is missing (my355-fw-installer)" >&2
-	  exit 1; }
+for fw in miyoo355_fw.img miyoo355_fw-multiboot.img miyoo355_fw-maskrom.img miyoo355_fw-restore.img; do
+	[ -s "${BINARIES_DIR}/${fw}" ] || {
+		echo "post-image: ${fw} is missing (my355-fw-installer)" >&2
+		exit 1
+	}
+done
+cmp -s "${BINARIES_DIR}/miyoo355_fw.img" "${BINARIES_DIR}/miyoo355_fw-multiboot.img" || {
+	echo "post-image: miyoo355_fw-multiboot.img is not the multiboot installer" >&2
+	exit 1
+}
 # Two spaces, then the basename. Same bytes every time for the same image.
 (
 	cd "${BINARIES_DIR}"
 	sha256sum miyoo355_fw.img > miyoo355_fw.img.sha256
+	sha256sum miyoo355_fw-multiboot.img > miyoo355_fw-multiboot.img.sha256
+	sha256sum miyoo355_fw-maskrom.img > miyoo355_fw-maskrom.img.sha256
+	sha256sum miyoo355_fw-restore.img > miyoo355_fw-restore.img.sha256
 ) || {
-	echo "post-image: could not hash miyoo355_fw.img" >&2
+	echo "post-image: could not hash a preloader helper image" >&2
 	exit 1
 }
 
