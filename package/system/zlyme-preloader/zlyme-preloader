@@ -21,21 +21,41 @@ MIN_BATTERY=25
 WRITE_ATTEMPTS=3
 IMAGE_PY=/usr/lib/zlyme/preloader_image.py
 CURRENT=
-# Wiki pair, Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
-# c126d3235face9ddca5bf021258a84758dca543c
-# preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img
-STOCK_SHA=dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
-# Fingerprint of that tree's preloader-patched.img. The file is not installed.
-PATCHED_SHA=ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d
+# Status facts live in this shell. collect_status fills them. Writers do not
+# read them, and nothing here is taken from the human log.
+DEV=
+ST_BATTERY=
+ST_CHARGER=
+ST_PRELOADER=
+ST_BACKUP=
+ST_BACKUP_REASON=
+ST_ORIGINAL=
+ST_FALLBACK=
+ST_STOCK=
+ST_MODE=
+ST_RECOVERY=
+ST_SOURCE=
+ST_ERROR=
+ORIG=
+ORIG_ERROR=
 
 TEST=${ZLYME_PRELOADER_TEST:-0}
 ROOT=${ZLYME_PRELOADER_ROOT:-}
+
+# Records a status failure. Returns 0 so set -e does not abort the caller
+# before that caller can return the failure itself.
+fail_status() {
+	ST_ERROR=$1
+	log "$1"
+}
 
 log() { printf 'zlyme-preloader: %s\n' "$*" >&2; }
 die() { log "$*"; exit 1; }
 
 if [ "$TEST" = 1 ]; then
-	[ -n "$ROOT" ] && [ -d "$ROOT" ] || die "fixture root is missing"
+	if [ -z "$ROOT" ] || [ ! -d "$ROOT" ]; then
+		die "fixture root is missing"
+	fi
 	IMAGE_PY=${ZLYME_PRELOADER_IMAGE_PY:-$IMAGE_PY}
 fi
 
@@ -64,61 +84,66 @@ read_text() {
 
 identity() {
 	conf=$(p /usr/share/zlyme/device.conf)
-	[ -r "$conf" ] || die "device.conf is missing"
-	# shellcheck disable=SC1090
+	[ -r "$conf" ] || { fail_status "device.conf is missing"; return 1; }
+	# shellcheck disable=SC1090 # device.conf is the board contract, not a library
 	. "$conf"
-	[ "${ZLYME_DEVICE_ID:-}" = "my355" ] || die "platform is not my355"
+	[ "${ZLYME_DEVICE_ID:-}" = "my355" ] || { fail_status "platform is not my355"; return 1; }
 	model=$(read_text /proc/device-tree/model)
-	[ "$model" = "Miyoo Flip" ] || die "model is not Miyoo Flip"
+	[ "$model" = "Miyoo Flip" ] || { fail_status "model is not Miyoo Flip"; return 1; }
 	comp=$(read_text /proc/device-tree/compatible | tr '\n' ' ')
 	case "$comp" in
 		*miyoo,flip*) ;;
-		*) die "compatible does not include miyoo,flip" ;;
+		*) fail_status "compatible does not include miyoo,flip"; return 1 ;;
 	esac
 	case "$comp" in
 		*rockchip,rk3566*) ;;
-		*) die "compatible does not include rockchip,rk3566" ;;
+		*) fail_status "compatible does not include rockchip,rk3566"; return 1 ;;
 	esac
 }
 
-# Prints the device node, /dev/mtd0, after the partition checks.
+# Sets DEV to /dev/mtd0 after the partition checks. Runs in the caller's shell.
 mtd_node() {
 	table=$(p /proc/mtd)
-	[ -r "$table" ] || die "no mtd table"
+	[ -r "$table" ] || { fail_status "no mtd table"; return 1; }
 	# One data line. Header is "dev:".
 	data=$(awk 'NR>1 && NF { print }' "$table")
-	[ -n "$data" ] || die "no mtd partitions"
+	[ -n "$data" ] || { fail_status "no mtd partitions"; return 1; }
 	lines=$(printf '%s\n' "$data" | wc -l | tr -d ' ')
-	[ "$lines" = "1" ] || die "expected one mtd partition, found $lines"
+	[ "$lines" = "1" ] || { fail_status "expected one mtd partition, found $lines"; return 1; }
 	# mtd0: 00200000 00020000 "preloader"
+	# shellcheck disable=SC2086 # /proc/mtd columns are whitespace-separated
 	set -- $data
-	dev=$1
-	sz=$2
-	er=$3
-	name=$4
+	dev=${1:-}
+	sz=${2:-}
+	er=${3:-}
+	name=${4:-}
+	if [ -z "$dev" ] || [ -z "$sz" ] || [ -z "$er" ] || [ -z "$name" ]; then
+		fail_status "mtd table is incomplete"
+		return 1
+	fi
 	dev=${dev%:}
 	name=$(printf '%s' "$name" | tr -d '"')
-	[ "$dev" = "mtd0" ] || die "preloader is not mtd0"
-	[ "$name" = "preloader" ] || die "mtd0 is not named preloader"
-	[ "$sz" = "00200000" ] || die "proc size is not 2 MiB"
-	[ "$er" = "00020000" ] || die "proc erase size is not 128 KiB"
+	[ "$dev" = "mtd0" ] || { fail_status "preloader is not mtd0"; return 1; }
+	[ "$name" = "preloader" ] || { fail_status "mtd0 is not named preloader"; return 1; }
+	[ "$sz" = "00200000" ] || { fail_status "proc size is not 2 MiB"; return 1; }
+	[ "$er" = "00020000" ] || { fail_status "proc erase size is not 128 KiB"; return 1; }
 	sys=$(p /sys/class/mtd/mtd0)
-	[ "$(cat "$sys/name")" = "preloader" ] || die "sysfs name is not preloader"
-	[ "$(cat "$sys/type")" = "nand" ] || die "mtd type is not nand"
-	[ "$(cat "$sys/size")" = "$SIZE" ] || die "sysfs size is not $SIZE"
-	[ "$(cat "$sys/erasesize")" = "$ERASE" ] || die "erase size is not $ERASE"
-	[ "$(cat "$sys/writesize")" = "$WRITE" ] || die "write size is not $WRITE"
-	[ "$(cat "$sys/oobsize")" = "$OOB" ] || die "oob size is not $OOB"
-	[ "$(cat "$sys/bad_blocks")" = "0" ] || die "preloader has bad blocks"
-	printf '%s\n' /dev/mtd0
+	[ "$(cat "$sys/name")" = "preloader" ] || { fail_status "sysfs name is not preloader"; return 1; }
+	[ "$(cat "$sys/type")" = "nand" ] || { fail_status "mtd type is not nand"; return 1; }
+	[ "$(cat "$sys/size")" = "$SIZE" ] || { fail_status "sysfs size is not $SIZE"; return 1; }
+	[ "$(cat "$sys/erasesize")" = "$ERASE" ] || { fail_status "erase size is not $ERASE"; return 1; }
+	[ "$(cat "$sys/writesize")" = "$WRITE" ] || { fail_status "write size is not $WRITE"; return 1; }
+	[ "$(cat "$sys/oobsize")" = "$OOB" ] || { fail_status "oob size is not $OOB"; return 1; }
+	[ "$(cat "$sys/bad_blocks")" = "0" ] || { fail_status "preloader has bad blocks"; return 1; }
+	DEV=/dev/mtd0
 }
 
 power_ok() {
 	capf=$(p /sys/class/power_supply/battery/capacity)
-	[ -r "$capf" ] || die "battery capacity is unreadable"
+	[ -r "$capf" ] || { fail_status "battery capacity is unreadable"; return 1; }
 	cap=$(cat "$capf")
 	case "$cap" in
-		*[!0-9]*) die "battery capacity is not a number" ;;
+		*[!0-9]*) fail_status "battery capacity is not a number"; return 1 ;;
 	esac
 	ac=0
 	dir=$(p /sys/class/power_supply)
@@ -127,7 +152,14 @@ power_ok() {
 		[ "$(cat "$s")" = "1" ] && ac=1
 	done
 	if [ "$cap" -lt "$MIN_BATTERY" ] && [ "$ac" != "1" ]; then
-		die "battery ${cap}% and no charger"
+		fail_status "battery ${cap}% and no charger"
+		return 1
+	fi
+	ST_BATTERY=$cap
+	if [ "$ac" = "1" ]; then
+		ST_CHARGER=charging
+	else
+		ST_CHARGER=off
 	fi
 	log "battery ${cap}%, charger $ac"
 }
@@ -152,44 +184,6 @@ ddr_compatible() {
 
 sha_file() {
 	sha256sum "$1" | awk '{print $1}'
-}
-
-# Test fixtures may point these at stand-ins. A normal boot ignores them.
-expected_stock_sha() {
-	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK_SHA:-}" ]; then
-		printf '%s\n' "$ZLYME_PRELOADER_STOCK_SHA"
-		return
-	fi
-	printf '%s\n' "$STOCK_SHA"
-}
-
-expected_patched_sha() {
-	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_PATCHED_SHA:-}" ]; then
-		printf '%s\n' "$ZLYME_PRELOADER_PATCHED_SHA"
-		return
-	fi
-	printf '%s\n' "$PATCHED_SHA"
-}
-
-stock_path() {
-	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK:-}" ]; then
-		printf '%s\n' "$ZLYME_PRELOADER_STOCK"
-		return
-	fi
-	p /usr/share/zlyme/recovery/preloader-stock.img
-}
-
-# 0 only for the exact known patched image plus the matching stock file.
-stock_fallback_compatible() {
-	tmp=$(mktemp)
-	read_live "$tmp"
-	live=$(sha_file "$tmp")
-	rm -f "$tmp"
-	[ "$live" = "$(expected_patched_sha)" ] || return 1
-	stock=$(stock_path)
-	[ -f "$stock" ] || return 1
-	[ "$(sha_file "$stock")" = "$(expected_stock_sha)" ] || return 1
-	image_ok "$stock"
 }
 
 boot_dir() {
@@ -351,46 +345,86 @@ publish_boot() {
 	zlyme-boot-write cp "$src" "/boot/$name"
 }
 
-# Prints the one original backup path.
+# Sets ORIG to the one original backup. A missing or unusable backup returns 1
+# and sets ORIG_ERROR. It does not exit: status has to report that state.
 find_original() {
+	ORIG=
+	ORIG_ERROR=
 	dir=$(boot_dir)
-	[ -d "$dir" ] || die "boot directory is missing"
+	if [ ! -d "$dir" ]; then
+		ORIG_ERROR="boot directory is missing"
+		return 1
+	fi
 	set -- "$dir"/mtd5-original-*.img
 	if [ ! -e "$1" ]; then
-		die "no original preloader backup"
+		ORIG_ERROR="No original preloader backup. Stock restore is unavailable."
+		return 1
 	fi
 	if [ "$#" -ne 1 ]; then
-		die "more than one original preloader backup"
+		ORIG_ERROR="more than one original preloader backup"
+		return 1
 	fi
 	base=$(basename "$1")
 	want=${base#mtd5-original-}
 	want=${want%.img}
-	[ "$base" != "$want" ] || die "backup name is not mtd5-original-<sha256>.img"
-	[ "${#want}" -eq 64 ] || die "backup name is not mtd5-original-<sha256>.img"
+	if [ "$base" = "$want" ] || [ "${#want}" -ne 64 ]; then
+		ORIG_ERROR="backup name is not mtd5-original-<sha256>.img"
+		return 1
+	fi
 	case "$want" in
-		*[!0-9a-f]*) die "backup name is not mtd5-original-<sha256>.img" ;;
+		*[!0-9a-f]*)
+			ORIG_ERROR="backup name is not mtd5-original-<sha256>.img"
+			return 1
+			;;
 	esac
 	got=$(sha_file "$1")
-	[ "$want" = "$got" ] || die "backup filename hash does not match the file"
-	validate_image "$1"
-	printf '%s\n' "$1"
+	if [ "$want" != "$got" ]; then
+		ORIG_ERROR="backup filename hash does not match the file"
+		return 1
+	fi
+	if ! image_ok "$1"; then
+		ORIG_ERROR="image structure refused: $1"
+		return 1
+	fi
+	ORIG=$1
+	return 0
 }
 
 read_live() {
 	out=$1
-	if [ "$TEST" = 1 ]; then
-		cp "$(p /live/preloader.img)" "$out" || die "could not read fixture preloader"
-	else
-		dd if="${DEV}ro" of="$out" bs="$WRITE" status=none || die "could not read preloader"
+	# DEV is assigned by mtd_node in this shell. ${DEV:-} keeps an unset node
+	# from tripping set -u; the read then fails with a status line instead.
+	node=${DEV:-}
+	if [ -z "$node" ]; then
+		fail_status "preloader device is not established"
+		return 1
 	fi
-	[ "$(wc -c < "$out" | tr -d ' ')" = "$SIZE" ] || die "live preloader size is not $SIZE"
+	if [ "$node" != "/dev/mtd0" ]; then
+		fail_status "preloader device is not mtd0"
+		return 1
+	fi
+	if [ "$TEST" = 1 ]; then
+		cp "$(p /live/preloader.img)" "$out" || {
+			fail_status "could not read fixture preloader"
+			return 1
+		}
+	else
+		dd if="${node}ro" of="$out" bs="$WRITE" status=none || {
+			fail_status "could not read preloader"
+			return 1
+		}
+	fi
+	if [ "$(wc -c < "$out" | tr -d ' ')" != "$SIZE" ]; then
+		fail_status "live preloader size is not $SIZE"
+		return 1
+	fi
 }
 
 save_current() {
 	dir=$(current_dir)
 	mkdir -p "$dir" || die "could not create the current-backup directory"
 	tmp=$(mktemp)
-	read_live "$tmp"
+	read_live "$tmp" || exit 1
 	sum=$(sha_file "$tmp")
 	dest="$dir/preloader-current-$sum.img"
 	cp "$tmp" "$dest" || { rm -f "$tmp"; die "could not write the current backup"; }
@@ -463,10 +497,18 @@ require_tools() {
 	need_tool sha256sum
 }
 
-prepare() {
-	identity
-	DEV=$(mtd_node)
-	power_ok
+# Read-only gates. flash_erase and nandwrite are not required to report state.
+prepare_read() {
+	identity || return 1
+	mtd_node || return 1
+	power_ok || return 1
+	command -v dd >/dev/null 2>&1 || { fail_status "missing dd"; return 1; }
+	command -v sha256sum >/dev/null 2>&1 || { fail_status "missing sha256sum"; return 1; }
+	command -v python3 >/dev/null 2>&1 || { fail_status "missing python3"; return 1; }
+}
+
+prepare_write() {
+	prepare_read || exit 1
 	require_tools
 	act "GATES $DEV"
 }
@@ -474,173 +516,107 @@ prepare() {
 read_back_matches() {
 	want=$1
 	tmp=$(mktemp)
-	read_live "$tmp"
+	read_live "$tmp" || return 1
 	got=$(sha_file "$tmp")
 	rm -f "$tmp"
 	[ "$got" = "$want" ]
 }
 
-cmd_status() {
-	prepare
-	log "preloader $DEV size $SIZE erase $ERASE"
-	errf=$(mktemp)
-	if orig=$(find_original 2>"$errf"); then
-		log "original backup available: $orig"
+# One pass fills the ST_* facts in this shell, including the live-image class.
+# status prints those facts. status-machine prints the same facts as keys.
+collect_status() {
+	ST_BATTERY=
+	ST_CHARGER=
+	ST_PRELOADER=
+	ST_BACKUP=unavailable
+	ST_BACKUP_REASON=
+	ST_ORIGINAL=
+	ST_FALLBACK=
+	ST_STOCK=unavailable
+	ST_MODE=
+	ST_RECOVERY=
+	ST_SOURCE=
+	ST_ERROR=
+	DEV=
+	ORIG=
+	ORIG_ERROR=
+	prepare_read || return 1
+	if find_original; then
+		ST_BACKUP=available
+		ST_ORIGINAL=$ORIG
+		ST_STOCK=available
 	else
-		log "original backup unavailable: $(cat "$errf")"
-		if grep -qx 'zlyme-preloader: no original preloader backup' "$errf" \
-			&& stock_fallback_compatible; then
-			log "stock fallback compatible"
-		else
-			log "stock fallback not compatible"
-		fi
+		ST_BACKUP=unavailable
+		ST_BACKUP_REASON=${ORIG_ERROR:-original preloader backup was not usable}
+		ST_FALLBACK=incompatible
+		ST_STOCK=unavailable
 	fi
-	rm -f "$errf"
+	live=$(mktemp)
+	if ! read_live "$live"; then
+		rm -f "$live"
+		[ -n "$ST_ERROR" ] || ST_ERROR="could not read preloader"
+		return 1
+	fi
+	ST_PRELOADER=valid
+	state=$(python3 "$IMAGE_PY" recovery-state \
+		"$(manifest_path)" "$live" "$(current_dir)" "$(recovery_dir)" 2>/dev/null || true)
+	rm -f "$live"
+	ST_MODE=
+	ST_RECOVERY=
+	ST_SOURCE=
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			mode=*) ST_MODE=${line#mode=} ;;
+			recovery=*) ST_RECOVERY=${line#recovery=} ;;
+			source_backup=*) ST_SOURCE=${line#source_backup=} ;;
+		esac
+	done <<EOF
+$state
+EOF
+	[ -n "$ST_MODE" ] || ST_MODE=unknown
+	[ -n "$ST_RECOVERY" ] || ST_RECOVERY=invalid
+	[ -n "$ST_SOURCE" ] || ST_SOURCE=missing
+	return 0
+}
+
+cmd_status() {
+	collect_status || exit 1
+	log "preloader $DEV size $SIZE erase $ERASE"
+	if [ "$ST_BACKUP" = "available" ]; then
+		log "original backup available: $ST_ORIGINAL"
+	else
+		log "original backup unavailable: $ST_BACKUP_REASON"
+	fi
 }
 
 # One key=value line per fact. Settings reads this. It is not a shell script.
 cmd_status_machine() {
-	tmp=$(mktemp)
-	rc=0
-	# die() exits. A subshell keeps that exit in this command.
-	( cmd_status ) >"$tmp" 2>&1 || rc=$?
-	preloader=
-	backup=
-	fallback=
-	battery=
-	charger=
-	error=
-	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in
-		"zlyme-preloader: battery "*)
-			rest=${line#"zlyme-preloader: battery "}
-			case "$rest" in
-			[0-9]*%", charger "[01] | [0-9][0-9]*%", charger "[01] | 100%", charger "[01])
-				battery=${rest%%\%*}
-				bit=${rest##*charger }
-				if [ "$bit" = "1" ]; then
-					charger=charging
-				else
-					charger=off
-				fi
-				;;
-			*)
-				error=${line#"zlyme-preloader: "}
-				;;
-			esac
-			;;
-		"zlyme-preloader: preloader "*)
-			# Partition identity passed. This is not a NAND content hash.
-			preloader=valid
-			;;
-		"zlyme-preloader: original backup available:"*)
-			backup=available
-			;;
-		"zlyme-preloader: original backup unavailable:"*)
-			backup=unavailable
-			;;
-		"zlyme-preloader: stock fallback compatible")
-			fallback=compatible
-			;;
-		"zlyme-preloader: stock fallback not compatible")
-			fallback=incompatible
-			;;
-		"zlyme-preloader: "*)
-			error=${line#"zlyme-preloader: "}
-			;;
-		esac
-	done <"$tmp"
-	rm -f "$tmp"
-	mode=
-	recovery=
-	source_backup=
-	if [ "$preloader" = "valid" ]; then
-		live=$(mktemp)
-		if read_live "$live" 2>/dev/null; then
-			state=$(python3 "$IMAGE_PY" recovery-state \
-				"$(manifest_path)" "$live" "$(current_dir)" "$(recovery_dir)" 2>/dev/null || true)
-			mode=$(printf '%s\n' "$state" | sed -n 's/^mode=//p' | head -n 1)
-			recovery=$(printf '%s\n' "$state" | sed -n 's/^recovery=//p' | head -n 1)
-			source_backup=$(printf '%s\n' "$state" | sed -n 's/^source_backup=//p' | head -n 1)
-		fi
-		rm -f "$live"
-		[ -n "$mode" ] || mode=unknown
-		[ -n "$recovery" ] || recovery=invalid
-		[ -n "$source_backup" ] || source_backup=missing
+	if ! collect_status; then
+		printf 'error=%s\n' "${ST_ERROR:-status failed}"
+		return 1
 	fi
-	[ -n "$preloader" ] && printf 'preloader=%s\n' "$preloader"
-	[ -n "$mode" ] && printf 'mode=%s\n' "$mode"
-	[ -n "$recovery" ] && printf 'recovery=%s\n' "$recovery"
-	[ -n "$source_backup" ] && printf 'source_backup=%s\n' "$source_backup"
-	[ -n "$backup" ] && printf 'backup=%s\n' "$backup"
-	[ -n "$fallback" ] && printf 'fallback=%s\n' "$fallback"
-	if [ "$preloader" = "valid" ]; then
-		if [ "$backup" = "available" ] || [ "$fallback" = "compatible" ]; then
-			printf 'stock_restore=available\n'
-		else
-			printf 'stock_restore=unavailable\n'
-		fi
+	printf 'preloader=%s\n' "$ST_PRELOADER"
+	printf 'mode=%s\n' "$ST_MODE"
+	printf 'recovery=%s\n' "$ST_RECOVERY"
+	printf 'source_backup=%s\n' "$ST_SOURCE"
+	printf 'stock_restore=%s\n' "$ST_STOCK"
+	printf 'backup=%s\n' "$ST_BACKUP"
+	if [ -n "$ST_FALLBACK" ]; then
+		printf 'fallback=%s\n' "$ST_FALLBACK"
 	fi
-	[ -n "$battery" ] && printf 'battery=%s\n' "$battery"
-	[ -n "$charger" ] && printf 'charger=%s\n' "$charger"
-	if [ "$rc" != 0 ]; then
-		[ -n "$error" ] || error="status failed"
-		printf 'error=%s\n' "$error"
-		return "$rc"
-	fi
-}
-
-# Prints one image path. A per-device backup wins. The bundled stock
-# file is used only when that backup is absent and the live preloader
-# is the one known patched image. Every other reason still refuses.
-select_stock_fallback() {
-	tmp=$(mktemp)
-	read_live "$tmp"
-	live=$(sha_file "$tmp")
-	rm -f "$tmp"
-	if [ "$live" != "$(expected_patched_sha)" ]; then
-		die "Original preloader backup is unavailable. The bundled stock fallback does not exactly match this preloader revision. Restore refused."
-	fi
-	stock=$(stock_path)
-	[ -f "$stock" ] || die "bundled stock preloader is missing"
-	got=$(sha_file "$stock")
-	[ "$got" = "$(expected_stock_sha)" ] || die "bundled stock preloader hash does not match"
-	validate_image "$stock"
-	log "using bundled stock fallback"
-	printf '%s\n' "$stock"
-}
-
-select_restore_image() {
-	errf=$(mktemp)
-	set +e
-	orig=$(find_original 2>"$errf")
-	rc=$?
-	set -e
-	if [ "$rc" = 0 ]; then
-		rm -f "$errf"
-		printf '%s\n' "$orig"
-		return 0
-	fi
-	reason=$(sed -n 's/^zlyme-preloader: //p' "$errf" | head -n 1)
-	rm -f "$errf"
-	if [ "$reason" != "no original preloader backup" ]; then
-		[ -n "$reason" ] || reason="original preloader backup was not usable"
-		die "$reason"
-	fi
-	select_stock_fallback
+	printf 'battery=%s\n' "$ST_BATTERY"
+	printf 'charger=%s\n' "$ST_CHARGER"
 }
 
 cmd_restore() {
-	prepare
-	orig=$(select_restore_image)
+	prepare_write
+	find_original || die "${ORIG_ERROR:-original preloader backup was not usable}"
+	orig=$ORIG
 	save_current
 	ddr_compatible "$CURRENT" "$orig"
 	if write_and_verify "$orig"; then
 		act "READBACK target ok"
-		case "$orig" in
-			*/preloader-stock.img) log "restored stock fallback" ;;
-			*) log "restored original preloader" ;;
-		esac
+		log "restored original preloader"
 		return 0
 	fi
 	log "restore write failed"
@@ -654,7 +630,7 @@ cmd_restore() {
 # Read the live preloader, keep that exact image, and derive the
 # right-slot recovery image. This does not erase or program NAND.
 cmd_prepare_recovery() {
-	prepare
+	prepare_write
 	dir=$(recovery_dir)
 	mkdir -p "$dir" || die "could not create the recovery directory"
 	save_current
@@ -703,9 +679,9 @@ EOF
 # byte-for-byte derivative of that saved file. The current recovery
 # image is the rollback target. The source backup is left in place.
 cmd_disarm_recovery() {
-	prepare
+	prepare_write
 	live=$(mktemp)
-	read_live "$live"
+	read_live "$live" || exit 1
 	validate_image "$live"
 	man=$(manifest_path)
 	if [ ! -f "$man" ]; then
@@ -741,10 +717,10 @@ cmd_disarm_recovery() {
 # Binding, including the FAT copies, finishes before save_current.
 # save_current then preserves that source as the rollback image.
 cmd_arm_recovery() {
-	prepare
+	prepare_write
 	require_boot_readonly
 	live=$(mktemp)
-	read_live "$live"
+	read_live "$live" || exit 1
 	validate_image "$live"
 	if [ ! -f "$(manifest_path)" ]; then
 		rm -f "$live"
@@ -778,7 +754,7 @@ cmd_arm_recovery() {
 }
 
 cmd_erase() {
-	prepare
+	prepare_write
 	save_current
 	# flash_erase's own status is the erase result. Do not treat a
 	# read of 0xff as proof: ECC on this NAND can report an error or

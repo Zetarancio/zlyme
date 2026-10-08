@@ -7,6 +7,6 @@ config BR2_PACKAGE_ZLYME_PRELOADER
 	select BR2_PACKAGE_MTD_MTDINFO
 	select BR2_PACKAGE_PYTHON3
 	help
-	  Fail-closed restore and erase for the Flip preloader.
-	  Settings calls restore. erase-preloader is CLI-only.
-	  It does not run at boot.
+	  Fail-closed preloader status, restore, and recovery for the Flip.
+	  Settings calls the status and recovery commands. erase-preloader
+	  is CLI-only. It does not run at boot.

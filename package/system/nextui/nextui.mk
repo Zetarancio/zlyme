@@ -13,9 +13,10 @@
 
 # Settings -> System -> Advanced -> Recovery is in this pin.
 # Preloader status is a fixed page of zlyme-preloader status-machine.
+# A failed or empty status still opens that page.
 # Arm runs prepare-recovery, then arm-recovery. Disarm runs disarm-recovery.
 # Restore stays the separate stock-preloader action.
-NEXTUI_VERSION = 935dd3b943c7b0c6d6df06d91e715fc42ca44aea
+NEXTUI_VERSION = c0e1f707dd25dbff2901e2908a164befd153efbd
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
