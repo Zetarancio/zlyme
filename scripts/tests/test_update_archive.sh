@@ -1,7 +1,7 @@
 #!/bin/sh
 # OTA archive listing must exit 0 before any extract or quarantine decision.
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname "$0")/../.." && pwd)
 UPDATE="$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-update"
 fail() { echo "update-archive: $*" >&2; exit 1; }
 
