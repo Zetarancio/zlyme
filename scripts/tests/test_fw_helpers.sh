@@ -45,7 +45,7 @@ if grep -n '\<reboot\>' "$ZLYME/install-maskrom.sh" "$ZLYME/install-restore.sh" 
 fi
 
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+trap 'rm -rf "$work"; rm -f /tmp/zlyme-back.img /tmp/zlyme-live.img' EXIT
 
 python3 "$APOMMEL/mkfwimg.py" "$work/a.img" >/dev/null
 python3 "$APOMMEL/mkfwimg.py" "$work/b.img" >/dev/null
@@ -431,6 +431,87 @@ rc=$?
 set -e
 [ "$rc" -ne 0 ] || fail "preloader-current was accepted as an original"
 [ "$(erases "$work/fix")" -eq 0 ] || fail "preloader-current erased"
+
+# Post-write NAND readback is the bs=2048 copy that is not read_live.
+# The first three of those calls are the target attempts.
+install_readback_dd() {
+	fix=$1
+	mode=$2
+	: > "$fix/readbacks"
+	printf '%s\n' "$mode" > "$fix/readback-mode"
+	cat > "$fix/bin/dd" << EOF
+#!/bin/sh
+of=
+bs=
+for arg in "\$@"; do
+	case \$arg in
+		of=*) of=\${arg#of=} ;;
+		bs=*) bs=\${arg#bs=} ;;
+	esac
+done
+if [ "\$bs" = 2048 ] && [ "\$of" != /tmp/zlyme-live.img ]; then
+	n=0
+	if [ -s "$fix/readbacks" ]; then
+		n=\$(wc -c < "$fix/readbacks" | tr -d ' ')
+	fi
+	printf x >> "$fix/readbacks"
+	if [ "\$n" -lt 3 ]; then
+		mode=\$(cat "$fix/readback-mode")
+		if [ "\$mode" = stale-fail ]; then
+			exit 1
+		fi
+		if [ "\$mode" = short ]; then
+			if [ "\$of" = /tmp/zlyme-back.img ]; then
+				exit 0
+			fi
+			/usr/bin/dd if=/dev/zero of="\$of" bs=512 count=1 status=none
+			exit 0
+		fi
+	fi
+fi
+exec /usr/bin/dd "\$@"
+EOF
+	chmod 755 "$fix/bin/dd"
+}
+
+# A preseeded /tmp/zlyme-back.img has the target hash. The post-write dd
+# fails before replacing it. That used to look like a verified write.
+prepare_fix "$work/fix" "$STOCK"
+install_readback_dd "$work/fix" stale-fail
+cp "$work/expect-recovery.img" /tmp/zlyme-back.img
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "stale readback reported success"
+grep -q 'readback verified' "$work/fix/card/zlyme-fw.log" && fail "stale readback was verified"
+grep -q 'previous preloader was restored' "$work/fix/card/zlyme-fw.log" || fail "stale readback did not roll back"
+grep -q 'CRITICAL:' "$work/fix/card/zlyme-fw.log" && fail "stale readback called a verified rollback critical"
+cmp -s "$work/fix/mtdro" "$STOCK" || fail "stale readback did not restore the previous image"
+cmp -s /tmp/zlyme-back.img "$work/expect-recovery.img" || fail "stale readback file was consumed"
+[ "$(erases "$work/fix")" -eq 4 ] || fail "stale readback erase count $(erases "$work/fix")"
+rm -f /tmp/zlyme-back.img
+
+# A successful post-write dd that returns fewer than 2 MiB is not a match.
+# Leaving the legacy path untouched would still satisfy the old hash check.
+prepare_fix "$work/fix" "$STOCK"
+install_readback_dd "$work/fix" short
+cp "$work/expect-recovery.img" /tmp/zlyme-back.img
+set +e
+run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "short readback reported success"
+grep -q 'readback verified' "$work/fix/card/zlyme-fw.log" && fail "short readback was verified"
+grep -q 'previous preloader was restored' "$work/fix/card/zlyme-fw.log" || fail "short readback did not roll back"
+grep -q 'CRITICAL:' "$work/fix/card/zlyme-fw.log" && fail "short readback called a verified rollback critical"
+cmp -s "$work/fix/mtdro" "$STOCK" || fail "short readback did not restore the previous image"
+cmp -s /tmp/zlyme-back.img "$work/expect-recovery.img" || fail "short readback trusted the legacy file"
+[ "$(erases "$work/fix")" -eq 4 ] || fail "short readback erase count $(erases "$work/fix")"
+rm -f /tmp/zlyme-back.img
+if grep -q '/tmp/zlyme-back.img' "$ZLYME/common.sh"; then
+	fail "readback still uses a fixed image"
+fi
 
 # Target write fails, rollback restores the previous image.
 prepare_fix "$work/fix" "$work/expect-patched.img"

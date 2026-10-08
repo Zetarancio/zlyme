@@ -190,6 +190,25 @@ save_verified_copy() {
     log "saved $(basename "$dest")"
 }
 
+# A failed or short read must not be compared with an older file. The NAND
+# readback is a new 2 MiB image every time, for the target and the rollback.
+readback_matches() {
+    expect=$1
+    tmp=$(mktemp) || return 1
+    ok=0
+    if dd if="${MTD}ro" of="$tmp" bs=2048 2>/dev/null; then
+        size=$(wc -c < "$tmp" | tr -d ' ')
+        if [ "$size" -eq 2097152 ]; then
+            got=$(sha_file "$tmp")
+            if [ "$got" = "$expect" ]; then
+                ok=1
+            fi
+        fi
+    fi
+    rm -f "$tmp"
+    [ "$ok" -eq 1 ]
+}
+
 write_and_rollback() {
     target=$1
     expect=$2
@@ -202,8 +221,7 @@ write_and_rollback() {
         flash_erase "$MTD" 0 0 >> "$LOG" 2>&1 || true
         nandwrite -p "$MTD" "$target" >> "$LOG" 2>&1 || true
         progress $((40 + n * 15))
-        dd if="${MTD}ro" of=/tmp/zlyme-back.img bs=2048 2>/dev/null || true
-        if [ "$(sha_file /tmp/zlyme-back.img)" = "$expect" ]; then
+        if readback_matches "$expect"; then
             return 0
         fi
         log "readback mismatch"
@@ -215,8 +233,7 @@ write_and_rollback() {
         log "rollback attempt $n"
         flash_erase "$MTD" 0 0 >> "$LOG" 2>&1 || true
         nandwrite -p "$MTD" "$rollback" >> "$LOG" 2>&1 || true
-        dd if="${MTD}ro" of=/tmp/zlyme-back.img bs=2048 2>/dev/null || true
-        if [ "$(sha_file /tmp/zlyme-back.img)" = "$roll_sha" ]; then
+        if readback_matches "$roll_sha"; then
             log "target write failed; the previous preloader was restored"
             return 1
         fi
