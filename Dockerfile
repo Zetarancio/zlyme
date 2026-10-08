@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       bash bc binutils build-essential bzip2 ca-certificates cpio \
       file findutils git gzip libncurses-dev locales make patch perl \
-      python3 python3-dev rsync sed tar unzip wget which xz-utils \
+      python3 python3-dev rsync sed shellcheck tar unzip wget which xz-utils \
       ccache \
       device-tree-compiler \
       dosfstools mtools parted \

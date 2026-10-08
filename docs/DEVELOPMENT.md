@@ -18,7 +18,7 @@ Zlyme is a Buildroot external tree.
 
 Buildroot is pinned by `build.sh`. Do not develop against Buildroot master unless a task explicitly changes the project baseline.
 
-The build runs inside the Docker container built from `Dockerfile`. Its base image is pinned by digest. Its apt packages are not version-pinned.
+The build runs inside the Docker container built from `Dockerfile`. Its base image is pinned by digest. Its apt packages are not version-pinned. The list includes ShellCheck. That binary stays in the build container. It is not installed into the target root filesystem.
 
 ZcrapeGoat may embed ScreenScraper developer credentials. Local builds read `package/system/zcrapegoat/credentials.local` (gitignored). The official GitHub build reads the Actions secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. `build.sh` forwards those environment names into Docker and does not put the values on the command line. Do not commit or log the values. The credential-bearing compile sets `CCACHE_DISABLE=1` so the persistent CI ccache cannot store them. A build with neither source still compiles; the official GitHub build fails closed if either secret is missing.
 
