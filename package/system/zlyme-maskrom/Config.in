@@ -1,6 +1,0 @@
-config BR2_PACKAGE_ZLYME_MASKROM
-	bool "zlyme maskrom restart"
-	depends on BR2_ZLYME_DEVICE_MY355
-	help
-	  zlyme-maskrom syncs and requests restart2 command maskrom.
-	  It does not erase the preloader.

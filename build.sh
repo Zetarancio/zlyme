@@ -376,8 +376,6 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
         package/system/zlyme-jackd
     refresh_compiled_package zlyme-preloader BR2_PACKAGE_ZLYME_PRELOADER \
         package/system/zlyme-preloader
-    refresh_compiled_package zlyme-maskrom BR2_PACKAGE_ZLYME_MASKROM \
-        package/system/zlyme-maskrom
     refresh_compiled_package miyoo-flip-gamepad BR2_PACKAGE_MIYOO_FLIP_GAMEPAD \
         package/drivers/miyoo-flip-gamepad
     refresh_compiled_package rk3568-dmc BR2_PACKAGE_RK3568_DMC \

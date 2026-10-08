@@ -22,7 +22,7 @@ define ZLYME_UBOOT_FLIP_CONFIG
 	$(SED) '/^CONFIG_USE_PREBOOT=/d' $(@D)/.config
 	$(SED) '/^CONFIG_PREBOOT=/d' $(@D)/.config
 	echo 'CONFIG_USE_PREBOOT=y' >> $(@D)/.config
-	echo 'CONFIG_PREBOOT="blkcache configure 32 32; my355 maskrom-request; my355 fg"' >> $(@D)/.config
+	echo 'CONFIG_PREBOOT="blkcache configure 32 32; my355 fg"' >> $(@D)/.config
 	grep -qx 'CONFIG_BOOTSTAGE=y' $(@D)/.config || \
 		echo 'CONFIG_BOOTSTAGE=y' >> $(@D)/.config
 	grep -qx 'CONFIG_CMD_MY355=y' $(@D)/.config || \
@@ -77,9 +77,6 @@ define ZLYME_UBOOT_COPY_DTS
 		$(@D)/arch/arm/dts/rk3566-miyoo-flip.dts
 	$(INSTALL) -D -m 0644 $(ZLYME_UBOOT_DTS)/rk3566-miyoo-flip-u-boot.dtsi \
 		$(@D)/arch/arm/dts/rk3566-miyoo-flip-u-boot.dtsi
-	$(INSTALL) -D -m 0644 \
-		$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/uboot/maskrom_request.h \
-		$(@D)/cmd/maskrom_request.h
 endef
 UBOOT_PRE_BUILD_HOOKS += ZLYME_UBOOT_COPY_DTS
 

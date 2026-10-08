@@ -15,6 +15,7 @@ the saved source and compares the bytes.
 
 import hashlib
 import json
+import os
 import struct
 import sys
 
@@ -378,6 +379,60 @@ def bound_source(manifest_path, live_path, directory):
     return source_path
 
 
+def recovery_state(manifest_path, live_path, backup_dir, recovery_dir):
+    """Classify the live image. Read-only. Does not derive a file to disk."""
+    live = _load(live_path)
+    _paired(live)
+    live_sha = _sha(live)
+    try:
+        _ddr, spl = _paired(live)
+        _prop, order = _boot_order(_fdt(spl[0]["payload"]))
+        order = tuple(order)
+    except SystemExit:
+        order = None
+    source_backup = "missing"
+    if not os.path.isfile(manifest_path):
+        if order == SOURCE_ORDER:
+            return "normal", "not-prepared", source_backup
+        return "unknown", "not-prepared", source_backup
+    try:
+        doc = _manifest(manifest_path)
+    except SystemExit:
+        return "unknown", "invalid", source_backup
+    source_path = backup_dir.rstrip("/") + "/" + doc["source_backup"]
+    try:
+        source = _load(source_path)
+    except OSError:
+        source = None
+    if source is not None and _sha(source) == doc["source_sha256"]:
+        source_backup = "available"
+    try:
+        bound_source(manifest_path, live_path, backup_dir)
+    except SystemExit:
+        pass
+    else:
+        return "recovery", "armed", "available"
+    rec_path = recovery_dir.rstrip("/") + "/recovery-" + doc["recovery_sha256"] + ".img"
+    if (
+        source is not None
+        and source_backup == "available"
+        and live_sha == doc["source_sha256"]
+        and source == live
+    ):
+        try:
+            prepared = _load(rec_path)
+        except OSError:
+            prepared = None
+        if prepared is not None and _sha(prepared) == doc["recovery_sha256"]:
+            try:
+                derived = derive_bytes(source)
+            except SystemExit:
+                derived = None
+            if derived == prepared:
+                return "normal", "ready", source_backup
+    return "unknown", "invalid", source_backup
+
+
 def main(argv):
     if len(argv) == 2:
         return validate(argv[1])
@@ -394,12 +449,19 @@ def main(argv):
     if len(argv) == 5 and argv[1] == "recovery-source":
         sys.stdout.write(bound_source(argv[2], argv[3], argv[4]) + "\n")
         return 0
+    if len(argv) == 6 and argv[1] == "recovery-state":
+        mode, recovery, source_backup = recovery_state(argv[2], argv[3], argv[4], argv[5])
+        sys.stdout.write(
+            "mode=%s\nrecovery=%s\nsource_backup=%s\n" % (mode, recovery, source_backup)
+        )
+        return 0
     raise SystemExit(
         "usage: preloader_image.py IMAGE"
         " | preloader_image.py ddr IMAGE IMAGE"
         " | preloader_image.py derive SOURCE DEST"
         " | preloader_image.py recovery-manifest SOURCE RECOVERY"
         " | preloader_image.py recovery-source MANIFEST LIVE DIR"
+        " | preloader_image.py recovery-state MANIFEST LIVE BACKUP_DIR RECOVERY_DIR"
     )
 
 

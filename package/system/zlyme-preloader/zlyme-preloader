@@ -551,9 +551,36 @@ cmd_status_machine() {
 		esac
 	done <"$tmp"
 	rm -f "$tmp"
+	mode=
+	recovery=
+	source_backup=
+	if [ "$preloader" = "valid" ]; then
+		live=$(mktemp)
+		if read_live "$live" 2>/dev/null; then
+			state=$(python3 "$IMAGE_PY" recovery-state \
+				"$(manifest_path)" "$live" "$(current_dir)" "$(recovery_dir)" 2>/dev/null || true)
+			mode=$(printf '%s\n' "$state" | sed -n 's/^mode=//p' | head -n 1)
+			recovery=$(printf '%s\n' "$state" | sed -n 's/^recovery=//p' | head -n 1)
+			source_backup=$(printf '%s\n' "$state" | sed -n 's/^source_backup=//p' | head -n 1)
+		fi
+		rm -f "$live"
+		[ -n "$mode" ] || mode=unknown
+		[ -n "$recovery" ] || recovery=invalid
+		[ -n "$source_backup" ] || source_backup=missing
+	fi
 	[ -n "$preloader" ] && printf 'preloader=%s\n' "$preloader"
+	[ -n "$mode" ] && printf 'mode=%s\n' "$mode"
+	[ -n "$recovery" ] && printf 'recovery=%s\n' "$recovery"
+	[ -n "$source_backup" ] && printf 'source_backup=%s\n' "$source_backup"
 	[ -n "$backup" ] && printf 'backup=%s\n' "$backup"
 	[ -n "$fallback" ] && printf 'fallback=%s\n' "$fallback"
+	if [ "$preloader" = "valid" ]; then
+		if [ "$backup" = "available" ] || [ "$fallback" = "compatible" ]; then
+			printf 'stock_restore=available\n'
+		else
+			printf 'stock_restore=unavailable\n'
+		fi
+	fi
 	[ -n "$battery" ] && printf 'battery=%s\n' "$battery"
 	[ -n "$charger" ] && printf 'charger=%s\n' "$charger"
 	if [ "$rc" != 0 ]; then

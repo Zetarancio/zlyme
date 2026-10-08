@@ -693,29 +693,31 @@ fi
 wf=$(ls "$ROOT/.github/workflows/"*.yml "$ROOT/.github/workflows/"*.yaml 2>/dev/null | wc -l)
 # The product workflows stay build.yml, build-stage.yml, and docker-image.yml.
 [ "$wf" = 3 ] || fail "workflow count is $wf"
-MASK=$ROOT/package/system/zlyme-maskrom/zlyme-maskrom.c
-HDR=$ROOT/board/my355/uboot/maskrom_request.h
-UBP=$ROOT/board/my355/uboot/patches/uboot/008-my355-maskrom-request.patch
-if grep -q 'LINUX_REBOOT_CMD_RESTART2' "$MASK"; then
-	fail "helper still uses restart2"
+if [ -e "$ROOT/package/system/zlyme-maskrom" ]; then
+	fail "maskrom helper package remains"
 fi
-if grep -q '"maskrom"' "$MASK"; then
-	fail "helper still passes a maskrom restart string"
+if grep -q 'BR2_PACKAGE_ZLYME_MASKROM' "$DEF" "$ROOT/package/system/Config.in"; then
+	fail "maskrom helper is still selected"
 fi
-if grep -E '0x[0-9a-fA-F]{3,}|PMUGRF|CRU_GLB|0xfdc|0xfdd' "$MASK" >/dev/null; then
-	fail "helper contains a physical register address"
+if [ -e "$ROOT/board/my355/uboot/patches/uboot/008-my355-maskrom-request.patch" ]; then
+	fail "maskrom-request patch remains"
 fi
-if grep -E '/dev/mem|devmem|/dev/mmcblk' "$MASK" "$PRE" >/dev/null; then
-	fail "recovery userspace uses devmem or a raw boot partition"
+if [ -e "$ROOT/board/my355/uboot/patches/uboot/009-rk3568-soc-con1-download.patch" ]; then
+	fail "soc-con1 experiment remains"
 fi
-if grep -q 'erase-preloader' "$MASK"; then
-	fail "maskrom helper erases the preloader"
+if [ -e "$ROOT/board/my355/uboot/maskrom_request.h" ]; then
+	fail "maskrom request header remains"
 fi
-grep -q 'zlyme-boot-write' "$MASK" || fail "helper does not use the boot writer"
-grep -q 'LINUX_REBOOT_CMD_RESTART' "$MASK" || fail "helper does not use an ordinary restart"
-grep -q 'ZLYME-MASKROM-1' "$MASK" || fail "helper magic"
-grep -q '/zlyme-maskrom.request' "$MASK" || fail "helper request path"
-grep -q 'BR2_PACKAGE_ZLYME_MASKROM=y' "$DEF" || fail "maskrom helper package is off"
+if [ -e "$ROOT/scripts/tests/maskrom_request_test.c" ]; then
+	fail "maskrom request fixture remains"
+fi
+if grep -q 'maskrom-request' "$ROOT/board/my355/board.mk" \
+	"$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch"; then
+	fail "preboot still runs maskrom-request"
+fi
+if grep -q 'zlyme-maskrom' "$PRE"; then
+	fail "preloader script calls zlyme-maskrom"
+fi
 if [ -e "$ROOT/board/my355/linux/patches/20-rk3566/linux/1014-soc-rockchip-miyoo-flip-maskrom-restart.patch" ]; then
 	fail "direct maskrom kernel patch remains"
 fi
@@ -731,7 +733,6 @@ fi
 if grep -l 'register_restart_handler' "$ROOT/board/my355/linux/patches/"*/*/*.patch 2>/dev/null; then
 	fail "a patch registers a restart handler"
 fi
-# The stock PSCI and clock restart handlers are not patched.
 if grep -R -l 'psci_sys_reset' "$ROOT/board/my355/linux/patches" >/dev/null 2>&1; then
 	fail "a patch edits the PSCI restart handler"
 fi
@@ -740,138 +741,39 @@ if grep -R 'rockchip_restart_notify' "$ROOT/board/my355/linux/patches" >/dev/nul
 fi
 grep -q 'CONFIG_CMD_RBROM=y' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "uboot rbrom config"
 grep -q 'CONFIG_BOOTDELAY=-2' "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "bootdelay changed"
-preboot='blkcache configure 32 32; my355 maskrom-request; my355 fg'
+preboot='blkcache configure 32 32; my355 fg'
 grep -q "$preboot" "$ROOT/board/my355/board.mk" || fail "board preboot"
 grep -q "$preboot" "$ROOT/board/my355/uboot/patches/uboot/001-fix-defconfig.patch" || fail "defconfig preboot"
-# maskrom-request is before the fuel gauge, so a missing marker still reaches fg.
-case $preboot in
-	*"my355 maskrom-request; my355 fg"*) ;;
-	*) fail "preboot order" ;;
-esac
-grep -q 'ZLYME-MASKROM-1' "$HDR" || fail "uboot magic"
-grep -q '/zlyme-maskrom.request' "$HDR" || fail "uboot request path"
-DTSI=$ROOT/output/build/uboot-2026.01/arch/arm/dts/rk356x-u-boot.dtsi
-[ -f "$DTSI" ] || fail "staged rk356x-u-boot.dtsi is missing"
-grep -q 'mmc0 = &sdhci;' "$DTSI" || fail "staged mmc0 is not sdhci"
-sdmmc=$(sed -n 's/^[[:space:]]*mmc\([0-9][0-9]*\)[[:space:]]*=[[:space:]]*&sdmmc0;.*/\1/p' "$DTSI")
-[ "$sdmmc" = "1" ] || fail "staged sdmmc0 alias is mmc${sdmmc:-missing}"
-grep -q "fs_set_blk_dev(\"mmc\", \"${sdmmc}:2\", FS_TYPE_FAT)" "$UBP" || fail "consumer is not mmc ${sdmmc}:2"
-if grep -q 'fs_set_blk_dev("mmc", "0:2"' "$UBP"; then
-	fail "consumer still opens mmc 0:2"
-fi
-grep -q 'found on mmc1:2' "$UBP" || fail "found diagnostic"
-grep -q 'consumed, entering rbrom' "$UBP" || fail "consumed diagnostic"
-grep -q 'invalid marker, booting normally' "$UBP" || fail "invalid diagnostic"
-grep -q 'could not consume marker, booting normally' "$UBP" || fail "stuck diagnostic"
+grep -q 'my355 fg' "$ROOT/board/my355/uboot/patches/uboot/006-cmd-add-my355-boot-helpers.patch" || fail "fuel gauge command missing"
 grep -q 'u-boot,spl-boot-order = &sdmmc0;' "$ROOT/board/my355/uboot/dts/rk3566-miyoo-flip-u-boot.dtsi" || fail "spl boot order changed"
 grep -q 'mmc0 = &sdmmc0;' "$ROOT/board/my355/linux/dts/rockchip/rk3566-miyoo-flip.dts" || fail "linux mmc0 alias changed"
-if grep -E 'nand|mtd|/dev/mmc|mmcblk' "$HDR" "$UBP" "$MASK" >/dev/null; then
-	fail "maskrom request names NAND or a raw device"
+DTSI=$ROOT/output/build/uboot-2026.01/arch/arm/dts/rk356x-u-boot.dtsi
+if [ -f "$DTSI" ]; then
+	grep -q 'mmc0 = &sdhci;' "$DTSI" || fail "staged mmc0 is not sdhci"
+	sdmmc=$(sed -n 's/^[[:space:]]*mmc\([0-9][0-9]*\)[[:space:]]*=[[:space:]]*&sdmmc0;.*/\1/p' "$DTSI")
+	[ "$sdmmc" = "1" ] || fail "staged sdmmc0 alias is mmc${sdmmc:-missing}"
 fi
-if grep -E '0xef08a53c|0xfdb9|0xfdc20200' "$UBP" "$HDR" >/dev/null; then
-	fail "uboot request duplicates reset constants"
-fi
-grep -q 'set_back_to_bootrom_dnl_flag' "$UBP" || fail "shared rbrom body missing"
-grep -q 'return zlyme_rbrom' "$UBP" || fail "maskrom-request does not use shared rbrom"
-# The BootROM flag lives in zlyme_rbrom, which the subcommand calls only
-# after maskrom_request_consume returns ENTER.
-awk '
-	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ {
-		print
-	}
-' "$UBP" | grep -q 'if (rc == MASKROM_ENTER)' || fail "rbrom is not gated on consumption"
-if awk '
-	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ {
-		print
-	}
-' "$UBP" | grep -q 'set_back_to_bootrom_dnl_flag'; then
-	fail "subcommand sets the bootrom flag itself"
-fi
-awk '
-	/static int do_my355_maskrom/,/#define ZLYME_SUBCMD/ { print }
-' "$UBP" | awk '
-	/MASKROM_BOOT/ { boot=NR }
-	/found on mmc/ { found=NR }
-	END { exit !(boot && found && boot < found) }
-' || fail "a missing marker prints a diagnostic"
-
-fix=$(mktemp -d)
-trap 'rm -rf "$fix"' EXIT
-cc=${CC:-gcc}
-"$cc" -Wall -Wextra -Werror -std=c11 -I"$ROOT/board/my355/uboot" \
-	-o "$fix/maskrom-request-test" "$ROOT/scripts/tests/maskrom_request_test.c"
-"$fix/maskrom-request-test" | grep -q 'maskrom-request-test: ok' || fail "marker decision fixture"
-"$cc" -Wall -Wextra -Werror -std=gnu99 -o "$fix/zlyme-maskrom" "$MASK"
-cat > "$fix/writer" << 'EOF'
-#!/bin/sh
-mode=${ZLYME_WRITER_MODE:-ok}
-if [ "$mode" = fail ]; then
-	exit 1
-fi
-if [ "$mode" = corrupt ]; then
-	printf '%s' 'not-the-request' > "$ZLYME_BOOT/zlyme-maskrom.request"
-	exit 0
-fi
-exec "$1" --write
-EOF
-chmod +x "$fix/writer"
-boot=$fix/boot
-mkdir -p "$boot"
-run_mask() {
-	mode=$1
-	fail_reboot=${2:-}
-	: > "$fix/reboot.log"
-	: > "$fix/err"
-	set +e
-	if [ -n "$fail_reboot" ]; then
-		ZLYME_MASKROM_REBOOT_FAIL=1
-		export ZLYME_MASKROM_REBOOT_FAIL
-	else
-		unset ZLYME_MASKROM_REBOOT_FAIL
-	fi
-	ZLYME_MASKROM_TEST=1 \
-		ZLYME_BOOT="$boot" \
-		ZLYME_BOOT_WRITE="$fix/writer" \
-		ZLYME_MASKROM_LOG="$fix/reboot.log" \
-		ZLYME_WRITER_MODE="$mode" \
-		"$fix/zlyme-maskrom" >"$fix/out" 2>"$fix/err"
-	rc=$?
-	set -e
-	printf '%s\n' "$rc"
-}
-rm -f "$boot/zlyme-maskrom.request"
-rc=$(run_mask fail)
-[ "$rc" = 1 ] || fail "write failure rc=$rc"
-grep -q 'the request was not written' "$fix/err" || fail "write failure text"
-grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "write failure requested reboot"
-[ ! -e "$boot/zlyme-maskrom.request" ] || fail "write failure left a request"
-rc=$(run_mask corrupt)
-[ "$rc" = 1 ] || fail "verify failure rc=$rc"
-grep -q 'the request did not verify' "$fix/err" || fail "verify failure text"
-grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "verify failure requested reboot"
-rc=$(run_mask ok)
-[ "$rc" = 0 ] || fail "request success rc=$rc $(cat "$fix/err")"
-printf '%s' 'ZLYME-MASKROM-1' > "$fix/expect"
-cmp -s "$fix/expect" "$boot/zlyme-maskrom.request" || fail "request bytes"
-grep -q 'ordinary-reboot' "$fix/reboot.log" || fail "success did not request an ordinary reboot"
-rm -f "$boot/zlyme-maskrom.request"
-rc=$(run_mask ok 1)
-[ "$rc" = 1 ] || fail "reboot failure rc=$rc"
-grep -q 'MASKROM is queued for the next boot' "$fix/err" || fail "queued text"
-grep -q 'ordinary-reboot' "$fix/reboot.log" && fail "failed reboot still counted as started"
-cmp -s "$fix/expect" "$boot/zlyme-maskrom.request" || fail "queued request was dropped"
 grep -q 'Settings -> System -> Advanced -> Recovery' "$ROOT/package/system/nextui/nextui.mk" || fail "pin does not name the native Recovery page"
 pin=$(sed -n 's/^NEXTUI_VERSION = //p' "$ROOT/package/system/nextui/nextui.mk")
 if [ -d /home/ale/NextUI/.git ]; then
 	head=$(git -C /home/ale/NextUI rev-parse HEAD)
 	[ "$head" = "$pin" ] || fail "NextUI checkout $head is not the pin $pin"
 	git -C /home/ale/NextUI grep -q 'RESTORE STOCK PRELOADER' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no restore confirmation"
-	git -C /home/ale/NextUI grep -q 'REBOOT TO MASKROM' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no maskrom confirmation"
-	git -C /home/ale/NextUI grep -q 'zlyme-maskrom' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call zlyme-maskrom"
+	git -C /home/ale/NextUI grep -q 'ARM MASKROM RECOVERY' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no arm confirmation"
+	git -C /home/ale/NextUI grep -q 'DISARM MASKROM RECOVERY' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no disarm confirmation"
+	git -C /home/ale/NextUI grep -q 'prepare-recovery' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not prepare"
+	git -C /home/ale/NextUI grep -q 'arm-recovery' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not arm"
+	git -C /home/ale/NextUI grep -q 'disarm-recovery' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not disarm"
+	if git -C /home/ale/NextUI grep -q 'zlyme-maskrom' "$head" -- workspace/all/settings/zlymemenu.cpp; then
+		fail "pinned NextUI still calls zlyme-maskrom"
+	fi
+	if git -C /home/ale/NextUI grep -q 'Reboot to MASKROM' "$head" -- workspace/all/settings/zlymemenu.cpp; then
+		fail "pinned NextUI still offers Reboot to MASKROM"
+	fi
 	git -C /home/ale/NextUI grep -q 'status-machine' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI does not call status-machine"
 	git -C /home/ale/NextUI grep -q 'StaticMenuItem' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI status is not a fixed page"
-	git -C /home/ale/NextUI grep -q '"Fallback"' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no fallback row"
-	git -C /home/ale/NextUI grep -q 'Not compatible' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no incompatible fallback label"
+	git -C /home/ale/NextUI grep -q '"Stock restore"' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no stock restore row"
+	git -C /home/ale/NextUI grep -q 'Recovery armed' "$head" -- workspace/all/settings/zlymemenu.cpp || fail "pinned NextUI has no armed label"
 	if git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
 		/^static InputReactionHint recovery_status/,/^static InputReactionHint recovery_restore_now/
 	' | grep -q showOverlay; then
@@ -879,6 +781,23 @@ if [ -d /home/ale/NextUI/.git ]; then
 	fi
 	if git -C /home/ale/NextUI grep -q 'erase-preloader' "$head" -- workspace/all/settings/zlymemenu.cpp; then
 		fail "pinned NextUI exposes erase-preloader"
+	fi
+	arm=$(git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
+		/^static InputReactionHint recovery_arm_now/,/^static InputReactionHint recovery_disarm_now/
+	')
+	printf '%s\n' "$arm" | grep -q 'prepare-recovery' || fail "arm UI does not prepare"
+	printf '%s\n' "$arm" | grep -q 'arm-recovery' || fail "arm UI does not arm"
+	printf '%s\n' "$arm" | awk '
+		/prepare-recovery/ { p=NR }
+		/arm-recovery/ { a=NR }
+		END { exit !(p && a && p < a) }
+	' || fail "arm UI calls arm before prepare"
+	disarm=$(git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
+		/^static InputReactionHint recovery_disarm_now/,/^static MenuList \*recovery_final/
+	')
+	printf '%s\n' "$disarm" | grep -q 'disarm-recovery' || fail "disarm UI does not disarm"
+	if printf '%s\n' "$disarm" | grep -q '"restore"'; then
+		fail "disarm UI calls stock restore"
 	fi
 	git -C /home/ale/NextUI show "$head:workspace/all/settings/zlymemenu.cpp" | awk '
 		/rows.push_back\(new MenuItem\{ListItemType::Button, "Cancel"/ { print; exit }
@@ -1659,5 +1578,120 @@ grep -q 'CRITICAL: arm failed and rollback could not be verified.' "$fix/err" ||
 grep -q 'MASKROM/xrock recovery may be required' "$fix/err" || fail "arm critical omitted xrock"
 [ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "arm double failure changed the source"
 grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "arm double failure claimed rollback"
+
+# Read-only recovery classification. status-machine must not prepare.
+awk '
+	/^cmd_status_machine\(\)/ { f=1 }
+	f && /^[a-z].*\(\)/ && !/^cmd_status_machine/ { exit }
+	f { print }
+' "$PRE" | grep -q 'prepare-recovery' && fail "status-machine calls prepare-recovery"
+awk '
+	/^cmd_disarm_recovery\(\)/ { f=1 }
+	f && /^cmd_/ && !/^cmd_disarm_recovery/ { exit }
+	f { print }
+' "$PRE" | grep -q 'cmd_restore\| restore$' && fail "disarm calls stock restore"
+
+classify() {
+	python3 "$PY" recovery-state "$1" "$2" "$3" "$4"
+}
+
+bind_fix() {
+	man="$1/storage/.config/zlyme/preloader-recovery/manifest.json"
+	bak="$1/storage/.config/zlyme/preloader-backups"
+	recdir="$1/storage/.config/zlyme/preloader-recovery"
+}
+
+fix=$(arm_fix)
+bind_fix "$fix"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=normal$' || fail "prepared mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=ready$' || fail "prepared recovery $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^source_backup=available$' || fail "prepared source $(printf '%s' "$out")"
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "prepared status-machine rc=$rc $(cat "$fix/err")"
+grep -q '^mode=normal$' "$fix/out" || fail "prepared machine mode $(cat "$fix/out")"
+grep -q '^recovery=ready$' "$fix/out" || fail "prepared machine recovery $(cat "$fix/out")"
+grep -q '^source_backup=available$' "$fix/out" || fail "prepared machine source $(cat "$fix/out")"
+grep -q '^stock_restore=available$' "$fix/out" || fail "prepared machine stock $(cat "$fix/out")"
+grep -q '^PREPARE_RECOVERY ' "$fix/actions.log" && fail "status-machine prepared a recovery image"
+no_cmd "$fix" "prepared status-machine"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+rm -f "$man"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=normal$' || fail "missing manifest mode"
+printf '%s\n' "$out" | grep -q '^recovery=not-prepared$' || fail "missing manifest recovery $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^source_backup=missing$' || fail "missing manifest source"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+printf '{\n' > "$man"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=unknown$' || fail "corrupt manifest mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=invalid$' || fail "corrupt manifest recovery"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+rm -f "$bak/preloader-current-$src_sum.img"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=unknown$' || fail "missing source mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=invalid$' || fail "missing source recovery"
+printf '%s\n' "$out" | grep -q '^source_backup=missing$' || fail "missing source flag"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+rm -f "$recdir/recovery-$RECOVERY_SHA.img"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^recovery=invalid$' || fail "missing recovery image $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^source_backup=available$' || fail "missing recovery kept the source"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+printf '\x5a' | dd of="$recdir/recovery-$RECOVERY_SHA.img" bs=1 seek=300 conv=notrunc status=none
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=unknown$' || fail "mismatch mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=invalid$' || fail "mismatch recovery"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+cp "$recdir/recovery-$RECOVERY_SHA.img" "$fix/live/preloader.img"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=recovery$' || fail "armed mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=armed$' || fail "armed recovery $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^source_backup=available$' || fail "armed source"
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "armed status-machine rc=$rc $(cat "$fix/err")"
+grep -q '^mode=recovery$' "$fix/out" || fail "armed machine $(cat "$fix/out")"
+grep -q '^recovery=armed$' "$fix/out" || fail "armed machine recovery $(cat "$fix/out")"
+grep -q '^stock_restore=available$' "$fix/out" || fail "armed machine stock $(cat "$fix/out")"
+no_cmd "$fix" "armed status-machine"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+cp "$recdir/recovery-$RECOVERY_SHA.img" "$fix/live/preloader.img"
+rm -f "$fix"/boot/mtd5-original-*.img
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "armed without stock rc=$rc $(cat "$fix/err")"
+grep -q '^stock_restore=unavailable$' "$fix/out" || fail "armed without stock $(cat "$fix/out")"
+grep -q '^fallback=incompatible$' "$fix/out" || fail "armed without stock fallback $(cat "$fix/out")"
+no_cmd "$fix" "armed without stock"
+
+fix=$(arm_fix)
+bind_fix "$fix"
+cp "$STOCK_IMG" "$fix/live/preloader.img"
+out=$(classify "$man" "$fix/live/preloader.img" "$bak" "$recdir")
+printf '%s\n' "$out" | grep -q '^mode=unknown$' || fail "unknown live mode $(printf '%s' "$out")"
+printf '%s\n' "$out" | grep -q '^recovery=invalid$' || fail "unknown live recovery $(printf '%s' "$out")"
+
+fix=$(new_fix)
+cp "$KNOWN" "$fix/live/preloader.img"
+rc=$(run "$fix" status-machine)
+[ "$rc" = "0" ] || fail "unprepared status-machine rc=$rc $(cat "$fix/err")"
+grep -q '^mode=normal$' "$fix/out" || fail "unprepared mode $(cat "$fix/out")"
+grep -q '^recovery=not-prepared$' "$fix/out" || fail "unprepared recovery $(cat "$fix/out")"
+grep -q '^source_backup=missing$' "$fix/out" || fail "unprepared source $(cat "$fix/out")"
+grep -q '^stock_restore=available$' "$fix/out" || fail "unprepared stock $(cat "$fix/out")"
+no_cmd "$fix" "unprepared status-machine"
 
 echo "phase11c: ok"
