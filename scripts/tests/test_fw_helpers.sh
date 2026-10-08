@@ -23,7 +23,7 @@ command -v shellcheck >/dev/null 2>&1 || fail "shellcheck is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 
 shellcheck -s sh -x "$ZLYME/install-maskrom.sh" "$ZLYME/install-restore.sh" \
-	"$ZLYME/apply-boot-order.sh" "$ZLYME/check-image.sh" || fail "shellcheck"
+	"$ZLYME/apply-boot-order.sh" "$ZLYME/check-image.sh" "$ZLYME/common.sh" || fail "shellcheck"
 sh -n "$ZLYME/common.sh" || fail "common.sh syntax"
 python3 -m py_compile "$ZLYME/pack-fwimg.py" || fail "pack-fwimg.py"
 
@@ -129,11 +129,17 @@ prepare_fix() {
 	fix=$1
 	live=$2
 	rm -rf "$fix"
-	mkdir -p "$fix/bin" "$fix/card" "$fix/power/ac"
+	mkdir -p "$fix/bin" "$fix/card" "$fix/power/ac" "$fix/sys"
 	cp "$live" "$fix/mtd"
 	cp "$live" "$fix/mtdro"
 	sha256sum "$live" | cut -c1-64 > "$fix/live.sha"
 	printf 'mtd5: 00200000 00020000 "spl"\n' > "$fix/proc-mtd"
+	printf 'spl\n' > "$fix/sys/name"
+	printf '2097152\n' > "$fix/sys/size"
+	printf '131072\n' > "$fix/sys/erasesize"
+	printf '2048\n' > "$fix/sys/writesize"
+	printf '64\n' > "$fix/sys/oobsize"
+	printf '0\n' > "$fix/sys/bad_blocks"
 	echo 80 > "$fix/power/battery"
 	echo 0 > "$fix/power/ac/online"
 	echo ok > "$fix/write-mode"
@@ -164,6 +170,7 @@ run_helper() {
 	fix=$1
 	payload=$2
 	env CARD="$fix/card" MTD="$fix/mtd" PROC_MTD="$fix/proc-mtd" \
+		MTD_SYSFS="$fix/sys" \
 		BATTERY_CAPACITY="$fix/power/battery" POWER_ROOT="$fix/power" \
 		PATH="$fix/bin:$PATH" \
 		sh "$payload/install.sh"
@@ -432,5 +439,112 @@ grep -q 'CRITICAL:' "$work/fix/card/zlyme-fw.log" || fail "critical text"
 grep -q 'previous preloader was restored' "$work/fix/card/zlyme-fw.log" && fail "double failure claimed rollback"
 cmp -s "$work/fix/mtdro" "$work/expect-patched.img" && fail "double failure left the previous image in place"
 cmp -s "$work/fix/mtdro" "$STOCK" && fail "double failure left the target in place"
+
+# Second RKNS copy stays hash-valid, but one entry's sector count differs.
+# The first-copy window of that payload still matches, which is the compare
+# the old checker used. The new checker must refuse on geometry instead.
+skew_geometry() {
+	python3 - "$1" "$2" "$3" << 'PY'
+import hashlib, pathlib, sys
+src, dest, which = sys.argv[1:]
+img = bytearray(pathlib.Path(src).read_bytes())
+index = 0 if which == "ddr" else 1
+base = 524288
+entry = base + 0x78 + index * 0x58
+off = int.from_bytes(img[entry:entry + 2], "little")
+cnt = int.from_bytes(img[entry + 2:entry + 4], "little") + 1
+img[entry + 2:entry + 4] = cnt.to_bytes(2, "little")
+start = base + off * 512
+digest = hashlib.sha256(img[start:start + cnt * 512]).digest()
+img[entry + 0x18:entry + 0x38] = digest
+
+def read_entry(copy, slot):
+    at = copy + 0x78 + slot * 0x58
+    o = int.from_bytes(img[at:at + 2], "little")
+    c = int.from_bytes(img[at + 2:at + 4], "little")
+    blob = bytes(img[copy + o * 512:copy + (o + c) * 512])
+    if hashlib.sha256(blob).digest() != bytes(img[at + 0x18:at + 0x38]):
+        raise SystemExit("resealed entry hash does not match")
+    return o, c, blob
+
+left = read_entry(131072, index)
+right = read_entry(524288, index)
+if (left[0], left[1]) == (right[0], right[1]):
+    raise SystemExit("fixture geometry still agrees")
+if right[2][:len(left[2])] != left[2]:
+    raise SystemExit("first-copy window changed; this is not a geometry-only fixture")
+for copy in (131072, 524288):
+    for slot in (0, 1):
+        read_entry(copy, slot)
+pathlib.Path(dest).write_bytes(img)
+PY
+}
+
+for which in spl ddr; do
+	skew_geometry "$STOCK" "$work/skew-$which.img" "$which"
+	prepare_fix "$work/fix" "$work/skew-$which.img"
+	set +e
+	run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+	rc=$?
+	set -e
+	[ "$rc" -ne 0 ] || fail "$which geometry mismatch was accepted"
+	[ "$(erases "$work/fix")" -eq 0 ] || fail "$which geometry mismatch erased"
+	grep -q 'IDB copies disagree on entry geometry' "$work/fix/card/zlyme-fw.log" || fail "$which geometry text"
+	set +e
+	sh "$ZLYME/apply-boot-order.sh" "$work/skew-$which.img" "$work/fix/out.img" >"$work/fix/apply.out" 2>"$work/fix/apply.err"
+	rc=$?
+	set -e
+	[ "$rc" -ne 0 ] || fail "apply-boot-order accepted $which geometry mismatch"
+	grep -q 'IDB copies disagree on entry geometry' "$work/fix/apply.err" || fail "apply-boot-order $which geometry text"
+	[ ! -e "$work/fix/out.img" ] || fail "apply-boot-order wrote despite $which geometry mismatch"
+done
+
+# Wrong MTD geometry and bad blocks refuse before erase.
+for attr in size erasesize bad_blocks; do
+	prepare_fix "$work/fix" "$STOCK"
+	case "$attr" in
+		size) printf '1\n' > "$work/fix/sys/size"; text='mtd5 size is not 2097152' ;;
+		erasesize) printf '1\n' > "$work/fix/sys/erasesize"; text='mtd5 erasesize is not 131072' ;;
+		bad_blocks) printf '1\n' > "$work/fix/sys/bad_blocks"; text='mtd5 has bad blocks' ;;
+	esac
+	set +e
+	run_helper "$work/fix" "$work/maskrom-root" >"$work/fix/out" 2>"$work/fix/err"
+	rc=$?
+	set -e
+	[ "$rc" -ne 0 ] || fail "$attr was accepted"
+	[ "$(erases "$work/fix")" -eq 0 ] || fail "$attr erased"
+	grep -q "$text" "$work/fix/card/zlyme-fw.log" || fail "$attr text"
+done
+
+# A missing nandwrite refuses through finish, before any erase.
+prepare_fix "$work/fix" "$STOCK"
+mkdir -p "$work/path"
+IFS=:
+for dir in $PATH; do
+	[ -d "$dir" ] || continue
+	for cmd in "$dir"/*; do
+		[ -x "$cmd" ] || continue
+		base=$(basename "$cmd")
+		[ "$base" = "nandwrite" ] && continue
+		[ -e "$work/path/$base" ] && continue
+		ln -s "$cmd" "$work/path/$base"
+	done
+done
+unset IFS
+ln -sf "$work/fix/bin/flash_erase" "$work/path/flash_erase"
+rm -f "$work/path/nandwrite" /tmp/fwupdate_done
+set +e
+env CARD="$work/fix/card" MTD="$work/fix/mtd" PROC_MTD="$work/fix/proc-mtd" \
+	MTD_SYSFS="$work/fix/sys" \
+	BATTERY_CAPACITY="$work/fix/power/battery" POWER_ROOT="$work/fix/power" \
+	PATH="$work/path" \
+	sh "$work/maskrom-root/install.sh" >"$work/fix/out" 2>"$work/fix/err"
+rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "missing nandwrite was accepted"
+[ "$(erases "$work/fix")" -eq 0 ] || fail "missing nandwrite erased"
+grep -q 'required command is missing: nandwrite' "$work/fix/card/zlyme-fw.log" || fail "missing nandwrite text"
+[ "$(cat /tmp/fwupdate_done 2>/dev/null)" = "1" ] || fail "missing nandwrite did not signal fwupdate_done"
+rm -f /tmp/fwupdate_done
 
 echo "fw-helpers: ok"

@@ -1,7 +1,12 @@
 #!/bin/sh
-# Stock-side restore of this unit's saved original preloader.
-# The only eligible file is one mtd5-original-<sha256>.img on the card FAT.
-# No image argument. No force switch. The bundled stock blob is not consulted.
+# Stock-side undo of the normal multiboot repair.
+# Stock has to already be running. The only eligible file is one
+# mtd5-original-<sha256>.img on the card FAT. No image argument. No force
+# switch. The bundled stock blob is not consulted.
+#
+# This is not the way out of an armed recovery preloader: that preloader
+# does not boot internal stock. The recovery-derivative check below stays
+# for a unit where stock is already running by some other arrangement.
 set -e
 
 HERE=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
@@ -56,6 +61,7 @@ if sh "$HERE/patch-preloader.sh" "$orig" /tmp/zlyme-from-orig.img > /tmp/zlyme-p
 elif [ -f /tmp/zlyme-from-orig.img ] \
     && sh "$HERE/apply-boot-order.sh" /tmp/zlyme-from-orig.img /tmp/zlyme-from-rec.img >> "$LOG" 2>&1 \
     && cmp -s /tmp/zlyme-from-rec.img /tmp/zlyme-live.img; then
+    # Defensive only. The ordinary user path cannot reach stock in this state.
     log "installed preloader is the recovery form of the saved original"
 else
     cat /tmp/zlyme-patch.log >> "$LOG" 2>/dev/null || true

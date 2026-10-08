@@ -56,11 +56,43 @@ setup_card() {
     LOG="$OUTDIR/zlyme-fw.log"
 }
 
+# Commands the transform, the target write, and the rollback all need.
+# A missing one refuses before the first erase.
+require_tools() {
+    for cmd in flash_erase nandwrite dd sha256sum xxd awk grep cmp \
+        cp rm cat wc basename sync mktemp date tr cut sed sh; do
+        command -v "$cmd" >/dev/null 2>&1 || {
+            log "required command is missing: $cmd"
+            finish 1
+        }
+    done
+}
+
+# mtd5 on the stock firmware apommel measured: name spl, 2 MiB, 128 KiB
+# erase, 2048-byte pages. The SPI NAND spare area is 64 bytes. bad_blocks
+# is that partition's MTD count. A missing attribute refuses; it is not skipped.
+sys_is() {
+    key=$1
+    want=$2
+    file="$MTD_SYSFS/$key"
+    if [ ! -r "$file" ]; then
+        log "mtd sysfs $key is missing"
+        finish 1
+    fi
+    got=$(tr -d '[:space:]' < "$file")
+    if [ "$got" != "$want" ]; then
+        log "mtd5 $key is not $want"
+        finish 1
+    fi
+}
+
 check_ground() {
     PROC_MTD="${PROC_MTD:-/proc/mtd}"
     MTD="${MTD:-/dev/mtd5}"
+    MTD_SYSFS="${MTD_SYSFS:-/sys/class/mtd/mtd5}"
     BATTERY_CAPACITY="${BATTERY_CAPACITY:-/sys/class/power_supply/battery/capacity}"
     POWER_ROOT="${POWER_ROOT:-/sys/class/power_supply}"
+    require_tools
     grep -q '"spl"' "$PROC_MTD" || {
         log "no spl partition; wrong device"
         finish 1
@@ -68,6 +100,29 @@ check_ground() {
     spl_line=$(grep '"spl"' "$PROC_MTD" | cut -c1-5)
     [ "$spl_line" = "mtd5:" ] || {
         log "spl is not mtd5"
+        finish 1
+    }
+    size_hex=$(awk '/"spl"/ { print $2; exit }' "$PROC_MTD")
+    erase_hex=$(awk '/"spl"/ { print $3; exit }' "$PROC_MTD")
+    [ "$size_hex" = "00200000" ] || {
+        log "spl size is not 2 MiB"
+        finish 1
+    }
+    [ "$erase_hex" = "00020000" ] || {
+        log "spl erase size is not 128 KiB"
+        finish 1
+    }
+    sys_is name spl
+    sys_is size 2097152
+    sys_is erasesize 131072
+    sys_is writesize 2048
+    sys_is oobsize 64
+    bad=$(tr -d '[:space:]' < "$MTD_SYSFS/bad_blocks") || {
+        log "mtd sysfs bad_blocks is missing"
+        finish 1
+    }
+    [ "$bad" = "0" ] || {
+        log "mtd5 has bad blocks"
         finish 1
     }
     CAP=$(cat "$BATTERY_CAPACITY" 2>/dev/null || echo 0)
