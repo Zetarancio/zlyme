@@ -87,15 +87,7 @@ if write_and_rollback "$orig" "$AFTER" /tmp/zlyme-live.img "$BEFORE"; then
         sync
         log "removed miyoo355_fw.img from the card"
     fi
-    case "$CARDDEV" in
-        /dev/mmcblk1p*)
-            log "rebooting with the restored preloader"
-            export BOOT=1
-            ;;
-        *)
-            log "verified; reboot so the restored preloader is the one that starts"
-            ;;
-    esac
+    log "original preloader restored; power the device off before changing cards"
     progress 95
     finish 0
 fi

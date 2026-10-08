@@ -131,15 +131,8 @@ if write_and_rollback /tmp/zlyme-new.img "$AFTER" /tmp/zlyme-live.img "$BEFORE";
         sync
         log "removed miyoo355_fw.img from the card"
     fi
-    case "$CARDDEV" in
-        /dev/mmcblk1p*)
-            log "rebooting; a bootable card in the right-hand slot starts that OS, otherwise startup enters USB MASKROM"
-            export BOOT=1
-            ;;
-        *)
-            log "verified; power on with a bootable card in the right-hand slot, or with none for USB MASKROM"
-            ;;
-    esac
+    log "recovery preloader installed; power the device off before changing cards"
+    log "use a bootable card in the right-hand slot for normal boot"
     progress 95
     finish 0
 fi

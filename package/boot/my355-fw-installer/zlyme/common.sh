@@ -4,7 +4,9 @@
 # Card discovery, the mtd5 gate, the battery gate, and the three-try
 # write/readback loop follow apommel's install.sh (MIT, apommel/baseos-my355
 # e09d37bb). Rollback messages and the one-entry recovery path are Zlyme's.
-# This file does not accept an image path or a force switch.
+# A verified write signals the stock updater and leaves that session running.
+# These helpers do not reboot. apommel's own installer may; that file is not
+# this one. This file does not accept an image path or a force switch.
 
 sha_file() {
     sha256sum "$1" | cut -c1-64
@@ -26,12 +28,7 @@ finish() {
     fi
     progress 100
     echo 1 > /tmp/fwupdate_done
-    # Stock's updater is waiting on fwupdate_done. The short pause is the
-    # same one apommel's installer uses so that UI can observe it before reboot.
-    if [ "${BOOT:-0}" = "1" ]; then
-        sleep 2
-        reboot
-    fi
+    # Stock's updater is waiting on fwupdate_done. Leave that session running.
     exit "${1:-0}"
 }
 
@@ -40,7 +37,9 @@ setup_card() {
     resolved=$(cd "$CARD" 2>/dev/null && pwd -P) && CARD="$resolved"
     FATMNT=/tmp/zlyme-fw-fat
     OUTDIR="$CARD"
-    CARDDEV=$(awk -v d="$CARD" '$2 == d { print $1; exit }' /proc/mounts)
+    # CARDDEV finds the FAT volume. It is not a physical-slot identity.
+    MOUNTS="${MOUNTS:-/proc/mounts}"
+    CARDDEV=$(awk -v d="$CARD" '$2 == d { print $1; exit }' "$MOUNTS")
     case "$CARDDEV" in
         /dev/mmcblk*p*)
             for part in "${CARDDEV%p*}"p*; do

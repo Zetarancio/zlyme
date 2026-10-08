@@ -36,6 +36,13 @@ done
 if grep -q -- '--force' "$ZLYME"/*.sh; then
 	fail "a helper accepts --force"
 fi
+if grep -n 'mmcblk1' "$ZLYME/install-maskrom.sh" "$ZLYME/install-restore.sh" "$ZLYME/common.sh"; then
+	fail "a Zlyme helper still treats mmcblk1 as a slot"
+fi
+if grep -n '\<reboot\>' "$ZLYME/install-maskrom.sh" "$ZLYME/install-restore.sh" "$ZLYME/common.sh" \
+	| grep -vE ':[0-9]+:[[:space:]]*#'; then
+	fail "a Zlyme helper still reboots"
+fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -160,18 +167,26 @@ if [ "\$mode" = fail-both ] || { [ "\$mode" = fail-target ] && [ "\$got" != "\$l
 else
 	cp "\$src" "$fix/mtd"
 fi
-cp "$fix/mtd" "$fix/mtdro"
+	cp "$fix/mtd" "$fix/mtdro"
 exit 0
 EOF
-	chmod 755 "$fix/bin/flash_erase" "$fix/bin/nandwrite"
+	cat > "$fix/bin/reboot" << EOF
+#!/bin/sh
+echo reboot >> "$fix/reboot.log"
+exit 99
+EOF
+	chmod 755 "$fix/bin/flash_erase" "$fix/bin/nandwrite" "$fix/bin/reboot"
+	: > "$fix/reboot.log"
 }
 
 run_helper() {
 	fix=$1
 	payload=$2
+	mounts=${3:-/proc/mounts}
 	env CARD="$fix/card" MTD="$fix/mtd" PROC_MTD="$fix/proc-mtd" \
 		MTD_SYSFS="$fix/sys" \
 		BATTERY_CAPACITY="$fix/power/battery" POWER_ROOT="$fix/power" \
+		MOUNTS="$mounts" \
 		PATH="$fix/bin:$PATH" \
 		sh "$payload/install.sh"
 }
@@ -183,6 +198,10 @@ extract "$work/restore-root" "$work/miyoo355_fw-restore.img"
 
 # Multiboot behavior stays the pinned installer: the descriptive file is that image.
 cmp -s "$work/miyoo355_fw.img" "$work/miyoo355_fw-multiboot.img"
+extract "$work/multiboot-root" "$work/miyoo355_fw.img"
+cmp -s "$work/multiboot-root/install.sh" "$APOMMEL/install.sh" || fail "multiboot install.sh diverged from pinned apommel"
+grep -q '/dev/mmcblk1p\*' "$work/multiboot-root/install.sh" || fail "upstream multiboot reboot condition changed"
+grep -q '\<reboot\>' "$work/multiboot-root/install.sh" || fail "upstream multiboot installer no longer reboots"
 
 # MASKROM from an original stock preloader. No prior multiboot backup.
 prepare_fix "$work/fix" "$STOCK"
@@ -545,6 +564,53 @@ set -e
 [ "$(erases "$work/fix")" -eq 0 ] || fail "missing nandwrite erased"
 grep -q 'required command is missing: nandwrite' "$work/fix/card/zlyme-fw.log" || fail "missing nandwrite text"
 [ "$(cat /tmp/fwupdate_done 2>/dev/null)" = "1" ] || fail "missing nandwrite did not signal fwupdate_done"
+rm -f /tmp/fwupdate_done
+
+# A verified write must not reboot, whatever stock called the card.
+if [ -e /dev/mmcblk0 ] || [ -e /dev/mmcblk1 ] || [ -e /dev/mmcblk2 ]; then
+	fail "host has mmcblk nodes; refusing to exercise the slot fixture against them"
+fi
+for node in /dev/mmcblk0p1 /dev/mmcblk1p1 /dev/mmcblk2p1; do
+	prepare_fix "$work/fix" "$work/expect-patched.img"
+	cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+	printf 'marker\n' > "$work/fix/card/miyoo355_fw.img"
+	card_real=$(CDPATH='' cd -- "$work/fix/card" && pwd -P)
+	printf '%s\n' "$node $card_real vfat rw 0 0" > "$work/fix/mounts"
+	rm -f /tmp/fwupdate_done
+	set +e
+	run_helper "$work/fix" "$work/maskrom-root" "$work/fix/mounts" >"$work/fix/out" 2>"$work/fix/err"
+	rc=$?
+	set -e
+	[ "$rc" -eq 0 ] || fail "maskrom on $node rc=$rc $(cat "$work/fix/card/zlyme-fw.log")"
+	cmp -s "$work/fix/mtdro" "$work/expect-recovery.img" || fail "maskrom on $node did not verify the recovery image"
+	[ ! -e "$work/fix/card/miyoo355_fw.img" ] || fail "maskrom on $node left miyoo355_fw.img"
+	grep -q 'readback verified' "$work/fix/card/zlyme-fw.log" || fail "maskrom on $node did not verify"
+	grep -q 'removed miyoo355_fw.img from the card' "$work/fix/card/zlyme-fw.log" || fail "maskrom on $node did not remove the helper"
+	grep -q 'recovery preloader installed; power the device off before changing cards' "$work/fix/card/zlyme-fw.log" || fail "maskrom on $node completion text"
+	grep -q 'rebooting' "$work/fix/card/zlyme-fw.log" && fail "maskrom on $node logged a reboot"
+	[ ! -s "$work/fix/reboot.log" ] || fail "maskrom on $node called reboot"
+	[ "$(cat /tmp/fwupdate_done 2>/dev/null)" = "1" ] || fail "maskrom on $node did not signal completion"
+
+	prepare_fix "$work/fix" "$work/expect-patched.img"
+	cp "$STOCK" "$work/fix/card/mtd5-original-$stock_sha.img"
+	printf 'marker\n' > "$work/fix/card/miyoo355_fw.img"
+	card_real=$(CDPATH='' cd -- "$work/fix/card" && pwd -P)
+	printf '%s\n' "$node $card_real vfat rw 0 0" > "$work/fix/mounts"
+	rm -f /tmp/fwupdate_done
+	set +e
+	run_helper "$work/fix" "$work/restore-root" "$work/fix/mounts" >"$work/fix/out" 2>"$work/fix/err"
+	rc=$?
+	set -e
+	[ "$rc" -eq 0 ] || fail "restore on $node rc=$rc $(cat "$work/fix/card/zlyme-fw.log")"
+	cmp -s "$work/fix/mtdro" "$STOCK" || fail "restore on $node did not verify the original"
+	[ ! -e "$work/fix/card/miyoo355_fw.img" ] || fail "restore on $node left miyoo355_fw.img"
+	grep -q 'readback verified' "$work/fix/card/zlyme-fw.log" || fail "restore on $node did not verify"
+	grep -q 'removed miyoo355_fw.img from the card' "$work/fix/card/zlyme-fw.log" || fail "restore on $node did not remove the helper"
+	grep -q 'original preloader restored; power the device off before changing cards' "$work/fix/card/zlyme-fw.log" || fail "restore on $node completion text"
+	grep -q 'rebooting' "$work/fix/card/zlyme-fw.log" && fail "restore on $node logged a reboot"
+	[ ! -s "$work/fix/reboot.log" ] || fail "restore on $node called reboot"
+	[ "$(cat /tmp/fwupdate_done 2>/dev/null)" = "1" ] || fail "restore on $node did not signal completion"
+done
 rm -f /tmp/fwupdate_done
 
 echo "fw-helpers: ok"

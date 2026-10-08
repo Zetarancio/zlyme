@@ -11,7 +11,7 @@ Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published rele
 ### Added
 
 - A fresh card image includes `miyoo355_fw.img` on the boot partition. Stock runs that installer and patches this unit's own preloader so the Flip can boot from the card. An update does not copy that file and does not touch the preloader.
-- Standalone stock helpers are published beside the card image: `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`, each with a checksum. Stock only runs a file named `miyoo355_fw.img`, so rename the one you need before putting it on the card. A fresh `zlyme.img` still contains only the multiboot installer. An update contains none of them. The restore helper runs only while stock still boots, and it is not the way out of an armed recovery preloader. The MASKROM and restore helpers are host-tested and are not hardware-accepted.
+- Standalone stock helpers are published beside the card image: `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`, each with a checksum. Stock only runs a file named `miyoo355_fw.img`, so rename the one you need before putting it on the card. A fresh `zlyme.img` still contains only the multiboot installer. An update contains none of them. The restore helper runs only while stock still boots, and it is not the way out of an armed recovery preloader. The MASKROM helper's already-repaired path was hardware-accepted on 2026-10-08. Its direct-from-stock path, and the restore helper, are host-tested and are not hardware-accepted.
 - Settings → System → Advanced → Recovery shows preloader status on a fixed page, arms or disarms MASKROM recovery, or restores the stock preloader. Each write asks twice and starts on Cancel. Arm installs a recovery preloader. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Disarm writes back the image saved when recovery was armed. Restore prefers this unit's `mtd5-original-<sha256>.img`. If that backup is absent, it can write the shipped stock image only for the one supported preloader revision. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
 - Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
 
@@ -29,6 +29,7 @@ Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published rele
 
 ### Fixed
 
+- The standalone MASKROM and restore helpers no longer reboot after a verified write. Stock's block-device number is not which physical slot the card is in. Power the device off before changing cards.
 - An update archive is accepted only when listing the whole archive succeeds and the required files are present. A truncated archive that prints those names and then fails is rejected before it is extracted.
 - 32-bit Windows programs can load Wine's builtin libraries from the exFAT prefix. `prepare` creates `drive_c` and copies the libraries wineboot cannot symlink onto that filesystem.
 - Suspend no longer reads or writes the RTC wake alarm. The 24-hour alarm that `zlyme44` programmed is gone, and an alarm set on purpose is left in place.
