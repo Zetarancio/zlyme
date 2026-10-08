@@ -89,7 +89,7 @@ Preserve these unless the task explicitly requires changing them:
 - The root filesystem is read-only squashfs; persistent state belongs under `/storage`.
 - The curated emulator model is intentional. Do not add alternate cores merely because they exist.
 - Hardware safety, thermal protection, and filesystem integrity outrank benchmark results.
-- Do not redistribute ROMs, BIOS files, keys, commercial software, firmware, or vendor binaries without verifying redistribution rights.
+- Do not redistribute ROMs, BIOS files, keys, commercial software, or vendor binaries without a verified right or a named exception in `docs/UPSTREAMS.md`. An unknown license is not that right. See Licensing.
 
 ## Superseded designs
 
@@ -288,6 +288,22 @@ Every package and shipped PAK must have its licensing understood.
 Do not assume source availability means redistribution permission.
 
 Do not remove copyright or license notices.
+
+A third-party or vendor binary with no usable license text may be redistributed only when every one of these is true:
+
+- the maintainer explicitly chose to redistribute that specific artifact;
+- the exact bytes or build are identified;
+- origin and provenance are documented;
+- SHA-256 is recorded where practical;
+- whether it is unmodified or modified is explicit;
+- its purpose is documented;
+- its package metadata uses a `LicenseRef-...-unspecified` identifier, not MIT, GPL, or another known license;
+- the provenance record says that it is not a license grant and that redistribution rights are unverified;
+- the exception names that artifact. It is not permission to publish arbitrary unlicensed files.
+
+If there is no meaningful provenance, do not ship the file because its license is unknown. The wording for an accepted exception is: redistribution status, maintainer-approved as-is; upstream/vendor license unspecified. That is a Zlyme distribution decision, not a legal conclusion.
+
+`package/system/zlyme-preloader/preloader-stock.img` is the current exception. `preloader-stock.PROVENANCE` and `docs/UPSTREAMS.md` are the records. `ZLYME_PRELOADER_LICENSE` uses `LicenseRef-Miyoo-vendor-preloader-unspecified` for that file. The script and checker stay MIT.
 
 ## Validation
 

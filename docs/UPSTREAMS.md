@@ -197,6 +197,34 @@ validation performed
 hardware testing still required
 ```
 
+## Unspecified vendor binaries
+
+Some artifacts have no usable license text. An unknown license does not grant redistribution. Zlyme ships one only when the maintainer has accepted that specific file and the provenance record can stand on its own.
+
+All of the following are required:
+
+- the maintainer explicitly chose to redistribute that artifact;
+- the exact bytes or build are identified;
+- origin and provenance are documented;
+- SHA-256 is recorded where practical;
+- whether the file is unmodified or modified is explicit;
+- its purpose is documented;
+- package metadata uses a `LicenseRef-...-unspecified` identifier rather than MIT, GPL, or another known license;
+- the provenance record says that it is not a license grant and that redistribution rights are unverified;
+- the exception is artifact-specific.
+
+Without meaningful provenance, do not ship the file. Accepted wording: `Redistribution status: maintainer-approved as-is; upstream/vendor license unspecified.` That sentence is a Zlyme distribution decision, not a legal conclusion.
+
+The current exception is `package/system/zlyme-preloader/preloader-stock.img`.
+
+| Field | Record |
+| --- | --- |
+| Bytes | unmodified 2 MiB image, SHA-256 `dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922` |
+| Origin | hardware wiki `preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img`, introducing commit `8ef495f5711ce13645e9c68df63b7d7a9934cf7e`, recorded again at wiki commit `c126d3235face9ddca5bf021258a84758dca543c` |
+| Purpose | Zlyme-side restore of that one stock revision, and only when the live preloader is its paired apommel image and the DDR payloads match |
+| Metadata | `LicenseRef-Miyoo-vendor-preloader-unspecified` beside MIT for the script and checker |
+| Record | `preloader-stock.PROVENANCE`, which includes `This record is not a license grant.` |
+
 ## Compared revisions
 
 These are recorded comparisons, not a promise to track any tree. Local clone paths are not part of the contract; the remotes are.

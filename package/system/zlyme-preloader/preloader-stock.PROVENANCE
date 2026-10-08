@@ -24,9 +24,15 @@ preloader-patched.img, SHA-256
 ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d,
 historical MD5 c2009762b1704d5ed2ebbfa4346e6ecc.
 
-The script and checker in this package are MIT. This image is Miyoo vendor
-firmware. This record identifies the bytes and where the known copy came
-from. It is not a license grant.
+The script and checker in this package are MIT. This image is unmodified Miyoo vendor
+firmware. This record identifies the bytes and where the known copy came from.
+
+This record is not a license grant. Redistribution rights are unverified.
+Redistribution status: maintainer-approved as-is; upstream/vendor license unspecified.
+That status is a Zlyme distribution decision, not a legal conclusion.
+The package metadata names this file LicenseRef-Miyoo-vendor-preloader-unspecified.
+That identifier is not a known open-source license and does not grant redistribution.
+The exception is this file. It is not permission to add another unlicensed binary.
 
 zlyme-preloader may select this file only when no per-device
 mtd5-original-<sha256>.img exists and the installed preloader matches that
