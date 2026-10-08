@@ -37,7 +37,33 @@ FAILED="$STAGEDIR/FAILED"
 LOG="$STAGEDIR/apply.log"
 BOOTLOADER="$STAGEDIR/bootloader"
 
+# Member listing for one archive. EXIT removes it if a later fail returns
+# before the caller does. tar -tf must exit 0; a partial listing is not
+# a structural pass.
+TAR_LIST=
+cleanup_tar_list() {
+	if [ -n "${TAR_LIST:-}" ]; then
+		rm -f "$TAR_LIST"
+		TAR_LIST=
+	fi
+}
+trap 'cleanup_tar_list' EXIT
 trap '' HUP PIPE
+
+list_tar_members() {
+	tarf=$1
+	cleanup_tar_list
+	TAR_LIST=$(mktemp) || fail "could not list the archive"
+	if ! tar -tf "$tarf" >"$TAR_LIST"; then
+		cleanup_tar_list
+		return 1
+	fi
+	return 0
+}
+
+tar_has_member() {
+	grep -qx "$1" "$TAR_LIST"
+}
 
 FAILED_DIR="$STAGEDIR/failed"
 NAMEFILE="$STAGEDIR/NAME"
@@ -143,14 +169,19 @@ verify_tar() {
 	tarf=$1
 	[ -s "$tarf" ] || mark_fail junk "empty tar"
 	need_cmd tar
-	if tar -tf "$tarf" | grep -qx DELTA-MANIFEST; then
+	if ! list_tar_members "$tarf"; then
+		mark_fail junk "tar listing failed"
+	fi
+	if tar_has_member DELTA-MANIFEST; then
 		verify_delta_tar "$tarf"
+		cleanup_tar_list
 		return 0
 	fi
-	tar -tf "$tarf" | grep -qx "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
-	tar -tf "$tarf" | grep -qx zlyme || mark_fail junk "tar has no zlyme squashfs"
-	tar -tf "$tarf" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
+	tar_has_member "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
+	tar_has_member zlyme || mark_fail junk "tar has no zlyme squashfs"
+	tar_has_member Image.gz || mark_fail junk "tar has no Image.gz"
 	log "tar ok ($tarf)"
+	cleanup_tar_list
 	tar -xOf "$tarf" VERSION 2>/dev/null | head -n 2 || true
 }
 
@@ -246,13 +277,20 @@ read_delta_manifest() {
 verify_delta_tar() {
 	tarf=$1
 	need_cmd tar
-	members=$(tar -tf "$tarf")
-	printf '%s\n' "$members" | grep -qx DELTA-MANIFEST || mark_fail junk "delta tar has no manifest"
-	printf '%s\n' "$members" | grep -qx zlyme.patch.zst || mark_fail junk "delta tar has no patch"
-	printf '%s\n' "$members" | grep -qx zlyme && mark_fail junk "delta tar must not contain zlyme"
-	printf '%s\n' "$members" | grep -qx "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
-	printf '%s\n' "$members" | grep -qx Image.gz || mark_fail junk "tar has no Image.gz"
-	printf '%s\n' "$members" | grep -qx VERSION || mark_fail junk "tar has no VERSION"
+	# verify_tar already listed this archive. A direct caller lists it here.
+	if [ -z "${TAR_LIST:-}" ]; then
+		if ! list_tar_members "$tarf"; then
+			mark_fail junk "tar listing failed"
+		fi
+	fi
+	tar_has_member DELTA-MANIFEST || mark_fail junk "delta tar has no manifest"
+	tar_has_member zlyme.patch.zst || mark_fail junk "delta tar has no patch"
+	if tar_has_member zlyme; then
+		mark_fail junk "delta tar must not contain zlyme"
+	fi
+	tar_has_member "$ZLYME_DTB" || mark_fail junk "tar has no dtb"
+	tar_has_member Image.gz || mark_fail junk "tar has no Image.gz"
+	tar_has_member VERSION || mark_fail junk "tar has no VERSION"
 	log "delta tar ok ($tarf)"
 }
 
@@ -327,19 +365,23 @@ stage_delta() {
 		cleanup_reconstruct
 		mark_fail apply "delta boot file extract failed"
 	}
-	names=$(tar -tf "$tarf")
-	if printf '%s\n' "$names" | grep -qx splash.anim; then
+	if ! list_tar_members "$tarf"; then
+		cleanup_reconstruct
+		mark_fail apply "tar listing failed"
+	fi
+	if tar_has_member splash.anim; then
 		tar -xf "$tarf" -C "$work" splash.anim
 	fi
-	if printf '%s\n' "$names" | grep -qx progress.anim; then
+	if tar_has_member progress.anim; then
 		tar -xf "$tarf" -C "$work" progress.anim
 	fi
-	if printf '%s\n' "$names" | grep -q '^overlays/'; then
+	if grep -q '^overlays/' "$TAR_LIST"; then
 		tar -xf "$tarf" -C "$work" overlays
 	fi
-	if printf '%s\n' "$names" | grep -q '^extlinux/'; then
+	if grep -q '^extlinux/' "$TAR_LIST"; then
 		tar -xf "$tarf" -C "$work" extlinux
 	fi
+	cleanup_tar_list
 	rm -f "$work/DELTA-MANIFEST"
 	sync
 	rm -rf "$PENDING"
@@ -383,10 +425,15 @@ squashfs_fits() {
 stage_tar() {
 	tarf=$1
 	show_galaxy
-	if tar -tf "$tarf" | grep -qx DELTA-MANIFEST; then
+	if ! list_tar_members "$tarf"; then
+		mark_fail junk "tar listing failed"
+	fi
+	if tar_has_member DELTA-MANIFEST; then
+		cleanup_tar_list
 		stage_delta "$tarf"
 		return 0
 	fi
+	cleanup_tar_list
 	verify_tar "$tarf"
 	rm -rf "$PENDING"
 	mkdir -p "$PENDING"
