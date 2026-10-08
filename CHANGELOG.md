@@ -11,7 +11,7 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 ### Added
 
 - A fresh card image includes `miyoo355_fw.img` on the boot partition. Stock runs that installer and patches this unit's own preloader so the Flip can boot from the card. An update does not copy that file and does not touch the preloader.
-- Settings → System → Advanced → Recovery shows preloader status on a fixed page, arms or disarms MASKROM recovery, or restores the stock preloader from `mtd5-original-<sha256>.img`. Each write asks twice and starts on Cancel. Arm installs a recovery preloader. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Disarm writes back the image saved when recovery was armed. Restore is the separate original-preloader action. If this unit has no original backup, stock restore is unavailable. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
+- Settings → System → Advanced → Recovery shows preloader status on a fixed page, arms or disarms MASKROM recovery, or restores the stock preloader. Each write asks twice and starts on Cancel. Arm installs a recovery preloader. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Disarm writes back the image saved when recovery was armed. Restore prefers this unit's `mtd5-original-<sha256>.img`. If that backup is absent, it can write the shipped stock image only for the one supported preloader revision. The build also publishes `miyoo355_fw.img` and its checksum beside the card image. An update does not install that file.
 - Settings → Network → Proxy: HTTP or SOCKS5 for online services that honor a proxy. It is not a VPN. There is no username or password.
 
 ### Changed
@@ -38,7 +38,6 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 ### Removed
 
 - Tools → Preloader Recovery. Recovery is Settings → System → Advanced → Recovery.
-- The bundled Miyoo stock preloader. Restore uses only this unit's `mtd5-original-<sha256>.img`. The wiki copy has no redistribution grant.
 - Reboot to MASKROM. That action wrote a boot-file request and restarted. It is not the recovery preloader. MASKROM recovery is Arm and Disarm on the Recovery page.
 - The unused mergerfs package. Libraries stay separate cards.
 
