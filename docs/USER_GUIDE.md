@@ -4,7 +4,9 @@ The [README](../README.md) is the front door: what Zlyme is, how to install it, 
 
 ## Card preparation and preloader recovery
 
-The install steps are in the [README](../README.md#install). Stock, not Zlyme, runs `miyoo355_fw.img` and writes the patched preloader. An update inside Zlyme does not repeat that. How that repair works is on the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md).
+The install steps are in the [README](../README.md#install). Stock, not Zlyme, runs `miyoo355_fw.img` and writes the patched preloader. An update inside Zlyme does not repeat that. The three downloadable helpers, and the rename stock requires, are on the hardware wiki's [preloader tools](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md) page. The repair itself is explained on the wiki's [SD multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md) page.
+
+If the Flip is still booting stock, the same three jobs can be done from a card instead of from this menu. Download `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, or `miyoo355_fw-restore.img` from the [Zlyme releases page](https://github.com/Zetarancio/zlyme/releases) once that release publishes them, rename the chosen file to `miyoo355_fw.img`, and boot stock with that card. They are not in an ordinary Zlyme update. The MASKROM and restore downloads are host-tested until a later device test. Inside Zlyme, use the rows below.
 
 Settings → System → Advanced → Recovery has four rows. Confirmations are lists. Cancel is the first row. B also goes back. Nothing on this page reboots or powers off by itself.
 

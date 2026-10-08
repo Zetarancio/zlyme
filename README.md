@@ -22,7 +22,7 @@ The Flip-specific pieces are the gamepad (sticks, buttons, calibration, rumble),
 4. When preparation is complete, boot with the card in the right-hand slot to start Zlyme.
 5. With no bootable card inserted, stock remains available.
 
-How the preloader repair works is in the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md). If you need the manual or host recovery path, start at [flashing](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/flashing.md). On a Zlyme card, recovery inside the OS is Settings → System → Advanced → Recovery, described in the [user guide](docs/USER_GUIDE.md#card-preparation-and-preloader-recovery). Arming it keeps a bootable card in the right slot working. Shut down, remove that card, and power on to enter MASKROM. Disarm puts the normal preloader back. Restore stock is a separate action and can use the shipped stock image when this unit has no original backup and the installed preloader is the revision that image belongs to. The operator notes are in [Operations](docs/OPERATIONS.md).
+Settings → System → Advanced → Recovery can arm a recovery preloader or restore this unit's stock preloader. Standalone preloader helpers, for a Flip that is still on stock, are documented in the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md). Day-to-day use is in the [user guide](docs/USER_GUIDE.md#card-preparation-and-preloader-recovery).
 
 ### Write the card
 

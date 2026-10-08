@@ -225,6 +225,8 @@ The current exception is `package/system/zlyme-preloader/preloader-stock.img`.
 | Metadata | `LicenseRef-Miyoo-vendor-preloader-unspecified` beside MIT for the script and checker |
 | Record | `preloader-stock.PROVENANCE`, which includes `This record is not a license grant.` |
 
+The stock-side helper images `miyoo355_fw.img`, `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img` are generated from pinned `apommel/baseos-my355` `e09d37bb0f03c34e564d61bd02164f332d8515a8` plus Zlyme scripts. They are MIT. They do not contain `preloader-stock.img` or any other preloader binary.
+
 ## Compared revisions
 
 These are recorded comparisons, not a promise to track any tree. Local clone paths are not part of the contract; the remotes are.
@@ -233,7 +235,7 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 
 | Role | Remote | Revision | Used for |
 | --- | --- | --- | --- |
-| Stock preloader installer | `apommel/baseos-my355` | `e09d37bb0f03c34e564d61bd02164f332d8515a8` | `MY355_FW_INSTALLER_VERSION`. MIT. `mkfwimg.py` writes `miyoo355_fw.img`. `post-image.sh` writes `miyoo355_fw.img.sha256`. The Build workflow uploads both. The OTA does not. To bump: review the upstream diff, change the pin and `.hash`, rebuild, compare `miyoo355_fw.img`, rerun `scripts/tests/test_phase11c.sh`. Do not track `main` |
+| Stock preloader installer | `apommel/baseos-my355` | `e09d37bb0f03c34e564d61bd02164f332d8515a8` | `MY355_FW_INSTALLER_VERSION`. MIT. `mkfwimg.py` writes `miyoo355_fw.img`. `pack-fwimg.py` writes `miyoo355_fw-maskrom.img` and `miyoo355_fw-restore.img` in the same container. `miyoo355_fw-multiboot.img` is a copy of `miyoo355_fw.img`. `post-image.sh` writes a `.sha256` for each. The Build workflow uploads all four images and their checksums. A fresh card receives only `miyoo355_fw.img`. The OTA receives none. To bump: review the upstream diff, change the pin and `.hash`, rebuild, compare `miyoo355_fw.img`, rerun `scripts/tests/test_fw_helpers.sh` and `scripts/tests/test_phase11c.sh`. Do not track `main` |
 | NextUI fork | `Zetarancio/NextUI` | `aa5c08051d03ef2b2a59fb8f0813f03e55de59e1` | `NEXTUI_VERSION` in `package/system/nextui/nextui.mk` |
 | NextUI base | `LoveRetro/NextUI` | `ae652648548edf6ab24cbb816cf4e4194e609fb3` | `UPSTREAM` file inside the fork pin |
 | OpenBOR | `DCurrent/openbor` | `v7533` | `OPENBOR_VERSION`. Directory overrides are `package/emulators/openbor/0003-runtime-directories.patch` |
