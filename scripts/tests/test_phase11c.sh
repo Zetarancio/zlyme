@@ -1361,4 +1361,303 @@ grep -q 'MASKROM/xrock recovery may be required' "$fix/err" || fail "critical di
 [ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "double failure changed the source backup"
 grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "double failure claimed rollback"
 
+# arm-recovery installs only the derived image, through the same writer.
+awk '/^cmd_arm_recovery\(\)/,/^cmd_erase\(\)/' "$PRE" | grep -q 'write_and_verify' || fail "arm does not use the existing writer"
+awk '/^cmd_arm_recovery\(\)/,/^cmd_erase\(\)/' "$PRE" | grep -E 'nandwrite|flash_erase|^[[:space:]]*reboot' && fail "arm has its own writer or a reboot"
+arm_fix() {
+	fix=$(new_fix)
+	cp -a "$prepared/storage/." "$fix/storage/"
+	cp -a "$prepared/boot/." "$fix/boot/"
+	cp "$KNOWN" "$fix/live/preloader.img"
+	printf '%s\n' "$fix"
+}
+
+fix=$(arm_fix)
+rc=$(run "$fix" arm-recovery)
+[ "$rc" = "0" ] || fail "arm rc=$rc $(cat "$fix/err")"
+grep -q 'conditional recovery preloader installed and verified' "$fix/err" || fail "arm success text $(cat "$fix/err")"
+grep -q 'device was not rebooted' "$fix/err" || fail "arm rebooted in its text"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" = "$RECOVERY_SHA" ] || fail "arm left $live"
+cmp -s "$KNOWN" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" || fail "arm rewrote the source bytes"
+awk -v rec="recovery-$RECOVERY_SHA.img" '
+	/^GATES / { g=NR }
+	/^CURRENT_BACKUP / { c=NR }
+	/^flash_erase / { if (!e) e=NR; ne++ }
+	/^nandwrite / { if (!n) n=NR; nn++; if (index($0, rec) == 0) bad=1 }
+	/^READBACK target ok$/ { t=NR }
+	END { exit !(g && c && e && n && t && g < c && c < e && e < n && n < t && ne == 1 && nn == 1 && !bad) }
+' "$fix/actions.log" || fail "arm order $(cat "$fix/actions.log")"
+grep -q '^BOOT_WRITE ' "$fix/actions.log" && fail "arm published to the boot volume"
+
+fix=$(arm_fix)
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/manifest.json"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing manifest armed"
+grep -q 'recovery manifest is missing' "$fix/err" || fail "arm missing manifest $(cat "$fix/err")"
+no_cmd "$fix" "arm missing manifest"
+
+fix=$(arm_fix)
+printf '{\n' > "$fix/storage/.config/zlyme/preloader-recovery/manifest.json"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "malformed manifest armed"
+grep -q 'recovery manifest is malformed' "$fix/err" || fail "arm malformed $(cat "$fix/err")"
+no_cmd "$fix" "arm malformed manifest"
+
+fix=$(arm_fix)
+cp "$STOCK_IMG" "$fix/live/preloader.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "wrong live source armed"
+grep -q 'live preloader is not the source image in the manifest' "$fix/err" || fail "arm wrong live $(cat "$fix/err")"
+no_cmd "$fix" "arm wrong live"
+
+fix=$(arm_fix)
+cp "$rec_file" "$fix/live/preloader.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "already-recovery image armed"
+grep -q 'live preloader is already the recovery image' "$fix/err" || fail "arm already recovery $(cat "$fix/err")"
+no_cmd "$fix" "arm already recovery"
+
+fix=$(arm_fix)
+rm -f "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing source armed"
+grep -q 'source backup is missing' "$fix/err" || fail "arm missing source $(cat "$fix/err")"
+no_cmd "$fix" "arm missing source"
+
+fix=$(arm_fix)
+printf '\x5a' | dd of="$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img" bs=1 seek=200 conv=notrunc status=none
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "source mismatch armed"
+grep -q 'source backup sha does not match the manifest' "$fix/err" || fail "arm source mismatch $(cat "$fix/err")"
+no_cmd "$fix" "arm source mismatch"
+
+fix=$(arm_fix)
+cp "$STOCK_IMG" "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "source that is not the live image armed"
+grep -q 'source backup sha does not match the manifest' "$fix/err" || fail "arm source bytes $(cat "$fix/err")"
+no_cmd "$fix" "arm source not live"
+
+fix=$(arm_fix)
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing recovery armed"
+grep -q 'prepared recovery image is missing' "$fix/err" || fail "arm missing recovery $(cat "$fix/err")"
+no_cmd "$fix" "arm missing recovery"
+
+fix=$(arm_fix)
+printf '\x5a' | dd of="$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img" bs=1 seek=300 conv=notrunc status=none
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "recovery sha mismatch armed"
+grep -q 'prepared recovery sha does not match the manifest' "$fix/err" || fail "arm recovery sha $(cat "$fix/err")"
+no_cmd "$fix" "arm recovery sha"
+
+fix=$(arm_fix)
+stock_rec=$fix/stock-recovery.img
+python3 "$PY" derive "$STOCK_IMG" "$stock_rec"
+stock_rec_sum=$(sha256sum "$stock_rec" | awk '{print $1}')
+cp "$stock_rec" "$fix/storage/.config/zlyme/preloader-recovery/recovery-$stock_rec_sum.img"
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$stock_rec_sum" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "non-derivative recovery armed"
+grep -q 'prepared recovery image is not the derivative of the source backup' "$fix/err" || fail "arm derivation $(cat "$fix/err")"
+no_cmd "$fix" "arm derivation"
+
+fix=$(arm_fix)
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img" <<'PY'
+import hashlib, sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (131072, 524288):
+    entry = base + 0x78
+    off = int.from_bytes(data[entry:entry + 2], "little")
+    count = int.from_bytes(data[entry + 2:entry + 4], "little")
+    start = base + off * 512
+    data[start + 32] ^= 0x5A
+    blob = bytes(data[start:start + count * 512])
+    data[entry + 0x18:entry + 0x38] = hashlib.sha256(blob).digest()
+open(sys.argv[1], "wb").write(data)
+PY
+bad=$(sha256sum "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img" | awk '{print $1}')
+mv "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img" \
+	"$fix/storage/.config/zlyme/preloader-recovery/recovery-$bad.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$bad" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "DDR mismatch armed"
+grep -q 'DDR payload does not match the source backup' "$fix/err" || fail "arm DDR $(cat "$fix/err")"
+no_cmd "$fix" "arm DDR"
+
+fix=$(arm_fix)
+cp "$rec_file" "$fix/arm-exec.img"
+python3 - "$fix/arm-exec.img" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+for base in (0x2E000, 0x8E000):
+    data[base + 0x100] ^= 0x5A
+open(sys.argv[1], "wb").write(data)
+PY
+reseal_idb "$fix/arm-exec.img"
+bad=$(sha256sum "$fix/arm-exec.img" | awk '{print $1}')
+cp "$fix/arm-exec.img" "$fix/storage/.config/zlyme/preloader-recovery/recovery-$bad.img"
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$bad" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "executable mismatch armed"
+grep -q 'recovery image changed SPL executable bytes' "$fix/err" || fail "arm executable $(cat "$fix/err")"
+no_cmd "$fix" "arm executable"
+
+fix=$(arm_fix)
+cp "$rec_file" "$fix/arm-mmc.img"
+python3 - "$fix/arm-mmc.img" <<'PY'
+import sys
+data = bytearray(open(sys.argv[1], "rb").read())
+old = b"/dwmmc@fe2b0000\x00"
+new = b"/sdhci@fe310000\x00"
+found = 0
+idx = 0
+while True:
+    at = data.find(old, idx)
+    if at < 0:
+        break
+    if data[at + len(old):at + len(old) + 4] == b"\x00\x00\x00\x02":
+        data[at:at + len(old)] = new
+        found += 1
+    idx = at + 1
+if found != 2:
+    raise SystemExit("boot-order sites %s" % found)
+open(sys.argv[1], "wb").write(data)
+PY
+reseal_idb "$fix/arm-mmc.img"
+bad=$(sha256sum "$fix/arm-mmc.img" | awk '{print $1}')
+cp "$fix/arm-mmc.img" "$fix/storage/.config/zlyme/preloader-recovery/recovery-$bad.img"
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$bad" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "wrong MMC armed"
+grep -q 'recovery boot order is not the right-hand slot' "$fix/err" || fail "arm wrong MMC $(cat "$fix/err")"
+no_cmd "$fix" "arm wrong MMC"
+
+fix=$(arm_fix)
+cp "$KNOWN" "$fix/storage/.config/zlyme/preloader-recovery/recovery-$src_sum.img"
+rm -f "$fix/storage/.config/zlyme/preloader-recovery/recovery-$RECOVERY_SHA.img"
+python3 - "$fix/storage/.config/zlyme/preloader-recovery/manifest.json" "$src_sum" <<'PY'
+import json, sys
+p, sha = sys.argv[1:]
+doc = json.load(open(p))
+doc["recovery_sha256"] = sha
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "extra boot device armed"
+grep -q 'recovery boot order has an extra boot device' "$fix/err" || fail "arm extra boot $(cat "$fix/err")"
+no_cmd "$fix" "arm extra boot"
+
+fix=$(arm_fix)
+rm -f "$fix/boot/preloader-current-$src_sum.img"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing FAT backup armed"
+grep -q 'FAT source backup is missing' "$fix/err" || fail "arm FAT missing $(cat "$fix/err")"
+no_cmd "$fix" "arm FAT missing"
+
+fix=$(arm_fix)
+printf '\x5a' | dd of="$fix/boot/preloader-current-$src_sum.img" bs=1 seek=220 conv=notrunc status=none
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "FAT backup mismatch armed"
+grep -q 'FAT source backup does not match the source' "$fix/err" || fail "arm FAT mismatch $(cat "$fix/err")"
+no_cmd "$fix" "arm FAT mismatch"
+
+fix=$(arm_fix)
+rm -f "$fix/boot/preloader-recovery-manifest.json"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing FAT manifest armed"
+grep -q 'FAT recovery manifest is missing' "$fix/err" || fail "arm FAT manifest $(cat "$fix/err")"
+no_cmd "$fix" "arm FAT manifest missing"
+
+fix=$(arm_fix)
+python3 - "$fix/boot/preloader-recovery-manifest.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+doc = json.load(open(p))
+doc["device"] = "other"
+json.dump(doc, open(p, "w"))
+PY
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "FAT manifest mismatch armed"
+grep -q 'FAT recovery manifest does not match' "$fix/err" || fail "arm FAT manifest mismatch $(cat "$fix/err")"
+no_cmd "$fix" "arm FAT manifest mismatch"
+
+fix=$(arm_fix)
+rm -f "$fix/boot/preloader-current-$src_sum.txt"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "missing note armed"
+grep -q 'recovery note is missing' "$fix/err" || fail "arm note $(cat "$fix/err")"
+no_cmd "$fix" "arm note"
+
+fix=$(arm_fix)
+printf '%s\n' '/dev/mmcblk0p2 /boot vfat rw,noatime 0 0' > "$fix/proc/mounts"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "writable boot armed"
+grep -q 'boot volume is writable' "$fix/err" || fail "arm writable boot $(cat "$fix/err")"
+no_cmd "$fix" "arm writable boot"
+
+fix=$(arm_fix)
+printf '10' > "$fix/sys/class/power_supply/battery/capacity"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "low battery armed"
+grep -q 'battery 10% and no charger' "$fix/err" || fail "arm battery $(cat "$fix/err")"
+no_cmd "$fix" "arm battery"
+
+fix=$(arm_fix)
+printf '1' > "$fix/sys/class/mtd/mtd0/bad_blocks"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" != "0" ] || fail "bad block armed"
+grep -q 'preloader has bad blocks' "$fix/err" || fail "arm bad blocks $(cat "$fix/err")"
+no_cmd "$fix" "arm bad blocks"
+
+fix=$(arm_fix)
+before=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")
+printf '3\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" = "3" ] || fail "arm rollback rc=$rc $(cat "$fix/err")"
+grep -q 'Arm failed; source preloader restored and verified.' "$fix/err" || fail "arm rollback text $(cat "$fix/err")"
+live=$(sha256sum "$fix/live/preloader.img" | awk '{print $1}')
+[ "$live" = "$src_sum" ] || fail "arm rollback left $live"
+[ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "arm rollback changed the source"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" || fail "arm rollback did not verify"
+
+fix=$(arm_fix)
+before=$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")
+printf '6\n' > "$fix/fail-nandwrite-first"
+rc=$(run "$fix" arm-recovery)
+[ "$rc" = "1" ] || fail "arm double failure rc=$rc $(cat "$fix/err")"
+grep -q 'CRITICAL: arm failed and rollback could not be verified.' "$fix/err" || fail "arm critical $(cat "$fix/err")"
+grep -q 'MASKROM/xrock recovery may be required' "$fix/err" || fail "arm critical omitted xrock"
+[ "$(sha256sum "$fix/storage/.config/zlyme/preloader-backups/preloader-current-$src_sum.img")" = "$before" ] || fail "arm double failure changed the source"
+grep -q '^ROLLBACK_READBACK ok$' "$fix/actions.log" && fail "arm double failure claimed rollback"
+
 echo "phase11c: ok"

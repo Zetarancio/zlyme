@@ -1988,6 +1988,8 @@ Maintainer report, 2026-10-07, not acceptance. `zlyme-preloader restore` perform
 
 Closure item recorded 2026-10-08, not done. The development card still runs the diagnostic U-Boot with `CONFIG_BOOTDELAY=5`. That timeout only affects a successful boot into Zlyme U-Boot. It is not part of an SPL MASKROM decision. Before Phase 11C or the zlyme44.2 release is closed, the installed U-Boot returns to production `CONFIG_BOOTDELAY=-2`. `board/my355/board.mk` still writes `-2` when U-Boot is configured. The card image is the exception, and this note does not change it.
 
+NAND cycle recorded 2026-10-08, not acceptance. On the live `fd57d042a890` root, `arm-recovery` installed the derived right-slot image and a full readback matched `f7d9a25255080ac19e88df88d1232bf45a90bdf2e86c9f7e23b73d32a003f367`. `disarm-recovery` restored `ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d`, and the full readback matched the saved source. Linux was not rebooted. The no-SD MASKROM path was not tested. Phase 11C is not hardware-accepted.
+
 ### 11D — zlyme44.2 release and a real partial OTA
 
 Prerequisite: `zlyme44.1` is a published stable release with a valid `release-manifest.json`.
@@ -1997,7 +1999,7 @@ Closure order: finish 11A–11C; one final local 44.2 candidate; maintainer hard
 ### Gate
 
 - 11A, 11B, and 11C each have their own candidate and the checks named above.
-- 11C is not hardware-accepted. The 2026-10-07 restore report is positive backend evidence. Erase is not USB MASKROM. The fresh stock-assisted card install passed. The native Recovery confirmations passed. The fixed preloader status page was readable on the `0e09c319` image. The direct Linux reboot to MASKROM failed and was removed. The boot-file handoff on that image left the request in place because U-Boot opened `mmc 0:2`. `rbrom` was not reached. The corrected `mmc 1:2` consumer remains `MANUAL — MAINTAINER REPORT REQUIRED`.
+- 11C is not hardware-accepted. The 2026-10-07 restore report is positive backend evidence. A 2026-10-08 arm and disarm cycle read back the recovery image and then the original source without a reboot. It does not test the no-SD path. Erase is not USB MASKROM. The fresh stock-assisted card install passed. The native Recovery confirmations passed. The fixed preloader status page was readable on the `0e09c319` image. The direct Linux reboot to MASKROM failed and was removed. The boot-file handoff on that image left the request in place because U-Boot opened `mmc 0:2`. `rbrom` was not reached. The corrected `mmc 1:2` consumer remains `MANUAL — MAINTAINER REPORT REQUIRED`.
 - Before Phase 11C closure, the development card's diagnostic `CONFIG_BOOTDELAY=5` U-Boot returns to production `CONFIG_BOOTDELAY=-2`.
 - 11D does not publish `zlyme44.2` before the clean GitHub build, and it does not write release notes before the partial-OTA gate.
 - `zlyme44.1-maintenance` stays at `6a398b311310246ef6a5515ed72805c6f58d787d` until 44.1 publication work, which is separate from this phase.

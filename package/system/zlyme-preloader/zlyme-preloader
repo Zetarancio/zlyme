@@ -223,6 +223,120 @@ manifest_path() {
 	printf '%s/manifest.json\n' "$(recovery_dir)"
 }
 
+# Arm reads the FAT copies. It does not publish them. A fixture with no
+# mounts file is treated as read-only; a real boot checks /proc/mounts.
+require_boot_readonly() {
+	if [ "$TEST" = 1 ]; then
+		mounts=$(p /proc/mounts)
+		if [ ! -f "$mounts" ]; then
+			return 0
+		fi
+	else
+		mounts=/proc/mounts
+	fi
+	[ -r "$mounts" ] || die "boot mount table is unreadable"
+	opts=$(awk '$2 == "/boot" { print $4; exit }' "$mounts")
+	[ -n "$opts" ] || die "boot volume is not mounted"
+	case ",$opts," in
+		*,rw,*) die "boot volume is writable" ;;
+		*,ro,*) return 0 ;;
+	esac
+	die "boot volume is not read-only"
+}
+
+# Print the prepared recovery path and the source SHA, or refuse.
+# The caller does not choose an image. The manifest only names hashes;
+# the bytes have to be the derivative of the live source, and the FAT
+# copies have to match before any erase.
+arm_bind() {
+	python3 - "$IMAGE_PY" "$1" "$2" "$3" "$4" "$5" <<'PY'
+import importlib.util, json, sys
+py, man_path, live_path, backups, recdir, boot = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("preloader_image", py)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+doc = mod._manifest(man_path)
+live = mod._load(live_path)
+mod._paired(live)
+live_sha = mod._sha(live)
+if live_sha == doc["recovery_sha256"] and live_sha != doc["source_sha256"]:
+    raise SystemExit("live preloader is already the recovery image")
+if live_sha != doc["source_sha256"]:
+    raise SystemExit("live preloader is not the source image in the manifest")
+name = doc["source_backup"]
+source_path = backups.rstrip("/") + "/" + name
+try:
+    source = mod._load(source_path)
+except OSError:
+    raise SystemExit("source backup is missing")
+if mod._sha(source) != doc["source_sha256"]:
+    raise SystemExit("source backup sha does not match the manifest")
+if source != live:
+    raise SystemExit("source backup is not the live preloader")
+rec_path = recdir.rstrip("/") + "/recovery-" + doc["recovery_sha256"] + ".img"
+try:
+    prepared = mod._load(rec_path)
+except OSError:
+    raise SystemExit("prepared recovery image is missing")
+if mod._sha(prepared) != doc["recovery_sha256"]:
+    raise SystemExit("prepared recovery sha does not match the manifest")
+source_ddr, source_spl = mod._paired(source)
+rec_ddr, rec_spl = mod._paired(prepared)
+if source_ddr != rec_ddr or mod._sha(source_ddr) != doc["source_ddr_sha256"]:
+    raise SystemExit("DDR payload does not match the source backup")
+source_payload = source_spl[0]["payload"]
+rec_payload = rec_spl[0]["payload"]
+if mod.SPL_BANNER.encode() not in source_payload[:mod.DTB_OFF]:
+    raise SystemExit("source backup is a different SPL build")
+if source_payload[:mod.DTB_OFF] != rec_payload[:mod.DTB_OFF]:
+    raise SystemExit("recovery image changed SPL executable bytes")
+if mod._sha(source_payload[:mod.DTB_OFF]) != doc["executable_sha256"]:
+    raise SystemExit("source executable sha does not match the manifest")
+blob = mod._fdt(rec_payload)
+_prop, order = mod._boot_order(blob)
+if order != [mod.RIGHT_SLOT]:
+    if len(order) != 1:
+        raise SystemExit("recovery boot order has an extra boot device")
+    raise SystemExit("recovery boot order is not the right-hand slot")
+derived = mod.derive_bytes(source)
+if derived != prepared or mod._sha(derived) != doc["recovery_sha256"]:
+    raise SystemExit("prepared recovery image is not the derivative of the source backup")
+boot = boot.rstrip("/")
+try:
+    fat = mod._load(boot + "/" + name)
+except OSError:
+    raise SystemExit("FAT source backup is missing")
+if fat != source or mod._sha(fat) != doc["source_sha256"]:
+    raise SystemExit("FAT source backup does not match the source")
+fat_man = boot + "/preloader-recovery-manifest.json"
+try:
+    fat_raw = open(fat_man, encoding="utf-8").read()
+except OSError:
+    raise SystemExit("FAT recovery manifest is missing")
+try:
+    fat_doc = json.loads(fat_raw)
+except (UnicodeError, json.JSONDecodeError):
+    raise SystemExit("FAT recovery manifest does not match")
+if fat_doc != doc:
+    raise SystemExit("FAT recovery manifest does not match")
+note_path = boot + "/" + name[:-4] + ".txt"
+try:
+    note = open(note_path, encoding="utf-8").read()
+except (OSError, UnicodeError):
+    raise SystemExit("recovery note is missing")
+if doc["source_sha256"] not in note or "2097152" not in note:
+    raise SystemExit("recovery note does not identify the source")
+if "Miyoo Flip" not in note and "my355" not in note:
+    raise SystemExit("recovery note does not identify the device")
+if "2207:350a" not in note:
+    raise SystemExit("recovery note does not name the xrock prerequisite")
+command = "xrock flash write 0 " + name
+if command not in note:
+    raise SystemExit("recovery note does not name the xrock command")
+sys.stdout.write(rec_path + "\n" + doc["source_sha256"] + "\n")
+PY
+}
+
 publish_boot() {
 	src=$1
 	name=$2
@@ -596,6 +710,46 @@ cmd_disarm_recovery() {
 	critical_failure disarm
 }
 
+# Install the recovery image already derived from the live source.
+# Binding, including the FAT copies, finishes before save_current.
+# save_current then preserves that source as the rollback image.
+cmd_arm_recovery() {
+	prepare
+	require_boot_readonly
+	live=$(mktemp)
+	read_live "$live"
+	validate_image "$live"
+	if [ ! -f "$(manifest_path)" ]; then
+		rm -f "$live"
+		die "recovery manifest is missing"
+	fi
+	if ! info=$(arm_bind "$(manifest_path)" "$live" "$(current_dir)" "$(recovery_dir)" "$(boot_dir)"); then
+		rm -f "$live"
+		die "recovery arming refused"
+	fi
+	rm -f "$live"
+	target=$(printf '%s\n' "$info" | sed -n '1p')
+	want=$(printf '%s\n' "$info" | sed -n '2p')
+	[ -f "$target" ] || die "prepared recovery image is missing"
+	save_current
+	got=$(sha_file "$CURRENT")
+	if [ "$got" != "$want" ] || ! cmp -s "$CURRENT" "$(boot_dir)/preloader-current-$want.img"; then
+		die "saved current image is not the source"
+	fi
+	if write_and_verify "$target"; then
+		act "READBACK target ok"
+		log "conditional recovery preloader installed and verified"
+		log "device was not rebooted"
+		return 0
+	fi
+	log "arm write failed"
+	if rollback_current; then
+		log "Arm failed; source preloader restored and verified."
+		exit 3
+	fi
+	critical_failure arm
+}
+
 cmd_erase() {
 	prepare
 	save_current
@@ -627,9 +781,10 @@ case "${1:-}" in
 	restore) cmd_restore ;;
 	erase-preloader) cmd_erase ;;
 	prepare-recovery) cmd_prepare_recovery ;;
+	arm-recovery) cmd_arm_recovery ;;
 	disarm-recovery) cmd_disarm_recovery ;;
 	*)
-		log "usage: zlyme-preloader status|status-machine|restore|erase-preloader|prepare-recovery|disarm-recovery"
+		log "usage: zlyme-preloader status|status-machine|restore|erase-preloader|prepare-recovery|arm-recovery|disarm-recovery"
 		exit 2
 		;;
 esac
