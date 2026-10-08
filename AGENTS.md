@@ -102,6 +102,7 @@ These were replaced. Do not revive them.
 - KNULLI/Batocera `/userdata` paths and NextUI `/mnt/SDCARD/.userdata/shared` paths. `/userdata` does not exist on the read-only root. `/mnt/SDCARD` is a symlink to `/storage`, so a copied `.userdata` path silently writes onto the OS card. Persistent configuration is `/storage/.config/<owner>`. NextUI's own state is `/storage/.config/nextui/shared` and `/storage/.config/nextui/my355`.
 - A permanent compositor. Weston runs for one application at a time through `zlyme-weston-run`. WestonPack belongs to PortMaster.
 - Patching `/boot/zlyme` in place. A delta reconstructs a new root under `/storage/.update/reconstruct`, and initramfs copies the verified `pending/zlyme` on reboot. `/boot` stays read-only at runtime. Writes go through `zlyme-boot-write`.
+- Software reboot to MASKROM: `zlyme-maskrom`, the boot-FAT request, and the U-Boot consumer that was meant to call `rbrom`. MASKROM recovery is the one-entry recovery preloader. Erasing the preloader is not that path. Production U-Boot patches stay `001`–`007`. The diagnostic boot-delay patch and the MASKROM-request patches are not in the stack.
 
 ## Device-boundary rule
 

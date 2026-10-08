@@ -6,7 +6,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. The unpublished `zlyme44.1` fixes stay listed here until that release is published. The `zlyme44` notes below stay the description of the shipped release.
+Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published release, and it is not marked Latest. The unpublished `zlyme44.1` fixes stay listed here until that release is published. The `zlyme44` notes below stay the description of the shipped release.
 
 ### Added
 
@@ -17,6 +17,7 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 ### Changed
 
 - A failed stock preloader restore rolls back to the preloader that was installed before the attempt. A failed erase does the same. Erasing the preloader does not by itself enter USB MASKROM when a bootable card is inserted.
+- The development card's diagnostic U-Boot countdown is gone. The installed bootloader does not wait for a key.
 - Preloader status shows whether the internal image is the normal preloader or a recovery preloader, whether recovery is ready or armed, and whether the source backup and stock restore are available. It does not show hashes.
 - OpenBOR keeps saves in `Saves/OPENBOR`. Its paks, screenshots, and engine logs stay out of the ROM folder.
 - RPG Maker XP, VX, and Ace open a `.zip`, `.7z`, or `.mkxpz` whose project is in one top folder, and still open a project that already sits at the archive root. The extensions on the system list match the core: `.ini`, `.json`, `.rxproj`, `.rvproj`, `.rvproj2`, `.mkxpz`, `.zip`, `.7z`.
@@ -27,6 +28,7 @@ Unreleased work is `zlyme44.2`. It is not hardware-accepted and not published. T
 
 ### Fixed
 
+- An update archive is accepted only when listing the whole archive succeeds and the required files are present. A truncated archive that prints those names and then fails is rejected before it is extracted.
 - 32-bit Windows programs can load Wine's builtin libraries from the exFAT prefix. `prepare` creates `drive_c` and copies the libraries wineboot cannot symlink onto that filesystem.
 - Suspend no longer reads or writes the RTC wake alarm. The 24-hour alarm that `zlyme44` programmed is gone, and an alarm set on purpose is left in place.
 - `zlyme-update uboot` writes the bootloader only on the right-hand card, and only when `/boot` is that card's boot partition and the disk uses 512-byte logical sectors. It refuses a target it cannot prove.
