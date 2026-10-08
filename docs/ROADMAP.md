@@ -1992,6 +1992,8 @@ NAND cycle recorded 2026-10-08, not acceptance. On the live `fd57d042a890` root,
 
 Hardware paths recorded 2026-10-08, not closure. With the recovery image installed, a known-good Zlyme card in the right slot booted Zlyme after `Trying to boot from MMC2`. With that card removed, the Nov 02 SPL tried only MMC2, failed voltage select (`mmc_init: -95`), printed `SPL: failed to boot from all boot devices`, and reset to the boot ROM. The host saw `2207:350a`. An `xrock` RAM usbplug used afterward identified the NAND and did not write it. The two hashes are that unit's pair. Phase 11C is not hardware-accepted. The development card still has diagnostic `CONFIG_BOOTDELAY=5` until the production U-Boot from the closure candidate is installed. That install is not part of the source closure.
 
+Production U-Boot recorded 2026-10-08, not acceptance. `zlyme-update uboot` wrote idbloader `2312107bacc63dacb00f333cec93852d46620ddf015ca054bb767e3adf163719` and FIT `38dd59c86c8f4f7745a38cd555a73c2dfe3378ff275ff13ad3565d1bef29b6ee`. Raw readback of those files at 32 KiB and 8 MiB matched. That build has `CONFIG_BOOTDELAY=-2`. Linux booted afterward. The missing UART transcript is not a remaining failure. On the installed root `fdb123fb053f1be82fb2af72ed5dcf43739ffb2aab7df8878afef46439b01606`, `zlyme-preloader status-machine` exited 2 with no output and Preloader status left Settings. Phase 11C stays open until the next candidate's status page is checked on the device. Do not repeat the NAND, right-slot, or MASKROM tests for that check.
+
 ### 11D — zlyme44.2 release and a real partial OTA
 
 Prerequisite: `zlyme44.1` is a published stable release with a valid `release-manifest.json`.
@@ -2001,8 +2003,8 @@ Closure order: finish 11A–11C; one final local 44.2 candidate; maintainer hard
 ### Gate
 
 - 11A, 11B, and 11C each have their own candidate and the checks named above.
-- 11C is not hardware-accepted. The 2026-10-07 restore report is positive backend evidence. A 2026-10-08 arm and disarm cycle read back the recovery image and then the original source. The same recovery image booted Zlyme from the right slot and, with that card removed, reset to Rockchip download mode (`2207:350a`) after an MMC2-only SPL failure. Erase is not USB MASKROM. The boot-file MASKROM request was removed. Closure still needs the candidate OTA and the production `CONFIG_BOOTDELAY=-2` U-Boot installed on the card. That install is not done.
-- Before Phase 11C closure, the development card's diagnostic `CONFIG_BOOTDELAY=5` U-Boot returns to production `CONFIG_BOOTDELAY=-2`.
+- 11C is not hardware-accepted. The 2026-10-07 restore report is positive backend evidence. A 2026-10-08 arm and disarm cycle read back the recovery image and then the original source. The same recovery image booted Zlyme from the right slot and, with that card removed, reset to Rockchip download mode (`2207:350a`) after an MMC2-only SPL failure. Erase is not USB MASKROM. The boot-file MASKROM request was removed. The production `CONFIG_BOOTDELAY=-2` U-Boot is installed: the raw card bytes matched that build and Linux booted. The remaining device check is `status-machine` and the Recovery page on the next candidate. Do not repeat arm, disarm, or MASKROM.
+- The development card's diagnostic `CONFIG_BOOTDELAY=5` U-Boot was replaced by that production image. Source stays `CONFIG_BOOTDELAY=-2`.
 - 11D does not publish `zlyme44.2` before the clean GitHub build, and it does not write release notes before the partial-OTA gate.
 - `zlyme44.1-maintenance` stays at `6a398b311310246ef6a5515ed72805c6f58d787d` until 44.1 publication work, which is separate from this phase.
 
