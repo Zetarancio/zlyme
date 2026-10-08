@@ -1,28 +1,34 @@
-preloader-stock.img is not part of this package.
+preloader-stock.img is an unmodified known-stock Miyoo Flip preloader image.
+It is preserved so Zlyme can restore that exact stock revision when the
+installed preloader is the apommel-patched counterpart this file was paired
+with. Zlyme does not synthesize, patch, or regenerate this image.
 
-The stock SPI preloader is Miyoo vendor firmware: DDR init and the SPL, 2 MiB.
-The script and checker in this package are MIT. That license does not cover
-the vendor image, and this package does not install it.
+The known copy comes from the Miyoo Flip hardware-research tree, through
+the apommel multiboot app that carried it:
 
-Origin recorded by the hardware wiki, not a file shipped here:
   Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering
-  commit c126d3235face9ddca5bf021258a84758dca543c
-  preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img
   introducing commit 8ef495f5711ce13645e9c68df63b7d7a9934cf7e
-  SHA-256 dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
-  historical MD5 1d525e6e6c89bd788b5245c90c97833b
+  path preloader-stock-rocknix/App/apommel-multiboot/preloader-stock.img
+  wiki commit c126d3235face9ddca5bf021258a84758dca543c
 
-The wiki says those bytes match the first 2 MiB of spi_20241119160817.img.
-It also says more than one stock SPL build exists. The known patched
-counterpart, fingerprint only, is preloader-patched.img, SHA-256
-ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d.
+SHA-256:
+  dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
+Historical MD5:
+  1d525e6e6c89bd788b5245c90c97833b
 
-Redistribution remains unspecified. The wiki records where the bytes came
-from. It does not contain a license, a copyright grant, or permission from
-Miyoo to redistribute this preloader. A sentence about a shared DRAM blob
-matching public rkbin is not a license for the image.
+The hardware wiki records this file as byte-identical to the first 2 MiB of
+spi_20241119160817.img. It also records that more than one stock SPL build
+exists, so this file is that known revision, not every Miyoo preloader.
+The patched counterpart is not installed. Its fingerprint is
+preloader-patched.img, SHA-256
+ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d,
+historical MD5 c2009762b1704d5ed2ebbfa4346e6ecc.
 
-Zlyme therefore does not ship the file and does not use it as a restore
-fallback. Restore stock writes only this unit's /boot/mtd5-original-<sha256>.img.
-If that backup is absent, stock restore is unavailable. Arm and disarm do
-not need it.
+The script and checker in this package are MIT. This image is Miyoo vendor
+firmware. This record identifies the bytes and where the known copy came
+from. It is not a license grant.
+
+zlyme-preloader may select this file only when no per-device
+mtd5-original-<sha256>.img exists and the installed preloader matches that
+patched fingerprint, and only after the structure check and the DDR check
+that runs before a NAND write.

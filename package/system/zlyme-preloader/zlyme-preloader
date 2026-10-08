@@ -21,6 +21,10 @@ MIN_BATTERY=25
 WRITE_ATTEMPTS=3
 IMAGE_PY=/usr/lib/zlyme/preloader_image.py
 CURRENT=
+# Known pair from the hardware wiki, commit c126d3235face9ddca5bf021258a84758dca543c,
+# path preloader-stock-rocknix/App/apommel-multiboot/. The patched file is not installed.
+STOCK_SHA=dfdd7d20d6fd3beb18350dcf8fa58740b40b4baaf39467d45076f949053a2922
+PATCHED_SHA=ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d
 # Status facts live in this shell. collect_status fills them. Writers do not
 # read them, and nothing here is taken from the human log.
 DEV=
@@ -184,6 +188,43 @@ ddr_compatible() {
 
 sha_file() {
 	sha256sum "$1" | awk '{print $1}'
+}
+
+# Test fixtures may point these at stand-ins. A normal boot ignores them.
+expected_stock_sha() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK_SHA:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_STOCK_SHA"
+		return
+	fi
+	printf '%s\n' "$STOCK_SHA"
+}
+
+expected_patched_sha() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_PATCHED_SHA:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_PATCHED_SHA"
+		return
+	fi
+	printf '%s\n' "$PATCHED_SHA"
+}
+
+stock_path() {
+	if [ "$TEST" = 1 ] && [ -n "${ZLYME_PRELOADER_STOCK:-}" ]; then
+		printf '%s\n' "$ZLYME_PRELOADER_STOCK"
+		return
+	fi
+	p /usr/share/zlyme/recovery/preloader-stock.img
+}
+
+# 0 only for the exact known patched image plus the matching stock file,
+# including the DDR payload that a later write would also require.
+stock_fallback_ok() {
+	live_file=$1
+	[ "$(sha_file "$live_file")" = "$(expected_patched_sha)" ] || return 1
+	stock=$(stock_path)
+	[ -f "$stock" ] || return 1
+	[ "$(sha_file "$stock")" = "$(expected_stock_sha)" ] || return 1
+	image_ok "$stock" || return 1
+	python3 "$IMAGE_PY" ddr "$live_file" "$stock" || return 1
 }
 
 boot_dir() {
@@ -357,7 +398,7 @@ find_original() {
 	fi
 	set -- "$dir"/mtd5-original-*.img
 	if [ ! -e "$1" ]; then
-		ORIG_ERROR="No original preloader backup. Stock restore is unavailable."
+		ORIG_ERROR="no original preloader backup"
 		return 1
 	fi
 	if [ "$#" -ne 1 ]; then
@@ -548,7 +589,6 @@ collect_status() {
 	else
 		ST_BACKUP=unavailable
 		ST_BACKUP_REASON=${ORIG_ERROR:-original preloader backup was not usable}
-		ST_FALLBACK=incompatible
 		ST_STOCK=unavailable
 	fi
 	live=$(mktemp)
@@ -560,7 +600,6 @@ collect_status() {
 	ST_PRELOADER=valid
 	state=$(python3 "$IMAGE_PY" recovery-state \
 		"$(manifest_path)" "$live" "$(current_dir)" "$(recovery_dir)" 2>/dev/null || true)
-	rm -f "$live"
 	ST_MODE=
 	ST_RECOVERY=
 	ST_SOURCE=
@@ -576,6 +615,16 @@ EOF
 	[ -n "$ST_MODE" ] || ST_MODE=unknown
 	[ -n "$ST_RECOVERY" ] || ST_RECOVERY=invalid
 	[ -n "$ST_SOURCE" ] || ST_SOURCE=missing
+	if [ "$ST_BACKUP" != "available" ]; then
+		if [ "$ST_BACKUP_REASON" = "no original preloader backup" ] && stock_fallback_ok "$live"; then
+			ST_FALLBACK=compatible
+			ST_STOCK=available
+		else
+			ST_FALLBACK=incompatible
+			ST_STOCK=unavailable
+		fi
+	fi
+	rm -f "$live"
 	return 0
 }
 
@@ -586,6 +635,11 @@ cmd_status() {
 		log "original backup available: $ST_ORIGINAL"
 	else
 		log "original backup unavailable: $ST_BACKUP_REASON"
+		if [ "$ST_FALLBACK" = "compatible" ]; then
+			log "stock fallback compatible"
+		else
+			log "stock fallback not compatible"
+		fi
 	fi
 }
 
@@ -608,15 +662,52 @@ cmd_status_machine() {
 	printf 'charger=%s\n' "$ST_CHARGER"
 }
 
+# Prints one image path. A per-device backup wins. The bundled stock
+# file is used only when that backup is absent and the live preloader
+# is the one known patched image. Every other reason still refuses.
+select_stock_fallback() {
+	tmp=$(mktemp)
+	read_live "$tmp" || exit 1
+	live=$(sha_file "$tmp")
+	rm -f "$tmp"
+	if [ "$live" != "$(expected_patched_sha)" ]; then
+		die "Original preloader backup is unavailable. The bundled stock fallback does not exactly match this preloader revision. Restore refused."
+	fi
+	stock=$(stock_path)
+	if [ ! -f "$stock" ]; then
+		die "bundled stock preloader is missing"
+	fi
+	got=$(sha_file "$stock")
+	if [ "$got" != "$(expected_stock_sha)" ]; then
+		die "bundled stock preloader hash does not match"
+	fi
+	validate_image "$stock"
+	log "using bundled stock fallback"
+	printf '%s\n' "$stock"
+}
+
+select_restore_image() {
+	if find_original; then
+		printf '%s\n' "$ORIG"
+		return 0
+	fi
+	if [ "$ORIG_ERROR" != "no original preloader backup" ]; then
+		die "${ORIG_ERROR:-original preloader backup was not usable}"
+	fi
+	select_stock_fallback
+}
+
 cmd_restore() {
 	prepare_write
-	find_original || die "${ORIG_ERROR:-original preloader backup was not usable}"
-	orig=$ORIG
+	orig=$(select_restore_image)
 	save_current
 	ddr_compatible "$CURRENT" "$orig"
 	if write_and_verify "$orig"; then
 		act "READBACK target ok"
-		log "restored original preloader"
+		case "$orig" in
+			*/preloader-stock.img) log "restored stock fallback" ;;
+			*) log "restored original preloader" ;;
+		esac
 		return 0
 	fi
 	log "restore write failed"
