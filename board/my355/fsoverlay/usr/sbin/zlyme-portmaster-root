@@ -3,11 +3,12 @@
 # An empty choice is the main card. An explicit missing disk does not
 # fall back to /storage. Nothing is moved when the choice changes.
 #
-# ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE, and ZLYME_PM_RUN are test seams.
+# ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE, and ZLYME_PM_STORAGE are test seams.
+# ZLYME_PM_STORAGE defaults to /storage. It does not select a second library.
 
 FLAG=${ZLYME_PM_FLAG:-${ZLYME_CFG:-/storage/.config}/zlyme/portmaster-root}
 LIBS=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
-RUN=${ZLYME_PM_RUN:-/run/portmaster}
+STORAGE=${ZLYME_PM_STORAGE:-/storage}
 
 selected() {
 	if [ -s "$FLAG" ]; then
@@ -17,7 +18,7 @@ selected() {
 
 is_known() {
 	root=$1
-	[ "$root" = /storage ] && return 0
+	[ "$root" = "$STORAGE" ] && return 0
 	[ -f "$LIBS" ] || return 1
 	grep -Fxq -- "$root" "$LIBS"
 }
@@ -28,7 +29,7 @@ q() {
 
 export_hm() {
 	sel=$(selected)
-	root=/storage
+	root=$STORAGE
 	if [ -n "$sel" ]; then
 		root=$sel
 		if [ ! -d "$root" ]; then
@@ -43,31 +44,18 @@ export_hm() {
 	printf 'export HM_SCRIPTS_DIR=%s\n' "$(q "$ports")"
 }
 
-link_libs() {
-	sel=$(selected)
-	root=/storage
-	if [ -n "$sel" ]; then
-		root=$sel
-		[ -d "$root" ] || return 1
-	fi
-	dest="$root/Roms/.portmaster/PortMaster/libs"
-	mkdir -p "$dest" "$RUN" || return 1
-	ln -sfn "$dest" "$RUN/libs"
-}
-
 case "${1:-}" in
 	export) export_hm ;;
-	link-libs) link_libs ;;
 	get)
 		sel=$(selected)
-		printf '%s\n' "${sel:-/storage}"
+		printf '%s\n' "${sel:-$STORAGE}"
 		;;
 	list)
-		printf '%s\n' /storage
+		printf '%s\n' "$STORAGE"
 		if [ -f "$LIBS" ]; then
 			while IFS= read -r root; do
 				[ -n "$root" ] || continue
-				[ "$root" = /storage ] && continue
+				[ "$root" = "$STORAGE" ] && continue
 				printf '%s\n' "$root"
 			done < "$LIBS"
 		fi
@@ -79,14 +67,14 @@ case "${1:-}" in
 			exit 1
 		}
 		mkdir -p "$(dirname "$FLAG")" || exit 1
-		if [ "$root" = /storage ]; then
+		if [ "$root" = "$STORAGE" ]; then
 			rm -f "$FLAG"
 		else
 			printf '%s\n' "$root" > "$FLAG"
 		fi
 		;;
 	*)
-		echo "usage: $0 {export|link-libs|get|list|set ROOT}" >&2
+		echo "usage: $0 {export|get|list|set ROOT}" >&2
 		exit 2
 		;;
 esac

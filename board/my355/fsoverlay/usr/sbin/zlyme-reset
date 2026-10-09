@@ -98,11 +98,35 @@ factory_reset() {
 	: > "$zlyme/factory-reset"
 }
 
+# Removes the selected PortMaster installation and its Zlyme config.
+# Installed ports stay. An explicit missing disk is not redirected.
+portmaster_reset() {
+	bin=${ZLYME_PM_ROOT_BIN:-/usr/sbin/zlyme-portmaster-root}
+	storage=${ZLYME_PM_STORAGE:-${root:+$root/storage}}
+	storage=${storage:-/storage}
+	hm=""
+	tools=""
+	ZLYME_CFG=$cfg
+	ZLYME_PM_STORAGE=$storage
+	export ZLYME_CFG ZLYME_PM_STORAGE
+	if ! hm=$("$bin" export); then
+		echo "PortMaster disk is not inserted" >&2
+		return 1
+	fi
+	eval "$hm"
+	tools=${HM_TOOLS_DIR:-}
+	[ -n "$tools" ] || return 1
+	rm -rf "$tools/PortMaster"
+	rm -rf "$cfg/portmaster-home" "$cfg/PortMaster"
+	rm -rf "$storage/PortMaster"
+}
+
 case "${1:-}" in
 	settings) settings_reset ;;
 	factory) factory_reset ;;
+	portmaster) portmaster_reset ;;
 	*)
-		echo "usage: $0 {settings|factory}" >&2
+		echo "usage: $0 {settings|factory|portmaster}" >&2
 		exit 2
 		;;
 esac

@@ -1,0 +1,310 @@
+#!/bin/sh
+# One PortMaster lifecycle: selected library, live tree, Zlyme integration,
+# and the /run/portmaster/PortMaster link.
+#
+# The squashfs copy is the seed. The selected library's
+# Roms/.portmaster/PortMaster directory is the only live installation.
+# A later prepare does not replace a valid live tree from the seed.
+#
+# Test seams: ZLYME_PM_SEED, ZLYME_PM_OVERLAY, ZLYME_PM_RUN, ZLYME_PM_ROOT_BIN,
+# ZLYME_PM_LEGACY, ZLYME_PM_MIN_FREE_KB. Library selection stays in
+# zlyme-portmaster-root (ZLYME_PM_STORAGE, ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE).
+
+set -eu
+
+stage=""
+backup=""
+cleanup_tmp() {
+	status=$?
+	if [ -n "$stage" ]; then
+		rm -rf "$stage"
+	fi
+	if [ -n "$backup" ]; then
+		rm -rf "$backup"
+	fi
+	trap - EXIT
+	exit "$status"
+}
+trap cleanup_tmp EXIT
+
+seed=${ZLYME_PM_SEED:-/usr/share/portmaster/PortMaster.zip}
+overlay=${ZLYME_PM_OVERLAY:-/usr/share/portmaster/zlyme}
+run=${ZLYME_PM_RUN:-/run/portmaster}
+rootbin=${ZLYME_PM_ROOT_BIN:-/usr/sbin/zlyme-portmaster-root}
+cfg=${ZLYME_CFG:-/storage/.config}
+
+die() {
+	echo "zlyme-portmaster-prepare: $*" >&2
+	exit 1
+}
+
+engine_ok() {
+	d=$1
+	[ -f "$d/pugwash" ] && [ -s "$d/pugwash" ] || return 1
+	[ -f "$d/harbourmaster" ] && [ -s "$d/harbourmaster" ] || return 1
+	return 0
+}
+
+pylibs_ok() {
+	[ -d "$1/pylibs/harbourmaster" ] && [ ! -L "$1/pylibs" ]
+}
+
+# A symlink here is the old /run/portmaster/libs layout. Do not follow it.
+materialize_dir() {
+	path=$1
+	if [ -L "$path" ] || [ -f "$path" ]; then
+		rm -f "$path"
+	fi
+	mkdir -p "$path"
+}
+
+merge_keep() {
+	old=$1
+	new=$2
+	name=""
+	src=""
+	for name in libs runtimes config themes; do
+		src=$old/$name
+		if [ ! -d "$src" ] || [ -L "$src" ]; then
+			continue
+		fi
+		mkdir -p "$new/$name"
+		cp -a "$src/." "$new/$name/"
+	done
+}
+
+expand_pylibs() {
+	d=$1
+	tmp=""
+	if [ -f "$d/pylibs.zip" ]; then
+		tmp=$(mktemp -d "$d/.pylibs.XXXXXX") || return 1
+		if ! unzip -q -o "$d/pylibs.zip" -d "$tmp"; then
+			rm -rf "$tmp"
+			die "PortMaster pylibs could not be extracted"
+		fi
+		if [ ! -d "$tmp/pylibs/harbourmaster" ]; then
+			rm -rf "$tmp"
+			die "PortMaster pylibs could not be extracted"
+		fi
+		rm -rf "$d/pylibs" "$d/exlibs"
+		mv "$tmp/pylibs" "$d/pylibs"
+		if [ -d "$tmp/exlibs" ]; then
+			mv "$tmp/exlibs" "$d/exlibs"
+		fi
+		rm -rf "$tmp"
+		rm -f "$d/pylibs.zip"
+	fi
+	if ! pylibs_ok "$d"; then
+		die "PortMaster installation is incomplete"
+	fi
+	if [ -f "$d/pylibs/resources/NotoSans.tar.xz" ] &&
+		[ ! -f "$d/pylibs/resources/NotoSansJP-Regular.ttf" ]; then
+		tar -C "$d/pylibs/resources" -xf "$d/pylibs/resources/NotoSans.tar.xz" ||
+			die "PortMaster fonts could not be extracted"
+		rm -f "$d/pylibs/resources/NotoSans.tar.xz"
+		mkdir -p "$d/resources"
+		cp -f "$d/pylibs/resources/"*.ttf "$d/resources/" 2>/dev/null || true
+		rm -f "$d/resources/do_init"
+	fi
+}
+
+apply_integration() {
+	d=$1
+	[ -f "$overlay/control.txt" ] || die "Zlyme PortMaster integration is missing"
+	[ -f "$overlay/mod_Zlyme.txt" ] || die "Zlyme PortMaster integration is missing"
+	[ -f "$overlay/patch-hardware.py" ] || die "Zlyme PortMaster integration is missing"
+	[ -f "$overlay/inject-scheme.py" ] || die "Zlyme PortMaster integration is missing"
+	[ -f "$overlay/select-scheme.py" ] || die "Zlyme PortMaster integration is missing"
+	command -v python3 >/dev/null 2>&1 || die "python3 is missing"
+	expand_pylibs "$d"
+	if ! python3 "$overlay/patch-hardware.py" "$d/pylibs/harbourmaster/hardware.py"; then
+		die "PortMaster Zlyme integration could not be applied"
+	fi
+	if ! python3 "$overlay/inject-scheme.py" "$d/pylibs/default_theme/theme.json"; then
+		die "PortMaster Zlyme integration could not be applied"
+	fi
+	cp -f "$overlay/control.txt" "$d/control.txt"
+	cp -f "$overlay/mod_Zlyme.txt" "$d/mod_Zlyme.txt"
+	materialize_dir "$d/libs"
+	materialize_dir "$d/runtimes"
+	materialize_dir "$d/config"
+	materialize_dir "$d/themes"
+	python3 "$overlay/select-scheme.py" "$d/config/config.json" "$d/themes" ||
+		die "PortMaster Zlyme integration could not be applied"
+	mkdir -p "$cfg/PortMaster"
+	cp -f "$overlay/control.txt" "$cfg/PortMaster/control.txt"
+	if [ ! -s "$cfg/PortMaster/gamecontrollerdb.txt" ] && [ -s "$d/gamecontrollerdb.txt" ]; then
+		cp -f "$d/gamecontrollerdb.txt" "$cfg/PortMaster/gamecontrollerdb.txt"
+	fi
+	if [ ! -e "$cfg/PortMaster/mapper.txt" ]; then
+		: > "$cfg/PortMaster/mapper.txt"
+	fi
+	# Best effort. exFAT may ignore the mode. Validity does not depend on it.
+	chmod -R a+x "$d" 2>/dev/null || true
+}
+
+free_ok() {
+	dir=$1
+	need=${ZLYME_PM_MIN_FREE_KB:-}
+	avail=""
+	if [ -z "$need" ]; then
+		[ -s "$seed" ] || die "PortMaster seed is missing"
+		need=$(( $(wc -c < "$seed") / 1024 * 4 + 20480 ))
+	fi
+	avail=$(df -k "$dir" 2>/dev/null | awk 'NR==2 { print $4 }')
+	if [ -z "${avail:-}" ] || [ "$avail" -lt "$need" ]; then
+		die "Not enough free space for PortMaster"
+	fi
+}
+
+publish_tree() {
+	stage=$1
+	new=$stage/PortMaster
+	name=""
+	engine_ok "$new" || die "PortMaster seed is not a PortMaster tree"
+	for name in libs runtimes config themes; do
+		materialize_dir "$new/$name"
+	done
+	if [ -d "$live" ] && [ ! -L "$live" ]; then
+		merge_keep "$live" "$new"
+	fi
+	apply_integration "$new"
+	backup=$(mktemp -d "$tools/.pm-old.XXXXXX")
+	if [ -d "$live" ]; then
+		if ! mv "$live" "$backup/old"; then
+			rm -rf "$stage" "$backup"
+			die "PortMaster seed could not be installed"
+		fi
+	fi
+	if ! mv "$new" "$live"; then
+		if [ -d "$backup/old" ]; then
+			mv "$backup/old" "$live" || true
+		fi
+		rm -rf "$stage" "$backup"
+		stage=""
+		backup=""
+		die "PortMaster seed could not be installed"
+	fi
+	rm -rf "$stage" "$backup"
+	stage=""
+	backup=""
+}
+
+install_from_seed() {
+	stage=""
+	[ -s "$seed" ] || die "PortMaster seed is missing"
+	free_ok "$tools"
+	stage=$(mktemp -d "$tools/.pm-stage.XXXXXX") || die "PortMaster seed could not be installed"
+	if ! unzip -q "$seed" -d "$stage"; then
+		rm -rf "$stage"
+		die "PortMaster seed could not be installed"
+	fi
+	if [ ! -d "$stage/PortMaster" ]; then
+		rm -rf "$stage"
+		die "PortMaster seed is not a PortMaster tree"
+	fi
+	publish_tree "$stage"
+}
+
+install_from_legacy() {
+	leg=$1
+	stage=""
+	free_ok "$tools"
+	stage=$(mktemp -d "$tools/.pm-stage.XXXXXX") || die "PortMaster could not be migrated"
+	mkdir -p "$stage/PortMaster"
+	if ! cp -a "$leg/." "$stage/PortMaster/"; then
+		rm -rf "$stage"
+		die "PortMaster could not be migrated"
+	fi
+	publish_tree "$stage"
+}
+
+legacy_engine() {
+	if [ -f "$legacy/PortMaster/pugwash" ] && [ -s "$legacy/PortMaster/pugwash" ]; then
+		printf '%s\n' "$legacy/PortMaster"
+		return 0
+	fi
+	if [ -f "$legacy/pugwash" ] && [ -s "$legacy/pugwash" ]; then
+		printf '%s\n' "$legacy"
+		return 0
+	fi
+	return 1
+}
+
+retire_legacy() {
+	leg=""
+	[ -n "$legacy" ] || return 0
+	[ -e "$legacy" ] || return 0
+	case "$legacy" in
+		"$live"|"$live"/*) return 0 ;;
+	esac
+	if [ -d "$legacy/PortMaster" ] && [ ! -L "$legacy/PortMaster" ]; then
+		merge_keep "$legacy/PortMaster" "$live"
+	fi
+	if [ -d "$legacy" ] && [ ! -L "$legacy" ]; then
+		merge_keep "$legacy" "$live"
+	fi
+	rm -rf "$legacy"
+}
+
+validate_live() {
+	engine_ok "$live" || die "PortMaster installation is incomplete"
+	pylibs_ok "$live" || die "PortMaster installation is incomplete"
+	[ -f "$live/control.txt" ] || die "PortMaster installation is incomplete"
+	[ -f "$live/mod_Zlyme.txt" ] || die "PortMaster installation is incomplete"
+	if [ ! -d "$live/libs" ] || [ -L "$live/libs" ]; then
+		die "PortMaster installation is incomplete"
+	fi
+	if [ ! -d "$live/runtimes" ] || [ -L "$live/runtimes" ]; then
+		die "PortMaster installation is incomplete"
+	fi
+	[ -f "$run/PortMaster/pugwash" ] || die "PortMaster installation is incomplete"
+}
+
+load_hm() {
+	hm=$("$rootbin" export) || exit 1
+	eval "$hm"
+	[ -n "${HM_TOOLS_DIR:-}" ] || die "PortMaster library is not selected"
+	[ -n "${HM_PORTS_DIR:-}" ] || die "PortMaster library is not selected"
+	tools=$HM_TOOLS_DIR
+	live=$tools/PortMaster
+	storage=${ZLYME_PM_STORAGE:-/storage}
+	legacy=${ZLYME_PM_LEGACY:-$storage/PortMaster}
+}
+
+prepare() {
+	leg=""
+	load_hm
+	mkdir -p "$tools" || die "PortMaster disk is not writable"
+	if [ -L "$live" ]; then
+		rm -f "$live"
+	fi
+	if engine_ok "$live"; then
+		apply_integration "$live"
+	else
+		leg=$(legacy_engine || true)
+		if [ -n "$leg" ]; then
+			install_from_legacy "$leg"
+		else
+			install_from_seed
+		fi
+	fi
+	retire_legacy
+	materialize_dir "$live/libs"
+	materialize_dir "$live/runtimes"
+	mkdir -p "$run"
+	ln -sfn "$live" "$run/PortMaster"
+	validate_live
+}
+
+case "${1:-}" in
+	""|prepare) prepare ;;
+	export)
+		prepare
+		"$rootbin" export
+		;;
+	*)
+		echo "usage: $0 [export]" >&2
+		exit 2
+		;;
+esac

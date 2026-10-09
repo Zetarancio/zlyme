@@ -14,7 +14,7 @@
 # a stable release only when publish_release is true. The default is a
 # candidate build: no GitHub release, and /releases/latest stays as it is.
 # A published release uploads the full OTA, its sha256, zlyme.img,
-# release-manifest.json, miyoo355_fw.img and its sha256, the standalone
+# zlyme.img.sha256, release-manifest.json, miyoo355_fw.img and its sha256, the standalone
 # preloader helpers and their sha256 files, and any same-major delta tars
 # the release job verified. None of the miyoo355_fw images are part of the
 # OTA or release-manifest.json. Local builds do not generate deltas.
@@ -148,6 +148,7 @@ jobs:
             output/images/zlyme-my355-*.sha256
             output/images/release-manifest.json
             output/images/zlyme.img
+            output/images/zlyme.img.sha256
             output/images/miyoo355_fw.img
             output/images/miyoo355_fw.img.sha256
             output/images/miyoo355_fw-multiboot.img

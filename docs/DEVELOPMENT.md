@@ -116,6 +116,8 @@ Every package with `SITE_METHOD = local` is in this table. A local package that 
 
 Files that a downloaded package installs from its own package directory are not fingerprinted either, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again.
 
+PortMaster's Buildroot package installs `PortMaster.zip` and the Zlyme integration files. It does not unpack a live tree into the rootfs. The pin is `PORTMASTER_VERSION` in `package/system/portmaster/portmaster.mk`, with the zip hash in `portmaster.hash`. The current pin is the upstream stable release `2026.06.23-0015`. Do not point the package at GitHub `latest`. A newer tag whose release text says beta or alpha is not the stable channel. `zlyme-portmaster-prepare` unpacks the seed on the selected library at first use.
+
 Some inputs sit outside every package fingerprint and are reapplied on every image build: `ZLYME_VERSION`, the `board/my355/*.sh` scripts, and `board/my355/fsoverlay`. Buildroot's `target-finalize` copies the overlay and reruns post-build on every build. The overlay copy does not delete. A file removed from `board/my355/fsoverlay` stays in `output/target` until `post-build.sh` removes it explicitly or the output tree is rebuilt.
 
 The my355 post-image hook extracts the application input path from the newly

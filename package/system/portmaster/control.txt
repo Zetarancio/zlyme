@@ -7,39 +7,37 @@
 #
 # HOME / XDG_* stay on the OS card (nextui-session). PORTS.pak bind-mounts
 # /roms/ports onto that volume's Ports folder for the launch.
+# /opt/system/Tools/PortMaster is the selected library's live tree.
 
 CUR_TTY=/dev/tty0
 
 export directory="${directory:-roms}"
 
-# Port scripts set controlfolder to /opt/system/Tools/PortMaster first.
-# Keep that (image). Do not point at /roms/ports/PortMaster (card self-update).
 if [ -z "${controlfolder:-}" ] || [ ! -d "$controlfolder" ]; then
 	if [ -d /opt/system/Tools/PortMaster ]; then
 		controlfolder=/opt/system/Tools/PortMaster
-	else
-		controlfolder=/usr/share/portmaster/PortMaster
+	elif [ -x /usr/sbin/zlyme-portmaster-prepare ]; then
+		eval "$(/usr/sbin/zlyme-portmaster-prepare export)" || exit 1
+		controlfolder="${HM_TOOLS_DIR}/PortMaster"
 	fi
 fi
 export controlfolder
 
-# HarbourMaster sees /opt/system/Tools and otherwise picks /roms/tools.
-# These are the same paths portmaster-launch uses. libs in this tree is
-# a symlink to $HM_TOOLS_DIR/PortMaster/libs, so a port's
-# $controlfolder/libs/<runtime> is the file runtime_check installs.
-if [ -z "${HM_TOOLS_DIR:-}" ]; then
-	HM_TOOLS_DIR=/storage/Roms/.portmaster
+# Same library zlyme-portmaster-root selected. Do not invent a fallback disk.
+if [ -z "${HM_TOOLS_DIR:-}" ] || [ -z "${HM_PORTS_DIR:-}" ]; then
+	if [ -x /usr/sbin/zlyme-portmaster-prepare ]; then
+		eval "$(/usr/sbin/zlyme-portmaster-prepare export)" || exit 1
+	else
+		echo "PortMaster is not ready" >&2
+		exit 1
+	fi
 fi
 export HM_TOOLS_DIR
-if [ -z "${HM_PORTS_DIR:-}" ]; then
-	HM_PORTS_DIR="/storage/Roms/Ports (PORTS)"
-fi
-export HM_PORTS_DIR
 if [ -z "${HM_SCRIPTS_DIR:-}" ]; then
 	HM_SCRIPTS_DIR=$HM_PORTS_DIR
 fi
-export HM_SCRIPTS_DIR
-mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs"
+export HM_PORTS_DIR HM_SCRIPTS_DIR
+mkdir -p "$HM_PORTS_DIR" "$HM_TOOLS_DIR/PortMaster/libs" "$HM_TOOLS_DIR/PortMaster/runtimes"
 
 # Prefix only. ESUDOKILL / ESUDOKILL2 stay the gptokeyb signal arguments.
 ESUDO=/usr/sbin/zlyme-portmaster-exec

@@ -5,15 +5,20 @@ ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 inject=$ROOT/package/system/portmaster/zlyme-theme/inject-scheme.py
 select=$ROOT/package/system/portmaster/zlyme-theme/select-scheme.py
 launch=$ROOT/package/system/portmaster/portmaster-launch
+prepare=$ROOT/package/system/portmaster/zlyme-portmaster-prepare
 mk=$ROOT/package/system/portmaster/portmaster.mk
 
-if grep -E -q 'mkdir .*themes/Zlyme|cp .*themes/Zlyme' "$launch" "$mk"; then
+if grep -E -q 'mkdir .*themes/Zlyme|cp .*themes/Zlyme' "$launch" "$mk" "$prepare"; then
 	echo "portmaster still installs a standalone Zlyme theme" >&2
 	exit 1
 fi
-grep -q 'themes/Zlyme' "$mk"
-grep -q 'pylibs/default_theme/theme.json' "$mk"
-grep -q 'apply_zlyme_scheme' "$launch"
+if grep -q 'pylibs.zip' "$mk" && grep -q 'NotoSans' "$mk"; then
+	echo "portmaster image build still unpacks pylibs" >&2
+	exit 1
+fi
+grep -q 'inject-scheme.py' "$prepare"
+grep -q 'select-scheme.py' "$prepare"
+grep -q 'PortMaster.zip' "$mk"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

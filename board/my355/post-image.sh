@@ -145,3 +145,16 @@ support/scripts/genimage.sh -c "${BOARD_DIR}/genimage.cfg"
 # A failed pack removes this invocation's zlyme.img. It does not glob
 # away older versioned tars.
 finish_ota
+
+# Same two-space sha256sum format as the helper images. Not an OTA member.
+# genimage has already closed zlyme.img, so this file is not inside it.
+if [ -s "${BINARIES_DIR}/zlyme.img" ]; then
+	(
+		cd "${BINARIES_DIR}"
+		sha256sum zlyme.img > zlyme.img.sha256
+		sha256sum -c zlyme.img.sha256 >/dev/null
+	) || {
+		echo "post-image: could not hash zlyme.img" >&2
+		exit 1
+	}
+fi

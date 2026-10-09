@@ -113,7 +113,10 @@ fi
 mkdir -p "${TARGET_DIR}/roms/ports" "${TARGET_DIR}/opt/system/Tools"
 # Real dir so PORTS.pak can bind the active library here. A symlink to
 # OS Roms made mount --bind overlay the OS card and duplicate the list.
-ln -sfn /usr/share/portmaster/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
+# The Tools path is only a link. zlyme-portmaster-prepare points it at
+# the selected library's live tree for this boot.
+ln -sfn /run/portmaster/PortMaster "${TARGET_DIR}/opt/system/Tools/PortMaster"
+rm -rf "${TARGET_DIR}/usr/share/portmaster/PortMaster"
 
 chmod_if \
 	"${TARGET_DIR}/usr/sbin/zlyme-led" \
@@ -180,6 +183,17 @@ if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then
 	[ -f "$sysc" ] || note "python sysconfigdata .py is missing (host pyc was unreadable)"
 	[ -s "${TARGET_DIR}/etc/ssl/certs/ca-certificates.crt" ] || \
 		note "ca-certificates.crt is missing (PortMaster HTTPS)"
+	[ -s "${TARGET_DIR}/usr/share/portmaster/PortMaster.zip" ] || \
+		note "PortMaster.zip seed is missing"
+	[ -f "${TARGET_DIR}/usr/share/portmaster/zlyme/control.txt" ] || \
+		note "Zlyme PortMaster control.txt is missing"
+	[ -f "${TARGET_DIR}/usr/share/portmaster/zlyme/mod_Zlyme.txt" ] || \
+		note "Zlyme PortMaster mod_Zlyme.txt is missing"
+	[ -f "${TARGET_DIR}/usr/share/portmaster/zlyme/patch-hardware.py" ] || \
+		note "Zlyme PortMaster hardware patch is missing"
+	if [ -d "${TARGET_DIR}/usr/share/portmaster/PortMaster" ]; then
+		note "expanded PortMaster tree must not ship in the rootfs"
+	fi
 	if [ ! -x "${TARGET_DIR}/usr/bin/bash" ] && [ ! -x "${TARGET_DIR}/bin/bash" ]; then
 		note "bash is missing (PortMaster scripts are #!/bin/bash)"
 	fi

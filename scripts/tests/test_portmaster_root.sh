@@ -32,9 +32,12 @@ eval "$("$BIN" export)"
 test "$HM_TOOLS_DIR" = "$sd2/Roms/.portmaster"
 test "$HM_PORTS_DIR" = "$sd2/Roms/Ports (PORTS)"
 test "$HM_SCRIPTS_DIR" = "$HM_PORTS_DIR"
-"$BIN" link-libs
-test -d "$sd2/Roms/.portmaster/PortMaster/libs"
-test "$(readlink "$work/run/libs")" = "$sd2/Roms/.portmaster/PortMaster/libs"
+
+if "$BIN" link-libs; then
+	echo "link-libs is still a root command" >&2
+	exit 1
+fi
+test ! -d "$sd2/Roms/.portmaster"
 
 rm -rf "$sd2"
 if "$BIN" export >"$work/out" 2>"$work/err"; then

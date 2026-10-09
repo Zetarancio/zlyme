@@ -32,5 +32,17 @@ if "inputs.publish_release == true" not in header:
 body = text[rel:]
 if "prerelease: false" not in body or "make_latest: true" not in body:
     sys.exit("publication no longer keeps a stable latest release")
+for name in ("zlyme.img\n", "zlyme.img.sha256\n"):
+    if name not in body:
+        sys.exit("release assets omit %s" % name.strip())
+stage = open(sys.argv[1].rsplit("/.github/", 1)[0] + "/.github/workflows/build-stage.yml", encoding="utf-8").read()
+if "output/images/zlyme.img\n" not in stage or "output/images/zlyme.img.sha256\n" not in stage:
+    sys.exit("candidate artifact omits zlyme.img or zlyme.img.sha256")
+post = open(sys.argv[1].rsplit("/.github/", 1)[0] + "/board/my355/post-image.sh", encoding="utf-8").read()
+if "sha256sum zlyme.img > zlyme.img.sha256" not in post:
+    sys.exit("post-image does not write zlyme.img.sha256")
+ota = open(sys.argv[1].rsplit("/.github/", 1)[0] + "/board/my355/make-update-tar.sh", encoding="utf-8").read()
+if "zlyme.img" in ota:
+    sys.exit("OTA packer mentions zlyme.img")
 print("build publish gate ok")
 PY

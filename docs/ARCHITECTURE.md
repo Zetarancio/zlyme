@@ -154,7 +154,9 @@ zlyme-update        OTA verify, stage, apply               board overlay
 zlyme-boot-write    one write transaction on /boot         board overlay
 zlyme-ctl           Settings and system flags, apply-*     board overlay
 zlyme-proxy         application HTTP/SOCKS proxy           board overlay
-zlyme-reset         Reset Settings and Factory Reset       board overlay
+zlyme-reset         Reset Settings, Factory Reset, and Reset PortMaster  board overlay
+zlyme-portmaster-root  selected PortMaster library          board overlay
+zlyme-portmaster-prepare  live PortMaster tree for this boot  portmaster package
 zlyme-radios        radio stop and start around sleep      board overlay
 zlyme-input         InputPlumber ownership and order       zlyme-input package
 zlyme-drm-release   drop DRM master before a pak           nextui package
@@ -502,7 +504,21 @@ Frontend behavior comes from the `Zetarancio/NextUI` fork at the exact commit pi
 
 Settings stores Zlyme policy as one file per flag, `/storage/.config/zlyme/<name>`, through `zlyme-ctl get` and `set`. Init scripts read the same flags with `zlyme-ctl want`. An empty or missing file means the default in `zlyme-ctl`, which matches the `S15bootpart` seed. The application proxy is the exception: one file, `/storage/.config/zlyme/proxy.conf`, read and written by `zlyme-proxy`. The updater asks that helper on each request. `nextui-session` applies it to the environment of a pak at launch. It is not a transparent tunnel. The helper creates that file with a restrictive mode when the filesystem can store one. `/storage` is exFAT, so the mode is not stored and is not a confidentiality control. The file has no credentials.
 
-Reset Settings runs `zlyme-reset settings`. It deletes an explicit list of Zlyme flags, `proxy.conf`, the NextUI settings file, the timezone, and the Files (VTree) config. It then recreates the timezone and card defaults and asks the owning scripts to apply the restored defaults. Games, saves, Wi-Fi networks, and paired Bluetooth devices stay. Factory Reset runs `zlyme-reset factory`: the same reset plus a `factory-reset` marker, which makes the next `nextui-session` start overwrite the stock Tools and Emus PAKs on the card. Personal content stays.
+Reset Settings runs `zlyme-reset settings`. It deletes an explicit list of Zlyme flags, `proxy.conf`, the NextUI settings file, the timezone, and the Files (VTree) config. It then recreates the timezone and card defaults and asks the owning scripts to apply the restored defaults. Games, saves, Wi-Fi networks, and paired Bluetooth devices stay. Factory Reset runs `zlyme-reset factory`: the same reset plus a `factory-reset` marker, which makes the next `nextui-session` start overwrite the stock Tools and Emus PAKs on the card. Personal content stays. Reset PortMaster runs `zlyme-reset portmaster`. It deletes the selected live PortMaster tree and PortMaster's own config. Installed ports stay. The next PortMaster or port launch unpacks the seed again.
+
+### PortMaster installation
+
+`/usr/share/portmaster/PortMaster.zip` in the squashfs is the immutable seed. `<root>/Roms/.portmaster/PortMaster` on the selected library is the active installation. `zlyme-portmaster-prepare` owns that lifecycle. Tools → PortMaster and `PORTS.pak` both call it, so a port started after reboot does not depend on the PortMaster GUI having run earlier in the boot.
+
+`<root>` is the library from `zlyme-portmaster-root`. An empty choice is `/storage`. An explicit choice that is not mounted fails with `PortMaster disk is not inserted`. Prepare does not switch to another disk.
+
+`/opt/system/Tools/PortMaster` links to `/run/portmaster/PortMaster`. Prepare points that runtime path at the live tree. `libs/` and `runtimes/` are directories in that tree. They are not separate links.
+
+A valid live tree is left in place when a later Zlyme update ships a different seed. The seed is used only when no valid live tree exists, or after Reset PortMaster. Zlyme integration (`control.txt`, `mod_Zlyme.txt`, the hardware identification patch, and the Zlyme scheme) is applied from `/usr/share/portmaster/zlyme/` at prepare time. An upstream PortMaster update may replace upstream files. The next prepare puts the Zlyme files back. If the upstream tree no longer accepts that patch, prepare fails and does not publish a half-applied tree.
+
+The launcher does not pass `pugwash --no-check`. That flag only skips the startup version offer. Update PortMaster in the GUI still installs `PortMaster.zip` into the live tree and creates `.pugwash-reboot`. The launcher treats that file as a restart: it prepares again, then starts the new GUI.
+
+A tree left by the previous layout is migrated once. `libs/`, `runtimes/`, `config/`, and `themes/` are kept. `/storage/PortMaster` is removed after that. Installed ports are not moved.
 
 ## 12. Emulator model
 

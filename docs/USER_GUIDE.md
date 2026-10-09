@@ -239,8 +239,10 @@ Settings → Update has the **Channel** (Releases or Prereleases), the latest re
 
 ## PortMaster
 
-- Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are.
+- Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card.
+- The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
+- Settings → System → Advanced → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
 
 ## Logs
 

@@ -17,6 +17,8 @@ Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published rele
 
 ### Changed
 
+- PortMaster runs from the library you selected, not from the read-only system image. The first launch unpacks the included PortMaster there. A PortMaster update you install yourself stays when Zlyme is updated. Settings → System → Advanced → Reset PortMaster removes PortMaster and its downloaded runtimes and keeps installed ports.
+- The card image is published with `zlyme.img.sha256`. An update does not include that file.
 - A failed stock preloader restore rolls back to the preloader that was installed before the attempt. A failed erase does the same. Erasing the preloader does not by itself enter USB MASKROM when a bootable card is inserted.
 - The development card's diagnostic U-Boot countdown is gone. The installed bootloader does not wait for a key.
 - Preloader status shows whether the internal image is the normal preloader or a recovery preloader, whether recovery is ready or armed, and whether the source backup and stock restore are available. It does not show hashes.

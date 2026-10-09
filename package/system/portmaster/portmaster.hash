@@ -1,0 +1,4 @@
+# Stable channel. Release body "Release: 2026.06.23-0015 (stable)".
+# pugwash in this zip sets PORTMASTER_RELEASE_CHANNEL = 'stable'.
+# version.json on this tag and on releases/latest both name this tag as stable.
+sha256  772f2d56fc1abfbf79a3404ca78f240776c81c5a5b92786a0a748ae554339b7b  PortMaster.zip

@@ -16,6 +16,14 @@ if [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
 fi
 export CFW_NAME=Zlyme
 export DEVICE_NAME="${DEVICE_NAME:-Miyoo Flip}"
+if [ -x /usr/sbin/zlyme-portmaster-prepare ]; then
+	/usr/sbin/zlyme-portmaster-prepare || exit 1
+	eval "$(/usr/sbin/zlyme-portmaster-root export)" || {
+		echo "PortMaster disk is not inserted" >&2
+		exit 1
+	}
+	export HM_TOOLS_DIR HM_PORTS_DIR HM_SCRIPTS_DIR
+fi
 command -v zlyme-drm-release >/dev/null 2>&1 && zlyme-drm-release >/dev/null 2>&1 || true
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu PORTS >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
