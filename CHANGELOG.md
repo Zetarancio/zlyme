@@ -18,7 +18,7 @@ Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published rele
 ### Changed
 
 - PortMaster runs from the library you selected, not from the read-only system image. The first launch unpacks the included PortMaster there. A PortMaster update you install yourself stays when Zlyme is updated. Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes and keeps installed ports.
-- After a verified Recovery arm, disarm, or stock restore, Settings offers shut down or a normal restart. Restart does not enter MASKROM. To enter MASKROM after arming, shut down, remove the right-hand bootable card, and power on. Ordinary Settings pages show B and A hints. Pages with their own controls keep those controls.
+- After a verified Recovery arm, disarm, or stock restore, Settings offers shut down or a normal restart. That action does not write again until Settings is opened again. Restart does not enter MASKROM. To enter MASKROM after arming, shut down, remove the right-hand bootable card, and power on. Ordinary Settings pages show B and A hints. Pages with their own controls keep those controls.
 - The card image is published with `zlyme.img.sha256`. An update does not include that file.
 - A failed stock preloader restore rolls back to the preloader that was installed before the attempt. A failed erase does the same. Erasing the preloader does not by itself enter USB MASKROM when a bootable card is inserted.
 - The development card's diagnostic U-Boot countdown is gone. The installed bootloader does not wait for a key.

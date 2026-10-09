@@ -18,7 +18,8 @@
 # Restore stays the separate stock-preloader action.
 # Reset PortMaster is on the Game page. It calls zlyme-reset portmaster and keeps installed ports.
 # A verified Recovery write offers shut down or a normal restart through /tmp/poweroff and /tmp/reboot.
-NEXTUI_VERSION = 63d734cd23a1470c4bfd21ed9ab336fb2b611da9
+# That write is one-shot until Settings is opened again.
+NEXTUI_VERSION = 5ba4513802e54a69c5697e6ac348f2d6ac6668fd
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

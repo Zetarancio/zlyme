@@ -72,6 +72,22 @@ if '"/tmp/reboot"' not in prompt or '"/tmp/poweroff"' not in prompt:
     raise SystemExit("pending restart prompt ignores a power marker")
 if "Shut down" not in menu or "Restart" not in menu:
     raise SystemExit("power chooser rows are missing")
+offer = body(menu, "static void recovery_offer_power", "static InputReactionHint recovery_arm_now")
+if "detach_verified_write(item, DeferToSubmenu)" not in offer:
+    raise SystemExit("power offer does not replace the NAND callback with DeferToSubmenu")
+if offer.find("setSubMenu") > offer.find("detach_verified_write"):
+    raise SystemExit("power submenu is installed after the callback is replaced")
+if "defer(true)" in offer.split("detach_verified_write", 1)[0]:
+    raise SystemExit("power offer defers before detaching the NAND callback")
+helper = read("oneshot.hpp")
+if helper.find("setConfirmCallback") > helper.find("defer(true)"):
+    raise SystemExit("verified write defers before replacing the callback")
+if "Write already verified. Choose Shut down or Restart." not in helper:
+    raise SystemExit("completed action description is missing")
+handle = read("menu.cpp")
+close = handle.split("subMenuJustClosed) {", 1)[1].split("return hint", 1)[0]
+if "on_confirm" in close or "setConfirmCallback" in close:
+    raise SystemExit("leaving a submenu restores the confirm callback")
 
 if "virtual bool ownsHints() const { return false; }" not in hints:
     raise SystemExit("MenuList does not default to standard hints")
@@ -101,3 +117,7 @@ if "Preloader status" not in rec:
     raise SystemExit("preloader status row is gone")
 print("settings ux ok")
 PY
+g++ -std=c++17 -Wall -Wextra -I "$UI" -o "${TMPDIR:-/tmp}/recovery-oneshot" \
+	"$ROOT/scripts/tests/test_recovery_oneshot.cpp"
+"${TMPDIR:-/tmp}/recovery-oneshot"
+rm -f "${TMPDIR:-/tmp}/recovery-oneshot"
