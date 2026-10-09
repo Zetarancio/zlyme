@@ -16,8 +16,9 @@
 # A failed or empty status still opens that page.
 # Arm runs prepare-recovery, then arm-recovery. Disarm runs disarm-recovery.
 # Restore stays the separate stock-preloader action.
-# Reset PortMaster calls zlyme-reset portmaster and keeps installed ports.
-NEXTUI_VERSION = 72adc85f45c420929a2f07ae834f01fb11469488
+# Reset PortMaster is on the Game page. It calls zlyme-reset portmaster and keeps installed ports.
+# A verified Recovery write offers shut down or a normal restart through /tmp/poweroff and /tmp/reboot.
+NEXTUI_VERSION = 63d734cd23a1470c4bfd21ed9ab336fb2b611da9
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

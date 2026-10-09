@@ -8,15 +8,15 @@ The install steps are in the [README](../README.md#install). Stock, not Zlyme, r
 
 While stock itself still boots, those jobs can be done from a card. The restore download undoes the normal multiboot repair. It is not how you leave an armed recovery preloader, because stock does not start in that state. Leave it with Disarm MASKROM recovery below, or with the physical MASKROM button if no right-slot Zlyme card will boot. Download `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, or `miyoo355_fw-restore.img` from the [Zlyme releases page](https://github.com/Zetarancio/zlyme/releases) once that release publishes them, rename the chosen file to `miyoo355_fw.img`, and boot stock with that card. They are not in an ordinary Zlyme update. After the MASKROM or restore helper finishes, power the device off before changing cards. It does not reboot itself. On 2026-10-08 those three helpers were checked on one Flip, including restore of that unit's saved original and the MASKROM helper started from the original stock preloader. The measurements are on the wiki page. They do not add steps to a normal install. Inside Zlyme, use the rows below.
 
-Settings → System → Advanced → Recovery has four rows. Confirmations are lists. Cancel is the first row. B also goes back. Nothing on this page reboots or powers off by itself.
+Settings → System → Advanced → Recovery has four rows. Confirmations are lists. Cancel is the first row. B also goes back. A failed write, a rollback, a refusal, or a CRITICAL result stays on that result. After a successful arm, disarm, or stock restore, the page offers Shut down and Restart. Restart is a normal reboot. It does not enter MASKROM.
 
 **Preloader status** is the internal boot and recovery state. The rows are Preloader, Recovery, Source backup, Stock restore, and Battery. `Normal` / `Ready` means the current preloader is the saved source and a recovery image is prepared. `Recovery armed` / `Armed` means the recovery preloader is installed. Unknown and Invalid are not a normal boot.
 
-**Arm MASKROM recovery** installs that recovery preloader in internal NAND. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Internal stock boot stays off until recovery is disarmed. The last confirmation is `ARM MASKROM RECOVERY`, and it starts on Cancel. On success the screen says recovery is armed and tells you to keep a bootable card in the right slot. To enter MASKROM, shut down, remove the right card, then power on.
+**Arm MASKROM recovery** installs that recovery preloader in internal NAND. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Internal stock boot stays off until recovery is disarmed. The last confirmation is `ARM MASKROM RECOVERY`, and it starts on Cancel. On success the screen says recovery is armed. To enter MASKROM, shut down, remove the right-hand bootable card, then power on. Restart only performs a normal reboot.
 
-**Disarm MASKROM recovery** writes back the exact pre-recovery image saved when recovery was armed. It does not restore the original Miyoo preloader. The last confirmation is `DISARM MASKROM RECOVERY`, and it starts on Cancel. Success says the normal preloader was restored and verified. If the installed image is not an armed recovery image, the action refuses.
+**Disarm MASKROM recovery** writes back the exact pre-recovery image saved when recovery was armed. It does not restore the original Miyoo preloader. The last confirmation is `DISARM MASKROM RECOVERY`, and it starts on Cancel. Success says the normal preloader was restored and verified, then offers shut down or restart. If the installed image is not an armed recovery image, the action refuses and does not offer that choice.
 
-**Restore stock preloader** writes this unit's `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. This is separate from disarming MASKROM recovery. The name's hash has to match the file, and the DDR initializer in that backup has to match the preloader already installed. If that backup is not on the card, Restore can use the stock image shipped with Zlyme, and only when the installed preloader is the revision that image belongs to. That shipped image is not this unit's own backup. A different preloader is refused. There is no force option. If the write does not verify, Zlyme tries to put the saved current preloader back. That is a failed restore, not a completed one. The last confirmation is `RESTORE STOCK PRELOADER`, and it starts on Cancel. The battery has to be at least 25%, unless a charger is connected.
+**Restore stock preloader** writes this unit's `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. This is separate from disarming MASKROM recovery. The name's hash has to match the file, and the DDR initializer in that backup has to match the preloader already installed. If that backup is not on the card, Restore can use the stock image shipped with Zlyme, and only when the installed preloader is the revision that image belongs to. That shipped image is not this unit's own backup. A different preloader is refused. There is no force option. If the write does not verify, Zlyme tries to put the saved current preloader back. That is a failed restore, not a completed one. The last confirmation is `RESTORE STOCK PRELOADER`, and it starts on Cancel. A verified restore offers shut down or restart. The battery has to be at least 25%, unless a charger is connected.
 
 Erase is not in this menu. `erase-preloader` is a separate command. It removes the internal preloader. It is not MASKROM recovery. If the boot ROM can still see a bootable card, wiping the internal preloader can boot that card instead of USB recovery. Host recovery with the MASKROM button is in the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/flashing.md). The measured recovery-preloader boots are on the wiki's [recovery preloader](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/recovery-preloader.md) page.
 
@@ -166,7 +166,7 @@ Printed A and B are fixed: A is the east button and B is the south button. Setti
 
 ## Settings
 
-Settings opens from Tools. When you leave it after a change that needs a restart, it offers to restart.
+Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with its own controls, such as the keyboard, the color picker, release notes, or a joystick test, shows those controls instead. When you leave Settings after a change that needs a restart, it offers to restart. A shutdown or restart already chosen from Recovery skips that question.
 
 ### Network
 
@@ -201,6 +201,7 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Clear Recents**: the Recently Played list.
 - **Reset RetroArch core options** and **Orphan per-ROM RetroArch configs**.
 - **Reset standalone settings**: games and saves are kept.
+- **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
 
 ### System
 
@@ -242,7 +243,7 @@ Settings → Update has the **Channel** (Releases or Prereleases), the latest re
 - Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
-- Settings → System → Advanced → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
+- Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
 
 ## Logs
 

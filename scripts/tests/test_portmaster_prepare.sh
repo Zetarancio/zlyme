@@ -125,6 +125,23 @@ test -f "$work/opt/system/Tools/PortMaster/libs/user-runtime.squashfs"
 test -f "$work/opt/system/Tools/PortMaster/runtimes/love_11.5/love.aarch64"
 test ! -e "$work/run/libs"
 
+# A real directory or file at the runtime path is replaced by the link.
+# It must not be used as the live tree, and the live files stay put.
+rm -f "$work/run/PortMaster"
+mkdir -p "$work/run/PortMaster"
+printf '%s\n' 'decoy' > "$work/run/PortMaster/pugwash"
+"$PREPARE"
+test -L "$work/run/PortMaster"
+test "$(readlink "$work/run/PortMaster")" = "$live"
+grep -q 'newer-pugwash' "$work/run/PortMaster/pugwash"
+test ! -d "$work/run/PortMaster/PortMaster"
+rm -f "$work/run/PortMaster"
+printf '%s\n' 'stale-file' > "$work/run/PortMaster"
+"$PREPARE"
+test -L "$work/run/PortMaster"
+test "$(readlink "$work/run/PortMaster")" = "$live"
+grep -q 'newer-pugwash' "$live/pugwash"
+
 # Selected SD2 does not use the OS card.
 "$ROOTBIN" set "$sd2"
 "$PREPARE"
@@ -147,15 +164,63 @@ grep -q 'newer-pugwash' "$live/pugwash"
 test ! -d "$storage/Roms/.portmaster/PortMaster.missing" 
 
 # Migration keeps card libs and retires the legacy launcher copy.
-mkdir -p "$storage/PortMaster/PortMaster/libs" "$storage/PortMaster/PortMaster/config"
+# Legacy config and the obsolete Zlyme theme directory are merged before
+# the final integration pass, which is what normalizes them.
+mkdir -p "$storage/PortMaster/PortMaster/libs" \
+	"$storage/PortMaster/PortMaster/config" \
+	"$storage/PortMaster/PortMaster/themes/Zlyme" \
+	"$storage/PortMaster/PortMaster/runtimes"
 printf '%s\n' 'legacy-lib' > "$storage/PortMaster/PortMaster/libs/legacy.squashfs"
+printf '%s\n' 'legacy-runtime' > "$storage/PortMaster/PortMaster/runtimes/legacy.squashfs"
+printf '%s\n' 'obsolete-theme' > "$storage/PortMaster/PortMaster/themes/Zlyme/theme.txt"
+python3 - "$storage/PortMaster/PortMaster/config/config.json" << 'PY'
+import json, sys
+json.dump({"theme": "Zlyme", "theme-scheme": "old"}, open(sys.argv[1], "w"))
+PY
 printf '%s\n' 'seed-pugwash' > "$live/pugwash"
+printf '%s\n' 'upstream-control' > "$live/control.txt"
+python3 - "$live/pylibs/default_theme/theme.json" << 'PY'
+import json, sys
+p = sys.argv[1]
+data = json.load(open(p))
+data["#info"]["default-scheme"] = "Light Mode"
+data["#schemes"].pop("Zlyme", None)
+json.dump(data, open(p, "w"))
+PY
 # live is already valid, so the engine stays and legacy state is merged.
 "$ROOTBIN" set "$storage"
 "$PREPARE"
 grep -q 'legacy-lib' "$live/libs/legacy.squashfs"
+grep -q 'legacy-runtime' "$live/runtimes/legacy.squashfs"
 test ! -e "$storage/PortMaster"
+test ! -e "$live/themes/Zlyme"
 grep -q 'seed-pugwash' "$live/pugwash"
+grep -q 'export CFW_NAME=Zlyme' "$live/control.txt"
+grep -q 'Miyoo Flip' "$live/pylibs/harbourmaster/hardware.py"
+grep -q "'zlyme':" "$live/pylibs/harbourmaster/platform.py"
+python3 - "$live/config/config.json" "$live/pylibs/default_theme/theme.json" << 'PY'
+import json, sys
+cfg = json.load(open(sys.argv[1]))
+assert cfg.get("theme") == "default_theme", cfg
+assert cfg.get("theme-scheme") == "Zlyme", cfg
+theme = json.load(open(sys.argv[2]))
+assert theme["#info"]["default-scheme"] == "Zlyme"
+assert theme["#schemes"]["Zlyme"]["#pallet"]["list_selected"][:3] == [252, 156, 20]
+PY
+
+# A theme the user actually selected is left alone.
+python3 - "$live/config/config.json" << 'PY'
+import json, sys
+json.dump({"theme": "Synth", "theme-scheme": "Night"}, open(sys.argv[1], "w"))
+PY
+"$PREPARE"
+python3 - "$live/config/config.json" << 'PY'
+import json, sys
+cfg = json.load(open(sys.argv[1]))
+assert cfg.get("theme") == "Synth", cfg
+assert cfg.get("theme-scheme") == "Night", cfg
+PY
+test ! -e "$live/themes/Zlyme"
 
 # Reset removes the application and keeps a port.
 mkdir -p "$storage/Roms/Ports (PORTS)/fixture" "$work/cfg/portmaster-home"

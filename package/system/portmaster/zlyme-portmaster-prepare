@@ -5,6 +5,8 @@
 # The squashfs copy is the seed. The selected library's
 # Roms/.portmaster/PortMaster directory is the only live installation.
 # A later prepare does not replace a valid live tree from the seed.
+# Legacy libs, runtimes, config, and themes are merged before the final
+# Zlyme integration pass. That pass is the last writer.
 #
 # Test seams: ZLYME_PM_SEED, ZLYME_PM_OVERLAY, ZLYME_PM_RUN, ZLYME_PM_ROOT_BIN,
 # ZLYME_PM_LEGACY, ZLYME_PM_MIN_FREE_KB. Library selection stays in
@@ -247,6 +249,20 @@ retire_legacy() {
 	rm -rf "$legacy"
 }
 
+# /run/portmaster is tmpfs. A leftover directory must not become the
+# parent of a new link, and removing a symlink must not follow it into
+# the live tree.
+link_runtime() {
+	dest=$run/PortMaster
+	mkdir -p "$run"
+	if [ -L "$dest" ]; then
+		rm -f "$dest"
+	elif [ -e "$dest" ]; then
+		rm -rf "$dest"
+	fi
+	ln -s "$live" "$dest"
+}
+
 validate_live() {
 	engine_ok "$live" || die "PortMaster installation is incomplete"
 	pylibs_ok "$live" || die "PortMaster installation is incomplete"
@@ -279,9 +295,7 @@ prepare() {
 	if [ -L "$live" ]; then
 		rm -f "$live"
 	fi
-	if engine_ok "$live"; then
-		apply_integration "$live"
-	else
+	if ! engine_ok "$live"; then
 		leg=$(legacy_engine || true)
 		if [ -n "$leg" ]; then
 			install_from_legacy "$leg"
@@ -289,11 +303,11 @@ prepare() {
 			install_from_seed
 		fi
 	fi
+	# Legacy config and themes are merged first. Integration is the
+	# last writer, so an old theme copy cannot undo that pass.
 	retire_legacy
-	materialize_dir "$live/libs"
-	materialize_dir "$live/runtimes"
-	mkdir -p "$run"
-	ln -sfn "$live" "$run/PortMaster"
+	apply_integration "$live"
+	link_runtime
 	validate_live
 }
 
