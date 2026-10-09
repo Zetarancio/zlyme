@@ -359,4 +359,59 @@ fi
 grep -q 'not inserted' "$work/err"
 test -f "$live/pugwash"
 
+# BusyBox tar does not open .xz. Exercise expand_fonts with a real
+# xz payload and with decompress/extract failures. Do not use tar's
+# own compression detection.
+command -v xz >/dev/null 2>&1 || fail "xz is required for the font regression"
+fontfix=$work/fontfix
+mkdir -p "$fontfix/src" "$fontfix/bin"
+printf '%s\n' 'sentinel-font' > "$fontfix/src/NotoSansJP-Regular.ttf"
+tar -C "$fontfix/src" -cf "$fontfix/fonts.tar" NotoSansJP-Regular.ttf
+xz -c "$fontfix/fonts.tar" > "$fontfix/NotoSans.tar.xz"
+rm -f "$fontfix/fonts.tar"
+
+font_tree() {
+	name=$1
+	dir=$fontfix/$name
+	rm -rf "$dir"
+	mkdir -p "$dir/pylibs/resources"
+	cp -f "$fontfix/NotoSans.tar.xz" "$dir/pylibs/resources/NotoSans.tar.xz"
+	printf '%s\n' "$dir"
+}
+
+okdir=$(font_tree ok)
+"$PREPARE" expand-fonts "$okdir"
+test -f "$okdir/pylibs/resources/NotoSansJP-Regular.ttf"
+grep -q 'sentinel-font' "$okdir/pylibs/resources/NotoSansJP-Regular.ttf"
+test ! -f "$okdir/pylibs/resources/NotoSans.tar.xz"
+test -f "$okdir/resources/NotoSansJP-Regular.ttf"
+find "$okdir" -name '.fonts.*' | grep -q . && fail "temporary font tar was left behind"
+
+cat > "$fontfix/bin/xz" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod 0755 "$fontfix/bin/xz"
+xzdir=$(font_tree xzfail)
+if PATH="$fontfix/bin:$PATH" "$PREPARE" expand-fonts "$xzdir"; then
+	fail "failed xz decompression continued"
+fi
+test -f "$xzdir/pylibs/resources/NotoSans.tar.xz"
+test ! -f "$xzdir/pylibs/resources/NotoSansJP-Regular.ttf"
+find "$xzdir" -name '.fonts.*' | grep -q . && fail "xz failure left a temporary tar"
+
+cat > "$fontfix/bin/tar" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod 0755 "$fontfix/bin/tar"
+rm -f "$fontfix/bin/xz"
+tardir=$(font_tree tarfail)
+if PATH="$fontfix/bin:$PATH" "$PREPARE" expand-fonts "$tardir"; then
+	fail "failed tar extraction continued"
+fi
+test -f "$tardir/pylibs/resources/NotoSans.tar.xz"
+test ! -f "$tardir/pylibs/resources/NotoSansJP-Regular.ttf"
+find "$tardir" -name '.fonts.*' | grep -q . && fail "tar failure left a temporary tar"
+
 echo "portmaster prepare ok"

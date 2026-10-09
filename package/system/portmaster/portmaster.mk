@@ -15,7 +15,7 @@ PORTMASTER_SOURCE = PortMaster.zip
 PORTMASTER_SITE = https://github.com/PortsMaster/PortMaster-GUI/releases/download/$(PORTMASTER_VERSION)
 PORTMASTER_LICENSE = MIT
 PORTMASTER_LICENSE_FILES = LICENSE
-PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates
+PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates xz
 
 define PORTMASTER_EXTRACT_CMDS
 	mkdir -p $(@D)

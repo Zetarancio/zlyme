@@ -99,15 +99,38 @@ expand_pylibs() {
 	if ! pylibs_ok "$d"; then
 		die "PortMaster installation is incomplete"
 	fi
-	if [ -f "$d/pylibs/resources/NotoSans.tar.xz" ] &&
-		[ ! -f "$d/pylibs/resources/NotoSansJP-Regular.ttf" ]; then
-		tar -C "$d/pylibs/resources" -xf "$d/pylibs/resources/NotoSans.tar.xz" ||
-			die "PortMaster fonts could not be extracted"
-		rm -f "$d/pylibs/resources/NotoSans.tar.xz"
-		mkdir -p "$d/resources"
-		cp -f "$d/pylibs/resources/"*.ttf "$d/resources/" 2>/dev/null || true
-		rm -f "$d/resources/do_init"
+	expand_fonts "$d"
+}
+
+# BusyBox tar does not decompress .xz unless asked, and this image's
+# tar is BusyBox. Decompress beside the archive, on the live filesystem,
+# then unpack the plain tar. Remove the compressed source only after
+# the sentinel font is present. Always remove the temporary tar.
+expand_fonts() {
+	d=$1
+	res=$d/pylibs/resources
+	src=$res/NotoSans.tar.xz
+	font=$res/NotoSansJP-Regular.ttf
+	tmp=""
+	[ -f "$src" ] || return 0
+	[ ! -f "$font" ] || return 0
+	tmp=$(mktemp "$res/.fonts.XXXXXX") || die "PortMaster fonts could not be extracted"
+	if ! xz -dc "$src" > "$tmp"; then
+		rm -f "$tmp"
+		die "PortMaster fonts could not be extracted"
 	fi
+	if ! tar -C "$res" -xf "$tmp"; then
+		rm -f "$tmp"
+		die "PortMaster fonts could not be extracted"
+	fi
+	rm -f "$tmp"
+	if [ ! -f "$font" ]; then
+		die "PortMaster fonts could not be extracted"
+	fi
+	rm -f "$src"
+	mkdir -p "$d/resources"
+	cp -f "$res/"*.ttf "$d/resources/" 2>/dev/null || true
+	rm -f "$d/resources/do_init"
 }
 
 apply_integration() {
@@ -313,6 +336,10 @@ prepare() {
 
 case "${1:-}" in
 	""|prepare) prepare ;;
+	expand-fonts)
+		[ -n "${2:-}" ] || die "usage: $0 expand-fonts DIR"
+		expand_fonts "$2"
+		;;
 	export)
 		prepare
 		"$rootbin" export

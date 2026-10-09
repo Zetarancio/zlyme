@@ -32,6 +32,8 @@ Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published rele
 
 ### Fixed
 
+- PortMaster extracts its included fonts with xz, then tar. The first launch no longer stops because the system tar cannot open an `.xz` archive.
+- Settings keeps the selected item's description above the button hints.
 - The standalone MASKROM and restore helpers no longer reboot after a verified write. Stock's block-device number is not which physical slot the card is in. Power the device off before changing cards.
 - An update archive is accepted only when listing the whole archive succeeds and the required files are present. A truncated archive that prints those names and then fails is rejected before it is extracted.
 - 32-bit Windows programs can load Wine's builtin libraries from the exFAT prefix. `prepare` creates `drive_c` and copies the libraries wineboot cannot symlink onto that filesystem.
