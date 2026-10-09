@@ -1,0 +1,10 @@
+config BR2_PACKAGE_PORTMASTER_THEORA_COMPAT
+	bool "portmaster theora 1.1 compatibility"
+	select BR2_PACKAGE_LIBOGG
+	help
+	  libtheora 1.1.1 decoder, installed only under /usr/lib/compat.
+	  PortMaster LÖVE 11.5 was built against libtheoradec.so.1.
+	  The system libtheora stays 1.2 (libtheoradec.so.2). This is
+	  not a system Theora downgrade.
+
+	  https://downloads.xiph.org/releases/theora/

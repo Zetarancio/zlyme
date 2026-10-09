@@ -12,6 +12,10 @@ Phase 11 is closed. It is `zlyme44.2`: related user-facing fixes, separate commi
 
 2026-10-09: PortMaster's live installation moves to the selected library. The system image keeps `PortMaster.zip` as the seed. Legacy state is merged before the Zlyme integration pass. Reset PortMaster is on the Game page. A verified Recovery write offers shut down or a normal restart and does not write again in that Settings session. MASKROM entry stays a cold boot with the right-hand card removed. This is not hardware-accepted. `zlyme44.2` is not a published release.
 
+2026-10-10: Verified runtime payloads from a ports-folder PortMaster can be copied once into the selected live `libs/`. Reset does not repeat that copy. PortMaster gets a private libtheora 1.1.1 decoder under `/usr/lib/compat`. The system libtheora stays 1.2. This is not hardware-accepted.
+
+Later on 2026-10-10 the automatic merge of `/storage/PortMaster` and the ports-folder runtime copy were removed. Prepare installs a missing or invalid live tree from the seed and leaves obsolete PortMaster directories in place. The private libtheora 1.1.1 decoder remains. This is not hardware-accepted.
+
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
 ## Rule for every phase

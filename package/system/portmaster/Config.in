@@ -9,12 +9,14 @@ config BR2_PACKAGE_PORTMASTER
 	select BR2_PACKAGE_PYTHON3_ZLIB
 	select BR2_PACKAGE_CA_CERTIFICATES
 	select BR2_PACKAGE_XZ
+	select BR2_PACKAGE_PORTMASTER_THEORA_COMPAT
 	help
 	  PortMaster stable seed 2026.06.23-0015. The image keeps the
 	  immutable seed /usr/share/portmaster/PortMaster.zip. First
 	  launch unpacks the live tree on the selected library at
 	  Roms/.portmaster/PortMaster. That library is authoritative.
 	  Needs Python 3 (ssl, sqlite, xml), XZ, CA certificates, and
-	  box64.
+	  box64. LÖVE 11.5 uses the private Theora 1.1 decoder under
+	  /usr/lib/compat. The system libtheora stays 1.2.
 
 	  https://github.com/PortsMaster/PortMaster-GUI

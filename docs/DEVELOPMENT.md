@@ -116,7 +116,7 @@ Every package with `SITE_METHOD = local` is in this table. A local package that 
 
 Files that a downloaded package installs from its own package directory are not fingerprinted either, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again.
 
-PortMaster's Buildroot package installs `PortMaster.zip` and the Zlyme integration files. It does not unpack a live tree into the rootfs. The pin is `PORTMASTER_VERSION` in `package/system/portmaster/portmaster.mk`, with the zip hash in `portmaster.hash`. The current pin is the upstream stable release `2026.06.23-0015`. Do not point the package at GitHub `latest`. A newer tag whose release text says beta or alpha is not the stable channel. `zlyme-portmaster-prepare` unpacks the seed on the selected library at first use.
+PortMaster's Buildroot package installs `PortMaster.zip` and the Zlyme integration files. It does not unpack a live tree into the rootfs. The pin is `PORTMASTER_VERSION` in `package/system/portmaster/portmaster.mk`, with the zip hash in `portmaster.hash`. The current pin is the upstream stable release `2026.06.23-0015`. Do not point the package at GitHub `latest`. A newer tag whose release text says beta or alpha is not the stable channel. `zlyme-portmaster-prepare` unpacks the seed on the selected library at first use. `portmaster-theora-compat` is libtheora 1.1.1's decoder, installed under `/usr/lib/compat` for PortMaster. It does not replace the system libtheora.
 
 Some inputs sit outside every package fingerprint and are reapplied on every image build: `ZLYME_VERSION`, the `board/my355/*.sh` scripts, and `board/my355/fsoverlay`. Buildroot's `target-finalize` copies the overlay and reruns post-build on every build. The overlay copy does not delete. A file removed from `board/my355/fsoverlay` stays in `output/target` until `post-build.sh` removes it explicitly or the output tree is rebuilt.
 
@@ -344,6 +344,10 @@ real-device test when hardware behavior changed
 Host-side tests live in `scripts/tests/`. Run one directly, for example `sh scripts/tests/test_delta_stage.sh` or `python3 scripts/tests/test_doc_links.py`. The image build also asserts on its own: `build.sh` fails when a defconfig `=y` line does not survive kconfig, `post-build.sh` checks the radio and gamepad modules and the NextUI platform, and `assert-input-rootfs.sh` checks the packed squashfs.
 
 Do not claim hardware validation based on compilation.
+
+## Hardware payload transfer
+
+Do not transfer OTAs, images, runtime archives, libraries, emulator binaries, large logs, or other bulk payloads to or from the Miyoo Flip over Wi-Fi, SSH, SCP, or rsync. Mount the card on the development host and copy there. SSH over Wi-Fi is for commands, inspection, and small text diagnostics. If the required card is not mounted, stop and say which card and path are needed. Do not fall back to a network copy. PortMaster may still download its catalogue and runtimes when someone uses it on the device.
 
 ## Documentation workflow
 

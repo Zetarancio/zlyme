@@ -201,7 +201,7 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Clear Recents**: the Recently Played list.
 - **Reset RetroArch core options** and **Orphan per-ROM RetroArch configs**.
 - **Reset standalone settings**: games and saves are kept.
-- **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
+- **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
 
 ### System
 
@@ -243,7 +243,8 @@ Settings → Update has the **Channel** (Releases or Prereleases), the latest re
 - Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
-- Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again, and runtimes may download again.
+- Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
+- PortMaster's layout changed in Zlyme 44.2. After the new PortMaster opens, you can delete an older `/storage/PortMaster`. A games card from another layout may also contain `Roms/Ports (PORTS)/PortMaster`. That folder is not used. Delete that PortMaster folder only. Do not delete `Roms/Ports (PORTS)` or the game folders and scripts inside it. Runtimes from the old installation are not carried over. Open PortMaster once so its catalogue can load, then start the port again and let it download the runtime.
 
 ## Logs
 

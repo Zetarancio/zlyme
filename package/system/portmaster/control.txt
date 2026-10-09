@@ -46,6 +46,11 @@ ESUDOKILL2="-1"
 export ESUDO ESUDOKILL ESUDOKILL2
 export PM_CAN_MOUNT="${PM_CAN_MOUNT:-Y}"
 
+# LÖVE 11.5 needs libtheoradec.so.1. The system libtheora is 1.2.
+# This directory is PortMaster-only. Other programs do not search it.
+clibs="/usr/lib/compat"
+export clibs
+
 export SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-kmsdrm}"
 # Same boundary as pak-input.sh. A port that re-sources this file
 # after clearing its environment still sees only xb360 targets.
@@ -92,6 +97,11 @@ get_controls() {
 	: "${ANALOG_STICKS:=2}"
 	: "${LOWRES:=N}"
 	: "${param_device:=rg552}"
+	# Runtime wrappers prepend their own directory in front of this.
+	case ":${LD_LIBRARY_PATH:-}:" in
+	*":${clibs}:"*) ;;
+	*) export LD_LIBRARY_PATH="${clibs}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ;;
+	esac
 }
 
 export GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.${DEVICE_ARCH:-aarch64}.so $controlfolder/gptokeyb2 $ESUDOKILL2"

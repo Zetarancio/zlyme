@@ -518,7 +518,11 @@ A valid live tree is left in place when a later Zlyme update ships a different s
 
 The launcher does not pass `pugwash --no-check`. That flag only skips the startup version offer. Update PortMaster in the GUI still installs `PortMaster.zip` into the live tree and creates `.pugwash-reboot`. The launcher treats that file as a restart: it prepares again, then starts the new GUI.
 
-A tree left by the previous layout is migrated once. `libs/`, `runtimes/`, `config/`, and `themes/` are merged, `/storage/PortMaster` is removed, and the Zlyme integration pass runs after that merge. Installed ports are not moved.
+`/storage/PortMaster` and `<root>/Roms/Ports (PORTS)/PortMaster` are obsolete PortMaster engines. Prepare does not read them, copy them, or delete them. Installed games stay in `Roms/Ports (PORTS)`. A new live tree does not contain downloaded runtimes. PortMaster refreshes its own catalogue, and a port downloads the runtime it needs.
+
+A missing live path, or a path that is not a real PortMaster directory, is installed from the seed. Prepare moves the previous path aside only while that publish is in progress. After the new tree is in place, that temporary copy is removed. A failed publish puts the previous path back. The seed is not merged with the previous tree.
+
+PortMaster `control.txt` sets `clibs=/usr/lib/compat` and `get_controls` prepends that directory to `LD_LIBRARY_PATH`. Runtime wrappers then prepend their own library directory. The system dynamic linker does not search `/usr/lib/compat`. `portmaster-theora-compat` installs the libtheora 1.1.1 decoder there (`libtheoradec.so.1`) because LÖVE 11.5 was built against that SONAME. The system libtheora remains 1.2 (`libtheoradec.so.2`).
 
 ## 12. Emulator model
 

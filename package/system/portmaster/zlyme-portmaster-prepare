@@ -4,13 +4,14 @@
 #
 # The squashfs copy is the seed. The selected library's
 # Roms/.portmaster/PortMaster directory is the only live installation.
-# A later prepare does not replace a valid live tree from the seed.
-# Legacy libs, runtimes, config, and themes are merged before the final
-# Zlyme integration pass. That pass is the last writer.
+# A valid live tree is kept. A missing or structurally invalid tree is
+# replaced from the seed. Nothing is merged from /storage/PortMaster or
+# from a Ports (PORTS)/PortMaster directory.
 #
 # Test seams: ZLYME_PM_SEED, ZLYME_PM_OVERLAY, ZLYME_PM_RUN, ZLYME_PM_ROOT_BIN,
-# ZLYME_PM_LEGACY, ZLYME_PM_MIN_FREE_KB. Library selection stays in
-# zlyme-portmaster-root (ZLYME_PM_STORAGE, ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE).
+# ZLYME_PM_MIN_FREE_KB.
+# Library selection stays in zlyme-portmaster-root
+# (ZLYME_PM_STORAGE, ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE).
 
 set -eu
 
@@ -60,19 +61,32 @@ materialize_dir() {
 	mkdir -p "$path"
 }
 
-merge_keep() {
-	old=$1
-	new=$2
-	name=""
-	src=""
-	for name in libs runtimes config themes; do
-		src=$old/$name
-		if [ ! -d "$src" ] || [ -L "$src" ]; then
-			continue
+# pugwash and harbourmaster are present, and the mutable directories are
+# real directories. A symlink, including the old libs link, is not a live
+# tree. pylibs.zip may still be waiting to be expanded.
+live_ok() {
+	d=$1
+	[ -d "$d" ] && [ ! -L "$d" ] || return 1
+	engine_ok "$d" || return 1
+	if [ -L "$d/pylibs" ]; then
+		return 1
+	fi
+	if [ -d "$d/pylibs" ]; then
+		pylibs_ok "$d" || return 1
+	elif [ ! -f "$d/pylibs.zip" ] || [ -L "$d/pylibs.zip" ]; then
+		return 1
+	fi
+	if [ -e "$d/libs" ]; then
+		if [ -L "$d/libs" ] || [ ! -d "$d/libs" ]; then
+			return 1
 		fi
-		mkdir -p "$new/$name"
-		cp -a "$src/." "$new/$name/"
-	done
+	fi
+	if [ -e "$d/runtimes" ]; then
+		if [ -L "$d/runtimes" ] || [ ! -d "$d/runtimes" ]; then
+			return 1
+		fi
+	fi
+	return 0
 }
 
 expand_pylibs() {
@@ -190,19 +204,20 @@ publish_tree() {
 	for name in libs runtimes config themes; do
 		materialize_dir "$new/$name"
 	done
-	if [ -d "$live" ] && [ ! -L "$live" ]; then
-		merge_keep "$live" "$new"
-	fi
 	apply_integration "$new"
 	backup=$(mktemp -d "$tools/.pm-old.XXXXXX")
-	if [ -d "$live" ]; then
+	# The backup exists only until this publish succeeds. It is not kept
+	# as a second PortMaster installation.
+	if [ -e "$live" ] || [ -L "$live" ]; then
 		if ! mv "$live" "$backup/old"; then
 			rm -rf "$stage" "$backup"
+			stage=""
+			backup=""
 			die "PortMaster seed could not be installed"
 		fi
 	fi
 	if ! mv "$new" "$live"; then
-		if [ -d "$backup/old" ]; then
+		if [ -e "$backup/old" ] || [ -L "$backup/old" ]; then
 			mv "$backup/old" "$live" || true
 		fi
 		rm -rf "$stage" "$backup"
@@ -229,47 +244,6 @@ install_from_seed() {
 		die "PortMaster seed is not a PortMaster tree"
 	fi
 	publish_tree "$stage"
-}
-
-install_from_legacy() {
-	leg=$1
-	stage=""
-	free_ok "$tools"
-	stage=$(mktemp -d "$tools/.pm-stage.XXXXXX") || die "PortMaster could not be migrated"
-	mkdir -p "$stage/PortMaster"
-	if ! cp -a "$leg/." "$stage/PortMaster/"; then
-		rm -rf "$stage"
-		die "PortMaster could not be migrated"
-	fi
-	publish_tree "$stage"
-}
-
-legacy_engine() {
-	if [ -f "$legacy/PortMaster/pugwash" ] && [ -s "$legacy/PortMaster/pugwash" ]; then
-		printf '%s\n' "$legacy/PortMaster"
-		return 0
-	fi
-	if [ -f "$legacy/pugwash" ] && [ -s "$legacy/pugwash" ]; then
-		printf '%s\n' "$legacy"
-		return 0
-	fi
-	return 1
-}
-
-retire_legacy() {
-	leg=""
-	[ -n "$legacy" ] || return 0
-	[ -e "$legacy" ] || return 0
-	case "$legacy" in
-		"$live"|"$live"/*) return 0 ;;
-	esac
-	if [ -d "$legacy/PortMaster" ] && [ ! -L "$legacy/PortMaster" ]; then
-		merge_keep "$legacy/PortMaster" "$live"
-	fi
-	if [ -d "$legacy" ] && [ ! -L "$legacy" ]; then
-		merge_keep "$legacy" "$live"
-	fi
-	rm -rf "$legacy"
 }
 
 # /run/portmaster is tmpfs. A leftover directory must not become the
@@ -307,28 +281,14 @@ load_hm() {
 	[ -n "${HM_PORTS_DIR:-}" ] || die "PortMaster library is not selected"
 	tools=$HM_TOOLS_DIR
 	live=$tools/PortMaster
-	storage=${ZLYME_PM_STORAGE:-/storage}
-	legacy=${ZLYME_PM_LEGACY:-$storage/PortMaster}
 }
 
 prepare() {
-	leg=""
 	load_hm
 	mkdir -p "$tools" || die "PortMaster disk is not writable"
-	if [ -L "$live" ]; then
-		rm -f "$live"
+	if ! live_ok "$live"; then
+		install_from_seed
 	fi
-	if ! engine_ok "$live"; then
-		leg=$(legacy_engine || true)
-		if [ -n "$leg" ]; then
-			install_from_legacy "$leg"
-		else
-			install_from_seed
-		fi
-	fi
-	# Legacy config and themes are merged first. Integration is the
-	# last writer, so an old theme copy cannot undo that pass.
-	retire_legacy
 	apply_integration "$live"
 	link_runtime
 	validate_live

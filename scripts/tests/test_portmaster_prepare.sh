@@ -1,6 +1,7 @@
 #!/bin/sh
 # Writable PortMaster live tree: seed, repeat, direct launch, reset, failure.
 set -eu
+# shellcheck disable=SC1007
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 PREPARE=$ROOT/package/system/portmaster/zlyme-portmaster-prepare
 ROOTBIN=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-portmaster-root
@@ -81,7 +82,6 @@ export ZLYME_LIBRARIES_FILE=$work/libraries
 export ZLYME_CFG=$work/cfg
 export ZLYME_PM_MIN_FREE_KB=1
 export ZLYME_PM_NO_SLEEP=1
-unset ZLYME_PM_LEGACY
 
 "$ROOTBIN" set "$storage"
 "$PREPARE"
@@ -163,50 +163,69 @@ test ! -s "$work/out"
 grep -q 'newer-pugwash' "$live/pugwash"
 test ! -d "$storage/Roms/.portmaster/PortMaster.missing" 
 
-# Migration keeps card libs and retires the legacy launcher copy.
-# Legacy config and the obsolete Zlyme theme directory are merged before
-# the final integration pass, which is what normalizes them.
-mkdir -p "$storage/PortMaster/PortMaster/libs" \
-	"$storage/PortMaster/PortMaster/config" \
-	"$storage/PortMaster/PortMaster/themes/Zlyme" \
-	"$storage/PortMaster/PortMaster/runtimes"
-printf '%s\n' 'legacy-lib' > "$storage/PortMaster/PortMaster/libs/legacy.squashfs"
-printf '%s\n' 'legacy-runtime' > "$storage/PortMaster/PortMaster/runtimes/legacy.squashfs"
-printf '%s\n' 'obsolete-theme' > "$storage/PortMaster/PortMaster/themes/Zlyme/theme.txt"
-python3 - "$storage/PortMaster/PortMaster/config/config.json" << 'PY'
-import json, sys
-json.dump({"theme": "Zlyme", "theme-scheme": "old"}, open(sys.argv[1], "w"))
-PY
-printf '%s\n' 'seed-pugwash' > "$live/pugwash"
-printf '%s\n' 'upstream-control' > "$live/control.txt"
-python3 - "$live/pylibs/default_theme/theme.json" << 'PY'
-import json, sys
-p = sys.argv[1]
-data = json.load(open(p))
-data["#info"]["default-scheme"] = "Light Mode"
-data["#schemes"].pop("Zlyme", None)
-json.dump(data, open(p, "w"))
-PY
-# live is already valid, so the engine stays and legacy state is merged.
+# Obsolete engines are ignored. They are not copied and not deleted.
+mkdir -p "$storage/PortMaster/libs" \
+	"$storage/Roms/Ports (PORTS)/PortMaster/libs" \
+	"$storage/Roms/Ports (PORTS)/PortMaster/config"
+printf '%s\n' 'old-storage-runtime' > "$storage/PortMaster/libs/old.squashfs"
+printf '%s\n' 'old-ports-runtime' > "$storage/Roms/Ports (PORTS)/PortMaster/libs/ports.squashfs"
+printf '%s\n' '{"name":"not-imported"}' > "$storage/Roms/Ports (PORTS)/PortMaster/config/runtimes.json"
+printf '%s\n' 'NOT-ZLYME-CONTROL' > "$storage/Roms/Ports (PORTS)/PortMaster/control.txt"
 "$ROOTBIN" set "$storage"
 "$PREPARE"
-grep -q 'legacy-lib' "$live/libs/legacy.squashfs"
-grep -q 'legacy-runtime' "$live/runtimes/legacy.squashfs"
-test ! -e "$storage/PortMaster"
-test ! -e "$live/themes/Zlyme"
-grep -q 'seed-pugwash' "$live/pugwash"
+test ! -e "$live/libs/old.squashfs"
+test ! -e "$live/libs/ports.squashfs"
+test ! -e "$live/config/runtimes.json"
 grep -q 'export CFW_NAME=Zlyme' "$live/control.txt"
-grep -q 'Miyoo Flip' "$live/pylibs/harbourmaster/hardware.py"
-grep -q "'zlyme':" "$live/pylibs/harbourmaster/platform.py"
-python3 - "$live/config/config.json" "$live/pylibs/default_theme/theme.json" << 'PY'
-import json, sys
-cfg = json.load(open(sys.argv[1]))
-assert cfg.get("theme") == "default_theme", cfg
-assert cfg.get("theme-scheme") == "Zlyme", cfg
-theme = json.load(open(sys.argv[2]))
-assert theme["#info"]["default-scheme"] == "Zlyme"
-assert theme["#schemes"]["Zlyme"]["#pallet"]["list_selected"][:3] == [252, 156, 20]
-PY
+grep -q 'old-storage-runtime' "$storage/PortMaster/libs/old.squashfs"
+grep -q 'old-ports-runtime' "$storage/Roms/Ports (PORTS)/PortMaster/libs/ports.squashfs"
+grep -q 'NOT-ZLYME-CONTROL' "$storage/Roms/Ports (PORTS)/PortMaster/control.txt"
+
+# A structurally invalid live tree is replaced from the seed.
+# The previous bytes are not merged in.
+printf '%s\n' 'do-not-keep' > "$live/libs/do-not-keep.squashfs"
+rm -f "$live/pugwash"
+"$PREPARE"
+grep -q 'seed-pugwash' "$live/pugwash"
+test ! -e "$live/libs/do-not-keep.squashfs"
+test ! -d "$storage/Roms/.portmaster/.pm-old."*
+test ! -d "$storage/Roms/.portmaster/.pm-stage."*
+
+# A failed replacement leaves the invalid tree in place.
+rm -f "$live/pugwash"
+printf '%s\n' 'still-here' > "$live/libs/still-here.squashfs"
+if ZLYME_PM_SEED=$work/bad.zip "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "corrupt seed replaced an invalid tree"
+fi
+# bad.zip does not exist yet; the missing seed must not publish.
+grep -q 'seed is missing' "$work/err"
+test ! -e "$live/pugwash"
+grep -q 'still-here' "$live/libs/still-here.squashfs"
+printf '%s\n' 'not a zip' > "$work/bad.zip"
+if ZLYME_PM_SEED=$work/bad.zip "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "corrupt seed replaced an invalid tree"
+fi
+grep -q 'could not be installed' "$work/err"
+test ! -e "$live/pugwash"
+grep -q 'still-here' "$live/libs/still-here.squashfs"
+test ! -d "$storage/Roms/.portmaster/.pm-stage."*
+export ZLYME_PM_SEED=$work/seed.zip
+"$PREPARE"
+grep -q 'seed-pugwash' "$live/pugwash"
+test ! -e "$live/libs/still-here.squashfs"
+
+# A symlinked live path is not followed or merged. The link target stays.
+linked=$work/linked-engine
+mkdir -p "$linked"
+printf '%s\n' 'linked-engine' > "$linked/keep"
+rm -rf "$live"
+ln -s "$linked" "$live"
+"$PREPARE"
+test -d "$live"
+test ! -L "$live"
+grep -q 'seed-pugwash' "$live/pugwash"
+grep -q 'linked-engine' "$linked/keep"
+test ! -e "$live/keep"
 
 # A theme the user actually selected is left alone.
 python3 - "$live/config/config.json" << 'PY'
@@ -238,6 +257,8 @@ test ! -e "$live"
 test ! -e "$work/cfg/PortMaster"
 test ! -e "$work/cfg/portmaster-home"
 grep -q '#!/bin/sh' "$storage/Roms/Ports (PORTS)/fixture/Fixture.sh"
+grep -q 'old-storage-runtime' "$storage/PortMaster/libs/old.squashfs"
+grep -q 'old-ports-runtime' "$storage/Roms/Ports (PORTS)/PortMaster/libs/ports.squashfs"
 grep -q wifi "$work/cfg/wpa_supplicant.conf"
 
 # The next prepare installs the seed again.

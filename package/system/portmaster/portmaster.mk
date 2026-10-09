@@ -15,7 +15,8 @@ PORTMASTER_SOURCE = PortMaster.zip
 PORTMASTER_SITE = https://github.com/PortsMaster/PortMaster-GUI/releases/download/$(PORTMASTER_VERSION)
 PORTMASTER_LICENSE = MIT
 PORTMASTER_LICENSE_FILES = LICENSE
-PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates xz
+PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates xz \
+	portmaster-theora-compat
 
 define PORTMASTER_EXTRACT_CMDS
 	mkdir -p $(@D)
@@ -25,6 +26,7 @@ endef
 
 define PORTMASTER_INSTALL_TARGET_CMDS
 	rm -rf $(TARGET_DIR)/usr/share/portmaster/PortMaster
+	rm -f $(TARGET_DIR)/usr/share/portmaster/zlyme/migrate-runtimes.py
 	mkdir -p $(TARGET_DIR)/usr/share/portmaster/zlyme \
 		$(TARGET_DIR)/usr/config/PortMaster
 	$(INSTALL) -D -m 0644 $(@D)/PortMaster.zip \

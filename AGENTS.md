@@ -323,6 +323,10 @@ If a validation step cannot be run, say so.
 
 Never fabricate results.
 
+## Hardware payload transfer
+
+Do not transfer OTAs, images, runtime archives, libraries, emulator binaries, large logs, or other bulk payloads to or from the Miyoo Flip over Wi-Fi, SSH, SCP, or rsync. Use a physical SD card mounted on the development host. SSH over Wi-Fi is for commands, inspection, and small text diagnostics. If the required card is not mounted on the host, stop and say which card and path are needed. Do not fall back to a network copy. This does not stop PortMaster from downloading its own catalogue or runtimes when a person uses it.
+
 ## Agent behavior
 
 Do not guess repository behavior when source can answer it.
