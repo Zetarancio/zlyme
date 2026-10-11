@@ -234,6 +234,36 @@ auth apply
 verify "$pw2" "$(root_field)" || fail "rebuilt hash"
 others_match || fail "reboot apply changed another account"
 
+# A failed clear must not drop the stored password or the live hash.
+keep='keep-me'
+printf '%s' "$keep" | auth set
+kept_field=$(root_field)
+verify "$keep" "$kept_field" || fail "pre-failure hash"
+rm -f "$work/run/shadow.orig"
+mv "$work/shadow.src" "$work/shadow.src.hidden"
+if clear_err=$(
+	env \
+		ZLYME_CFG="$cfg" \
+		ZLYME_SSH_RUN="$work/run" \
+		ZLYME_SSH_SHADOW_SRC="$work/missing-shadow" \
+		ZLYME_SSH_NO_MOUNT=1 \
+		ZLYME_SSH_RELOAD_LOG="$work/reload.log" \
+		"$BIN" clear 2>&1
+); then
+	fail "clear succeeded without a shadow source"
+fi
+printf '%s' "$clear_err" | grep -q '^rejected$' || fail "clear failure was not rejected"
+printf '%s' "$clear_err" | grep -F -q "$keep" && fail "clear failure logged the password"
+[ "$(auth get)" = "$keep" ] || fail "clear failure deleted the password"
+[ "$(root_field)" = "$kept_field" ] || fail "clear failure changed the hash"
+verify "$keep" "$(root_field)" || fail "clear failure left a hash that does not match"
+mv "$work/shadow.src.hidden" "$work/shadow.src"
+auth clear
+[ ! -e "$cfg/zlyme/ssh.password" ] || fail "clear after recovery left the password"
+[ "$(root_field)" = "" ] || fail "clear after recovery left a hash"
+others_match || fail "clear after recovery changed another account"
+printf '%s' "$pw2" | auth set
+
 # Settings reset and factory reset clear it and restore the empty field.
 export ZLYME_RESET_ROOT="$work"
 export ZLYME_CFG="$cfg"

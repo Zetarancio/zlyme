@@ -9,9 +9,19 @@
 # in the background after the first frame. No route, or Wi-Fi left off,
 # is not a boot failure.
 #
-# RTC writes are UTC. The bootstrap writes the RTC. ntpd's step callback
-# writes it only for a step of 30 seconds or more. The timezone file is
-# not touched.
+# RTC writes are UTC. The bootstrap writes the RTC. The timezone file
+# is not touched.
+#
+# BusyBox 1.37.0 ntpd -S runs this script. The argument is an action:
+# step, stratum, periodic, or unsync. The offset is the environment
+# variable offset (printf %f), not an argument. Only step writes the
+# RTC, and only when the absolute integer seconds are 30 or more.
+# stratum, periodic (about every 11 minutes), and unsync do not.
+#
+# start, kick, and reopen share one mkdir lock so two callers cannot
+# launch two clients and reopen cannot kill the client it just
+# started. rc.late, Wi-Fi, and resume already background this script.
+# No route means no client is left polling.
 
 http_date_to_stamp() {
 	# "Tue, 15 Sep 2026 01:32:00 GMT" → "2026-09-15 01:32:00"
@@ -62,6 +72,13 @@ stop_pid() {
 	f=$1
 	[ -f "$f" ] || return 0
 	pid=$(tr -d ' \t\r\n' < "$f")
+	# The lock holder records itself as the worker. Stopping that
+	# file from inside the holder would kill the replacement.
+	# read is a builtin. A command substitution would be a different pid.
+	read -r self _ < /proc/self/stat
+	if [ "$pid" = "$self" ]; then
+		return 0
+	fi
 	rm -f "$f"
 	case "$pid" in
 		''|*[!0-9]*) return 0 ;;
@@ -99,11 +116,17 @@ fetch_date() {
 write_rtc_if_large() {
 	off=$1
 	case "$off" in
+		+*) off=${off#+} ;;
 		-*) off=${off#-} ;;
 	esac
 	int=${off%%.*}
+	frac=${off#*.}
+	[ "$frac" = "$off" ] && frac=
 	case "$int" in
 		''|*[!0-9]*) return 0 ;;
+	esac
+	case "$frac" in
+		*[!0-9]*) return 0 ;;
 	esac
 	[ "$int" -ge 30 ] || return 0
 	hwclock -u -w >/dev/null 2>&1 || true
@@ -154,8 +177,55 @@ wait_route() {
 	return 1
 }
 
+lock_dir() {
+	printf '%s/zlyme-ntp.lock' "$(pid_dir)"
+}
+
+release_lock() {
+	# The directory holds the owner pid, so rmdir would leave it behind.
+	rm -rf "$(lock_dir)"
+}
+
+acquire_lock() {
+	mkdir -p "$(pid_dir)" 2>/dev/null || return 1
+	i=0
+	while ! mkdir "$(lock_dir)" 2>/dev/null; do
+		i=$((i + 1))
+		# Longer than a route wait plus the HTTP bootstrap. sleep is
+		# real here: ZLYME_NTP_NO_SLEEP must not make a waiter give up
+		# while the holder is still inside the lock.
+		[ "$i" -ge 2000 ] && return 1
+		holder=$(tr -d ' \t\r\n' < "$(lock_dir)/pid" 2>/dev/null || true)
+		case "$holder" in
+			''|*[!0-9]*)
+				# The owner publishes its pid immediately. An empty
+				# pid after a couple of seconds is a leaked lock.
+				if [ "$i" -ge 40 ]; then
+					rm -rf "$(lock_dir)"
+				fi
+				;;
+			*)
+				if ! kill -0 "$holder" 2>/dev/null; then
+					rm -rf "$(lock_dir)"
+				fi
+				;;
+		esac
+		sleep 0.05
+	done
+	read -r self _ < /proc/self/stat
+	printf '%s\n' "$self" > "$(lock_dir)/pid" || {
+		release_lock
+		return 1
+	}
+	return 0
+}
+
 sync_body() {
-	wait_route || return 0
+	if ! wait_route; then
+		# The network is down. Do not leave the client polling.
+		stop_pid "$(ntpd_pid)"
+		return 0
+	fi
 	if [ -z "${ZLYME_NTP_ROUTE+x}" ]; then
 		gw=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
 		if [ -n "$gw" ]; then
@@ -169,34 +239,82 @@ sync_body() {
 	if pid_alive "$(ntpd_pid)"; then
 		return 0
 	fi
+	# Host tests hold the lock across this pause so overlapping
+	# start/kick/reopen calls are forced to meet.
+	if [ -n "${ZLYME_NTP_HOLD:-}" ]; then
+		sleep "$ZLYME_NTP_HOLD"
+	fi
+	if pid_alive "$(ntpd_pid)"; then
+		return 0
+	fi
 	ntpd -n -p time.cloudflare.com -p pool.ntp.org -S "$0" >/dev/null 2>&1 &
 	echo $! > "$(ntpd_pid)"
 }
 
+spawn_locked() {
+	mode=$1
+	mkdir -p "$(pid_dir)" 2>/dev/null || return 0
+	if [ "${ZLYME_NTP_FOREGROUND:-}" = 1 ]; then
+		acquire_lock || return 0
+		if [ "$mode" = reopen ]; then
+			stop_pid "$(ntpd_pid)"
+		fi
+		sync_body
+		release_lock
+		return 0
+	fi
+	(
+		owned=0
+		release_owned() {
+			if [ "$owned" = 1 ]; then
+				owned=0
+				release_lock
+			fi
+		}
+		trap 'release_owned; exit 0' INT TERM
+		trap release_owned EXIT
+		if ! acquire_lock; then
+			exit 0
+		fi
+		owned=1
+		if [ "$mode" = reopen ]; then
+			stop_pid "$(ntpd_pid)"
+		fi
+		sync_body
+		release_owned
+	) >/dev/null 2>&1 &
+	echo $! > "$(worker_pid)"
+}
+
 start() {
 	mkdir -p "$(pid_dir)" 2>/dev/null || return 0
-	if pid_alive "$(ntpd_pid)" || pid_alive "$(worker_pid)"; then
+	# ZLYME_NTP_FORCE skips this shortcut so host tests can overlap
+	# callers that would otherwise see the worker and return.
+	if [ "${ZLYME_NTP_FORCE:-}" != 1 ] \
+		&& have_route \
+		&& { pid_alive "$(ntpd_pid)" || pid_alive "$(worker_pid)"; }; then
 		return 0
 	fi
-	if [ "${ZLYME_NTP_FOREGROUND:-}" = 1 ]; then
-		sync_body
-		return 0
-	fi
-	sync_body >/dev/null 2>&1 &
-	echo $! > "$(worker_pid)"
+	spawn_locked start
 }
 
 stop() {
 	stop_pid "$(worker_pid)"
-	stop_pid "$(ntpd_pid)"
+	if acquire_lock; then
+		stop_pid "$(ntpd_pid)"
+		release_lock
+	else
+		stop_pid "$(ntpd_pid)"
+	fi
 }
 
 case "${1:-}" in
-	start) start ;;
+	start|kick) start ;;
 	stop) stop ;;
-	kick) start ;;
-	reopen) stop; start ;;
+	reopen) spawn_locked reopen ;;
 	restart|reload) stop; start ;;
+	step) write_rtc_if_large "${offset:-}" ;;
+	stratum|periodic|unsync) ;;
 	"") ;;
-	*) write_rtc_if_large "$1" ;;
+	*) ;;
 esac

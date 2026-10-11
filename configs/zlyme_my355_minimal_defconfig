@@ -129,7 +129,10 @@ BR2_PACKAGE_WPA_SUPPLICANT_PASSPHRASE=y
 BR2_PACKAGE_IW=y
 
 # SSH (SFTP). Host key on tmpfs; S27sshd starts before NextUI.
+# The openssl CLI is required for `openssl passwd -6`. Without it the
+# library is built with no-apps and a set password cannot be hashed.
 BR2_PACKAGE_OPENSSL=y
+BR2_PACKAGE_LIBOPENSSL_BIN=y
 BR2_PACKAGE_OPENSSH=y
 
 # BlueZ: pairing, HID/HOG. Audio plugin comes with ALSA below. dbus is required.

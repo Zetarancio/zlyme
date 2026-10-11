@@ -200,6 +200,29 @@ cmd_get() {
 	fi
 }
 
+# Remove the password file and apply an empty shadow field. The
+# previous file is restored, and the previous hash reapplied, if the
+# empty field cannot be written. The password is not logged.
+drop_secret() {
+	backup=$(mktemp) || reject
+	had=0
+	if [ -f "$passfile" ]; then
+		cat "$passfile" > "$backup" || { rm -f "$backup"; reject; }
+		had=1
+	fi
+	rm -f "$passfile"
+	if ! apply_shadow; then
+		if [ "$had" -eq 1 ]; then
+			cat "$backup" > "$passfile" || true
+			chmod 600 "$passfile" 2>/dev/null || true
+		fi
+		apply_shadow || true
+		rm -f "$backup"
+		reject
+	fi
+	rm -f "$backup"
+}
+
 cmd_set() {
 	raw=$(mktemp) || reject
 	norm=$(mktemp) || { rm -f "$raw"; reject; }
@@ -211,8 +234,8 @@ cmd_set() {
 	rm -f "$raw"
 	acquire_lock
 	if [ ! -s "$norm" ]; then
-		rm -f "$norm" "$passfile"
-		apply_shadow || reject
+		rm -f "$norm"
+		drop_secret
 		return 0
 	fi
 	# Hash before replacing the stored password. A failed openssl
@@ -243,8 +266,7 @@ cmd_set() {
 
 cmd_clear() {
 	acquire_lock
-	rm -f "$passfile"
-	apply_shadow || reject
+	drop_secret
 }
 
 cmd_apply() {

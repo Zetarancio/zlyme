@@ -185,7 +185,7 @@ Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `of
 
 ### `zlyme-ssh-auth`
 
-Owns the root SSH password. Verbs: `get`, `set`, `clear`, `apply`. `set` reads the password on stdin. The plaintext file is `/storage/.config/zlyme/ssh.password`. A missing file is an empty password. `apply` bind-mounts a generated shadow from `/run` over `/etc/shadow` and replaces only the root field.
+Owns the root SSH password. Verbs: `get`, `set`, `clear`, `apply`. `set` reads the password on stdin. The plaintext file is `/storage/.config/zlyme/ssh.password`. A missing file is an empty password. `apply` bind-mounts a generated shadow from `/run` over `/etc/shadow` and replaces only the root field. `clear` restores the previous file and hash if the empty field cannot be written.
 
 ### `zlyme-halt`
 

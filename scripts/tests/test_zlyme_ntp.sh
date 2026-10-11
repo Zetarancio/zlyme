@@ -1,6 +1,8 @@
 #!/bin/sh
 # Host tests for clock bootstrap and ntpd. No network and no real RTC.
 set -eu
+# A caller may export these. They would stall or skip the checks below.
+unset ZLYME_NTP_HOLD ZLYME_NTP_FORCE
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 NTP="$ROOT/board/my355/fsoverlay/etc/init.d/S49ntp"
 work=$(mktemp -d)
@@ -70,7 +72,7 @@ reset_logs() {
 	: > "$work/ntpd.pids"
 	: > "$work/curl.log"
 	stop_left
-	rm -f "$work/run/zlyme-ntp.pid" "$work/run/zlyme-ntpd.pid"
+	rm -rf "$work/run/zlyme-ntp.pid" "$work/run/zlyme-ntpd.pid" "$work/run/zlyme-ntp.lock"
 }
 
 run_ntp() {
@@ -93,6 +95,47 @@ hw_count() {
 		return
 	fi
 	wc -l < "$work/hwclock.log" | tr -d ' '
+}
+
+run_ntp_bg() {
+	env \
+		PATH="$work/bin:$PATH" \
+		ZLYME_NTP_PIDDIR="$work/run" \
+		ZLYME_NTP_DATE_LOG="$work/date.log" \
+		ZLYME_NTP_HWCLOCK_LOG="$work/hwclock.log" \
+		ZLYME_NTP_NTPD_LOG="$work/ntpd.log" \
+		ZLYME_NTP_NTPD_PIDS="$work/ntpd.pids" \
+		ZLYME_NTP_CURL_LOG="$work/curl.log" \
+		ZLYME_NTP_NO_SLEEP=1 \
+		"$NTP" "$@"
+}
+
+alive_ntpd() {
+	n=0
+	if [ -s "$work/ntpd.pids" ]; then
+		while read -r p; do
+			kill -0 "$p" 2>/dev/null && n=$((n + 1))
+		done < "$work/ntpd.pids"
+	fi
+	printf '%s' "$n"
+}
+
+wait_ntp_idle() {
+	i=0
+	while [ "$i" -lt 160 ]; do
+		if [ ! -d "$work/run/zlyme-ntp.lock" ]; then
+			w=""
+			if [ -f "$work/run/zlyme-ntp.pid" ]; then
+				w=$(tr -d ' \t\r\n' < "$work/run/zlyme-ntp.pid")
+			fi
+			if [ -z "$w" ] || ! kill -0 "$w" 2>/dev/null; then
+				return 0
+			fi
+		fi
+		sleep 0.05
+		i=$((i + 1))
+	done
+	return 1
 }
 
 # Invalid RTC: bootstrap, then ntpd. The timezone file stays put.
@@ -163,18 +206,32 @@ grep -q -- '-u -s 2026-09-15 01:32:00' "$work/date.log" || fail "missing ntpd sk
 [ "$(hw_count)" = 1 ] || fail "missing ntpd skipped the RTC write"
 mv "$work/bin/ntpd.off" "$work/bin/ntpd"
 
-# Subsequent correction. Small steps do not write the RTC.
+# BusyBox callback: the action is the argument and offset is the
+# environment variable. A number passed as the argument is not a step.
 reset_logs
-run_ntp 40.2
-run_ntp 1.5
-run_ntp -2
-run_ntp 29.9
-run_ntp hello
-[ "$(hw_count)" = 1 ] || fail "small steps wrote the RTC $(hw_count)"
-run_ntp -45
-run_ntp 30
-[ "$(hw_count)" = 3 ] || fail "large steps did not write the RTC"
+offset=45.2 run_ntp step
+offset=-45.2 run_ntp step
+offset=1.5 run_ntp step
+offset=29.9 run_ntp step
+offset=30 run_ntp step
+offset=-30 run_ntp step
+unset offset || true
+run_ntp step
+offset=hello run_ntp step
+offset=45.2x run_ntp step
+offset=80 run_ntp stratum
+offset=80 run_ntp periodic
+offset=80 run_ntp unsync
+offset=80 run_ntp something
+run_ntp 45.2
+[ "$(hw_count)" = 4 ] || fail "RTC writes were $(hw_count), want 4"
 grep -q -- '-u -w' "$work/hwclock.log" || fail "step write was not UTC"
+while read -r hwline; do
+	case "$hwline" in
+		*-u*-w*|*-w*-u*) ;;
+		*) fail "RTC write was not UTC: $hwline" ;;
+	esac
+done < "$work/hwclock.log"
 
 # One ntpd. A second start does not add another. Reopen and a later
 # kick after it died do.
@@ -196,6 +253,102 @@ ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on run_ntp reopen
 fourth=$(cat "$work/run/zlyme-ntpd.pid")
 [ "$fourth" != "$third" ] || fail "reopen did not restart ntpd"
 kill "$fourth" 2>/dev/null || true
+
+# A lock whose owner was killed is stolen. Otherwise every later
+# start would wait out the lock timeout.
+reset_logs
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on ZLYME_NTP_HOLD=5 \
+	run_ntp_bg start
+i=0
+while [ ! -s "$work/run/zlyme-ntp.lock/pid" ] && [ "$i" -lt 50 ]; do
+	sleep 0.05
+	i=$((i + 1))
+done
+[ -s "$work/run/zlyme-ntp.lock/pid" ] || fail "lock owner was not published"
+holder=$(tr -d ' \t\r\n' < "$work/run/zlyme-ntp.lock/pid")
+pkill -P "$holder" 2>/dev/null || true
+kill -9 "$holder" 2>/dev/null || true
+i=0
+while kill -0 "$holder" 2>/dev/null && [ "$i" -lt 50 ]; do
+	sleep 0.05
+	i=$((i + 1))
+done
+kill -0 "$holder" 2>/dev/null && fail "lock owner was not reaped"
+begin=$(date +%s)
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on run_ntp start
+end=$(date +%s)
+[ $((end - begin)) -lt 3 ] || fail "stale lock was not recovered"
+[ -s "$work/run/zlyme-ntpd.pid" ] || fail "stale lock recovery did not start ntpd"
+recovered=$(tr -d ' \t\r\n' < "$work/run/zlyme-ntpd.pid")
+kill -0 "$recovered" 2>/dev/null || fail "stale lock recovery client is dead"
+stop_left
+
+# A stale pidfile names a dead process. start replaces it.
+reset_logs
+sleep 0.1 &
+dead=$!
+wait "$dead" || true
+echo "$dead" > "$work/run/zlyme-ntpd.pid"
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on run_ntp start
+stale_new=$(cat "$work/run/zlyme-ntpd.pid")
+[ "$stale_new" != "$dead" ] || fail "stale pidfile was kept"
+kill -0 "$stale_new" 2>/dev/null || fail "stale pidfile was not replaced with a live client"
+kill "$stale_new" 2>/dev/null || true
+
+# No route: do not leave the client polling.
+reset_logs
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on run_ntp start
+live=$(cat "$work/run/zlyme-ntpd.pid")
+kill -0 "$live" 2>/dev/null || fail "client was not running before the route dropped"
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=0 ZLYME_WIFI=off ZLYME_NTP_TRIES=40 run_ntp kick
+kill -0 "$live" 2>/dev/null && fail "disconnected kick left ntpd running"
+[ "$(wc -l < "$work/ntpd.log" | tr -d ' ')" = 1 ] || fail "disconnected kick started another client"
+
+# Overlapping start, kick, and reopen must leave one live client.
+reset_logs
+i=0
+while [ "$i" -lt 6 ]; do
+	ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on \
+		ZLYME_NTP_HOLD=0.3 ZLYME_NTP_FORCE=1 \
+		run_ntp_bg start &
+	i=$((i + 1))
+done
+wait
+wait_ntp_idle || fail "concurrent starts did not finish"
+[ "$(wc -l < "$work/ntpd.log" | tr -d ' ')" = 1 ] || fail "concurrent starts launched more than one client"
+[ "$(alive_ntpd)" = 1 ] || fail "concurrent starts left $(alive_ntpd) clients"
+
+reset_logs
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on \
+	ZLYME_NTP_HOLD=0.4 ZLYME_NTP_FORCE=1 \
+	run_ntp_bg start &
+i=0
+while [ "$i" -lt 4 ]; do
+	ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on \
+		ZLYME_NTP_HOLD=0.2 ZLYME_NTP_FORCE=1 \
+		run_ntp_bg kick &
+	i=$((i + 1))
+done
+wait
+wait_ntp_idle || fail "kick during startup did not finish"
+[ "$(wc -l < "$work/ntpd.log" | tr -d ' ')" = 1 ] || fail "kick during startup launched more than one client"
+[ "$(alive_ntpd)" = 1 ] || fail "kick during startup left $(alive_ntpd) clients"
+kick_pid=$(cat "$work/run/zlyme-ntpd.pid")
+kill -0 "$kick_pid" 2>/dev/null || fail "kick during startup left a dead pidfile"
+
+reset_logs
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on \
+	ZLYME_NTP_HOLD=0.4 ZLYME_NTP_FORCE=1 \
+	run_ntp_bg start &
+ZLYME_NTP_YEAR=2026 ZLYME_NTP_ROUTE=1 ZLYME_WIFI=on \
+	ZLYME_NTP_HOLD=0.2 ZLYME_NTP_FORCE=1 \
+	run_ntp_bg reopen &
+wait
+wait_ntp_idle || fail "reopen during startup did not finish"
+[ "$(alive_ntpd)" = 1 ] || fail "reopen during startup left $(alive_ntpd) clients"
+re_pid=$(cat "$work/run/zlyme-ntpd.pid")
+kill -0 "$re_pid" 2>/dev/null || fail "reopen killed its replacement"
+stop_left
 
 # Start returns without waiting for a route. That is the first-frame path.
 reset_logs
