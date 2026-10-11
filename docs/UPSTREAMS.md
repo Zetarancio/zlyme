@@ -252,6 +252,12 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 
 The gpSP comparison is in `docs/research/product-phase9.md`. The RK817 dispositions are in `docs/research/kernel-patch-audit-phase5.md` and `docs/research/deep-suspend-phase6.md`. ZcrapeGoat's import is recorded below.
 
+### Phase 12B1 emulator source pins
+
+These replaced the GCC 15 and glibc 2.44 build patches added for Buildroot 2026.08. The Buildroot, Mesa, Linux, and U-Boot pins above did not move.
+
+Flycast standalone moved from tag `v2.5` (`5f4eefab5852d1c832ad8ffdf514fef8c217f1ac`) to tag `v2.7` (`5aa091fde632fb332c8d8c34e280d62dc951954c`, 19 August 2026). The removed patch was `package/emulators/flycast/0001-glslang-cstdint.patch`. It added `<cstdint>` to glslang `SPIRV/SpvBuilder.h` at submodule `76b52ebf77833908dc4c0dd6c70a9c357ac720bd`. The v2.6 and v2.7 submodule is `fc9889c889561c5882e83819dcaffef5ed45529b`, which already includes that header. The recipe still builds the standalone SDL2 binary, not the libretro core: host SDL2, GLES with OpenGL left on, Vulkan when the loader is selected, and DirectX off. v2.7 also compiles the bundled DreamPicoPort client. Lua, libao, PulseAudio, and MiniUPnPc were absent from the sysroot, so those backends stayed off. ALSA and libzip stayed on. The install path is still `/usr/bin/flycast`, and `DC.pak/launch.sh` is unchanged. Upstream has both a tag and a branch named `v2.7`; at this pin they are the same commit, and the checkout warned that the ref is ambiguous. Batocera packages tag `v2.7`. ROCKNIX packages libretro Flycast `c3763d8fc4208dd6f8f0bc456383543b8406a8a0` with its own GCC 15 patch. That is a different source line and was not adopted. KNULLI `knulli-main` at `57afa662009641d181f57241bcc480119b131530` packages libretro `flycastvl` `4a913e063c95d1fae98afc64645831de0bcad57e`, not standalone Flycast.
+
 ### Phase 0 comparison snapshot
 
 | Role | Remote | Revision seen |
