@@ -43,7 +43,7 @@ PORTMASTER_THEORA_COMPAT_PRE_CONFIGURE_HOOKS += PORTMASTER_THEORA_COMPAT_UPDATE_
 # Do not remove /usr/lib/compat: other compat libraries may live there.
 define PORTMASTER_THEORA_COMPAT_INSTALL_TARGET_CMDS
 	$(MAKE) -C $(@D) DESTDIR=$(@D)/compat-root install
-	sh $(PORTMASTER_THEORA_COMPAT_PKGDIR)install-compat-libs.sh \
+	sh $(PORTMASTER_THEORA_COMPAT_PKGDIR)/install-compat-libs.sh \
 		$(TARGET_DIR) $(@D)/compat-root
 	test ! -e $(TARGET_DIR)/usr/lib/compat/libtheoradec.so; \
 	test ! -e $(TARGET_DIR)/usr/lib/compat/libtheoraenc.so.1; \
