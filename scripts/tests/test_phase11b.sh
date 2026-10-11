@@ -196,8 +196,15 @@ if grep -E 'rm -rf "\$prefix"|rm -rf "\$(prefix_dir)"' "$WINE_PREFIX" >/dev/null
 fi
 grep -q 'zlyme-wine-prefix prepare' "$WINE_LAUNCH" || fail "launcher prepare"
 grep -q 'zlyme-weston-run wine' "$WINE_LAUNCH" || fail "weston"
-grep -q 'zlyme-wine-prefix cleanup' "$SESSION" || fail "session cleanup"
-if grep -E 'losetup|mkfs\.ext4|e2fsck' "$WINE_LAUNCH" "$SESSION" >/dev/null; then
+LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
+grep -q '/usr/sbin/zlyme-wine-prefix' "$LAUNCH" || fail "wine prefix helper"
+awk '
+	/wait "\$_pak_pid"/ { seen = 1 }
+	seen && /wine_prefix_cleanup/ { found = 1 }
+	END { exit found ? 0 : 1 }
+' "$LAUNCH" || fail "wine cleanup is not after the pak"
+grep -q 'launch_with_reload' "$SESSION" || fail "session does not run the pak helper"
+if grep -E 'losetup|mkfs\.ext4|e2fsck' "$WINE_LAUNCH" "$SESSION" "$LAUNCH" >/dev/null; then
 	fail "launcher or session still loops an ext4 prefix"
 fi
 grep -q 'legacy="$root/.config/nextui/my355/wine-prefix.ext4"' "$POST" || fail "legacy path"

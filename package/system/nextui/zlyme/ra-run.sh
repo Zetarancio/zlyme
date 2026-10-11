@@ -186,15 +186,13 @@ write_minui_ra
 
 # Saves follow the ROM's volume. pak-log already called zlyme_library_for.
 _ra_rom=
-i=1
-while [ "$i" -le $# ]; do
-	eval "_a=\${$i}"
+for _a in "$@"; do
 	case "$_a" in
 		-*) ;;
-		*) _ra_rom=$_a ;;
+		*) _ra_rom="$_a" ;;
 	esac
-	i=$((i + 1))
 done
+unset _a
 if [ -n "$_ra_rom" ] && [ "${ZLYME_RESOLVED_ROM:-}" != "$_ra_rom" ] \
 	&& [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
 	# shellcheck disable=SC1091
@@ -310,7 +308,10 @@ if [ -n "$ZLYME_PAK_LOG" ]; then
 	mkdir -p "$(dirname "$ZLYME_PAK_LOG")"
 	exec retroarch -v --log-file "$ZLYME_PAK_LOG" --appendconfig "$APPEND" "$@"
 fi
+# ZLYME_RA_DEBUG is a manual switch, not the system log flag.
+# Keep it on tmpfs so the session's LOGS_PATH export cannot
+# turn it into a file on the card.
 if [ -n "$ZLYME_RA_DEBUG" ]; then
-	exec retroarch -v --log-file "${LOGS_PATH:-/tmp}/ra-debug.log" --appendconfig "$APPEND" "$@"
+	exec retroarch -v --log-file /tmp/ra-debug.log --appendconfig "$APPEND" "$@"
 fi
 exec retroarch --appendconfig "$APPEND" "$@"

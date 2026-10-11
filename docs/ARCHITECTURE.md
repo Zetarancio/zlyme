@@ -470,6 +470,17 @@ Zlyme is the OS. NextUI is the frontend.
 
 ZcrapeGoat is the built-in artwork, manual, and cheat tool. Its tree is a vendored upstream import plus ordinary Zlyme commits, not a patch stack. It reads `/run/zlyme/libraries`. Artwork stays beside the ROM. Cheats stay on `/storage/Cheats`.
 
+NextUI writes `/tmp/next` and exits. The file is text, not a shell command:
+
+```text
+ZLYME1
+1 or 2
+/absolute/path/launch.sh
+/optional/rom
+```
+
+The count is 1 for a Tool, Settings, or an assigned function button, and 2 when a ROM is passed. A newline or other ASCII control except a tab is not queued. `nextui-session` rejects a file that is truncated, has the wrong marker, has a count other than 1 or 2, has extra lines, contains a NUL, contains an ASCII control other than a tab, or names an executable that is not an absolute `launch.sh`. The executable and the ROM are arguments of one fixed shell program. `PORTS.pak` and `WINE.pak` cleanup looks at that executable path. A ROM whose name contains those strings does not select the cleanup. The input filter is sourced inside the pak process. Settings does not get it. The proxy URL is taken from `zlyme-proxy get` inside that same process and exported only when the host and port match the helper's checks.
+
 The launcher lifecycle is approximately:
 
 ```text
@@ -503,7 +514,7 @@ workspace/my355/
 
 Frontend behavior comes from the `Zetarancio/NextUI` fork at the exact commit pinned by `NEXTUI_VERSION` in `package/system/nextui/nextui.mk`. The fork records its LoveRetro base in `UPSTREAM`. `nextui.elf`, `settings.elf`, the `PWR_*` sleep path, the my355 platform code, and the Settings menus (GPU, Joysticks, update, reset) live in that fork, not in this repository. The Zlyme side is `package/system/nextui/`: `nextui-session`, the `zlyme/` helpers, and the stock PAKs. A frontend change is a fork commit plus a pin change. `docs/MAINTENANCE.md` describes that workflow.
 
-Settings stores Zlyme policy as one file per flag, `/storage/.config/zlyme/<name>`, through `zlyme-ctl get` and `set`. Init scripts read the same flags with `zlyme-ctl want`. An empty or missing file means the default in `zlyme-ctl`, which matches the `S15bootpart` seed. The application proxy is one exception: one file, `/storage/.config/zlyme/proxy.conf`, read and written by `zlyme-proxy`. The updater asks that helper on each request. `nextui-session` applies it to the environment of a pak at launch. It is not a transparent tunnel. The helper creates that file with a restrictive mode when the filesystem can store one. `/storage` is exFAT, so the mode is not stored and is not a confidentiality control. The file has no credentials.
+Settings stores Zlyme policy as one file per flag, `/storage/.config/zlyme/<name>`, through `zlyme-ctl get` and `set`. Init scripts read the same flags with `zlyme-ctl want`. An empty or missing file means the default in `zlyme-ctl`, which matches the `S15bootpart` seed. The application proxy is one exception: one file, `/storage/.config/zlyme/proxy.conf`, read and written by `zlyme-proxy`. The updater asks that helper on each request. `nextui-session` applies it inside the pak process at launch, from `zlyme-proxy get`, not by evaluating shell text. It is not a transparent tunnel. The helper creates that file with a restrictive mode when the filesystem can store one. `/storage` is exFAT, so the mode is not stored and is not a confidentiality control. The file has no credentials.
 
 The SSH password is the other exception. `zlyme-ssh-auth` stores it as plaintext in `/storage/.config/zlyme/ssh.password`. A missing file is an empty password, and SSH stays enabled. OpenSSH accepts that empty password only when the shadow field is empty as well as `PermitEmptyPasswords`. A set password becomes a SHA-512 hash in a shadow built under `/run` and bind-mounted over `/etc/shadow`. The hash comes from `openssl passwd -6 -stdin`. `BR2_PACKAGE_LIBOPENSSL_BIN` installs that command; without it libopenssl is built with `no-apps`. The squashfs copy is not written. Only the root field changes. Settings → Network sets, changes, and clears it without a reboot. About shows the live value. Clearing removes the password file only after the empty shadow field is written. If that write fails, the previous file and hash stay. Reset Settings and Factory Reset delete the file and restore the empty field. The exFAT mode is not a confidentiality control.
 

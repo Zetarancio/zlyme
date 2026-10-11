@@ -3,11 +3,16 @@
 # Start NextUI against Zlyme. Stock launch.sh exports /mnt/SDCARD,
 # starts miyoo_inputd and writes Playback Path. None of that exists
 # here. Cores are /usr/lib/libretro. nextui.elf exits when it wants a
-# pak: the command is in /tmp/next.
+# pak: /tmp/next is a ZLYME1 launch file, not a shell command.
 #
 # Directories come from NextUI's platform.h (SDCARD_PATH /storage).
 # Fonts, icons, version, wifi/bt stubs stay on squashfs. Stock Tools
 # and Emus are copied onto the card from the image glob.
+
+# Host tests export these. A device boot must not inherit them.
+unset ZLYME_PAK_BT ZLYME_SINK_RELOAD ZLYME_PAK_LAUNCH_SH ZLYME_PAK_INPUT \
+	ZLYME_PROXY_BIN ZLYME_DRM_RELEASE ZLYME_PAK_HOTKEY \
+	ZLYME_PORTMASTER_CLEANUP ZLYME_WINE_PREFIX
 
 export PLATFORM=my355
 export DEVICE=my355
@@ -19,6 +24,9 @@ export SYSTEM_PATH=/usr/share/nextui
 export CORES_PATH=/usr/lib/libretro
 export USERDATA_PATH=/storage/.config/nextui/$PLATFORM
 export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
+# NextUI userdata logs, not the system pak log. pak-log.sh replaces
+# this with /storage/.logs/paks only while system logs are on.
+# OpenBOR reads it when that pak log is already enabled. Leave it set.
 export LOGS_PATH=$USERDATA_PATH/logs
 # Diagnostic logging off: routine session lines stay in tmpfs.
 LOGS_ON=0
@@ -291,36 +299,9 @@ bt_stop_scan() {
 	pkill -f 'bluetoothctl scan' 2>/dev/null || true
 }
 
-# PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack,
-# the /roms/ports bind, or mounts created through zlyme-portmaster-exec.
-# MENU+START can kill that process group. This session is outside it.
-ports_pak_cmd() {
-	case "$1" in
-		*PORTS.pak/launch.sh*) return 0 ;;
-	esac
-	return 1
-}
-
-portmaster_cleanup() {
-	[ -x /usr/sbin/zlyme-portmaster-cleanup ] || return 0
-	/usr/sbin/zlyme-portmaster-cleanup || true
-}
-
-# WINE.pak execs zlyme-weston-run, which stays in this pak group.
-# wineserver can still outlive the group. The prefix helper unmounts
-# only this prefix's dosdevices tmpfs. It does not share PortMaster's
-# /tmp/weston cleanup.
-wine_pak_cmd() {
-	case "$1" in
-		*WINE.pak/launch.sh*) return 0 ;;
-	esac
-	return 1
-}
-
-wine_prefix_cleanup() {
-	[ -x /usr/sbin/zlyme-wine-prefix ] || return 0
-	/usr/sbin/zlyme-wine-prefix cleanup || true
-}
+# Launch file, process group, proxy, and PortMaster/Wine cleanup.
+# shellcheck disable=SC1091
+. /usr/share/nextui/bin/pak-launch.sh
 
 # List and return-to-frontend clocks. A pak's launch.sh applies its
 # own profile after nextui.elf has exited, so this cannot race it.
@@ -329,84 +310,6 @@ apply_frontend_governor() {
 		/usr/sbin/zlyme-governor smart || true
 	elif [ -x /usr/share/nextui/bin/governor.sh ]; then
 		/usr/share/nextui/bin/governor.sh smart || true
-	fi
-}
-
-# setsid so MENU+Start can SIGTERM the pak group. Arm the helper before
-# any BlueZ work so a hung bluetoothctl cannot leave the panel stuck.
-run_pak_cmd() {
-	skip_bt=0
-	case "$1" in
-		*'/Tools/'*|*'settings.elf'*) skip_bt=1 ;;
-	esac
-	if ports_pak_cmd "$1"; then
-		portmaster_cleanup
-	fi
-	if wine_pak_cmd "$1"; then
-		wine_prefix_cleanup
-	fi
-	# The SDL filter stays inside the pak process. Sourcing it here
-	# would export it into this shell, and the next nextui.elf would
-	# inherit it. Settings opens the physical pad after release.
-	pak_env=
-	case "$1" in
-		*Settings.pak*|*settings.elf*) ;;
-		*)
-			pak_env='[ -r /usr/share/zlyme/pak-input.sh ] && . /usr/share/zlyme/pak-input.sh; '
-			;;
-	esac
-	# One launch boundary for every pak. The helper reads proxy.conf
-	# at this moment. Settings itself reads the file again per request,
-	# because this process is already running when the user edits it.
-	proxy_env=
-	if [ -x /usr/sbin/zlyme-proxy ]; then
-		proxy_env=$(/usr/sbin/zlyme-proxy env 2>/dev/null || true)
-		if [ -n "$proxy_env" ]; then
-			proxy_env="$proxy_env
-"
-		fi
-	fi
-	if [ "$LOGS_ON" = 1 ]; then
-		setsid sh -c "${pak_env}${proxy_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" &
-	else
-		setsid sh -c "${pak_env}${proxy_env}/usr/bin/zlyme-drm-release; eval \"\$1\"" sh "$1" >> "$SESSION_LOG" 2>&1 &
-	fi
-	_pak_pid=$!
-	_hk=
-	if [ -x /usr/sbin/zlyme-pak-hotkey ]; then
-		/usr/sbin/zlyme-pak-hotkey "$_pak_pid" >> "$SESSION_LOG" 2>&1 &
-		_hk=$!
-	fi
-	if [ "$skip_bt" = 0 ]; then
-		bt_stop_scan
-		sleep 0.3
-		modprobe hid-nintendo >/dev/null 2>&1 || true
-		# bluetoothctl connect on an already-live HID drops
-		# the 8733bu link (status 0x04). Skip pads NextUI is using.
-		run_timed_to 3 /tmp/zlyme-bt-paired bluetoothctl devices Paired
-		while read _ mac rest; do
-			[ -n "$mac" ] || continue
-			_inf=/tmp/zlyme-bt-$mac
-			run_timed_to 2 "$_inf" bluetoothctl info "$mac"
-			grep -q 'UUID: Human Interface Device' "$_inf" 2>/dev/null || continue
-			grep -q 'Connected: yes' "$_inf" 2>/dev/null && continue
-			run_timed 2 bluetoothctl connect "$mac"
-			rm -f "$_inf"
-		done < /tmp/zlyme-bt-paired
-		rm -f /tmp/zlyme-bt-paired
-		sleep 0.6
-	fi
-	wait "$_pak_pid"
-	st=$?
-	if [ -n "$_hk" ]; then
-		kill "$_hk" 2>/dev/null || true
-		wait "$_hk" 2>/dev/null || true
-	fi
-	if ports_pak_cmd "$1"; then
-		portmaster_cleanup
-	fi
-	if wine_pak_cmd "$1"; then
-		wine_prefix_cleanup
 	fi
 }
 
@@ -517,54 +420,51 @@ while [ -f "$EXEC_PATH" ]; do
 	fi
 	if [ -f "$NEXT_PATH" ]; then
 		rm -f /tmp/poweroff /tmp/reboot
-		cmd=$(cat "$NEXT_PATH")
-		rm -f "$NEXT_PATH"
-		echo "RUN $cmd" >> "$SESSION_LOG"
-		# Splash still holds fb0 on the first game after boot.
-		# NextUI dropping DRM then lets RA modeset fail with
-		# "Error when switching mode".
-		stop_splash
-		/usr/bin/zlyme-drm-release
-		# DRM master from nextui.elf is not always gone on the next line.
-		sleep 0.4
-		if command -v zlyme-audio >/dev/null 2>&1; then
-			eval "$(zlyme-audio export 2>/dev/null)" || true
-		fi
-		run_pak_cmd "$cmd"
-		while [ -f /tmp/zlyme-sink-reload ]; do
-			rm -f /tmp/zlyme-sink-reload
+		if ! read_launch "$NEXT_PATH" 2>>"$SESSION_LOG"; then
+			rm -f "$NEXT_PATH"
+			command -v show.elf >/dev/null 2>&1 && show.elf "Launch rejected" 3
+		else
+			exe="$LAUNCH_EXE"
+			rom="$LAUNCH_ROM"
+			rm -f "$NEXT_PATH"
+			echo "RUN $exe" >> "$SESSION_LOG"
+			# Splash still holds fb0 on the first game after boot.
+			# NextUI dropping DRM then lets RA modeset fail with
+			# "Error when switching mode".
+			stop_splash
+			/usr/bin/zlyme-drm-release
+			# DRM master from nextui.elf is not always gone on the next line.
+			sleep 0.4
 			if command -v zlyme-audio >/dev/null 2>&1; then
 				eval "$(zlyme-audio export 2>/dev/null)" || true
 			fi
-			run_pak_cmd "$cmd"
-		done
-		# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
-		case "$st" in
-			0|2|3|137|143) ;;
-			*)
+			launch_with_reload "$exe" "$rom"
+			# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
+			# shellcheck disable=SC2154 # st is set by run_pak_cmd
+			if ! pak_exit_ok "$st"; then
 				echo "pak exit $st" >> "$SESSION_LOG"
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
-				;;
-		esac
-		killall -9 pico8_64 minui-list minui-presenter zcrapegoat 2>/dev/null || true
-		sleep 0.2
-		# Settings/paks use the same /tmp/reboot flag as nextui.elf.
-		# Honor it here; continue would restart NextUI with the panel off.
-		if [ -f /tmp/poweroff ]; then
-			rm -f /tmp/poweroff
-			if [ -x /usr/sbin/zlyme-halt ]; then
-				exec /usr/sbin/zlyme-halt poweroff
 			fi
-			poweroff -f
-			break
-		fi
-		if [ -f /tmp/reboot ]; then
-			rm -f /tmp/reboot
-			if [ -x /usr/sbin/zlyme-halt ]; then
-				exec /usr/sbin/zlyme-halt reboot
+			killall -9 pico8_64 minui-list minui-presenter zcrapegoat 2>/dev/null || true
+			sleep 0.2
+			# Settings/paks use the same /tmp/reboot flag as nextui.elf.
+			# Honor it here; continue would restart NextUI with the panel off.
+			if [ -f /tmp/poweroff ]; then
+				rm -f /tmp/poweroff
+				if [ -x /usr/sbin/zlyme-halt ]; then
+					exec /usr/sbin/zlyme-halt poweroff
+				fi
+				poweroff -f
+				break
 			fi
-			reboot -f
-			break
+			if [ -f /tmp/reboot ]; then
+				rm -f /tmp/reboot
+				if [ -x /usr/sbin/zlyme-halt ]; then
+					exec /usr/sbin/zlyme-halt reboot
+				fi
+				reboot -f
+				break
+			fi
 		fi
 		continue
 	fi

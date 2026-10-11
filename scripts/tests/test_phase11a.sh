@@ -117,7 +117,8 @@ grep -qx 'Files.pak	Files' "$work/merged.map"
 grep -qx 'Settings.pak	000) Settings' "$work/merged.map"
 grep -qx 'ZcrapeGoat.pak	Goat' "$work/merged.map"
 grep -q ensure_tools_map "$ROOT/package/system/nextui/nextui-session"
-grep -q 'zlyme-proxy env' "$ROOT/package/system/nextui/nextui-session"
+grep -q 'pak-launch.sh' "$ROOT/package/system/nextui/nextui-session"
+grep -q 'zlyme-proxy get' "$ROOT/package/system/nextui/zlyme/pak-launch.sh"
 
 # Updater classification allows reinstall. Notes status is three-way.
 # The body file is the full text, not a ten-line cut.

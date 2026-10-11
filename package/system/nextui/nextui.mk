@@ -19,7 +19,8 @@
 # Reset PortMaster is on the Game page. It calls zlyme-reset portmaster and keeps installed ports.
 # A verified Recovery write offers shut down or a normal restart through /tmp/poweroff and /tmp/reboot.
 # That write is one-shot until Settings is opened again.
-NEXTUI_VERSION = 4095dcbe73372aa74655955a23e21307bd278e1d
+# PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
+NEXTUI_VERSION = a4142f40cb8cb2f811eb19451337f6c39ad4bb2c
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -77,13 +78,16 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/platform.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(@D)/workspace/all/nextui \
+		-o $(@D)/launch_queue.o $(@D)/workspace/all/nextui/launch_queue.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-I$(@D)/workspace/all/nextui \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/nextui.o $(@D)/workspace/all/nextui/nextui.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/zlyme_prefs.o $(NEXTUI_PKGDIR)/zlyme/zlyme_prefs.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
-		$(@D)/nextui.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
+		$(@D)/nextui.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
 		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/zlyme_prefs.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
@@ -166,6 +170,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/zlyme-arcade-stage
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-log.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/pak-log.sh
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-launch.sh \
+		$(TARGET_DIR)/usr/share/nextui/bin/pak-launch.sh
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
 		$(TARGET_DIR)/usr/lib/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \

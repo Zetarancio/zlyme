@@ -4,7 +4,8 @@
 # Verbs match a typical handheld frontend. `auto` is the codec;
 # the jack watcher owns speaker vs headphones.
 
-. /etc/zlyme.conf
+# ZLYME_CONF overrides this path (host tests).
+. "${ZLYME_CONF:-/etc/zlyme.conf}"
 
 STATE="${ZLYME_CFG}/audio.conf"
 CARD=rk817ext
@@ -28,9 +29,15 @@ A sink change applies to audio started afterwards, not to anything already playi
 EOF
 }
 
+# The state file is data. Do not source it: a hand-edited value would
+# become shell source through export.
 current() {
-	[ -r "$STATE" ] && . "$STATE" 2>/dev/null
-	echo "${ZLYME_SINK:-codec}"
+	sink=$(saved ZLYME_SINK || true)
+	case "$sink" in
+		codec|hdmi|bt) ;;
+		*) sink=codec ;;
+	esac
+	printf '%s\n' "$sink"
 }
 
 # Read a key from the state file without disturbing the environment.

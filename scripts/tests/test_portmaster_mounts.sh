@@ -136,12 +136,14 @@ fail() {
 	exit 1
 }
 
-# nextui-session still owns cleanup after the pak wait returns.
+# The session sources pak-launch.sh, which cleans up after the pak wait returns.
+LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 awk '
 	/wait "\$_pak_pid"/ { seen = 1 }
 	seen && /portmaster_cleanup/ { found = 1 }
 	END { exit found ? 0 : 1 }
-' "$SESSION" || fail "session does not clean up after the pak exits"
+' "$LAUNCH" || fail "session does not clean up after the pak exits"
+grep -q 'launch_with_reload' "$SESSION" || fail "session does not run the pak helper"
 
 reset
 "$EXEC" mount --bind /src /var/port/runtime || fail "mount failed"
