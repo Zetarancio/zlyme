@@ -90,6 +90,7 @@ Preserve these unless the task explicitly requires changing them:
 - The curated emulator model is intentional. Do not add alternate cores merely because they exist.
 - Hardware safety, thermal protection, and filesystem integrity outrank benchmark results.
 - Do not redistribute ROMs, BIOS files, keys, commercial software, or vendor binaries without a verified right or a named exception in `docs/UPSTREAMS.md`. An unknown license is not that right. See Licensing.
+- Zlyme `main` pins one immutable `NEXTUI_VERSION` commit that is reachable from `Zetarancio/NextUI` branch `zlyme`. Do not point Buildroot at a moving branch or upgrade NextUI silently. A development branch may use a matching NextUI branch temporarily. That commit has to land on NextUI `zlyme` before it is the pin on Zlyme `main`. NextUI `main` stays the separate upstream line. The procedure is in `docs/MAINTENANCE.md`.
 
 ## Superseded designs
 

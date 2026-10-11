@@ -1,24 +1,34 @@
 # Zlyme user guide
 
-The [README](../README.md) is the front door: what Zlyme is, how to install it, where games go, updates, controls, and how to experiment and contribute. This guide owns detailed end-user operation on the Miyoo Flip, including the [systems table](#systems-and-emulators). [OPERATIONS.md](OPERATIONS.md) covers maintainer and device operations, and [DEVELOPMENT.md](DEVELOPMENT.md) covers building. Settings labels below follow the pinned Zlyme NextUI fork and can change when that pin moves.
+The [README](../README.md) covers what Zlyme is, how to install it, where games go, and how to update. This guide is the rest: the [systems table](#systems-and-emulators), saves, settings, and the recovery page. Device recovery for maintainers is in [OPERATIONS.md](OPERATIONS.md). Dated measurements live on the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering).
 
 ## Card preparation and preloader recovery
 
-The install steps are in the [README](../README.md#install). Stock, not Zlyme, runs `miyoo355_fw.img` and writes the patched preloader. An update inside Zlyme does not repeat that. The three downloadable helpers, and the rename stock requires, are on the hardware wiki's [preloader tools](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md) page. The repair itself is explained on the wiki's [SD multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md) page.
+A normal install is the [README install](../README.md#install). Stock runs `miyoo355_fw.img` once so the right-hand card can boot. An update does not do that again, and it does not write the Flip's internal flash.
 
-While stock itself still boots, those jobs can be done from a card. The restore download undoes the normal multiboot repair. It is not how you leave an armed recovery preloader, because stock does not start in that state. Leave it with Disarm MASKROM recovery below, or with the physical MASKROM button if no right-slot Zlyme card will boot. Download `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, or `miyoo355_fw-restore.img` from the [Zlyme releases page](https://github.com/Zetarancio/zlyme/releases) once that release publishes them, rename the chosen file to `miyoo355_fw.img`, and boot stock with that card. They are not in an ordinary Zlyme update. After the MASKROM or restore helper finishes, power the device off before changing cards. It does not reboot itself. On 2026-10-08 those three helpers were checked on one Flip, including restore of that unit's saved original and the MASKROM helper started from the original stock preloader. The measurements are on the wiki page. They do not add steps to a normal install. Inside Zlyme, use the rows below.
+### While stock still boots
 
-Settings → System → Advanced → Recovery has four rows. Confirmations are lists. Cancel is the first row. B also goes back. A failed write, a rollback, a refusal, or a CRITICAL result stays on that result and can be tried again. After a successful arm, disarm, or stock restore, the page offers Shut down and Restart. Leaving that choice and pressing A again opens the same choice. It does not write the preloader again until Settings is opened again. Restart is a normal reboot. It does not enter MASKROM.
+The release page also has three helpers for a Flip that still starts its stock system: `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`. They are not part of a Zlyme update. Rename the one you need to `miyoo355_fw.img`, put that card where stock can see it, and boot stock.
 
-**Preloader status** is the internal boot and recovery state. The rows are Preloader, Recovery, Source backup, Stock restore, and Battery. `Normal` / `Ready` means the current preloader is the saved source and a recovery image is prepared. `Recovery armed` / `Armed` means the recovery preloader is installed. Unknown and Invalid are not a normal boot.
+`miyoo355_fw-restore.img` undoes the SD-boot repair. It is not how you leave an armed recovery preloader. Stock does not start in that state. Use **Disarm MASKROM recovery** below, or the physical MASKROM button if no right-hand Zlyme card will boot.
 
-**Arm MASKROM recovery** installs that recovery preloader in internal NAND. A bootable card in the right slot still boots. Without one, startup enters MASKROM. Internal stock boot stays off until recovery is disarmed. The last confirmation is `ARM MASKROM RECOVERY`, and it starts on Cancel. On success the screen says recovery is armed. To enter MASKROM, shut down, remove the right-hand bootable card, then power on. Restart only performs a normal reboot.
+After the MASKROM or restore helper finishes, power off before you change cards. It does not reboot itself. What each helper writes, and which preloader revisions it was checked against, is on the wiki's [preloader tools](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md) page. The SD-boot repair itself is [SD multiboot](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/sd-multiboot-apommel.md).
 
-**Disarm MASKROM recovery** writes back the exact pre-recovery image saved when recovery was armed. It does not restore the original Miyoo preloader. The last confirmation is `DISARM MASKROM RECOVERY`, and it starts on Cancel. Success says the normal preloader was restored and verified, then offers shut down or restart. If the installed image is not an armed recovery image, the action refuses and does not offer that choice.
+### Advanced → Recovery
 
-**Restore stock preloader** writes this unit's `mtd5-original-<sha256>.img` from the boot card back to the internal preloader, after saving what is there now. This is separate from disarming MASKROM recovery. The name's hash has to match the file, and the DDR initializer in that backup has to match the preloader already installed. If that backup is not on the card, Restore can use the stock image shipped with Zlyme, and only when the installed preloader is the revision that image belongs to. That shipped image is not this unit's own backup. A different preloader is refused. There is no force option. If the write does not verify, Zlyme tries to put the saved current preloader back. That is a failed restore, not a completed one. The last confirmation is `RESTORE STOCK PRELOADER`, and it starts on Cancel. A verified restore offers shut down or restart. The battery has to be at least 25%, unless a charger is connected.
+Open Settings → System → Advanced → Recovery. These rows write the internal flash. They are not part of installing Zlyme. Each confirmation is a list that starts on Cancel. B goes back. A failed write stays on the result so you can try again.
 
-Erase is not in this menu. `erase-preloader` is a separate command. It removes the internal preloader. It is not MASKROM recovery. If the boot ROM can still see a bootable card, wiping the internal preloader can boot that card instead of USB recovery. Host recovery with the MASKROM button is in the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/flashing.md). The measured recovery-preloader boots are on the wiki's [recovery preloader](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/recovery-preloader.md) page.
+After a successful arm, disarm, or stock restore, the page offers Shut down and Restart. Opening that choice again does not write the flash a second time until you leave Settings and come back. **Restart is a normal reboot. It does not enter MASKROM.**
+
+**Preloader status** shows Preloader, Recovery, Source backup, Stock restore, and Battery. `Normal` / `Ready` means the current preloader matches the saved source and a recovery image is ready. `Recovery armed` / `Armed` means the recovery preloader is installed. Unknown or Invalid is not a healthy boot.
+
+**Arm MASKROM recovery** writes the recovery preloader to internal NAND. A bootable card in the right-hand slot still boots. With no bootable card there, the next power-on enters MASKROM. Internal stock boot stays off until you disarm. The last confirmation is `ARM MASKROM RECOVERY`. To enter MASKROM, shut the Flip down, take out the right-hand card, and power on.
+
+**Disarm MASKROM recovery** writes back the exact image saved when you armed recovery. That is the preloader you had then, not the original Miyoo preloader. The last confirmation is `DISARM MASKROM RECOVERY`. If recovery is not armed, the row refuses and does not offer shut down or restart.
+
+**Restore stock preloader** is a different write. It prefers this unit's own `mtd5-original-<sha256>.img` on the boot card. The hash in the name has to match the file, and the DDR initializer in that backup has to match the preloader already installed. If that backup is missing, Restore can use the stock image shipped with Zlyme, and only for the one preloader revision that image belongs to. The shipped image is not your unit's backup. Anything else is refused. There is no force option. If the new image does not verify, Zlyme tries to put the saved current preloader back. That is a failed restore. The last confirmation is `RESTORE STOCK PRELOADER`. The battery has to be at least 25%, unless a charger is connected. You still need a bootable card in the right-hand slot when the Flip should start Zlyme afterwards.
+
+Erase is not in this menu. Wiping the internal preloader is not MASKROM recovery. If no right-hand card will boot, the physical MASKROM button is the fallback. That procedure is on the wiki's [flashing](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/flashing.md) page, and the recovery preloader itself is on [recovery preloader](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/recovery-preloader.md).
 
 ## Systems and emulators
 
@@ -232,6 +242,8 @@ Settings → Update has the **Channel** (Releases or Prereleases), the latest re
 
 ## ZcrapeGoat
 
+ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by Kevin Vranken, using his [Apostrophe](https://github.com/Helaas/Apostrophe) interface.
+
 - Enter your own ScreenScraper username and password for artwork and manuals. Cheats do not need a ScreenScraper account.
 - ZcrapeGoat reads every mounted library.
 - Art is saved beside the ROM that was scraped, as `.media/<name>.png` in that ROM's folder.
@@ -239,6 +251,8 @@ Settings → Update has the **Channel** (Releases or Prereleases), the latest re
 - Its settings stay in `/storage/.config/ZcrapeGoat`.
 
 ## PortMaster
+
+PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 
 - Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
