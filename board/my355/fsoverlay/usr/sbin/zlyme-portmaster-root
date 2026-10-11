@@ -1,7 +1,9 @@
 #!/bin/sh
 # Where new PortMaster content is installed.
-# An empty choice is the main card. An explicit missing disk does not
-# fall back to /storage. Nothing is moved when the choice changes.
+# An empty choice is the main card. An explicit choice is mounted only
+# when that path is a line in /run/zlyme/libraries. A leftover mountpoint
+# directory is not enough, and a missing disk does not fall back to
+# /storage. Nothing is moved when the choice changes.
 #
 # ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE, and ZLYME_PM_STORAGE are test seams.
 # ZLYME_PM_STORAGE defaults to /storage. It does not select a second library.
@@ -10,10 +12,32 @@ FLAG=${ZLYME_PM_FLAG:-${ZLYME_CFG:-/storage/.config}/zlyme/portmaster-root}
 LIBS=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
 STORAGE=${ZLYME_PM_STORAGE:-/storage}
 
+# One absolute path. Embedded spaces stay. A second line, tab, or CR is
+# rejected so the file cannot be concatenated into a different path.
 selected() {
-	if [ -s "$FLAG" ]; then
-		tr -d ' \t\r\n' < "$FLAG"
+	[ -s "$FLAG" ] || return 0
+	# A newline inside the case pattern would match every path, so the
+	# line count is checked on the file itself.
+	if grep -q "$(printf '\r')" "$FLAG" || grep -q "$(printf '\t')" "$FLAG"; then
+		echo "zlyme-portmaster-root: malformed selection" >&2
+		return 1
 	fi
+	n=$(grep -c '' "$FLAG" || true)
+	if [ "$n" -ne 1 ]; then
+		echo "zlyme-portmaster-root: malformed selection" >&2
+		return 1
+	fi
+	IFS= read -r data < "$FLAG" || return 1
+	case "$data" in
+		" "*) ;;
+		*" ") ;;
+		/*)
+			printf '%s\n' "$data"
+			return 0
+			;;
+	esac
+	echo "zlyme-portmaster-root: malformed selection" >&2
+	return 1
 }
 
 is_known() {
@@ -28,11 +52,12 @@ q() {
 }
 
 export_hm() {
-	sel=$(selected)
+	sel=$(selected) || return 1
 	root=$STORAGE
 	if [ -n "$sel" ]; then
 		root=$sel
-		if [ ! -d "$root" ]; then
+		# The registry is the mount. The directory can exist with no card.
+		if ! is_known "$root"; then
 			echo "PortMaster disk is not inserted" >&2
 			return 1
 		fi
@@ -47,8 +72,16 @@ export_hm() {
 case "${1:-}" in
 	export) export_hm ;;
 	get)
-		sel=$(selected)
-		printf '%s\n' "${sel:-$STORAGE}"
+		sel=$(selected) || exit 1
+		if [ -n "$sel" ]; then
+			if ! is_known "$sel"; then
+				echo "PortMaster disk is not inserted" >&2
+				exit 1
+			fi
+			printf '%s\n' "$sel"
+		else
+			printf '%s\n' "$STORAGE"
+		fi
 		;;
 	list)
 		printf '%s\n' "$STORAGE"

@@ -510,7 +510,7 @@ Reset Settings runs `zlyme-reset settings`. It deletes an explicit list of Zlyme
 
 `/usr/share/portmaster/PortMaster.zip` in the squashfs is the immutable seed. `<root>/Roms/.portmaster/PortMaster` on the selected library is the active installation. Font archives in that tree are decompressed with xz and then unpacked with tar. The system tar does not open an `.xz` file by itself. `zlyme-portmaster-prepare` owns that lifecycle. Tools → PortMaster and `PORTS.pak` both call it, so a port started after reboot does not depend on the PortMaster GUI having run earlier in the boot.
 
-`<root>` is the library from `zlyme-portmaster-root`. An empty choice is `/storage`. An explicit choice that is not mounted fails with `PortMaster disk is not inserted`. Prepare does not switch to another disk.
+`<root>` is the library from `zlyme-portmaster-root`. An empty choice is `/storage`. An explicit choice is mounted only when that exact path is a line in `/run/zlyme/libraries`. A mountpoint directory that remains after the card is gone does not count. That choice fails with `PortMaster disk is not inserted`. Prepare does not switch to another disk.
 
 `/opt/system/Tools/PortMaster` links to `/run/portmaster/PortMaster`. Prepare points that runtime path at the live tree. `libs/` and `runtimes/` are directories in that tree. They are not separate links.
 

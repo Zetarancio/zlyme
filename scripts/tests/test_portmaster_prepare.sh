@@ -153,8 +153,9 @@ test -d "$sdlive/libs"
 # The storage install is left where it was. This prepare did not replace it.
 grep -q 'newer-pugwash' "$live/pugwash"
 
-# Missing selected disk does not fall back.
-rm -rf "$sd2"
+# The mountpoint directory remains. The card is not in the registry.
+test -d "$sd2"
+printf '%s\n' "$storage" > "$work/libraries"
 if "$PREPARE" >"$work/out" 2>"$work/err"; then
 	fail "missing disk prepared a tree"
 fi
@@ -367,7 +368,8 @@ test "$(wc -l < "$work/prepare.log")" -ge 2
 mkdir -p "$sd2"
 printf '%s\n' "$storage" "$sd2" > "$work/libraries"
 "$ROOTBIN" set "$sd2"
-rm -rf "$sd2"
+test -d "$sd2"
+printf '%s\n' "$storage" > "$work/libraries"
 if ZLYME_RESET_ROOT=$work \
 	ZLYME_PM_STORAGE=$storage \
 	ZLYME_PM_FLAG=$work/flag \
