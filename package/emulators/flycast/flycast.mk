@@ -3,9 +3,8 @@
 # flycast
 ################################################################################
 
-# Tag v2.7, commit 5aa091fde632fb332c8d8c34e280d62dc951954c.
-# Upstream also has a branch named v2.7 at that commit.
-FLYCAST_VERSION = v2.7
+# v2.7, pinned by commit. The v2.7 name is both a tag and a branch.
+FLYCAST_VERSION = 5aa091fde632fb332c8d8c34e280d62dc951954c
 FLYCAST_SITE = https://github.com/flyinghead/flycast.git
 FLYCAST_SITE_METHOD = git
 FLYCAST_GIT_SUBMODULES = YES

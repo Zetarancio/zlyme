@@ -63,11 +63,10 @@ define LIBRETRO_MAME2003_PLUS_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/batocera/datainit/bios/mame2003-plus
 endef
 
-define LIBRETRO_MAME2003_PLUS_NAMCO_QUICK_FIX
+define LIBRETRO_MAME2003_PLUS_FORCE_O2
 	$(SED) 's|O3|O2|g' $(@D)/Makefile
-	$(SED) 's|to continue|on Keyboard, or Left, Right on Joystick to continue|g' $(@D)/src/ui_text.c
 endef
 
-LIBRETRO_MAME2003_PLUS_PRE_BUILD_HOOKS += LIBRETRO_MAME2003_PLUS_NAMCO_QUICK_FIX
+LIBRETRO_MAME2003_PLUS_PRE_BUILD_HOOKS += LIBRETRO_MAME2003_PLUS_FORCE_O2
 
 $(eval $(generic-package))
