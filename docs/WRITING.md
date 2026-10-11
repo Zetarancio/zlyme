@@ -43,7 +43,7 @@ The canonical technical docs are listed in `AGENTS.md`. They are calmer and more
 - Zlyme does not use Semantic Versioning. `zlymeNN` is a baseline. `zlymeNN.M` is a point release on the same major. Release and delta policy is in `docs/MAINTENANCE.md`.
 - One entry describes one behavior change, even if it took twenty commits. Internal refactors with no effect on users or contributors stay out.
 - A removal or a change in behavior goes under its own heading and says what users have to do.
-- GitHub release notes match the changelog entry. A raw git log or a generated compare link alone is not release notes.
+- GitHub release notes match the changelog entry. A raw git log or a generated compare link alone is not release notes. The release workflow prints the `## [ZLYME_VERSION]` section and fails if that section is missing or empty. It does not ask GitHub to build notes from the commit list. `Unreleased` is not a release body.
 
 ## AI-assisted documentation
 

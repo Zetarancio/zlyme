@@ -135,12 +135,22 @@ jobs:
             --source-sha "${{ github.sha }}" \
             --repo "${{ github.repository }}"
 
+      - name: Changelog release notes
+        run: |
+          set -euo pipefail
+          python3 scripts/changelog-release-notes.py \
+            --changelog CHANGELOG.md \
+            --version-file ZLYME_VERSION \
+            > release-notes.md
+          test -s release-notes.md
+
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('zlyme-{0}', github.run_id) }}
           target_commitish: ${{ github.sha }}
           name: ${{ steps.title.outputs.name }}
+          body_path: release-notes.md
           prerelease: false
           make_latest: true
           files: |
@@ -157,6 +167,5 @@ jobs:
             output/images/miyoo355_fw-maskrom.img.sha256
             output/images/miyoo355_fw-restore.img
             output/images/miyoo355_fw-restore.img.sha256
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
