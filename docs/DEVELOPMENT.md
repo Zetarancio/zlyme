@@ -318,6 +318,8 @@ board-specific sysfs / ALSA / GPIO / DRM implementation
 
 Keep hardware details on the bottom side of that boundary.
 
+`zlyme-usb-transfer` is the MTP command. The lower USB-C controller name is `ZLYME_USB_GADGET_UDC` in the board `device.conf` (`fcc00000.usb` on my355). The product defconfig selects Buildroot's `umtprd` 1.8.1. The helper and the Tools PAK are exercised by `scripts/tests/test_usb_transfer.sh`, which substitutes configfs, the UDC class, the mount table, and the responder. That test does not open the host's USB controllers. Host image sizes for this package are recorded with the product build.
+
 ## Boot-time development
 
 Optimize for first frontend frame, not for every service becoming ready.

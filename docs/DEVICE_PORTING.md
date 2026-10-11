@@ -123,6 +123,7 @@ ZLYME_BOOT_DEVICE=/dev/mmcblk0p2
 ZLYME_STORAGE_DEVICE=/dev/mmcblk0p3
 ZLYME_BOOT_LABEL=ZLYMEBOOT
 ZLYME_STORAGE_LABEL=ZLYME
+ZLYME_USB_GADGET_UDC=fcc00000.usb
 ```
 
 `ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. Another board does not have to use MMC or these names. `docs/ARCHITECTURE.md` records why these nodes are stable on this board. On this board Linux `mmcblk0` and U-Boot `mmc 1` are the same `sdmmc0` controller, because pinned `rk356x-u-boot.dtsi` reserves `mmc 0` for `sdhci`.
@@ -194,6 +195,16 @@ Owns safe shutdown/reboot details specific to the device/storage layout. `zlyme-
 ### `zlyme-update`
 
 `zlyme-update` is board code (`board/my355/fsoverlay/usr/sbin/zlyme-update`). It takes the filename prefix and the DTB name from `device.conf`. On my355, the raw bootloader path also uses `ZLYME_OS_DISK` and `ZLYME_BOOT_DEVICE` from that file. Update identity is described under "Update compatibility" below.
+
+### `zlyme-usb-transfer`
+
+Owns the MTP session on the lower USB-C port. Verbs: `start`, `stop`, `status`.
+
+The controller name is `ZLYME_USB_GADGET_UDC` in `device.conf`. On my355 that is `fcc00000.usb`, the DWC3 at `usb@fcc00000`. `start` binds that UDC only, and only after FunctionFS endpoints `ep1`, `ep2`, and `ep3` exist. Another controller, or a gadget that already owns this one, is left untouched and `start` fails. The helper writes no USB role and no regulator.
+
+The Tools PAK lives in the nextui Tools tree as USB File Transfer. It calls `start` after confirmation and `stop` on exit, including MENU+START. No init script calls the helper. Session files stay under `/run/zlyme/usb-transfer`.
+
+Exports are writable ROM and BIOS directories of libraries listed in `/run/zlyme/libraries` whose library path is a mountpoint. The primary ROM directory has to be present. The implementation is `package/system/zlyme-usb-transfer/zlyme-usb-transfer`. Host tests are `scripts/tests/test_usb_transfer.sh`.
 
 ## Frontend platform contract
 

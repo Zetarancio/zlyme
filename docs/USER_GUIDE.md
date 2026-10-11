@@ -115,6 +115,24 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist, with `.png`. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
 
+## USB file transfer
+
+Tools → USB File Transfer shares folders over the lower USB-C port, the port you charge with. The upper port stays a USB host.
+
+A starts the session. B goes back to the menu without starting it. The computer can add, change, and delete files in the shared folders. B, or MENU+START, ends the session and returns to the menu. Unplugging the cable leaves the session up until you leave the tool.
+
+Shared folders, when they exist and can be written:
+
+- On the main card, the first of `Roms/`, `roms/`, and `ROMS/` that exists.
+- On the main card, the first of `Bios/`, `bios/`, and `BIOS/` that exists.
+- The same ROM and BIOS folders on a second SD card, or a USB library, when that card is mounted.
+
+Saves, settings, updates, and the rest of the card stay on the Flip. The card stays mounted. The computer gets those folders through MTP, which is a file protocol on the mounted card. It does not receive the card as a disk.
+
+The screen says when the gadget is ready, and it repeats the kernel's USB state. It says a computer has configured the gadget only when that state is `configured`. macOS needs a separate MTP program. Windows and many Linux desktops include one. None of this has been tried on a Flip. USB networking is a different feature and this tool does not start it.
+
+
+
 ## BIOS
 
 - Put BIOS files in `Bios/` on any mounted library. The [systems table](#systems-and-emulators) lists the names and subfolders.

@@ -118,6 +118,7 @@ ZLYME_BOOT_DEVICE=/dev/mmcblk0p2
 ZLYME_STORAGE_DEVICE=/dev/mmcblk0p3
 ZLYME_BOOT_LABEL=ZLYMEBOOT
 ZLYME_STORAGE_LABEL=ZLYME
+ZLYME_USB_GADGET_UDC=fcc00000.usb
 ```
 
 `post-build.sh`, `post-image.sh`, `make-update-tar.sh`, `zlyme-update`, and the Settings release lookup read it. The initramfs carries the same file.
@@ -151,6 +152,7 @@ zlyme-led           status LED policy and 0% shutdown      board overlay
 zlyme-halt          shutdown and reboot                    board overlay
 zlyme-ssh-auth      root SSH password and shadow bind      board overlay
 zlyme-storage       library mounts and library list        board overlay
+zlyme-usb-transfer  MTP session on the lower USB-C         zlyme-usb-transfer package
 zlyme-update        OTA verify, stage, apply               board overlay
 zlyme-boot-write    one write transaction on /boot         board overlay
 zlyme-ctl           Settings and system flags, apply-*     board overlay
@@ -597,6 +599,20 @@ Should not run persistently unless enabled or requested.
 
 The BusyBox `rcS` / `rc.late` split is intentional.
 
+### USB file transfer
+
+USB file transfer stays off through boot. A cable on the lower USB-C port does not start it. Tools → USB File Transfer calls `zlyme-usb-transfer start` after the confirmation screen, and the PAK calls `stop` when that process exits, including MENU+START. There is no init script.
+
+`zlyme-usb-transfer` (`package/system/zlyme-usb-transfer/zlyme-usb-transfer`) owns one configfs gadget, `zlyme-mtp`. It mounts FunctionFS, starts Buildroot's `umtprd` with a configuration under `/run/zlyme/usb-transfer`, waits until `ep1`, `ep2`, and `ep3` exist, and then writes the UDC name. That name is `ZLYME_USB_GADGET_UDC` from `device.conf`. On my355 it is `fcc00000.usb`, the DWC3 at `usb@fcc00000`. The helper binds that directory only. An empty UDC class, any other controller, or a gadget that already holds `fcc00000.usb` is a failed start. The other gadget's UDC file is left as it was. The helper does not write a USB role, a VBUS supply, or a regulator. The Settings OTG overlay disables the upper host (`usb@fd800000` and `usb@fd840000`) and is not a switch for this gadget. A missing `fcc00000.usb` is reported as-is.
+
+The export list is built from `/run/zlyme/libraries`. The primary library has to be mounted and have a writable ROM directory, the first of `Roms`, `roms`, and `ROMS`. BIOS is included when the first of `Bios`, `bios`, and `BIOS` is a writable directory. Another library is included only when its path is a mountpoint and the same kind of directory is present. Each directory has to be a real directory under that library, with no symlink component. The MTP names are `ROMs` and `BIOS` for the primary library, and `SD card ROMs` / `SD card BIOS` for `/mnt/sd2`. uMTP accepts 16 storage entries. Saves, music, cheats, and the library root are outside the list. So are `/boot`, `/storage/.config`, `/storage/.update`, `/storage/.logs`, and anything under `/dev`, `/sys`, or `/proc`. The session uses the mounted filesystem. It does not unmount `/storage` and it does not put a block device in the configuration.
+
+`stop` clears this gadget's UDC file, signals the recorded pid only when `/proc/<pid>/cmdline` is this `umtprd` and this configuration file, unmounts the FunctionFS mount, and removes the `zlyme-mtp` configfs directory. A later `start` or `stop` repeats that cleanup when a pid file or a partial gadget is still there. After reboot the `/run` directory is gone, so transfer is off.
+
+The USB identity is the Linux Foundation PTP gadget id used by the uMTP sample, `1d6b:0100`. It is a shared sample id. The serial string is the constant `zlyme`. `max_speed` is `high-speed` because the uMTP 1.8.1 FunctionFS descriptors have no SuperSpeed configuration. The configuration is self-powered (`bmAttributes` `0xC0`) with `MaxPower` 2, which is 2 mA on Linux 7.0.2. Charging stays on the RK817 path.
+
+`status` prints the kernel UDC state. The Tools screen treats `configured` as the host having set the gadget configuration. Any other state is reported as that state. Host enumeration on a Flip is a Phase 12D check.
+
 ### Wi-Fi and Bluetooth
 
 Wi-Fi and Bluetooth share one RTL8733BU USB combo chip:
@@ -621,7 +637,7 @@ When a package is inherently board-specific, express that dependency explicitly 
 
 Examples:
 
-- `zlyme-jackd`, `zlyme-keylidmon`, `zlyme-input`, `miyoo-flip-gamepad`, `rk3568-dmc`, and `rtl8733bu-power` depend on `BR2_ZLYME_DEVICE_MY355` in Kconfig, even where the package directory is under `package/system`.
+- `zlyme-jackd`, `zlyme-keylidmon`, `zlyme-input`, `zlyme-usb-transfer`, `miyoo-flip-gamepad`, `rk3568-dmc`, and `rtl8733bu-power` depend on `BR2_ZLYME_DEVICE_MY355` in Kconfig, even where the package directory is under `package/system`. `zlyme-usb-transfer` reads the controller name from `device.conf`.
 - `gpudriver`, `libmali`, and `mali-kbase` describe the RK3566 dual-Mali-stack implementation and should not be assumed universal. Their Kconfig does not depend on `BR2_ZLYME_DEVICE_MY355`: `gpudriver` and `libmali` depend only on `mali-kbase`, which depends only on the kernel.
 - `zlyme-governor` is my355 policy installed by the generic `nextui` package (section 4).
 - emulator recipes are generally reusable.
