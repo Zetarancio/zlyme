@@ -1,0 +1,10 @@
+config BR2_PACKAGE_ZLYME_USB_TRANSFER
+	bool "zlyme usb file transfer"
+	depends on BR2_ZLYME_DEVICE_MY355
+	select BR2_PACKAGE_UMTPRD
+	help
+	  MTP session helper for the lower USB-C port. The Tools PAK
+	  starts and stops it. It is not an init service.
+
+comment "zlyme usb file transfer needs the my355 device"
+	depends on !BR2_ZLYME_DEVICE_MY355

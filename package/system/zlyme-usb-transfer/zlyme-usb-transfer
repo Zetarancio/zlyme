@@ -1,0 +1,827 @@
+#!/bin/sh
+# MTP session for the Miyoo Flip lower USB-C port.
+# Tools starts and stops this. Nothing in init does.
+# The controller name comes from device.conf (ZLYME_USB_GADGET_UDC).
+# Test seams override every host path. This script does not mount
+# configfs and does not change USB role, VBUS, or regulators.
+
+RUN=${ZLYME_USB_RUN:-/run/zlyme/usb-transfer}
+CONFIGFS=${ZLYME_USB_CONFIGFS:-/sys/kernel/config}
+UDC_CLASS=${ZLYME_USB_UDC_CLASS:-/sys/class/udc}
+MOUNTS=${ZLYME_USB_MOUNTS:-/proc/mounts}
+FFS=${ZLYME_USB_FFS:-/dev/ffs-mtp}
+UMTPRD=${ZLYME_USB_UMTPRD:-/usr/sbin/umtprd}
+GADGET_NAME=${ZLYME_USB_GADGET_NAME:-zlyme-mtp}
+LIBS=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+STORAGE=${ZLYME_USB_STORAGE:-/storage}
+SD2=${ZLYME_USB_SD2:-/mnt/sd2}
+MOUNT=${ZLYME_USB_MOUNT:-mount}
+UMOUNT=${ZLYME_USB_UMOUNT:-umount}
+READY_POLLS=${ZLYME_USB_READY_POLLS:-30}
+READY_SLEEP=${ZLYME_USB_READY_SLEEP:-0.1}
+KILL_POLLS=${ZLYME_USB_KILL_POLLS:-20}
+KILL_SLEEP=${ZLYME_USB_KILL_SLEEP:-0.1}
+CONF=$RUN/umtprd.conf
+PIDFILE=$RUN/responder.pid
+EXPORTS=$RUN/exports
+GADGET=$CONFIGFS/usb_gadget/$GADGET_NAME
+
+if [ -z "${ZLYME_USB_UDC_NAME:-}" ]; then
+	_ident=${ZLYME_DEVICE_CONF:-/usr/share/zlyme/device.conf}
+	if [ -r "$_ident" ]; then
+		# shellcheck disable=SC1090
+		. "$_ident"
+	fi
+	ZLYME_USB_UDC_NAME=${ZLYME_USB_GADGET_UDC:-}
+fi
+UDC_NAME=${ZLYME_USB_UDC_NAME:-}
+
+say() {
+	printf '%s\n' "$*" >&2
+}
+
+trim() {
+	_t=$1
+	while :; do
+		case "$_t" in
+			[[:space:]]*) _t=${_t#?} ;;
+			*[[:space:]]) _t=${_t%?} ;;
+			*) break ;;
+		esac
+	done
+	printf '%s\n' "$_t"
+}
+
+lock_session() {
+	mkdir -p "$RUN" || {
+		say "cannot create $RUN"
+		return 1
+	}
+	exec 9>"$RUN/lock" || {
+		say "cannot open $RUN/lock"
+		return 1
+	}
+	if ! command -v flock >/dev/null 2>&1; then
+		say "flock is not available"
+		return 1
+	fi
+	flock 9 || {
+		say "usb transfer lock failed"
+		return 1
+	}
+}
+
+mounts_has() {
+	_want=$1
+	[ -r "$MOUNTS" ] || return 1
+	while read -r _dev _mp _rest; do
+		[ -n "${_mp:-}" ] || continue
+		_mp=$(printf '%s' "$_mp" | sed 's/\\040/ /g')
+		[ "$_mp" = "$_want" ] && return 0
+	done < "$MOUNTS"
+	return 1
+}
+
+path_forbidden() {
+	case "$1" in
+		/dev|/dev/*|/sys|/sys/*|/proc|/proc/*|/boot|/boot/*) return 0 ;;
+	esac
+	case "$1" in
+		*/.config|*/.config/*|*/.update|*/.update/*|*/.logs|*/.logs/*) return 0 ;;
+	esac
+	return 1
+}
+
+# Reject symlinks and .. so an export cannot walk into private state.
+path_is_exportable() {
+	_p=$1
+	_root=$2
+	case "$_p" in
+		"$_root"/*) ;;
+		*) return 1 ;;
+	esac
+	case "$_p" in
+		*'"'*|*'	'*|*'*'*) return 1 ;;
+	esac
+	path_forbidden "$_p" && return 1
+	_old=
+	while [ "$_p" != "$_old" ]; do
+		_old=$_p
+		_p=${_p%/}
+	done
+	case "$_p" in
+		/*) ;;
+		*) return 1 ;;
+	esac
+	case "$_p" in
+		*"/../"*|*/..|*"//"*) return 1 ;;
+	esac
+	# Symlinks above the library root are the mount anchor's problem.
+	# From the root downward, a link could point at private state.
+	if [ -L "$_root" ] || [ -L "$_p" ]; then
+		return 1
+	fi
+	_rest=${_p#"$_root"/}
+	_acc=$_root
+	while [ -n "$_rest" ]; do
+		_comp=${_rest%%/*}
+		case "$_comp" in
+			''|.|..) return 1 ;;
+		esac
+		_acc="$_acc/$_comp"
+		if [ -L "$_acc" ]; then
+			return 1
+		fi
+		if [ "$_rest" = "$_comp" ]; then
+			break
+		fi
+		_rest=${_rest#*/}
+	done
+	[ -d "$_p" ] && [ -w "$_p" ]
+}
+
+first_dir() {
+	_root=$1
+	_kind=$2
+	case "$_kind" in
+		roms) _names="Roms roms ROMS" ;;
+		bios) _names="Bios bios BIOS" ;;
+		*) return 1 ;;
+	esac
+	for _n in $_names; do
+		if path_is_exportable "$_root/$_n" "$_root"; then
+			printf '%s\n' "$_root/$_n"
+			return 0
+		fi
+	done
+	return 1
+}
+
+name_taken() {
+	[ -f "$EXPORTS" ] || return 1
+	# Do not reuse _path. add_export calls this and keeps its own _path.
+	while IFS='	' read -r _seen_path _seen_name; do
+		[ -n "$_seen_path" ] || continue
+		[ "$_seen_name" = "$1" ] && return 0
+	done < "$EXPORTS"
+	return 1
+}
+
+export_count() {
+	if [ ! -s "$EXPORTS" ]; then
+		printf '0\n'
+		return 0
+	fi
+	wc -l < "$EXPORTS" | tr -d ' '
+}
+
+add_export() {
+	_path=$1
+	_name=$2
+	_n=$(export_count)
+	if [ "$_n" -ge 16 ]; then
+		: > "$RUN/truncated"
+		return 1
+	fi
+	_try=$_name
+	_i=2
+	while name_taken "$_try"; do
+		_try="$_name $_i"
+		_i=$((_i + 1))
+	done
+	printf '%s	%s\n' "$_path" "$_try" >> "$EXPORTS"
+}
+
+library_label() {
+	_lib=$1
+	if [ "$_lib" = "$SD2" ]; then
+		printf '%s\n' "SD card"
+		return 0
+	fi
+	_base=${_lib##*/}
+	_base=$(printf '%s' "$_base" | tr -cd 'A-Za-z0-9 ._-')
+	_base=$(trim "$_base")
+	if [ -z "$_base" ]; then
+		_base=Library
+	fi
+	printf '%s\n' "$_base"
+}
+
+add_library() {
+	_lib=$1
+	_label=$2
+	_roms=$(first_dir "$_lib" roms || true)
+	if [ -n "$_roms" ]; then
+		add_export "$_roms" "$_label ROMs" || return 0
+	fi
+	_bios=$(first_dir "$_lib" bios || true)
+	if [ -n "$_bios" ]; then
+		add_export "$_bios" "$_label BIOS" || return 0
+	fi
+}
+
+build_exports() {
+	rm -f "$EXPORTS" "$RUN/truncated"
+	: > "$EXPORTS"
+	if ! mounts_has "$STORAGE"; then
+		say "primary storage is not mounted"
+		return 1
+	fi
+	path_forbidden "$STORAGE" && {
+		say "primary storage path is not exportable"
+		return 1
+	}
+	_roms=$(first_dir "$STORAGE" roms || true)
+	if [ -z "$_roms" ]; then
+		say "primary ROM directory is missing or not writable"
+		return 1
+	fi
+	add_export "$_roms" "ROMs" || {
+		say "no exportable ROM directory"
+		return 1
+	}
+	_bios=$(first_dir "$STORAGE" bios || true)
+	if [ -n "$_bios" ]; then
+		add_export "$_bios" "BIOS" || true
+	fi
+	if [ -r "$LIBS" ]; then
+		while IFS= read -r _line || [ -n "$_line" ]; do
+			[ -n "$_line" ] || continue
+			[ "$_line" = "$STORAGE" ] && continue
+			path_forbidden "$_line" && continue
+			mounts_has "$_line" || continue
+			_label=$(library_label "$_line")
+			add_library "$_line" "$_label"
+		done < "$LIBS"
+	fi
+	if [ ! -s "$EXPORTS" ]; then
+		say "no exportable ROM directory"
+		return 1
+	fi
+}
+
+write_conf() {
+	case "$FFS" in
+		/|/boot|/boot/*|/storage|/storage/*) say "refusing FunctionFS path $FFS"; return 1 ;;
+	esac
+	_tmp=$RUN/umtprd.conf.tmp
+	{
+		printf '%s\n' "loop_on_disconnect 1"
+		printf '%s\n' "sync_when_close 0x1"
+		printf '%s\n' 'manufacturer "Zlyme"'
+		printf '%s\n' 'product "Zlyme File Transfer"'
+		printf '%s\n' 'serial "zlyme"'
+		printf '%s\n' 'firmware_version "Zlyme"'
+		printf '%s\n' 'mtp_extensions ""'
+		printf '%s\n' 'interface "MTP"'
+		# Linux Foundation PTP gadget. Shared with other uMTP devices.
+		# Not a Miyoo, Rockchip, or Zlyme-assigned id.
+		printf '%s\n' "usb_vendor_id 0x1D6B"
+		printf '%s\n' "usb_product_id 0x0100"
+		printf '%s\n' "usb_class 0x6"
+		printf '%s\n' "usb_subclass 0x1"
+		printf '%s\n' "usb_protocol 0x1"
+		printf '%s\n' "usb_dev_version 0x3008"
+		printf '%s\n' "usb_functionfs_mode 0x1"
+		printf '%s\n' "usb_dev_path \"$FFS/ep0\""
+		printf '%s\n' "usb_epin_path \"$FFS/ep1\""
+		printf '%s\n' "usb_epout_path \"$FFS/ep2\""
+		printf '%s\n' "usb_epint_path \"$FFS/ep3\""
+		printf '%s\n' "usb_max_packet_size 0x200"
+	} > "$_tmp" || return 1
+	while IFS='	' read -r _path _name; do
+		[ -n "$_path" ] || continue
+		case "$_path" in
+			/dev|/dev/*)
+				say "refusing block or device path $_path"
+				rm -f "$_tmp"
+				return 1
+				;;
+		esac
+		if path_forbidden "$_path"; then
+			say "refusing private path $_path"
+			rm -f "$_tmp"
+			return 1
+		fi
+		printf 'storage "%s" "%s" "rw"\n' "$_path" "$_name" >> "$_tmp"
+	done < "$EXPORTS"
+	mv -f "$_tmp" "$CONF"
+}
+
+write_attr() {
+	_file=$1
+	_val=$2
+	if [ ! -e "$_file" ]; then
+		if [ "${ZLYME_USB_TEST_LAYOUT:-}" != 1 ]; then
+			say "missing gadget attribute $_file"
+			return 1
+		fi
+		mkdir -p "$(dirname "$_file")" || return 1
+		: > "$_file" || return 1
+	fi
+	printf '%s\n' "$_val" > "$_file"
+}
+
+materialize_test_gadget() {
+	[ "${ZLYME_USB_TEST_LAYOUT:-}" = 1 ] || return 0
+	for _f in bcdUSB bDeviceClass bDeviceSubClass bDeviceProtocol \
+		idVendor idProduct bcdDevice max_speed UDC; do
+		[ -e "$GADGET/$_f" ] || : > "$GADGET/$_f"
+	done
+	mkdir -p "$GADGET/strings/0x409" \
+		"$GADGET/configs/c.1/strings/0x409" \
+		"$GADGET/functions"
+	for _f in manufacturer product serialnumber; do
+		[ -e "$GADGET/strings/0x409/$_f" ] || : > "$GADGET/strings/0x409/$_f"
+	done
+	for _f in bmAttributes MaxPower; do
+		[ -e "$GADGET/configs/c.1/$_f" ] || : > "$GADGET/configs/c.1/$_f"
+	done
+	[ -e "$GADGET/configs/c.1/strings/0x409/configuration" ] || \
+		: > "$GADGET/configs/c.1/strings/0x409/configuration"
+}
+
+make_gadget() {
+	if [ ! -d "$CONFIGFS/usb_gadget" ]; then
+		say "configfs usb_gadget is not available"
+		return 1
+	fi
+	mkdir -p "$GADGET" || {
+		say "cannot create gadget $GADGET_NAME"
+		return 1
+	}
+	materialize_test_gadget || return 1
+	# uMTP FunctionFS descriptors are full and high speed. A SuperSpeed
+	# UDC with no SuperSpeed configuration stalls the host at address.
+	write_attr "$GADGET/max_speed" "high-speed" || return 1
+	write_attr "$GADGET/bcdUSB" "0x0200" || return 1
+	write_attr "$GADGET/bDeviceClass" "0x00" || return 1
+	write_attr "$GADGET/bDeviceSubClass" "0x00" || return 1
+	write_attr "$GADGET/bDeviceProtocol" "0x00" || return 1
+	write_attr "$GADGET/idVendor" "0x1d6b" || return 1
+	write_attr "$GADGET/idProduct" "0x0100" || return 1
+	write_attr "$GADGET/bcdDevice" "0x0100" || return 1
+	mkdir -p "$GADGET/strings/0x409" || return 1
+	materialize_test_gadget || return 1
+	write_attr "$GADGET/strings/0x409/manufacturer" "Zlyme" || return 1
+	write_attr "$GADGET/strings/0x409/product" "Zlyme File Transfer" || return 1
+	write_attr "$GADGET/strings/0x409/serialnumber" "zlyme" || return 1
+	mkdir -p "$GADGET/configs/c.1/strings/0x409" || return 1
+	materialize_test_gadget || return 1
+	# Self-powered. MaxPower is milliamps on Linux 7.0.2 (2 mA here).
+	# Charging stays on the RK817 path. This does not switch VBUS.
+	write_attr "$GADGET/configs/c.1/bmAttributes" "0xC0" || return 1
+	write_attr "$GADGET/configs/c.1/MaxPower" "2" || return 1
+	write_attr "$GADGET/configs/c.1/strings/0x409/configuration" "MTP" || return 1
+	mkdir -p "$GADGET/functions/ffs.mtp" || return 1
+	if [ ! -L "$GADGET/configs/c.1/ffs.mtp" ] && [ ! -e "$GADGET/configs/c.1/ffs.mtp" ]; then
+		ln -s "$GADGET/functions/ffs.mtp" "$GADGET/configs/c.1/ffs.mtp" || return 1
+	fi
+}
+
+mount_ffs() {
+	mkdir -p "$FFS" || return 1
+	if mounts_has "$FFS"; then
+		return 0
+	fi
+	"$MOUNT" -t functionfs mtp "$FFS" || {
+		say "FunctionFS mount failed"
+		return 1
+	}
+	if ! mounts_has "$FFS"; then
+		say "FunctionFS mount is not in the mount table"
+		return 1
+	fi
+}
+
+pid_is_ours() {
+	_pid=$1
+	case "$_pid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ -r "/proc/$_pid/cmdline" ] || return 1
+	_cmd=$(2>/dev/null tr '\000' ' ' < "/proc/$_pid/cmdline") || return 1
+	# Parse in a subshell so set -- does not replace this script's arguments.
+	_ok=$(
+		set -f
+		# shellcheck disable=SC2086
+		set -- $_cmd
+		set +f
+		_saw=
+		while [ $# -gt 0 ]; do
+			if [ "$1" = "$UMTPRD" ]; then
+				_saw=1
+			elif [ "$_saw" = 1 ] && [ "$1" = "-conf" ]; then
+				if [ "${2:-}" = "$CONF" ]; then
+					printf '%s\n' yes
+				fi
+				break
+			fi
+			shift
+		done
+	)
+	[ "$_ok" = yes ]
+}
+
+read_pid() {
+	_pid=
+	[ -r "$PIDFILE" ] || return 1
+	read -r _pid < "$PIDFILE" || return 1
+	printf '%s\n' "$_pid"
+}
+
+spawn_responder() {
+	if [ ! -x "$UMTPRD" ]; then
+		say "umtprd is not executable ($UMTPRD)"
+		return 1
+	fi
+	: > "$RUN/umtprd.log"
+	# Close the lifecycle lock in the child. Otherwise the responder
+	# inherits fd 9 and the next start/stop/status waits on flock forever.
+	"$UMTPRD" -conf "$CONF" >> "$RUN/umtprd.log" 2>&1 9>&- < /dev/null &
+	_pid=$!
+	printf '%s\n' "$_pid" > "$PIDFILE"
+	# exec is not instant. Poll the owned-pid check a bounded number of
+	# times so a not-yet-replaced shell is not mistaken for the wrong process.
+	_i=0
+	while [ "$_i" -lt 20 ]; do
+		if pid_is_ours "$_pid"; then
+			return 0
+		fi
+		if ! kill -0 "$_pid" 2>/dev/null; then
+			say "responder exited immediately"
+			return 1
+		fi
+		_i=$((_i + 1))
+	done
+	say "responder pid $_pid is not the umtprd we started"
+	return 1
+}
+
+wait_ready() {
+	_pid=$(read_pid || true)
+	_i=0
+	while [ "$_i" -lt "$READY_POLLS" ]; do
+		if [ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] && [ -e "$FFS/ep3" ]; then
+			return 0
+		fi
+		if [ -z "$_pid" ] || ! pid_is_ours "$_pid"; then
+			say "responder exited before FunctionFS endpoints were ready"
+			return 1
+		fi
+		_i=$((_i + 1))
+		if [ "$_i" -lt "$READY_POLLS" ] && [ "$READY_SLEEP" != 0 ]; then
+			sleep "$READY_SLEEP" || true
+		fi
+	done
+	say "FunctionFS endpoints were not ready"
+	return 1
+}
+
+udc_present() {
+	[ -n "$UDC_NAME" ] || return 1
+	[ -d "$UDC_CLASS/$UDC_NAME" ]
+}
+
+foreign_owner() {
+	_g=$CONFIGFS/usb_gadget
+	[ -d "$_g" ] || return 1
+	for _u in "$_g"/*/UDC; do
+		[ -f "$_u" ] || continue
+		_val=$(trim "$(cat "$_u" 2>/dev/null || true)")
+		[ "$_val" = "$UDC_NAME" ] || continue
+		_name=${_u%/UDC}
+		_name=${_name##*/}
+		[ "$_name" = "$GADGET_NAME" ] && continue
+		printf '%s\n' "$_name"
+		return 0
+	done
+	return 1
+}
+
+list_udcs() {
+	[ -d "$UDC_CLASS" ] || return 0
+	for _d in "$UDC_CLASS"/*; do
+		[ -d "$_d" ] || continue
+		printf '%s\n' "${_d##*/}"
+	done
+}
+
+explain_missing_udc() {
+	_seen=
+	_n=0
+	while IFS= read -r _name; do
+		[ -n "$_name" ] || continue
+		_n=$((_n + 1))
+		if [ -z "$_seen" ]; then
+			_seen=$_name
+		else
+			_seen="$_seen $_name"
+		fi
+	done <<EOF
+$(list_udcs)
+EOF
+	if [ -z "$UDC_NAME" ]; then
+		say "lower USB-C controller name is unset"
+		return 1
+	fi
+	if [ "$_n" -eq 0 ]; then
+		say "no UDC is registered. The lower USB-C controller $UDC_NAME is not available. USB OTG in Settings disables the upper host port and does not enable this gadget. No boot setting was changed."
+		return 1
+	fi
+	if [ "$_n" -gt 1 ]; then
+		say "ambiguous UDC list ($_seen). The lower USB-C controller $UDC_NAME is not among them. None were bound."
+		return 1
+	fi
+	say "lower USB-C controller $UDC_NAME is not available. Saw $_seen, which is not that controller. It was left alone."
+	return 1
+}
+
+bind_udc() {
+	if ! udc_present; then
+		explain_missing_udc
+		return 1
+	fi
+	_owner=$(foreign_owner || true)
+	if [ -n "$_owner" ]; then
+		say "UDC $UDC_NAME is owned by gadget $_owner. It was left alone."
+		return 1
+	fi
+	printf '%s\n' "$UDC_NAME" > "$GADGET/UDC" || {
+		say "failed to bind $UDC_NAME"
+		return 1
+	}
+	_got=$(trim "$(cat "$GADGET/UDC" 2>/dev/null || true)")
+	if [ "$_got" != "$UDC_NAME" ]; then
+		say "UDC bind did not stick (wanted $UDC_NAME, have ${_got:-empty})"
+		return 1
+	fi
+}
+
+our_udc_bound() {
+	[ -f "$GADGET/UDC" ] || return 1
+	_got=$(trim "$(cat "$GADGET/UDC" 2>/dev/null || true)")
+	[ -n "$_got" ] && [ "$_got" = "$UDC_NAME" ]
+}
+
+unbind_udc() {
+	[ -f "$GADGET/UDC" ] || return 0
+	_got=$(trim "$(cat "$GADGET/UDC" 2>/dev/null || true)")
+	[ -n "$_got" ] || return 0
+	printf '%s\n' "" > "$GADGET/UDC" || return 1
+	_got=$(trim "$(cat "$GADGET/UDC" 2>/dev/null || true)")
+	[ -z "$_got" ]
+}
+
+wait_pid_gone() {
+	_pid=$1
+	_i=0
+	while [ "$_i" -lt "$KILL_POLLS" ]; do
+		pid_is_ours "$_pid" || return 0
+		_i=$((_i + 1))
+		if [ "$_i" -lt "$KILL_POLLS" ] && [ "$KILL_SLEEP" != 0 ]; then
+			sleep "$KILL_SLEEP" || true
+		fi
+	done
+	return 1
+}
+
+kill_owned() {
+	_pid=$(read_pid || true)
+	if [ -z "$_pid" ]; then
+		rm -f "$PIDFILE"
+		return 0
+	fi
+	if ! pid_is_ours "$_pid"; then
+		rm -f "$PIDFILE"
+		return 0
+	fi
+	kill -s TERM "$_pid" 2>/dev/null || true
+	if wait_pid_gone "$_pid"; then
+		rm -f "$PIDFILE"
+		return 0
+	fi
+	if pid_is_ours "$_pid"; then
+		kill -s KILL "$_pid" 2>/dev/null || true
+	fi
+	if wait_pid_gone "$_pid"; then
+		rm -f "$PIDFILE"
+		return 0
+	fi
+	say "owned responder $_pid is still running"
+	return 1
+}
+
+umount_ffs() {
+	if ! mounts_has "$FFS"; then
+		return 0
+	fi
+	"$UMOUNT" "$FFS" || return 1
+	if mounts_has "$FFS"; then
+		say "FunctionFS is still mounted"
+		return 1
+	fi
+}
+
+remove_gadget() {
+	[ -d "$GADGET" ] || return 0
+	rm -f "$GADGET/configs/c.1/ffs.mtp"
+	if [ "${ZLYME_USB_TEST_LAYOUT:-}" = 1 ]; then
+		rm -f "$GADGET/bcdUSB" "$GADGET/bDeviceClass" \
+			"$GADGET/bDeviceSubClass" "$GADGET/bDeviceProtocol" \
+			"$GADGET/idVendor" "$GADGET/idProduct" "$GADGET/bcdDevice" \
+			"$GADGET/max_speed" "$GADGET/UDC" \
+			"$GADGET/strings/0x409/manufacturer" \
+			"$GADGET/strings/0x409/product" \
+			"$GADGET/strings/0x409/serialnumber" \
+			"$GADGET/configs/c.1/bmAttributes" \
+			"$GADGET/configs/c.1/MaxPower" \
+			"$GADGET/configs/c.1/strings/0x409/configuration"
+	fi
+	rmdir "$GADGET/configs/c.1/strings/0x409" 2>/dev/null || true
+	rmdir "$GADGET/configs/c.1/strings" 2>/dev/null || true
+	rmdir "$GADGET/configs/c.1" 2>/dev/null || true
+	rmdir "$GADGET/configs" 2>/dev/null || true
+	rmdir "$GADGET/functions/ffs.mtp" 2>/dev/null || true
+	rmdir "$GADGET/functions" 2>/dev/null || true
+	rmdir "$GADGET/strings/0x409" 2>/dev/null || true
+	rmdir "$GADGET/strings" 2>/dev/null || true
+	rmdir "$GADGET" 2>/dev/null || true
+	if [ -d "$GADGET" ]; then
+		say "gadget $GADGET_NAME is still present"
+		return 1
+	fi
+}
+
+session_left() {
+	[ -d "$GADGET" ] && return 0
+	mounts_has "$FFS" && return 0
+	_pid=$(read_pid || true)
+	if [ -n "$_pid" ] && pid_is_ours "$_pid"; then
+		return 0
+	fi
+	return 1
+}
+
+cleanup_owned() {
+	_fail=0
+	unbind_udc || _fail=1
+	kill_owned || _fail=1
+	umount_ffs || _fail=1
+	remove_gadget || _fail=1
+	rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log"
+	if session_left; then
+		say "usb transfer cleanup incomplete"
+		return 1
+	fi
+	[ "$_fail" -eq 0 ]
+}
+
+healthy() {
+	our_udc_bound || return 1
+	mounts_has "$FFS" || return 1
+	[ -s "$CONF" ] || return 1
+	_pid=$(read_pid || true)
+	[ -n "$_pid" ] || return 1
+	pid_is_ours "$_pid" || return 1
+	[ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] && [ -e "$FFS/ep3" ]
+}
+
+on_signal() {
+	say "interrupted"
+	cleanup_owned || true
+	exit 143
+}
+
+cmd_start() {
+	lock_session || return 1
+	trap on_signal INT TERM
+	if [ -z "$UDC_NAME" ]; then
+		say "lower USB-C controller name is unset"
+		trap - INT TERM
+		return 1
+	fi
+	if healthy; then
+		trap - INT TERM
+		return 0
+	fi
+	cleanup_owned || {
+		trap - INT TERM
+		return 1
+	}
+	_owner=$(foreign_owner || true)
+	if [ -n "$_owner" ]; then
+		say "UDC $UDC_NAME is owned by gadget $_owner. It was left alone."
+		trap - INT TERM
+		return 1
+	fi
+	if ! udc_present; then
+		explain_missing_udc
+		trap - INT TERM
+		return 1
+	fi
+	if ! build_exports; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! write_conf; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! make_gadget; then
+		say "gadget setup failed"
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! mount_ffs; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! spawn_responder; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! wait_ready; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! bind_udc; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	trap - INT TERM
+	return 0
+}
+
+host_state() {
+	if ! our_udc_bound; then
+		printf '%s\n' "unbound"
+		return 0
+	fi
+	_sf=$UDC_CLASS/$UDC_NAME/state
+	if [ ! -r "$_sf" ]; then
+		printf '%s\n' "unknown"
+		return 0
+	fi
+	trim "$(cat "$_sf")"
+}
+
+cmd_status() {
+	lock_session || return 1
+	if ! session_left && ! our_udc_bound; then
+		printf '%s\n' "state=off"
+		return 0
+	fi
+	if our_udc_bound; then
+		printf '%s\n' "state=bound"
+	elif [ -d "$GADGET" ] || mounts_has "$FFS"; then
+		printf '%s\n' "state=partial"
+	else
+		printf '%s\n' "state=off"
+	fi
+	printf 'udc=%s\n' "$UDC_NAME"
+	printf 'gadget=%s\n' "$GADGET_NAME"
+	_pid=$(read_pid || true)
+	if [ -n "$_pid" ] && pid_is_ours "$_pid"; then
+		printf '%s\n' "responder=running"
+	else
+		printf '%s\n' "responder=stopped"
+	fi
+	printf 'host=%s\n' "$(host_state)"
+	if [ -f "$EXPORTS" ]; then
+		while IFS='	' read -r _path _name; do
+			[ -n "$_path" ] || continue
+			printf 'export=%s\n' "$_path"
+		done < "$EXPORTS"
+	fi
+	if [ -f "$RUN/truncated" ]; then
+		printf '%s\n' "truncated=1"
+	fi
+	return 0
+}
+
+cmd_stop() {
+	lock_session || return 1
+	if ! session_left; then
+		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated"
+		return 0
+	fi
+	cleanup_owned
+}
+
+case "${1:-}" in
+	start) cmd_start ;;
+	stop) cmd_stop ;;
+	status) cmd_status ;;
+	*)
+		say "usage: zlyme-usb-transfer {start|stop|status}"
+		exit 1
+		;;
+esac
