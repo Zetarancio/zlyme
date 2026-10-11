@@ -195,7 +195,7 @@ Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with it
 
 - **WiFi**: the radio on or off, diagnostics, and the network list. **Country** sets the two-letter code for regional channel rules. Use the country where the device is being used. The row appears only when the Wi-Fi driver supports it.
 - **Bluetooth**: pair HID controllers and headsets.
-- **SSH**: OpenSSH with SFTP.
+- **SSH**: OpenSSH with SFTP. On a fresh install the account is root and the password is empty. SSH stays on with that empty password. **SSH Password** sets or changes it, and **Clear SSH password** removes it, without a reboot. About shows the password as it is currently set.
 - **Samba**: a file share of `/storage`.
 - **Syncthing**: a web UI on port 8384.
 
@@ -234,8 +234,8 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Joysticks**: see [Joysticks and rumble](#joysticks-and-rumble).
 - **Storage**: see [Libraries and storage](#libraries-and-storage) and [PortMaster](#portmaster).
 - **Advanced**: see below.
-- **Status LED**: Auto (green, red while charging, flashing when low), or a fixed Green, Red, or Off.
-- **Time zone**: how the clock is shown. Until you pick one, the clock stays on UTC.
+- **Status LED**: Auto (green, red while charging, flashing when low), or a fixed Green, Red, or Off. At 0% with no charger connected, the Flip shuts down. Off does not disable that shutdown.
+- **Time zone**: how the clock is shown. Until you pick one, the clock stays on UTC. When a network is available, Zlyme sets and corrects the clock in the background. The menu does not wait for that.
 - **Haptic feedback**: see [Joysticks and rumble](#joysticks-and-rumble).
 - **Backup now** saves `/storage/.config` to `/storage/zlyme-backup.tar.gz`. **Restore backup** unpacks it. Reboot afterwards.
 
@@ -250,14 +250,14 @@ Settings → System → Advanced:
 - **ZRAM swap**: on by default. The menu suggests turning it off if a heavy emulator feels spongy.
 - **USB OTG (top)**, **HDMI port**, and **Second SD slot**: on by default. Turning one off saves some power. Takes effect on the next boot.
 - **System logs**: off by default. See [Logs](#logs).
-- **Reset Settings**: returns Zlyme settings to their defaults. Games, saves, Wi-Fi and paired devices stay.
+- **Reset Settings**: returns Zlyme settings to their defaults, including the SSH password. Games, saves, Wi-Fi and paired devices stay.
 - **Factory Reset**: restores settings and the stock Tools and Emus paks, then restarts. Games, saves, Wi-Fi and personal content stay.
 
 
 
 ### Update
 
-Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. **Notes** shows the release text, with the usual button hints. Up and Down scroll, L1 and R1 move a page, and B goes back. If the release has no notes, it says so. If the notes could not be fetched, it says they could not be retrieved. Those are different. If this version is already installed, or the exact firmware file is already on the card, the download asks before it starts and still lets you reinstall. What happens after the download is in the [README](../README.md#update).
+Settings → Update has the **Channel** (Releases or Prereleases), the latest release on that channel, its release notes, and the download. **Notes** shows the release text, with the usual button hints. Up and Down scroll, L1 and R1 move a page, and B goes back. If the release has no notes, it says so. If the notes could not be fetched, it says they could not be retrieved. Those are different. If this version is already installed, or the exact firmware file is already on the card, the download asks before it starts and still lets you reinstall. The download confirmation, and the screen that offers reboot, both say that installing may take more than one reboot. Leave the SD card inserted and do not power off the Flip until Zlyme starts normally again. While the file is downloading, the rate is the recent one, in KiB/s or MiB/s. What happens after the download is in the [README](../README.md#update).
 
 ## ZcrapeGoat
 

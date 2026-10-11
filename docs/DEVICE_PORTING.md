@@ -181,7 +181,11 @@ The implementation is `package/system/nextui/zlyme/governor.sh`, installed by th
 
 ### `zlyme-led`
 
-Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `off`, `charging`, `discharging`, `poweroff`, `flash`, `watch`, `list`. `ledcontrol` is a symlink to it.
+Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `off`, `charging`, `discharging`, `poweroff`, `flash`, `watch`, `list`. `ledcontrol` is a symlink to it. `watch` is the only battery monitor. It samples every 10 seconds. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply has `online` of 1. LED Off does not stop that check.
+
+### `zlyme-ssh-auth`
+
+Owns the root SSH password. Verbs: `get`, `set`, `clear`, `apply`. `set` reads the password on stdin. The plaintext file is `/storage/.config/zlyme/ssh.password`. A missing file is an empty password. `apply` bind-mounts a generated shadow from `/run` over `/etc/shadow` and replaces only the root field.
 
 ### `zlyme-halt`
 

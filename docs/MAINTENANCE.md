@@ -88,7 +88,7 @@ Fixed in the `zlyme44.1` source:
 
 Deferred. These are not part of `zlyme44.1` and are not Phase 10 blockers:
 
-- **(i)** The LED watcher still polls every 2 seconds. Change it only after measuring the cost.
+- **(i)** The LED watcher still polls every 2 seconds. Change it only after measuring the cost. Phase 12A1, on `zlyme44.3-phase-12`, changes that poll to 10 seconds and shuts down at a confirmed 0%. That part is host-tested and is not hardware-accepted.
 - **(m)** Literal `my355` in generic-looking paths matters when a second device exists.
 - **(n)** Boot-timing and NextUI emergency snapshots are still copied when system logs are off. That is a deliberate diagnostic tradeoff.
 - **(q)** PortMaster's `sleep 0.4` stays until the readiness condition it covers is known. `S15bootpart` and `S13resize` use `ZLYME_STORAGE_DEVICE` and do not fall back to another `ZLYME` label. Implemented and host-tested. Flip validation of that path is deferred and is not a `zlyme44.1` gate.

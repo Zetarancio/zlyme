@@ -110,6 +110,7 @@ Important classes include:
 - RetroArch configuration/options;
 - NextUI settings;
 - SSH host keys;
+- SSH password (`/storage/.config/zlyme/ssh.password`, plaintext; `zlyme-ssh-auth` rebuilds the shadow hash under `/run` on each boot);
 - Bluetooth state;
 - saves/BIOS/ROM libraries;
 - optional logs;
@@ -249,6 +250,8 @@ OTA artifacts are named `zlyme-my355-*` and carry the my355 DTB. `zlyme-update s
 - `reapply=yes` when the governor, LED, and zram settings have not yet been reapplied after an OTA;
 - `pending/zlyme=yes (reboot to commit)` when a reconstructed or extracted root is waiting for reboot;
 - `root=squashfs-file` when `/boot/zlyme` is present, otherwise `root=other`.
+
+An install can reboot more than once. The updater says so before the download and again when the tar is queued. Leave the card inserted and do not power off until Zlyme has started normally. That reboot is not a NAND write. The download line shows a recent rate, in KiB/s or MiB/s, over about two seconds of newly received bytes. A resumed prefix is not counted as new transfer.
 
 Settings selects a delta only when `from_sha256` equals the SHA-256 of the installed `/boot/zlyme`. Otherwise it uses the full OTA. A baseline release has no deltas. Reconstruction writes the new root under `/storage/.update/reconstruct` and moves it to `/storage/.update/pending/zlyme` only after the hash and size match. `/boot/zlyme` stays the running system until initramfs copies the pending file on reboot. Kernel, DTB, and overlays are written to the boot volume at apply time. A routine OTA does not rewrite U-Boot. `zlyme-update uboot` is a separate command. It writes only the primary card, and only when `/boot` is that card's boot partition and the disk reports 512-byte logical sectors. Host checks do not write. On 2026-10-08 `zlyme-update uboot` wrote the production idbloader and FIT on this unit's right-hand card. The raw card bytes matched that build, and the later UART log shows `U-Boot 2026.01` with no boot-delay countdown.
 
