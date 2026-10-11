@@ -44,7 +44,7 @@ mkdir -p "$work/icd"
 printf '%s\n' '{"file_format_version":"1.0.0","ICD":{"library_path":"libmali"}}' \
 	> "$work/icd/mali_icd.json"
 printf '%s\n' '{"file_format_version":"1.0.0","ICD":{"library_path":"libvulkan_panfrost.so"}}' \
-	> "$work/icd/panfrost_icd.aarch64.json"
+	> "$work/icd/panfrost_icd.cortex-a55.json"
 
 read_icd() {
 	# shellcheck disable=SC2016
@@ -68,8 +68,8 @@ got=$(read_icd)
 line1=$(printf '%s\n' "$got" | sed -n '1p')
 line2=$(printf '%s\n' "$got" | sed -n '2p')
 line3=$(printf '%s\n' "$got" | sed -n '3p')
-[ "$line1" = "$work/icd/panfrost_icd.aarch64.json" ] || fail "panfrost ICD is '$line1'"
-[ "$line2" = "$work/icd/panfrost_icd.aarch64.json" ] || fail "panfrost driver files is '$line2'"
+[ "$line1" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost ICD is '$line1'"
+[ "$line2" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost driver files is '$line2'"
 [ -z "$line3" ] || fail "panfrost set the broken-driver flag"
 printf '%s\n' "$got" | grep -q mali_icd && fail "panfrost selected the Mali ICD"
 
@@ -79,7 +79,7 @@ line1=$(printf '%s\n' "$got" | sed -n '1p')
 [ "$line1" = "$work/icd/mali_icd.json" ] || fail "libmali ICD is '$line1'"
 printf '%s\n' "$got" | grep -q panfrost_icd && fail "libmali selected PanVK"
 
-rm -f "$work/icd/panfrost_icd.aarch64.json"
+rm -f "$work/icd/panfrost_icd.cortex-a55.json"
 printf '%s' panfrost > "$work/gpu"
 got=$(read_icd)
 line1=$(printf '%s\n' "$got" | sed -n '1p')

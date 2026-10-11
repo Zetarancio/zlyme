@@ -191,7 +191,7 @@ BR2_PACKAGE_MESA3D_GBM=y
 BR2_PACKAGE_KMSCUBE=y
 
 # Vulkan loader + headers. /etc/zlyme-gpu-env.sh points the loader at
-# mali_icd.json or Mesa's panfrost_icd.aarch64.json. Emulators pick
+# mali_icd.json or Mesa's panfrost_icd.cortex-a55.json. Emulators pick
 # Vulkan or GLES themselves. Mali-G52 PanVK stays opt-in at runtime.
 BR2_PACKAGE_VULKAN_HEADERS=y
 BR2_PACKAGE_VULKAN_LOADER=y

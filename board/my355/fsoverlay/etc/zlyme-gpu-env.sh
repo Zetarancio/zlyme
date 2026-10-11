@@ -1,6 +1,8 @@
 # Sourced by nextui-session, ra-run, and login shells.
 # vulkan-loader reads VK_DRIVER_FILES, then the older VK_ICD_FILENAMES.
-# libmali ships mali_icd.json. Mesa PanVK ships panfrost_icd.aarch64.json.
+# libmali ships mali_icd.json. Mesa PanVK ships
+# panfrost_icd.cortex-a55.json (the manifest is named for the
+# Buildroot CPU, not the ELF machine).
 # Each stack exports only its own ICD, so the loader does not try both.
 # card0 is rockchip-drm and card1 is the Mali GPU. Forcing
 # MESA_LOADER_DRIVER_OVERRIDE=panfrost makes GBM init fail on that
@@ -29,9 +31,9 @@ case "$gpu" in
 		;;
 	*)
 		unset MESA_LOADER_DRIVER_OVERRIDE
-		if [ -r /usr/share/vulkan/icd.d/panfrost_icd.aarch64.json ]; then
-			export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/panfrost_icd.aarch64.json
-			export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/panfrost_icd.aarch64.json
+		if [ -r /usr/share/vulkan/icd.d/panfrost_icd.cortex-a55.json ]; then
+			export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/panfrost_icd.cortex-a55.json
+			export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/panfrost_icd.cortex-a55.json
 		else
 			unset VK_ICD_FILENAMES
 			unset VK_DRIVER_FILES
