@@ -1,7 +1,8 @@
 # Mounts created by one PortMaster launch.
 #
-# zlyme-portmaster-exec appends a target only after mount succeeds.
-# A matching successful umount removes one line. nextui-session runs
+# zlyme-portmaster-exec appends a target only when mount succeeds and
+# the number of mounts at that target increases by one layer. A remount
+# does not. A matching successful umount removes one line. nextui-session runs
 # zlyme-portmaster-cleanup outside the pak process group, and that
 # cleanup unmounts only paths this file can prove the launch owns.
 # Library roots stay mounted. Sourced, not executed.
@@ -87,17 +88,30 @@ pm_unregister_one() {
 	mv -f "$tmp" "$reg"
 }
 
+# Last real operand. Values of -o and -t are not operands, so
+# "mount -o remount,rw /some/path" names /some/path and not remount,rw.
 pm_mount_dest() {
 	dest=
 	n=0
+	take=
 	for arg in "$@"; do
+		if [ -n "$take" ]; then
+			take=
+			continue
+		fi
 		case "$arg" in
-			-*) continue ;;
+			-o|-t|--options|--types)
+				take=1
+				continue
+				;;
+			-*)
+				continue
+				;;
 		esac
 		dest=$arg
 		n=$((n + 1))
 	done
-	[ "$n" -ge 2 ] || return 1
+	[ "$n" -ge 1 ] || return 1
 	[ -n "$dest" ] || return 1
 	printf '%s\n' "$dest"
 }

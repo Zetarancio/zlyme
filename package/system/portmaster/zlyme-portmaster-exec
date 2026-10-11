@@ -2,7 +2,8 @@
 # PortMaster command prefix. control.txt sets ESUDO to this path.
 #
 # Pass every command through unchanged, except mount and umount.
-# A successful mount is recorded under /run/zlyme-portmaster/owned-mounts.
+# A mount is recorded under /run/zlyme-portmaster/owned-mounts only when
+# it increases the mount count at its target. A remount is not owned.
 # A matching successful umount removes that target. nextui-session
 # unmounts only the recorded paths after the port exits or is killed.
 # /tmp/weston is still the WestonPack lifecycle PortMaster launchers
@@ -99,13 +100,24 @@ gpu_is_mali() {
 }
 
 # Two-operand mount whose destination is exactly /tmp/weston.
-# A one-operand remount is not this case.
+# A remount is one operand after -o and is not this case.
 weston_mount_dest() {
 	dest=""
 	n=0
+	take=
 	for arg in "$@"; do
+		if [ -n "$take" ]; then
+			take=
+			continue
+		fi
 		case "$arg" in
-			-*) continue ;;
+			-o|-t|--options|--types)
+				take=1
+				continue
+				;;
+			-*)
+				continue
+				;;
 		esac
 		dest=$arg
 		n=$((n + 1))
@@ -330,14 +342,23 @@ shift
 case "$cmd" in
 	mount)
 		if weston_mount_dest "$@"; then
+			before=0
+			if pm_load; then
+				before=$(mount_count "$WESTON")
+			fi
 			command mount "$@"
 			st=$?
 			if [ "$st" -ne 0 ]; then
 				exit "$st"
 			fi
+			after=$(mount_count "$WESTON")
+			# A remount leaves the count unchanged and is not owned.
+			if [ "$after" -le "$before" ]; then
+				exit 0
+			fi
 			# BusyBox mount stacks a second mount on the same directory.
 			# Peel that one layer instead of hiding the runtime underneath.
-			if [ "$(mount_count "$WESTON")" -gt 1 ]; then
+			if [ "$after" -gt 1 ]; then
 				command umount "$WESTON" || log "could not unmount stacked $WESTON"
 				log "refusing to stack $WESTON"
 				exit 1
@@ -350,13 +371,21 @@ case "$cmd" in
 			exit 0
 		fi
 		dest=
+		before=0
 		if pm_load; then
 			dest=$(pm_mount_dest "$@") || dest=
+			if [ -n "$dest" ]; then
+				before=$(mount_count "$dest")
+			fi
 		fi
 		command mount "$@"
 		st=$?
 		if [ "$st" -eq 0 ] && [ -n "$dest" ]; then
-			pm_note_mount "$dest"
+			after=$(mount_count "$dest")
+			# One successful mount owns one new layer. A remount does not.
+			if [ "$after" -gt "$before" ]; then
+				pm_note_mount "$dest"
+			fi
 		fi
 		exit "$st"
 		;;

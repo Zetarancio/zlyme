@@ -18,46 +18,75 @@ export ZLYME_LIBRARY_SH="$LIB"
 export ZLYME_FAKE_UMOUNT_LOG="$work/umount.log"
 export ZLYME_FAKE_MOUNT_FAIL=0
 export ZLYME_FAKE_UMOUNT_FAIL=0
+export ZLYME_PYTHON_LOG="$work/python.log"
 export PATH="$work/bin:$PATH"
+: > "$ZLYME_PYTHON_LOG"
 
 mkdir -p "$work/bin"
 printf '%s\n' /storage "/mnt/media/USB Games" > "$work/libraries"
 
+cat > "$work/bin/python3" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "${ZLYME_PYTHON_LOG:?}"
+exit 127
+EOF
+
+# Remount leaves the mount count unchanged. Option values are not operands.
 cat > "$work/bin/mount" << 'EOF'
 #!/bin/sh
 set -eu
 if [ "${ZLYME_FAKE_MOUNT_FAIL:-0}" = 1 ]; then
 	exit 1
 fi
-dest=
+take=
+remount=0
 n=0
+dest=
 for arg in "$@"; do
+	if [ -n "$take" ]; then
+		case "$arg" in
+			*remount*) remount=1 ;;
+		esac
+		take=
+		continue
+	fi
 	case "$arg" in
-		-*) continue ;;
+		-o|-t|--options|--types)
+			take=1
+			continue
+			;;
+		-*)
+			continue
+			;;
 	esac
 	dest=$arg
 	n=$((n + 1))
 done
-[ "$n" -ge 2 ] || exit 0
-python3 - "$dest" "$ZLYME_PM_MOUNTS" << 'PY'
-import sys
-dest, path = sys.argv[1], sys.argv[2]
-out = []
-for ch in dest:
-    o = ord(ch)
-    if ch in " \t\n\\" or o < 32:
-        out.append("\\%03o" % o)
-    else:
-        out.append(ch)
-line = "/dev/fake %s fake rw 0 0\n" % "".join(out)
-with open(path, "a", encoding="utf-8") as fh:
-    fh.write(line)
-PY
+if [ "$remount" -eq 1 ] || [ "$n" -lt 2 ]; then
+	exit 0
+fi
+[ -n "$dest" ] || exit 1
+enc=$(printf '%s' "$dest" | awk '
+	BEGIN { ORS = "" }
+	{
+		for (i = 1; i <= length($0); i++) {
+			c = substr($0, i, 1)
+			if (c == " ") printf "\\040"
+			else if (c == "\t") printf "\\011"
+			else if (c == "\\") printf "\\134"
+			else if (c == "\n") printf "\\012"
+			else printf "%s", c
+		}
+	}
+')
+printf '/dev/fake %s fake rw 0 0\n' "$enc" >> "$ZLYME_PM_MOUNTS"
 EOF
 
 cat > "$work/bin/umount" << 'EOF'
 #!/bin/sh
 set -eu
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
 target=
 for arg in "$@"; do
 	case "$arg" in
@@ -70,46 +99,22 @@ if [ "${ZLYME_FAKE_UMOUNT_FAIL:-0}" = 1 ]; then
 	exit 1
 fi
 [ -n "$target" ] || exit 1
-python3 - "$ZLYME_PM_MOUNTS" "$target" << 'PY'
-import sys
-path, want = sys.argv[1], sys.argv[2]
-
-def decode(s):
-    out = []
-    i = 0
-    n = len(s)
-    while i < n:
-        chunk = s[i + 1:i + 4]
-        if (
-            s[i] == "\\"
-            and len(chunk) == 3
-            and all(c in "01234567" for c in chunk)
-        ):
-            out.append(chr(int(chunk, 8)))
-            i += 4
-        else:
-            out.append(s[i])
-            i += 1
-    return "".join(out)
-
-with open(path, "r", encoding="utf-8") as fh:
-    lines = fh.read().splitlines()
-kept = []
-removed = False
-for line in lines:
-    parts = line.split()
-    if not removed and len(parts) >= 2 and decode(parts[1]) == want:
-        removed = True
-        continue
-    kept.append(line)
-text = ("\n".join(kept) + "\n") if kept else ""
-with open(path, "w", encoding="utf-8") as fh:
-    fh.write(text)
-if not removed:
-    sys.exit(1)
-PY
+tmp=$(mktemp)
+removed=0
+while IFS= read -r line || [ -n "$line" ]; do
+	[ -n "$line" ] || continue
+	field=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
+	if [ "$removed" -eq 0 ] && [ -n "$field" ] \
+		&& [ "$(mounts_decode "$field")" = "$target" ]; then
+		removed=1
+		continue
+	fi
+	printf '%s\n' "$line"
+done < "$ZLYME_PM_MOUNTS" > "$tmp"
+mv -f "$tmp" "$ZLYME_PM_MOUNTS"
+[ "$removed" -eq 1 ]
 EOF
-chmod 0755 "$work/bin/mount" "$work/bin/umount"
+chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
 
 reset() {
 	: > "$ZLYME_PM_MOUNTS"
@@ -264,6 +269,62 @@ if [ -z "$child_line" ] || [ -z "$parent_line" ]; then
 fi
 if [ "$child_line" -ge "$parent_line" ]; then
 	fail "weston child was not unmounted first"
+fi
+
+reset
+"$EXEC" mount /src /var/port/plain || fail "two-operand mount failed"
+reg_exact /var/port/plain || fail "two-operand mount was not registered"
+"$EXEC" mount --bind /src /var/port/bind || fail "bind mount failed"
+reg_exact /var/port/bind || fail "--bind was not registered"
+"$EXEC" mount -t squashfs /src /var/port/sq || fail "squashfs mount failed"
+reg_exact /var/port/sq || fail "-t squashfs was not registered"
+"$EXEC" mount -o loop /src /var/port/loop || fail "loop mount failed"
+reg_exact /var/port/loop || fail "-o loop was not registered"
+
+reset
+printf '%s\n' '/dev/fake /var/port/live fake rw 0 0' > "$ZLYME_PM_MOUNTS"
+"$EXEC" mount -o remount,rw /var/port/live || fail "remount failed"
+if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
+	fail "successful remount was registered"
+fi
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/live)" -eq 1 ] \
+	|| fail "remount changed the mount count"
+
+reset
+printf '%s\n' '/dev/fake /var/port/live fake rw 0 0' > "$ZLYME_PM_MOUNTS"
+ZLYME_FAKE_MOUNT_FAIL=1
+if "$EXEC" mount -o remount,rw /var/port/live; then
+	fail "failed remount returned success"
+fi
+if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
+	fail "failed remount was registered"
+fi
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/live)" -eq 1 ] \
+	|| fail "failed remount edited the table"
+ZLYME_FAKE_MOUNT_FAIL=0
+
+reset
+printf '%s\n' '/dev/old /var/port/stack fake rw 0 0' > "$ZLYME_PM_MOUNTS"
+"$EXEC" mount --bind /src /var/port/stack || fail "stacked mount failed"
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/stack)" -eq 2 ] \
+	|| fail "stacked mount did not add one layer"
+reg_lines=0
+if [ -f "$ZLYME_PM_REGISTRY" ]; then
+	reg_lines=$(grep -c . "$ZLYME_PM_REGISTRY" || true)
+fi
+[ "$reg_lines" -eq 1 ] || fail "stacked mount registered $reg_lines layers"
+reg_exact /var/port/stack || fail "stacked mount missed the owned layer"
+"$CLEAN" || fail "stacked cleanup failed"
+if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
+	fail "stacked cleanup left a registration"
+fi
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/stack)" -eq 1 ] \
+	|| fail "cleanup removed more than the owned layer"
+
+if [ -s "$ZLYME_PYTHON_LOG" ]; then
+	fail "mount helper invoked python3"
 fi
 
 echo "portmaster mounts ok"
