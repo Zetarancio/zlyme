@@ -12,8 +12,8 @@ set -euo pipefail
 
 readonly REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Pin to a February LTS release, not master.
-readonly BUILDROOT_VERSION="2026.02.3"
+# Pin to an official release tag, not master.
+readonly BUILDROOT_VERSION="2026.08"
 readonly BUILDROOT_URL="https://gitlab.com/buildroot.org/buildroot.git"
 
 readonly IMAGE="zlyme-build"

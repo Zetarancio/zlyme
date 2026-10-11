@@ -10,10 +10,10 @@ BR2_OPTIMIZE_3=y
 BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
 
-# Kernel headers must match the kernel we build. 6.19 is Buildroot's
-# newest series flag and covers 7.0.2. Without it glibc silently becomes uClibc.
+# Kernel headers must match the kernel we build. 7.0.x is the series
+# for Linux 7.0.2. A missing series flag makes glibc fall back to uClibc.
 BR2_KERNEL_HEADERS_AS_KERNEL=y
-BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_19=y
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_7_0=y
 
 # ccache. Path comes from the environment (build.sh).
 BR2_CCACHE=y
@@ -174,12 +174,15 @@ BR2_PACKAGE_PARTED=y
 BR2_PACKAGE_GPTFDISK=y
 BR2_PACKAGE_GPTFDISK_SGDISK=y
 
-# GPU: Mesa Panfrost, KMSDRM + GBM + EGL, no X11. Wayland is for the temporary Weston.
-# MESA3D_LLVM is required by Buildroot's panfrost option (else it is dropped).
+# GPU: Mesa Panfrost GLES plus PanVK. KMSDRM + GBM + EGL, no X11.
+# Wayland is for the temporary Weston.
+# MESA3D_LLVM is required by Buildroot's panfrost options.
 # LLVM is not used in the GL client; see external.mk.
+# PanVK is the product image only. The default runtime stack stays libmali.
 BR2_PACKAGE_MESA3D=y
 BR2_PACKAGE_MESA3D_LLVM=y
 BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_PANFROST=y
+BR2_PACKAGE_MESA3D_VULKAN_DRIVER_PANFROST=y
 BR2_PACKAGE_MESA3D_OPENGL_EGL=y
 BR2_PACKAGE_MESA3D_OPENGL_ES=y
 BR2_PACKAGE_MESA3D_GBM=y
@@ -187,9 +190,9 @@ BR2_PACKAGE_MESA3D_GBM=y
 # kmscube: KMSDRM + GBM + GLES smoke test.
 BR2_PACKAGE_KMSCUBE=y
 
-# Vulkan loader + headers. ICD is mali_icd.json (libmali blob) when
-# gpu=libmali. Buildroot 2026.02 mesa3d has no PanVK Kconfig option, so
-# the panfrost stack stays GLES. Emulators pick vulkan vs gl themselves.
+# Vulkan loader + headers. /etc/zlyme-gpu-env.sh points the loader at
+# mali_icd.json or Mesa's panfrost_icd.aarch64.json. Emulators pick
+# Vulkan or GLES themselves. Mali-G52 PanVK stays opt-in at runtime.
 BR2_PACKAGE_VULKAN_HEADERS=y
 BR2_PACKAGE_VULKAN_LOADER=y
 

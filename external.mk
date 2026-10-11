@@ -20,12 +20,11 @@ SDL2_CONF_OPTS := $(filter-out --disable-video-vulkan,$(SDL2_CONF_OPTS))
 SDL2_CONF_OPTS += --enable-video-vulkan
 endif
 
-# mkxp-z's meson wrap leaked SDL3 into staging; fluidsynth then linked it
-# and the image had no libSDL3.so.0. EasyRPG/mkxp MIDI does not need SDL
-# audio — ALSA is enough.
-FLUIDSYNTH_CONF_OPTS += -Denable-sdl3=OFF -Denable-sdl2=OFF
-
-# host-clang is wrapped for the target; libclc needs the unwrapped binary.
+# host-clang is wrapped for the target. Buildroot points libclc at
+# HOST_DIR/bin, where `clang` is that wrapper. find_program keeps a
+# pre-set LLVM_CUSTOM_TOOL_clang, so name the unwrapped binary.
+# Host libclc already builds only spirv64-mesa3d-. The target package
+# does not, so keep that limit there too.
 ZLYME_LIBCLC_UNWRAPPED_CLANG = \
 	-DLLVM_TOOL_clang=$(HOST_DIR)/bin/clang.br_real \
 	-DLLVM_CUSTOM_TOOL_clang=$(HOST_DIR)/bin/clang.br_real

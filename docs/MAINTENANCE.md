@@ -38,6 +38,8 @@ The project's own upstream is the version and source authority. Active KNULLI an
 
 Keep Zlyme's direct KMS, input, audio, and storage contracts. Build the package by itself before a full image. Hardware smoke is for a runtime change, not for a comment or a pin that does not change behavior. Procedure: `docs/UPSTREAMS.md`. Build mechanics: `docs/DEVELOPMENT.md`.
 
+A Buildroot release bump changes `BUILDROOT_VERSION` in `build.sh` and the pinned baseline in `docs/DEVELOPMENT.md`. Linux and U-Boot stay on their own pins. The product image's PanVK selection is a build choice. Mali-G52 Vulkan with that driver needs `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`, which Zlyme does not set. Device enumeration is a later hardware pass.
+
 ## Vendored helpers
 
 `minui-list` 0.15.2 and `minui-presenter` 0.13.2 are vendored snapshots. Repository, tag, commit, and license are recorded in `package/system/minui-list/UPSTREAM` and `package/system/minui-presenter/UPSTREAM`. parson `ec53fb65` is the JSON helper vendored beside minui-list because upstream gitignores the directory the compiler includes. Stay on those recorded commits until a review says otherwise. Do not comment that vendored source for style.

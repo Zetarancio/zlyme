@@ -17,7 +17,7 @@ This document describes the current design and who owns each subsystem. Operator
 ## 2. Major layers
 
 ```text
-Buildroot 2026.02.3
+Buildroot 2026.08
   +
 Zlyme BR2_EXTERNAL
   |
@@ -48,13 +48,13 @@ PAK / RetroArch / standalone / PortMaster application
 
 Zlyme is a `BR2_EXTERNAL` tree named `ZLYME` (`external.desc`).
 
-Upstream Buildroot is not modified. `build.sh` pins Buildroot `2026.02.3` (a shallow clone of that git tag) and runs Buildroot inside the `zlyme-build` Docker image built from `Dockerfile`. Zlyme adds packages through `Config.in` and `external.mk`, target configurations through `configs/`, and board integration through `board/`.
+Upstream Buildroot is not modified. `build.sh` pins Buildroot `2026.08` (a shallow clone of that git tag) and runs Buildroot inside the `zlyme-build` Docker image built from `Dockerfile`. Zlyme adds packages through `Config.in` and `external.mk`, target configurations through `configs/`, and board integration through `board/`.
 
 `Config.in` offers one device choice, `BR2_ZLYME_DEVICE_MY355`. That choice sets `BR2_PACKAGE_NEXTUI_PLATFORM="my355"`.
 
 There are two defconfigs. `zlyme_my355_defconfig` is the product image. `zlyme_my355_minimal_defconfig` leaves out the frontend, emulators, and Mali stack, and is the `build.sh` default.
 
-The global `external.mk` stays small. It includes every `package/*/*/*.mk`, includes `board/my355/board.mk` only when `BR2_ZLYME_DEVICE_MY355=y`, and holds cross-package workarounds that are not board-specific (Mesa without LLVM draw, SDL2 Vulkan, fluidsynth without SDL, libclc's unwrapped clang, the Python sysconfigdata fix).
+The global `external.mk` stays small. It includes every `package/*/*/*.mk`, includes `board/my355/board.mk` only when `BR2_ZLYME_DEVICE_MY355=y`, and holds cross-package workarounds that are not board-specific (Mesa without LLVM draw, SDL2 Vulkan, libclc's unwrapped clang, the Python sysconfigdata fix).
 
 Miyoo Flip-only Linux and U-Boot hooks live in `board/my355/board.mk`, not in the global file.
 
@@ -401,14 +401,14 @@ NextUI reacquires DRM
 
 The Flip supports both:
 
-- Mesa/Panfrost (GLES only);
+- Mesa/Panfrost (OpenGL ES, plus PanVK in the product image);
 - vendor Mali (`mali_kbase` + libmali, GLES and Vulkan).
 
 They cannot own the GPU simultaneously. Selection is reboot-level policy.
 
 The default is libmali. The choice is the flag `/storage/.config/zlyme/gpu`, which the Settings Advanced → GPU option writes and which takes effect on the next boot. A static `blacklist panfrost` in `/etc/modprobe.d/zlyme-gpu.conf` keeps udev from binding Panfrost before the flag is read. Class A `S15gpudriver` runs `gpudriver`, which reads the flag, bind-mounts a runtime blacklist for the other stack over that file, and loads one kernel module. For libmali it also bind-mounts the blob over the files behind Mesa's `libEGL.so.1`, `libGLESv1_CM.so.1`, `libGLESv2.so.2`, and `libgbm.so.1`, so applications link one set of names.
 
-`/etc/zlyme-gpu-env.sh` exports the Mali Vulkan ICD only for libmali. Buildroot's Mesa has no PanVK, so Vulkan exists only with libmali.
+`/etc/zlyme-gpu-env.sh` exports one Vulkan ICD. libmali uses `/usr/share/vulkan/icd.d/mali_icd.json`. Panfrost uses `/usr/share/vulkan/icd.d/panfrost_icd.aarch64.json` (`libvulkan_panfrost.so`). The product image builds that driver. The minimal image builds Panfrost GLES and does not build PanVK. Mali-G52 is Panfrost architecture v7. Mesa 26.1.8 returns `VK_ERROR_INCOMPATIBLE_DRIVER` for that device unless `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`. Zlyme does not set that variable. A built driver is not a device result: enumeration and rendering stay for a later hardware pass. GLES applications do not read the ICD variables.
 
 This dual-stack mechanism is a Miyoo Flip/RK3566 implementation detail, not a requirement for every future Zlyme device.
 
