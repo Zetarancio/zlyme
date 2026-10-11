@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-11 — zlyme44.2 hardware-accepted
+
+Zlyme 44.2 implementation is closed. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. The accepted NextUI pin is `cf4a16ccbb54320af963a796b173ab8b77e25017`. The maintainer hardware-accepted pristine Etcher image `zlyme.img`, SHA-256 `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`, rootfs SHA-256 `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path obtained `frt_3.3.4` through PortMaster, and Ascent DX, Alien Squatter, and Gravity Defied ran. The historical Ascent `love.aarch64` permission failure and the missing `libtheoradec.so.1` failure were absent. Stable Build run `38098037074` was dispatched from the runtime SHA with `publish_release=true`. That run is the publication gate. `zlyme44.2` is not published until the run publishes the release. A documentation commit does not replace the runtime SHA.
+
+One reboot happened during automated acceptance after the PortMaster reseed. No reboot command was issued. There was no stored panic, no I/O error, no remount-ro, and no second reboot. Testing continued on the next boot. That unreproduced event is not a 44.2 gate.
+
+After return to NextUI, `/roms/ports`, an Ascent save bind, and an FRT squashfs were still mounted. `PORTS.pak` already used that trap and exec pattern at `9622ea7f7c56048b3319f82884ea593a671811b5`, before the writable-tree work. Cleanup is later maintenance, not a 44.2 gate.
+
 ## 2026-10-06 — Phase 10 closed, zlyme44.1 device-accepted
 
 Phase 10 is closed. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local product is `zlyme44.1 (2026-10-05)`, root SHA-256 `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65`, kernel `7.0.2`. `zlyme44.1-maintenance` stays at that SHA. `zlyme44.1` is not published. GitHub Actions run `37375071442`, dispatched from that SHA with `publish_release=false`, is the clean-build and publication gate. No `zlyme44.2` work has started. The hardware wiki was not edited.

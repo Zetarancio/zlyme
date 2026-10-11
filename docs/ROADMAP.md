@@ -16,6 +16,10 @@ Phase 11 is closed. It is `zlyme44.2`: related user-facing fixes, separate commi
 
 Later on 2026-10-10 the automatic merge of `/storage/PortMaster` and the ports-folder runtime copy were removed. Prepare installs a missing or invalid live tree from the seed and leaves obsolete PortMaster directories in place. The private libtheora 1.1.1 decoder remains. This is not hardware-accepted.
 
+2026-10-11: Zlyme 44.2 implementation is closed. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. The accepted NextUI SHA is `cf4a16ccbb54320af963a796b173ab8b77e25017`. The maintainer hardware-accepted the pristine Etcher image. Image SHA-256 is `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`. Rootfs SHA-256 is `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path, Ascent DX, Alien Squatter, and Gravity Defied passed. The stable GitHub Actions release build is run `38098037074`, dispatched from that runtime SHA with `publish_release=true`. That run is the release-administration gate. It does not reopen implementation. A documentation commit does not replace the runtime SHA. `zlyme44.2` is not a published release until that run publishes it. The 2026-10-09 and 2026-10-10 sentences that say this PortMaster work is not hardware-accepted are the record from before this closure.
+
+Later maintenance, not a 44.2 gate: `PORTS.pak` can leave `/roms/ports`, an Ascent save bind, and an FRT squashfs mounted after NextUI returns. That launcher already used the same trap and exec pattern at `9622ea7f7c56048b3319f82884ea593a671811b5`, before the writable-tree work.
+
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
 ## Rule for every phase
@@ -2024,6 +2028,8 @@ Closed 2026-10-08 with the candidate and the NAND result named in the 11C closur
 - Erase is not USB MASKROM. The boot-file MASKROM request was removed. Production U-Boot is `CONFIG_BOOTDELAY=-2`. The card readback matched that build, and the right-slot UART log has no diagnostic countdown.
 - 11D is the closure and release handoff above. It is complete. It does not publish `zlyme44.2`.
 - `zlyme44.1-maintenance` stays at `6a398b311310246ef6a5515ed72805c6f58d787d` until 44.1 publication work, which is separate from this phase.
+
+Writable PortMaster closure, 2026-10-11, is in Current phase. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. Stable Build run `38098037074` is the publication gate. That run does not reopen this phase.
 
 ## Suggested commit/checkpoint rhythm
 
