@@ -1,12 +1,14 @@
 #!/bin/sh
 # Where new PortMaster content is installed.
-# An empty choice is the main card. An explicit choice is mounted only
-# when that path is a line in /run/zlyme/libraries. A leftover mountpoint
-# directory is not enough, and a missing disk does not fall back to
-# /storage. Nothing is moved when the choice changes.
+# An empty choice is the main card. An explicit non-primary choice is
+# mounted only when that path is a line in /run/zlyme/libraries and the
+# same path is a current mount. A leftover mountpoint directory is not
+# enough, a stale registry line is not enough, and a missing disk does
+# not fall back to /storage. Nothing is moved when the choice changes.
 #
-# ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE, and ZLYME_PM_STORAGE are test seams.
-# ZLYME_PM_STORAGE defaults to /storage. It does not select a second library.
+# ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE, ZLYME_PM_STORAGE, ZLYME_PM_MOUNTS,
+# and ZLYME_MOUNTS_LIB are test seams. ZLYME_PM_STORAGE defaults to
+# /storage. It does not select a second library.
 
 FLAG=${ZLYME_PM_FLAG:-${ZLYME_CFG:-/storage/.config}/zlyme/portmaster-root}
 LIBS=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
@@ -40,11 +42,33 @@ selected() {
 	return 1
 }
 
+mounts_file() {
+	printf '%s\n' "${ZLYME_PM_MOUNTS:-/proc/mounts}"
+}
+
+load_mounts() {
+	if command -v mounts_has >/dev/null 2>&1; then
+		return 0
+	fi
+	lib=${ZLYME_MOUNTS_LIB:-/usr/share/zlyme/mounts.sh}
+	if [ ! -r "$lib" ]; then
+		echo "zlyme-portmaster-root: mount table helper is missing" >&2
+		return 1
+	fi
+	# shellcheck disable=SC1090
+	. "$lib"
+}
+
+# /storage is the built-in primary. Every other library must be listed
+# and present as that exact path in the mount table.
 is_known() {
 	root=$1
 	[ "$root" = "$STORAGE" ] && return 0
+	[ -n "$root" ] || return 1
 	[ -f "$LIBS" ] || return 1
-	grep -Fxq -- "$root" "$LIBS"
+	grep -Fxq -- "$root" "$LIBS" || return 1
+	load_mounts || return 1
+	mounts_has "$(mounts_file)" "$root"
 }
 
 q() {
@@ -56,7 +80,7 @@ export_hm() {
 	root=$STORAGE
 	if [ -n "$sel" ]; then
 		root=$sel
-		# The registry is the mount. The directory can exist with no card.
+		# Registry membership without a current mount is not a disk.
 		if ! is_known "$root"; then
 			echo "PortMaster disk is not inserted" >&2
 			return 1

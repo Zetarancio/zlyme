@@ -7,11 +7,49 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 sd2=$work/sd2
 usb="$work/usb disk"
-mkdir -p "$sd2" "$usb"
+bs="$work/A\\B"
+mkdir -p "$sd2" "$usb" "$bs" "$work/bin"
 export ZLYME_PM_FLAG="$work/flag"
 export ZLYME_LIBRARIES_FILE="$work/libraries"
+export ZLYME_PM_MOUNTS="$work/mounts"
+export ZLYME_MOUNTS_LIB="$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh"
 export ZLYME_PM_RUN="$work/run"
-printf '%s\n' /storage "$sd2" "$usb" > "$work/libraries"
+export ZLYME_PYTHON_LOG="$work/python.log"
+: > "$ZLYME_PYTHON_LOG"
+cat > "$work/bin/python3" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "${ZLYME_PYTHON_LOG:?}"
+exit 127
+EOF
+chmod 0755 "$work/bin/python3"
+export PATH="$work/bin:$PATH"
+encode_mount() {
+	printf '%s' "$1" | awk '
+		BEGIN { ORS = "" }
+		{
+			for (i = 1; i <= length($0); i++) {
+				c = substr($0, i, 1)
+				if (c == " ") printf "\\040"
+				else if (c == "\\") printf "\\134"
+				else if (c == "\t") printf "\\011"
+				else if (c == "\n") printf "\\012"
+				else printf "%s", c
+			}
+		}
+	'
+}
+write_mounts() {
+	: > "$work/mounts"
+	for path in "$@"; do
+		printf '/dev/fake %s fake rw 0 0\n' "$(encode_mount "$path")" >> "$work/mounts"
+	done
+}
+printf '%s\n' /storage "$sd2" "$usb" "$bs" > "$work/libraries"
+write_mounts "$sd2" "$usb" "$bs"
+if grep -n python3 "$BIN" "$ZLYME_MOUNTS_LIB"; then
+	echo "minimal library path names python3" >&2
+	exit 1
+fi
 
 "$BIN" set /storage
 test ! -s "$work/flag"
@@ -40,6 +78,11 @@ eval "$("$BIN" export)"
 test "$HM_TOOLS_DIR" = "$usb/Roms/.portmaster"
 test "$HM_PORTS_DIR" = "$usb/Roms/Ports (PORTS)"
 test "$("$BIN" get)" = "$usb"
+
+"$BIN" set "$bs"
+eval "$("$BIN" export)"
+test "$HM_TOOLS_DIR" = "$bs/Roms/.portmaster"
+test "$("$BIN" get)" = "$bs"
 
 if "$BIN" link-libs; then
 	echo "link-libs is still a root command" >&2
@@ -100,8 +143,42 @@ if "$BIN" get >"$work/out" 2>"$work/err"; then
 fi
 test ! -s "$work/out"
 
+# Listed and the directory exists. The disk is not in the mount table.
+printf '%s\n' /storage "$sd2" "$usb" > "$work/libraries"
+printf '%s\n' "$sd2" > "$work/flag"
+write_mounts "$usb"
+test -d "$sd2"
+if "$BIN" export >"$work/out" 2>"$work/err"; then
+	echo "stale library entry was accepted" >&2
+	exit 1
+fi
+grep -q "not inserted" "$work/err"
+test ! -s "$work/out"
+if "$BIN" get >"$work/out" 2>"$work/err"; then
+	echo "stale library entry fell back" >&2
+	exit 1
+fi
+grep -q "not inserted" "$work/err"
+test ! -s "$work/out"
+if grep -q '/storage' "$work/out"; then
+	echo "stale library fell back to /storage" >&2
+	exit 1
+fi
+if "$BIN" set "$sd2"; then
+	echo "set accepted a stale library entry" >&2
+	exit 1
+fi
+
+# /storage is the primary. It does not have to appear in the mount table.
+write_mounts "$sd2" "$usb"
 printf '%s\n' /storage "$sd2" "$usb" > "$work/libraries"
 "$BIN" set /storage
 test ! -s "$work/flag"
 test "$("$BIN" get)" = /storage
+eval "$("$BIN" export)"
+test "$HM_TOOLS_DIR" = "/storage/Roms/.portmaster"
+if [ -s "$ZLYME_PYTHON_LOG" ]; then
+	echo "library helper invoked python3" >&2
+	exit 1
+fi
 echo "portmaster root ok"
