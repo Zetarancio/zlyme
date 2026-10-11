@@ -1,0 +1,13 @@
+GCC 15 no longer exposes uint32_t through this bundled glslang's
+other headers. Include it directly.
+
+--- a/core/deps/glslang/SPIRV/SpvBuilder.h
++++ b/core/deps/glslang/SPIRV/SpvBuilder.h
+@@ -56,6 +56,7 @@ namespace spv {
+ }
+ 
+ #include <algorithm>
++#include <cstdint>
+ #include <map>
+ #include <memory>
+ #include <set>
