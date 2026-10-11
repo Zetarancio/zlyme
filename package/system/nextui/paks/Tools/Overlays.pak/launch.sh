@@ -15,14 +15,9 @@ PAK_NAME="${PAK_NAME%.*}"
 
 cd "$PAK_DIR" || exit 1
 
-# Logging
-mkdir -p "$LOGS_PATH" 2>/dev/null
-LOG_FILE="${LOGS_PATH:-/tmp}/$PAK_NAME.txt"
-rm -f "$LOG_FILE"
+# Diagnostics go through pak-log.sh. This script does not open its own log.
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor play >/dev/null 2>&1 || true
-exec >>"$LOG_FILE" 2>&1
 echo "$(date) launch: $0 $*"
-set -x
 
 # Architecture (some platforms ship arm + arm64 binaries side-by-side)
 ARCH="arm"

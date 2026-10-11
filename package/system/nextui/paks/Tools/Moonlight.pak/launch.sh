@@ -12,20 +12,6 @@ PAK_NAME=${PAK_NAME%.pak}
 cd "$PAK_DIR" || exit 1
 chmod +x "$PAK_DIR/$APP_BIN" 2>/dev/null || true
 
-if [ -n "${SHARED_USERDATA_PATH:-}" ]; then
-	SHARED_USERDATA_ROOT="$SHARED_USERDATA_PATH"
-elif [ -d "/mnt/SDCARD/.config/nextui/shared" ] || [ -d "/mnt/SDCARD" ]; then
-	SHARED_USERDATA_ROOT="/mnt/SDCARD/.config/nextui/shared"
-else
-	SHARED_USERDATA_ROOT="${HOME:-/tmp}/.config/nextui/shared"
-fi
-LOG_ROOT=${LOGS_PATH:-"$SHARED_USERDATA_ROOT/logs"}
-mkdir -p "$LOG_ROOT"
-LOG_FILE="$LOG_ROOT/$APP_BIN.txt"
-: >"$LOG_FILE"
-exec >>"$LOG_FILE"
-exec 2>&1
-
 echo "=== Launching $PAK_NAME ($APP_BIN) at $(date) ==="
 echo "platform=${PLATFORM:-unknown} device=${DEVICE:-unknown}"
 

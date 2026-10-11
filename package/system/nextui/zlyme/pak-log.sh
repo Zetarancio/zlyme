@@ -4,6 +4,8 @@
 #
 # Three files per tag: TAG.log is this launch, TAG.log.1 and TAG.log.2
 # are the two before it. Rotation is once, here, before anything writes.
+# When system logs are off, this file creates nothing and does not rotate.
+# A stock launch.sh does not open a second diagnostic file.
 # ZLYME_LOG_ROOT and ZLYME_LOG_FORCE=1 are test seams.
 
 PAK_LOG_GENERATIONS=3
@@ -37,8 +39,8 @@ if logs_wanted; then
 	fi
 	_logroot=${ZLYME_LOG_ROOT:-/storage/.logs}
 	mkdir -p "$_logroot/paks"
-	export LOGS_PATH=$_logroot/paks
-	export ZLYME_PAK_LOG=$LOGS_PATH/${tag}.log
+	export LOGS_PATH="$_logroot/paks"
+	export ZLYME_PAK_LOG="$LOGS_PATH/${tag}.log"
 	zlyme_pak_rotate "$ZLYME_PAK_LOG"
 	printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
 	if [ -z "$EMU_EXE" ]; then
