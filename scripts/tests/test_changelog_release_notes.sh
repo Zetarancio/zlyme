@@ -95,7 +95,7 @@ if notes "$work/log.md" zlyme44.2.1 >"$work/out" 2>"$work/err"; then
 	fail "three-part version was accepted"
 fi
 
-# The published baseline in this tree. zlyme44.2 stays Unreleased here.
+# The published entries in this tree. zlyme44.2 is its own heading.
 real=$(notes "$ROOT/CHANGELOG.md" zlyme44)
 printf '%s\n' "$real" | grep -q 'The first stable release' \
 	|| fail "real zlyme44 entry was not selected"
@@ -106,8 +106,16 @@ printf '%s\n' "$real" | grep -q 'Unreleased work is' \
 printf '%s\n' "$real" | grep -q 'ROADMAP' && fail "real notes included ROADMAP"
 printf '%s\n' "$real" | grep -q 'compare/zlyme-' \
 	&& fail "real notes included the compare footer"
-if notes "$ROOT/CHANGELOG.md" zlyme44.2 >"$work/out" 2>"$work/err"; then
-	fail "unpublished zlyme44.2 was extracted from Unreleased"
-fi
+point=$(notes "$ROOT/CHANGELOG.md" zlyme44.2)
+printf '%s\n' "$point" | head -n 1 | grep -Fx '## [zlyme44.2] - 2026-10-11' >/dev/null \
+	|| fail "real zlyme44.2 heading mismatch"
+printf '%s\n' "$point" | grep -q '9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3' \
+	|| fail "real zlyme44.2 entry dropped the runtime SHA"
+printf '%s\n' "$point" | grep -q 'built from `337ccbce' \
+	&& fail "real zlyme44.2 notes included the baseline"
+printf '%s\n' "$point" | grep -q 'Nothing is queued' \
+	&& fail "real zlyme44.2 notes included Unreleased"
+printf '%s\n' "$point" | grep -q 'compare/zlyme-' \
+	&& fail "real zlyme44.2 notes included the compare footer"
 
 echo "changelog release notes ok"
