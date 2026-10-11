@@ -1,4 +1,4 @@
-<img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="887">
+![Zlyme](package/system/nextui/res/branding/zlyme_slime_loop.gif)
 
 **Low latency. High viscosity.**
 
@@ -13,6 +13,8 @@ The Miyoo Flip is the only device Zlyme supports.
 The Flip-specific pieces are the gamepad (sticks, buttons, calibration, rumble), real sleep from the power button, and a fix for the battery drain that mainline used to leave on while the Flip was off. Wi-Fi, Bluetooth, HDMI, the headphone jack, USB, and both SD slots work. Per-game CPU floors come from [SpruceOS](https://spruceui.github.io/) tuning, retargeted onto this kernel's frequency table. The hardware itself is documented in the [Miyoo Flip hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering).
 
 ## Install
+
+
 
 ### Prepare the Flip for SD boot
 
@@ -59,25 +61,33 @@ Doing it by hand: copy the full `zlyme-my355-<date>-<sha>.tar` from a release (n
 
 ## Controls
 
-**Launcher**
+**Launcher:**
 
-- A open, B back
-- MENU tap = quick menu
-- Vol = volume
+- **A** open, **B** back
+- **MENU tap** = quick menu
+- **Vol -/+** = volume
 - **MENU+Vol** = brightness
 - **MENU+Y** = emulator / governor for the highlighted console, folder, or ROM. On a ROM it also offers Delete game.
-- Power = sleep
+- **Power** = deep sleep
+- **Close lid** = disable screen and wifi/bluetooth
 
-**In a pak / game**
+**In a pak / game:**
 
 - **MENU+Start** closes whatever is running
-- MENU tap = RetroArch's menu; standalones keep their own
+- **MENU tap** = RetroArch's / standalone's menu
 
-Speaker and headphones switch by themselves. Bluetooth audio follows the headset when it connects.
+**Others:**  
+Speaker and headphones switch by themselves.   
+Bluetooth audio follows the headset/HDMI when it connects.  
+HDMI is recognized as connected.  
+Bluetooth controllers are automatically configured.
 
 ## Settings and Tools
 
-**Settings** opens from Tools and is the first entry there. Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone, and **Update** are in there. On a restricted network, Settings → Network → Proxy can send online services through an HTTP or SOCKS proxy. That is not a VPN. Hardware switches sit under System → Advanced. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
+**Settings:**  
+Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone, and Update are in there.   
+On a restricted network, Settings → Network → Proxy can send online services through an HTTP or SOCKS proxy. That is not a VPN. Hardware switches sit under System → Advanced. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.  
+**Tools:**
 
 - **ZcrapeGoat**: artwork, manuals, metadata, and cheats. Bring your own ScreenScraper account for art. [User guide](docs/USER_GUIDE.md#zcrapegoat). Based on [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) and [Apostrophe](https://github.com/Helaas/Apostrophe) by Kevin Vranken.
 - **Overlays**: community bezels, one game folder at a time. [NextUI Overlays](https://github.com/zolek86/NextUI-Overlays) by zolek86, using the [NextUI community overlays](https://github.com/LoveRetro/nextui-community-overlays).
@@ -85,6 +95,8 @@ Speaker and headphones switch by themselves. Bluetooth audio follows the headset
 - **PortMaster**: install game ports. [User guide](docs/USER_GUIDE.md#portmaster). [PortMaster](https://github.com/PortsMaster/PortMaster-GUI) by Jacob.
 - **Files**: a file browser. The browser is [vtree](https://github.com/MustardOS/vtree) from MustardOS.
 - **Music Player**: local music, podcasts, and online radio. [nextui-music-player](https://github.com/nborodikhin/nextui-music-player) by nborodikhin.
+
+
 
 ## User Systems and Tools and the Right to Experiment
 
@@ -100,11 +112,11 @@ The [user guide](docs/USER_GUIDE.md#custom-paks) has the details.
 
 If an experiment turns into something good, it can ship in the OS.
 
-You don't need a finished patch to start. Forks, pull requests, a bug report with the logs attached, a fixed typo, a core that runs better, frame-time numbers from a real Flip, or a question before you write any code: all welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how.
+++You don't need a finished patch to start.++ Forks, pull requests, a bug report with the logs attached, a fixed typo, a core that runs better, frame-time numbers from a real Flip, or a question before you write any code: all welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how.
 
-Want to talk first? Zlyme hangs out in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9), where the SpruceOS team has kindly given the project a home.
+++Want to talk first?++ Zlyme hangs out in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9), where the SpruceOS team has kindly given the project a home.
 
-If you want to understand or fork Zlyme with an AI coding tool, clone the repository and give it the `docs/` folder. The hardware wiki is where the deeper Flip knowledge lives.
+If you want to understand or fork Zlyme with an AI coding tool, clone the repository or link the `docs/` folder. The hardware wiki is where the deeper Flip knowledge lives.
 
 ## Build it yourself
 
@@ -127,12 +139,16 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - [docs/](docs/): how Zlyme is built and why. Start at [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [Miyoo Flip hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering): the hardware itself, independent of any OS.
 
+
+
 ## Thanks
 
 - [Sundownersport](https://github.com/Sundownersport) and the community behind [SpruceOS](https://spruceui.github.io/) for their continuing work and support, for the original Zlyme Installer, and for hosting Zlyme's corner of the SpruceOS Discord.
 - The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355).
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 - Discord user `lazydog` for the Wine compatibility suggestion that prompted the zlyme44.2 WoW64 and prefix rework.
+
+
 
 ## License
 

@@ -6,9 +6,9 @@ The [README](../README.md) covers what Zlyme is, how to install it, where games 
 
 A normal install is the [README install](../README.md#install). Stock runs `miyoo355_fw.img` once so the right-hand card can boot. An update does not do that again, and it does not write the Flip's internal flash.
 
-### While stock still boots
+### Images to manipulate the preloader
 
-The release page also has three helpers for a Flip that still starts its stock system: `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`. They are not part of a Zlyme update. Rename the one you need to `miyoo355_fw.img`, put that card where stock can see it, and boot stock.
+The release page also has three helpers for a Flip that still starts its stock system or for other projects that are needed: `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`. They are not part of a Zlyme update. Rename the one you need to `miyoo355_fw.img`, put that card where stock can see it, and boot stock.
 
 `miyoo355_fw-restore.img` undoes the SD-boot repair. It is not how you leave an armed recovery preloader. Stock does not start in that state. Use **Disarm MASKROM recovery** below, or the physical MASKROM button if no right-hand Zlyme card will boot.
 
@@ -34,64 +34,67 @@ Erase is not in this menu. Wiping the internal preloader is not MASKROM recovery
 
 Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any mounted library. "alt:" marks an emulator you can switch to from the MENU+Y Emulator row.
 
-| System                  | Emulator                                             | Folder                                            | Files                                                                        | Bios                                                                                        |
-| ----------------------- | ---------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| NES                     | Nestopia (libretro)                                  | `Roms/Nintendo Entertainment System (FC)/`        | `.nes` `.unif` `.unf` `.fds` `.zip` `.7z`                                    | `disksys.rom` (FDS, optional)                                                               |
-| Game Boy                | Gambatte (libretro)                                  | `Roms/Game Boy (GB)/`                             | `.gb` `.zip` `.7z`                                                           | `gb_bios.bin` (optional)                                                                    |
-| Game Boy Color          | Gambatte (libretro)                                  | `Roms/Game Boy Color (GBC)/`                      | `.gbc` `.gb` `.zip` `.7z`                                                    | `gbc_bios.bin` (optional)                                                                   |
-| Game Boy Advance        | gpSP (libretro)                                      | `Roms/Game Boy Advance (GBA)/`                    | `.gba` `.zip` `.7z`                                                          | `gba_bios.bin`                                                                              |
-| SNES                    | Beetle Supafaust (libretro)                          | `Roms/Super Nintendo Entertainment System (SFC)/` | `.smc` `.sfc` `.fig` `.swc` `.bsx` `.zip` `.7z`                              | —                                                                                           |
-| Master System           | Genesis Plus GX (libretro); alt: PicoDrive           | `Roms/Sega Master System (MS)/`                   | `.sms` `.bin` `.zip` `.7z`                                                   | `bios_*.sms` (optional)                                                                     |
-| Game Gear               | Genesis Plus GX (libretro); alt: PicoDrive           | `Roms/Sega Game Gear (GG)/`                       | `.gg` `.bin` `.zip` `.7z`                                                    | `bios.gg` (optional)                                                                        |
-| SG-1000                 | Genesis Plus GX (libretro)                           | `Roms/Sega SG-1000 (SG1000)/`                     | `.sg` `.bin` `.zip` `.7z`                                                    | —                                                                                           |
-| Mega Drive / Genesis    | PicoDrive (libretro); alt: Genesis Plus GX           | `Roms/Sega Genesis (MD)/`                         | `.md` `.smd` `.gen` `.bin` `.zip` `.7z`                                      | `bios_CD_U.bin` / `E` / `J` (Mega CD, optional)                                             |
-| 32X                     | PicoDrive (libretro)                                 | `Roms/Sega 32X (32X)/`                            | `.32x` `.smd` `.md` `.bin` `.zip` `.7z`                                      | same Mega CD files (optional)                                                               |
-| PC Engine               | Beetle PCE Fast (libretro)                           | `Roms/PC Engine (PCE)/`                           | `.pce` `.cue` `.ccd` `.iso` `.img` `.chd` `.sgx` `.zip` `.7z` `.m3u`         | `syscard3.pce` (CD, optional)                                                               |
-| SuperGrafx              | Beetle SuperGrafx (libretro)                         | `Roms/SuperGrafx (SGX)/`                          | `.sgx` `.pce` `.cue` `.ccd` `.chd` `.zip` `.7z`                              | —                                                                                           |
-| ColecoVision            | Gearcoleco (libretro)                                | `Roms/ColecoVision (COLECO)/`                     | `.col` `.bin` `.rom` `.zip` `.7z`                                            | `colecovision.rom` (or `coleco.rom`)                                                        |
-| Intellivision           | FreeIntv (libretro)                                  | `Roms/Intellivision (INTV)/`                      | `.int` `.bin` `.rom` `.zip` `.7z`                                            | `exec.bin` `grom.bin`                                                                       |
-| MSX                     | blueMSX (libretro)                                   | `Roms/MSX (MSX)/`                                 | `.mx1` `.mx2` `.dsk` `.rom` `.cas` `.zip` `.7z`                              | none to add (`Machines/` `Databases/` ship in the image)                                    |
-| Odyssey 2               | O2EM (libretro)                                      | `Roms/Odyssey 2 (O2)/`                            | `.bin` `.zip` `.7z`                                                          | `o2rom.bin`                                                                                 |
-| Vectrex                 | vecx (libretro)                                      | `Roms/Vectrex (VEC)/`                             | `.vec` `.bin` `.gam` `.zip` `.7z`                                            | —                                                                                           |
-| Neo Geo (AES/MVS)       | FinalBurn Neo (libretro)                             | `Roms/FBNeo (FBNEO)/`                             | `.zip` `.7z`                                                                 | `neogeo.zip` in `Bios/`, `Bios/fbneo/`, or `Bios/FBNEO/`                                    |
-| Arcade                  | MAME 2003-Plus (libretro)                            | `Roms/MAME (MAME)/`                               | `.zip` `.7z`                                                                 | BIOS zips in `Bios/`, `Bios/MAME/`, or `Bios/mame2003-plus/`                                |
-| Neo Geo CD              | NeoCD (libretro)                                     | `Roms/Neo Geo CD (NEOCD)/`                        | `.cue` `.iso` `.chd`                                                         | `neocd/neocd.bin`, `neocd/uni-bioscd.rom`, or `neocd/neocd_z.rom` (`Bios/` root also works) |
-| Neo Geo Pocket          | Beetle NGP (libretro)                                | `Roms/Neo Geo Pocket (NGP)/`                      | `.ngp` `.ngc` `.zip` `.7z`                                                   | —                                                                                           |
-| WonderSwan              | Beetle WonderSwan (libretro)                         | `Roms/WonderSwan (WS)/`                           | `.ws` `.wsc` `.zip` `.7z`                                                    | —                                                                                           |
-| Virtual Boy             | Beetle VB (libretro)                                 | `Roms/Virtual Boy (VB)/`                          | `.vb` `.zip` `.7z`                                                           | —                                                                                           |
-| Pokémon Mini            | PokeMini (libretro)                                  | `Roms/Pokemon Mini (PKM)/`                        | `.min` `.zip` `.7z`                                                          | `bios.min` (optional)                                                                       |
-| Atari 2600              | Stella (libretro)                                    | `Roms/Atari 2600 (A26)/`                          | `.a26` `.bin` `.zip` `.7z`                                                   | —                                                                                           |
-| Atari 5200              | a5200 (libretro)                                     | `Roms/Atari 5200 (A5200)/`                        | `.a52` `.bin` `.zip` `.7z`                                                   | `5200.rom`                                                                                  |
-| Atari 7800              | ProSystem (libretro)                                 | `Roms/Atari 7800 (A78)/`                          | `.a78` `.bin` `.zip` `.7z`                                                   | `7800 BIOS (U).rom`                                                                         |
-| Atari 8-bit             | Atari800 (libretro)                                  | `Roms/Atari 8-bit (A800)/`                        | `.atr` `.atx` `.rom` `.xex` `.cas` `.car` `.zip` `.7z`                       | `ATARIOSB.ROM` `ATARIXL.ROM`                                                                |
-| Atari ST                | Hatari (libretro)                                    | `Roms/Atari ST (ST)/`                             | `.st` `.msa` `.stx` `.dim` `.ipf` `.zip` `.7z`                               | `tos.img` or EmuTOS `etos*.img` (in `Bios/` or `Bios/ST/`)                                  |
-| Atari Lynx              | Handy (libretro)                                     | `Roms/Atari Lynx (LYNX)/`                         | `.lnx` `.lyx` `.bll` `.o` `.zip` `.7z`                                       | `lynxboot.img`                                                                              |
-| 3DO                     | Opera (libretro)                                     | `Roms/3DO (3DO)/`                                 | `.iso` `.chd` `.cue`                                                         | `panafz10.bin`                                                                              |
-| DOS                     | DOSBox Pure (libretro)                               | `Roms/DOS (DOS)/`                                 | `.exe` `.com` `.bat` `.dos` `.dosz` `.zip` `.iso` `.cue` `.m3u` `.m3u8`      | —                                                                                           |
-| PlayStation             | PCSX ReARMed (libretro)                              | `Roms/Sony PlayStation (PS)/`                     | `.cue` `.chd` `.m3u` `.pbp` `.iso` `.ccd` `.img` `.toc`                      | `scph5500.bin` / `scph5501.bin` / `scph5502.bin`                                            |
-| PlayStation 2           | AetherSX2                                            | `Roms/Sony PlayStation 2 (PS2)/`                  | `.iso` `.chd` `.cso` `.mdf` `.nrg` `.bin` `.img` `.dump` `.gz` `.m3u` `.elf` | BIOS dumps in `Bios/PS2/` (not in the ROM folder)                                           |
-| Nintendo 64             | Mupen64Plus-Next (libretro)                          | `Roms/Nintendo 64 (N64)/`                         | `.z64` `.n64` `.v64` `.zip` `.7z`                                            | —                                                                                           |
-| GameCube                | Dolphin                                              | `Roms/Nintendo GameCube (GC)/`                    | `.gcm` `.iso` `.gcz` `.ciso` `.wbfs` `.rvz` `.m3u` `.elf` `.dol`             | `GC/USA/IPL.bin` (optional; also EUR/JAP; `Bios/IPL.bin` or `Bios/GC/IPL.bin` also works)   |
-| Wii                     | Dolphin                                              | `Roms/Nintendo Wii (WII)/`                        | `.gcm` `.iso` `.wbfs` `.gcz` `.ciso` `.rvz` `.wad` `.m3u` `.elf` `.dol`      | same IPL (optional); extra files in `Bios/WII`                                              |
-| Saturn                  | YabaSanshiro (libretro)                              | `Roms/Sega Saturn (SATURN)/`                      | `.cue` `.ccd` `.chd` `.iso`                                                  | `saturn_bios.bin`                                                                           |
-| TIC-80                  | TIC-80 (libretro)                                    | `Roms/TIC-80 (TIC)/`                              | `.tic`                                                                       | —                                                                                           |
-| Pico-8                  | Official PICO-8 (you add it); alt: fake-08           | `Roms/Pico-8 (PICO)/`                             | `.p8` `.png` `.zip`                                                          | `PICO/pico8_64` and `PICO/pico8.dat`                                                        |
-| Pico-8 (fake-08)        | fake-08 (libretro); alt: official PICO-8             | `Roms/Pico-8 fake-08 (P8)/`                       | `.p8` `.png` `.zip`                                                          | — (the alt needs the PICO pair)                                                             |
-| PSP                     | PPSSPP                                               | `Roms/Sony PlayStation Portable (PSP)/`           | `.iso` `.cso` `.pbp` `.chd`                                                  | —                                                                                           |
-| Dreamcast               | Flycast                                              | `Roms/Sega Dreamcast (DC)/`                       | `.cdi` `.gdi` `.cue` `.chd` `.m3u`                                           | `dc_boot.bin` `dc_flash.bin` in `Bios/DC/` or `Bios/`                                       |
-| Nintendo DS             | DraStic                                              | `Roms/Nintendo DS (NDS)/`                         | `.nds` `.zip` `.7z`                                                          | —                                                                                           |
-| Amiga                   | Amiberry                                             | `Roms/Commodore Amiga (AMIGA)/`                   | `.adf` `.ipf` `.hdf` `.lha` `.cue` `.iso` `.chd` `.zip`                      | kickstarts optional; AROS ships in the image                                                |
-| Doom                    | GZDoom                                               | `Roms/Doom (DOOM)/`                               | `.wad` `.iwad` `.pwad` `.pk3`                                                | —                                                                                           |
-| Flash                   | Ruffle Handheld (SilverPsychoo)                      | `Roms/Flash (FLASH)/`                             | `.swf`                                                                       | —                                                                                           |
-| Ports                   | PortMaster                                           | `Roms/Ports (PORTS)/`                             | `.sh` only                                                                   | —                                                                                           |
-| RPG Maker 2000/2003     | EasyRPG Player (libretro)                            | `Roms/RPG Maker 2000-2003 (EASYRPG)/`             | `.zip` `.lzh` `.ldb` `.easyrpg`; folders with `RPG_RT.ldb` or `*.easyrpg`    | `rtp/2000` `rtp/2003` (optional)                                                            |
-| RPG Maker XP / VX / Ace | mkxp-z (libretro)                                    | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/`               | `.ini` `.json` `.rxproj` `.rvproj` `.rvproj2` `.mkxpz` `.zip` `.7z`          | `mkxp-z/RTP` (optional)                                                                     |
-| ScummVM                 | ScummVM                                              | `Roms/ScummVM (SCUMMVM)/`                         | `.scummvm` `.svm` `.zip`; game folders                                       | —                                                                                           |
-| OpenBOR                 | OpenBOR                                              | `Roms/OpenBOR (OPENBOR)/`                         | `.pak`                                                                       | —                                                                                           |
-| Daphne                  | Hypseus Singe                                        | `Roms/Daphne (DAPHNE)/`                           | `.txt` `.daphne` `.singe`                                                    | —                                                                                           |
-| Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston          | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
+
+| System                  | Emulator                                    | Folder                                            | Files                                                                        | Bios                                                                                        |
+| ----------------------- | ------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| NES                     | Nestopia (libretro)                         | `Roms/Nintendo Entertainment System (FC)/`        | `.nes` `.unif` `.unf` `.fds` `.zip` `.7z`                                    | `disksys.rom` (FDS, optional)                                                               |
+| Game Boy                | Gambatte (libretro)                         | `Roms/Game Boy (GB)/`                             | `.gb` `.zip` `.7z`                                                           | `gb_bios.bin` (optional)                                                                    |
+| Game Boy Color          | Gambatte (libretro)                         | `Roms/Game Boy Color (GBC)/`                      | `.gbc` `.gb` `.zip` `.7z`                                                    | `gbc_bios.bin` (optional)                                                                   |
+| Game Boy Advance        | gpSP (libretro)                             | `Roms/Game Boy Advance (GBA)/`                    | `.gba` `.zip` `.7z`                                                          | `gba_bios.bin`                                                                              |
+| SNES                    | Beetle Supafaust (libretro)                 | `Roms/Super Nintendo Entertainment System (SFC)/` | `.smc` `.sfc` `.fig` `.swc` `.bsx` `.zip` `.7z`                              | —                                                                                           |
+| Master System           | Genesis Plus GX (libretro); alt: PicoDrive  | `Roms/Sega Master System (MS)/`                   | `.sms` `.bin` `.zip` `.7z`                                                   | `bios_*.sms` (optional)                                                                     |
+| Game Gear               | Genesis Plus GX (libretro); alt: PicoDrive  | `Roms/Sega Game Gear (GG)/`                       | `.gg` `.bin` `.zip` `.7z`                                                    | `bios.gg` (optional)                                                                        |
+| SG-1000                 | Genesis Plus GX (libretro)                  | `Roms/Sega SG-1000 (SG1000)/`                     | `.sg` `.bin` `.zip` `.7z`                                                    | —                                                                                           |
+| Mega Drive / Genesis    | PicoDrive (libretro); alt: Genesis Plus GX  | `Roms/Sega Genesis (MD)/`                         | `.md` `.smd` `.gen` `.bin` `.zip` `.7z`                                      | `bios_CD_U.bin` / `E` / `J` (Mega CD, optional)                                             |
+| 32X                     | PicoDrive (libretro)                        | `Roms/Sega 32X (32X)/`                            | `.32x` `.smd` `.md` `.bin` `.zip` `.7z`                                      | same Mega CD files (optional)                                                               |
+| PC Engine               | Beetle PCE Fast (libretro)                  | `Roms/PC Engine (PCE)/`                           | `.pce` `.cue` `.ccd` `.iso` `.img` `.chd` `.sgx` `.zip` `.7z` `.m3u`         | `syscard3.pce` (CD, optional)                                                               |
+| SuperGrafx              | Beetle SuperGrafx (libretro)                | `Roms/SuperGrafx (SGX)/`                          | `.sgx` `.pce` `.cue` `.ccd` `.chd` `.zip` `.7z`                              | —                                                                                           |
+| ColecoVision            | Gearcoleco (libretro)                       | `Roms/ColecoVision (COLECO)/`                     | `.col` `.bin` `.rom` `.zip` `.7z`                                            | `colecovision.rom` (or `coleco.rom`)                                                        |
+| Intellivision           | FreeIntv (libretro)                         | `Roms/Intellivision (INTV)/`                      | `.int` `.bin` `.rom` `.zip` `.7z`                                            | `exec.bin` `grom.bin`                                                                       |
+| MSX                     | blueMSX (libretro)                          | `Roms/MSX (MSX)/`                                 | `.mx1` `.mx2` `.dsk` `.rom` `.cas` `.zip` `.7z`                              | none to add (`Machines/` `Databases/` ship in the image)                                    |
+| Odyssey 2               | O2EM (libretro)                             | `Roms/Odyssey 2 (O2)/`                            | `.bin` `.zip` `.7z`                                                          | `o2rom.bin`                                                                                 |
+| Vectrex                 | vecx (libretro)                             | `Roms/Vectrex (VEC)/`                             | `.vec` `.bin` `.gam` `.zip` `.7z`                                            | —                                                                                           |
+| Neo Geo (AES/MVS)       | FinalBurn Neo (libretro)                    | `Roms/FBNeo (FBNEO)/`                             | `.zip` `.7z`                                                                 | `neogeo.zip` in `Bios/`, `Bios/fbneo/`, or `Bios/FBNEO/`                                    |
+| Arcade                  | MAME 2003-Plus (libretro)                   | `Roms/MAME (MAME)/`                               | `.zip` `.7z`                                                                 | BIOS zips in `Bios/`, `Bios/MAME/`, or `Bios/mame2003-plus/`                                |
+| Neo Geo CD              | NeoCD (libretro)                            | `Roms/Neo Geo CD (NEOCD)/`                        | `.cue` `.iso` `.chd`                                                         | `neocd/neocd.bin`, `neocd/uni-bioscd.rom`, or `neocd/neocd_z.rom` (`Bios/` root also works) |
+| Neo Geo Pocket          | Beetle NGP (libretro)                       | `Roms/Neo Geo Pocket (NGP)/`                      | `.ngp` `.ngc` `.zip` `.7z`                                                   | —                                                                                           |
+| WonderSwan              | Beetle WonderSwan (libretro)                | `Roms/WonderSwan (WS)/`                           | `.ws` `.wsc` `.zip` `.7z`                                                    | —                                                                                           |
+| Virtual Boy             | Beetle VB (libretro)                        | `Roms/Virtual Boy (VB)/`                          | `.vb` `.zip` `.7z`                                                           | —                                                                                           |
+| Pokémon Mini            | PokeMini (libretro)                         | `Roms/Pokemon Mini (PKM)/`                        | `.min` `.zip` `.7z`                                                          | `bios.min` (optional)                                                                       |
+| Atari 2600              | Stella (libretro)                           | `Roms/Atari 2600 (A26)/`                          | `.a26` `.bin` `.zip` `.7z`                                                   | —                                                                                           |
+| Atari 5200              | a5200 (libretro)                            | `Roms/Atari 5200 (A5200)/`                        | `.a52` `.bin` `.zip` `.7z`                                                   | `5200.rom`                                                                                  |
+| Atari 7800              | ProSystem (libretro)                        | `Roms/Atari 7800 (A78)/`                          | `.a78` `.bin` `.zip` `.7z`                                                   | `7800 BIOS (U).rom`                                                                         |
+| Atari 8-bit             | Atari800 (libretro)                         | `Roms/Atari 8-bit (A800)/`                        | `.atr` `.atx` `.rom` `.xex` `.cas` `.car` `.zip` `.7z`                       | `ATARIOSB.ROM` `ATARIXL.ROM`                                                                |
+| Atari ST                | Hatari (libretro)                           | `Roms/Atari ST (ST)/`                             | `.st` `.msa` `.stx` `.dim` `.ipf` `.zip` `.7z`                               | `tos.img` or EmuTOS `etos*.img` (in `Bios/` or `Bios/ST/`)                                  |
+| Atari Lynx              | Handy (libretro)                            | `Roms/Atari Lynx (LYNX)/`                         | `.lnx` `.lyx` `.bll` `.o` `.zip` `.7z`                                       | `lynxboot.img`                                                                              |
+| 3DO                     | Opera (libretro)                            | `Roms/3DO (3DO)/`                                 | `.iso` `.chd` `.cue`                                                         | `panafz10.bin`                                                                              |
+| DOS                     | DOSBox Pure (libretro)                      | `Roms/DOS (DOS)/`                                 | `.exe` `.com` `.bat` `.dos` `.dosz` `.zip` `.iso` `.cue` `.m3u` `.m3u8`      | —                                                                                           |
+| PlayStation             | PCSX ReARMed (libretro)                     | `Roms/Sony PlayStation (PS)/`                     | `.cue` `.chd` `.m3u` `.pbp` `.iso` `.ccd` `.img` `.toc`                      | `scph5500.bin` / `scph5501.bin` / `scph5502.bin`                                            |
+| PlayStation 2           | AetherSX2                                   | `Roms/Sony PlayStation 2 (PS2)/`                  | `.iso` `.chd` `.cso` `.mdf` `.nrg` `.bin` `.img` `.dump` `.gz` `.m3u` `.elf` | BIOS dumps in `Bios/PS2/` (not in the ROM folder)                                           |
+| Nintendo 64             | Mupen64Plus-Next (libretro)                 | `Roms/Nintendo 64 (N64)/`                         | `.z64` `.n64` `.v64` `.zip` `.7z`                                            | —                                                                                           |
+| GameCube                | Dolphin                                     | `Roms/Nintendo GameCube (GC)/`                    | `.gcm` `.iso` `.gcz` `.ciso` `.wbfs` `.rvz` `.m3u` `.elf` `.dol`             | `GC/USA/IPL.bin` (optional; also EUR/JAP; `Bios/IPL.bin` or `Bios/GC/IPL.bin` also works)   |
+| Wii                     | Dolphin                                     | `Roms/Nintendo Wii (WII)/`                        | `.gcm` `.iso` `.wbfs` `.gcz` `.ciso` `.rvz` `.wad` `.m3u` `.elf` `.dol`      | same IPL (optional); extra files in `Bios/WII`                                              |
+| Saturn                  | YabaSanshiro (libretro)                     | `Roms/Sega Saturn (SATURN)/`                      | `.cue` `.ccd` `.chd` `.iso`                                                  | `saturn_bios.bin`                                                                           |
+| TIC-80                  | TIC-80 (libretro)                           | `Roms/TIC-80 (TIC)/`                              | `.tic`                                                                       | —                                                                                           |
+| Pico-8                  | Official PICO-8 (you add it); alt: fake-08  | `Roms/Pico-8 (PICO)/`                             | `.p8` `.png` `.zip`                                                          | `PICO/pico8_64` and `PICO/pico8.dat`                                                        |
+| Pico-8 (fake-08)        | fake-08 (libretro); alt: official PICO-8    | `Roms/Pico-8 fake-08 (P8)/`                       | `.p8` `.png` `.zip`                                                          | — (the alt needs the PICO pair)                                                             |
+| PSP                     | PPSSPP                                      | `Roms/Sony PlayStation Portable (PSP)/`           | `.iso` `.cso` `.pbp` `.chd`                                                  | —                                                                                           |
+| Dreamcast               | Flycast                                     | `Roms/Sega Dreamcast (DC)/`                       | `.cdi` `.gdi` `.cue` `.chd` `.m3u`                                           | `dc_boot.bin` `dc_flash.bin` in `Bios/DC/` or `Bios/`                                       |
+| Nintendo DS             | DraStic                                     | `Roms/Nintendo DS (NDS)/`                         | `.nds` `.zip` `.7z`                                                          | —                                                                                           |
+| Amiga                   | Amiberry                                    | `Roms/Commodore Amiga (AMIGA)/`                   | `.adf` `.ipf` `.hdf` `.lha` `.cue` `.iso` `.chd` `.zip`                      | kickstarts optional; AROS ships in the image                                                |
+| Doom                    | GZDoom                                      | `Roms/Doom (DOOM)/`                               | `.wad` `.iwad` `.pwad` `.pk3`                                                | —                                                                                           |
+| Flash                   | Ruffle Handheld (SilverPsychoo)             | `Roms/Flash (FLASH)/`                             | `.swf`                                                                       | —                                                                                           |
+| Ports                   | PortMaster                                  | `Roms/Ports (PORTS)/`                             | `.sh` only                                                                   | —                                                                                           |
+| RPG Maker 2000/2003     | EasyRPG Player (libretro)                   | `Roms/RPG Maker 2000-2003 (EASYRPG)/`             | `.zip` `.lzh` `.ldb` `.easyrpg`; folders with `RPG_RT.ldb` or `*.easyrpg`    | `rtp/2000` `rtp/2003` (optional)                                                            |
+| RPG Maker XP / VX / Ace | mkxp-z (libretro)                           | `Roms/RPG Maker XP-VX-Ace (MKXPZ)/`               | `.ini` `.json` `.rxproj` `.rvproj` `.rvproj2` `.mkxpz` `.zip` `.7z`          | `mkxp-z/RTP` (optional)                                                                     |
+| ScummVM                 | ScummVM                                     | `Roms/ScummVM (SCUMMVM)/`                         | `.scummvm` `.svm` `.zip`; game folders                                       | —                                                                                           |
+| OpenBOR                 | OpenBOR                                     | `Roms/OpenBOR (OPENBOR)/`                         | `.pak`                                                                       | —                                                                                           |
+| Daphne                  | Hypseus Singe                               | `Roms/Daphne (DAPHNE)/`                           | `.txt` `.daphne` `.singe`                                                    | —                                                                                           |
+| Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
+
 
 - **PSP:** PPSSPP renders with OpenGL, or with Vulkan when you pick it in PPSSPP and the Mali driver is active.
+
 
 
 ## Libraries and storage
@@ -106,6 +109,8 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 - Settings → System → Storage → Format removable storage erases a second SD or USB disk as exFAT or ext4. The main card cannot be selected. All data on the chosen disk is lost.
 - To remove one game, hold MENU and press Y on it, then choose Delete game. That removes the ROM and its matching saves.
 
+
+
 ### Box art
 
 Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist, with `.png`. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
@@ -116,6 +121,8 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 - When a game starts, Zlyme combines the `Bios/` folders of every mounted library. If the same file exists on more than one card, the copy on the card that holds the game wins.
 - A file in a one-level subfolder, such as `Bios/PS/scph5501.bin`, is also found at the `Bios/` root, unless a root file already has that name.
 
+
+
 ## Saves
 
 - Saves stay in `Saves/` on a library, in one folder per system tag.
@@ -125,11 +132,15 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 - OpenBOR saves are in that library's `Saves/OPENBOR`. The engine's paks, screenshots, and log folder are not created in the ROM directory.
 - RPG Maker XP, VX, and Ace saves are in `Saves/MKXPZ`.
 
+
+
 ## OpenBOR, RPG Maker, and Windows
 
 - An OpenBOR `.pak` stays in `Roms/OpenBOR (OPENBOR)/`. Starting it does not create `Paks`, `Saves`, `Logs`, or `ScreenShots` there.
 - An RPG Maker XP, VX, or Ace game can be a project file (`.ini`, `.json`, `.rxproj`, `.rvproj`, `.rvproj2`), a `.mkxpz`, or a `.zip` / `.7z`. The project can sit at the archive root or in one top folder. A `.mkxp` file is not a game this core accepts.
 - A Windows game uses Wine 11.6 WoW64 under Box64 0.4.4, in a temporary Weston. Its prefix is `/storage/.config/nextui/my355/wine-prefix`. An update deletes an old `wine-prefix.ext4` next to that directory and leaves the new prefix in place.
+
+
 
 ## Multi-disc games
 
@@ -160,6 +171,8 @@ Open the `.m3u`, not a CHD inside the folder, so RetroArch Disk Control can swap
 - Carts downloaded inside Splore show up in the Pico-8 list. They stay in Pico-8's own folder and launch with native PICO-8.
 - Fake-08 has its own folder, `Pico-8 fake-08 (P8)`, and does not need the PICO-8 files. Pico-8 and Fake-08 stay separate.
 - The MENU+Y Emulator row on a Pico-8 game switches between native PICO-8 and Fake-08.
+
+
 
 ## Joysticks and rumble
 
@@ -213,6 +226,8 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Reset standalone settings**: games and saves are kept.
 - **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
 
+
+
 ### System
 
 - **Display**: brightness, panel refresh, screen timeout, and the HDMI display resolution.
@@ -223,6 +238,8 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Time zone**: how the clock is shown. Until you pick one, the clock stays on UTC.
 - **Haptic feedback**: see [Joysticks and rumble](#joysticks-and-rumble).
 - **Backup now** saves `/storage/.config` to `/storage/zlyme-backup.tar.gz`. **Restore backup** unpacks it. Reboot afterwards.
+
+
 
 ### Advanced
 
@@ -235,6 +252,8 @@ Settings → System → Advanced:
 - **System logs**: off by default. See [Logs](#logs).
 - **Reset Settings**: returns Zlyme settings to their defaults. Games, saves, Wi-Fi and paired devices stay.
 - **Factory Reset**: restores settings and the stock Tools and Emus paks, then restarts. Games, saves, Wi-Fi and personal content stay.
+
+
 
 ### Update
 
@@ -250,6 +269,8 @@ ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by K
 - Cheats are installed under `/storage/Cheats`, even when the ROM is on another card.
 - Its settings stay in `/storage/.config/ZcrapeGoat`.
 
+
+
 ## PortMaster
 
 PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
@@ -259,6 +280,8 @@ PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
 - Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
 - PortMaster's layout changed in Zlyme 44.2. After the new PortMaster opens, you can delete an older `/storage/PortMaster`. A games card from another layout may also contain `Roms/Ports (PORTS)/PortMaster`. That folder is not used. Delete that PortMaster folder only. Do not delete `Roms/Ports (PORTS)` or the game folders and scripts inside it. Runtimes from the old installation are not carried over. Open PortMaster once so its catalogue can load, then start the port again and let it download the runtime.
+
+
 
 ## Logs
 
@@ -281,3 +304,4 @@ Why you'd do this, and how to send something back, is in the README's [User Syst
 - To add a **tool** (or NextUI pak), use `Tools/my355/My Tool.pak/launch.sh`. It shows up under Tools after the list restarts.
 - Stock NextUI paks usually need changes (paths, controls, binaries) before they run on Zlyme.
 - MENU+Start closes your pak like any other.
+
