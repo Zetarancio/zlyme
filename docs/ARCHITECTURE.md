@@ -281,7 +281,7 @@ That directory is the OS-card home for application and system configuration. Exa
 - `/storage/.config/syncthing` for Syncthing's persistent home;
 - `/storage/.config/<application>` for an emulator or tool, or a NextUI subtree that NextUI itself owns.
 
-Mounted libraries are the lines in `/run/zlyme/libraries`. Content stays on the library that holds it:
+Mounted libraries are the lines in `/run/zlyme/libraries`. A USB library is `/mnt/media/<name>`, one directory under `/mnt/media`. Spaces in the label stay. `/` and control characters are replaced with `-`. `.`, `..`, and an empty result use the kernel device name. Two devices that sanitize to the same name do not share a mountpoint: the second is `/mnt/media/<name>-<device>`. The library list stores the decoded path, including a space that `/proc/mounts` wrote as `\040`. Content stays on the library that holds it:
 
 - `$library/Roms` for games;
 - `$library/Saves` for saves. Existing saves are searched on every mounted library. The game card wins a duplicate, and a new save is created on the game card;

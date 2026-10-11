@@ -97,3 +97,122 @@ $body
 END_ZLYME_MOUNTS
 	printf '%s\n' "$n"
 }
+
+# Status 0 when decoded field 1 is exactly $2.
+mounts_has_source() {
+	file=$1
+	want=$2
+	python3 - "$file" "$want" <<'PY'
+import sys
+
+def decode(s):
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        chunk = s[i + 1:i + 4]
+        if (
+            s[i] == "\\"
+            and len(chunk) == 3
+            and all(c in "01234567" for c in chunk)
+        ):
+            out.append(chr(int(chunk, 8)))
+            i += 4
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+path, want = sys.argv[1], sys.argv[2]
+with open(path, "r", encoding="utf-8", errors="surrogateescape") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        if not line or line[0] == "#":
+            continue
+        parts = line.split()
+        if len(parts) >= 2 and decode(parts[0]) == want:
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# Decoded target whose decoded source is exactly $2.
+mounts_target_of() {
+	file=$1
+	want=$2
+	python3 - "$file" "$want" <<'PY'
+import sys
+
+def decode(s):
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        chunk = s[i + 1:i + 4]
+        if (
+            s[i] == "\\"
+            and len(chunk) == 3
+            and all(c in "01234567" for c in chunk)
+        ):
+            out.append(chr(int(chunk, 8)))
+            i += 4
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+path, want = sys.argv[1], sys.argv[2]
+with open(path, "r", encoding="utf-8", errors="surrogateescape") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        if not line or line[0] == "#":
+            continue
+        parts = line.split()
+        if len(parts) >= 2 and decode(parts[0]) == want:
+            sys.stdout.write(decode(parts[1]))
+            sys.exit(0)
+sys.exit(1)
+PY
+}
+
+# First source whose decoded target is exactly $2. Empty and status 1
+# when that target is not in the table.
+mounts_source() {
+	file=$1
+	want=$2
+	python3 - "$file" "$want" <<'PY'
+import sys
+
+def decode(s):
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        chunk = s[i + 1:i + 4]
+        if (
+            s[i] == "\\"
+            and len(chunk) == 3
+            and all(c in "01234567" for c in chunk)
+        ):
+            out.append(chr(int(chunk, 8)))
+            i += 4
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+path, want = sys.argv[1], sys.argv[2]
+with open(path, "r", encoding="utf-8", errors="surrogateescape") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        if not line or line[0] == "#":
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        if decode(parts[1]) == want:
+            sys.stdout.write(decode(parts[0]))
+            sys.exit(0)
+sys.exit(1)
+PY
+}

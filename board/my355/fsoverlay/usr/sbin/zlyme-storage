@@ -5,18 +5,64 @@
 # The second SD slot is the board's sdmmc1 controller (mmc@fe2c0000,
 # alias mmc1, regulator vcc_sd2). The boot slot is mmc@fe2b0000.
 # A blank card in that slot is still SD2. USB disks stay under
-# /mnt/media even when they already contain Roms.
+# /mnt/media even when they already contain Roms. The directory name
+# is one child of /mnt/media: spaces stay, '/' and control characters
+# become '-', and a second disk with the same name uses
+# <name>-<device> instead of stacking.
 
-export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+# Tests set ZLYME_STORAGE_PATH so a fake mount(8) is visible. The device
+# keeps a fixed PATH because early userspace does not have a login path.
+if [ -n "${ZLYME_STORAGE_PATH:-}" ]; then
+	export PATH="$ZLYME_STORAGE_PATH"
+else
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+fi
 
 # Optional. A missing file must not abort: "." is a special builtin.
 if [ -r /etc/zlyme.conf ]; then
 	. /etc/zlyme.conf
 fi
 
-SD2=/mnt/sd2
-MEDIA=/mnt/media
-LIBRARIES=/run/zlyme/libraries
+# ZLYME_STORAGE_MOUNTS, ZLYME_LIBRARIES_FILE, ZLYME_STORAGE_MEDIA,
+# ZLYME_STORAGE_SD2, and ZLYME_STORAGE_DEV_ROOT are test seams.
+# ZLYME_MOUNTS_LIB selects the mount-table helper.
+SD2=${ZLYME_STORAGE_SD2:-/mnt/sd2}
+MEDIA=${ZLYME_STORAGE_MEDIA:-/mnt/media}
+LIBRARIES=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+
+mounts_file() {
+	printf '%s\n' "${ZLYME_STORAGE_MOUNTS:-/proc/mounts}"
+}
+
+need_mounts() {
+	if command -v mounts_has >/dev/null 2>&1; then
+		return 0
+	fi
+	lib=${ZLYME_MOUNTS_LIB:-/usr/share/zlyme/mounts.sh}
+	if [ ! -r "$lib" ]; then
+		echo "zlyme-storage: mount table helper is missing" >&2
+		return 1
+	fi
+	# shellcheck disable=SC1090
+	. "$lib"
+}
+
+block_node() {
+	name=${1#/dev/}
+	if [ -n "${ZLYME_STORAGE_DEV_ROOT:-}" ]; then
+		printf '%s\n' "${ZLYME_STORAGE_DEV_ROOT}/$name"
+		return 0
+	fi
+	printf '%s\n' "/dev/$name"
+}
+
+is_block() {
+	if [ -n "${ZLYME_STORAGE_DEV_ROOT:-}" ]; then
+		[ -e "$1" ]
+		return
+	fi
+	[ -b "$1" ]
+}
 
 ensure_media() {
 	mkdir -p "$MEDIA" 2>/dev/null || true
@@ -44,8 +90,9 @@ disk_of() {
 }
 
 os_disk() {
+	need_mounts || return 1
 	for m in / /boot /storage; do
-		src=$(awk -v m="$m" '$2 == m { print $1; exit }' /proc/mounts)
+		src=$(mounts_source "$(mounts_file)" "$m" 2>/dev/null || true)
 		[ -n "$src" ] || continue
 		disk_of "$src"
 		return 0
@@ -66,8 +113,60 @@ is_boot_mmc() {
 	return 1
 }
 
-unescape_mp() {
-	printf '%s' "$1" | sed 's/\\040/ /g; s/\\011/\t/g'
+# One directory under MEDIA. Spaces and ordinary punctuation stay.
+# '/' would escape the parent, so it becomes '-'. Control characters
+# would break the mount table and the library list. '\' stays: the
+# mount table stores it as \134 and mounts_decode restores it.
+# '.' , '..', and an empty result use the kernel device name.
+media_component() {
+	label=$1
+	name=$2
+	if [ -z "$label" ]; then
+		printf '%s\n' "$name"
+		return 0
+	fi
+	text=$(python3 -c '
+import sys
+label = sys.argv[1]
+out = []
+for ch in label:
+    o = ord(ch)
+    if ch == "/" or o < 32 or o == 127:
+        out.append("-")
+    else:
+        out.append(ch)
+sys.stdout.write("".join(out).strip())
+' "$label") || text=
+	if [ -z "$text" ] || [ "$text" = "." ] || [ "$text" = ".." ]; then
+		text=$name
+	fi
+	case "$text" in
+		*/*|"."|"..")
+			text=$name
+			;;
+	esac
+	printf '%s\n' "$text"
+}
+
+# Do not stack a second device on a mountpoint that is already taken.
+choose_mountpoint() {
+	comp=$1
+	dev=$2
+	name=$3
+	try=$MEDIA/$comp
+	owner=$(mounts_source "$(mounts_file)" "$try" 2>/dev/null || true)
+	if [ -z "$owner" ] || [ "$owner" = "$dev" ]; then
+		printf '%s\n' "$try"
+		return 0
+	fi
+	try=$MEDIA/${comp}-${name}
+	owner=$(mounts_source "$(mounts_file)" "$try" 2>/dev/null || true)
+	if [ -z "$owner" ] || [ "$owner" = "$dev" ]; then
+		printf '%s\n' "$try"
+		return 0
+	fi
+	echo "mountpoint busy $MEDIA/$comp" >> /tmp/zlyme-storage.log
+	return 1
 }
 
 sysfs_root() {
@@ -128,8 +227,9 @@ rescan_nextui() {
 	# is told to reread the ROM folders.
 	# Bump the BIOS generation. Do not delete a cache or staging tree
 	# a launch may be publishing. The same path can be a different card.
-	mkdir -p /run/zlyme
-	gen=/run/zlyme/bios-generation
+	rundir=${ZLYME_STORAGE_RUN:-/run/zlyme}
+	mkdir -p "$rundir"
+	gen=$rundir/bios-generation
 	n=0
 	if [ -r "$gen" ]; then
 		n=$(tr -cd '0-9' < "$gen")
@@ -137,7 +237,7 @@ rescan_nextui() {
 	fi
 	n=$((n + 1))
 	printf '%s\n' "$n" > "$gen"
-	rm -f /run/zlyme/bios
+	rm -f "$rundir/bios"
 	if [ -x /usr/sbin/zlyme-pico-splore ]; then
 		/usr/sbin/zlyme-pico-splore || true
 	fi
@@ -151,17 +251,18 @@ rescan_nextui() {
 }
 
 write_libraries() {
-	mkdir -p /run/zlyme
-	tmp=$(mktemp /run/zlyme/libraries.XXXXXX) || return 0
+	need_mounts || return 0
+	mkdir -p "$(dirname "$LIBRARIES")"
+	tmp=$(mktemp "$(dirname "$LIBRARIES")/libraries.XXXXXX") || return 0
 	{
 		echo /storage
-		if awk -v m="$SD2" '$2 == m { found=1 } END { exit !found }' /proc/mounts; then
+		if mounts_has "$(mounts_file)" "$SD2"; then
 			echo "$SD2"
 		fi
 		ensure_media
 		for d in "$MEDIA"/*; do
 			[ -d "$d" ] || continue
-			awk -v m="$d" '$2 == m { found=1 } END { exit !found }' /proc/mounts || continue
+			mounts_has "$(mounts_file)" "$d" || continue
 			echo "$d"
 		done
 	} > "$tmp"
@@ -169,11 +270,24 @@ write_libraries() {
 }
 
 extra_mounted() {
-	awk -v s="$SD2" '
-		$2 == s { found=1 }
-		$2 ~ /^\/mnt\/media\// { found=1 }
-		END { exit !found }
-	' /proc/mounts
+	need_mounts || return 1
+	if mounts_has "$(mounts_file)" "$SD2"; then
+		return 0
+	fi
+	body=$(mounts_targets "$(mounts_file)") || return 1
+	found=1
+	while IFS= read -r target || [ -n "$target" ]; do
+		[ -n "$target" ] || continue
+		case "$target" in
+			"$MEDIA"/*)
+				found=0
+				break
+				;;
+		esac
+	done <<END_ZLYME_MOUNTS
+$body
+END_ZLYME_MOUNTS
+	return "$found"
 }
 
 mount_fs() {
@@ -208,7 +322,8 @@ place_volume() {
 	label=$3
 	name=$4
 	if is_secondary_sd "$name"; then
-		if ! grep -q " $SD2 " /proc/mounts; then
+		need_mounts || return 1
+		if ! mounts_has "$(mounts_file)" "$SD2"; then
 			mkdir -p "$SD2"
 			mount --move "$tmp" "$SD2" 2>/dev/null || {
 				umount "$tmp" 2>/dev/null || true
@@ -219,8 +334,33 @@ place_volume() {
 		fi
 	fi
 	ensure_media
-	mp=$MEDIA/${label:-$name}
-	mkdir -p "$mp"
+	need_mounts || return 1
+	comp=$(media_component "$label" "$name") || return 1
+	mp=$(choose_mountpoint "$comp" "$dev" "$name") || {
+		umount "$tmp" 2>/dev/null || umount -l "$tmp" 2>/dev/null || true
+		rmdir "$tmp" 2>/dev/null || true
+		return 1
+	}
+	case "$mp" in
+		"$MEDIA"/*) ;;
+		*)
+			echo "refusing mountpoint $mp" >> /tmp/zlyme-storage.log
+			umount "$tmp" 2>/dev/null || true
+			rmdir "$tmp" 2>/dev/null || true
+			return 1
+			;;
+	esac
+	# One child. A slash left in the component would mkdir outside MEDIA.
+	rest=${mp#"$MEDIA"/}
+	case "$rest" in
+		*/*|"."|"..")
+			echo "refusing mountpoint $mp" >> /tmp/zlyme-storage.log
+			umount "$tmp" 2>/dev/null || true
+			rmdir "$tmp" 2>/dev/null || true
+			return 1
+			;;
+	esac
+	mkdir -p -- "$mp"
 	mount --move "$tmp" "$mp" 2>/dev/null || {
 		umount "$tmp" 2>/dev/null || true
 		mount_fs "$dev" "$mp" || true
@@ -230,8 +370,8 @@ place_volume() {
 
 add_dev() {
 	name=$1
-	dev=/dev/$name
-	[ -b "$dev" ] || return 0
+	dev=$(block_node "$name")
+	is_block "$dev" || return 0
 	is_boot_mmc "$dev" && return 0
 	is_os_dev "$dev" && return 0
 	case "$name" in
@@ -249,7 +389,10 @@ add_dev() {
 	case "$label" in
 		ZLYME|ZLYMEBOOT) return 0 ;;
 	esac
-	if awk -v d="$dev" '$1 == d { found=1 } END { exit !found }' /proc/mounts; then
+	need_mounts || return 0
+	# Already mounted: refresh the library list. The source compare is
+	# decoded so a space in another field cannot hide this device.
+	if mounts_has_source "$(mounts_file)" "$dev"; then
 		write_libraries
 		rescan_nextui
 		return 0
@@ -267,10 +410,10 @@ add_dev() {
 
 remove_dev() {
 	name=$1
-	dev=/dev/$name
-	mp=$(awk -v d="$dev" '$1 == d { print $2; exit }' /proc/mounts)
+	dev=$(block_node "$name")
+	need_mounts || return 0
+	mp=$(mounts_target_of "$(mounts_file)" "$dev" 2>/dev/null || true)
 	[ -n "$mp" ] || return 0
-	mp=$(unescape_mp "$mp")
 	case "$mp" in
 		"$SD2"|/mnt/sd2)
 			umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
@@ -291,7 +434,8 @@ scan_add() {
 }
 
 eject_extras() {
-	if grep -q " $SD2 " /proc/mounts; then
+	need_mounts || return 0
+	if mounts_has "$(mounts_file)" "$SD2"; then
 		umount "$SD2" 2>/dev/null || umount -l "$SD2" 2>/dev/null || true
 	fi
 	ensure_media
@@ -304,9 +448,10 @@ eject_extras() {
 }
 
 status() {
-	if grep -q " $SD2 " /proc/mounts; then
+	need_mounts || return 1
+	if mounts_has "$(mounts_file)" "$SD2"; then
 		echo "sd2=mounted"
-		src=$(awk -v m="$SD2" '$2 == m { print $1; exit }' /proc/mounts)
+		src=$(mounts_source "$(mounts_file)" "$SD2" 2>/dev/null || true)
 		echo "sd2_dev=$src"
 	else
 		echo "sd2=empty"
