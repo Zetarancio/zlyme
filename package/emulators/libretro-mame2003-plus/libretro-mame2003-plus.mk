@@ -3,8 +3,8 @@
 #
 # libretro-mame2003-plus
 ################################################################################
-# Version: Commits on Feb 27, 2024
-LIBRETRO_MAME2003_PLUS_VERSION = 3bfa9f89ab1ff4ac73a94e8ed1a9a7dbeb18d564
+# Version: 15 Sep 2026. Contains Rudi Heitbaum's GCC 15 rename (4a9aec73).
+LIBRETRO_MAME2003_PLUS_VERSION = 5da0428c7f9536577febfa092543c98d3b5767b4
 LIBRETRO_MAME2003_PLUS_SITE = $(call github,libretro,mame2003-plus-libretro,$(LIBRETRO_MAME2003_PLUS_VERSION))
 LIBRETRO_MAME2003_PLUS_LICENSE = MAME
 LIBRETRO_MAME2003_PLUS_DEPENDENCIES += retroarch
