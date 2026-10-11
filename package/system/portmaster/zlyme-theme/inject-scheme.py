@@ -48,9 +48,12 @@ def apply_scheme(data: dict) -> dict:
 
 def main() -> None:
     path = Path(sys.argv[1])
-    data = json.loads(path.read_text())
+    original = path.read_text()
+    data = json.loads(original)
     apply_scheme(data)
-    path.write_text(json.dumps(data, indent=2) + "\n")
+    rendered = json.dumps(data, indent=2) + "\n"
+    if rendered != original:
+        path.write_text(rendered)
 
 
 if __name__ == "__main__":

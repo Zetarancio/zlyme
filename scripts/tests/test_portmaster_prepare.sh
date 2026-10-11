@@ -320,6 +320,105 @@ data = json.load(open(sys.argv[1]))
 assert "Zlyme" in data["#schemes"]
 PY
 
+# A second prepare of an unchanged tree does not rewrite integration files.
+hw=$live/pylibs/harbourmaster/hardware.py
+plat=$live/pylibs/harbourmaster/platform.py
+theme=$live/pylibs/default_theme/theme.json
+mod=$live/mod_Zlyme.txt
+cfgjson=$live/config/config.json
+cfgcontrol=$work/cfg/PortMaster/control.txt
+printf '%s\n' 'catalogue-bytes' > "$live/config/runtimes.json"
+printf '%s\n' 'runtime-bytes' > "$live/runtimes/runtime-bytes.bin"
+before=$(sha256sum "$live/config/runtimes.json" "$live/runtimes/runtime-bytes.bin" "$live/libs/keep.squashfs")
+stamp() { stat -c %y "$1"; }
+s_hw=$(stamp "$hw")
+s_plat=$(stamp "$plat")
+s_theme=$(stamp "$theme")
+s_control=$(stamp "$live/control.txt")
+s_mod=$(stamp "$mod")
+s_cfg=$(stamp "$cfgjson")
+s_cfgcontrol=$(stamp "$cfgcontrol")
+sleep 1
+"$PREPARE"
+test "$(stamp "$hw")" = "$s_hw"
+test "$(stamp "$plat")" = "$s_plat"
+test "$(stamp "$theme")" = "$s_theme"
+test "$(stamp "$live/control.txt")" = "$s_control"
+test "$(stamp "$mod")" = "$s_mod"
+test "$(stamp "$cfgjson")" = "$s_cfg"
+test "$(stamp "$cfgcontrol")" = "$s_cfgcontrol"
+after=$(sha256sum "$live/config/runtimes.json" "$live/runtimes/runtime-bytes.bin" "$live/libs/keep.squashfs")
+test "$before" = "$after"
+
+# A renamed ROCKNIX anchor must fail before any other live file is replaced.
+saved_plat=$(cat "$plat")
+saved_hw=$(sha256sum "$hw")
+saved_theme=$(sha256sum "$theme")
+saved_control=$(sha256sum "$live/control.txt")
+saved_mod=$(sha256sum "$mod")
+s_hw=$(stamp "$hw")
+s_theme=$(stamp "$theme")
+s_control=$(stamp "$live/control.txt")
+s_mod=$(stamp "$mod")
+s_cfg=$(stamp "$cfgjson")
+python3 - "$plat" << 'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read().replace("'rocknix'", "'renamed'")
+text = text.replace("'zlyme'", "'not-zlyme'")
+open(path, "w").write(text)
+PY
+if "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "missing platform anchor was accepted"
+fi
+grep -q 'could not be applied' "$work/err"
+grep -q "'renamed'" "$plat"
+grep -q "'not-zlyme'" "$plat"
+test "$(sha256sum "$hw")" = "$saved_hw"
+test "$(sha256sum "$theme")" = "$saved_theme"
+test "$(sha256sum "$live/control.txt")" = "$saved_control"
+test "$(sha256sum "$mod")" = "$saved_mod"
+test "$(stamp "$hw")" = "$s_hw"
+test "$(stamp "$theme")" = "$s_theme"
+test "$(stamp "$live/control.txt")" = "$s_control"
+test "$(stamp "$mod")" = "$s_mod"
+test "$(stamp "$cfgjson")" = "$s_cfg"
+printf '%s\n' "$saved_plat" > "$plat"
+
+# A theme that cannot take the Zlyme scheme does not publish the other files.
+saved_theme_body=$(cat "$theme")
+s_hw=$(stamp "$hw")
+saved_hw=$(sha256sum "$hw")
+python3 - "$theme" << 'PY'
+import json, sys
+json.dump({"#info": {"name": "broken"}, "#schemes": {}}, open(sys.argv[1], "w"))
+PY
+if "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "incompatible theme was accepted"
+fi
+grep -q 'could not be applied' "$work/err"
+test "$(sha256sum "$hw")" = "$saved_hw"
+test "$(stamp "$hw")" = "$s_hw"
+python3 - "$theme" << 'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert "Zlyme" not in data.get("#schemes", {})
+PY
+printf '%s\n' "$saved_theme_body" > "$theme"
+# The user-selected scheme from earlier in this file was replaced when the
+# tree was reinstalled. Set it again and prove a later prepare keeps it.
+python3 - "$cfgjson" << 'PY'
+import json, sys
+json.dump({"theme": "Synth", "theme-scheme": "Night"}, open(sys.argv[1], "w"))
+PY
+"$PREPARE"
+python3 - "$cfgjson" << 'PY'
+import json, sys
+cfg = json.load(open(sys.argv[1]))
+assert cfg.get("theme") == "Synth", cfg
+assert cfg.get("theme-scheme") == "Night", cfg
+PY
+
 printf '%s\n' 'not-hardware' > "$live/pylibs/harbourmaster/hardware.py"
 if "$PREPARE" >"$work/out" 2>"$work/err"; then
 	fail "incompatible hardware was accepted"
