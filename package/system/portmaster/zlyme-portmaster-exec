@@ -1,10 +1,13 @@
 #!/bin/sh
 # PortMaster command prefix. control.txt sets ESUDO to this path.
 #
-# Pass every command through unchanged, except a mount or umount whose
-# target is exactly /tmp/weston. That is the WestonPack runtime lifecycle
-# PortMaster launchers already share. This is not a sudo replacement and
-# it does not intercept wp_weston, westonwrap.sh, or other graphics calls.
+# Pass every command through unchanged, except mount and umount.
+# A successful mount is recorded under /run/zlyme-portmaster/owned-mounts.
+# A matching successful umount removes that target. nextui-session
+# unmounts only the recorded paths after the port exits or is killed.
+# /tmp/weston is still the WestonPack lifecycle PortMaster launchers
+# already share. This is not a sudo replacement and it does not
+# intercept wp_weston, westonwrap.sh, or other graphics calls.
 #
 # After a successful /tmp/weston mount, libmali / mali / mali_kbase do
 # nothing. Any other GPU selection (the same default as gpudriver) may
@@ -28,12 +31,58 @@ log() {
 	echo "zlyme-portmaster-exec: $*" >&2
 }
 
+pm_load() {
+	if [ -n "${PM_MOUNTS_LOADED:-}" ]; then
+		return 0
+	fi
+	helper=
+	if [ -n "${ZLYME_PM_MOUNTS_SH:-}" ] && [ -r "$ZLYME_PM_MOUNTS_SH" ]; then
+		helper=$ZLYME_PM_MOUNTS_SH
+	else
+		# shellcheck disable=SC1007
+		here=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+		if [ -r "$here/zlyme-portmaster-mounts.sh" ]; then
+			helper=$here/zlyme-portmaster-mounts.sh
+		elif [ -r /usr/share/zlyme/portmaster-mounts.sh ]; then
+			helper=/usr/share/zlyme/portmaster-mounts.sh
+		fi
+	fi
+	if [ -z "$helper" ]; then
+		log "mount registry helper is missing"
+		return 1
+	fi
+	# shellcheck disable=SC1090
+	. "$helper"
+	pm_load_decode || return 1
+	PM_MOUNTS_LOADED=1
+}
+
 mounted_at() {
-	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts
+	if pm_load; then
+		mounts_has "$(pm_mounts_file)" "$1"
+		return $?
+	fi
+	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' \
+		"${ZLYME_PM_MOUNTS:-/proc/mounts}"
 }
 
 mount_count() {
-	awk -v p="$1" '$2 == p { c++ } END { print c + 0 }' /proc/mounts
+	if pm_load; then
+		mounts_count "$(pm_mounts_file)" "$1"
+		return $?
+	fi
+	awk -v p="$1" '$2 == p { c++ } END { print c + 0 }' \
+		"${ZLYME_PM_MOUNTS:-/proc/mounts}"
+}
+
+pm_note_mount() {
+	pm_load || return 0
+	pm_register "$1" || true
+}
+
+pm_note_umount() {
+	pm_load || return 0
+	pm_unregister_one "$1" || true
 }
 
 # Same names gpudriver treats as the Mali stack. Empty means libmali.
@@ -83,9 +132,11 @@ unmount_wrapper_bind() {
 fail_closed() {
 	log "$1"
 	unmount_wrapper_bind || log "could not unmount $WRAP"
+	pm_note_umount "$WRAP"
 	if mounted_at "$WESTON"; then
 		command umount "$WESTON" || log "could not unmount $WESTON"
 	fi
+	pm_note_umount "$WESTON"
 	exit 1
 }
 
@@ -231,6 +282,7 @@ prepare_panfrost_wrapper() {
 		if ! command umount "$WRAP"; then
 			fail_closed "could not unmount existing $WRAP bind"
 		fi
+		pm_note_umount "$WRAP"
 	fi
 	if ! grep -F -x -q "$KNOWN_VER" "$WRAP"; then
 		fail_closed "westonwrap version is not 0.2.7.1; not rewriting it"
@@ -260,6 +312,7 @@ prepare_panfrost_wrapper() {
 	if ! command mount --bind "$STAGED" "$WRAP"; then
 		fail_closed "could not bind $STAGED over $WRAP"
 	fi
+	pm_note_mount "$WRAP"
 	if [ "$(mount_count "$WRAP")" -ne 1 ]; then
 		fail_closed "westonwrap bind is not a single mount"
 	fi
@@ -289,12 +342,23 @@ case "$cmd" in
 				log "refusing to stack $WESTON"
 				exit 1
 			fi
+			pm_note_mount "$WESTON"
 			if gpu_is_mali; then
 				exit 0
 			fi
 			prepare_panfrost_wrapper
 			exit 0
 		fi
+		dest=
+		if pm_load; then
+			dest=$(pm_mount_dest "$@") || dest=
+		fi
+		command mount "$@"
+		st=$?
+		if [ "$st" -eq 0 ] && [ -n "$dest" ]; then
+			pm_note_mount "$dest"
+		fi
+		exit "$st"
 		;;
 	umount)
 		if weston_umount_argv "$@"; then
@@ -302,9 +366,24 @@ case "$cmd" in
 				log "could not unmount westonwrap bind"
 				exit 1
 			fi
+			pm_note_umount "$WRAP"
 			command umount "$@"
-			exit $?
+			st=$?
+			if [ "$st" -eq 0 ]; then
+				pm_note_umount "$WESTON"
+			fi
+			exit "$st"
 		fi
+		target=
+		if pm_load; then
+			target=$(pm_umount_target "$@") || target=
+		fi
+		command umount "$@"
+		st=$?
+		if [ "$st" -eq 0 ] && [ -n "$target" ]; then
+			pm_note_umount "$target"
+		fi
+		exit "$st"
 		;;
 esac
 

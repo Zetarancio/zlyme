@@ -1,7 +1,13 @@
 #!/bin/sh
-# Drop a PortMaster WestonPack left at /tmp/weston.
+# Drop PortMaster resources left after a port exits or is killed.
 # nextui-session calls this from outside the pak process group, including
 # after MENU+START has already killed that group. Idempotent.
+#
+# WestonPack at /tmp/weston is still cleaned here: TERM holders, KILL
+# after 6 s, then unmount deepest child first. Mounts recorded by
+# zlyme-portmaster-exec are unmounted after that, deepest first.
+# /roms/ports is unbound through zlyme-library.sh. Library roots and
+# any mount this launch did not register are left alone.
 #
 # A stranded wp_weston has ignored SIGTERM for at least four seconds, so
 # the TERM grace is longer than the hotkey helper's 1.5s.
@@ -20,6 +26,32 @@ log() {
 	echo "zlyme-portmaster-cleanup: $*" >&2
 }
 
+pm_load() {
+	if [ -n "${PM_MOUNTS_LOADED:-}" ]; then
+		return 0
+	fi
+	helper=
+	if [ -n "${ZLYME_PM_MOUNTS_SH:-}" ] && [ -r "$ZLYME_PM_MOUNTS_SH" ]; then
+		helper=$ZLYME_PM_MOUNTS_SH
+	else
+		# shellcheck disable=SC1007
+		here=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+		if [ -r "$here/zlyme-portmaster-mounts.sh" ]; then
+			helper=$here/zlyme-portmaster-mounts.sh
+		elif [ -r /usr/share/zlyme/portmaster-mounts.sh ]; then
+			helper=/usr/share/zlyme/portmaster-mounts.sh
+		fi
+	fi
+	if [ -z "$helper" ]; then
+		log "mount registry helper is missing"
+		return 1
+	fi
+	# shellcheck disable=SC1090
+	. "$helper"
+	pm_load_decode || return 1
+	PM_MOUNTS_LOADED=1
+}
+
 under_weston() {
 	case "$1" in
 		"$MNT"|"$MNT"/*) return 0 ;;
@@ -28,10 +60,22 @@ under_weston() {
 }
 
 mount_present() {
+	if pm_load; then
+		body=$(mounts_targets "$(pm_mounts_file)") || return 1
+		while IFS= read -r target || [ -n "$target" ]; do
+			[ -n "$target" ] || continue
+			if under_weston "$target"; then
+				return 0
+			fi
+		done <<END_ZLYME_MOUNTS
+$body
+END_ZLYME_MOUNTS
+		return 1
+	fi
 	awk -v m="$MNT" '
 		$2 == m || index($2, m "/") == 1 { found = 1 }
 		END { exit found ? 0 : 1 }
-	' /proc/mounts
+	' "${ZLYME_PM_MOUNTS:-/proc/mounts}"
 }
 
 # Rewrite $list with one PID per line.
@@ -114,16 +158,40 @@ wait_holders_gone() {
 
 unmount_children() {
 	# Deepest path first so a file bind under /tmp/weston goes before the parent.
-	awk -v p="$MNT/" '
-		index($2, p) == 1 { print length($2), $2 }
-	' /proc/mounts | sort -nr | while read -r _len path; do
+	ranked=$(mktemp) || return 1
+	if pm_load; then
+		body=$(mounts_targets "$(pm_mounts_file)") || {
+			rm -f "$ranked"
+			return 1
+		}
+		while IFS= read -r target || [ -n "$target" ]; do
+			[ -n "$target" ] || continue
+			case "$target" in
+				"$MNT"/*)
+					printf '%08d %s\n' "${#target}" "$target"
+					;;
+			esac
+		done > "$ranked" <<END_ZLYME_MOUNTS
+$body
+END_ZLYME_MOUNTS
+	else
+		awk -v p="$MNT/" '
+			index($2, p) == 1 { printf "%08d %s\n", length($2), $2 }
+		' "${ZLYME_PM_MOUNTS:-/proc/mounts}" > "$ranked"
+	fi
+	sort -nr -o "$ranked" "$ranked"
+	while IFS= read -r rec || [ -n "$rec" ]; do
+		[ -n "$rec" ] || continue
+		path=${rec#???????? }
+		path=${path# }
 		[ -n "$path" ] || continue
-		if umount "$path" 2>/dev/null; then
+		if command umount "$path" 2>/dev/null; then
 			log "unmounted $path"
 		else
 			log "umount $path failed"
 		fi
-	done
+	done < "$ranked"
+	rm -f "$ranked"
 }
 
 unmount_parent() {
@@ -134,10 +202,15 @@ unmount_parent() {
 		fi
 		# Children may still be mounted after the parent check matches them.
 		unmount_children
-		if ! awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts; then
+		if pm_load; then
+			if ! mounts_has "$(pm_mounts_file)" "$MNT"; then
+				return 0
+			fi
+		elif ! awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' \
+			"${ZLYME_PM_MOUNTS:-/proc/mounts}"; then
 			return 0
 		fi
-		if umount "$MNT" 2>/dev/null; then
+		if command umount "$MNT" 2>/dev/null; then
 			return 0
 		fi
 		collect_holders maps
@@ -152,12 +225,20 @@ unmount_parent() {
 		n=$((n + 1))
 		sleep 0.1
 	done
-	if awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts; then
+	if pm_load; then
+		if mounts_has "$(pm_mounts_file)" "$MNT"; then
+			log "umount $MNT still busy"
+			return 1
+		fi
+	elif awk -v m="$MNT" '$2 == m { found = 1 } END { exit found ? 0 : 1 }' \
+		"${ZLYME_PM_MOUNTS:-/proc/mounts}"; then
 		log "umount $MNT still busy"
 		return 1
 	fi
 	return 0
 }
+
+weston_cleanup() {
 
 list=$(mktemp) || {
 	log "mktemp failed"
@@ -168,7 +249,7 @@ trap 'rm -f "$list"' EXIT INT TERM
 if ! mount_present; then
 	collect_holders light
 	if ! have_holders; then
-		exit 0
+		return 0
 	fi
 fi
 
@@ -185,11 +266,27 @@ if have_holders; then
 fi
 
 if ! unmount_parent; then
-	exit 1
+	return 1
 fi
 
 if mount_present; then
 	log "$MNT is still mounted"
-	exit 1
+	return 1
 fi
-exit 0
+return 0
+}
+
+rc=0
+weston_cleanup || rc=$?
+if pm_load; then
+	pm_cleanup_owned || rc=$?
+else
+	rc=1
+fi
+libsh=${ZLYME_LIBRARY_SH:-/usr/share/nextui/bin/zlyme-library.sh}
+if [ -r "$libsh" ]; then
+	# shellcheck disable=SC1090
+	. "$libsh"
+	zlyme_ports_unbind || true
+fi
+exit "$rc"

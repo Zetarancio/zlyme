@@ -291,8 +291,9 @@ bt_stop_scan() {
 	pkill -f 'bluetoothctl scan' 2>/dev/null || true
 }
 
-# PORTS.pak execs the port, so it cannot unmount WestonPack after
-# MENU+Start kills that process group. This session is outside the group.
+# PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack,
+# the /roms/ports bind, or mounts created through zlyme-portmaster-exec.
+# MENU+START can kill that process group. This session is outside it.
 ports_pak_cmd() {
 	case "$1" in
 		*PORTS.pak/launch.sh*) return 0 ;;

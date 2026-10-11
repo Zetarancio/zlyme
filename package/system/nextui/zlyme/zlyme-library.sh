@@ -389,16 +389,32 @@ zlyme_library_for() {
 # Image /roms/ports used to be a symlink to OS Roms. mount --bind follows
 # that and overlays /storage/Roms/Ports (PORTS), so NextUI lists every
 # port twice (OS path + SD2 path). Cover /roms with a tmpfs when needed.
+# ZLYME_PM_MOUNTS is a test seam. Production uses mountpoint(1).
+zlyme_path_mounted() {
+	target=$1
+	if [ -n "${ZLYME_PM_MOUNTS:-}" ]; then
+		if ! command -v mounts_has >/dev/null 2>&1; then
+			lib=${ZLYME_MOUNTS_LIB:-/usr/share/zlyme/mounts.sh}
+			[ -r "$lib" ] || return 1
+			# shellcheck disable=SC1090
+			. "$lib"
+		fi
+		mounts_has "$ZLYME_PM_MOUNTS" "$target"
+		return $?
+	fi
+	mountpoint -q "$target" 2>/dev/null
+}
+
 zlyme_ports_unbind() {
-	if mountpoint -q /roms/ports 2>/dev/null; then
+	if zlyme_path_mounted /roms/ports; then
 		umount /roms/ports 2>/dev/null || umount -l /roms/ports 2>/dev/null || true
 	fi
-	if [ -f /run/zlyme/roms-covered ] && mountpoint -q /roms 2>/dev/null; then
+	if [ -f /run/zlyme/roms-covered ] && zlyme_path_mounted /roms; then
 		umount /roms 2>/dev/null || umount -l /roms 2>/dev/null || true
 		rm -f /run/zlyme/roms-covered
 	fi
 	# Leftover from the symlink-follow bug.
-	if mountpoint -q "/storage/Roms/Ports (PORTS)" 2>/dev/null; then
+	if zlyme_path_mounted "/storage/Roms/Ports (PORTS)"; then
 		umount "/storage/Roms/Ports (PORTS)" 2>/dev/null || umount -l "/storage/Roms/Ports (PORTS)" 2>/dev/null || true
 	fi
 }

@@ -11,6 +11,8 @@ if [ -z "$ROM" ]; then
 fi
 if [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then
 	. /usr/share/nextui/bin/zlyme-library.sh
+	# exec below replaces this shell, so the EXIT trap does not run.
+	# nextui-session unbinds /roms/ports after the port exits or is killed.
 	zlyme_ports_bind "$ROM"
 	trap zlyme_ports_unbind EXIT
 fi
