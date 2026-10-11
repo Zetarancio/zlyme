@@ -290,6 +290,21 @@ $emu
 /rom
 extra
 "
+# A valid record plus a fragment with no newline is still trailing.
+printf 'ZLYME1\n1\n%s\n' "$emu" > "$work/frag"
+printf '%s' 'not-a-field' >> "$work/frag"
+if read_launch "$work/frag" 2>"$work/err"; then
+	fail "unterminated extra field was accepted"
+fi
+grep -q 'launch rejected: trailing' "$work/err" || fail "unterminated extra reason"
+[ -z "$LAUNCH_EXE" ] || fail "unterminated extra published an executable"
+printf 'ZLYME1\n2\n%s\n/r/game.gb\n' "$emu" > "$work/frag2"
+printf '%s' ' tail' >> "$work/frag2"
+if read_launch "$work/frag2" 2>"$work/err"; then
+	fail "unterminated rom trailer was accepted"
+fi
+grep -q 'launch rejected: trailing' "$work/err" || fail "unterminated rom trailer reason"
+[ "$LAUNCH_ROM" != "/r/game.gb" ] || fail "unterminated trailer kept the rom"
 expect_reject relative "ZLYME1
 1
 Emus/GB.pak/launch.sh

@@ -479,7 +479,7 @@ ZLYME1
 /optional/rom
 ```
 
-The count is 1 for a Tool, Settings, or an assigned function button, and 2 when a ROM is passed. A newline or other ASCII control except a tab is not queued. `nextui-session` rejects a file that is truncated, has the wrong marker, has a count other than 1 or 2, has extra lines, contains a NUL, contains an ASCII control other than a tab, or names an executable that is not an absolute `launch.sh`. The executable and the ROM are arguments of one fixed shell program. `PORTS.pak` and `WINE.pak` cleanup looks at that executable path. A ROM whose name contains those strings does not select the cleanup. The input filter is sourced inside the pak process. Settings does not get it. The proxy URL is taken from `zlyme-proxy get` inside that same process and exported only when the host and port match the helper's checks.
+The count is 1 for a Tool, Settings, or an assigned function button, and 2 when a ROM is passed. A newline or other ASCII control except a tab is not queued. `nextui-session` rejects a file that is truncated, has the wrong marker, has a count other than 1 or 2, has any bytes after the last field, contains a NUL, contains an ASCII control other than a tab, or names an executable that is not an absolute `launch.sh`. The executable and the ROM are arguments of one fixed shell program. `PORTS.pak` and `WINE.pak` cleanup looks at that executable path. A ROM whose name contains those strings does not select the cleanup. The input filter is sourced inside the pak process. Settings does not get it. The proxy URL is taken from `zlyme-proxy get` inside that same process and exported only when the host and port match the helper's checks.
 
 The launcher lifecycle is approximately:
 

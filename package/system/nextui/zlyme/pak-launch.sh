@@ -90,8 +90,15 @@ read_launch() {
 		if [ -z "$_lf_err" ] && [ "$_lf_argc" = 2 ]; then
 			IFS= read -r _lf_rom || _lf_err=truncated
 		fi
+		# The record ends at the last field's newline. A further newline
+		# and a fragment that stops at EOF are both extra bytes.
 		if [ -z "$_lf_err" ]; then
-			IFS= read -r _lf_extra && _lf_err=trailing
+			_lf_extra=
+			if IFS= read -r _lf_extra; then
+				_lf_err=trailing
+			elif [ -n "$_lf_extra" ]; then
+				_lf_err=trailing
+			fi
 		fi
 	} < "$_lf_file" || true
 	if [ -z "$_lf_err" ] && [ "$_lf_magic" != ZLYME1 ]; then
