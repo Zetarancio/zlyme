@@ -1,0 +1,13 @@
+GCC 15 no longer exposes uint32_t and uint8_t through the headers
+this hi-res loader already includes.
+
+--- a/GLideN64/src/GLideNHQ/TxHiResLoader.h
++++ b/GLideN64/src/GLideNHQ/TxHiResLoader.h
+@@ -17,6 +17,7 @@
+ #include "TxQuantize.h"
+ #include "TxImage.h"
+ #include "TxReSample.h"
++#include <cstdint>
+ 
+ #ifdef _WIN32
+ #define FULLFNAME_CHARTYPE wchar_t
