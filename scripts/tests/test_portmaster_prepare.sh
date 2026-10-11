@@ -64,6 +64,7 @@ sd2=$work/sd2
 mkdir -p "$storage" "$sd2" "$work/opt/system/Tools" "$work/cfg"
 ln -sfn "$work/run/PortMaster" "$work/opt/system/Tools/PortMaster"
 printf '%s\n' "$storage" "$sd2" > "$work/libraries"
+printf '%s\n' "/dev/fake $sd2 fake rw 0 0" > "$work/mounts"
 
 overlay=$work/overlay
 mkdir -p "$overlay"
@@ -79,6 +80,8 @@ export ZLYME_PM_ROOT_BIN=$ROOTBIN
 export ZLYME_PM_STORAGE=$storage
 export ZLYME_PM_FLAG=$work/flag
 export ZLYME_LIBRARIES_FILE=$work/libraries
+export ZLYME_PM_MOUNTS=$work/mounts
+export ZLYME_MOUNTS_LIB=$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh
 export ZLYME_CFG=$work/cfg
 export ZLYME_PM_MIN_FREE_KB=1
 export ZLYME_PM_NO_SLEEP=1
@@ -272,6 +275,7 @@ grep -q '#!/bin/sh' "$storage/Roms/Ports (PORTS)/fixture/Fixture.sh"
 bad=$work/badstorage
 mkdir -p "$bad"
 printf '%s\n' "$bad" >> "$work/libraries"
+printf '%s\n' "/dev/fake $bad fake rw 0 0" >> "$work/mounts"
 "$ROOTBIN" set "$bad"
 printf '%s\n' 'not a zip' > "$work/bad.zip"
 ZLYME_PM_SEED=$work/bad.zip "$PREPARE" >"$work/out" 2>"$work/err" && fail "corrupt seed succeeded"
@@ -535,5 +539,48 @@ fi
 test -f "$tardir/pylibs/resources/NotoSans.tar.xz"
 test ! -f "$tardir/pylibs/resources/NotoSansJP-Regular.ttf"
 find "$tardir" -name '.fonts.*' | grep -q . && fail "tar failure left a temporary tar"
+
+# Publish and rollback failures. A dedicated library keeps the storage
+# tree used above intact.
+pub=$work/publishlib
+mkdir -p "$pub"
+printf '%s\n' "$pub" >> "$work/libraries"
+printf '%s\n' "/dev/fake $pub fake rw 0 0" >> "$work/mounts"
+"$ROOTBIN" set "$pub"
+"$PREPARE"
+publive=$pub/Roms/.portmaster/PortMaster
+test -f "$publive/pugwash"
+find "$pub/Roms/.portmaster" -name '.pm-old.*' -print | grep -q . && fail "successful publish left a backup"
+printf '%s\n' 'user-runtime-keep' > "$publive/libs/user.squashfs"
+rm -f "$publive/pugwash"
+if ZLYME_PM_FAIL_PUBLISH=1 "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "injected publish failure was ignored"
+fi
+grep -q 'could not be installed' "$work/err"
+if grep -q 'remains at' "$work/err"; then
+	fail "successful rollback reported a preserved backup"
+fi
+grep -q 'user-runtime-keep' "$publive/libs/user.squashfs"
+test ! -e "$publive/pugwash"
+find "$pub/Roms/.portmaster" -name '.pm-old.*' -print | grep -q . && fail "successful rollback left a backup"
+if ZLYME_PM_FAIL_PUBLISH=1 "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "repeated publish failure was ignored"
+fi
+grep -q 'user-runtime-keep' "$publive/libs/user.squashfs"
+find "$pub/Roms/.portmaster" -name '.pm-old.*' -print | grep -q . && fail "repeated rollback left a backup"
+if ZLYME_PM_FAIL_PUBLISH=1 ZLYME_PM_FAIL_ROLLBACK=1 "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "injected rollback failure was ignored"
+fi
+held=$(sed -n 's/.*previous installation remains at //p' "$work/err")
+test -n "$held"
+case "$held" in
+	/*) ;;
+	*) fail "preserved backup path is not absolute: $held" ;;
+esac
+test -d "$held"
+grep -q 'user-runtime-keep' "$held/libs/user.squashfs"
+test ! -e "$publive"
+test ! -e "$publive/libs/user.squashfs"
+find "$pub/Roms/.portmaster" -name '.pm-old.*' -print | grep -q . || fail "rollback failure deleted the backup"
 
 echo "portmaster prepare ok"

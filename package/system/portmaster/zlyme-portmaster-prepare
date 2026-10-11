@@ -9,7 +9,8 @@
 # from a Ports (PORTS)/PortMaster directory.
 #
 # Test seams: ZLYME_PM_SEED, ZLYME_PM_OVERLAY, ZLYME_PM_RUN, ZLYME_PM_ROOT_BIN,
-# ZLYME_PM_MIN_FREE_KB.
+# ZLYME_PM_MIN_FREE_KB. ZLYME_PM_FAIL_PUBLISH and ZLYME_PM_FAIL_ROLLBACK
+# force the corresponding mv to fail. They are unset on the device.
 # Library selection stays in zlyme-portmaster-root
 # (ZLYME_PM_STORAGE, ZLYME_PM_FLAG, ZLYME_LIBRARIES_FILE).
 
@@ -17,12 +18,15 @@ set -eu
 
 stage=""
 backup=""
+# Set when the previous live tree could not be moved back. The EXIT trap
+# must leave that backup in place.
+backup_hold=0
 cleanup_tmp() {
 	status=$?
 	if [ -n "$stage" ]; then
 		rm -rf "$stage"
 	fi
-	if [ -n "$backup" ]; then
+	if [ -n "$backup" ] && [ "$backup_hold" -eq 0 ]; then
 		rm -rf "$backup"
 	fi
 	trap - EXIT
@@ -320,8 +324,9 @@ publish_tree() {
 	done
 	apply_integration "$new"
 	backup=$(mktemp -d "$tools/.pm-old.XXXXXX")
-	# The backup exists only until this publish succeeds. It is not kept
-	# as a second PortMaster installation.
+	# Success and a successful rollback remove this directory. A failed
+	# rollback leaves the previous tree at backup/old, and the EXIT trap
+	# does not delete it.
 	if [ -e "$live" ] || [ -L "$live" ]; then
 		if ! mv "$live" "$backup/old"; then
 			rm -rf "$stage" "$backup"
@@ -330,18 +335,35 @@ publish_tree() {
 			die "PortMaster seed could not be installed"
 		fi
 	fi
-	if ! mv "$new" "$live"; then
-		if [ -e "$backup/old" ] || [ -L "$backup/old" ]; then
-			mv "$backup/old" "$live" || true
-		fi
+	published=0
+	if [ "${ZLYME_PM_FAIL_PUBLISH:-0}" != 1 ] && mv "$new" "$live"; then
+		published=1
+	fi
+	if [ "$published" -eq 1 ]; then
 		rm -rf "$stage" "$backup"
 		stage=""
 		backup=""
+		return 0
+	fi
+	restored=0
+	if [ -e "$backup/old" ] || [ -L "$backup/old" ]; then
+		if [ "${ZLYME_PM_FAIL_ROLLBACK:-0}" != 1 ] && mv "$backup/old" "$live"; then
+			restored=1
+		fi
+	else
+		restored=1
+	fi
+	rm -rf "$stage"
+	stage=""
+	if [ "$restored" -eq 1 ]; then
+		rm -rf "$backup"
+		backup=""
 		die "PortMaster seed could not be installed"
 	fi
-	rm -rf "$stage" "$backup"
-	stage=""
-	backup=""
+	# shellcheck disable=SC1007
+	held=$(CDPATH= cd -- "$backup" && pwd)/old
+	backup_hold=1
+	die "PortMaster seed could not be installed; previous installation remains at $held"
 }
 
 install_from_seed() {
