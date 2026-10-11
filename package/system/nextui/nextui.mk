@@ -20,7 +20,8 @@
 # A verified Recovery write offers shut down or a normal restart through /tmp/poweroff and /tmp/reboot.
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
-NEXTUI_VERSION = a4142f40cb8cb2f811eb19451337f6c39ad4bb2c
+# A rejected launch removes a leftover /tmp/next and stays in the menu.
+NEXTUI_VERSION = 184bbd7e56b767eaa12e0cff53409a6e23ab558e
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
