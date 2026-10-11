@@ -223,6 +223,7 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355).
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 - Discord user `lazydog` for the Wine compatibility suggestion that prompted the zlyme44.2 WoW64 and prefix rework.
+- A huge debt to the other bigs in the biz [Knulli](https://github.com/knulli-cfw/knulli-linux), [Rocknix](https://github.com/ROCKNIX/distribution) and [Batocera](https://github.com/batocera-linux/).
 
 ## License
 
