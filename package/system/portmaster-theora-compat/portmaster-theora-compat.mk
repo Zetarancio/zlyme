@@ -40,16 +40,11 @@ PORTMASTER_THEORA_COMPAT_PRE_CONFIGURE_HOOKS += PORTMASTER_THEORA_COMPAT_UPDATE_
 
 # make install relinks libtool's build-directory RPATH away. Copy only
 # the decoder SONAME and its versioned target into the target tree.
+# Do not remove /usr/lib/compat: other compat libraries may live there.
 define PORTMASTER_THEORA_COMPAT_INSTALL_TARGET_CMDS
 	$(MAKE) -C $(@D) DESTDIR=$(@D)/compat-root install
-	rm -rf $(TARGET_DIR)/usr/lib/compat
-	mkdir -p $(TARGET_DIR)/usr/lib/compat
-	real=$$(find $(@D)/compat-root/usr/lib/compat -name 'libtheoradec.so.1.*' -type f); \
-	soname="$(@D)/compat-root/usr/lib/compat/libtheoradec.so.1"; \
-	test -n "$$real"; \
-	test -L "$$soname"; \
-	$(INSTALL) -D -m 0644 "$$real" $(TARGET_DIR)/usr/lib/compat/$$(basename "$$real"); \
-	ln -s $$(basename "$$real") $(TARGET_DIR)/usr/lib/compat/libtheoradec.so.1; \
+	sh $(PORTMASTER_THEORA_COMPAT_PKGDIR)install-compat-libs.sh \
+		$(TARGET_DIR) $(@D)/compat-root
 	test ! -e $(TARGET_DIR)/usr/lib/compat/libtheoradec.so; \
 	test ! -e $(TARGET_DIR)/usr/lib/compat/libtheoraenc.so.1; \
 	test ! -e $(TARGET_DIR)/usr/lib/compat/libtheora.so.0; \

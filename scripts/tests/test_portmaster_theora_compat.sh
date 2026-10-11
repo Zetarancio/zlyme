@@ -10,6 +10,40 @@ fail() {
 	exit 1
 }
 
+mk=$ROOT/package/system/portmaster-theora-compat/portmaster-theora-compat.mk
+install=$ROOT/package/system/portmaster-theora-compat/install-compat-libs.sh
+# The make variable is the text we are searching for, not a shell expansion.
+# shellcheck disable=SC2016
+if grep -F 'rm -rf $(TARGET_DIR)/usr/lib/compat' "$mk"; then
+	fail "theora compat install still removes the whole directory"
+fi
+grep -q 'install-compat-libs.sh' "$mk" || fail "mk does not use the compat installer"
+
+compat_root=$(mktemp -d)
+trap 'rm -rf "$compat_root"' EXIT
+mkdir -p "$compat_root/target/usr/lib/compat" "$compat_root/target/usr/lib" \
+	"$compat_root/staged/usr/lib/compat"
+printf '%s\n' 'sentinel' > "$compat_root/target/usr/lib/compat/libother.so"
+printf '%s\n' 'old-decoder' > "$compat_root/target/usr/lib/compat/libtheoradec.so.1.1.4"
+ln -s libtheoradec.so.1.1.4 "$compat_root/target/usr/lib/compat/libtheoradec.so.1"
+printf '%s\n' 'system-1.2' > "$compat_root/target/usr/lib/libtheoradec.so.2"
+printf '%s\n' 'encoder' > "$compat_root/staged/usr/lib/compat/libtheoraenc.so.1"
+printf '%s\n' 'new-decoder' > "$compat_root/staged/usr/lib/compat/libtheoradec.so.1.1.4"
+ln -s libtheoradec.so.1.1.4 "$compat_root/staged/usr/lib/compat/libtheoradec.so.1"
+sh "$install" "$compat_root/target" "$compat_root/staged"
+test "$(cat "$compat_root/target/usr/lib/compat/libother.so")" = sentinel
+test "$(cat "$compat_root/target/usr/lib/compat/libtheoradec.so.1.1.4")" = new-decoder
+test "$(readlink "$compat_root/target/usr/lib/compat/libtheoradec.so.1")" = libtheoradec.so.1.1.4
+test ! -e "$compat_root/target/usr/lib/compat/libtheoraenc.so.1"
+test "$(cat "$compat_root/target/usr/lib/libtheoradec.so.2")" = system-1.2
+printf '%s\n' 'reinstall-decoder' > "$compat_root/staged/usr/lib/compat/libtheoradec.so.1.1.4"
+sh "$install" "$compat_root/target" "$compat_root/staged"
+test "$(cat "$compat_root/target/usr/lib/compat/libother.so")" = sentinel
+test "$(cat "$compat_root/target/usr/lib/compat/libtheoradec.so.1.1.4")" = reinstall-decoder
+test "$(readlink "$compat_root/target/usr/lib/compat/libtheoradec.so.1")" = libtheoradec.so.1.1.4
+rm -rf "$compat_root"
+trap - EXIT
+
 grep -q 'clibs="/usr/lib/compat"' "$CONTROL" || fail "control.txt has no compat path"
 if grep -q 'libtheoradec.so.1 -> libtheoradec.so.2' "$CONTROL"; then
 	fail "control.txt symlinks the Theora SONAMEs"
