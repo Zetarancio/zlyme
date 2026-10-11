@@ -15,6 +15,7 @@ mkdir -p "$media" "$devs" "$work/bin" "$work/sys/class/block"
 : > "$work/mounts"
 : > "$work/mount.log"
 : > "$work/umount.log"
+: > "$work/python.log"
 
 export ZLYME_STORAGE_MOUNTS="$work/mounts"
 export ZLYME_LIBRARIES_FILE="$work/libraries"
@@ -27,141 +28,140 @@ export ZLYME_MOUNTS_LIB="$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh"
 export ZLYME_STORAGE_PATH="$work/bin:/usr/bin:/bin"
 export ZLYME_FAKE_MOUNT_LOG="$work/mount.log"
 export ZLYME_FAKE_UMOUNT_LOG="$work/umount.log"
+export ZLYME_PYTHON_LOG="$work/python.log"
 
-cat > "$work/bin/mount" << EOF
+# Production storage uses this PATH. A real interpreter must not be reached.
+cat > "$work/bin/python3" << 'EOF'
 #!/bin/sh
-exec python3 "$work/mount.py" "\$@"
+printf '%s\n' "$*" >> "${ZLYME_PYTHON_LOG:?}"
+exit 127
 EOF
-cat > "$work/bin/umount" << EOF
+
+cat > "$work/bin/mount" << 'EOF'
 #!/bin/sh
-exec python3 "$work/umount.py" "\$@"
+set -eu
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
+move=0
+n=0
+src=
+dest=
+for arg in "$@"; do
+	if [ "$arg" = "--move" ]; then
+		move=1
+		continue
+	fi
+	case "$arg" in
+		-*) continue ;;
+	esac
+	src=$dest
+	dest=$arg
+	n=$((n + 1))
+done
+[ "$n" -ge 2 ] || exit 1
+if [ "$move" -eq 1 ]; then
+	printf 'move\t%s\n' "$dest" >> "$ZLYME_FAKE_MOUNT_LOG"
+else
+	printf 'mount\t%s\n' "$dest" >> "$ZLYME_FAKE_MOUNT_LOG"
+fi
+encode() {
+	printf '%s' "$1" | awk '
+		BEGIN { ORS = "" }
+		{
+			for (i = 1; i <= length($0); i++) {
+				c = substr($0, i, 1)
+				if (c == " ") printf "\\040"
+				else if (c == "\t") printf "\\011"
+				else if (c == "\\") printf "\\134"
+				else if (c == "\n") printf "\\012"
+				else printf "%s", c
+			}
+		}
+	'
+}
+enc_src=$(encode "$src")
+enc_dest=$(encode "$dest")
+tmp=$(mktemp)
+if [ "$move" -eq 1 ]; then
+	replaced=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		[ -n "$line" ] || continue
+		field=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
+		raw_src=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $1; exit }')
+		if [ "$replaced" -eq 0 ] && [ -n "$field" ] \
+			&& [ "$(mounts_decode "$field")" = "$src" ]; then
+			printf '%s %s fake rw 0 0\n' "$raw_src" "$enc_dest"
+			replaced=1
+		else
+			printf '%s\n' "$line"
+		fi
+	done < "$ZLYME_STORAGE_MOUNTS" > "$tmp"
+	if [ "$replaced" -eq 0 ]; then
+		printf '%s %s fake rw 0 0\n' "$enc_src" "$enc_dest" >> "$tmp"
+	fi
+else
+	if [ -s "$ZLYME_STORAGE_MOUNTS" ]; then
+		cat "$ZLYME_STORAGE_MOUNTS" > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	printf '%s %s fake rw 0 0\n' "$enc_src" "$enc_dest" >> "$tmp"
+fi
+mv -f "$tmp" "$ZLYME_STORAGE_MOUNTS"
 EOF
-chmod 0755 "$work/bin/mount" "$work/bin/umount"
 
-cat > "$work/mount.py" << 'PY'
-import os
-import sys
-
-mounts = os.environ["ZLYME_STORAGE_MOUNTS"]
-log = os.environ["ZLYME_FAKE_MOUNT_LOG"]
-
-def decode(s):
-    out = []
-    i = 0
-    n = len(s)
-    while i < n:
-        chunk = s[i + 1:i + 4]
-        if (
-            s[i] == "\\"
-            and len(chunk) == 3
-            and all(c in "01234567" for c in chunk)
-        ):
-            out.append(chr(int(chunk, 8)))
-            i += 4
-        else:
-            out.append(s[i])
-            i += 1
-    return "".join(out)
-
-def encode(s):
-    out = []
-    for ch in s:
-        o = ord(ch)
-        if ch in " \t\n\\" or o < 32 or o == 127:
-            out.append("\\%03o" % o)
-        else:
-            out.append(ch)
-    return "".join(out)
-
-args = sys.argv[1:]
-move = "--move" in args
-pos = [arg for arg in args if not arg.startswith("-")]
-if len(pos) < 2:
-    sys.exit(1)
-src, dest = pos[-2], pos[-1]
-with open(log, "a", encoding="utf-8") as fh:
-    fh.write(("move" if move else "mount") + "\t" + dest + "\n")
-lines = []
-if os.path.exists(mounts):
-    with open(mounts, "r", encoding="utf-8") as fh:
-        lines = fh.read().splitlines()
-if move:
-    replaced = False
-    new = []
-    for line in lines:
-        parts = line.split()
-        if not replaced and len(parts) >= 2 and decode(parts[1]) == src:
-            new.append("%s %s fake rw 0 0" % (parts[0], encode(dest)))
-            replaced = True
-        else:
-            new.append(line)
-    if not replaced:
-        new.append("%s %s fake rw 0 0" % (encode(src), encode(dest)))
-    lines = new
-else:
-    lines.append("%s %s fake rw 0 0" % (encode(src), encode(dest)))
-text = ("\n".join(lines) + "\n") if lines else ""
-with open(mounts, "w", encoding="utf-8") as fh:
-    fh.write(text)
-PY
-
-cat > "$work/umount.py" << 'PY'
-import os
-import sys
-
-mounts = os.environ["ZLYME_STORAGE_MOUNTS"]
-log = os.environ["ZLYME_FAKE_UMOUNT_LOG"]
-
-def decode(s):
-    out = []
-    i = 0
-    n = len(s)
-    while i < n:
-        chunk = s[i + 1:i + 4]
-        if (
-            s[i] == "\\"
-            and len(chunk) == 3
-            and all(c in "01234567" for c in chunk)
-        ):
-            out.append(chr(int(chunk, 8)))
-            i += 4
-        else:
-            out.append(s[i])
-            i += 1
-    return "".join(out)
-
-args = sys.argv[1:]
-pos = [arg for arg in args if not arg.startswith("-")]
-if not pos:
-    sys.exit(1)
-target = pos[-1]
-with open(log, "a", encoding="utf-8") as fh:
-    fh.write(target + "\n")
-if os.environ.get("ZLYME_FAKE_UMOUNT_FAIL") == "1":
-    sys.exit(1)
-lines = []
-if os.path.exists(mounts):
-    with open(mounts, "r", encoding="utf-8") as fh:
-        lines = fh.read().splitlines()
-kept = []
-removed = False
-for line in lines:
-    parts = line.split()
-    if not removed and len(parts) >= 2 and decode(parts[1]) == target:
-        removed = True
-        continue
-    kept.append(line)
-text = ("\n".join(kept) + "\n") if kept else ""
-with open(mounts, "w", encoding="utf-8") as fh:
-    fh.write(text)
-if not removed:
-    sys.exit(1)
-PY
+cat > "$work/bin/umount" << 'EOF'
+#!/bin/sh
+set -eu
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
+target=
+for arg in "$@"; do
+	case "$arg" in
+		-*) continue ;;
+	esac
+	target=$arg
+done
+[ -n "$target" ] || exit 1
+printf '%s\n' "$target" >> "$ZLYME_FAKE_UMOUNT_LOG"
+if [ "${ZLYME_FAKE_UMOUNT_FAIL:-0}" = 1 ]; then
+	exit 1
+fi
+tmp=$(mktemp)
+removed=0
+while IFS= read -r line || [ -n "$line" ]; do
+	[ -n "$line" ] || continue
+	field=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
+	if [ "$removed" -eq 0 ] && [ -n "$field" ] \
+		&& [ "$(mounts_decode "$field")" = "$target" ]; then
+		removed=1
+		continue
+	fi
+	printf '%s\n' "$line"
+done < "$ZLYME_STORAGE_MOUNTS" > "$tmp"
+mv -f "$tmp" "$ZLYME_STORAGE_MOUNTS"
+[ "$removed" -eq 1 ]
+EOF
+chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
 
 fail() {
 	echo "storage libraries: $*" >&2
 	exit 1
 }
+
+if grep -q '^BR2_PACKAGE_PYTHON3=y' "$ROOT/configs/zlyme_my355_minimal_defconfig"; then
+	fail "minimal defconfig selects Python 3"
+fi
+if grep -n python3 "$bin" "$ZLYME_MOUNTS_LIB"; then
+	fail "storage helper names python3"
+fi
+
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
+[ "$(mounts_decode 'USB\040Games')" = "USB Games" ] || fail "space escape"
+[ "$(mounts_decode 'A\011B')" = "$(printf 'A\tB')" ] || fail "tab escape"
+[ "$(mounts_decode 'A\012B')" = "$(printf 'A\nB')" ] || fail "newline escape"
+[ "$(mounts_decode 'A\134B')" = 'A\B' ] || fail "backslash escape"
 
 reset_table() {
 	: > "$work/mounts"
@@ -172,23 +172,27 @@ reset_table() {
 	rm -f "$work/libraries"
 }
 
+encode_field() {
+	printf '%s' "$1" | awk '
+		BEGIN { ORS = "" }
+		{
+			for (i = 1; i <= length($0); i++) {
+				c = substr($0, i, 1)
+				if (c == " ") printf "\\040"
+				else if (c == "\t") printf "\\011"
+				else if (c == "\\") printf "\\134"
+				else if (c == "\n") printf "\\012"
+				else printf "%s", c
+			}
+		}
+	'
+}
+
 # A mount-table space must become the real directory, once.
 reset_table
 mkdir -p "$media/USB Games"
-python3 - "$work/mounts" "$media/USB Games" << 'PY'
-import sys
-path, dest = sys.argv[1], sys.argv[2]
-out = []
-for ch in dest:
-    o = ord(ch)
-    if ch in " \t\n\\" or o < 32:
-        out.append("\\%03o" % o)
-    else:
-        out.append(ch)
-open(path, "w", encoding="utf-8").write(
-    "/dev/sdb1 %s ext4 rw 0 0\n" % "".join(out)
-)
-PY
+printf '/dev/sdb1 %s ext4 rw 0 0\n' "$(encode_field "$media/USB Games")" \
+	> "$work/mounts"
 got=$("$bin" libraries)
 printf '%s\n' "$got" | grep -Fxc -- "$media/USB Games" | grep -qx 1 \
 	|| fail "escaped space was not listed once"
@@ -250,11 +254,21 @@ reset_table
 add_label sda1 "$(printf 'USB\nGames\001')" || fail "control add failed"
 ctrl=$(last_move)
 child_of_media "$ctrl"
-python3 -c 'import sys
-s = sys.argv[1]
-if any(ord(ch) < 32 or ord(ch) == 127 for ch in s):
-    sys.exit(1)
-' "$ctrl" || fail "control character survived: $ctrl"
+printf '%s' "$ctrl" | awk '
+	BEGIN {
+		RS = "\0"
+		bad = 0
+		for (i = 0; i < 32; i++) ctrl[sprintf("%c", i)] = 1
+		ctrl[sprintf("%c", 127)] = 1
+	}
+	{
+		for (i = 1; i <= length($0); i++) {
+			c = substr($0, i, 1)
+			if (c in ctrl) bad = 1
+		}
+	}
+	END { exit bad ? 1 : 0 }
+' || fail "control character survived: $ctrl"
 [ "$ctrl" = "$media/USB-Games-" ] || fail "control label became $ctrl"
 
 reset_table
@@ -296,6 +310,10 @@ fi
 grep -Fqx -- "$second" "$work/umount.log" || fail "eject missed $second"
 if "$bin" libraries | grep -Fqx -- "$second"; then
 	fail "ejected library stayed"
+fi
+
+if [ -s "$ZLYME_PYTHON_LOG" ]; then
+	fail "storage helper invoked python3"
 fi
 
 echo "storage libraries ok"

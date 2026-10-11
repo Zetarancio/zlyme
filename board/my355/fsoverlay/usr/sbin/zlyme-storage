@@ -118,6 +118,7 @@ is_boot_mmc() {
 # would break the mount table and the library list. '\' stays: the
 # mount table stores it as \134 and mounts_decode restores it.
 # '.' , '..', and an empty result use the kernel device name.
+# tr is already in the minimal userspace.
 media_component() {
 	label=$1
 	name=$2
@@ -125,18 +126,14 @@ media_component() {
 		printf '%s\n' "$name"
 		return 0
 	fi
-	text=$(python3 -c '
-import sys
-label = sys.argv[1]
-out = []
-for ch in label:
-    o = ord(ch)
-    if ch == "/" or o < 32 or o == 127:
-        out.append("-")
-    else:
-        out.append(ch)
-sys.stdout.write("".join(out).strip())
-' "$label") || text=
+	text=$(printf '%s' "$label" | tr '/\000-\037\177' '-') || text=
+	while :; do
+		case "$text" in
+			' '*) text=${text# } ;;
+			*' ') text=${text% } ;;
+			*) break ;;
+		esac
+	done
 	if [ -z "$text" ] || [ "$text" = "." ] || [ "$text" = ".." ]; then
 		text=$name
 	fi
