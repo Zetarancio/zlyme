@@ -6,7 +6,11 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-Unreleased work is `zlyme44.2`. Phase 11 is closed. This is not a published release, and it is not marked Latest. The unpublished `zlyme44.1` fixes stay listed here until that release is published. The `zlyme44` notes below stay the description of the shipped release.
+Nothing is queued past the published release.
+
+## [zlyme44.2] - 2026-10-11
+
+Published as tag `zlyme-38098037074` by GitHub Actions run `38098037074`. The card image and update were built from `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. Documentation commits after that SHA do not change those files. `zlyme44.1` was not published on its own. Its user-facing fixes are in this point release. The `zlyme44` notes below stay the description of the first stable release.
 
 ### Added
 
@@ -93,5 +97,6 @@ The first stable release, built from `337ccbce2587393463a4b49c551f94e33e318e44` 
 - Replacement Switch-style sticks have not been tested on hardware.
 - CPU undervolt stays off unless you turn it on.
 
-[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-37164297221...HEAD
+[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-38098037074...HEAD
+[zlyme44.2]: https://github.com/Zetarancio/zlyme/compare/zlyme-37164297221...zlyme-38098037074
 [zlyme44]: https://github.com/Zetarancio/zlyme/releases/tag/zlyme-37164297221
