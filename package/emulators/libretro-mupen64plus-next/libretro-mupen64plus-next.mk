@@ -3,8 +3,8 @@
 #
 # libretro-mupen64plus-next
 ################################################################################
-# Version: Commits on Jul 19, 2024
-LIBRETRO_MUPEN64PLUS_NEXT_VERSION = c7cd8edcd015ddcbd4a2e984573c9c1d1ddd0b6e
+# Version: 11 Sep 2026. Contains the GLideN64 cstdint fix (916c7cfa).
+LIBRETRO_MUPEN64PLUS_NEXT_VERSION = 6752836de8b224febfd5708444755b77712ac939
 LIBRETRO_MUPEN64PLUS_NEXT_SITE = $(call github,libretro,mupen64plus-libretro-nx,$(LIBRETRO_MUPEN64PLUS_NEXT_VERSION))
 LIBRETRO_MUPEN64PLUS_NEXT_LICENSE = GPLv2
 LIBRETRO_MUPEN64PLUS_NEXT_DEPENDENCIES = retroarch
