@@ -109,6 +109,11 @@ define ZLYME_LINUX_ASSERT_CONFIG
 		grep -qx "$$opt" $(@D)/.config || { \
 			echo "zlyme: $$opt did not survive olddefconfig" >&2; exit 1; }; \
 	done
+	$(Q)for opt in CONFIG_MMC_TEST CONFIG_SND_TEST_COMPONENT \
+	               CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE; do \
+		grep -qx "# $$opt is not set" $(@D)/.config || { \
+			echo "zlyme: $$opt was not turned off" >&2; exit 1; }; \
+	done
 	$(Q)! grep -q '@[A-Z_]*@' $(@D)/.config || { \
 		echo "zlyme: unsubstituted placeholder in kernel .config" >&2; \
 		exit 1; }

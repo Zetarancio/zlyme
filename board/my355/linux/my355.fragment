@@ -94,6 +94,13 @@ CONFIG_ZRAM_DEF_COMP="lz4"
 # CONFIG_PHY_ROCKCHIP_PCIE is not set
 # CONFIG_PHY_ROCKCHIP_SNPS_PCIE3 is not set
 
+# MMC_TEST is the debugfs card exerciser; writing its test file
+# overwrites the card. The ASoC samples bind test-cpu, test-codec,
+# and audio-graph-card2-custom-sample, which this DTS does not have.
+# CONFIG_MMC_TEST is not set
+# CONFIG_SND_TEST_COMPONENT is not set
+# CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE is not set
+
 # Keep DEBUG_KERNEL. Too early to strip; OOT this_module size tracks debug flags.
 CONFIG_DEBUG_KERNEL=y
 
