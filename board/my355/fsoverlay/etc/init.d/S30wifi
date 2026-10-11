@@ -8,6 +8,13 @@
 CONF="${ZLYME_CFG}/wpa_supplicant.conf"
 IFACE=wlan0
 
+kick_ntp() {
+	# Background. A route that appears after boot should sync even when
+	# the boot-time attempt already gave up. kick is a no-op if ntpd
+	# is already running.
+	[ -x /etc/init.d/S49ntp ] && /etc/init.d/S49ntp kick >/dev/null 2>&1 &
+}
+
 dhcp_after_assoc() {
 	n=0
 	while [ "$n" -lt 30 ]; do
@@ -17,11 +24,13 @@ dhcp_after_assoc() {
 		n=$((n + 1))
 	done
 	if [ -f /var/run/udhcpc.$IFACE.pid ] && kill -0 "$(cat /var/run/udhcpc.$IFACE.pid 2>/dev/null)" 2>/dev/null; then
+		kick_ntp
 		return 0
 	fi
 	printf "Starting udhcpc on %s: " "$IFACE"
 	if udhcpc -b -i "$IFACE" -t 8 -T 2 -p /var/run/udhcpc.$IFACE.pid >/dev/null 2>&1; then
 		echo "OK"
+		kick_ntp
 		# First IPv4 ARP to the gateway often FAILED on 8733bu; one ping
 		# moves neigh out of FAILED so HTTPS/DNS can proceed.
 		( ping -c 2 -W 2 "$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')" >/dev/null 2>&1 ) &

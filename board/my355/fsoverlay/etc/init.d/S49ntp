@@ -1,11 +1,21 @@
 #!/bin/sh
 #
-# Wall clock from HTTP Date. The RK3566 RTC often sits at 2017 without a
-# battery, which makes TLS certs "not yet valid" so Splore and curl HTTPS
-# fail even when the AP has internet. rc.late starts this after S30wifi.
+# Clock bootstrap, then BusyBox ntpd.
+#
+# The RK3566 RTC often sits at 2017 without a battery. TLS then fails
+# because the certificate is "not yet valid". An HTTP Date sample from
+# 1.1.1.1 corrects that before ntpd starts. ntpd corrects drift after
+# that, including a later association and a resume. rc.late starts this
+# in the background after the first frame. No route, or Wi-Fi left off,
+# is not a boot failure.
+#
+# RTC writes are UTC. The bootstrap writes the RTC. ntpd's step callback
+# writes it only for a step of 30 seconds or more. The timezone file is
+# not touched.
 
 http_date_to_stamp() {
 	# "Tue, 15 Sep 2026 01:32:00 GMT" → "2026-09-15 01:32:00"
+	# shellcheck disable=SC2086
 	set -- $1
 	day=$2
 	mon=$3
@@ -21,45 +31,172 @@ http_date_to_stamp() {
 	printf '%s-%s-%02d %s' "$year" "$m" "$day" "$time"
 }
 
-start() {
-	(
-		n=0
-		while [ "$n" -lt 40 ]; do
-			gw=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
-			[ -n "$gw" ] && break
-			sleep 0.5
-			n=$((n + 1))
-		done
-		[ -n "$gw" ] || exit 0
-		# 8733bu often drops the first IPv4 ARP probes; ping unsticks neigh.
-		ping -c 1 -W 2 "$gw" >/dev/null 2>&1 || ping -c 2 -W 2 "$gw" >/dev/null 2>&1 || true
-		i=0
-		while [ "$i" -lt 8 ]; do
-			hdr=$(curl -sI --max-time 4 http://1.1.1.1 2>/dev/null \
-				| sed -n 's/^[Dd]ate:[[:space:]]*//p' | tr -d '\r' | head -n 1)
-			stamp=
-			[ -n "$hdr" ] && stamp=$(http_date_to_stamp "$hdr")
-			if [ -n "$stamp" ] && date -u -s "$stamp" >/dev/null 2>&1; then
-				hwclock -u -w >/dev/null 2>&1 || true
-				exit 0
-			fi
-			if [ -n "$hdr" ] && date -u -D "%a, %d %b %Y %H:%M:%S GMT" -s "$hdr" >/dev/null 2>&1; then
-				hwclock -u -w >/dev/null 2>&1 || true
-				exit 0
-			fi
-			sleep 2
-			i=$((i + 1))
-		done
-	) >/dev/null 2>&1 &
+ntp_sleep() {
+	[ "${ZLYME_NTP_NO_SLEEP:-}" = 1 ] && return 0
+	sleep "$1"
 }
 
-stop() {
+pid_dir() {
+	printf '%s' "${ZLYME_NTP_PIDDIR:-/var/run}"
+}
+
+ntpd_pid() {
+	printf '%s/zlyme-ntpd.pid' "$(pid_dir)"
+}
+
+worker_pid() {
+	printf '%s/zlyme-ntp.pid' "$(pid_dir)"
+}
+
+pid_alive() {
+	f=$1
+	[ -f "$f" ] || return 1
+	pid=$(tr -d ' \t\r\n' < "$f")
+	case "$pid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	kill -0 "$pid" 2>/dev/null
+}
+
+stop_pid() {
+	f=$1
+	[ -f "$f" ] || return 0
+	pid=$(tr -d ' \t\r\n' < "$f")
+	rm -f "$f"
+	case "$pid" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	kill "$pid" 2>/dev/null || true
+	wait "$pid" 2>/dev/null || true
+}
+
+have_route() {
+	if [ -n "${ZLYME_NTP_ROUTE+x}" ]; then
+		[ "$ZLYME_NTP_ROUTE" = 1 ]
+		return
+	fi
+	gw=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
+	[ -n "$gw" ]
+}
+
+clock_year() {
+	if [ -n "${ZLYME_NTP_YEAR:-}" ]; then
+		printf '%s' "$ZLYME_NTP_YEAR"
+		return 0
+	fi
+	date +%Y
+}
+
+fetch_date() {
+	if [ -n "${ZLYME_NTP_CURL_DATE+x}" ]; then
+		printf '%s\n' "$ZLYME_NTP_CURL_DATE"
+		return 0
+	fi
+	curl -sI --max-time 4 http://1.1.1.1 2>/dev/null \
+		| sed -n 's/^[Dd]ate:[[:space:]]*//p' | tr -d '\r' | head -n 1
+}
+
+write_rtc_if_large() {
+	off=$1
+	case "$off" in
+		-*) off=${off#-} ;;
+	esac
+	int=${off%%.*}
+	case "$int" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	[ "$int" -ge 30 ] || return 0
+	hwclock -u -w >/dev/null 2>&1 || true
+}
+
+bootstrap() {
+	year=$(clock_year)
+	case "$year" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	[ "$year" -lt 2024 ] || return 0
+	i=0
+	tries=${ZLYME_NTP_BOOT_TRIES:-8}
+	while [ "$i" -lt "$tries" ]; do
+		hdr=$(fetch_date)
+		stamp=
+		[ -n "$hdr" ] && stamp=$(http_date_to_stamp "$hdr")
+		if [ -n "$stamp" ] && date -u -s "$stamp" >/dev/null 2>&1; then
+			hwclock -u -w >/dev/null 2>&1 || true
+			return 0
+		fi
+		if [ -n "$hdr" ] && date -u -D "%a, %d %b %Y %H:%M:%S GMT" -s "$hdr" >/dev/null 2>&1; then
+			hwclock -u -w >/dev/null 2>&1 || true
+			return 0
+		fi
+		ntp_sleep 2
+		i=$((i + 1))
+	done
 	return 0
 }
 
-case "$1" in
+wait_route() {
+	# Wi-Fi off and no route: do not poll. A route from something else
+	# still syncs.
+	if command -v zlyme-ctl >/dev/null 2>&1 && ! zlyme-ctl want wifi; then
+		have_route
+		return
+	fi
+	n=0
+	tries=${ZLYME_NTP_TRIES:-40}
+	while [ "$n" -lt "$tries" ]; do
+		if have_route; then
+			return 0
+		fi
+		ntp_sleep 0.5
+		n=$((n + 1))
+	done
+	return 1
+}
+
+sync_body() {
+	wait_route || return 0
+	if [ -z "${ZLYME_NTP_ROUTE+x}" ]; then
+		gw=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
+		if [ -n "$gw" ]; then
+			ping -c 1 -W 2 "$gw" >/dev/null 2>&1 || ping -c 2 -W 2 "$gw" >/dev/null 2>&1 || true
+		fi
+	fi
+	bootstrap || true
+	if ! command -v ntpd >/dev/null 2>&1; then
+		return 0
+	fi
+	if pid_alive "$(ntpd_pid)"; then
+		return 0
+	fi
+	ntpd -n -p time.cloudflare.com -p pool.ntp.org -S "$0" >/dev/null 2>&1 &
+	echo $! > "$(ntpd_pid)"
+}
+
+start() {
+	mkdir -p "$(pid_dir)" 2>/dev/null || return 0
+	if pid_alive "$(ntpd_pid)" || pid_alive "$(worker_pid)"; then
+		return 0
+	fi
+	if [ "${ZLYME_NTP_FOREGROUND:-}" = 1 ]; then
+		sync_body
+		return 0
+	fi
+	sync_body >/dev/null 2>&1 &
+	echo $! > "$(worker_pid)"
+}
+
+stop() {
+	stop_pid "$(worker_pid)"
+	stop_pid "$(ntpd_pid)"
+}
+
+case "${1:-}" in
 	start) start ;;
 	stop) stop ;;
-	restart|reload) start ;;
-	*) echo "usage: $0 {start|stop|restart}" >&2; exit 1 ;;
+	kick) start ;;
+	reopen) stop; start ;;
+	restart|reload) stop; start ;;
+	"") ;;
+	*) write_rtc_if_large "$1" ;;
 esac

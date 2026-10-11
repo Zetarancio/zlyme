@@ -31,6 +31,9 @@ case "${1:-}" in
 		;;
 	resume)
 		[ -x /etc/init.d/S30wifi ] && /etc/init.d/S30wifi start
+		# Ask for a fresh sample. A running ntpd would otherwise wait
+		# for its next poll after the clock sat in suspend.
+		[ -x /etc/init.d/S49ntp ] && /etc/init.d/S49ntp reopen >/dev/null 2>&1 &
 		[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
 		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
 		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start

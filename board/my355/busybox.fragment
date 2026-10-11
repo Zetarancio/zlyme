@@ -1,0 +1,4 @@
+# Target userspace only. The initramfs busybox config is separate and
+# does not get this fragment. The device is an NTP client, not a server.
+CONFIG_NTPD=y
+# CONFIG_FEATURE_NTPD_SERVER is not set
