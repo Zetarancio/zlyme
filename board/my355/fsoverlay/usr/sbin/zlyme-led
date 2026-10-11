@@ -11,7 +11,7 @@
 # ash functions share globals. Every assignment that could clobber a caller
 # (especially val in led_state vs brightness) must be local.
 
-LED_PATH=/sys/class/leds
+LED_PATH=${ZLYME_LED_PATH:-/sys/class/leds}
 DEFAULT=green
 LOG=/tmp/zlyme-led.log
 
@@ -89,6 +89,7 @@ led_off() {
 
 brightness() {
 	local color=$1 val=$2
+	[ -n "${ZLYME_LED_TRACE:-}" ] && printf '%s\n' "$color" >> "$ZLYME_LED_TRACE"
 	led_off
 	case "$color" in
 		green)
@@ -116,9 +117,19 @@ onval() {
 	led_on_val "$LED_GREEN"
 }
 
+ps_root() {
+	printf '%s' "${ZLYME_LED_PS:-/sys/class/power_supply}"
+}
+
+led_sleep() {
+	[ "${ZLYME_LED_NO_SLEEP:-}" = 1 ] && return 0
+	sleep "$1"
+}
+
 bat_status() {
-	local d t
-	for d in /sys/class/power_supply/*; do
+	local d t root
+	root=$(ps_root)
+	for d in "$root"/*; do
 		[ -f "$d/type" ] || continue
 		t=$(cat "$d/type" 2>/dev/null)
 		case "$t" in
@@ -128,40 +139,69 @@ bat_status() {
 				;;
 		esac
 	done
-	cat /sys/class/power_supply/battery/status 2>/dev/null || true
+	cat "$root/battery/status" 2>/dev/null || true
 }
 
-bat_cap() {
-	local d t
-	for d in /sys/class/power_supply/*; do
+# Prints a capacity only when a Battery supply has a capacity file.
+# Missing sysfs is not 0%. Callers that need a display fallback use bat_cap.
+bat_cap_raw() {
+	local d t root
+	root=$(ps_root)
+	for d in "$root"/*; do
 		[ -f "$d/capacity" ] || continue
 		t=$(cat "$d/type" 2>/dev/null)
 		case "$t" in
 			Battery|battery)
-				cat "$d/capacity" 2>/dev/null
+				tr -d ' \t\r\n' < "$d/capacity" 2>/dev/null
 				return 0
 				;;
 		esac
 	done
-	cat /sys/class/power_supply/battery/capacity 2>/dev/null || echo 100
+	return 1
 }
 
-charger_online() {
-	local d t on st
-	for d in /sys/class/power_supply/*; do
+bat_cap() {
+	local c
+	if c=$(bat_cap_raw); then
+		printf '%s' "$c"
+		return 0
+	fi
+	printf '%s' 100
+}
+
+# online=1 on a non-battery supply. Battery status can stay
+# Discharging while this is true. Shutdown uses this, not the status string.
+supply_online() {
+	local d t on root
+	root=$(ps_root)
+	for d in "$root"/*; do
 		[ -f "$d/online" ] || continue
 		t=$(cat "$d/type" 2>/dev/null)
 		case "$t" in
 			Battery|battery) continue ;;
 		esac
-		on=$(cat "$d/online" 2>/dev/null | tr -d ' \t\r\n')
+		on=$(tr -d ' \t\r\n' < "$d/online" 2>/dev/null)
 		[ "$on" = 1 ] && return 0
 	done
+	return 1
+}
+
+charger_online() {
+	local st
+	supply_online && return 0
 	st=$(bat_status)
 	case "$st" in
 		Charging|Full) return 0 ;;
 	esac
 	return 1
+}
+
+cap_is_zero() {
+	local c=$1
+	case "$c" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ "$c" -eq 0 ]
 }
 
 apply_now() {
@@ -191,23 +231,54 @@ flash_low() {
 	i=0
 	while [ "$i" -lt 3 ]; do
 		brightness red "$(onval)"
-		sleep 0.5
+		led_sleep 0.5
 		led_off
-		sleep 0.5
+		led_sleep 0.5
 		i=$((i + 1))
 	done
 	apply_now
 }
 
+# LED Off still counts capacity. Two numeric 0% readings with no
+# charger online shut down once. A blank or non-numeric capacity
+# never counts. lowcnt reaches 6 samples at the 10 s poll, about
+# one flash a minute. State stays in this function: ash locals are
+# not visible to a callee.
 watch() {
-	local last="" lowcnt=0 c want cap st
+	local last="" lowcnt=0 zero=0 shutting=0 c want cap st loops=0 raw have
 	while true; do
+		have=0
+		raw=""
+		if raw=$(bat_cap_raw); then
+			have=1
+		fi
+		if supply_online; then
+			zero=0
+		elif [ "$have" = 1 ] && cap_is_zero "$raw"; then
+			zero=$((zero + 1))
+		else
+			zero=0
+		fi
+		if [ "$zero" -ge 2 ] && [ "$shutting" = 0 ]; then
+			shutting=1
+			if [ -n "${ZLYME_LED_HALT:-}" ]; then
+				printf '%s\n' poweroff >> "$ZLYME_LED_HALT"
+			else
+				/usr/sbin/zlyme-halt poweroff
+			fi
+			return 0
+		fi
+
 		c=$(led_color)
 		if [ "$c" = off ]; then
 			want=off
 			lowcnt=0
 		elif charger_online; then
-			cap=$(bat_cap)
+			if [ "$have" = 1 ]; then
+				cap=$raw
+			else
+				cap=100
+			fi
 			st=$(bat_status)
 			if [ "$st" = Full ] || [ "${cap:-0}" -gt 97 ] 2>/dev/null; then
 				want=full
@@ -216,7 +287,11 @@ watch() {
 			fi
 			lowcnt=0
 		else
-			cap=$(bat_cap)
+			if [ "$have" = 1 ]; then
+				cap=$raw
+			else
+				cap=100
+			fi
 			if [ "${cap:-100}" -le 10 ] 2>/dev/null; then
 				want=low
 			else
@@ -226,7 +301,7 @@ watch() {
 		fi
 		if [ "$want" = low ]; then
 			lowcnt=$((lowcnt + 1))
-			if [ "$lowcnt" -ge 20 ]; then
+			if [ "$lowcnt" -ge 6 ]; then
 				flash_low
 				lowcnt=0
 				last=low
@@ -242,7 +317,11 @@ watch() {
 			esac
 			last=$want
 		fi
-		sleep 2
+		loops=$((loops + 1))
+		if [ -n "${ZLYME_LED_LOOPS:-}" ] && [ "$loops" -ge "$ZLYME_LED_LOOPS" ]; then
+			return 0
+		fi
+		led_sleep "${ZLYME_LED_INTERVAL:-10}"
 	done
 }
 
