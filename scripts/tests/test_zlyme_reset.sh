@@ -55,6 +55,7 @@ printf '%s\n' 'on' > "$zlyme/merge"
 printf '%s\n' 'l2' > "$zlyme/undervolt"
 printf '%s\n' 'gain=70' > "$zlyme/miyoo-flip-gamepad/rumble.config"
 printf '%s\n' 'off' > "$zlyme/ssh"
+printf '%s' 'secret' > "$zlyme/ssh.password"
 printf '%s\n' 'enabled=1' 'protocol=http' 'host=proxy.example' 'port=8080' > "$zlyme/proxy.conf"
 printf '%s\n' 'hostkey' > "$cfg/ssh/key"
 printf '%s\n' 'gzdoom-user' > "$shared/configs/gzdoom/gzdoom.ini"
@@ -81,6 +82,7 @@ if grep -q 'apply-merge' "$work/apply.log"; then
 	exit 1
 fi
 test ! -e "$zlyme/ssh"
+test ! -e "$zlyme/ssh.password"
 test ! -e "$zlyme/undervolt"
 test ! -e "$shared/vtree/config.ini"
 test ! -e "$shared/vtree/.zlyme-vtree-v1"
@@ -114,7 +116,9 @@ grep -q gba "$work/storage/Emus/my355/GBA.pak/launch.sh"
 grep -q psp "$cfg/ppsspp/ppsspp.ini"
 grep -q pm "$cfg/PortMaster/control.txt"
 
+printf '%s' 'secret' > "$zlyme/ssh.password"
 "$BIN" factory
+test ! -e "$zlyme/ssh.password"
 test -f "$zlyme/factory-reset"
 grep -q '^screentimeout=120$' "$shared/minuisettings.txt"
 grep -q extra "$work/storage/Tools/my355/Extra.pak/launch.sh"

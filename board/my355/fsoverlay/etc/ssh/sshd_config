@@ -8,6 +8,8 @@ LogLevel INFO
 
 LoginGraceTime 60
 PermitRootLogin yes
+# Empty passwords work only when the shadow field is empty too.
+# zlyme-ssh-auth owns that field. A locked "!" or "*" field does not.
 PermitEmptyPasswords yes
 PasswordAuthentication yes
 KbdInteractiveAuthentication no

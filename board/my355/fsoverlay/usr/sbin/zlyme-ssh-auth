@@ -1,0 +1,264 @@
+#!/bin/sh
+# Root SSH password for OpenSSH.
+#
+# The account stays root. A missing password file means an empty
+# password, which is the fresh-install default. PermitEmptyPasswords
+# is not enough on its own: OpenSSH accepts an empty password only
+# when the shadow field is empty, and it checks a hash with xcrypt
+# when the field is set. The squashfs copy of /etc/shadow cannot be
+# written, so this builds a shadow under /run and bind-mounts it.
+#
+# The password file is plaintext at /storage/.config/zlyme/ssh.password.
+# exFAT does not store the mode. That is a product choice, not a vault.
+#
+# set reads the password on stdin. It is not an argument. A newline or
+# a NUL is rejected. One trailing newline, as from printf '%s\n', is
+# stripped. stderr is the word "rejected" and never the password.
+
+cfg=${ZLYME_CFG:-}
+if [ -z "$cfg" ] && [ -r "${ZLYME_CONF:-/etc/zlyme.conf}" ]; then
+	# shellcheck disable=SC1091
+	. "${ZLYME_CONF:-/etc/zlyme.conf}"
+	cfg=${ZLYME_CFG:-}
+fi
+cfg=${cfg:-/storage/.config}
+passfile=$cfg/zlyme/ssh.password
+
+if [ -n "${ZLYME_RESET_ROOT:-}" ]; then
+	run=${ZLYME_SSH_RUN:-$ZLYME_RESET_ROOT/run/zlyme}
+	ZLYME_SSH_NO_MOUNT=1
+else
+	run=${ZLYME_SSH_RUN:-/run/zlyme}
+fi
+src=${ZLYME_SSH_SHADOW_SRC:-/etc/shadow}
+orig=$run/shadow.orig
+out=$run/shadow
+lockdir=
+
+reject() {
+	printf '%s\n' rejected >&2
+	exit 1
+}
+
+release_lock() {
+	[ -n "$lockdir" ] && rmdir "$lockdir" 2>/dev/null || true
+}
+
+acquire_lock() {
+	mkdir -p "$run" || reject
+	lockdir=$run/ssh-auth.lock
+	i=0
+	while ! mkdir "$lockdir" 2>/dev/null; do
+		i=$((i + 1))
+		[ "$i" -ge 50 ] && reject
+		sleep 0.05
+	done
+	trap release_lock EXIT
+}
+
+# Copy $1 to $2 when it is a single password: no NUL, no CR, at most
+# one trailing LF, and at most 256 bytes after that LF is removed.
+normalize_secret() {
+	in=$1
+	dest=$2
+	n=$(wc -c < "$in" | tr -d ' ')
+	nonul=$(tr -d '\000' < "$in" | wc -c | tr -d ' ')
+	[ "$n" = "$nonul" ] || return 1
+	nocr=$(tr -d '\r' < "$in" | wc -c | tr -d ' ')
+	[ "$n" = "$nocr" ] || return 1
+	nonl=$(tr -d '\n' < "$in" | wc -c | tr -d ' ')
+	nl=$((n - nonl))
+	if [ "$nl" -eq 0 ]; then
+		[ "$n" -le 256 ] || return 1
+		cp "$in" "$dest"
+		return 0
+	fi
+	if [ "$nl" -eq 1 ]; then
+		[ "$n" -le 257 ] || return 1
+		last=$(tail -c 1 "$in" | tr -d '\n' | wc -c | tr -d ' ')
+		[ "$last" -eq 0 ] || return 1
+		if [ "$n" -eq 1 ]; then
+			: > "$dest"
+		else
+			head -c $((n - 1)) "$in" > "$dest"
+		fi
+		return 0
+	fi
+	return 1
+}
+
+hash_pass() {
+	h=$(printf '%s' "$1" | openssl passwd -6 -stdin 2>/dev/null) || return 1
+	case "$h" in
+		'$6$'*) ;;
+		*) return 1 ;;
+	esac
+	case "$h" in
+		*:*|*" "*|*"'"*) return 1 ;;
+	esac
+	printf '%s' "$h"
+}
+
+ensure_orig() {
+	if [ -s "$orig" ]; then
+		return 0
+	fi
+	[ -r "$src" ] || return 1
+	cp "$src" "$orig" || return 1
+	chmod 600 "$orig" 2>/dev/null || true
+}
+
+write_shadow() {
+	hash=$1
+	ensure_orig || return 1
+	grep -q '^root:' "$orig" || return 1
+	tmp=$(mktemp "$run/shadow.XXXXXX") || return 1
+	did=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			root:*)
+				if [ "$did" -eq 0 ]; then
+					rest=${line#*:}
+					rest=${rest#*:}
+					printf 'root:%s:%s\n' "$hash" "$rest"
+					did=1
+					continue
+				fi
+				;;
+		esac
+		printf '%s\n' "$line"
+	done < "$orig" > "$tmp"
+	[ "$did" -eq 1 ] || { rm -f "$tmp"; return 1; }
+	cat "$tmp" > "$out"
+	rm -f "$tmp"
+	chmod 640 "$out" 2>/dev/null || true
+}
+
+mount_shadow() {
+	if [ "${ZLYME_SSH_NO_MOUNT:-}" = 1 ]; then
+		return 0
+	fi
+	[ "$(id -u)" = 0 ] || return 1
+	if awk '$2 == "/etc/shadow" { found = 1 } END { exit !found }' /proc/mounts; then
+		return 0
+	fi
+	mount --bind "$out" /etc/shadow
+}
+
+reload_sshd() {
+	if [ "${ZLYME_SSH_SKIP_RELOAD:-}" = 1 ]; then
+		return 0
+	fi
+	if [ -n "${ZLYME_SSH_RELOAD_LOG:-}" ]; then
+		printf '%s\n' reload >> "$ZLYME_SSH_RELOAD_LOG"
+		return 0
+	fi
+	pidfile=${ZLYME_SSH_PIDFILE:-/var/run/sshd.pid}
+	[ -f "$pidfile" ] || return 0
+	pid=$(tr -d ' \t\r\n' < "$pidfile")
+	case "$pid" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	kill -HUP "$pid" 2>/dev/null || true
+}
+
+apply_shadow() {
+	if [ -f "$passfile" ]; then
+		norm=$(mktemp) || return 1
+		if ! normalize_secret "$passfile" "$norm"; then
+			rm -f "$norm"
+			return 1
+		fi
+		pass=$(cat "$norm")
+		rm -f "$norm"
+		# An empty password is an empty shadow field, not a hash of "".
+		if [ -z "$pass" ]; then
+			hash=""
+		else
+			hash=$(hash_pass "$pass") || return 1
+		fi
+	else
+		hash=""
+	fi
+	write_shadow "$hash" || return 1
+	mount_shadow || return 1
+	reload_sshd
+}
+
+store_secret() {
+	srcfile=$1
+	mkdir -p "$(dirname "$passfile")" || reject
+	tmp=$(mktemp "$(dirname "$passfile")/ssh.password.XXXXXX") || reject
+	cat "$srcfile" > "$tmp" || { rm -f "$tmp"; reject; }
+	chmod 600 "$tmp" 2>/dev/null || true
+	mv "$tmp" "$passfile" || { rm -f "$tmp"; reject; }
+}
+
+cmd_get() {
+	if [ -f "$passfile" ]; then
+		cat "$passfile"
+	fi
+}
+
+cmd_set() {
+	raw=$(mktemp) || reject
+	norm=$(mktemp) || { rm -f "$raw"; reject; }
+	dd if=/dev/stdin of="$raw" bs=258 count=1 >/dev/null 2>&1 || { rm -f "$raw" "$norm"; reject; }
+	if ! normalize_secret "$raw" "$norm"; then
+		rm -f "$raw" "$norm"
+		reject
+	fi
+	rm -f "$raw"
+	acquire_lock
+	if [ ! -s "$norm" ]; then
+		rm -f "$norm" "$passfile"
+		apply_shadow || reject
+		return 0
+	fi
+	# Hash before replacing the stored password. A failed openssl
+	# leaves the previous password and shadow in place.
+	pass=$(cat "$norm")
+	hash_pass "$pass" >/dev/null || { rm -f "$norm"; reject; }
+	backup=$(mktemp) || { rm -f "$norm"; reject; }
+	had=0
+	if [ -f "$passfile" ]; then
+		cat "$passfile" > "$backup" || { rm -f "$norm" "$backup"; reject; }
+		had=1
+	fi
+	store_secret "$norm"
+	rm -f "$norm"
+	if ! apply_shadow; then
+		if [ "$had" -eq 1 ]; then
+			cat "$backup" > "$passfile"
+			apply_shadow || true
+		else
+			rm -f "$passfile"
+			apply_shadow || true
+		fi
+		rm -f "$backup"
+		reject
+	fi
+	rm -f "$backup"
+}
+
+cmd_clear() {
+	acquire_lock
+	rm -f "$passfile"
+	apply_shadow || reject
+}
+
+cmd_apply() {
+	acquire_lock
+	apply_shadow || reject
+}
+
+case "${1:-}" in
+	get) cmd_get ;;
+	set) cmd_set ;;
+	clear) cmd_clear ;;
+	apply) cmd_apply ;;
+	*)
+		echo "usage: $0 {get|set|clear|apply}" >&2
+		exit 2
+		;;
+esac

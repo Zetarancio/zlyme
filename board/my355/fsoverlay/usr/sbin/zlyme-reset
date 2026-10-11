@@ -27,6 +27,13 @@ reset_flags() {
 	if [ -f "$zlyme/proxy.conf" ]; then
 		rm -f "$zlyme/proxy.conf"
 	fi
+	# The SSH password is not a flag. Delete it even when the helper
+	# is absent, then ask the helper to put an empty shadow back.
+	rm -f "$zlyme/ssh.password"
+	auth=${ZLYME_SSH_AUTH_BIN:-/usr/sbin/zlyme-ssh-auth}
+	if [ -x "$auth" ]; then
+		ZLYME_CFG="$cfg" ZLYME_SSH_SKIP_RELOAD=1 "$auth" clear || return 1
+	fi
 }
 
 reset_ui() {

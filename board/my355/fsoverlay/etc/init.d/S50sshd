@@ -68,6 +68,15 @@ start() {
 		echo "SSH: generating host key"
 		make_key || return 0
 	fi
+	# Empty or hashed root password, from the writable shadow. Skip the
+	# HUP here: sshd is not up yet, and restarting this script would
+	# call apply again.
+	if [ -x /usr/sbin/zlyme-ssh-auth ]; then
+		if ! ZLYME_SSH_SKIP_RELOAD=1 /usr/sbin/zlyme-ssh-auth apply; then
+			echo "SSH: password apply failed"
+			return 1
+		fi
+	fi
 	run_sshd
 }
 
