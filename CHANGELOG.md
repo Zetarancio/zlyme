@@ -6,7 +6,9 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-Nothing is queued past the published release.
+### Fixed
+
+- USB File Transfer on the lower port soft-disconnects the gadget while no computer cable is attached, and soft-connects it once when that cable is attached, so the RK3566 controller can enable its control endpoint. A charger does not count as a computer. The screen still follows the kernel USB state.
 
 ## [zlyme44.2] - 2026-10-11
 

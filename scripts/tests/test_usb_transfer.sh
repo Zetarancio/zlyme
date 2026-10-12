@@ -23,7 +23,7 @@ kill_responders() {
 		# shellcheck disable=SC2002 # cat avoids a set -e abort when /proc/pid disappears mid-read.
 		cmd=$(cat "$d/cmdline" 2>/dev/null | tr '\000' ' ' || true)
 		case "$cmd" in
-			*"$work/bin/umtprd"*|*"$HELPER"*" reap "*|*"$work/bin/zlyme-usb-enter"*|*"$work/bin/jail-umtprd"*|*"$work/bin/probe"*)
+			*"$work/bin/umtprd"*|*"$HELPER"*" reap "*|*"$HELPER"*" link"*|*"$work/bin/zlyme-usb-enter"*|*"$work/bin/jail-umtprd"*|*"$work/bin/probe"*)
 				kill -s TERM "${d#/proc/}" 2>/dev/null || true
 				;;
 		esac
@@ -152,6 +152,7 @@ reset_tree() {
 	mkdir -p "$work/configfs" "$work/udc/fcc00000.usb" \
 		"$work/storage/Roms" "$work/storage/Bios"
 	printf '%s\n' "not attached" > "$work/udc/fcc00000.usb/state"
+	: > "$work/dmesg"
 	printf 'vol0 %s exfat rw 0 0\n' "$work/storage" > "$work/mounts"
 	printf '%s\n' "$work/storage" > "$work/libraries"
 	: > "$work/mount.log"
@@ -181,6 +182,8 @@ run_helper() {
 	ZLYME_USB_SPAWN_SLEEP="${SPAWN_SLEEP:-0}" \
 	ZLYME_USB_REAP_SLEEP="${REAP_SLEEP:-0.05}" \
 	ZLYME_USB_REAP_WAIT=0.05 \
+	ZLYME_USB_LINK_SLEEP=0.05 \
+	ZLYME_USB_DMESG="$work/dmesg" \
 	ZLYME_USB_SIGNAL="${SIGNAL_CMD:-}" \
 	ZLYME_FAKE_UMTP="${MODE:-ready}" \
 	ZLYME_FAKE_MOUNT_FAIL="${MOUNT_FAIL:-}" \
@@ -887,6 +890,8 @@ export ZLYME_USB_SPAWN_SLEEP=0.05
 export ZLYME_USB_KILL_SLEEP=0.05
 export ZLYME_USB_REAP_SLEEP=0.05
 export ZLYME_USB_REAP_WAIT=0.05
+export ZLYME_USB_LINK_SLEEP=0.05
+export ZLYME_USB_DMESG="$work/dmesg"
 export ZLYME_FAKE_UMOUNT_DELAY=2
 export ZLYME_FAKE_UMOUNT_MARK="$work/umount-delay.mark"
 export ZLYME_FAKE_UMTP=ready

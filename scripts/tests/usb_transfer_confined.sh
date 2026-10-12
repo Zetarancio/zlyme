@@ -152,6 +152,8 @@ run_real() {
 	ZLYME_USB_KILL_SLEEP=0.05 \
 	ZLYME_USB_REAP_SLEEP=0.05 \
 	ZLYME_USB_REAP_WAIT=0.05 \
+	ZLYME_USB_LINK_SLEEP=0.05 \
+	ZLYME_USB_DMESG=$base/dmesg \
 	ZLYME_FAKE_UMTP=ready \
 	"$HELPER" "$@"
 }
@@ -239,6 +241,8 @@ ZLYME_USB_READY_SLEEP=0.05 \
 ZLYME_USB_SPAWN_SLEEP=0.05 \
 ZLYME_USB_REAP_SLEEP=0.05 \
 ZLYME_USB_REAP_WAIT=0.05 \
+ZLYME_USB_LINK_SLEEP=0.05 \
+ZLYME_USB_DMESG=$base/dmesg \
 "$PAK" >"$base/pak.out" 2>&1 || fail "pak exit is nonzero: $(cat "$base/pak.out")"
 grep -q 'ext4' "$WORK/presenter.log" || fail "pak did not mention ext4"
 check_presenter_pages "$WORK/presenter.log.pages"
@@ -287,6 +291,8 @@ export ZLYME_USB_SPAWN_SLEEP=0.05
 export ZLYME_USB_KILL_SLEEP=0.05
 export ZLYME_USB_REAP_SLEEP=0.05
 export ZLYME_USB_REAP_WAIT=0.05
+export ZLYME_USB_LINK_SLEEP=0.05
+export ZLYME_USB_DMESG="$base/dmesg"
 export ZLYME_FAKE_UMOUNT_DELAY=2
 export ZLYME_FAKE_UMOUNT_MARK="$base/umount-delay.mark"
 exec "$PAK"

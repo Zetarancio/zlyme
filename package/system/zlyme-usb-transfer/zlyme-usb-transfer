@@ -8,6 +8,16 @@
 # mount namespace built by zlyme-usb-enter. ZLYME_USB_JAIL=0 is the
 # host-test seam that keeps the exFAT-only path.
 # This script does not change USB role, VBUS, or regulators.
+# On RK3566, binding while the lower port has no VBUS can make DWC3
+# fail "failed to enable ep0out". The controller then stays bound and
+# the host never finishes enumeration. After bind, this session
+# soft-disconnects until that port's PHY reports SDP or CDP, then
+# soft-connects once. A later unplug soft-disconnects once, and the
+# next data cable soft-connects once. DCP is not a data host. A
+# healthy control endpoint is left alone. ROCKNIX documents the same
+# failure and uses UDC soft_connect; this behavior is Zlyme's and
+# does not copy that script. Debugfs is optional. state=bound is not
+# host enumeration.
 
 RUN=${ZLYME_USB_RUN:-/run/zlyme/usb-transfer}
 CONFIGFS=${ZLYME_USB_CONFIGFS:-/sys/kernel/config}
@@ -29,6 +39,8 @@ SPAWN_POLLS=${ZLYME_USB_SPAWN_POLLS:-20}
 SPAWN_SLEEP=${ZLYME_USB_SPAWN_SLEEP:-0.05}
 REAP_SLEEP=${ZLYME_USB_REAP_SLEEP:-0.2}
 REAP_WAIT=${ZLYME_USB_REAP_WAIT:-0.05}
+LINK_SLEEP=${ZLYME_USB_LINK_SLEEP:-0.2}
+LINK=${ZLYME_USB_LINK:-1}
 ENTER=${ZLYME_USB_ENTER:-/usr/sbin/zlyme-usb-enter}
 JAIL=${ZLYME_USB_JAIL:-1}
 CONF=$RUN/umtprd.conf
@@ -1029,6 +1041,270 @@ unbind_udc() {
 	[ -z "$_got" ]
 }
 
+# Lower-port PHY extcon for this UDC. SDP and CDP are data-capable.
+# DCP, USB-HOST, and the RK817 charger type are not.
+extcon_dir() {
+	if [ -n "${ZLYME_USB_EXTCON:-}" ]; then
+		[ -d "$ZLYME_USB_EXTCON" ] || return 1
+		printf '%s\n' "$ZLYME_USB_EXTCON"
+		return 0
+	fi
+	_plat=${ZLYME_USB_PLATFORM:-/sys/devices/platform/$UDC_NAME}
+	_found=
+	for _s in "$_plat"/supplier:platform:*usb2phy; do
+		[ -e "$_s" ] || continue
+		_phy=${_s##*supplier:platform:}
+		_ext=/sys/devices/platform/$_phy/extcon
+		[ -d "$_ext" ] || continue
+		for _e in "$_ext"/*; do
+			[ -d "$_e" ] || continue
+			_found=$_e
+			break
+		done
+		[ -n "$_found" ] && break
+	done
+	[ -n "$_found" ] || return 1
+	printf '%s\n' "$_found"
+}
+
+cable_is_one() {
+	_cd=$1
+	_want=$2
+	_c=
+	for _c in "$_cd"/cable.*; do
+		[ -e "$_c/name" ] || continue
+		[ "$(trim "$(cat "$_c/name" 2>/dev/null || true)")" = "$_want" ] || continue
+		[ "$(trim "$(cat "$_c/state" 2>/dev/null || true)")" = 1 ]
+		return
+	done
+	return 1
+}
+
+data_cable() {
+	_cd=$(extcon_dir) || return 1
+	cable_is_one "$_cd" SDP && return 0
+	cable_is_one "$_cd" CDP && return 0
+	return 1
+}
+
+# control: EP0 is enabled. failed: this bind logged the enable error,
+# or debugfs does not say control. unknown: no evidence either way.
+ep0_state() {
+	if [ -n "${ZLYME_USB_EP0:-}" ]; then
+		printf '%s\n' "$ZLYME_USB_EP0"
+		return 0
+	fi
+	_ef=${ZLYME_USB_EP0_FILE:-/sys/kernel/debug/usb/$UDC_NAME/ep0out/transfer_type}
+	if [ -r "$_ef" ]; then
+		_et=$(tr -d '[:space:]' < "$_ef" || true)
+		case "$_et" in
+			*control*) printf '%s\n' control ;;
+			*) printf '%s\n' failed ;;
+		esac
+		return 0
+	fi
+	if [ -n "${ZLYME_USB_DMESG+x}" ]; then
+		if [ -r "${ZLYME_USB_DMESG:-}" ] && grep -q "${UDC_NAME}: failed to enable ep0out" "$ZLYME_USB_DMESG"; then
+			printf '%s\n' failed
+		else
+			printf '%s\n' unknown
+		fi
+		return 0
+	fi
+	_mark=0
+	if [ -r "$RUN/dmesg.lines" ]; then
+		read -r _mark < "$RUN/dmesg.lines" || _mark=0
+	fi
+	case "$_mark" in
+		''|*[!0-9]*) _mark=0 ;;
+	esac
+	if ! command -v dmesg >/dev/null 2>&1; then
+		printf '%s\n' unknown
+		return 0
+	fi
+	_hit=$(dmesg 2>/dev/null | awk -v n="$_mark" -v u="$UDC_NAME" 'NR > n && index($0, u ": failed to enable ep0out") { print; exit }' || true)
+	if [ -n "$_hit" ]; then
+		printf '%s\n' failed
+	else
+		printf '%s\n' unknown
+	fi
+}
+
+mark_dmesg() {
+	if [ -n "${ZLYME_USB_DMESG+x}" ]; then
+		return 0
+	fi
+	_n=$(dmesg 2>/dev/null | wc -l) || _n=0
+	case "$_n" in
+		''|*[!0-9]*) _n=0 ;;
+	esac
+	printf '%s\n' "$_n" > "$RUN/dmesg.lines"
+}
+
+latch_get() {
+	_lg=
+	[ -r "$RUN/link.latch" ] || return 0
+	read -r _lg < "$RUN/link.latch" || true
+	printf '%s\n' "$_lg"
+}
+
+latch_set() {
+	printf '%s\n' "$1" > "$RUN/link.latch"
+}
+
+note_link() {
+	if [ -s "$RUN/link.err" ]; then
+		return 0
+	fi
+	printf '%s\n' "$1" > "$RUN/link.err"
+	printf '%s\n' "$1" >> "$RUN/link.log"
+	say "$1"
+}
+
+# One write. A missing or refusing soft_connect is recorded once.
+soft_write() {
+	_sw=$1
+	_sp=$UDC_CLASS/$UDC_NAME/soft_connect
+	if [ ! -e "$_sp" ]; then
+		note_link "soft_connect is not available on $UDC_NAME"
+		return 1
+	fi
+	if [ ! -w "$_sp" ]; then
+		note_link "soft_connect on $UDC_NAME is not writable"
+		return 1
+	fi
+	if ! printf '%s\n' "$_sw" > "$_sp"; then
+		note_link "soft_connect $_sw failed on $UDC_NAME"
+		return 1
+	fi
+	printf '%s\n' "$_sw" >> "$RUN/link.writes"
+}
+
+# Decide once. Duplicate cable notifications do not write again.
+# A control endpoint is not reset. Connecting from a failed enable
+# disconnects first, because a connect while pull-ups are already on
+# does not re-run endpoint setup.
+link_once() {
+	our_udc_bound || return 0
+	_fo=$(foreign_owner || true)
+	if [ -n "$_fo" ]; then
+		return 0
+	fi
+	if ! extcon_dir >/dev/null; then
+		note_link "lower PHY extcon for $UDC_NAME was not found"
+		return 0
+	fi
+	_ep=$(ep0_state)
+	if [ "$_ep" = control ]; then
+		latch_set healthy
+		return 0
+	fi
+	if data_cable; then
+		_want=connect
+	else
+		_want=disconnect
+	fi
+	_last=$(latch_get)
+	if [ "$_last" = "$_want" ] || [ "$_last" = "${_want}-failed" ]; then
+		return 0
+	fi
+	if [ "$_want" = connect ] && [ "$_ep" = failed ] && [ "$_last" != disconnect ]; then
+		if ! soft_write disconnect; then
+			latch_set connect-failed
+			return 0
+		fi
+		if ! soft_write connect; then
+			latch_set connect-failed
+			return 0
+		fi
+		latch_set connect
+		return 0
+	fi
+	if [ "$_want" = connect ] && [ "$_ep" != failed ] && [ "$_last" != disconnect ]; then
+		latch_set connect
+		return 0
+	fi
+	if ! soft_write "$_want"; then
+		latch_set "${_want}-failed"
+		return 0
+	fi
+	latch_set "$_want"
+}
+
+link_pid_ours() {
+	_lp=$1
+	case "$_lp" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ -r "/proc/$_lp/cmdline" ] || return 1
+	_lc=$(2>/dev/null tr '\000' ' ' < "/proc/$_lp/cmdline") || return 1
+	# tr turns the trailing NUL into a space, so the last argument
+	# is followed by a space. "link-once" does not match " link ".
+	case "$_lc" in
+		*"$0 link "*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+stop_link() {
+	_lp=
+	[ -r "$RUN/link.pid" ] || return 0
+	read -r _lp < "$RUN/link.pid" || true
+	if link_pid_ours "$_lp"; then
+		signal_pid TERM "$_lp" || true
+		_i=0
+		while [ "$_i" -lt "$KILL_POLLS" ]; do
+			link_pid_ours "$_lp" || break
+			_i=$((_i + 1))
+			if [ "$_i" -lt "$KILL_POLLS" ] && [ "$KILL_SLEEP" != 0 ]; then
+				sleep "$KILL_SLEEP" || true
+			fi
+		done
+		if link_pid_ours "$_lp"; then
+			signal_pid KILL "$_lp" || true
+		fi
+	fi
+	rm -f "$RUN/link.pid"
+}
+
+spawn_link() {
+	[ "$LINK" = 1 ] || return 0
+	stop_link
+	: > "$RUN/link.log"
+	link_once
+	if link_pid_ours "$(cat "$RUN/link.pid" 2>/dev/null || true)"; then
+		return 0
+	fi
+	_gen=$(cat "$RUN/generation" 2>/dev/null || true)
+	printf '%s\n' "$_gen" > "$RUN/link.gen" || return 1
+	# Same process group as the PAK, so MENU+START kills it with the
+	# group. stop kills it on a normal exit. fd 9 is the lifecycle lock.
+	"$0" link >> "$RUN/link.log" 2>&1 9>&- < /dev/null &
+	printf '%s\n' "$!" > "$RUN/link.pid"
+}
+
+cmd_link() {
+	while :; do
+		lock_session || exit 0
+		if ! our_udc_bound; then
+			exit 0
+		fi
+		_now=$(cat "$RUN/generation" 2>/dev/null || true)
+		_own=$(cat "$RUN/link.gen" 2>/dev/null || true)
+		if [ -z "$_own" ] || [ "$_now" != "$_own" ]; then
+			exit 0
+		fi
+		link_once
+		exec 9>&-
+		sleep "$LINK_SLEEP" || exit 0
+	done
+}
+
+cmd_link_once() {
+	lock_session || return 1
+	link_once
+}
+
 # True while the pid is still the responder we started, or still our child.
 ours_or_child() {
 	_oc_pid=$1
@@ -1135,6 +1411,7 @@ session_left() {
 cleanup_owned() {
 	_fail=0
 	_keep_owner=0
+	stop_link
 	unbind_udc || _fail=1
 	if ! kill_owned; then
 		_fail=1
@@ -1146,10 +1423,14 @@ cleanup_owned() {
 	# generation stays. The reaper compares it after this process is gone.
 	# Deleting it here would make that reaper skip a half-built gadget.
 	if [ "$_keep_owner" = 1 ]; then
-		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped"
+		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
+			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
+			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
 	else
 		rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" \
-			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped"
+			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
+			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
+			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
 	fi
 	if session_left || [ "$_keep_owner" = 1 ]; then
 		say "usb transfer cleanup incomplete"
@@ -1255,7 +1536,14 @@ cmd_start() {
 		trap - INT TERM
 		return 1
 	fi
+	mark_dmesg
 	if ! bind_udc; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! spawn_link; then
+		say "usb link watcher did not start"
 		cleanup_owned || true
 		trap - INT TERM
 		return 1
@@ -1303,6 +1591,9 @@ cmd_status() {
 		printf '%s\n' "responder=stopped"
 	fi
 	printf 'host=%s\n' "$(host_state)"
+	if [ -s "$RUN/link.err" ]; then
+		printf 'link=%s\n' "$(head -n 1 "$RUN/link.err")"
+	fi
 	if [ -f "$EXPORTS" ]; then
 		while IFS='	' read -r _path _name; do
 			[ -n "$_path" ] || continue
@@ -1323,8 +1614,11 @@ cmd_status() {
 
 cmd_stop() {
 	lock_session || return 1
+	stop_link
 	if ! session_left; then
-		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation"
+		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation" \
+			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
+			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
 		return 0
 	fi
 	cleanup_owned
@@ -1335,6 +1629,8 @@ case "${1:-}" in
 	stop) cmd_stop ;;
 	status) cmd_status ;;
 	reap) cmd_reap "${2:-}" "${3:-}" "${4:-}" ;;
+	link) cmd_link ;;
+	link-once) cmd_link_once ;;
 	*)
 		say "usage: zlyme-usb-transfer {start|stop|status}"
 		exit 1
