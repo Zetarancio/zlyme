@@ -121,13 +121,13 @@ Tools → USB File Transfer shares folders over the lower USB-C port, the port y
 
 A starts the session. B goes back to the menu without starting it. The computer can add, change, and delete files in the shared folders. B, or MENU+START, ends the session and returns to the menu. Unplugging the cable leaves the session up until you leave the tool.
 
-Shared folders, when they exist and can be written:
+Shared folders, when they exist on an exFAT or FAT volume and can be written:
 
-- On the main card, the first of `Roms/`, `roms/`, and `ROMS/` that exists.
+- On the main card, the first of `Roms/`, `roms/`, and `ROMS/` that exists. The main card is exFAT.
 - On the main card, the first of `Bios/`, `bios/`, and `BIOS/` that exists.
-- The same ROM and BIOS folders on a second SD card, or a USB library, when that card is mounted.
+- The same ROM and BIOS folders on a second SD card, or a USB library, when that card is mounted as exFAT or FAT.
 
-Saves, settings, updates, and the rest of the card stay on the Flip. The card stays mounted. The computer gets those folders through MTP, which is a file protocol on the mounted card. It does not receive the card as a disk.
+An ext4 card stays mounted and is not shared. The tool says so. Saves, settings, updates, and the rest of the card stay on the Flip. The card stays mounted. The computer gets the shared folders through MTP, which is a file protocol on the mounted card. It does not receive the card as a disk.
 
 The screen says when the gadget is ready, and it repeats the kernel's USB state. It says a computer has configured the gadget only when that state is `configured`. macOS needs a separate MTP program. Windows and many Linux desktops include one. None of this has been tried on a Flip. USB networking is a different feature and this tool does not start it.
 

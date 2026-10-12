@@ -271,6 +271,8 @@ ROCKNIX `next` packages uMTP-Responder 1.6.8 and a multi-board gadget script, `u
 
 The USB id is `1d6b:0100`, the Linux Foundation PTP gadget id in the uMTP 1.8.1 sample configuration. It is not assigned to Zlyme. It is also not Miyoo's vendor id `2207` and not the Rockchip MASKROM id `2207:350a`. The serial string is the constant `zlyme`, so the gadget does not publish a board serial. Two uMTP devices on one host can collide on `1d6b:0100`.
 
+`src/fs_handles_db.c` in that tag follows symlinks. `fs_entry_stat` uses `stat64`, and `entry_open` uses `open` without `O_NOFOLLOW`. A link inside a share is followed, including one created after the session starts. Zlyme does not patch the responder for that. It exports only kernel exFAT and VFAT, which have no POSIX symlink object, and it skips a nested mount under an export. ext4 and the other symlink-capable types `zlyme-storage` can mount stay mounted and are not shared.
+
 ### Phase 0 comparison snapshot
 
 | Role | Remote | Revision seen |

@@ -202,9 +202,9 @@ Owns the MTP session on the lower USB-C port. Verbs: `start`, `stop`, `status`.
 
 The controller name is `ZLYME_USB_GADGET_UDC` in `device.conf`. On my355 that is `fcc00000.usb`, the DWC3 at `usb@fcc00000`. `start` binds that UDC only, and only after FunctionFS endpoints `ep1`, `ep2`, and `ep3` exist. Another controller, or a gadget that already owns this one, is left untouched and `start` fails. The helper writes no USB role and no regulator.
 
-The Tools PAK lives in the nextui Tools tree as USB File Transfer. It calls `start` after confirmation and `stop` on exit, including MENU+START. No init script calls the helper. Session files stay under `/run/zlyme/usb-transfer`.
+The Tools PAK lives in the nextui Tools tree as USB File Transfer. It calls `start` after confirmation. A normal exit calls `stop` and shows a teardown failure when `stop` does not succeed. MENU+START still sends SIGTERM and then SIGKILL to the PAK process group from `package/system/nextui/zlyme/zlyme-pak-hotkey.c`. That behavior is not special to this PAK. `start` has already spawned a `setsid` reaper outside the group, and that reaper calls `stop` when the group leader exits. No init script calls the helper. Session files stay under `/run/zlyme/usb-transfer`.
 
-Exports are writable ROM and BIOS directories of libraries listed in `/run/zlyme/libraries` whose library path is a mountpoint. The primary ROM directory has to be present. The implementation is `package/system/zlyme-usb-transfer/zlyme-usb-transfer`. Host tests are `scripts/tests/test_usb_transfer.sh`.
+Exports are writable ROM and BIOS directories on a kernel exFAT or VFAT mount that is mounted read-write and has no nested mount underneath. Libraries listed in `/run/zlyme/libraries` are candidates when that path is the mountpoint. An ext4 library, or any other symlink-capable filesystem, stays mounted and is not exported. The primary ROM directory has to be present on exFAT or VFAT. The implementation is `package/system/zlyme-usb-transfer/zlyme-usb-transfer`. Host tests are `scripts/tests/test_usb_transfer.sh`.
 
 ## Frontend platform contract
 
