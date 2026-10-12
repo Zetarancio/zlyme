@@ -20,7 +20,7 @@ kill_responders() {
 		# shellcheck disable=SC2002 # cat avoids a set -e abort when /proc/pid disappears mid-read.
 		cmd=$(cat "$d/cmdline" 2>/dev/null | tr '\000' ' ' || true)
 		case "$cmd" in
-			*"$work/bin/umtprd"*|*"$HELPER"*" reap "*)
+			*"$work/bin/umtprd"*|*"$HELPER"*" reap "*|*"$work/bin/zlyme-usb-enter"*|*"$work/bin/jail-umtprd"*|*"$work/bin/probe"*)
 				kill -s TERM "${d#/proc/}" 2>/dev/null || true
 				;;
 		esac
@@ -158,6 +158,7 @@ run_helper() {
 	ZLYME_USB_MOUNTS="$work/mounts" \
 	ZLYME_USB_FFS="$work/ffs" \
 	ZLYME_USB_UMTPRD="$work/bin/umtprd" \
+	ZLYME_USB_JAIL=0 \
 	ZLYME_USB_UDC_NAME=fcc00000.usb \
 	ZLYME_LIBRARIES_FILE="$work/libraries" \
 	ZLYME_USB_STORAGE="$work/storage" \
@@ -401,6 +402,7 @@ ZLYME_USB_UDC_CLASS="$work/udc" \
 ZLYME_USB_MOUNTS="$work/mounts" \
 ZLYME_USB_FFS="$work/ffs" \
 ZLYME_USB_UMTPRD="$work/bin/umtprd" \
+ZLYME_USB_JAIL=0 \
 ZLYME_USB_UDC_NAME=fcc00000.usb \
 ZLYME_LIBRARIES_FILE="$work/libraries" \
 ZLYME_USB_STORAGE="$work/storage" \
@@ -576,6 +578,7 @@ if ZLYME_USB_RUN="$work/run" \
 	ZLYME_USB_MOUNTS="$work/mounts" \
 	ZLYME_USB_FFS="$work/ffs" \
 	ZLYME_USB_UMTPRD="$work/bin/umtprd" \
+	ZLYME_USB_JAIL=0 \
 	ZLYME_USB_UDC_NAME= \
 	ZLYME_DEVICE_CONF="$work/device.conf" \
 	ZLYME_LIBRARIES_FILE="$work/libraries" \
@@ -728,6 +731,7 @@ if ZLYME_USB_RUN="$work/run" \
 	ZLYME_USB_MOUNTS="$work/mounts" \
 	ZLYME_USB_FFS="$work/ffs" \
 	ZLYME_USB_UMTPRD="$work/bin/not-umtp" \
+	ZLYME_USB_JAIL=0 \
 	ZLYME_USB_UDC_NAME=fcc00000.usb \
 	ZLYME_LIBRARIES_FILE="$work/libraries" \
 	ZLYME_USB_STORAGE="$work/storage" \
@@ -822,6 +826,7 @@ export ZLYME_USB_UDC_CLASS="$work/udc"
 export ZLYME_USB_MOUNTS="$work/mounts"
 export ZLYME_USB_FFS="$work/ffs"
 export ZLYME_USB_UMTPRD="$work/bin/umtprd"
+export ZLYME_USB_JAIL=0
 export ZLYME_USB_UDC_NAME=fcc00000.usb
 export ZLYME_LIBRARIES_FILE="$work/libraries"
 export ZLYME_USB_STORAGE="$work/storage"
@@ -882,6 +887,167 @@ kill -0 "$reaper_pid" 2>/dev/null && fail "cleanup process did not finish"
 [ ! -d "$gadget" ] || fail "group kill left the gadget"
 [ "$(count_responder)" = 0 ] || fail "group kill left a responder"
 grep -q configfs "$work/mounts" && fail "group kill left configfs mounted"
+
+# ext4 shares run in a user mount namespace so the jail can bind
+# directories without touching the host's mount table.
+cc -Wall -Wextra -Werror -o "$work/bin/zlyme-usb-enter" \
+	"$ROOT/package/system/zlyme-usb-transfer/zlyme-usb-enter.c"
+cat > "$work/jail-umtprd.c" << 'EOF'
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+static void on_term(int sig) { (void)sig; _exit(0); }
+int main(int argc, char **argv) {
+	const char *conf = NULL;
+	FILE *file;
+	char line[1024];
+	int i;
+	signal(SIGTERM, on_term);
+	signal(SIGINT, on_term);
+	for (i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-conf") == 0 && i + 1 < argc)
+			conf = argv[++i];
+	}
+	if (conf == NULL)
+		return 1;
+	file = fopen(conf, "r");
+	if (file == NULL)
+		return 1;
+	while (fgets(line, sizeof(line), file) != NULL) {
+		char *quote;
+		char *end;
+		char *slash;
+		char path[1200];
+		if (strncmp(line, "usb_epin_path", 13) != 0)
+			continue;
+		quote = strchr(line, '"');
+		end = strrchr(line, '"');
+		if (quote == NULL || end == NULL || end <= quote)
+			return 1;
+		*end = '\0';
+		slash = strrchr(quote + 1, '/');
+		if (slash == NULL)
+			return 1;
+		*slash = '\0';
+		snprintf(path, sizeof(path), "%s/ep1", quote + 1);
+		if (close(open(path, O_CREAT | O_WRONLY, 0644)) != 0)
+			return 1;
+		snprintf(path, sizeof(path), "%s/ep2", quote + 1);
+		if (close(open(path, O_CREAT | O_WRONLY, 0644)) != 0)
+			return 1;
+		snprintf(path, sizeof(path), "%s/ep3", quote + 1);
+		if (close(open(path, O_CREAT | O_WRONLY, 0644)) != 0)
+			return 1;
+	}
+	fclose(file);
+	for (;;)
+		pause();
+}
+EOF
+cat > "$work/probe.c" << 'EOF'
+#define _GNU_SOURCE
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+static void record(FILE *out, const char *name, const char *path) {
+	char buf[256];
+	int fd = open(path, O_RDONLY);
+	ssize_t n;
+	if (fd < 0) {
+		fprintf(out, "%s BLOCKED %d\n", name, errno);
+		return;
+	}
+	n = read(fd, buf, sizeof(buf) - 1);
+	close(fd);
+	if (n < 0)
+		n = 0;
+	buf[n] = 0;
+	if (strchr(buf, '\n') != NULL)
+		*strchr(buf, '\n') = 0;
+	fprintf(out, "%s DATA %s\n", name, buf);
+}
+int main(void) {
+	const char *share = getenv("PROBE_SHARE");
+	char path[512];
+	char path2[512];
+	char outp[512];
+	FILE *out;
+	int i;
+	int fd;
+	if (share == NULL)
+		return 2;
+	snprintf(outp, sizeof(outp), "%s/result", share);
+	out = fopen(outp, "w");
+	if (out == NULL)
+		return 3;
+	snprintf(path, sizeof(path), "%s/game.rom", share);
+	record(out, "rom", path);
+	snprintf(path, sizeof(path), "%s/to-config", share);
+	record(out, "config", path);
+	snprintf(path, sizeof(path), "%s/to-boot", share);
+	record(out, "boot", path);
+	snprintf(path, sizeof(path), "%s/rel-dot", share);
+	record(out, "reldot", path);
+	snprintf(path, sizeof(path), "%s/to-sibling", share);
+	record(out, "sibling", path);
+	snprintf(path, sizeof(path), "%s/rel-boot", share);
+	record(out, "relboot", path);
+	snprintf(path, sizeof(path), "%s/rel-up", share);
+	record(out, "relup", path);
+	snprintf(path, sizeof(path), "%s/hidden/secret", share);
+	record(out, "nested", path);
+	snprintf(path, sizeof(path), "%s/../RomsExtra/secret", share);
+	record(out, "dotdot-sib", path);
+	snprintf(path, sizeof(path), "%s/../Bios/file.bin", share);
+	record(out, "bios", path);
+	snprintf(path, sizeof(path), "%s/created", share);
+	fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+	if (fd < 0 || write(fd, "NEW\n", 4) != 4) {
+		fprintf(out, "write FAIL\n");
+	} else {
+		close(fd);
+		snprintf(path2, sizeof(path2), "%s/renamed", share);
+		if (rename(path, path2) != 0)
+			fprintf(out, "rename FAIL\n");
+		else if (unlink(path2) != 0)
+			fprintf(out, "unlink FAIL\n");
+		else
+			fprintf(out, "write OK\n");
+	}
+	fflush(out);
+	fprintf(out, "READY\n");
+	fflush(out);
+	snprintf(path, sizeof(path), "%s/race-go", share);
+	for (i = 0; i < 200; i++) {
+		if (access(path, F_OK) == 0)
+			break;
+		usleep(10000);
+	}
+	snprintf(path, sizeof(path), "%s/swap", share);
+	for (i = 0; i < 50; i++)
+		record(out, "race", path);
+	fprintf(out, "DONE\n");
+	fclose(out);
+	for (;;)
+		pause();
+}
+EOF
+cc -Wall -Wextra -Werror -o "$work/bin/jail-umtprd" "$work/jail-umtprd.c"
+cc -Wall -Wextra -Werror -o "$work/bin/probe" "$work/probe.c"
+CONFINE_WORK=$work \
+CONFINE_HELPER=$HELPER \
+CONFINE_PAK=$PAK \
+CONFINE_ENTER=$work/bin/zlyme-usb-enter \
+CONFINE_PROBE=$work/bin/probe \
+CONFINE_RESP=$work/bin/jail-umtprd \
+	unshare --user --map-root-user --mount --propagation private \
+	sh "$ROOT/scripts/tests/usb_transfer_confined.sh"
 
 kill_responders
 printf '%s\n' "usb transfer ok"
