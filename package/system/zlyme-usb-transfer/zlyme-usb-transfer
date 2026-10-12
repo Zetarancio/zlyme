@@ -2,8 +2,9 @@
 # MTP session for the Miyoo Flip lower USB-C port.
 # Tools starts and stops this. Nothing in init does.
 # The controller name comes from device.conf (ZLYME_USB_GADGET_UDC).
-# Test seams override every host path. This script does not mount
-# configfs and does not change USB role, VBUS, or regulators.
+# Test seams override every host path. Configfs is mounted only while
+# a transfer starts, and only when it is not already mounted.
+# This script does not change USB role, VBUS, or regulators.
 
 RUN=${ZLYME_USB_RUN:-/run/zlyme/usb-transfer}
 CONFIGFS=${ZLYME_USB_CONFIGFS:-/sys/kernel/config}
@@ -21,6 +22,10 @@ READY_POLLS=${ZLYME_USB_READY_POLLS:-30}
 READY_SLEEP=${ZLYME_USB_READY_SLEEP:-0.1}
 KILL_POLLS=${ZLYME_USB_KILL_POLLS:-20}
 KILL_SLEEP=${ZLYME_USB_KILL_SLEEP:-0.1}
+SPAWN_POLLS=${ZLYME_USB_SPAWN_POLLS:-20}
+SPAWN_SLEEP=${ZLYME_USB_SPAWN_SLEEP:-0.05}
+REAP_SLEEP=${ZLYME_USB_REAP_SLEEP:-0.2}
+REAP_WAIT=${ZLYME_USB_REAP_WAIT:-0.05}
 CONF=$RUN/umtprd.conf
 PIDFILE=$RUN/responder.pid
 EXPORTS=$RUN/exports
@@ -71,15 +76,156 @@ lock_session() {
 	}
 }
 
+decode_mount() {
+	printf '%s' "$1" | sed 's/\\040/ /g; s/\\011/	/g; s/\\134/\\/g'
+}
+
 mounts_has() {
 	_want=$1
 	[ -r "$MOUNTS" ] || return 1
 	while read -r _dev _mp _rest; do
 		[ -n "${_mp:-}" ] || continue
-		_mp=$(printf '%s' "$_mp" | sed 's/\\040/ /g')
+		_mp=$(decode_mount "$_mp")
 		[ "$_mp" = "$_want" ] && return 0
 	done < "$MOUNTS"
 	return 1
+}
+
+# Exact mountpoint. Sets EXACT_TYPE.
+exact_mount() {
+	EXACT_TYPE=
+	_ex_path=$1
+	[ -r "$MOUNTS" ] || return 1
+	while read -r _ex_dev _ex_mp _ex_type _ex_opts _ex_rest; do
+		[ -n "${_ex_mp:-}" ] || continue
+		_ex_mp=$(decode_mount "$_ex_mp")
+		[ "$_ex_mp" = "$_ex_path" ] || continue
+		EXACT_TYPE=$_ex_type
+		return 0
+	done < "$MOUNTS"
+	return 1
+}
+
+# Longest mount covering the path. Sets COVER_*.
+cover_mount() {
+	_cm_path=$1
+	COVER_DEV=
+	COVER_MP=
+	COVER_TYPE=
+	COVER_OPTS=
+	_cm_best=0
+	[ -r "$MOUNTS" ] || return 1
+	while read -r _cm_dev _cm_mp _cm_type _cm_opts _cm_dump _cm_pass; do
+		[ -n "${_cm_mp:-}" ] || continue
+		_cm_mp=$(decode_mount "$_cm_mp")
+		_cm_dev=$(decode_mount "$_cm_dev")
+		_cm_hit=0
+		if [ "$_cm_mp" = "$_cm_path" ]; then
+			_cm_hit=1
+		else
+			case "$_cm_path" in
+				"$_cm_mp"/*) _cm_hit=1 ;;
+			esac
+		fi
+		[ "$_cm_hit" = 1 ] || continue
+		_cm_len=${#_cm_mp}
+		if [ "$_cm_len" -ge "$_cm_best" ]; then
+			_cm_best=$_cm_len
+			COVER_DEV=$_cm_dev
+			COVER_MP=$_cm_mp
+			COVER_TYPE=$_cm_type
+			COVER_OPTS=$_cm_opts
+		fi
+	done < "$MOUNTS"
+	[ -n "$COVER_MP" ]
+}
+
+nested_mount() {
+	_nm_path=$1
+	[ -r "$MOUNTS" ] || return 1
+	while read -r _nm_dev _nm_mp _nm_rest; do
+		[ -n "${_nm_mp:-}" ] || continue
+		_nm_mp=$(decode_mount "$_nm_mp")
+		case "$_nm_mp" in
+			"$_nm_path"/*) return 0 ;;
+		esac
+	done < "$MOUNTS"
+	return 1
+}
+
+opt_has() {
+	case ",$1," in
+		*",$2,"*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+# Kernel exFAT and VFAT have no POSIX symlink object. uMTP 1.8.1
+# follows links: fs_entry_stat() uses stat64, and entry_open() uses open.
+fs_allowed() {
+	case "$1" in
+		exfat|vfat) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+mounted_rw() {
+	opt_has "$1" ro && return 1
+	opt_has "$1" rw
+}
+
+# Field N after the comm in /proc/pid/stat. 1 is state, 3 is pgrp,
+# 20 is starttime. Runs in a subshell so set does not replace $1.
+proc_stat() {
+	_ps_pid=$1
+	_ps_idx=$2
+	case "$_ps_pid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	case "$_ps_idx" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ -r "/proc/$_ps_pid/stat" ] || return 1
+	_ps_line=$(cat "/proc/$_ps_pid/stat" 2>/dev/null) || return 1
+	_ps_val=$(
+		rest=${_ps_line#*)}
+		idx=$_ps_idx
+		set -f
+		# shellcheck disable=SC2086
+		set -- $rest
+		set +f
+		if [ "$#" -lt "$idx" ]; then
+			exit 1
+		fi
+		shift $((idx - 1))
+		printf '%s\n' "${1:-}"
+	) || return 1
+	[ -n "$_ps_val" ] || return 1
+	printf '%s\n' "$_ps_val"
+}
+
+ppid_of() {
+	_pp_pid=$1
+	[ -r "/proc/$_pp_pid/status" ] || return 1
+	_pp_line=$(sed -n 's/^PPid:[[:space:]]*//p' "/proc/$_pp_pid/status") || return 1
+	case "$_pp_line" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	printf '%s\n' "$_pp_line"
+}
+
+signal_pid() {
+	_sig=$1
+	_pid=$2
+	if [ -n "${ZLYME_USB_SIGNAL:-}" ]; then
+		"$ZLYME_USB_SIGNAL" -s "$_sig" "$_pid" 2>/dev/null || return 1
+		return 0
+	fi
+	kill -s "$_sig" "$_pid" 2>/dev/null || return 1
+}
+
+pid_alive() {
+	kill -0 "$1" 2>/dev/null
 }
 
 path_forbidden() {
@@ -207,33 +353,113 @@ library_label() {
 	printf '%s\n' "$_base"
 }
 
+# DIR_REASON is a predicate: "is on a nested mount".
+dir_exportable() {
+	DIR_REASON=
+	_de_path=$1
+	_de_root=$2
+	_de_expect=$3
+	if ! path_is_exportable "$_de_path" "$_de_root"; then
+		DIR_REASON="is not a writable directory"
+		return 1
+	fi
+	if ! cover_mount "$_de_path"; then
+		DIR_REASON="is not on a mounted filesystem"
+		return 1
+	fi
+	if [ "$COVER_MP" != "$_de_expect" ]; then
+		DIR_REASON="is on a nested mount"
+		return 1
+	fi
+	if ! fs_allowed "$COVER_TYPE"; then
+		DIR_REASON="is on $COVER_TYPE, which can contain symlinks"
+		return 1
+	fi
+	if ! mounted_rw "$COVER_OPTS"; then
+		DIR_REASON="is mounted read-only"
+		return 1
+	fi
+	if nested_mount "$_de_path"; then
+		DIR_REASON="contains a nested mount"
+		return 1
+	fi
+	case "$COVER_DEV" in
+		'')
+			DIR_REASON="has no mount source"
+			return 1
+			;;
+		"$_de_path"|"$_de_path"/*)
+			DIR_REASON="mount source is the export path"
+			return 1
+			;;
+	esac
+	case "$_de_path" in
+		/dev|/dev/*)
+			DIR_REASON="is a device path"
+			return 1
+			;;
+	esac
+	return 0
+}
+
+record_skip() {
+	printf '%s	%s\n' "$1" "$2" >> "$RUN/skipped"
+	say "skipped $1: $2"
+}
+
 add_library() {
 	_lib=$1
 	_label=$2
+	_lib_mp=$3
 	_roms=$(first_dir "$_lib" roms || true)
 	if [ -n "$_roms" ]; then
-		add_export "$_roms" "$_label ROMs" || return 0
+		if dir_exportable "$_roms" "$_lib" "$_lib_mp"; then
+			add_export "$_roms" "$_label ROMs" || return 0
+		else
+			record_skip "$_roms" "$DIR_REASON"
+		fi
 	fi
 	_bios=$(first_dir "$_lib" bios || true)
 	if [ -n "$_bios" ]; then
-		add_export "$_bios" "$_label BIOS" || return 0
+		if dir_exportable "$_bios" "$_lib" "$_lib_mp"; then
+			add_export "$_bios" "$_label BIOS" || return 0
+		else
+			record_skip "$_bios" "$DIR_REASON"
+		fi
 	fi
 }
 
 build_exports() {
-	rm -f "$EXPORTS" "$RUN/truncated"
+	rm -f "$EXPORTS" "$RUN/truncated" "$RUN/skipped"
 	: > "$EXPORTS"
 	if ! mounts_has "$STORAGE"; then
 		say "primary storage is not mounted"
+		return 1
+	fi
+	if ! cover_mount "$STORAGE" || [ "$COVER_MP" != "$STORAGE" ]; then
+		say "primary storage is not mounted"
+		return 1
+	fi
+	if ! fs_allowed "$COVER_TYPE"; then
+		say "primary storage filesystem is $COVER_TYPE, not exfat or vfat"
+		return 1
+	fi
+	if ! mounted_rw "$COVER_OPTS"; then
+		say "primary storage is mounted read-only"
 		return 1
 	fi
 	path_forbidden "$STORAGE" && {
 		say "primary storage path is not exportable"
 		return 1
 	}
+	_store_mp=$COVER_MP
 	_roms=$(first_dir "$STORAGE" roms || true)
 	if [ -z "$_roms" ]; then
 		say "primary ROM directory is missing or not writable"
+		return 1
+	fi
+	if ! dir_exportable "$_roms" "$STORAGE" "$_store_mp"; then
+		say "primary ROM directory $DIR_REASON"
 		return 1
 	fi
 	add_export "$_roms" "ROMs" || {
@@ -242,7 +468,11 @@ build_exports() {
 	}
 	_bios=$(first_dir "$STORAGE" bios || true)
 	if [ -n "$_bios" ]; then
-		add_export "$_bios" "BIOS" || true
+		if dir_exportable "$_bios" "$STORAGE" "$_store_mp"; then
+			add_export "$_bios" "BIOS" || true
+		else
+			record_skip "$_bios" "$DIR_REASON"
+		fi
 	fi
 	if [ -r "$LIBS" ]; then
 		while IFS= read -r _line || [ -n "$_line" ]; do
@@ -250,8 +480,21 @@ build_exports() {
 			[ "$_line" = "$STORAGE" ] && continue
 			path_forbidden "$_line" && continue
 			mounts_has "$_line" || continue
+			if ! cover_mount "$_line" || [ "$COVER_MP" != "$_line" ]; then
+				record_skip "$_line" "is not the mounted filesystem root"
+				continue
+			fi
+			if ! fs_allowed "$COVER_TYPE"; then
+				record_skip "$_line" "filesystem is $COVER_TYPE, which can contain symlinks"
+				continue
+			fi
+			if ! mounted_rw "$COVER_OPTS"; then
+				record_skip "$_line" "mounted read-only"
+				continue
+			fi
+			_lib_mp=$COVER_MP
 			_label=$(library_label "$_line")
-			add_library "$_line" "$_label"
+			add_library "$_line" "$_label" "$_lib_mp"
 		done < "$LIBS"
 	fi
 	if [ ! -s "$EXPORTS" ]; then
@@ -379,6 +622,79 @@ make_gadget() {
 	fi
 }
 
+other_gadget() {
+	_og=$CONFIGFS/usb_gadget
+	[ -d "$_og" ] || return 1
+	for _og_d in "$_og"/*; do
+		[ -d "$_og_d" ] || continue
+		[ "${_og_d##*/}" = "$GADGET_NAME" ] && continue
+		return 0
+	done
+	return 1
+}
+
+other_configfs() {
+	[ -r "$MOUNTS" ] || return 1
+	while read -r _oc_dev _oc_mp _oc_type _oc_rest; do
+		[ "$_oc_type" = configfs ] || continue
+		_oc_mp=$(decode_mount "$_oc_mp")
+		[ "$_oc_mp" = "$CONFIGFS" ] && continue
+		return 0
+	done < "$MOUNTS"
+	return 1
+}
+
+# Mount configfs only for this start. An existing configfs mount is reused
+# and is not marked as ours. A different filesystem already at this path
+# is left in place.
+ensure_configfs() {
+	if exact_mount "$CONFIGFS"; then
+		if [ "$EXACT_TYPE" != configfs ]; then
+			say "configfs path $CONFIGFS is mounted as $EXACT_TYPE, not configfs"
+			return 1
+		fi
+		return 0
+	fi
+	if [ -e "$CONFIGFS" ] && [ ! -d "$CONFIGFS" ]; then
+		say "configfs path $CONFIGFS is not a directory"
+		return 1
+	fi
+	if [ ! -d "$CONFIGFS" ]; then
+		say "configfs path $CONFIGFS does not exist"
+		return 1
+	fi
+	"$MOUNT" -t configfs configfs "$CONFIGFS" || {
+		say "configfs mount failed"
+		return 1
+	}
+	if ! exact_mount "$CONFIGFS" || [ "$EXACT_TYPE" != configfs ]; then
+		say "configfs mount is not in the mount table"
+		return 1
+	fi
+	: > "$RUN/configfs-mounted-by-us"
+}
+
+# Unmount only a configfs this session mounted, and only when nothing else
+# is using it. Leaving it mounted is not an active gadget.
+release_configfs() {
+	[ -f "$RUN/configfs-mounted-by-us" ] || return 0
+	if [ -d "$GADGET" ] || other_gadget || nested_mount "$CONFIGFS" || other_configfs; then
+		return 0
+	fi
+	if ! exact_mount "$CONFIGFS"; then
+		rm -f "$RUN/configfs-mounted-by-us"
+		return 0
+	fi
+	if [ "$EXACT_TYPE" != configfs ]; then
+		return 0
+	fi
+	"$UMOUNT" "$CONFIGFS" || true
+	if exact_mount "$CONFIGFS"; then
+		return 0
+	fi
+	rm -f "$RUN/configfs-mounted-by-us"
+}
+
 mount_ffs() {
 	mkdir -p "$FFS" || return 1
 	if mounts_has "$FFS"; then
@@ -441,21 +757,136 @@ spawn_responder() {
 	"$UMTPRD" -conf "$CONF" >> "$RUN/umtprd.log" 2>&1 9>&- < /dev/null &
 	_pid=$!
 	printf '%s\n' "$_pid" > "$PIDFILE"
-	# exec is not instant. Poll the owned-pid check a bounded number of
-	# times so a not-yet-replaced shell is not mistaken for the wrong process.
+	# exec is not instant. Wait on the clock, not a tight spin, and do not
+	# treat the child as ready until its cmdline is this umtprd and conf.
 	_i=0
-	while [ "$_i" -lt 20 ]; do
+	while [ "$_i" -lt "$SPAWN_POLLS" ]; do
 		if pid_is_ours "$_pid"; then
 			return 0
 		fi
-		if ! kill -0 "$_pid" 2>/dev/null; then
+		if ! pid_alive "$_pid"; then
 			say "responder exited immediately"
 			return 1
 		fi
 		_i=$((_i + 1))
+		if [ "$_i" -lt "$SPAWN_POLLS" ] && [ "$SPAWN_SLEEP" != 0 ]; then
+			sleep "$SPAWN_SLEEP" || true
+		fi
 	done
 	say "responder pid $_pid is not the umtprd we started"
 	return 1
+}
+
+reaper_alive() {
+	_ra_pid=
+	[ -r "$RUN/reaper.pid" ] || return 1
+	read -r _ra_pid < "$RUN/reaper.pid" || return 1
+	case "$_ra_pid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ -r "/proc/$_ra_pid/cmdline" ] || return 1
+	_ra_cmd=$(2>/dev/null tr '\000' ' ' < "/proc/$_ra_pid/cmdline") || return 1
+	case "$_ra_cmd" in
+		*"$0"*" reap "*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+# BusyBox 1.38 setsid calls setsid() and, when that fails because the
+# caller is already a process-group leader, forks so the child can
+# create the session. The rootfs applet is /usr/bin/setsid. The initramfs
+# busybox does not have it; this helper does not run there.
+# fd 9 is the lifecycle lock. The reaper must not inherit it.
+spawn_reaper() {
+	_sr_pgrp=$(proc_stat $$ 3) || {
+		say "cannot read process group"
+		return 1
+	}
+	case "$_sr_pgrp" in
+		''|*[!0-9]*|0|1)
+			say "refusing to watch process group ${_sr_pgrp:-empty}"
+			return 1
+			;;
+	esac
+	if reaper_alive; then
+		_sr_watch=
+		if [ -r "$RUN/reaper.watch" ]; then
+			read -r _sr_watch < "$RUN/reaper.watch" || _sr_watch=
+		fi
+		if [ "$_sr_watch" = "$_sr_pgrp" ]; then
+			return 0
+		fi
+	fi
+	if ! command -v setsid >/dev/null 2>&1; then
+		say "setsid is not available"
+		return 1
+	fi
+	_sr_start=$(proc_stat "$_sr_pgrp" 20) || {
+		say "cannot read process group leader $_sr_pgrp"
+		return 1
+	}
+	_sr_gen=$(proc_stat $$ 20).$$
+	printf '%s\n' "$_sr_gen" > "$RUN/generation" || return 1
+	rm -f "$RUN/reaper.pid" "$RUN/reaper.pgid" "$RUN/reaper.watch"
+	# shellcheck disable=SC2094
+	setsid "$0" reap "$_sr_pgrp" "$_sr_start" "$_sr_gen" \
+		>> "$RUN/reaper.log" 2>&1 9>&- < /dev/null &
+	_i=0
+	while [ "$_i" -lt 30 ]; do
+		if [ -r "$RUN/reaper.pgid" ]; then
+			_sr_pg=
+			read -r _sr_pg < "$RUN/reaper.pgid" || true
+			if [ -n "$_sr_pg" ] && [ "$_sr_pg" != "$_sr_pgrp" ]; then
+				return 0
+			fi
+		fi
+		if [ -r "$RUN/reaper.pid" ]; then
+			_sr_rp=
+			read -r _sr_rp < "$RUN/reaper.pid" || true
+			if [ -n "$_sr_rp" ] && ! pid_alive "$_sr_rp"; then
+				say "usb transfer cleanup process exited"
+				return 1
+			fi
+		fi
+		_i=$((_i + 1))
+		if [ "$REAP_WAIT" != 0 ]; then
+			sleep "$REAP_WAIT" || true
+		fi
+	done
+	say "usb transfer cleanup process did not leave the session"
+	return 1
+}
+
+cmd_reap() {
+	_watch=$1
+	_start=$2
+	_gen=$3
+	case "$_watch" in
+		''|*[!0-9]*|0|1) exit 1 ;;
+	esac
+	trap '' HUP
+	printf '%s\n' "$$" > "$RUN/reaper.pid"
+	printf '%s\n' "$_watch" > "$RUN/reaper.watch"
+	_pg=$(proc_stat $$ 3) || exit 1
+	printf '%s\n' "$_pg" > "$RUN/reaper.pgid"
+	if [ "$_pg" = "$_watch" ]; then
+		say "cleanup process stayed in the pak process group"
+		exit 1
+	fi
+	while :; do
+		_now=$(proc_stat "$_watch" 20 || true)
+		if [ -z "$_now" ] || [ "$_now" != "$_start" ]; then
+			break
+		fi
+		sleep "$REAP_SLEEP" || true
+	done
+	lock_session || exit 1
+	_now=$(cat "$RUN/generation" 2>/dev/null || true)
+	if [ "$_now" != "$_gen" ]; then
+		exit 0
+	fi
+	cleanup_owned
+	exit $?
 }
 
 wait_ready() {
@@ -573,17 +1004,38 @@ unbind_udc() {
 	[ -z "$_got" ]
 }
 
-wait_pid_gone() {
+# True while the pid is still the responder we started, or still our child.
+ours_or_child() {
+	_oc_pid=$1
+	pid_is_ours "$_oc_pid" && return 0
+	_oc_pp=$(ppid_of "$_oc_pid" || true)
+	[ "$_oc_pp" = "$$" ]
+}
+
+wait_owned_gone() {
 	_pid=$1
 	_i=0
 	while [ "$_i" -lt "$KILL_POLLS" ]; do
-		pid_is_ours "$_pid" || return 0
+		ours_or_child "$_pid" || return 0
 		_i=$((_i + 1))
 		if [ "$_i" -lt "$KILL_POLLS" ] && [ "$KILL_SLEEP" != 0 ]; then
 			sleep "$KILL_SLEEP" || true
 		fi
 	done
-	return 1
+	ours_or_child "$_pid" && return 1
+	return 0
+}
+
+signal_down() {
+	_pid=$1
+	signal_pid TERM "$_pid" || true
+	if wait_owned_gone "$_pid"; then
+		return 0
+	fi
+	if ours_or_child "$_pid"; then
+		signal_pid KILL "$_pid" || true
+	fi
+	wait_owned_gone "$_pid"
 }
 
 kill_owned() {
@@ -592,19 +1044,11 @@ kill_owned() {
 		rm -f "$PIDFILE"
 		return 0
 	fi
-	if ! pid_is_ours "$_pid"; then
+	if ! ours_or_child "$_pid"; then
 		rm -f "$PIDFILE"
 		return 0
 	fi
-	kill -s TERM "$_pid" 2>/dev/null || true
-	if wait_pid_gone "$_pid"; then
-		rm -f "$PIDFILE"
-		return 0
-	fi
-	if pid_is_ours "$_pid"; then
-		kill -s KILL "$_pid" 2>/dev/null || true
-	fi
-	if wait_pid_gone "$_pid"; then
+	if signal_down "$_pid"; then
 		rm -f "$PIDFILE"
 		return 0
 	fi
@@ -665,12 +1109,24 @@ session_left() {
 
 cleanup_owned() {
 	_fail=0
+	_keep_owner=0
 	unbind_udc || _fail=1
-	kill_owned || _fail=1
+	if ! kill_owned; then
+		_fail=1
+		_keep_owner=1
+	fi
 	umount_ffs || _fail=1
 	remove_gadget || _fail=1
-	rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log"
-	if session_left; then
+	release_configfs || true
+	# generation stays. The reaper compares it after this process is gone.
+	# Deleting it here would make that reaper skip a half-built gadget.
+	if [ "$_keep_owner" = 1 ]; then
+		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped"
+	else
+		rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" \
+			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped"
+	fi
+	if session_left || [ "$_keep_owner" = 1 ]; then
 		say "usb transfer cleanup incomplete"
 		return 1
 	fi
@@ -701,6 +1157,12 @@ cmd_start() {
 		trap - INT TERM
 		return 1
 	fi
+	# The reaper is outside this process group before any gadget exists.
+	# MENU+START SIGKILLs the group after 1.5s. The reaper is not in it.
+	if ! spawn_reaper; then
+		trap - INT TERM
+		return 1
+	fi
 	if healthy; then
 		trap - INT TERM
 		return 0
@@ -726,6 +1188,18 @@ cmd_start() {
 		return 1
 	fi
 	if ! write_conf; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	if ! ensure_configfs; then
+		cleanup_owned || true
+		trap - INT TERM
+		return 1
+	fi
+	_owner=$(foreign_owner || true)
+	if [ -n "$_owner" ]; then
+		say "UDC $UDC_NAME is owned by gadget $_owner. It was left alone."
 		cleanup_owned || true
 		trap - INT TERM
 		return 1
@@ -779,17 +1253,21 @@ cmd_status() {
 		printf '%s\n' "state=off"
 		return 0
 	fi
+	_pid=$(read_pid || true)
+	_responder=0
+	if [ -n "$_pid" ] && pid_is_ours "$_pid"; then
+		_responder=1
+	fi
 	if our_udc_bound; then
 		printf '%s\n' "state=bound"
-	elif [ -d "$GADGET" ] || mounts_has "$FFS"; then
+	elif [ -d "$GADGET" ] || mounts_has "$FFS" || [ "$_responder" = 1 ]; then
 		printf '%s\n' "state=partial"
 	else
 		printf '%s\n' "state=off"
 	fi
 	printf 'udc=%s\n' "$UDC_NAME"
 	printf 'gadget=%s\n' "$GADGET_NAME"
-	_pid=$(read_pid || true)
-	if [ -n "$_pid" ] && pid_is_ours "$_pid"; then
+	if [ "$_responder" = 1 ]; then
 		printf '%s\n' "responder=running"
 	else
 		printf '%s\n' "responder=stopped"
@@ -804,13 +1282,19 @@ cmd_status() {
 	if [ -f "$RUN/truncated" ]; then
 		printf '%s\n' "truncated=1"
 	fi
+	if [ -s "$RUN/skipped" ]; then
+		while IFS='	' read -r _path _why; do
+			[ -n "$_path" ] || continue
+			printf 'skipped=%s %s\n' "$_path" "$_why"
+		done < "$RUN/skipped"
+	fi
 	return 0
 }
 
 cmd_stop() {
 	lock_session || return 1
 	if ! session_left; then
-		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated"
+		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation"
 		return 0
 	fi
 	cleanup_owned
@@ -820,6 +1304,7 @@ case "${1:-}" in
 	start) cmd_start ;;
 	stop) cmd_stop ;;
 	status) cmd_status ;;
+	reap) cmd_reap "${2:-}" "${3:-}" "${4:-}" ;;
 	*)
 		say "usage: zlyme-usb-transfer {start|stop|status}"
 		exit 1

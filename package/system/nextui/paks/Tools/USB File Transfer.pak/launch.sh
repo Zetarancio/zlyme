@@ -9,18 +9,33 @@ TRANSFER=${ZLYME_USB_TRANSFER:-/usr/sbin/zlyme-usb-transfer}
 PRESENTER=${ZLYME_USB_PRESENTER:-minui-presenter}
 
 cleaned=0
-# Invoked from the EXIT and signal traps.
+signaled=0
+# Invoked from the EXIT trap. A signal leaves the long cleanup to the
+# setsid reaper, which is not in this process group. MENU+START kills
+# the group 1.5s after SIGTERM, so this trap must not do that work.
 # shellcheck disable=SC2317
-stop_transfer() {
-	[ "$cleaned" = 1 ] && return 0
+finish() {
+	rc=$1
+	if [ "$signaled" = 1 ]; then
+		exit 143
+	fi
+	if [ "$cleaned" = 1 ]; then
+		exit "$rc"
+	fi
 	cleaned=1
 	if [ -x "$TRANSFER" ]; then
-		"$TRANSFER" stop >/dev/null 2>&1 || true
+		err=$("$TRANSFER" stop 2>&1) || {
+			present "USB file transfer did not stop.
+
+$err" "OK" "Back" || true
+			exit 1
+		}
 	fi
+	exit "$rc"
 }
 
-trap 'stop_transfer; exit 143' INT TERM HUP
-trap 'rc=$?; stop_transfer; exit "$rc"' EXIT
+trap 'signaled=1; exit 143' INT TERM HUP
+trap 'rc=$?; finish "$rc"' EXIT
 
 present() {
 	_msg=$1
@@ -45,9 +60,9 @@ fi
 
 intro="USB file transfer uses MTP on the lower USB-C port. That is the charge port. The upper port stays a USB host.
 
-The computer can add, change, and delete files in the shared ROM and BIOS folders. A mounted second card is included when it has those folders.
+Shared folders are ROM and BIOS directories on exFAT or FAT storage. The main card is exFAT. A second card is included when it is mounted as exFAT or FAT and has those folders. An ext4 card stays mounted and is not shared.
 
-The card stays mounted here. This session does not hand the computer the card as a disk.
+The computer can add, change, and delete files in the shared folders. The card stays mounted here. This session does not hand the computer the card as a disk.
 
 A starts the session. B goes back."
 
@@ -68,6 +83,7 @@ st=$("$TRANSFER" status 2>/dev/null || true)
 state=
 host=
 shared=
+skipped=
 while IFS= read -r line; do
 	case "$line" in
 		state=*) state=${line#state=} ;;
@@ -78,6 +94,14 @@ while IFS= read -r line; do
 			else
 				shared="$shared
 ${line#export=}"
+			fi
+			;;
+		skipped=*)
+			if [ -z "$skipped" ]; then
+				skipped=${line#skipped=}
+			else
+				skipped="$skipped
+${line#skipped=}"
 			fi
 			;;
 	esac
@@ -107,10 +131,20 @@ $st" "OK" "Back"
 	exit 1
 fi
 
+if [ -n "$skipped" ]; then
+	skip_block="
+
+Not shared:
+$skipped"
+else
+	skip_block=
+fi
+
 present "MTP is on. Use the lower USB-C port.
 
 Shared folders:
 $shared
+$skip_block
 
 $host_line
 
