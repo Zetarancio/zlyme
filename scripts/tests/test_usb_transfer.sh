@@ -13,6 +13,9 @@ fail() {
 	exit 1
 }
 
+# shellcheck disable=SC1091
+. "$ROOT/scripts/tests/usb_group_reaper.sh"
+
 work=$(mktemp -d)
 kill_responders() {
 	for d in /proc/[0-9]*; do
@@ -109,6 +112,9 @@ for a in "$@"; do
 	dest=$a
 done
 if [ -n "${ZLYME_FAKE_UMOUNT_DELAY:-}" ] && [ "$dest" = "${ZLYME_USB_FFS:-}" ]; then
+	if [ -n "${ZLYME_FAKE_UMOUNT_MARK:-}" ]; then
+		printf '%s\n' delay > "$ZLYME_FAKE_UMOUNT_MARK"
+	fi
 	sleep "$ZLYME_FAKE_UMOUNT_DELAY"
 fi
 tmp=$(mktemp)
@@ -448,7 +454,17 @@ if [ -f "$countf" ]; then
 fi
 n=$((n + 1))
 printf '%s\n' "$n" > "$countf"
+if [ "$n" -eq 1 ]; then
+	: > "$log.pages"
+fi
 printf '%s\n' "$*" >> "$log"
+prev=
+for a in "$@"; do
+	if [ "$prev" = "--message" ]; then
+		printf '%s\n---\n' "$a" >> "$log.pages"
+	fi
+	prev=$a
+done
 code=$(sed -n "${n}p" "$codes")
 [ -n "$code" ] || code=0
 exit "$code"
@@ -466,7 +482,7 @@ case "$1" in
 		;;
 	status)
 		printf '%s\n' "state=bound"
-		printf '%s\n' "host=not attached"
+		printf '%s\n' "host=${ZLYME_FAKE_HOST:-not attached}"
 		printf '%s\n' "export=/tmp/example/Roms"
 		exit 0
 		;;
@@ -497,6 +513,38 @@ grep -qx start "$work/transfer.log" || fail "pak did not start"
 grep -qx status "$work/transfer.log" || fail "pak did not read status"
 grep -qx stop "$work/transfer.log" || fail "pak exit did not stop"
 grep -q 'lower USB-C' "$work/presenter.log" || fail "pak did not name the port"
+grep -q 'ext4' "$work/presenter.log.pages" || fail "pak did not mention ext4"
+grep -q 'USB: not attached.' "$work/presenter.log.pages" || fail "pak did not repeat the kernel state"
+grep -q 'Storage: other.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
+grep -q 'MENU+START' "$work/presenter.log.pages" || fail "pak did not say how to stop"
+if grep -q '/tmp/example' "$work/presenter.log.pages"; then
+	fail "pak printed a full export path"
+fi
+if grep -q 'connected' "$work/presenter.log.pages"; then
+	fail "pak called the host connected"
+fi
+check_presenter_pages "$work/presenter.log.pages"
+
+printf '%s\n' 0 0 > "$work/presenter.codes"
+: > "$work/presenter.log"
+: > "$work/transfer.log"
+rm -f "$work/presenter.count"
+ZLYME_USB_TRANSFER="$work/bin/transfer" \
+ZLYME_USB_PRESENTER="$work/bin/presenter" \
+ZLYME_PRESENTER_LOG="$work/presenter.log" \
+ZLYME_PRESENTER_CODES="$work/presenter.codes" \
+ZLYME_PRESENTER_COUNT="$work/presenter.count" \
+ZLYME_TRANSFER_LOG="$work/transfer.log" \
+ZLYME_FAKE_HOST=configured \
+"$PAK"
+grep -q 'USB: host configured.' "$work/presenter.log.pages" || fail "configured state was not shown"
+if grep -q 'not attached' "$work/presenter.log.pages"; then
+	fail "configured screen still says not attached"
+fi
+if grep -q 'connected' "$work/presenter.log.pages"; then
+	fail "configured screen says connected"
+fi
+check_presenter_pages "$work/presenter.log.pages"
 
 # Cancel before start still runs stop, and does not start.
 printf '%s\n' 2 > "$work/presenter.codes"
@@ -840,6 +888,7 @@ export ZLYME_USB_KILL_SLEEP=0.05
 export ZLYME_USB_REAP_SLEEP=0.05
 export ZLYME_USB_REAP_WAIT=0.05
 export ZLYME_FAKE_UMOUNT_DELAY=2
+export ZLYME_FAKE_UMOUNT_MARK="$work/umount-delay.mark"
 export ZLYME_FAKE_UMTP=ready
 exec "$PAK"
 EOF
@@ -863,30 +912,36 @@ pak_pgrp=$(
 	printf '%s\n' "$3"
 )
 [ "$pak_pgrp" != "$our_pgrp" ] || fail "pak shares the test process group"
+prove_group_reaper "cleanup" "$work/run" "$gadget" "$work/mounts" \
+	"$work/ffs" "$pak_pgrp" "$work/umount-delay.mark"
+
+# No unmount delay, so cleanup finishes inside the 1.5s window.
+# A dead reaper with nothing left behind is success.
+reset_tree
+sed 's/ZLYME_FAKE_UMOUNT_DELAY=2/ZLYME_FAKE_UMOUNT_DELAY=0/' \
+	"$work/bin/run-pak" > "$work/bin/run-pak-fast"
+chmod 755 "$work/bin/run-pak-fast"
+rm -f "$work/pak.pid" "$work/presenter.count" "$work/umount-delay.mark"
+setsid "$work/bin/run-pak-fast" >"$work/pak.out" 2>&1 < /dev/null &
 i=0
-while [ "$i" -lt 80 ]; do
-	[ -s "$work/run/reaper.pgid" ] && [ -d "$gadget" ] && break
+while [ "$i" -lt 50 ]; do
+	[ -s "$work/pak.pid" ] && break
 	i=$((i + 1))
 	sleep 0.05
 done
-[ -d "$gadget" ] || fail "group session did not create a gadget: $(cat "$work/pak.out" 2>/dev/null)"
-reaper_pg=$(cat "$work/run/reaper.pgid")
-[ "$reaper_pg" != "$pak_pgrp" ] || fail "reaper stayed in the pak group"
-reaper_pid=$(cat "$work/run/reaper.pid")
-kill -s TERM -- "-$pak_pgrp"
-sleep 1.5
-kill -s KILL -- "-$pak_pgrp" 2>/dev/null || true
-kill -0 "$reaper_pid" 2>/dev/null || fail "cleanup process died with the pak group"
-i=0
-while [ "$i" -lt 40 ]; do
-	kill -0 "$reaper_pid" 2>/dev/null || break
-	i=$((i + 1))
-	sleep 0.1
-done
-kill -0 "$reaper_pid" 2>/dev/null && fail "cleanup process did not finish"
-[ ! -d "$gadget" ] || fail "group kill left the gadget"
-[ "$(count_responder)" = 0 ] || fail "group kill left a responder"
-grep -q configfs "$work/mounts" && fail "group kill left configfs mounted"
+[ -s "$work/pak.pid" ] || fail "fast pak session did not write its pid"
+pak_pid=$(cat "$work/pak.pid")
+pak_pgrp=$(
+	line=$(cat "/proc/$pak_pid/stat")
+	rest=${line#*)}
+	set -f
+	# shellcheck disable=SC2086
+	set -- $rest
+	printf '%s\n' "$3"
+)
+[ "$pak_pgrp" != "$our_pgrp" ] || fail "fast pak shares the test process group"
+prove_group_reaper "early cleanup" "$work/run" "$gadget" "$work/mounts" \
+	"$work/ffs" "$pak_pgrp" "$work/umount-delay.mark"
 
 # ext4 shares run in a user mount namespace so the jail can bind
 # directories without touching the host's mount table.

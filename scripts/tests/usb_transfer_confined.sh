@@ -9,6 +9,9 @@ fail() {
 	exit 1
 }
 
+# shellcheck disable=SC1091,SC1007
+. "$(CDPATH= cd -- "$(dirname "$0")" && pwd)/usb_group_reaper.sh"
+
 WORK=${CONFINE_WORK:?}
 HELPER=${CONFINE_HELPER:?}
 PAK=${CONFINE_PAK:?}
@@ -206,7 +209,9 @@ got=$(tr -d '[:space:]' < "$base/configfs/usb_gadget/other/UDC")
 [ "$got" = fcc00000.usb ] || fail "foreign UDC changed to $got"
 rm -rf "$base/configfs/usb_gadget/other"
 
-# Normal PAK exit stops the jailed session.
+# Normal PAK exit stops the jailed session. The kernel state is
+# "not attached", so the running screen must not say connected.
+printf '%s\n' 'not attached' > "$base/udc/fcc00000.usb/state"
 printf '%s\n' 0 0 > "$WORK/presenter.codes"
 : > "$WORK/presenter.log"
 rm -f "$WORK/presenter.count"
@@ -236,6 +241,15 @@ ZLYME_USB_REAP_SLEEP=0.05 \
 ZLYME_USB_REAP_WAIT=0.05 \
 "$PAK" >"$base/pak.out" 2>&1 || fail "pak exit is nonzero: $(cat "$base/pak.out")"
 grep -q 'ext4' "$WORK/presenter.log" || fail "pak did not mention ext4"
+check_presenter_pages "$WORK/presenter.log.pages"
+grep -q 'USB: not attached.' "$WORK/presenter.log.pages" || fail "pak did not repeat the kernel state"
+grep -q 'Storage: other.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
+if grep -q "$base/" "$WORK/presenter.log.pages"; then
+	fail "pak printed a full export path"
+fi
+if grep -q 'connected' "$WORK/presenter.log.pages"; then
+	fail "pak called the host connected"
+fi
 [ ! -d "$base/configfs/usb_gadget/zlyme-mtp" ] || fail "pak stop left the gadget"
 
 # MENU+START against a jailed responder in another process group.
@@ -274,6 +288,7 @@ export ZLYME_USB_KILL_SLEEP=0.05
 export ZLYME_USB_REAP_SLEEP=0.05
 export ZLYME_USB_REAP_WAIT=0.05
 export ZLYME_FAKE_UMOUNT_DELAY=2
+export ZLYME_FAKE_UMOUNT_MARK="$base/umount-delay.mark"
 exec "$PAK"
 EOF
 chmod 755 "$WORK/bin/run-pak-jail"
@@ -296,25 +311,6 @@ pak_pgrp=$(
 	printf '%s\n' "$3"
 )
 [ "$pak_pgrp" != "$our_pgrp" ] || fail "jailed pak shares this process group"
-i=0
-while [ "$i" -lt 80 ]; do
-	[ -s "$base/run/reaper.pgid" ] && [ -d "$base/configfs/usb_gadget/zlyme-mtp" ] && break
-	i=$((i + 1))
-	sleep 0.05
-done
-[ -d "$base/configfs/usb_gadget/zlyme-mtp" ] || fail "jailed group did not bind: $(cat "$base/group.out" 2>/dev/null)"
-reaper_pg=$(cat "$base/run/reaper.pgid")
-[ "$reaper_pg" != "$pak_pgrp" ] || fail "reaper stayed in the jailed pak group"
-reaper_pid=$(cat "$base/run/reaper.pid")
-kill -s TERM -- "-$pak_pgrp"
-sleep 1.5
-kill -s KILL -- "-$pak_pgrp" 2>/dev/null || true
-kill -0 "$reaper_pid" 2>/dev/null || fail "jailed cleanup died with the pak"
-i=0
-while [ "$i" -lt 40 ]; do
-	kill -0 "$reaper_pid" 2>/dev/null || break
-	i=$((i + 1))
-	sleep 0.1
-done
-kill -0 "$reaper_pid" 2>/dev/null && fail "jailed cleanup did not finish"
-[ ! -d "$base/configfs/usb_gadget/zlyme-mtp" ] || fail "group kill left the jailed gadget"
+prove_group_reaper "jailed cleanup" "$base/run" \
+	"$base/configfs/usb_gadget/zlyme-mtp" "$base/mounts" \
+	"$base/ffs" "$pak_pgrp" "$base/umount-delay.mark"
