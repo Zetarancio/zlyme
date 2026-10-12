@@ -4,6 +4,9 @@
 # The controller name comes from device.conf (ZLYME_USB_GADGET_UDC).
 # Test seams override every host path. Configfs is mounted only while
 # a transfer starts, and only when it is not already mounted.
+# ext4 is shared only when the responder is started in the private
+# mount namespace built by zlyme-usb-enter. ZLYME_USB_JAIL=0 is the
+# host-test seam that keeps the exFAT-only path.
 # This script does not change USB role, VBUS, or regulators.
 
 RUN=${ZLYME_USB_RUN:-/run/zlyme/usb-transfer}
@@ -26,6 +29,8 @@ SPAWN_POLLS=${ZLYME_USB_SPAWN_POLLS:-20}
 SPAWN_SLEEP=${ZLYME_USB_SPAWN_SLEEP:-0.05}
 REAP_SLEEP=${ZLYME_USB_REAP_SLEEP:-0.2}
 REAP_WAIT=${ZLYME_USB_REAP_WAIT:-0.05}
+ENTER=${ZLYME_USB_ENTER:-/usr/sbin/zlyme-usb-enter}
+JAIL=${ZLYME_USB_JAIL:-1}
 CONF=$RUN/umtprd.conf
 PIDFILE=$RUN/responder.pid
 EXPORTS=$RUN/exports
@@ -160,11 +165,14 @@ opt_has() {
 	esac
 }
 
-# Kernel exFAT and VFAT have no POSIX symlink object. uMTP 1.8.1
-# follows links: fs_entry_stat() uses stat64, and entry_open() uses open.
+# Kernel exFAT and VFAT have no POSIX symlink object. ext4 is allowed
+# only while JAIL is 1, because zlyme-usb-enter then confines the
+# responder. uMTP 1.8.1 follows links: fs_entry_stat() uses stat64,
+# and entry_open() uses open.
 fs_allowed() {
 	case "$1" in
 		exfat|vfat) return 0 ;;
+		ext4) [ "$JAIL" = 1 ] ;;
 		*) return 1 ;;
 	esac
 }
@@ -412,12 +420,12 @@ add_library() {
 	_label=$2
 	_lib_mp=$3
 	_roms=$(first_dir "$_lib" roms || true)
-	if [ -n "$_roms" ]; then
-		if dir_exportable "$_roms" "$_lib" "$_lib_mp"; then
-			add_export "$_roms" "$_label ROMs" || return 0
-		else
-			record_skip "$_roms" "$DIR_REASON"
-		fi
+	if [ -z "$_roms" ]; then
+		record_skip "$_lib/Roms" "is missing"
+	elif dir_exportable "$_roms" "$_lib" "$_lib_mp"; then
+		add_export "$_roms" "$_label ROMs" || return 0
+	else
+		record_skip "$_roms" "$DIR_REASON"
 	fi
 	_bios=$(first_dir "$_lib" bios || true)
 	if [ -n "$_bios" ]; then
@@ -441,7 +449,11 @@ build_exports() {
 		return 1
 	fi
 	if ! fs_allowed "$COVER_TYPE"; then
-		say "primary storage filesystem is $COVER_TYPE, not exfat or vfat"
+		if [ "$JAIL" = 1 ]; then
+			say "primary storage filesystem is $COVER_TYPE, not exfat, vfat, or ext4"
+		else
+			say "primary storage filesystem is $COVER_TYPE, not exfat or vfat"
+		fi
 		return 1
 	fi
 	if ! mounted_rw "$COVER_OPTS"; then
@@ -754,7 +766,20 @@ spawn_responder() {
 	: > "$RUN/umtprd.log"
 	# Close the lifecycle lock in the child. Otherwise the responder
 	# inherits fd 9 and the next start/stop/status waits on flock forever.
-	"$UMTPRD" -conf "$CONF" >> "$RUN/umtprd.log" 2>&1 9>&- < /dev/null &
+	# The jail program reads these from the environment. The defaults
+	# above are not exported unless a caller set them.
+	export ZLYME_USB_RUN="$RUN"
+	export ZLYME_USB_FFS="$FFS"
+	export ZLYME_USB_UMTPRD="$UMTPRD"
+	if [ "$JAIL" = 1 ]; then
+		if [ ! -x "$ENTER" ]; then
+			say "usb jail is not installed ($ENTER)"
+			return 1
+		fi
+		"$ENTER" >> "$RUN/umtprd.log" 2>&1 9>&- < /dev/null &
+	else
+		"$UMTPRD" -conf "$CONF" >> "$RUN/umtprd.log" 2>&1 9>&- < /dev/null &
+	fi
 	_pid=$!
 	printf '%s\n' "$_pid" > "$PIDFILE"
 	# exec is not instant. Wait on the clock, not a tight spin, and do not
@@ -1154,6 +1179,11 @@ cmd_start() {
 	trap on_signal INT TERM
 	if [ -z "$UDC_NAME" ]; then
 		say "lower USB-C controller name is unset"
+		trap - INT TERM
+		return 1
+	fi
+	if [ "$JAIL" = 1 ] && [ ! -x "$ENTER" ]; then
+		say "usb jail is not installed ($ENTER)"
 		trap - INT TERM
 		return 1
 	fi

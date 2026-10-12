@@ -60,7 +60,7 @@ fi
 
 intro="USB file transfer uses MTP on the lower USB-C port. That is the charge port. The upper port stays a USB host.
 
-Shared folders are ROM and BIOS directories on exFAT or FAT storage. The main card is exFAT. A second card is included when it is mounted as exFAT or FAT and has those folders. An ext4 card stays mounted and is not shared.
+Shared folders are ROM and BIOS directories on exFAT, FAT, or ext4 storage. The main card is exFAT. A second card is included when it is mounted as exFAT, FAT, or ext4 and has those folders. Another filesystem stays mounted and is not shared.
 
 The computer can add, change, and delete files in the shared folders. The card stays mounted here. This session does not hand the computer the card as a disk.
 
