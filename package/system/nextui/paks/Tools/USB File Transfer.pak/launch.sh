@@ -25,9 +25,7 @@ finish() {
 	cleaned=1
 	if [ -x "$TRANSFER" ]; then
 		err=$("$TRANSFER" stop 2>&1) || {
-			present "USB file transfer did not stop.
-
-$err" "OK" "Back" || true
+			present "$(reason_screen "USB file transfer did not stop." "$err")" "OK" "Back" || true
 			exit 1
 		}
 	fi
@@ -36,6 +34,19 @@ $err" "OK" "Back" || true
 
 trap 'signaled=1; exit 143' INT TERM HUP
 trap 'rc=$?; finish "$rc"' EXIT
+
+# One short reason line. A long helper error would wrap off the
+# six-row panel, and a blank line would consume a row by itself.
+reason_screen() {
+	_title=$1
+	_why=$(printf '%s\n' "$2" | head -n 1)
+	_why=$(printf '%.32s' "$_why")
+	if [ -n "$_why" ]; then
+		printf '%s\n%s' "$_title" "$_why"
+	else
+		printf '%s' "$_title"
+	fi
+}
 
 present() {
 	_msg=$1
@@ -58,13 +69,12 @@ if [ ! -x "$TRANSFER" ]; then
 	exit 1
 fi
 
-intro="USB file transfer uses MTP on the lower USB-C port. That is the charge port. The upper port stays a USB host.
-
-Shared folders are ROM and BIOS directories on exFAT, FAT, or ext4 storage. The main card is exFAT. A second card is included when it is mounted as exFAT, FAT, or ext4 and has those folders. Another filesystem stays mounted and is not shared.
-
-The computer can add, change, and delete files in the shared folders. The card stays mounted here. This session does not hand the computer the card as a disk.
-
-A starts the session. B goes back."
+intro="MTP file transfer, lower USB-C.
+ROM and BIOS directories.
+exFAT, FAT, and ext4.
+The cards stay mounted.
+The computer can change files.
+A starts. B goes back."
 
 present "$intro" "Start" "Back"
 rc=$?
@@ -73,9 +83,7 @@ if [ "$rc" -ne 0 ]; then
 fi
 
 err=$("$TRANSFER" start 2>&1) || {
-	present "USB file transfer did not start.
-
-$err" "OK" "Back"
+	present "$(reason_screen "USB file transfer did not start." "$err")" "OK" "Back"
 	exit 1
 }
 
@@ -111,42 +119,69 @@ EOF
 
 case "$host" in
 	configured)
-		host_line="A computer has configured the USB gadget."
+		host_line="USB: host configured."
 		;;
-	unknown)
-		host_line="Whether a computer has configured the gadget is not visible."
+	unknown | '')
+		host_line="USB: state unknown."
 		;;
 	unbound)
-		host_line="The USB gadget is not bound."
+		host_line="USB: not bound."
 		;;
 	*)
-		host_line="USB state is: $host. That does not by itself mean a computer is connected."
+		# Kernel states such as "not attached" are repeated as written.
+		# "configured" is the only state named as a host above.
+		if [ "${#host}" -gt 24 ]; then
+			host_line="USB: state unknown."
+		else
+			host_line="USB: $host."
+		fi
 		;;
 esac
 
-if [ "$state" != bound ]; then
-	present "USB file transfer did not stay bound.
+storage_bits=
+while IFS= read -r _path; do
+	case "$_path" in
+		/storage | /storage/*) _kind=main ;;
+		/mnt/sd2 | /mnt/sd2/*) _kind=SD ;;
+		'') continue ;;
+		*) _kind=other ;;
+	esac
+	case ", $storage_bits," in
+		*", $_kind,"*) ;;
+		*)
+			if [ -z "$storage_bits" ]; then
+				storage_bits=$_kind
+			else
+				storage_bits="$storage_bits, $_kind"
+			fi
+			;;
+	esac
+done <<EOF
+$shared
+EOF
+if [ -z "$storage_bits" ]; then
+	storage_line="Storage: none."
+else
+	storage_line="Storage: $storage_bits."
+fi
 
-$st" "OK" "Back"
+if [ "$state" != bound ]; then
+	if [ -n "$state" ]; then
+		present "$(reason_screen "USB file transfer did not stay bound." "State: $state.")" "OK" "Back"
+	else
+		present "USB file transfer did not stay bound." "OK" "Back"
+	fi
 	exit 1
 fi
 
+running="MTP is on.
+$host_line
+$storage_line
+B or MENU+START stops."
 if [ -n "$skipped" ]; then
-	skip_block="
-
-Not shared:
-$skipped"
-else
-	skip_block=
+	running="$running
+A library was left out."
 fi
 
-present "MTP is on. Use the lower USB-C port.
-
-Shared folders:
-$shared
-$skip_block
-
-$host_line
-
-B stops the session and returns to the menu. MENU+START does the same." "Stop" "Stop"
+present "$running" "Stop" "Stop"
 exit $?

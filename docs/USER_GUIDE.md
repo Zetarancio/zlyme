@@ -129,7 +129,7 @@ Shared folders, when they exist and can be written:
 
 A card that uses another filesystem stays mounted and is not shared. The tool says so. A read-only card is not shared. Saves, settings, updates, and the rest of the card stay on the Flip. The card stays mounted, including an ext4 card. The computer gets the shared folders through MTP, which is a file protocol on the mounted card. It does not receive the card as a disk. A shortcut inside a shared folder cannot open settings or the boot partition.
 
-The screen says when the gadget is ready, and it repeats the kernel's USB state. It says a computer has configured the gadget only when that state is `configured`. macOS needs a separate MTP program. Windows and many Linux desktops include one. None of this has been tried on a Flip. USB networking is a different feature and this tool does not start it.
+The running screen says MTP is on, repeats the kernel USB state, names which cards are shared, and says how to stop. It says the host configured the gadget only when that state is `configured`. It does not call the host connected while the kernel state is `not attached`. macOS needs a separate MTP program. Windows and many Linux desktops include one. None of this has been tried on a Flip. USB networking is a different feature and this tool does not start it.
 
 
 
