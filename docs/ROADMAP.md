@@ -2156,11 +2156,11 @@ Remaining: A later candidate has to enumerate before any file check. Repeating t
 
 Scope: Move the my355 kernel from Linux 7.0.2 to Linux 7.2.10 and rebuild the product image. The record is `docs/research/linux-7.2.10-migration.md`. The earlier read-only review is `docs/research/linux-7.2.10-preflight.md`.
 
-Implementation status: Image-built. Not installed. Not hardware-accepted.
+Implementation status: Image-built on 2026-10-13. The host record first said the image was not installed. Later that day the dirty OTA was installed and booted. `uname -r` was 7.2.10. A maintainer smoke check reported ordinary operation. That is not hardware acceptance. MTP enumeration failed. Phase 12D stays open.
 
 The host build used `./build.sh --config zlyme_my355_defconfig`. The kernel release is 7.2.10. Mali, DMC, the gamepad, RTL8733BU, and the radio-power module were built against that release. The board DTS was not edited. USB userspace, DWC3, and the USB2 PHY were not patched. `zlyme.img` stayed 1409306624 bytes, so the boot partition geometry was not changed.
 
-Closure: Hardware validation of this image is a later task. It does not close 12D by itself. Enumeration is still required before any MTP file check.
+Closure: Booting this image does not close 12D. Enumeration is still required before any MTP file check. The 2026-10-13 sessions and the idle DWC3 and USB2PHY GRF reads are in `docs/research/usb-mtp-phase12d.md`.
 
 ### Phase 12 gate
 

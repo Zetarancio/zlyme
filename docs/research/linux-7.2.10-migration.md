@@ -2,6 +2,8 @@
 
 Host build on 2026-10-13. The my355 kernel pin moved from Linux 7.0.2 to Linux 7.2.10. The product image was built. It was not installed. It has not been booted on a Flip. Phase 12D stays open.
 
+That paragraph is the host-build record. Later on 2026-10-13 the dirty OTA from this build was installed and booted. The boot and the USB register session are in "Boot on 2026-10-13" below and in `usb-mtp-phase12d.md`. Phase 12D stays open. MTP did not enumerate.
+
 This is not an MTP fix. USB userspace, the gadget configuration, DWC3, and the Rockchip USB2 PHY were not modified. The preflight is `linux-7.2.10-preflight.md`. The enumeration record is `usb-mtp-phase12d.md`. A later source audit is `driver-source-audit-phase12d.md`. It corrects the `wdev_to_ndev()` sentence below and reviews the dirty image name.
 
 ## Release and hash
@@ -115,4 +117,10 @@ The OTA from this build is `output/images/zlyme-my355-20261013-0a96c787607b-dirt
 
 ## Hardware still open
 
-Not accepted, and not exercised on this image: boot to NextUI, panel, audio, both SD slots, gamepad, Wi-Fi, Bluetooth, Mali, DMC, charging, deep suspend and wake, the upper USB host, and lower-port MTP enumeration. File transfer stays blocked until enumeration works.
+Not accepted on this image: a full pass of the panel, audio, both SD slots, gamepad, Wi-Fi, Bluetooth, Mali, DMC, deep suspend and wake, and the upper USB host. The maintainer's quick check after boot is not that pass. Lower-port MTP enumeration failed. File transfer stays blocked until enumeration works.
+
+## Boot on 2026-10-13
+
+The OTA named in the build section was installed and booted. On the Flip, `uname -a` was `Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 08:43:04 UTC 2026 aarch64`. `/etc/os-release` was `zlyme44.2 (2026-10-13)`. SSH stayed on `wlan0`. The maintainer reported that ordinary use looked fine. That report is not acceptance of the subsystems listed above.
+
+USB File Transfer was exercised the same day. Cable-first and tool-first sessions both left the UDC `not attached` at speed `UNKNOWN`, and the Linux host Demetria logged no USB device. A later idle register read, with the gadget stopped, found DWC3 programmed as a device with `DCTL.RUN_STOP` clear, and found `utmi_bvalid` set in `usb2phy0_grf` while the lower PHY extcon was all zero. RK817 was online and charging. The readings and the separation of observation from inference are in `usb-mtp-phase12d.md`.

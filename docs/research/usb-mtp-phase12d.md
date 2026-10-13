@@ -129,6 +129,8 @@ FunctionFS was mounted and the gadget was bound in both tests. That is userspace
 
 ## 8. Isolated diagnostics, not authorized here
 
+Status 2026-10-13: the list below was written before the image was booted. Sections 11 and 12 are the later hardware record. They do not authorize the three image changes in this list.
+
 No new hardware test was run for this document. A later test should change one variable:
 
 1. A kernel-only image, same DTS and same userspace, if the 7.2.10 migration is built. Expectation: the pull-up bug above is still present. The run is a baseline, not an MTP fix.
@@ -144,3 +146,66 @@ Phase 12D is open. Enumeration is not hardware-accepted. File transfer is not ha
 ## 10. Logs
 
 Not re-read. The directories named at the top of this file were absent on 2026-10-13.
+
+The 2026-10-13 Flip sessions were copied to `/tmp/zlyme-usb-12d-20261013/` on the development host. That tree is not in the repository. The numbers in sections 11 and 12 were taken from those files.
+
+## 11. Linux 7.2.10 sessions, 2026-10-13
+
+The installed kernel was `7.2.10 #1 SMP PREEMPT Tue Oct 13 08:43:04 UTC 2026`. `os-release` was `zlyme44.2 (2026-10-13)`. Git HEAD of the source tree was `8eae061a3941c84bf2e11929809146522de6765d`. The running image is the dirty OTA from the migration build, not a rebuild of that commit. SSH was Wi-Fi from Demetria (`192.168.0.49`) to the Flip (`192.168.0.108`). Demetria's kernel log was `journalctl -k`. Its `dmesg` was not permitted for the user account.
+
+`fcc00000.usb` is the lower port, driver `dwc3`, device-tree `dr_mode` `otg`, PHY `phy-fe8a0000.usb2phy.3`. Extcon `fe8a0000.usb2phy` is that PHY. `fe8b0000.usb2phy` stayed all zero. No gadget was bound at the idle readings. Debugfs was not mounted until the register pass in section 12.
+
+### Cable already attached
+
+The lower PHY reported `USB=1` and `SDP=1`. RK817 was `online=1`, active type `DCP`, and the battery was `Discharging`. The PAK bound `zlyme-mtp` to `fcc00000.usb`. FunctionFS was ready and `umtprd` was running. The screen said MTP is on and `USB: not attached`. That second line is `/sys/class/udc/fcc00000.usb/state`.
+
+This start did not log `failed to enable ep0out`. The watcher latched `connect` and did not create `link.writes`. With debugfs absent it treats a missing EP0 error as unknown, and the unknown-plus-SDP path records `connect` without writing `soft_connect`. The UDC stayed `not attached`, speed `UNKNOWN`. Demetria logged no USB event. `lsusb` did not change.
+
+B removed the gadget, FunctionFS, `umtprd`, and the watcher. `nextui.elf` stayed up. A dead `reaper.pid` file was left behind. An earlier session on the same boot, before these monitors, did log one `failed to enable ep0out` plus a SETUP timeout. Another earlier session logged descriptors and no EP0 enable error. Both of those also ended without a Demetria USB log line. The cable's host during those two earlier sessions was not identified separately.
+
+### Tool first, then the cable
+
+With the cable out, both PHY extcons were zero and RK817 `online` was 0. Starting the PAK logged `failed to enable ep0out` at uptime 2038.626s. The watcher wrote one word, `disconnect`, and latched `disconnect`. There was no SETUP timeout after that line. The UDC stayed `not attached`.
+
+After the cable was plugged back into the lower port, RK817 `online` became 1, the active type stayed `DCP`, and the battery became `Charging`. From 13:02:18Z through 13:05:42Z both PHY extcons stayed all zero. The watcher did not write `connect`. No second EP0 enable error appeared. Demetria still logged nothing.
+
+B cleanup matched the first session: gadget and FunctionFS gone, responder and watcher gone, NextUI up, dead `reaper.pid` left behind. After that stop, with the cable still in, the lower PHY was still all zero and RK817 was still online. The same boot also logged `udc fcc00000.usb: UDC had already stopped` beside the last dequeue. In Linux 7.2.10 that line is `usb_gadget_udc_stop_locked()` seeing `udc->started` already clear. It is a second stop, not an EP0 enable failure.
+
+Runtime PM of `fcc00000.usb` stayed `active`, `control=on`, `runtime_suspended_time=0` across these sessions. That does not record the `pm_runtime_get_sync()` return inside `dwc3_gadget_pullup()`.
+
+## 12. Idle DWC3 and USB2PHY GRF, 2026-10-13 13:23Z
+
+The PAK was stopped. The cable was still in. RK817 was `online=1`, active type `DCP`, battery `Charging` at capacity 99. Lower extcon was all zero. UDC state was `not attached`, speed `UNKNOWN`, no function. `fcc00000.usb` runtime PM was still `active` with suspended time 0. The PHY device's runtime PM was `unsupported`.
+
+`CONFIG_DEBUG_FS=y` in the built 7.2.10 config. Debugfs was mounted read-only at `/tmp/zlyme-dbgfs-12d` for this read and then unmounted. No other debugfs mount existed. `mode`, `link_state`, and `testmode` were not written. No GRF write, `devmem`, or `soft_connect` write was made.
+
+The live device tree phandle in `usb2phy@fe8a0000/rockchip,usbgrf` matched `syscon@fdca0000` (`0xb1`). `syscon@fdca8000` was `0xb2` and was not read. The regmap directory was `dummy-syscon@0x00000000fdca0000`. Offsets below are in that map, which is the `grf` pointer used by `rk3568_phy_cfgs` for `0xfe8a0000`. `property_enabled()` is true when the field is not equal to the config's disable value.
+
+| Register | Raw | Reading |
+| --- | --- | --- |
+| `GCTL` | `0x30c12004` | Bits 13:12 are 2, `DWC3_GCTL_PRTCAP_DEVICE`. The `mode` file read `device`. The device tree `dr_mode` is still `otg`. |
+| `GSTS` | `0x7e800000` | Bits 1:0 are 0, `DWC3_GSTS_CURMOD_DEVICE`. Defined status bits 10:4 were clear. |
+| `DCTL` | `0x00f00000` | Bit 31 `RUN_STOP` is 0. Bits 23:20 are the NYET threshold, value `0xf`. The gadget was stopped, so a clear Run/Stop bit is the stopped state. |
+| `DSTS` | `0x00d20001` | `DEVCTRLHLT` and `COREIDLE` set. Link field bits 21:18 equal 4, `DWC3_LINK_STATE_SS_DIS`. The `link_state` file read `Disconnected`. Bits 2:0 equal 1, the full-speed encoding, while the link field is disconnected. |
+| `GUSB2PHYCFG(0)` | `0x40101508` | `PHYSOFTRST` clear, `SUSPHY` clear, `U2_FREECLK_EXISTS` set. Ports 1–15 read 0. |
+| `DALEPENA` | `0x00000000` | No endpoint enable bits. |
+| `GEVNTCOUNT(0)` | `0x00000000` | One read. It is not an event history. |
+| EP0 `transfer_type` | `--` | `dwc3_transfer_type_show()` prints `--` when `DWC3_EP_ENABLED` is clear or the endpoint has no descriptor. |
+
+`regdump` is a sequence of reads, not one atomic sample. Runtime PM was `active` before and after the `mode` and `link_state` reads. Those reads call `pm_runtime_resume_and_get()` and `pm_runtime_put_sync()`. Suspended time stayed 0.
+
+Lower PHY GRF `0x00c0` read `0x00384e73`. Bit 9, `utmi_bvalid`, was 1. Bit 10, `utmi_avalid`, was 1. Bit 6, `utmi_id`, was 1. The id config's disable value is 0, so `property_enabled()` on that bit is true, and the id path publishes USB-HOST as the inverse. Charger-detect bits 25, 24, and 23 (`dp_det`, `cp_det`, `dcp_det`) were 0. The driver turns those sources off after detection, so zeros outside that sequence do not name a charger type.
+
+`0x0080` read `0x0000003e`. Bits 3:2 are 3, the enable value of `bvalid_det_en`. `0x0084` read `0x000003c1`. Bits 3:2 are 0, so `bvalid_det_st` was not pending. `0x0000` read `0x00000c00`. Bits 8:0 are 0. `power_on()` writes 0 to that field and `power_off()` writes `0x1d1`. This word matches the power-on encoding. It does not record which call ran last. `clk_usbphy0_ref` was enabled at 24 MHz. The host-port word at `0x0004` was `0x000001d2`, which is both the enable and disable value for that port, so it does not say whether the host port is suspended.
+
+`/proc/interrupts` line 20 is GICv3 167, `rockchip_usb2phy`. Device tree `usb2phy0` uses SPI 135, which is hwirq 167. Its count was 8 at 13:17Z and still 8 at 13:23Z. Line 21 is hwirq 168, `usb2phy1`, count 1. No `dwc3` interrupt was listed while the gadget was stopped.
+
+### What this sample supports
+
+`utmi_bvalid` was 1 and the lower extcon was all zero, with bvalid-detect enabled and its status bit clear. The PHY's VBUS-valid bit was set. The extcon notification was not. `rockchip_usb2phy_otg_sm_work()` reads `utmi_bvalid` for `vbus_attach`. It sets `EXTCON_USB` only for SDP, and only together with the SDP cable. CDP sets the CDP cable and moves to peripheral. DCP sets the DCP cable and calls `power_off()`. A falling `vbus_attach` clears charger state and, when `vbus_attached` changes, updates extcon. After that, `B_IDLE` does not keep the work queued. The next entry is the bvalid IRQ, which runs the state machine only when `bvalid_det_st` is set and then clears that status. A high `utmi_bvalid` with a clear status bit and an idle workqueue is the missed-edge case: the level can stay 1 without another notification. That is a reading of this driver against this sample. It is not a trace of the workqueue.
+
+`DCTL.RUN_STOP` clear, `DEVCTRLHLT` set, and `DALEPENA` clear describe a stopped gadget. They do not show that a later start fails. No MTP session was started in this register pass, because extcon was zero and the watcher would write `disconnect` on that state. There is still no sample of Run/Stop during a cable-first bind on 7.2.10.
+
+The host still had no connect in the earlier 7.2.10 sessions, including the one where extcon already said SDP. This idle sample does not explain that session. It explains the silent replug: VBUS is visible to the PHY bit and to RK817, and the PHY extcon is not updated.
+
+Phase 12D remains open. Enumeration is not accepted. The maintainer smoke check is not acceptance of the rest of the image.
