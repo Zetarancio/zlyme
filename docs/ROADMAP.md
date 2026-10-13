@@ -2164,7 +2164,7 @@ Closure: Booting this image does not close 12D. Enumeration is still required be
 
 #### Current status, 2026-10-13
 
-Phase 12D stays open. MTP has not enumerated, and no file check has started. The experiment ledger is [the Phase 12D USB record](research/usb-mtp-phase12d.md). The speed cap is already present on the running controller. `0007` remains the off-current fix and was not removed. A cable-first session reached DWC3 `RUN_STOP` with endpoint 0 enabled and still produced no host device. That is not acceptance.
+Phase 12D stays open. MTP has not enumerated, and no file check has started. The experiment ledger is [the Phase 12D USB record](research/usb-mtp-phase12d.md). The speed cap is already present on the running controller. `0007` remains the off-current fix and was not removed. A cable-first session reached DWC3 `RUN_STOP` with endpoint 0 enabled and still produced no host device. Later on 2026-10-13, 12D-E18 booted `snps,dis_enblslpm_quirk` and read `GUSB2PHYCFG(0)` bit 8 clear. The lower PHY did not report SDP or CDP, so MTP was not started. That is not an LPM result and it is not acceptance.
 
 ### Phase 12 gate
 

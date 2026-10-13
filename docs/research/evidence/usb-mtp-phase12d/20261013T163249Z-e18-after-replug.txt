@@ -1,0 +1,25 @@
+DATE 2026-10-13T16:32:49Z
+UPTIME 570
+NAME fe8a0000.usb2phy
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+UPPER fe8b0000.usb2phy
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+type=USB
+usb_type=Unknown [DCP]
+bat=Charging
+state=not attached
+helper=state=off
+---irq---
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy

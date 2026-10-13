@@ -27,6 +27,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E15 | 2026-10-13 | contradicted | [speed cap](#12d-e15-speed-cap) |
 | 12D-E16 | 2026-10-13 | no demonstrated mechanism | [RK817 SYS_CAN_SD](#12d-e16-rk817-sys_can_sd) |
 | 12D-E17 | 2026-10-13 15:01:56Z | gadget start succeeded, enumeration did not | [active DWC3 sample](#12d-e17-active-dwc3-sample) |
+| 12D-E18 | 2026-10-13 16:27Z–16:36Z | property applied, enumeration untested | [USB2 LPM property](#12d-e18-usb2-lpm-property) |
 
 ## Experiment ledger
 
@@ -269,6 +270,20 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 - Code: left untouched. No build and no install.
 
 The first start in that hour is not this sample. Its SSH shell exited, the reaper removed the gadget, and no register line from inside that window was kept.
+
+### 12D-E18 USB2 LPM property
+
+- When: 2026-10-13 16:27:44Z through 16:36:43Z. Demetria monitors ran from 16:30:27Z through 16:38:03Z and covered both replugs.
+- Source: clean OTA `zlyme-my355-20261013-4bd0b1ecec72.tar`, SHA-256 `22655eba69186e0241c775d6c8edc5eec8fddb797fd3b4ae002b9d30d0861637`. DTS commit `4bd0b1ecec728aa1e58f091c0aa3f266f80b9c27`. Notes tree `f0c63b8c1bf55ef641dff9b483334c2d5adfb911`. Kernel `Linux zlyme 7.2.10 #2 SMP PREEMPT Tue Oct 13 16:08:35 UTC 2026`. `os-release` still says `zlyme44.2 (2026-10-13)`. `HW_DEVICE` is `miyoo-flip`.
+- Setup: lower USB-C, cable already attached, USB File Transfer stopped, NextUI running. Host monitors started before the cable moved. The maintainer unplugged and replugged that cable twice. No `soft_connect` write, no GRF write, no PMIC write, no second quirk.
+- Hypothesis: clearing `GUSB2PHYCFG.ENBLSLPM` lets Demetria enumerate the gadget when the lower PHY already reports SDP or CDP.
+- Action: confirm the booted DTB and the stopped regdump. Start MTP only if SDP or CDP is present. It was not, so the PAK stayed stopped.
+- Observed: `usb@fcc00000` has `snps,dis_enblslpm_quirk`, `maximum-speed = "high-speed"`, and `dr_mode = "otg"`. Mode is device. UDC `fcc00000.usb` exists and reads `not attached`. Stopped `GUSB2PHYCFG(0) = 0x40101408`. Bit 8 is 0. XOR against 12D-E17's `0x40101508` is `0x100`. Before the replug the lower PHY reported DCP and GRF `0x0000` was `0x00000dd1`. After both replugs every lower extcon cable was 0, `utmi_bvalid` stayed 1, `0x0000` was `0x00000c00`, IRQ 20 had moved from 0 to 6 and then stayed, and `bvalid_det_st` was clear. RK817 stayed online with `usb_type` DCP. The host journal, udev monitor, and `lsusb` poll have no `1d6b:0100`.
+- Result: the property reached the register. Enumeration was not tested. The LPM hypothesis is neither supported nor contradicted.
+- Excludes: a missing property, or bit 8 still set, as the description of this boot.
+- Unknown: `DCTL` and `DSTS` while this property is active, and any host result from a session that already has SDP or CDP.
+- Evidence: section 20.
+- Code: the section 19 DTS line stayed. No second property and no new build.
 
 
 ## 1. Hardware topology
@@ -557,28 +572,28 @@ Status 2026-10-13: section 12's sentence that there was still no Run/Stop sample
 | Repeated soft-connect trigger | Writes in 12D-E06 were accepted | The same disconnect-then-connect sequence did not enumerate | Contradicted as a sufficient fix | A trigger that is not the current watcher |
 | RK817 `SYS_CAN_SD` interferes with the gadget | `0007` clears the bit; stock runtime is also clear | No call path into PHY, DWC3, or the gadget. The Flip stayed up and kept SDP in 12D-E17 | No demonstrated mechanism. Patch retained. Not an A/B removal | A measured coupling, or a test that actually removes `0007` |
 | Gadget start / EP0 fails in every session | 12D-E01 and 12D-E05 logged `failed to enable ep0out` | 12D-E17 had `RUN_STOP` set and both EP0 directions enabled | Contradicted as a universal explanation | A new SDP session fails before `RUN_STOP` |
-| USB2 PHY power-down | A powered-off PHY would not detect VBUS | `0x0000` matched the power-on encoding and the refclk was on. 12D-E13 | Contradicted for that idle sample | A sample shows the power-off encoding with the cable attached |
+| USB2 PHY power-down | A powered-off PHY would not detect VBUS | 12D-E13 matched the power-on encoding. 12D-E18's zero-extcon sample also read `0x00000c00`. The DCP latch earlier in that session was `0x00000dd1`, the DCP `power_off` path | Contradicted for the zero-extcon samples | A zero-extcon sample whose power word stays at the off encoding |
 | Runtime-PM pull-up skip | `dwc3_gadget_pullup` skips the start when `pm_runtime_get_sync` returns 0 | Probe forbids autosuspend. Measured returns were 1 and suspended time stayed 0. 12D-E07, 12D-E11 | Contradicted for the measured sessions | A session whose get-sync return is 0 or negative during pull-up |
-| Awake BVALID / extcon loss after reconnect | Tool-first replug left extcon at zero while `utmi_bvalid` was later read as 1. IRQ count did not move and the status bit was clear. 12D-E10, 12D-E13 | Cable-first sessions already had SDP and still did not enumerate. 12D-E09, 12D-E17 | Open for the replug path. Distinct from the cable-first SDP failure | A trace of the state machine, or a replug that publishes SDP and then enumerates |
-| DWC3 USB2 LPM and clock programming | Stock sets `snps,dis_enblslpm_quirk`. Live `GUSB2PHYCFG(0)` bit 8 is 1. 12D-E17 sat in Suspend with no host | Not tested | Untested | The experiment in section 18 runs |
+| Awake BVALID / extcon loss after reconnect | 12D-E10 and 12D-E13 left extcon at zero with `utmi_bvalid` 1 and a clear status bit. 12D-E18 did the same after two replugs, and IRQ 20 moved from 0 to 6 before the count stuck | Cable-first sessions already had SDP and still did not enumerate. 12D-E09, 12D-E17 | Open for the replug path. Distinct from the cable-first SDP failure | A replug that publishes SDP or CDP, then a separate MTP start |
+| DWC3 USB2 LPM (`snps,dis_enblslpm_quirk`) | Stock sets the property. 12D-E17 had bit 8 set and sat in Suspend with no host | 12D-E18 booted the property. Stopped `GUSB2PHYCFG(0)` was `0x40101408` | Property applied. Enumeration untested, because SDP and CDP did not appear | An SDP or CDP session on this image |
 | Rockchip BSP wrapper and clock differences | Stock has `pipe_clk` and the `dwc3` wrapper. Zlyme does not | The core programs registers and reached `RUN_STOP`. 12D-E14, 12D-E17 | Recorded difference. Not shown to be the cause | A clock or reset the core cannot program without that wrapper |
 
 ## 18. Next-experiment queue
 
 Phase 12D stays open. Enumeration is not accepted. Do not repeat the speed-cap edit, an RK817 bit toggle, or the current soft-connect watcher unchanged.
 
-1. `snps,dis_enblslpm_quirk` on `&usb_host0_xhci` only. Priority: first. The DTS line is in section 19. Hardware has not run it.
-   - Preconditions: the property is absent on `fcc00000`, live `GUSB2PHYCFG(0)` bit 8 is set, and 7.2.10 `dwc3_phy_setup()` clears that bit when the property is set. No other quirk, role, speed, PHY, or RK817 change in the same build.
-   - Observable: `GUSB2PHYCFG(0)` bit 8 becomes 0. The prediction from `0x40101508` is `0x40101408`. That prediction is not evidence until a new kernel is measured. `GUCTL1`, the speed cap, and the device role stay as they are.
+1. `snps,dis_enblslpm_quirk` on `&usb_host0_xhci` only. 12D-E18 measured the register change. Enumeration was not scored. The DTS line stays as built. Do not add a second quirk from that session.
+   - Preconditions: the pre-boot gate. The property was absent on `fcc00000`, live `GUSB2PHYCFG(0)` bit 8 was set, and 7.2.10 `dwc3_phy_setup()` clears that bit when the property is set. No other quirk, role, speed, PHY, or RK817 change was in that build. The booted tree now has the property.
+   - Observable: `GUSB2PHYCFG(0)` bit 8 becomes 0. The prediction from `0x40101508` is `0x40101408`. 12D-E18 measured that value. `GUCTL1`, the speed cap, and the device role stayed as they were. The success line still requires SDP or CDP.
    - Success: with SDP or CDP already reported, the host enumerates and one small file round trip matches. Failure: bit 8 is clear and the host still sees no device. If extcon is not SDP or CDP, that is the replug problem below, not a result about this bit.
    - Safety: one DTS property on the lower controller. The upper port is the EHCI/OHCI host on `usb2phy1`, not this node. Rollback is deleting the property and rebuilding that configuration. Do not add another quirk in the same test.
-2. Extcon resynchronization after a reconnect, while the system is already awake. Priority: after item 1, and not combined with it. Not attempted as its own experiment. 12D-E13 is the idle reading. The vendor resume-only rescan is not this repair.
-   - Preconditions: item 1 has a result, or a session where SDP never returns.
+2. Extcon resynchronization after a reconnect, while the system is already awake. Priority: next. Not combined with item 1. Not attempted as its own code change. 12D-E13 is the earlier idle reading, and 12D-E18 is a replug on the LPM image that ended in the same extcon gap. The vendor resume-only rescan is not this repair.
+   - Preconditions: met by 12D-E18. SDP did not return. `utmi_bvalid` stayed 1, extcon stayed all zero, and the bvalid status bit ended clear.
    - Single variable: one change that reruns charger detection when `utmi_bvalid` is already 1 and extcon is zero. Not a PHY power-policy rewrite.
    - Observable: extcon moves from all zero to SDP or CDP without a suspend/resume, and IRQ or state-machine evidence shows why.
    - Success: a following, separate MTP start enumerates. Failure: extcon stays zero, or extcon updates and the host still sees nothing.
    - Safety: do not write GRF from userspace as the experiment. Do not touch `0007`.
-3. `snps,dis-u2-freeclk-exists-quirk`. Priority: only if item 1 clears bit 8 and enumeration still fails. Not attempted. Stock sets it. Live bit 30 is 1. It is a different variable and does not belong in the item 1 build.
+3. `snps,dis-u2-freeclk-exists-quirk`. Priority: only after an SDP or CDP session on the 12D-E18 image still fails to enumerate. Not attempted. 12D-E18 cleared bit 8 and did not reach that session. Stock sets the property. Stopped bit 30 was still 1. It is a different variable.
 
 Hardware test after item 1 is installed, and only then:
 
@@ -595,9 +610,11 @@ Hardware test after item 1 is installed, and only then:
 
 If extcon does not report SDP or CDP, record a PHY resynchronization failure and do not attribute it to the LPM property. If bit 8 clears and the host still sees nothing, record item 1 as unsuccessful and do not add another quirk in that test.
 
-## 19. ENBLSLPM source change, hardware not run
+Status 2026-10-13 16:36Z: 12D-E18 completed steps 1 through 3. Step 4 stopped the test. Steps 5 through 10 did not run. The record is section 20.
 
-12D-E18 is reserved for the hardware result. It is not assigned yet, because the device has not booted this DTB.
+## 19. ENBLSLPM source change
+
+12D-E18, in the ledger and in section 20, is the hardware session for this DTB. The rest of this section is the pre-boot static check and the build.
 
 Static check on 2026-10-13, tree `9a972906bec72f52189bb1a1d4445652f86e4279`, before this DTS edit:
 
@@ -623,4 +640,84 @@ Build on 2026-10-13, from commit `4bd0b1ecec728aa1e58f091c0aa3f266f80b9c27`, tre
 
 `VERSION` in the tar is `4bd0b1ecec72` and `20261013`. The kernel string in `Image` is `Linux version 7.2.10 #2 SMP PREEMPT Tue Oct 13 16:08:35 UTC 2026`. That is a relink from `linux-rebuild`, not a second USB source change. The image build also refreshed `rk3568-dmc` because its stored source fingerprint did not match the tree. That package was not edited.
 
-Hardware has not installed this OTA. Enumeration is not claimed. Phase 12D stays open.
+The previous record, written before install, was that this OTA had not been booted and that enumeration was not claimed.
+
+Status 2026-10-13 16:36Z: the Flip booted this OTA. Stopped `GUSB2PHYCFG(0)` read `0x40101408`. SDP and CDP did not appear, so MTP was not started. Enumeration is not claimed. Phase 12D stays open.
+
+## 20. USB2 LPM session, 2026-10-13 16:27 UTC
+
+12D-E18. The installed artifact is `output/images/zlyme-my355-20261013-4bd0b1ecec72.tar`. Its SHA-256 is `22655eba69186e0241c775d6c8edc5eec8fddb797fd3b4ae002b9d30d0861637`, checked again on Demetria before this note. The booted kernel is `Linux zlyme 7.2.10 #2 SMP PREEMPT Tue Oct 13 16:08:35 UTC 2026 aarch64`. Product text in `os-release` is still `zlyme44.2 (2026-10-13)`. That string does not identify the kernel.
+
+The Flip clock is UTC. Demetria is UTC+2. Host `journalctl --since` values below are local. SSH to the Flip answered.
+
+### Preconditions
+
+At 16:35:57Z `/proc/device-tree/usb@fcc00000` had `compatible` `rockchip,rk3568-dwc3 snps,dwc3`, `dr_mode` `otg`, `maximum-speed` `high-speed`, and both `snps,dis_enblslpm_quirk` and `snps,dis_u2_susphy_quirk` present as empty properties. `/sys/class/udc/fcc00000.usb` existed. `zlyme-usb-transfer status` was `state=off`. NextUI's pid stayed 502. Debugfs was not left mounted. No `dwc3` or `fcc00000` line appeared in that boot's dmesg. The phy-supply lines around 0.9s and 1.2s are probe lookups.
+
+The cable was already in the lower port. USB File Transfer stayed stopped for the whole session. Demetria's kernel follow, `udevadm monitor --kernel --subsystem-match=usb`, and a two-second `lsusb` poll started at 16:30:27Z, before either replug, and ran until 16:38:03Z.
+
+### Idle registers, gadget stopped
+
+16:27:44Z. Private debugfs, read-only, unmounted in the same command. That file has no uptime line. The following extcon sample, 16:29:58Z, is uptime 399. Full dump `20261013T162744Z-e18-fcc00000-regdump.txt` is 8201 bytes.
+
+| Register | Value | Reading |
+| --- | --- | --- |
+| `GSNPSID` | `0x5533300a` | DWC3 3.00a, same as 12D-E15 |
+| `GHWPARAMS3` | `0x08290085` | Same as 12D-E15 |
+| `GUCTL1` | `0x8504018a` | Bit 26 remains 1 |
+| `GUSB2PHYCFG(0)` | `0x40101408` | Bit 8 is 0. Bit 6, `SUSPHY`, is 0. Bit 30, `U2_FREECLK_EXISTS`, is 1 |
+| `GCTL` | `0x30c12004` | Device role |
+| `GSTS` | `0x7e800000` | Device role |
+| `DCFG` | `0x00080804` | Bits 2:0 are 4, the SuperSpeed encoding, while the gadget has not started |
+| `DCTL` | `0x00f00000` | `RUN_STOP` is 0 |
+| `DSTS` | `0x00d29f64` | Halted, core idle, link field 4 (`SS_DIS`) |
+| `DALEPENA` | `0x00000000` | EP0 disabled |
+| `GEVNTCOUNT(0)` | `0x00000000` | No pending event |
+
+`DCFG` on the stopped 12D-E15 dump was `0x008e0800`, high-speed. That boot had already run gadget sessions. This boot had not. `dwc3_gadget_set_speed()` writes `DWC3_DCFG_HIGHSPEED` when the gadget starts. The live `maximum-speed` property is still `high-speed`. The halted SuperSpeed encoding is not a measurement of the speed cap.
+
+Lower PHY GRF at the same sample, `dummy-syscon@0x00000000fdca0000`:
+
+| Offset | Value | Reading |
+| --- | --- | --- |
+| `0x0000` | `0x00000dd1` | Bits 8:0 are `0x1d1`, the `power_off` encoding |
+| `0x0080` | `0x0000003e` | `bvalid_det_en` set |
+| `0x0084` | `0x000003c1` | `bvalid_det_st` clear |
+| `0x00c0` | `0x003846c0` | `utmi_bvalid` 1, `utmi_avalid` 1, `utmi_id` 1. Charger-detect bits 25:23 are 0 |
+
+Lower extcon at 16:29:58Z, still before the replug: USB 0, USB-HOST 0, SDP 0, CDP 0, DCP 1. RK817 `online` 1, `usb_type` `Unknown [DCP]`, battery charging. IRQ 20 count 0 since boot. UDC `not attached`. Upper extcon was not read in that sample. The DCP cable plus `0x1d1` matches the PHY path that publishes DCP and calls `power_off()`. That is a finished DCP classification, not an all-zero missed edge.
+
+### Replug
+
+The maintainer unplugged and replugged the lower-port cable twice while the host monitors were running and the PAK stayed stopped.
+
+At 16:32:49Z, uptime 570s, both PHYs reported every cable 0. RK817 stayed `online` 1, type USB, `usb_type` `Unknown [DCP]`, battery `Charging`. UDC `not attached`. Helper `state=off`. IRQ 20 was 6. IRQ 21 stayed 1.
+
+At 16:33:43Z the GRF read:
+
+| Offset | Value | Reading |
+| --- | --- | --- |
+| `0x0000` | `0x00000c00` | Bits 8:0 are 0, the `power_on` encoding |
+| `0x0080` | `0x0000003e` | `bvalid_det_en` still set |
+| `0x0084` | `0x000003c1` | `bvalid_det_st` still clear |
+| `0x00c0` | `0x00384e73` | `utmi_bvalid` 1, `utmi_avalid` 1, `utmi_id` 1. Same word as the 12D-E13 idle sample |
+
+Extcon was still all zero. IRQ 20 was still 6. Debugfs was unmounted at the end of that command.
+
+At 16:36:06Z extcon was still all zero, IRQ 20 still 6, helper still `state=off`, UDC still `not attached`, NextUI still pid 502. Battery status read `Discharging`. At 16:36:43Z capacity was 100, charger `online` was still 1, and `usb_type` was still DCP. The earlier 16:32Z sample at the same online bit had read `Charging`. A full battery reading `Discharging` while the charger stays online is not a lost RK817 plug report.
+
+### Host
+
+From 16:30:28Z through 16:37:58Z every poll line is `no-gadget-id`. The kernel follow from 16:30:27Z to 16:38:03Z printed nothing. A one-shot `journalctl -k --since "2026-10-13 18:29:00"` at 16:34:11Z reported no entries. `udevadm monitor` printed its banner and no event. The 16:31:23Z `lsusb` tree contains Demetria's hubs, AX210, Xbox pad, fingerprint reader, keyboard, mouse, and card readers. Root hubs are `1d6b:0002` and `1d6b:0003`. `1d6b:0100` is absent. No descriptor was read. No MTP client was opened. No file was written.
+
+That is no host USB connection event across the replugs. The Flip still had VBUS: `utmi_bvalid` 1 and RK817 online. Those are different observations.
+
+### What did not run
+
+MTP did not start. There is no active `DCTL`, `DSTS`, `DALEPENA`, EP0, UDC speed, or watcher sample on this kernel. There is no file round trip. Cleanup of a gadget did not apply, because no gadget was bound. The upper USB host was not exercised. Suspend and resume were not run. `SYS_CAN_SD` was not touched.
+
+### Conclusion
+
+`snps,dis_enblslpm_quirk` is in the booted tree and bit 8 is clear. The question this property was meant to answer, enumeration while SDP or CDP is valid, did not get a session. Two replugs moved the PHY from a DCP / power-off latch to the power-on, VBUS-valid, extcon-zero state, with the bvalid IRQ consumed. That is the open reconnect gap. It is not a failed LPM result and it is not a successful one.
+
+The next change to design, and not to apply in this note, is one that reruns charger detection when `utmi_bvalid` is already 1 and extcon is all zero. `snps,dis-u2-freeclk-exists-quirk` stays off that change. Bit 30 was still 1, and this session never reached the SDP failure that would rank it. The separate 12D-E17 result, SDP already present and `RUN_STOP` set with no host device, also stays open. This image has not repeated it.

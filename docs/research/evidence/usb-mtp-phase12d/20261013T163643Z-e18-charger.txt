@@ -1,0 +1,5 @@
+DATE 2026-10-13T16:36:43Z
+bat_status=Discharging
+bat_cap=100
+online=1
+usb_type=Unknown [DCP]

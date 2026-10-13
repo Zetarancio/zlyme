@@ -2,7 +2,9 @@
 
 Small text copies of readings that would otherwise live only under `/tmp`. Passwords and unrelated runtime dumps are not here. A path under `/tmp` is not the durable copy.
 
-The running image for every 2026-10-13 Flip reading below was Linux 7.2.10, built Tue Oct 13 08:43:04 UTC 2026, from the dirty OTA `zlyme-my355-20261013-0a96c787607b-dirty.tar`. The source tree at the later notes was `f6d57cbfc2c0573e9300929ed50c2741f77264c6`. The Flip clock is UTC. The development host clock is UTC+2.
+The first table is the dirty Linux 7.2.10 image, built Tue Oct 13 08:43:04 UTC 2026, from `zlyme-my355-20261013-0a96c787607b-dirty.tar`. The source tree at those notes was `f6d57cbfc2c0573e9300929ed50c2741f77264c6`. The Flip clock is UTC. The development host clock is UTC+2.
+
+The second table is 12D-E18, on the clean OTA `zlyme-my355-20261013-4bd0b1ecec72.tar`, kernel `7.2.10 #2` built Tue Oct 13 16:08:35 UTC 2026. Working copies were taken from `/tmp/zlyme-usb-12d-e18-20261013T162544Z`. USB File Transfer stayed stopped. The host poll is every sample in that window, and every sample is `no-gadget-id`.
 
 | File | What it is | SHA-256 |
 | --- | --- | --- |
@@ -12,5 +14,21 @@ The running image for every 2026-10-13 Flip reading below was Linux 7.2.10, buil
 | `20261013-fcc00000-regdump.txt` | Full `fcc00000.usb` regdump, 8201 bytes, gadget stopped (`DCTL = 0x00f00000`). The 13:23Z session recorded a dump of that size with the same key registers. The host file later saved at `/tmp/zlyme-usb-12d-speedcap/regdump.txt` has mtime 16:32 +0200 and no date line of its own. | `0ba93680d2576cd3c1355ed5f581477fa5cf9e825352705847ce6218bf165c2e` |
 | `20261013T150134Z-host-lsusb-poll.txt` | Demetria `lsusb` poll, 15:01:34Z through 15:01:44Z, every line `no-gadget-id`. This poll ended before the 15:01:56Z active sample. Copied from `/tmp/zlyme-usb-12d-active/host-lsusb.txt`. | `d4076b48a08106ff3adcd3bafeccf949455d7a8322cae5bef703b59958560e8f` |
 | `20261013T150156Z-active-session.txt` | Transcribed values from the held-open SSH session. The raw command transcript was not saved as a file. | none; this file is a transcription |
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261013T162744Z-e18-idle-regs.txt` | Stopped DWC3 summary and lower PHY GRF at 16:27:44Z. `GUSB2PHYCFG(0)` is `0x40101408`. | `3bcfbff4191358c16f80b3c526f2a12edd70f14ee675fdd2efb8169652465a8b` |
+| `20261013T162744Z-e18-fcc00000-regdump.txt` | Full stopped `fcc00000.usb` regdump, 8201 bytes. | `109b00440deda71ddc701cd51d239fa913ec4f44fe4eeca062e49d9ee260783e` |
+| `20261013T162958Z-e18-dcp.txt` | Lower PHY still DCP at 16:29:58Z, uptime 399, IRQ 20 count 0. | `d7449a3847ea52fb9bfa1a98ea604fabf2e9f3f9f09288d639ede0901da1f79f` |
+| `20261013T163027Z-e18-host-journal.txt` | Demetria kernel follow, 16:30:27Z–16:38:03Z, no lines, plus the 16:34:11Z one-shot with no entries. | `c4362af456ac1ae15bb15cb2f7d01ceaa6c09a57743c79a3beedc86a60c57933` |
+| `20261013T163027Z-e18-host-udev.txt` | `udevadm monitor` banner and no USB event. | `a75697edb29c2c13f19e67b1fcaa15b36e16e39fd08f9ed40f33e7f029ae5b5a` |
+| `20261013T163028Z-e18-host-lsusb-poll.txt` | Timestamped `lsusb` poll, 16:30:28Z–16:37:58Z, every line `no-gadget-id`. | `133dbecb3d42b382652e2deea19aa4bc7125204f316049934e0c4afc285a5d1b` |
+| `20261013T163123Z-e18-host-lsusb.txt` | Full `lsusb` and `lsusb -t` at 16:31:23Z. No `1d6b:0100`. | `c2c9687b4373fae81a823690bdc2acb68a2e5ffdab789b0f2e9849da9c1f2153` |
+| `20261013T163249Z-e18-after-replug.txt` | Both PHYs all zero at 16:32:49Z after two replugs. IRQ 20 count 6. RK817 still DCP. | `8dbaaadd045fc7872780025ca7f28f8fbdbbb20e9e25091980ba4e17da0e2679` |
+| `20261013T163343Z-e18-grf.txt` | GRF at 16:33:43Z. Power word `0x00000c00`, `0x00c0` `0x00384e73`, extcon still zero. Debugfs unmounted. | `e2dfd6b6947b61eb7f084646d373491156fe0319e28c02899d148d1e819d89fb` |
+| `20261013T163411Z-e18-dmesg.txt` | Boot phy-supply lines only. No `dwc3` line. Helper off, NextUI pid 502. | `06775bc8c152a7f422797520d32e0943b3e075f88e799171453bab909e526a15` |
+| `20261013T163557Z-e18-identity.txt` | `uname`, `os-release`, and the live `usb@fcc00000` properties at 16:35:57Z. | `5945a7ffb4e7d78c0caeb71e45cd0ab903571f9647404486e57d7c433ff5a52c` |
+| `20261013T163606Z-e18-settled.txt` | Extcon still zero at 16:36:06Z. IRQ 20 still 6. Battery status `Discharging`. | `ebd31c0295551fdefad5adccbf1d0dd18bbf29704cc7bc7deafa297345a0cd12` |
+| `20261013T163643Z-e18-charger.txt` | Capacity 100, charger still online, `usb_type` still DCP, at 16:36:43Z. | `e3cd9612b00b1eb68730908ac36af6fd108486bcdbbea8b79969a2fb0f3b0a97` |
 
 The 7.0.2 session directories named in section 10 of `usb-mtp-phase12d.md` were already absent when that section was written. They are still absent.

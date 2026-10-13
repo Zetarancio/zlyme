@@ -1,0 +1,20 @@
+DATE 2026-10-13T16:34:11Z
+---dmesg---
+[    0.904629] phy phy-fe8a0000.usb2phy.1: Looking up phy-supply from device node /usb2phy@fe8a0000/host-port
+[    0.905783] phy phy-fe8b0000.usb2phy.1: Looking up phy-supply from device node /usb2phy@fe8b0000/host-port
+[    1.255099] phy phy-fe8a0000.usb2phy.2: Looking up phy-supply from device node /usb2phy@fe8a0000/host-port
+[    1.256049] vcc_3v3: could not add device link phy-fe8a0000.usb2phy.2: -2
+[    1.256298] phy phy-fe8a0000.usb2phy.3: Looking up phy-supply from device node /usb2phy@fe8a0000/otg-port
+[    1.256327] phy phy-fe8a0000.usb2phy.3: Looking up phy-supply property in node /usb2phy@fe8a0000/otg-port failed
+[    1.258015] phy phy-fe8b0000.usb2phy.4: Looking up phy-supply from device node /usb2phy@fe8b0000/host-port
+[    1.258573] vcc_3v3: could not add device link phy-fe8b0000.usb2phy.4: -2
+[    1.258858] phy phy-fe8b0000.usb2phy.5: Looking up phy-supply from device node /usb2phy@fe8b0000/otg-port
+[    1.259026] vcc5v0_host: could not add device link phy-fe8b0000.usb2phy.5: -2
+[    1.330440] input: rk817_ext Headphones as /devices/platform/rk817-sound/sound/card0/input1
+[    1.334354]   #0: rk817_ext
+---nextui---
+502
+---helper---
+state=off
+---udc---
+not attached
