@@ -8,21 +8,22 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Current phase
 
-Phase 11 is closed. It is `zlyme44.2`: related user-facing fixes, separate commits, and a small number of OTA candidates. Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65` (`zlyme44.1 (2026-10-05)`). `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` is the outstanding clean-build and release gate for that release. Finishing that run is release administration, not unfinished Phase 10 implementation. The statement that no `zlyme44.2` work had started was the state at Phase 10 closure. Phase 11 is the work that follows it. `6a398b311310246ef6a5515ed72805c6f58d787d` stays reachable from `main`. The `zlyme44.1-maintenance` branch was removed after that. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. Phase 11A, Phase 11B, and Phase 11C are hardware-accepted. Phase 11D, closure and release handoff, is complete. It does not wait for a later `zlyme44.1` or `zlyme44.2` build, and it has no field-aging gate. `zlyme44.2` is not a published release. The remote candidate build after the merge is the release pipeline. It does not keep this phase open. Standalone stock-side preloader helpers were packaged after that closure. On 2026-10-08 one Flip hardware-accepted the restore helper, the MASKROM helper from the repaired preloader, the MASKROM helper from the original stock preloader, the following right-slot Zlyme boot, and `disarm-recovery`. That acceptance is this unit's image pair. It is not new Phase 11 evidence, and it does not accept every vendor SPL revision.
+Phase 12 is open on `zlyme44.3-phase-12`. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. `ZLYME_VERSION` is still `zlyme44.2`. The development image installed for the open hardware gate is `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`, root SHA-256 `a32ef7214837e90cebdc95f906c704ca873872fa3917832705fecaef7fc64f87`. That image is not a release.
 
-2026-10-09: PortMaster's live installation moves to the selected library. The system image keeps `PortMaster.zip` as the seed. Legacy state is merged before the Zlyme integration pass. Reset PortMaster is on the Game page. A verified Recovery write offers shut down or a normal restart and does not write again in that Settings session. MASKROM entry stays a cold boot with the right-hand card removed. This is not hardware-accepted. `zlyme44.2` is not a published release.
+Phase 12D is the open hardware gate. USB File Transfer is implemented and host-tested. On 2026-10-12 the lower USB-C port did not enumerate in either staged test. No file was copied. The package states below are the current record. Section 12 has the evidence. Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`.
 
-2026-10-10: Verified runtime payloads from a ports-folder PortMaster can be copied once into the selected live `libs/`. Reset does not repeat that copy. PortMaster gets a private libtheora 1.1.1 decoder under `/usr/lib/compat`. The system libtheora stays 1.2. This is not hardware-accepted.
+Status words in this section are not interchangeable:
 
-Later on 2026-10-10 the automatic merge of `/storage/PortMaster` and the ports-folder runtime copy were removed. Prepare installs a missing or invalid live tree from the seed and leaves obsolete PortMaster directories in place. The private libtheora 1.1.1 decoder remains. This is not hardware-accepted.
+- Implemented: the source is on this branch.
+- Source-reviewed: the source was read and compared. Nothing was changed for that review.
+- Host-tested: a host check passed. That is not a Flip result.
+- Image-built: a product image was packed on the host.
+- Image-installed: that image, or a later image that contains the change, was installed on a Flip.
+- Hardware-exercised: the maintainer ran the behavior on a Flip. A failed run still counts.
+- Hardware-accepted: the maintainer accepted that behavior.
+- Released: published as a stable GitHub release.
 
-2026-10-11: Zlyme 44.2 implementation is closed. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. The accepted NextUI SHA is `cf4a16ccbb54320af963a796b173ab8b77e25017`. The maintainer hardware-accepted the pristine Etcher image. Image SHA-256 is `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`. Rootfs SHA-256 is `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path, Ascent DX, Alien Squatter, and Gravity Defied passed. The stable GitHub Actions release build is run `38098037074`, dispatched from that runtime SHA with `publish_release=true`. That run is the release-administration gate. It does not reopen implementation. A documentation commit does not replace the runtime SHA. `zlyme44.2` is not a published release until that run publishes it. The 2026-10-09 and 2026-10-10 sentences that say this PortMaster work is not hardware-accepted are the record from before this closure.
-
-2026-10-11, after the run finished: run `38098037074` published `zlyme44.2` as tag `zlyme-38098037074`. The runtime and build source remain `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. Documentation commits after that SHA do not replace it. Sentences above that say `zlyme44.2` is unpublished are the record from before publication.
-
-Later maintenance, not a 44.2 gate: `PORTS.pak` can leave `/roms/ports`, an Ascent save bind, and an FRT squashfs mounted after NextUI returns. That launcher already used the same trap and exec pattern at `9622ea7f7c56048b3319f82884ea593a671811b5`, before the writable-tree work.
-
-Phase 12A1 is on `zlyme44.3-phase-12`. It is host-tested and not hardware-accepted. Battery sampling is every 10 seconds, the low-battery flash is about once a minute, and shutdown at 0% requires two numeric readings with the charger offline. SSH stays enabled with an empty root password until one is set. The clock keeps the HTTP bootstrap and runs BusyBox ntpd after the first frame. A follow-up on the same branch corrects the ntpd callback (the offset is the environment variable, and only a large step writes the RTC), serializes the one NTP client, and rolls back a failed password clear. The updater warns that an install may reboot more than once and shows a recent transfer rate. Phase 12A2 is host-tested on the same branch. Phase 12B1 is source and build validated there: Buildroot 2026.08, Linux 7.0.2, Mesa 26.1.8, and PanVK packaged beside the default libmali. Phase 12B2 turns off `CONFIG_MMC_TEST`, `CONFIG_SND_TEST_COMPONENT`, and `CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE` in the my355 fragment. The generated kernel config after `olddefconfig` is the check that those stayed off. Kernel and image sizes from that rebuild are host measurements. Boot time on the Flip is not measured. Phase 12C adds Tools → USB File Transfer on the same branch. It is host-tested, and the product image was built on the host. A follow-up on the same branch mounts configfs only when the tool starts, shares only exFAT and FAT, and tears the gadget down from a process outside the PAK group. The product defconfig selects Buildroot uMTP-Responder 1.8.1 and the tool starts it on the lower USB-C port, exporting mounted exFAT or FAT ROM and BIOS directories. A block device is not an export, an ext4 library stays mounted and is not shared, and no boot service starts the responder. Device validation of this phase, including the earlier Phase 12 preflight, is 12D. Phase 12D should confirm both card paths still enumerate, the panel and ALSA still start, and the gamepad, Wi-Fi, Mali, and DMC modules still load. The removed drivers are not on that path. For MTP, 12D should also confirm a normal boot leaves transfer off, the lower USB-C enumerates when the tool is started, charging is unchanged, a ROM can be copied and checked, delete and rename behave, a mounted exFAT or FAT second card is included, an ext4 card is not shared, unplug and replug during the session, MENU+START returns to NextUI with no leftover gadget, and Wi-Fi plus the upper USB host still work afterward. Host compatibility, including macOS, is unknown until that pass. 2026-10-12: a follow-up on the same branch exports ext4 ROM and BIOS directories. uMTP-Responder stays 1.8.1 with no patch. `zlyme-usb-enter` starts it in a private mount namespace that contains only the export directories, FunctionFS, and the responder's own files. The sentences above that say an ext4 library is not shared, and the 12D item that an ext4 card is not shared, are the record from before this follow-up. 12D should confirm an ext4 second card's ROM and BIOS directories are shared, the card stays mounted, a symlink in a share cannot read settings or `/boot`, and the earlier exFAT checks still hold. This follow-up is host-tested. It is not hardware-accepted.
+Phase 12 is not hardware-accepted and is not released. Do not merge it or publish it from this record.
 
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
@@ -2033,7 +2034,141 @@ Closed 2026-10-08 with the candidate and the NAND result named in the 11C closur
 - 11D is the closure and release handoff above. It is complete. It does not publish `zlyme44.2`.
 - The accepted `zlyme44.1` source `6a398b311310246ef6a5515ed72805c6f58d787d` stays reachable from `main`. Publication of `zlyme44.1` is separate from this phase. The `zlyme44.1-maintenance` branch is not kept.
 
-Writable PortMaster closure, 2026-10-11, is in Current phase. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. Stable Build run `38098037074` is the publication gate. That run does not reopen this phase.
+Writable PortMaster on the published image, recorded 2026-10-11: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, NextUI `cf4a16ccbb54320af963a796b173ab8b77e25017`, Etcher image SHA-256 `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`, rootfs SHA-256 `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path, Ascent DX, Alien Squatter, and Gravity Defied passed. Run `38098037074` later published tag `zlyme-38098037074`. That publication did not reopen Phase 11. The sentences in the 11C notes that say Phase 11C is not hardware-accepted, and any sentence that says `zlyme44.2` is unpublished, are the record from before those closures.
+
+Standalone stock-side helpers were packaged after the 2026-10-08 Phase 11C closure. On 2026-10-08 one Flip accepted the restore helper, the MASKROM helper from the repaired preloader, the MASKROM helper from the original stock preloader, the following right-slot Zlyme boot, and `disarm-recovery`. That acceptance is that unit's image pair. It is not a new Phase 11 gate, and it does not accept every vendor SPL revision.
+
+`PORTS.pak` can leave `/roms/ports`, an Ascent save bind, and an FRT squashfs mounted after NextUI returns. That launcher already used the same trap and exec pattern at `9622ea7f7c56048b3319f82884ea593a671811b5`. Cleanup of those mounts is Phase 12 preflight, below, and was not a 44.2 gate.
+
+## 12 — zlyme44.3 development
+
+Work stays on `zlyme44.3-phase-12`. The published runtime above does not move until a later release. Dates and SHAs below are the commits that landed the behavior. A commit, a host test, or an image build is not hardware acceptance.
+
+### Phase 12 preflight
+
+Scope: PortMaster mount cleanup after a port returns, a selected library that has to be a line in `/run/zlyme/libraries`, removable library mountpoint names, a transactional PortMaster integration copy, a Theora compat install that replaces only `libtheoradec.so.1`, and release notes taken from the changelog section. Started on `phase-12-preflight` at `b193d05f14b75973f227a36ddbfc03f088d03d95` and reached `adf188305e8fd7610083a946273a35ab80cb420d` on 2026-10-11. The task that promoted it onto this branch added the mounted-library requirement, rollback when the old tree cannot be restored, mount-count ownership, and the minimal-runtime library path. There was no separate hardware gate. Those checks belong to the first Phase 12 device pass.
+
+Dependencies: published 44.2 source `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3` as the parent. No kernel or DTS change.
+
+Implementation status: Implemented.
+
+Source/host evidence: Host-tested on 2026-10-11. The recorded passing scripts were `test_portmaster_root.sh`, `test_portmaster_prepare.sh`, `test_portmaster_theora_compat.sh`, `test_storage_slot.sh`, `test_storage_format.sh` (refusals only), `test_portmaster_mounts.sh`, `test_storage_libraries.sh`, `test_changelog_release_notes.sh`, `test_doc_contracts.py`, `test_doc_links.py`, `test_phase9_apps.sh`, and `test_phase9n.sh`. A Flip, a full image build, a rebuilt Theora decoder, and a release dispatch were not part of that run.
+
+Hardware evidence: None for this package. The 44.2 PortMaster acceptance is the earlier published image, not these commits. Later development images contain the code. No preflight-specific device check was recorded.
+
+Remaining checks: A port that mounts a runtime returns to NextUI with that mount gone, and `/storage` and `/boot` stay mounted. A selected library that is not in `/run/zlyme/libraries` is refused. The private Theora decoder still loads for a LÖVE port.
+
+Closure: Hardware-accepted for those three checks, or an explicit decision that a named check stays deferred.
+
+### Phase 12A1 — battery, SSH, clock, updater
+
+Scope: `zlyme-led` samples every 10 seconds. At 10% or below the red LED stays on and flashes about once a minute. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply is online. SSH stays on. An empty root password remains until one is stored, and a failed clear rolls back. The HTTP date bootstrap stays, and one BusyBox `ntpd` runs after the first frame. The updater says an install may reboot more than once and shows a recent transfer rate. `2f7605ce2d1ead1b7f3f76c77fd468f5344cdea8`, `c5214171e8db22756015d7faa44d7a17d60f5c02`, `847f9c49d9ce42e67c3b0a32e14f082cb3b20b73`, and NextUI pin `024e76ab4a88dde7078b6e68506fdaf243f1df89` on 2026-10-11. The same-day correction `0c3bab1a96682118f6b215a2f3dad8892300084d` reads the ntpd offset from the environment, writes the RTC only for a step of 30 seconds or more, serializes the one client, and rolls back a failed password clear.
+
+Dependencies: Phase 12 preflight on this branch. No kernel change.
+
+Implementation status: Implemented. Host-tested. No image was built for 12A1 by itself.
+
+Source/host evidence: The 12A1 and correction tasks reported host tests passing and no Flip run. This record does not repeat a script list that was not written into the tree.
+
+Hardware evidence: None. "Confirmed 0%" in the battery commit is the two-reading rule in source. It is not a device shutdown that was accepted.
+
+Remaining checks: A 0% reading with the charger offline powers off, and a charger online does not. A set SSH password survives reboot. A cleared password returns to empty, including a failed clear. The clock steps from the network after the first frame and does not block it. The updater shows the reboot warning and a rate.
+
+Closure: Hardware-accepted for those checks.
+
+### Phase 12A2 — launch record and PAK logs
+
+Scope: NextUI writes a `ZLYME1` file instead of a shell command. `pak-launch.sh` execs that `launch.sh` and optional ROM. A record with bytes after its last field is rejected, including a trailing fragment that has no newline. Stock PAK diagnostics stay off unless system logs are on. Commits `ce67bf612b8345ebf5473de938dafbc983596f8c`, `96a3fe608499b6c398e8c1bc906650a2f9e92c89`, `19abe87cc278ffe3b5e225ceb7171fb58421a0c4`, and NextUI pin `e30b7c6d008215315787b04cbd95bf0f06f38f78` on 2026-10-11.
+
+Dependencies: 12A1 correction. The NextUI `zlyme` commit has to stay the pin.
+
+Implementation status: Implemented. Host-tested.
+
+Source/host evidence: The 12A2 report recorded host protocol and logging checks and a NextUI compile. No Flip run.
+
+Hardware evidence: None as a dedicated pass. Later images boot to the menu, which uses this launcher. That is not acceptance of the malformed-record or log-switch cases.
+
+Remaining checks: A normal PAK still starts. A truncated record does not. With system logs off, a stock PAK does not create its diagnostic log.
+
+Closure: Hardware-accepted for those checks, or a note that menu launches on the installed image covered the normal path and the other two stay host-only.
+
+### Phase 12B1 — Buildroot 2026.08 and PanVK
+
+Scope: `BUILDROOT_VERSION` is `2026.08`. Linux stays 7.0.2. Mesa in that Buildroot is 26.1.8. The product defconfig selects PanVK beside the default libmali. The minimal defconfig does not select PanVK. Flycast, MAME2003-Plus, and Mupen64Plus-Next moved to pins that already build on GCC 15, and the temporary patches for those three were removed. `a7afc8cc479f1b092a1458b4e92675dc49dd0551` and `754c2bd5de59b8b11718e81dda51c28e74ca43df` on 2026-10-11, with the emulator pin commits on 2026-10-12.
+
+Dependencies: 12A2. The kernel pin does not move in this package.
+
+Implementation status: Implemented. Host-tested. Image-built as part of later product images, including the installed `132b7e04` image.
+
+Source/host evidence: The product config selects `BR2_PACKAGE_MESA3D_VULKAN_DRIVER_PANFROST`. Mali-G52 Vulkan with PanVK needs `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`, which Zlyme does not set. The pins are in `docs/DEVELOPMENT.md` and `docs/UPSTREAMS.md`.
+
+Hardware evidence: The installed development image boots far enough to open Tools. That does not accept PanVK, and it does not accept the emulator pin moves. No Vulkan device enumeration was recorded.
+
+Remaining checks: Panfrost GLES still presents. PanVK is not required for that. A later, separate pass may enumerate the Vulkan ICD. Do not treat a successful boot as that pass.
+
+Closure: GLES regression check hardware-accepted. PanVK stays packaged and not hardware-accepted until its own check.
+
+### Phase 12B2 — unused kernel test drivers
+
+Scope: `board/my355/linux/my355.fragment` turns off `CONFIG_MMC_TEST`, `CONFIG_SND_TEST_COMPONENT`, and `CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE`. `11aa947a8cb983679d8f8caaf288150a7fa668b7` on 2026-10-12.
+
+Dependencies: 12B1 kernel tree. No DTS change.
+
+Implementation status: Implemented. The generated config after `olddefconfig` is the source check that those three stayed off.
+
+Source/host evidence: Kernel and image sizes from that rebuild are host measurements. Boot time was not measured.
+
+Hardware evidence: None for these symbols. They are not on the boot path. The installed image contains the change.
+
+Remaining checks: None that are specific to these drivers. The ordinary boot, audio, and card checks in the Phase 12 gate cover the risk.
+
+Closure: Folded into the Phase 12 hardware gate. No separate acceptance.
+
+### Phase 12C — USB file transfer
+
+Scope: Tools → USB File Transfer. One on-demand configfs gadget, `zlyme-mtp`, on `fcc00000.usb`. Buildroot uMTP-Responder 1.8.1. FunctionFS is mounted, the responder starts, and then the UDC name is written. The first implementation exported exFAT and FAT only. `4103de9a45b8bec81d27e3abacab6494d33f4f8a` superseded that limit: ext4 ROM and BIOS directories are exported through `zlyme-usb-enter`, a private mount namespace. `open_tree` is called without `AT_RECURSIVE`. The card stays mounted. A block device is not a share. Configfs is mounted when the tool starts, not at boot. Teardown runs in a `setsid` reaper outside the PAK process group. The PAK is six rows. `ada06d5bcd2053800a2fa05a1ce689c21164a348` accepts cleanup that finishes after the group kill. No init script starts the responder.
+
+Dependencies: 12B. `CONFIG_NAMESPACES` is already enabled. Landlock and user namespaces stay off.
+
+Implementation status: Implemented. Host-tested. Image-built. Image-installed, as the `132b7e04` image and the earlier image used for the cable-first test.
+
+Source/host evidence: `scripts/tests/test_usb_transfer.sh` and `scripts/tests/usb_transfer_confined.sh`. The confinement test rejects a symlink and a sibling escape. The host USB controllers are not used.
+
+Hardware evidence: Hardware-exercised on 2026-10-12, and not hardware-accepted. The gadget bound, FunctionFS came up, and the responder ran. The host did not see a USB device. No ROM was copied. B returned to the menu and the gadget was gone. MENU+START was not repeated on the image that contains the soft-connect watcher. The ext4 share was not written from a computer. Detail is `docs/research/usb-mtp-phase12d.md`.
+
+Remaining checks: Enumeration on the lower port, one copied file whose bytes match, delete and rename, an exFAT or FAT second card, an ext4 second card that stays mounted, a symlink that cannot read settings or `/boot`, unplug and replug, MENU+START cleanup, and the upper host and Wi-Fi afterward. Charging on RK817 stays the charge path.
+
+Closure: Those checks hardware-accepted. Until enumeration works, the file checks cannot start.
+
+### Phase 12D — open hardware gate
+
+This package stays open. It is the device pass for the preflight and for 12A through 12C, plus the USB failure that blocked the file checks.
+
+#### Enumeration
+
+Scope: Explain the lower-port failure and do not call the userspace watcher a fix. `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b` adds a session watcher that writes `soft_connect` once for disconnect and once for connect. That commit is implemented, host-tested, image-built, and image-installed.
+
+Hardware evidence: On 2026-10-12 Test A, cable first, on the older installed image, the PHY reported SDP, the gadget bound, and the host saw no device. On Test B, tool first, on `132b7e04`, the kernel logged `failed to enable ep0out`, the watcher wrote `disconnect` and then `connect`, both writes were accepted, and the UDC stayed `not attached` at speed `UNKNOWN`. The host saw no device. Cleanup with B passed on both images. The raw log directories were not on this machine when this section was written. The session reports are the evidence.
+
+Remaining: A later candidate has to enumerate before any file check. Repeating the same soft-connect sequence is not that candidate.
+
+#### Kernel baseline
+
+Scope: Read-only preflight of the current stable kernel, recorded in `docs/research/linux-7.2.10-preflight.md`. The defconfig pin stays 7.0.2 in this package. No DTS edit, no DWC3 patch, and no image.
+
+Implementation status: Source-reviewed. Not implemented.
+
+Closure: A separate task may move the pin only if that preflight says the migration can be built alone. Hardware validation of that image is a later task. It does not close 12D by itself.
+
+### Phase 12 gate
+
+All of these, and a maintainer decision to release:
+
+- The lower-port gadget enumerates, a file copy matches, and cleanup leaves no gadget. Charging still follows RK817.
+- Boot, both card slots, the panel, ALSA, the gamepad, Wi-Fi, Mali or Panfrost, and DMC still come up on that image.
+- The 12A battery, SSH, and clock checks above have a result.
+- Documentation matches the source, including this section.
+- `ZLYME_VERSION` and the changelog section for the release exist. This phase does not create them.
 
 ## Suggested commit/checkpoint rhythm
 
