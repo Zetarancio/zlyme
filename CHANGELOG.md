@@ -19,11 +19,11 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Update says an install may reboot more than once, and it shows a recent transfer rate.
 - Flycast is v2.7. MAME2003-Plus and Mupen64Plus-Next moved to the revisions named in `docs/UPSTREAMS.md`. That is a source pin. It is not a claim that those games run better.
 - The development kernel is Linux 7.2.10. It has been booted on one Flip.
-- Tools → USB File Transfer shares the whole ZLYME data partition, a mounted second card, and USB volumes that are already mounted. A ROM or BIOS folder is not required. Settings, logs, and update files on the data partition are included. The boot partition is not shared. The running screen shows B to stop and does not print the kernel USB state. The tool does not start while an update is staged. Use a computer you trust.
+- Tools → USB File Transfer shares the whole ZLYME data partition, a mounted second card, and USB volumes that are already mounted. A ROM or BIOS folder is not required. Settings, logs, and update files on the data partition are included. The boot partition is not shared. The first screen says to connect the computer to the lower USB-C port. The running screen says the session is open, shows B to stop, and does not print the kernel USB state. The tool does not start while an update is staged. Use a computer you trust.
 
 ### Known limitations
 
-- On 2026-10-13 one computer saw the Flip as MTP (`1d6b:0100`) and, in a separate session, as a read-only mass-storage gadget (`1d6b:0104`). Both were high speed on one host port. No file was copied. Tries on 2026-10-12, and earlier tries on 2026-10-13, left the host with no USB device. The whole-card share is host-tested. The development update that contains it, `zlyme-my355-20261013-4a2b752bafbe.tar`, has not been installed.
+- On 2026-10-13 one computer saw the Flip as MTP (`1d6b:0100`) and, in a separate session, as a read-only mass-storage gadget (`1d6b:0104`). Both were high speed on one host port. No file was copied. Tries on 2026-10-12, and earlier tries on 2026-10-13, left the host with no USB device. The whole-card update `zlyme-my355-20261013-4a2b752bafbe.tar` was installed later that day. USB File Transfer reached the controller, and that computer did not see a USB device. The whole-card share is not hardware-accepted.
 
 ## [zlyme44.2] - 2026-10-11
 

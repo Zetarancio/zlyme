@@ -31,6 +31,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E19 | 2026-10-13 16:55Z–17:07Z | SDP published, then the boot restarted | [PHY charger trace](#12d-e19-phy-charger-trace) |
 | 12D-E20 | 2026-10-13 18:20Z–18:45Z | fresh SDP, restore unexercised, no enumeration | [Extcon and enumeration session](#23-extcon-and-enumeration-session) |
 | 12D-E21 | 2026-10-13 19:17Z–19:45Z | both gadgets enumerated on the identified port | [Host port and gadget session](#25-host-port-and-gadget-session) |
+| 12D-E22 | 2026-10-13 21:05Z–21:22Z | gadget started, host saw no device | [Installed root export](#27-installed-root-export) |
 
 ## Experiment ledger
 
@@ -329,6 +330,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Unknown: which receptacle was used in 12D-E20. Whether a file copy matches. The 17:00:49Z restart is still unexplained. This boot did not restart.
 - Evidence: sections 24 and 25.
 - Code: left untouched. The test gadget was removed before the notes were copied. No new image.
+
+### 12D-E22 Installed root export
+
+- When: 2026-10-13. The PAK log starts at 21:05:32Z. The stopped reading is 21:22:22Z.
+- Source: installed OTA `zlyme-my355-20261013-4a2b752bafbe.tar`, SHA-256 `4767e45ffdf7ae7fa48e0c1b1d26a2fcdd50f762916d21119f53930b3ddbe08d`. `/boot/zlyme` is `87de255b083a05842233233e81346cd83bcf2ac6700a48d572b053f959a14da3`. `zlyme-usb-transfer` is `0fc7ce834f3e91392679fd4453c89e36836ec1b285859346c540676741b689c7`. `zlyme-usb-enter` is `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. The installed `launch.sh` is `5c7c8c78978a6943b2cef83a97242db3dca9ed9dc71b9a01237a91665784d0f9`. Kernel banner `Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026`.
+- Setup: the maintainer used the same cable and the same Demetria receptacle as 12D-E21, and tried one physical reconnection. The diagnostic SSH started after the page was already closed. The helper was not started from SSH.
+- Hypothesis: the new root export, the update-staging guard, or a nested mount under `/storage` stopped MTP from appearing.
+- Action: compare the installed hashes with the OTA. Read the update paths, the mount table, this boot's `dmesg`, the UDC, and both PHY extcon groups. On Demetria, read `lsusb`, `lsusb -t`, and the kernel journal.
+- Observed: `/storage/.update/reconstruct` and `/storage/.update/pending/zlyme` are absent. `/storage` has no nested mount. `/mnt/sd2` is mounted ext4. The gadget reached the kernel: `failed to enable ep0out` at 26.788 s, then a SETUP timeout, a STALL failure, and one later unqueued EP0 request at 57.459 s. After the page was closed, UDC was `not attached` and extcon0 was DCP=1, SDP=0, CDP=0, USB=0. Demetria bus 7 had only its root hub. `lsusb -d 1d6b:0100` was empty. The kernel journal had no `usb 7-`, `1d6b:0100`, or `1d6b:0104` line in that window.
+- Result: category C. The helper created the gadget. The computer did not see a USB device. The update guard and the nested-mount guard were not the refusal on this boot. The PHY was reporting a dedicated charger when it was read, which is not the SDP state from 12D-E21.
+- Excludes: a mismatched install. A present `pending/zlyme` or `reconstruct` directory. A nested mount under `/storage` as the reason this session stopped. A config-parse crash before the kernel tried EP0.
+- Unknown: the live `umtprd.conf`, responder log, FunctionFS state, link latch, and DWC3 registers. Those files were already gone. Whether extcon was DCP or SDP while the page was open. Whether the one reconnection happened before or after B.
+- Evidence: section 27.
+- Code: no kernel, DTB, PHY, or bootloader change. No exporter change from this session. The screen text in the tree was shortened afterwards and was not on this image.
 
 
 ## 1. Hardware topology
@@ -1095,4 +1110,22 @@ Patch classification for the Phase 12D USB changes, without removal:
 
 A later A/B uses the same receptacle and the same cable. One image omits patch `1015` and keeps the LPM property. Another omits `snps,dis_enblslpm_quirk` and keeps `1015`. They are separate boots. Each one only asks whether MTP `1d6b:0100` enumerates at high speed on bus 7 port 1. This change does not build either image.
 
-The product rebuild from `4a2b752bafbe` produced `zlyme-my355-20261013-4a2b752bafbe.tar`, SHA-256 `4767e45ffdf7ae7fa48e0c1b1d26a2fcdd50f762916d21119f53930b3ddbe08d`. It has not been installed. Its `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, and `u-boot.itb` match the 12D-E21 OTA. The squashfs member contains the new `zlyme-usb-transfer`, `zlyme-usb-enter`, and USB File Transfer `launch.sh`. That is a host pack. It is not a Flip result.
+The product rebuild from `4a2b752bafbe` produced `zlyme-my355-20261013-4a2b752bafbe.tar`, SHA-256 `4767e45ffdf7ae7fa48e0c1b1d26a2fcdd50f762916d21119f53930b3ddbe08d`. When this section was written, that archive had not been installed. Its `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, and `u-boot.itb` match the 12D-E21 OTA. The squashfs member contains the new `zlyme-usb-transfer`, `zlyme-usb-enter`, and USB File Transfer `launch.sh`. Section 27 is the later installation.
+
+## 27. Installed root export, 2026-10-13
+
+12D-E22 is the ledger entry above. The maintainer installed `zlyme-my355-20261013-4a2b752bafbe.tar`. The installed `/boot/zlyme`, `zlyme-usb-transfer`, `zlyme-usb-enter`, and USB File Transfer `launch.sh` match that archive. The kernel banner is the same 7.2.10 `#1` build as 12D-E21. `/etc/os-release` still says `zlyme44.2` and was not used as the identity.
+
+The PAK log header is 21:05:32Z. The diagnostic connection began after `zlyme-usb-transfer status` already said `state=off`. The helper was not started over SSH. `/run/zlyme/usb-transfer` had already been removed, so the responder configuration, export list, skip list, and link latch were not available.
+
+`/storage/.update` remains. `reconstruct` and `pending/zlyme` do not. A successful apply removes `pending` in the initramfs, so their absence is the expected leftover of a finished update. `/storage` is `/dev/mmcblk0p3` exfat and has no child mount. `/mnt/sd2` is `/dev/mmcblk1p1` ext4. `/mnt/media` is the empty `zlyme-media` tmpfs. The startup guards that refuse a staged update or a nested `/storage` mount did not refuse this boot: the kernel logged `dwc3 fcc00000.usb: failed to enable ep0out` at 26.788 seconds.
+
+That EP0 line means the gadget was created and the responder had written far enough for the controller to try the control endpoint. The following lines are a SETUP timeout, a failed STALL, transfer error `-110`, and one unqueued EP0 request at 57.459 seconds. There is no other `dwc3` line on this boot.
+
+At 21:22:22Z the UDC was `not attached`. extcon0 was USB=0, USB-HOST=0, SDP=0, CDP=0, DCP=1, SLOW-CHARGER=0. extcon1 was all zeros. DCP is a dedicated charger. 12D-E21 enumerated while SDP was 1. This reading is not that electrical state, and it was taken after the page had closed.
+
+Demetria at the same minute had an empty `lsusb -d 1d6b:0100`. Bus 7, the 12D-E21 receptacle, had only its root hub. The kernel journal from 22:50 local through that minute has no `usb 7-`, `1d6b:0100`, or `1d6b:0104` line. The host did not record a connection or a disconnection for this Flip boot.
+
+uMTP-Responder 1.8.1 stores a `storage` line without stating the directory. `storage "/storage" "ZLYME" "rw"` is not, by itself, a parse rejection. This session does not show the generated configuration, so it does not prove what the responder did with that line. It does show that the failure reached the kernel's EP0 path.
+
+No exporter change, kernel patch, or new OTA follows from this reading. The tree's USB File Transfer introduction was shortened after the reading. That text was not on the installed image. The next hardware check is one page left open on bus 7 port 1 while SDP or CDP is 1, with the session files copied before B.

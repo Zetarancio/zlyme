@@ -119,7 +119,7 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 
 Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service.
 
-The first screen tells you what is shared. A starts the session. B goes back without starting it. The running screen says MTP is active, names the storages that were actually shared, and shows B to stop. MENU+START still leaves the tool. Unplugging the cable leaves the session up until you leave it.
+The first screen says: Connect your computer to the lower USB-C port. A starts the session. B goes back without starting it. The running screen says the session is open, names the storages that were actually shared, and shows B to stop. An open session is not the same as the computer seeing the Flip. MENU+START still leaves the tool. Unplugging the cable leaves the session up until you leave it.
 
 A computer can see:
 
@@ -129,7 +129,7 @@ A computer can see:
 
 The boot partition is not shared, and the tool does not unmount it. Use a computer you trust. It can change settings and files staged for an update. If an update is already staged, the tool refuses to start. A missing second card or USB stick is normal and does not stop the ZLYME share. A stick plugged in after the screen is up is not added. A read-only volume stays read-only. NTFS is not shared. The computer receives files through MTP. It does not receive the card as a disk.
 
-On 2026-10-13 one computer saw the Flip on the lower port. No file was copied in that session, so a connection is not proof that a copy worked. The whole-card share described here has not been tried on a Flip. A charger is not a computer. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
+On 2026-10-13 one computer saw the Flip on the lower port. No file was copied in that session, so a connection is not proof that a copy worked. Later that day the whole-card image was installed and opened on that same computer and receptacle. The computer did not see a USB device. After the screen was already closed, the lower port was reporting a dedicated charger. A charger is not a computer. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
 
 
 

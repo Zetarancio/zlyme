@@ -1,0 +1,87 @@
+12D-E22 stopped-session reading, 2026-10-13 21:22:22Z.
+The USB File Transfer page was already closed. These commands did not start it.
+
+Flip, date -u:
+Tue Oct 13 21:22:22 UTC 2026
+
+uname -a:
+Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026 aarch64 GNU/Linux
+
+zlyme-usb-transfer status:
+state=off
+
+Installed hashes:
+87de255b083a05842233233e81346cd83bcf2ac6700a48d572b053f959a14da3  /boot/zlyme
+0fc7ce834f3e91392679fd4453c89e36836ec1b285859346c540676741b689c7  /usr/sbin/zlyme-usb-transfer
+302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982  /usr/sbin/zlyme-usb-enter
+5c7c8c78978a6943b2cef83a97242db3dca9ed9dc71b9a01237a91665784d0f9  /usr/share/nextui/paks/Tools/USB File Transfer.pak/launch.sh
+
+Update paths:
+/storage/.update exists, directory, mtime Oct 13 21:02.
+/storage/.update/reconstruct is absent.
+/storage/.update/pending is absent.
+/storage/.update/pending/zlyme is absent.
+
+Mounts:
+/dev/mmcblk0p2 /boot vfat
+/dev/mmcblk0p3 /storage exfat
+/dev/mmcblk1p1 /mnt/sd2 ext4
+zlyme-media /mnt/media tmpfs
+No mount target under /storage/.
+
+UDC fcc00000.usb:
+not attached
+
+extcon0:
+USB 0
+USB-HOST 0
+SDP 0
+CDP 0
+DCP 1
+SLOW-CHARGER 0
+
+extcon1:
+USB 0
+USB-HOST 0
+SDP 0
+CDP 0
+DCP 0
+SLOW-CHARGER 0
+
+dmesg, this boot, dwc3 / ep0 / FunctionFS / umtprd:
+[   26.788088] dwc3 fcc00000.usb: failed to enable ep0out
+[   27.498450] dwc3 fcc00000.usb: wait for SETUP phase timed out
+[   27.500501] dwc3 fcc00000.usb: failed to set STALL on ep0out
+[   27.503024] dwc3 fcc00000.usb: ep0 out start transfer failed: -110
+[   57.459198] dwc3 fcc00000.usb: request 00000000f843c795 was not queued to ep0out
+
+PAK log /storage/.logs/paks/USB File Transfer.log, last lines:
+=== USB File Transfer 2026-10-13T21:05:32Z  ===
+[INFO] Controller added: Microsoft X-Box 360 pad
+
+Demetria, same minute, date -u:
+2026-10-13 21:22:22 UTC
+
+lsusb -d 1d6b:0100:
+empty
+
+lsusb -t:
+Bus 007 has only its root hub, xhci_hcd/1p, 480M.
+Bus 005 has a hub with HID devices.
+Bus 006 has a hub and one mass-storage device.
+
+journalctl -k --since 2026-10-13 22:50:00 local, filtered for usb 7-, 1d6b:0100, and 1d6b:0104:
+no lines
+
+Not captured, because the session was already stopped:
+/run/zlyme/usb-transfer/umtprd.log
+/run/zlyme/usb-transfer/umtprd.conf
+/run/zlyme/usb-transfer/exports
+/run/zlyme/usb-transfer/skipped
+/run/zlyme/usb-transfer/link.log
+/run/zlyme/usb-transfer/link.err
+/run/zlyme/usb-transfer/link.latch
+/run/zlyme/usb-transfer/link.writes
+responder and watcher process state
+FunctionFS mount
+DWC3 register dump

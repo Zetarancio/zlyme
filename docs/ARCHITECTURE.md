@@ -619,7 +619,7 @@ MENU+START is unchanged: `package/system/nextui/zlyme/zlyme-pak-hotkey.c` sends 
 
 The USB identity is the Linux Foundation PTP gadget id used by the uMTP sample, `1d6b:0100`. It is a shared sample id. The serial string is the constant `zlyme`. `max_speed` is `high-speed` because the uMTP 1.8.1 FunctionFS descriptors have no SuperSpeed configuration. The configuration is self-powered (`bmAttributes` `0xC0`) with `MaxPower` 2, which is 2 mA on Linux 7.2.10. Charging stays on the RK817 path.
 
-`status` prints the kernel UDC state for diagnostics. The Tools running screen does not. It shows B to stop and names the storages that were exported. On 2026-10-12 the host did not see the gadget. On 2026-10-13, 12D-E21 enumerated `1d6b:0100` at high speed on one identified host port, and a separate read-only mass-storage gadget on that same port. No file was copied. The filesystem-root export in this section is host-tested. It is not the image used for 12D-E21, and it is not hardware-accepted.
+`status` prints the kernel UDC state for diagnostics. The Tools running screen does not. It shows B to stop, says the session is open, and names the storages that were exported. It does not say the computer is connected. On 2026-10-12 the host did not see the gadget. On 2026-10-13, 12D-E21 enumerated `1d6b:0100` at high speed on one identified host port, and a separate read-only mass-storage gadget on that same port. No file was copied. The filesystem-root export in this section is host-tested. It is not the image used for 12D-E21. 12D-E22 installed it, the gadget started, and that computer saw no USB device. It is not hardware-accepted.
 
 ### Wi-Fi and Bluetooth
 

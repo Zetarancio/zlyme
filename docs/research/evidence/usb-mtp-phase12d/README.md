@@ -89,3 +89,9 @@ The fifth table is 12D-E21, on the same image and the same boot as 12D-E20. Work
 | `20261013T194426Z-e21-ms-remote.txt` | Stage log of the temporary mass-storage session, including cleanup at 19:45:21Z. | `d8859219188852dc65cb6c0a6709ee4adf5087661956422484b57a233f092512` |
 | `20261013T194430Z-e21-ms-flip.txt` | Bound snapshot, cleanup record, the two new `dmesg` lines, and the stage log. | `dcb47db8a381edf768af7538e305fb99785619a5bc213edbcb492dad95d526e5` |
 | `20261013T194459Z-e21-host-ms-lsusb-v.txt` | `lsusb -v -d 1d6b:0104` at 19:44:59Z. High speed, one mass-storage interface. The descriptor read says the device was busy. | `227d96bde1817938ec580667296c8ea3ba1c1f015c39c12dae6d6967bed9e5d6` |
+
+The sixth table is 12D-E22, after `zlyme-my355-20261013-4a2b752bafbe.tar` was installed. The USB File Transfer page was already closed. The helper was not started from SSH. `/boot` was not written.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261013T212222Z-e22-stopped.txt` | Installed hashes, update paths, mounts, this boot's EP0 lines, UDC `not attached`, extcon0 DCP, and Demetria bus 7 with no gadget. | `1b044de27964ae6c0fdcb0ee115dd196bbce6ea390c687ae8c5b9496c73cace0` |
