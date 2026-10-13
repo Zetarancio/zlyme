@@ -6,6 +6,8 @@
  * makes the mount tree private, bind-mounts only the export directories, and
  * pivot_roots onto that tree before exec. A symlink, including one replaced
  * during a transfer, can only name a path that is still mounted here.
+ * Exporting the data-partition root includes its hidden directories.
+ * That is the storage share, not a path out of the jail.
  *
  * The kernel already has mount namespaces. This is not a new subsystem and
  * it does not enable Landlock. The binary is not a boot service.
@@ -535,8 +537,9 @@ int main(int argc, char **argv)
 	require_absent("/proc/1");
 	require_absent("/root");
 	require_absent("/dev/mmcblk0");
-	require_absent("/storage/.config");
-	require_absent("/storage/.update");
+	/* /storage/.config and /storage/.update stay visible when the
+	 * export is the data-partition root. /boot is still absent.
+	 */
 	if (rmdir("oldroot") != 0)
 		die_errno("remove oldroot");
 

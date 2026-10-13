@@ -64,16 +64,30 @@ present() {
 		--timeout 0
 }
 
+# The running page has no A button. A is not a stop control there.
+present_stop() {
+	_msg=$1
+	if [ ! -x "$PRESENTER" ] && ! command -v "$PRESENTER" >/dev/null 2>&1; then
+		printf '%s\n' "$_msg" >&2
+		return 1
+	fi
+	"$PRESENTER" \
+		--message "$_msg" \
+		--message-alignment top \
+		--cancel-button B --cancel-text "Stop" --cancel-show \
+		--timeout 0
+}
+
 if [ ! -x "$TRANSFER" ]; then
 	present "USB File Transfer is not installed." "OK" "Back"
 	exit 1
 fi
 
-intro="MTP file transfer, lower USB-C.
-ROM and BIOS directories.
-exFAT, FAT, and ext4.
-The cards stay mounted.
-The computer can change files.
+intro="USB File Transfer
+Shares the whole data card.
+Settings and updates are included.
+The boot partition is not shared.
+A trusted computer can change files.
 A starts. B goes back."
 
 present "$intro" "Start" "Back"
@@ -87,15 +101,15 @@ err=$("$TRANSFER" start 2>&1) || {
 	exit 1
 }
 
+STORAGE=${ZLYME_USB_STORAGE:-/storage}
+SD2=${ZLYME_USB_SD2:-/mnt/sd2}
+MEDIA=${ZLYME_USB_MEDIA:-/mnt/media}
 st=$("$TRANSFER" status 2>/dev/null || true)
 state=
-host=
 shared=
-skipped=
 while IFS= read -r line; do
 	case "$line" in
 		state=*) state=${line#state=} ;;
-		host=*) host=${line#host=} ;;
 		export=*)
 			if [ -z "$shared" ]; then
 				shared=${line#export=}
@@ -104,47 +118,19 @@ while IFS= read -r line; do
 ${line#export=}"
 			fi
 			;;
-		skipped=*)
-			if [ -z "$skipped" ]; then
-				skipped=${line#skipped=}
-			else
-				skipped="$skipped
-${line#skipped=}"
-			fi
-			;;
 	esac
 done <<EOF
 $st
 EOF
 
-case "$host" in
-	configured)
-		host_line="USB: host configured."
-		;;
-	unknown | '')
-		host_line="USB: state unknown."
-		;;
-	unbound)
-		host_line="USB: not bound."
-		;;
-	*)
-		# Kernel states such as "not attached" are repeated as written.
-		# "configured" is the only state named as a host above.
-		if [ "${#host}" -gt 24 ]; then
-			host_line="USB: state unknown."
-		else
-			host_line="USB: $host."
-		fi
-		;;
-esac
-
 storage_bits=
 while IFS= read -r _path; do
 	case "$_path" in
-		/storage | /storage/*) _kind=main ;;
-		/mnt/sd2 | /mnt/sd2/*) _kind=SD ;;
+		"$STORAGE") _kind=ZLYME ;;
+		"$SD2") _kind="SD Card" ;;
+		"$MEDIA"/*) _kind=USB ;;
 		'') continue ;;
-		*) _kind=other ;;
+		*) continue ;;
 	esac
 	case ", $storage_bits," in
 		*", $_kind,"*) ;;
@@ -174,14 +160,9 @@ if [ "$state" != bound ]; then
 	exit 1
 fi
 
-running="MTP is on.
-$host_line
-$storage_line
-B or MENU+START stops."
-if [ -n "$skipped" ]; then
-	running="$running
-A library was left out."
-fi
+running="USB File Transfer
+MTP is active.
+$storage_line"
 
-present "$running" "Stop" "Stop"
+present_stop "$running"
 exit $?

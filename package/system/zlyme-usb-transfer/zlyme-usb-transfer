@@ -4,9 +4,12 @@
 # The controller name comes from device.conf (ZLYME_USB_GADGET_UDC).
 # Test seams override every host path. Configfs is mounted only while
 # a transfer starts, and only when it is not already mounted.
-# ext4 is shared only when the responder is started in the private
-# mount namespace built by zlyme-usb-enter. ZLYME_USB_JAIL=0 is the
-# host-test seam that keeps the exFAT-only path.
+# Each MTP entry is one mounted data filesystem root: /storage,
+# /mnt/sd2, and /mnt/media/<name>. ROM and BIOS directories are not
+# required. /boot is never an entry. ext4 is shared only when the
+# responder is started in the private mount namespace built by
+# zlyme-usb-enter. ZLYME_USB_JAIL=0 is the host-test seam that keeps
+# the exFAT-only path.
 # This script does not change USB role, VBUS, or regulators.
 # On RK3566, binding while the lower port has no VBUS can make DWC3
 # fail "failed to enable ep0out". The controller then stays bound and
@@ -29,6 +32,8 @@ GADGET_NAME=${ZLYME_USB_GADGET_NAME:-zlyme-mtp}
 LIBS=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
 STORAGE=${ZLYME_USB_STORAGE:-/storage}
 SD2=${ZLYME_USB_SD2:-/mnt/sd2}
+MEDIA=${ZLYME_USB_MEDIA:-/mnt/media}
+BOOT=${ZLYME_USB_BOOT:-/boot}
 MOUNT=${ZLYME_USB_MOUNT:-mount}
 UMOUNT=${ZLYME_USB_UMOUNT:-umount}
 READY_POLLS=${ZLYME_USB_READY_POLLS:-30}
@@ -258,14 +263,10 @@ path_forbidden() {
 	return 1
 }
 
-# Reject symlinks and .. so an export cannot walk into private state.
-path_is_exportable() {
+# A permitted export is one mount root. Hidden directories on that
+# filesystem are part of the share. /boot, /dev, /proc, and /sys are not.
+root_path_ok() {
 	_p=$1
-	_root=$2
-	case "$_p" in
-		"$_root"/*) ;;
-		*) return 1 ;;
-	esac
 	case "$_p" in
 		*'"'*|*'	'*|*'*'*) return 1 ;;
 	esac
@@ -282,53 +283,51 @@ path_is_exportable() {
 	case "$_p" in
 		*"/../"*|*/..|*"//"*) return 1 ;;
 	esac
-	# Symlinks above the library root are the mount anchor's problem.
-	# From the root downward, a link could point at private state.
-	if [ -L "$_root" ] || [ -L "$_p" ]; then
+	if [ -L "$_p" ] || [ ! -d "$_p" ]; then
 		return 1
 	fi
-	_rest=${_p#"$_root"/}
-	_acc=$_root
-	while [ -n "$_rest" ]; do
-		_comp=${_rest%%/*}
-		case "$_comp" in
-			''|.|..) return 1 ;;
-		esac
-		_acc="$_acc/$_comp"
-		if [ -L "$_acc" ]; then
-			return 1
-		fi
-		if [ "$_rest" = "$_comp" ]; then
-			break
-		fi
-		_rest=${_rest#*/}
-	done
-	[ -d "$_p" ] && [ -w "$_p" ]
+	return 0
 }
 
-first_dir() {
-	_root=$1
-	_kind=$2
-	case "$_kind" in
-		roms) _names="Roms roms ROMS" ;;
-		bios) _names="Bios bios BIOS" ;;
-		*) return 1 ;;
+boot_dev_now() {
+	if cover_mount "$BOOT"; then
+		printf '%s\n' "$COVER_DEV"
+	fi
+}
+
+is_boot_dev() {
+	_ib_dev=$1
+	_ib_boot=$(boot_dev_now)
+	if [ -n "$_ib_boot" ] && [ "$_ib_dev" = "$_ib_boot" ]; then
+		return 0
+	fi
+	if [ -n "${ZLYME_BOOT_DEVICE:-}" ] && [ "$_ib_dev" = "$ZLYME_BOOT_DEVICE" ]; then
+		return 0
+	fi
+	return 1
+}
+
+is_boot_path() {
+	case "$1" in
+		"$BOOT"|"$BOOT"/*) return 0 ;;
 	esac
-	for _n in $_names; do
-		if path_is_exportable "$_root/$_n" "$_root"; then
-			printf '%s\n' "$_root/$_n"
-			return 0
-		fi
-	done
 	return 1
 }
 
 name_taken() {
 	[ -f "$EXPORTS" ] || return 1
 	# Do not reuse _path. add_export calls this and keeps its own _path.
-	while IFS='	' read -r _seen_path _seen_name; do
+	while IFS='	' read -r _seen_path _seen_name _; do
 		[ -n "$_seen_path" ] || continue
 		[ "$_seen_name" = "$1" ] && return 0
+	done < "$EXPORTS"
+	return 1
+}
+
+path_exported() {
+	[ -f "$EXPORTS" ] || return 1
+	while IFS='	' read -r _xp _ _rest; do
+		[ "$_xp" = "$1" ] && return 0
 	done < "$EXPORTS"
 	return 1
 }
@@ -344,6 +343,7 @@ export_count() {
 add_export() {
 	_path=$1
 	_name=$2
+	_mode=$3
 	_n=$(export_count)
 	if [ "$_n" -ge 16 ]; then
 		: > "$RUN/truncated"
@@ -355,71 +355,18 @@ add_export() {
 		_try="$_name $_i"
 		_i=$((_i + 1))
 	done
-	printf '%s	%s\n' "$_path" "$_try" >> "$EXPORTS"
+	printf '%s	%s	%s\n' "$_path" "$_try" "$_mode" >> "$EXPORTS"
 }
 
-library_label() {
-	_lib=$1
-	if [ "$_lib" = "$SD2" ]; then
-		printf '%s\n' "SD card"
-		return 0
-	fi
-	_base=${_lib##*/}
-	_base=$(printf '%s' "$_base" | tr -cd 'A-Za-z0-9 ._-')
+# The directory name is already zlyme-storage's mountpoint component,
+# including its collision suffix. MTP shows that name.
+volume_label() {
+	_base=${1##*/}
 	_base=$(trim "$_base")
-	if [ -z "$_base" ]; then
-		_base=Library
+	if [ -z "$_base" ] || [ "$_base" = "." ] || [ "$_base" = ".." ]; then
+		_base=Volume
 	fi
 	printf '%s\n' "$_base"
-}
-
-# DIR_REASON is a predicate: "is on a nested mount".
-dir_exportable() {
-	DIR_REASON=
-	_de_path=$1
-	_de_root=$2
-	_de_expect=$3
-	if ! path_is_exportable "$_de_path" "$_de_root"; then
-		DIR_REASON="is not a writable directory"
-		return 1
-	fi
-	if ! cover_mount "$_de_path"; then
-		DIR_REASON="is not on a mounted filesystem"
-		return 1
-	fi
-	if [ "$COVER_MP" != "$_de_expect" ]; then
-		DIR_REASON="is on a nested mount"
-		return 1
-	fi
-	if ! fs_allowed "$COVER_TYPE"; then
-		DIR_REASON="is on $COVER_TYPE, which can contain symlinks"
-		return 1
-	fi
-	if ! mounted_rw "$COVER_OPTS"; then
-		DIR_REASON="is mounted read-only"
-		return 1
-	fi
-	if nested_mount "$_de_path"; then
-		DIR_REASON="contains a nested mount"
-		return 1
-	fi
-	case "$COVER_DEV" in
-		'')
-			DIR_REASON="has no mount source"
-			return 1
-			;;
-		"$_de_path"|"$_de_path"/*)
-			DIR_REASON="mount source is the export path"
-			return 1
-			;;
-	esac
-	case "$_de_path" in
-		/dev|/dev/*)
-			DIR_REASON="is a device path"
-			return 1
-			;;
-	esac
-	return 0
 }
 
 record_skip() {
@@ -427,102 +374,149 @@ record_skip() {
 	say "skipped $1: $2"
 }
 
-add_library() {
-	_lib=$1
-	_label=$2
-	_lib_mp=$3
-	_roms=$(first_dir "$_lib" roms || true)
-	if [ -z "$_roms" ]; then
-		record_skip "$_lib/Roms" "is missing"
-	elif dir_exportable "$_roms" "$_lib" "$_lib_mp"; then
-		add_export "$_roms" "$_label ROMs" || return 0
-	else
-		record_skip "$_roms" "$DIR_REASON"
+listed_in_libraries() {
+	[ -r "$LIBS" ] || return 1
+	while IFS= read -r _listed || [ -n "$_listed" ]; do
+		[ "$_listed" = "$1" ] && return 0
+	done < "$LIBS"
+	return 1
+}
+
+# 0 when the root was added or deliberately skipped. 1 when the
+# primary root cannot be shared at all.
+add_mount_root() {
+	_ar_path=$1
+	_ar_label=$2
+	_ar_primary=$3
+	if ! listed_in_libraries "$_ar_path" && [ "$_ar_primary" != 1 ]; then
+		return 0
 	fi
-	_bios=$(first_dir "$_lib" bios || true)
-	if [ -n "$_bios" ]; then
-		if dir_exportable "$_bios" "$_lib" "$_lib_mp"; then
-			add_export "$_bios" "$_label BIOS" || return 0
-		else
-			record_skip "$_bios" "$DIR_REASON"
+	if path_exported "$_ar_path"; then
+		return 0
+	fi
+	if is_boot_path "$_ar_path"; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage is the boot volume"
+			return 1
 		fi
+		record_skip "$_ar_path" "is the boot volume"
+		return 0
 	fi
+	if ! mounts_has "$_ar_path"; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage is not mounted"
+			return 1
+		fi
+		record_skip "$_ar_path" "is not mounted"
+		return 0
+	fi
+	if ! cover_mount "$_ar_path" || [ "$COVER_MP" != "$_ar_path" ]; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage is not mounted"
+			return 1
+		fi
+		record_skip "$_ar_path" "is not the mounted filesystem root"
+		return 0
+	fi
+	if is_boot_dev "$COVER_DEV"; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage is the boot volume"
+			return 1
+		fi
+		record_skip "$_ar_path" "is the boot volume"
+		return 0
+	fi
+	if ! fs_allowed "$COVER_TYPE"; then
+		if [ "$_ar_primary" = 1 ]; then
+			if [ "$JAIL" = 1 ]; then
+				say "primary storage filesystem is $COVER_TYPE, not exfat, vfat, or ext4"
+			else
+				say "primary storage filesystem is $COVER_TYPE, not exfat or vfat"
+			fi
+			return 1
+		fi
+		if [ "$COVER_TYPE" = ext4 ]; then
+			record_skip "$_ar_path" "filesystem is ext4, which can contain symlinks"
+		else
+			record_skip "$_ar_path" "filesystem is $COVER_TYPE, which is not shared"
+		fi
+		return 0
+	fi
+	if nested_mount "$_ar_path"; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage contains a nested mount"
+			return 1
+		fi
+		record_skip "$_ar_path" "contains a nested mount"
+		return 0
+	fi
+	case "$COVER_DEV" in
+		''|"$_ar_path"|"$_ar_path"/*)
+			if [ "$_ar_primary" = 1 ]; then
+				say "primary storage has no mount source"
+				return 1
+			fi
+			record_skip "$_ar_path" "has no mount source"
+			return 0
+			;;
+	esac
+	if ! root_path_ok "$_ar_path"; then
+		if [ "$_ar_primary" = 1 ]; then
+			say "primary storage path is not exportable"
+			return 1
+		fi
+		record_skip "$_ar_path" "is not an exportable directory"
+		return 0
+	fi
+	if mounted_rw "$COVER_OPTS"; then
+		if [ ! -w "$_ar_path" ]; then
+			if [ "$_ar_primary" = 1 ]; then
+				say "primary storage is not writable"
+				return 1
+			fi
+			record_skip "$_ar_path" "is not writable"
+			return 0
+		fi
+		_ar_mode=rw
+	else
+		if [ ! -r "$_ar_path" ]; then
+			record_skip "$_ar_path" "is not readable"
+			return 0
+		fi
+		_ar_mode=ro
+	fi
+	if [ "$_ar_primary" != 1 ]; then
+		_ar_mode="$_ar_mode,removable"
+	fi
+	if ! add_export "$_ar_path" "$_ar_label" "$_ar_mode"; then
+		record_skip "$_ar_path" "exceeds the 16 storage limit"
+	fi
+	return 0
 }
 
 build_exports() {
 	rm -f "$EXPORTS" "$RUN/truncated" "$RUN/skipped"
 	: > "$EXPORTS"
-	if ! mounts_has "$STORAGE"; then
-		say "primary storage is not mounted"
-		return 1
-	fi
-	if ! cover_mount "$STORAGE" || [ "$COVER_MP" != "$STORAGE" ]; then
-		say "primary storage is not mounted"
-		return 1
-	fi
-	if ! fs_allowed "$COVER_TYPE"; then
-		if [ "$JAIL" = 1 ]; then
-			say "primary storage filesystem is $COVER_TYPE, not exfat, vfat, or ext4"
-		else
-			say "primary storage filesystem is $COVER_TYPE, not exfat or vfat"
-		fi
-		return 1
-	fi
-	if ! mounted_rw "$COVER_OPTS"; then
-		say "primary storage is mounted read-only"
-		return 1
-	fi
-	path_forbidden "$STORAGE" && {
-		say "primary storage path is not exportable"
-		return 1
-	}
-	_store_mp=$COVER_MP
-	_roms=$(first_dir "$STORAGE" roms || true)
-	if [ -z "$_roms" ]; then
-		say "primary ROM directory is missing or not writable"
-		return 1
-	fi
-	if ! dir_exportable "$_roms" "$STORAGE" "$_store_mp"; then
-		say "primary ROM directory $DIR_REASON"
-		return 1
-	fi
-	add_export "$_roms" "ROMs" || {
-		say "no exportable ROM directory"
-		return 1
-	}
-	_bios=$(first_dir "$STORAGE" bios || true)
-	if [ -n "$_bios" ]; then
-		if dir_exportable "$_bios" "$STORAGE" "$_store_mp"; then
-			add_export "$_bios" "BIOS" || true
-		else
-			record_skip "$_bios" "$DIR_REASON"
-		fi
+	add_mount_root "$STORAGE" "ZLYME" 1 || return 1
+	if listed_in_libraries "$SD2"; then
+		add_mount_root "$SD2" "SD Card" 0 || return 1
 	fi
 	if [ -r "$LIBS" ]; then
 		while IFS= read -r _line || [ -n "$_line" ]; do
 			[ -n "$_line" ] || continue
 			[ "$_line" = "$STORAGE" ] && continue
-			path_forbidden "$_line" && continue
-			mounts_has "$_line" || continue
-			if ! cover_mount "$_line" || [ "$COVER_MP" != "$_line" ]; then
-				record_skip "$_line" "is not the mounted filesystem root"
-				continue
-			fi
-			if ! fs_allowed "$COVER_TYPE"; then
-				record_skip "$_line" "filesystem is $COVER_TYPE, which can contain symlinks"
-				continue
-			fi
-			if ! mounted_rw "$COVER_OPTS"; then
-				record_skip "$_line" "mounted read-only"
-				continue
-			fi
-			_lib_mp=$COVER_MP
-			_label=$(library_label "$_line")
-			add_library "$_line" "$_label" "$_lib_mp"
+			[ "$_line" = "$SD2" ] && continue
+			case "$_line" in
+				"$MEDIA"/*/*|"$MEDIA") continue ;;
+				"$MEDIA"/*) ;;
+				*) continue ;;
+			esac
+			_label=$(volume_label "$_line")
+			add_mount_root "$_line" "$_label" 0 || return 1
 		done < "$LIBS"
 	fi
 	if [ ! -s "$EXPORTS" ]; then
-		say "no exportable ROM directory"
+		say "no exportable storage"
 		return 1
 	fi
 }
@@ -556,7 +550,7 @@ write_conf() {
 		printf '%s\n' "usb_epint_path \"$FFS/ep3\""
 		printf '%s\n' "usb_max_packet_size 0x200"
 	} > "$_tmp" || return 1
-	while IFS='	' read -r _path _name; do
+	while IFS='	' read -r _path _name _mode; do
 		[ -n "$_path" ] || continue
 		case "$_path" in
 			/dev|/dev/*)
@@ -570,7 +564,15 @@ write_conf() {
 			rm -f "$_tmp"
 			return 1
 		fi
-		printf 'storage "%s" "%s" "rw"\n' "$_path" "$_name" >> "$_tmp"
+		case "$_mode" in
+			rw|ro|rw,removable|ro,removable) ;;
+			*)
+				say "refusing storage access $_mode"
+				rm -f "$_tmp"
+				return 1
+				;;
+		esac
+		printf 'storage "%s" "%s" "%s"\n' "$_path" "$_name" "$_mode" >> "$_tmp"
 	done < "$EXPORTS"
 	mv -f "$_tmp" "$CONF"
 }
@@ -1468,6 +1470,11 @@ cmd_start() {
 		trap - INT TERM
 		return 1
 	fi
+	if [ -e "$STORAGE/.update/reconstruct" ] || [ -e "$STORAGE/.update/pending/zlyme" ]; then
+		say "an update is staged; file transfer waits until it finishes"
+		trap - INT TERM
+		return 1
+	fi
 	# The reaper is outside this process group before any gadget exists.
 	# MENU+START SIGKILLs the group after 1.5s. The reaper is not in it.
 	if ! spawn_reaper; then
@@ -1595,9 +1602,11 @@ cmd_status() {
 		printf 'link=%s\n' "$(head -n 1 "$RUN/link.err")"
 	fi
 	if [ -f "$EXPORTS" ]; then
-		while IFS='	' read -r _path _name; do
+		while IFS='	' read -r _path _name _mode; do
 			[ -n "$_path" ] || continue
 			printf 'export=%s\n' "$_path"
+			printf 'export_name=%s\n' "$_name"
+			printf 'export_access=%s\n' "${_mode%%,*}"
 		done < "$EXPORTS"
 	fi
 	if [ -f "$RUN/truncated" ]; then

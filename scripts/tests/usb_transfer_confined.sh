@@ -32,15 +32,16 @@ cleanup() {
 trap cleanup EXIT
 
 sec=$WORK/sec
-mkdir -p "$sec/storage/Roms" "$sec/storage/Bios" "$sec/mnt/sd2/Roms" \
-	"$sec/mnt/sd2/Bios" "$sec/private/.config" "$sec/boot" \
-	"$sec/storage/RomsExtra" "$sec/run" "$sec/ffs"
+mkdir -p "$sec/storage/Roms" "$sec/storage/Bios" "$sec/storage/.config" \
+	"$sec/storage/RomsExtra" "$sec/mnt/sd2" "$sec/private/.config" \
+	"$sec/boot" "$sec/run" "$sec/ffs" "$sec/usbvol"
+printf '%s\n' 'VISIBLE-CONFIG' > "$sec/storage/.config/key"
+printf '%s\n' 'VISIBLE-SIB' > "$sec/storage/RomsExtra/secret"
 printf '%s\n' 'ZLYME-SECRET-CONFIG' > "$sec/private/.config/key"
 printf '%s\n' 'ZLYME-SECRET-BOOT' > "$sec/boot/secret"
-printf '%s\n' 'ZLYME-SECRET-SIB' > "$sec/storage/RomsExtra/secret"
 printf '%s\n' ROMDATA > "$sec/storage/Roms/game.rom"
 printf '%s\n' BIOSDATA > "$sec/storage/Bios/file.bin"
-printf '%s\n' SDROM > "$sec/mnt/sd2/Roms/game.rom"
+printf '%s\n' SDROM > "$sec/mnt/sd2/note.txt"
 ln -s "$sec/private/.config/key" "$sec/storage/Roms/to-config"
 ln -s "$sec/boot/secret" "$sec/storage/Roms/to-boot"
 ln -s ../.config/key "$sec/storage/Roms/rel-dot"
@@ -48,57 +49,111 @@ ln -s ../RomsExtra/secret "$sec/storage/Roms/to-sibling"
 ln -s ../../boot/secret "$sec/storage/Roms/rel-boot"
 ln -s ../../private/.config/key "$sec/storage/Roms/rel-up"
 mkdir -p "$sec/storage/Roms/hidden"
-printf '%s\n' SAFE > "$sec/storage/Roms/swap"
+printf '%s\n' SAFE > "$sec/storage/swap"
 mount -t tmpfs tmpfs "$sec/storage/Roms/hidden"
 printf '%s\n' 'ZLYME-SECRET-NEST' > "$sec/storage/Roms/hidden/secret"
-printf '%s\tROMs\n%s\tBIOS\n%s\tSDROMs\n%s\tSDBIOS\n' \
-	"$sec/storage/Roms" "$sec/storage/Bios" \
-	"$sec/mnt/sd2/Roms" "$sec/mnt/sd2/Bios" > "$sec/run/exports"
+# Naming .config as its own export is refused. The same directory is
+# visible only because the filesystem root is the export.
+printf '%s\tsecret\n' "$sec/storage/.config" > "$sec/run/exports"
+if ZLYME_USB_RUN=$sec/run ZLYME_USB_FFS=$sec/ffs ZLYME_USB_UMTPRD=$PROBE \
+	"$ENTER" >"$sec/dot.err" 2>&1
+then
+	fail "hidden directory export was accepted"
+fi
+grep -q 'refusing export' "$sec/dot.err" || fail "hidden export reason: $(cat "$sec/dot.err")"
+printf '%s\tboot\n' /boot > "$sec/run/exports"
+if ZLYME_USB_RUN=$sec/run ZLYME_USB_FFS=$sec/ffs ZLYME_USB_UMTPRD=$PROBE \
+	"$ENTER" >"$sec/boot.err" 2>&1
+then
+	fail "boot export was accepted"
+fi
+grep -q 'refusing export' "$sec/boot.err" || fail "boot export reason: $(cat "$sec/boot.err")"
+printf '%s\tZLYME\n%s\tSD Card\n' "$sec/storage" "$sec/mnt/sd2" > "$sec/run/exports"
 printf '%s\n' 'loop_on_disconnect 1' > "$sec/run/umtprd.conf"
 ZLYME_USB_RUN=$sec/run \
 ZLYME_USB_FFS=$sec/ffs \
 ZLYME_USB_UMTPRD=$PROBE \
-PROBE_SHARE=$sec/storage/Roms \
+PROBE_SHARE=$sec/storage \
 "$ENTER" >"$sec/enter.err" 2>&1 &
 probe_pid=$!
 i=0
 while [ "$i" -lt 80 ]; do
-	if [ -f "$sec/storage/Roms/result" ] && grep -q READY "$sec/storage/Roms/result"; then
+	if [ -f "$sec/storage/result" ] && grep -q READY "$sec/storage/result"; then
 		break
 	fi
 	i=$((i + 1))
 	sleep 0.05
 done
-grep -q READY "$sec/storage/Roms/result" 2>/dev/null || fail "probe did not become ready: $(cat "$sec/enter.err" 2>/dev/null)"
-rm -f "$sec/storage/Roms/swap"
-ln -s "$sec/private/.config/key" "$sec/storage/Roms/swap"
-: > "$sec/storage/Roms/race-go"
+grep -q READY "$sec/storage/result" 2>/dev/null || fail "probe did not become ready: $(cat "$sec/enter.err" 2>/dev/null)"
+rm -f "$sec/storage/swap"
+ln -s "$sec/private/.config/key" "$sec/storage/swap"
+: > "$sec/storage/race-go"
 i=0
 while [ "$i" -lt 80 ]; do
-	grep -q DONE "$sec/storage/Roms/result" && break
+	grep -q DONE "$sec/storage/result" && break
 	i=$((i + 1))
 	sleep 0.05
 done
-grep -q DONE "$sec/storage/Roms/result" || fail "probe did not finish"
-if grep -q 'ZLYME-SECRET' "$sec/storage/Roms/result"; then
-	fail "jail exposed a secret: $(cat "$sec/storage/Roms/result")"
+grep -q DONE "$sec/storage/result" || fail "probe did not finish"
+if grep -q 'ZLYME-SECRET' "$sec/storage/result"; then
+	fail "jail exposed a secret: $(cat "$sec/storage/result")"
 fi
-grep -q '^rom DATA ROMDATA$' "$sec/storage/Roms/result" || fail "share read failed"
-grep -q '^bios DATA BIOSDATA$' "$sec/storage/Roms/result" || fail "bios read failed"
-grep -q '^write OK$' "$sec/storage/Roms/result" || fail "share was not writable"
-grep -q '^config BLOCKED ' "$sec/storage/Roms/result" || fail "config symlink was not confined"
-grep -q '^boot BLOCKED ' "$sec/storage/Roms/result" || fail "boot symlink was not confined"
-grep -q '^reldot BLOCKED ' "$sec/storage/Roms/result" || fail "relative dot symlink was not confined"
-grep -q '^relup BLOCKED ' "$sec/storage/Roms/result" || fail "dotdot symlink was not confined"
-grep -q '^sibling BLOCKED ' "$sec/storage/Roms/result" || fail "sibling symlink was not confined"
-grep -q '^dotdot-sib BLOCKED ' "$sec/storage/Roms/result" || fail "sibling prefix was not confined"
-grep -q '^nested BLOCKED ' "$sec/storage/Roms/result" || fail "nested mount was visible"
-grep -q '^race BLOCKED ' "$sec/storage/Roms/result" || fail "swapped symlink was readable"
-grep -q '^race DATA ' "$sec/storage/Roms/result" && fail "swapped symlink returned data"
+grep -q '^rom DATA ROMDATA$' "$sec/storage/result" || fail "share read failed"
+grep -q '^bios DATA BIOSDATA$' "$sec/storage/result" || fail "bios read failed"
+grep -q '^inconfig DATA VISIBLE-CONFIG$' "$sec/storage/result" || fail "root export hid .config"
+grep -q '^insib DATA VISIBLE-SIB$' "$sec/storage/result" || fail "root export hid a sibling directory"
+grep -q '^reldot DATA VISIBLE-CONFIG$' "$sec/storage/result" || fail "in-tree relative link failed"
+grep -q '^sibling DATA VISIBLE-SIB$' "$sec/storage/result" || fail "in-tree sibling link failed"
+grep -q '^write OK$' "$sec/storage/result" || fail "share was not writable"
+grep -q '^config BLOCKED ' "$sec/storage/result" || fail "config symlink was not confined"
+grep -q '^boot BLOCKED ' "$sec/storage/result" || fail "boot symlink was not confined"
+grep -q '^relboot BLOCKED ' "$sec/storage/result" || fail "boot relative link was not confined"
+grep -q '^relup BLOCKED ' "$sec/storage/result" || fail "dotdot symlink was not confined"
+grep -q '^escape BLOCKED ' "$sec/storage/result" || fail "parent directory was visible"
+grep -q '^etc BLOCKED ' "$sec/storage/result" || fail "host /etc was visible"
+grep -q '^dev BLOCKED ' "$sec/storage/result" || fail "host block device was visible"
+grep -q '^hostboot BLOCKED ' "$sec/storage/result" || fail "host /boot was visible"
+grep -q '^nested BLOCKED ' "$sec/storage/result" || fail "nested mount was visible"
+grep -q '^race BLOCKED ' "$sec/storage/result" || fail "swapped symlink was readable"
+grep -q '^race DATA ' "$sec/storage/result" && fail "swapped symlink returned data"
 kill "$probe_pid" 2>/dev/null || true
 wait "$probe_pid" 2>/dev/null || true
 probe_pid=
 umount "$sec/storage/Roms/hidden" || fail "nested tmpfs stayed mounted"
+
+# A volume removed after the clone is not replaced by a new directory.
+mkdir -p "$sec/usbvol"
+mount -t tmpfs tmpfs "$sec/usbvol"
+printf '%s\n' OLDFILE > "$sec/usbvol/note"
+printf '%s\told\n' "$sec/usbvol" > "$sec/run/exports"
+ZLYME_USB_RUN=$sec/run \
+ZLYME_USB_FFS=$sec/ffs \
+ZLYME_USB_UMTPRD=$PROBE \
+PROBE_SHARE=$sec/usbvol \
+"$ENTER" >"$sec/usb.err" 2>&1 &
+probe_pid=$!
+i=0
+while [ "$i" -lt 80 ]; do
+	if [ -f "$sec/usbvol/result" ] && grep -q READY "$sec/usbvol/result"; then
+		break
+	fi
+	i=$((i + 1))
+	sleep 0.05
+done
+grep -q READY "$sec/usbvol/result" 2>/dev/null || fail "usb probe did not become ready: $(cat "$sec/usb.err" 2>/dev/null)"
+# The probe's rom check looks under Roms/. This second share only needs
+# the removal check below, so stop it before that check can fail the
+# secret scan. Read the cloned file from the jail via /proc instead.
+jail_note=/proc/$probe_pid/root$sec/usbvol/note
+grep -qx OLDFILE "$jail_note" || fail "clone did not keep the original file"
+umount "$sec/usbvol"
+mkdir -p "$sec/usbvol"
+printf '%s\n' NEWFILE > "$sec/usbvol/note"
+grep -qx OLDFILE "$jail_note" || fail "clone followed the replacement directory"
+grep -qx NEWFILE "$jail_note" && fail "clone saw the replacement file"
+kill "$probe_pid" 2>/dev/null || true
+wait "$probe_pid" 2>/dev/null || true
+probe_pid=
 
 # A symlink as the export root is refused before any pivot.
 ln -s "$sec/private" "$sec/linkroot"
@@ -113,17 +168,18 @@ grep -q 'refusing export' "$sec/link.err" || fail "symlink export reason: $(cat 
 # Helper session: primary exFAT plus ext4 libraries.
 base=$WORK/int
 rm -rf "$base"
-mkdir -p "$base/configfs" "$base/udc/fcc00000.usb" "$base/storage/Roms" \
-	"$base/storage/Bios" "$base/sd2/Roms" "$base/sd2/Bios" \
-	"$base/empty" "$base/ro/Roms" "$base/usb/Roms" "$base/ntfs/Roms" \
-	"$base/private/.config" "$base/ffs"
+mkdir -p "$base/configfs" "$base/udc/fcc00000.usb" "$base/storage" \
+	"$base/sd2" "$base/media/empty" "$base/media/ro" "$base/media/usb" \
+	"$base/media/ntfs" "$base/private/.config" "$base/ffs"
 printf '%s\n' 'not attached' > "$base/udc/fcc00000.usb/state"
 printf '%s\n' secret > "$base/private/.config/key"
-ln -s "$base/private/.config/key" "$base/sd2/Roms/leak"
-printf '%s\n' "$base/storage" "$base/sd2" "$base/empty" "$base/ro" \
-	"$base/usb" "$base/ntfs" > "$base/libraries"
+ln -s "$base/private/.config/key" "$base/sd2/leak"
+printf '%s\n' "$base/storage" "$base/sd2" "$base/media/empty" \
+	"$base/media/ro" "$base/media/usb" "$base/media/ntfs" \
+	"$base/media/missing" > "$base/libraries"
 printf 'vol0 %s exfat rw 0 0\nvol1 %s ext4 rw 0 0\nvol2 %s ext4 rw 0 0\nvol3 %s ext4 ro 0 0\nvol4 %s ext4 rw 0 0\nvol5 %s ntfs rw 0 0\n' \
-	"$base/storage" "$base/sd2" "$base/empty" "$base/ro" "$base/usb" "$base/ntfs" \
+	"$base/storage" "$base/sd2" "$base/media/empty" "$base/media/ro" \
+	"$base/media/usb" "$base/media/ntfs" \
 	> "$base/mounts"
 : > "$base/mount.log"
 
@@ -140,6 +196,8 @@ run_real() {
 	ZLYME_LIBRARIES_FILE=$base/libraries \
 	ZLYME_USB_STORAGE=$base/storage \
 	ZLYME_USB_SD2=$base/sd2 \
+	ZLYME_USB_MEDIA=$base/media \
+	ZLYME_USB_BOOT=$base/boot \
 	ZLYME_USB_MOUNT=$WORK/bin/mount \
 	ZLYME_USB_UMOUNT=$WORK/bin/umount \
 	ZLYME_USB_MOUNT_LOG=$base/mount.log \
@@ -160,21 +218,25 @@ run_real() {
 
 run_real start >"$base/start.out" 2>"$base/start.err" || fail "ext4 start failed: $(cat "$base/start.err")"
 st=$(run_real status)
-printf '%s\n' "$st" | grep -qx "export=$base/storage/Roms" || fail "primary missing: $st"
-printf '%s\n' "$st" | grep -qx "export=$base/storage/Bios" || fail "primary bios missing: $st"
-printf '%s\n' "$st" | grep -qx "export=$base/sd2/Roms" || fail "ext4 sd2 missing: $st"
-printf '%s\n' "$st" | grep -qx "export=$base/sd2/Bios" || fail "ext4 sd2 bios missing: $st"
-printf '%s\n' "$st" | grep -qx "export=$base/usb/Roms" || fail "ext4 usb missing: $st"
-printf '%s\n' "$st" | grep -q "skipped=$base/empty/Roms is missing" || fail "missing roms was not reported: $st"
-printf '%s\n' "$st" | grep -q "skipped=$base/ro mounted read-only" || fail "read-only ext4 was shared: $st"
-printf '%s\n' "$st" | grep -q "skipped=$base/ntfs filesystem is ntfs" || fail "ntfs was not skipped: $st"
+printf '%s\n' "$st" | grep -qx "export=$base/storage" || fail "primary missing: $st"
+printf '%s\n' "$st" | grep -qx 'export_name=ZLYME' || fail "primary name missing: $st"
+printf '%s\n' "$st" | grep -qx "export=$base/sd2" || fail "ext4 sd2 missing: $st"
+printf '%s\n' "$st" | grep -qx 'export_name=SD Card' || fail "sd2 name missing: $st"
+printf '%s\n' "$st" | grep -qx "export=$base/media/usb" || fail "ext4 usb missing: $st"
+printf '%s\n' "$st" | grep -qx "export=$base/media/empty" || fail "empty volume missing: $st"
+printf '%s\n' "$st" | grep -qx "export=$base/media/ro" || fail "read-only ext4 missing: $st"
+printf '%s\n' "$st" | grep -q "skipped=$base/media/missing is not mounted" || fail "missing volume was not reported: $st"
+printf '%s\n' "$st" | grep -q "skipped=$base/media/ntfs filesystem is ntfs" || fail "ntfs was not skipped: $st"
 conf=$base/run/umtprd.conf
-grep -q "storage \"$base/sd2/Roms\"" "$conf" || fail "ext4 storage line missing"
-grep -q "storage \"$base/usb/Roms\"" "$conf" || fail "usb ext4 storage line missing"
+grep -q "storage \"$base/storage\" \"ZLYME\" \"rw\"" "$conf" || fail "primary storage line missing"
+grep -q "storage \"$base/sd2\" \"SD Card\" \"rw,removable\"" "$conf" || fail "ext4 storage line missing"
+grep -q "storage \"$base/media/usb\" \"usb\" \"rw,removable\"" "$conf" || fail "usb ext4 storage line missing"
+grep -q "storage \"$base/media/ro\" \"ro\" \"ro,removable\"" "$conf" || fail "read-only line missing"
+grep -q "storage \"$base/media/empty\" \"empty\" \"rw,removable\"" "$conf" || fail "empty volume line missing"
 grep -q mmcblk "$conf" && fail "block device exported"
 grep -q '/\.config' "$conf" && fail "config path exported"
 grep -q '/boot' "$conf" && fail "boot path exported"
-[ -L "$base/sd2/Roms/leak" ] || fail "ext4 symlink was removed"
+[ -L "$base/sd2/leak" ] || fail "ext4 symlink was removed"
 rpid=$(cat "$base/run/responder.pid")
 self_ns=$(readlink /proc/self/ns/mnt)
 resp_ns=$(readlink "/proc/$rpid/ns/mnt")
@@ -231,10 +293,12 @@ ZLYME_USB_UMTPRD=$RESP \
 ZLYME_USB_ENTER=$ENTER \
 ZLYME_USB_JAIL=1 \
 ZLYME_USB_UDC_NAME=fcc00000.usb \
-ZLYME_LIBRARIES_FILE=$base/libraries \
-ZLYME_USB_STORAGE=$base/storage \
-ZLYME_USB_SD2=$base/sd2 \
-ZLYME_USB_MOUNT=$WORK/bin/mount \
+	ZLYME_LIBRARIES_FILE=$base/libraries \
+	ZLYME_USB_STORAGE=$base/storage \
+	ZLYME_USB_SD2=$base/sd2 \
+	ZLYME_USB_MEDIA=$base/media \
+	ZLYME_USB_BOOT=$base/boot \
+	ZLYME_USB_MOUNT=$WORK/bin/mount \
 ZLYME_USB_UMOUNT=$WORK/bin/umount \
 ZLYME_USB_TEST_LAYOUT=1 \
 ZLYME_USB_READY_SLEEP=0.05 \
@@ -244,10 +308,18 @@ ZLYME_USB_REAP_WAIT=0.05 \
 ZLYME_USB_LINK_SLEEP=0.05 \
 ZLYME_USB_DMESG=$base/dmesg \
 "$PAK" >"$base/pak.out" 2>&1 || fail "pak exit is nonzero: $(cat "$base/pak.out")"
-grep -q 'ext4' "$WORK/presenter.log" || fail "pak did not mention ext4"
+grep -q 'whole data card' "$WORK/presenter.log" || fail "pak did not warn about the data card"
 check_presenter_pages "$WORK/presenter.log.pages"
-grep -q 'USB: not attached.' "$WORK/presenter.log.pages" || fail "pak did not repeat the kernel state"
-grep -q 'Storage: other.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
+if grep -q 'USB:' "$WORK/presenter.log.pages"; then
+	fail "pak printed a raw USB state"
+fi
+if grep -q 'MENU+START' "$WORK/presenter.log.pages"; then
+	fail "pak explained the emergency stop"
+fi
+grep -q 'Storage: ZLYME.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
+grep -q 'MTP is active.' "$WORK/presenter.log.pages" || fail "pak did not say MTP is active"
+run_page=$(sed -n '2p' "$WORK/presenter.log")
+printf '%s\n' "$run_page" | grep -q -- '--confirm-show' && fail "running page showed A"
 if grep -q "$base/" "$WORK/presenter.log.pages"; then
 	fail "pak printed a full export path"
 fi

@@ -148,7 +148,8 @@ count_responder() {
 reset_tree() {
 	kill_responders
 	rm -rf "$work/run" "$work/configfs" "$work/udc" "$work/ffs" \
-		"$work/storage" "$work/sd2" "$work/private" "$work/usb"
+		"$work/storage" "$work/sd2" "$work/private" "$work/usb" \
+		"${work:?}/media" "${work:?}/boot" "${work:?}/ro" "${work:?}/sd2b"
 	mkdir -p "$work/configfs" "$work/udc/fcc00000.usb" \
 		"$work/storage/Roms" "$work/storage/Bios"
 	printf '%s\n' "not attached" > "$work/udc/fcc00000.usb/state"
@@ -168,8 +169,10 @@ run_helper() {
 	ZLYME_USB_JAIL=0 \
 	ZLYME_USB_UDC_NAME=fcc00000.usb \
 	ZLYME_LIBRARIES_FILE="$work/libraries" \
-	ZLYME_USB_STORAGE="$work/storage" \
-	ZLYME_USB_SD2="$work/sd2" \
+	ZLYME_USB_STORAGE="${ZLYME_USB_STORAGE:-$work/storage}" \
+	ZLYME_USB_SD2="${ZLYME_USB_SD2:-$work/sd2}" \
+	ZLYME_USB_MEDIA="${ZLYME_USB_MEDIA:-$work/media}" \
+	ZLYME_USB_BOOT="${ZLYME_USB_BOOT:-$work/boot}" \
 	ZLYME_USB_MOUNT="$work/bin/mount" \
 	ZLYME_USB_UMOUNT="$work/bin/umount" \
 	ZLYME_USB_MOUNT_LOG="$work/mount.log" \
@@ -210,15 +213,17 @@ reset_tree
 run_helper start
 out=$(run_helper status)
 printf '%s\n' "$out" | grep -qx 'state=bound' || fail "start did not bind: $out"
-printf '%s\n' "$out" | grep -qx "export=$work/storage/Roms" || fail "primary ROMs missing: $out"
-printf '%s\n' "$out" | grep -qx "export=$work/storage/Bios" || fail "primary BIOS missing: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "primary root missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=ZLYME' || fail "primary name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_access=rw' || fail "primary access missing: $out"
+printf '%s\n' "$out" | grep -q '/Roms' && fail "primary exported a ROM directory: $out"
 printf '%s\n' "$out" | grep -qx 'host=not attached' || fail "host state not passed through: $out"
 conf=$work/run/umtprd.conf
 grep -q 'usb_vendor_id 0x1D6B' "$conf" || fail "vendor id missing"
 grep -q 'usb_product_id 0x0100' "$conf" || fail "product id missing"
 grep -q 'serial "zlyme"' "$conf" || fail "serial is not the fixed string"
 grep -q 'usb_functionfs_mode 0x1' "$conf" || fail "functionfs mode missing"
-grep -q "storage \"$work/storage/Roms\" \"ROMs\" \"rw\"" "$conf" || fail "ROMs storage line"
+grep -q "storage \"$work/storage\" \"ZLYME\" \"rw\"" "$conf" || fail "ZLYME storage line"
 grep -q mmcblk "$conf" && fail "block device name leaked into the conf"
 grep -q '/\.config' "$conf" && fail "config path exported"
 grep -q '/boot' "$conf" && fail "boot path exported"
@@ -294,37 +299,40 @@ if run_helper start >"$work/out" 2>"$work/err"; then
 fi
 grep -q 'primary storage is not mounted' "$work/err" || fail "mount reason: $(cat "$work/err")"
 
-# Primary ROM directory missing.
+# A missing ROM directory does not hide the data partition.
 reset_tree
-rm -rf "$work/storage/Roms"
-if run_helper start >"$work/out" 2>"$work/err"; then
-	fail "start succeeded without ROMs"
-fi
-grep -q 'primary ROM directory' "$work/err" || fail "rom reason: $(cat "$work/err")"
+rm -rf "$work/storage/Roms" "$work/storage/Bios"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "root export required Roms: $out"
+run_helper stop
 
-# ROM directory is a symlink. Do not follow it.
+# The storage root itself is a symlink. Do not follow it.
 reset_tree
-rm -rf "$work/storage/Roms"
-ln -s "$work/storage/Bios" "$work/storage/Roms"
+mv "$work/storage" "$work/storage-real"
+ln -s "$work/storage-real" "$work/storage"
 if run_helper start >"$work/out" 2>"$work/err"; then
-	fail "start followed a ROM symlink"
+	fail "start followed a storage symlink"
 fi
-grep -q 'primary ROM directory' "$work/err" || fail "symlink reason: $(cat "$work/err")"
+grep -q 'not exportable' "$work/err" || fail "symlink reason: $(cat "$work/err")"
+rm -f "$work/storage"
+mv "$work/storage-real" "$work/storage"
 
-# Second card listed but not mounted is omitted. A mounted one is shared.
+# Second card listed but not mounted is omitted. A mounted one is the card root.
 reset_tree
-mkdir -p "$work/sd2/Roms" "$work/sd2/Bios"
+mkdir -p "$work/sd2"
 printf '%s\n%s\n' "$work/storage" "$work/sd2" > "$work/libraries"
 run_helper start
 out=$(run_helper status)
-printf '%s\n' "$out" | grep -q "$work/sd2/Roms" && fail "unmounted SD2 was exported: $out"
+printf '%s\n' "$out" | grep -q "export=$work/sd2" && fail "unmounted SD2 was exported: $out"
 run_helper stop
 printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\n' \
 	"$work/storage" "$work/sd2" > "$work/mounts"
 run_helper start
 out=$(run_helper status)
-printf '%s\n' "$out" | grep -qx "export=$work/sd2/Roms" || fail "mounted SD2 ROMs missing: $out"
-printf '%s\n' "$out" | grep -qx "export=$work/sd2/Bios" || fail "mounted SD2 BIOS missing: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/sd2" || fail "mounted SD2 root missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=SD Card' || fail "SD Card name missing: $out"
+grep -q "storage \"$work/sd2\" \"SD Card\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "SD Card mode"
 run_helper stop
 
 # Private OS paths and a block-device mount source stay out of the conf.
@@ -460,7 +468,9 @@ printf '%s\n' "$n" > "$countf"
 if [ "$n" -eq 1 ]; then
 	: > "$log.pages"
 fi
-printf '%s\n' "$*" >> "$log"
+# The message contains newlines. Keep one log line per invocation.
+printf '%s\n' "$*" | tr '\n' ' ' >> "$log"
+printf '\n' >> "$log"
 prev=
 for a in "$@"; do
 	if [ "$prev" = "--message" ]; then
@@ -486,7 +496,9 @@ case "$1" in
 	status)
 		printf '%s\n' "state=bound"
 		printf '%s\n' "host=${ZLYME_FAKE_HOST:-not attached}"
-		printf '%s\n' "export=/tmp/example/Roms"
+		printf '%s\n' "export=/storage"
+		printf '%s\n' "export=/mnt/sd2"
+		printf '%s\n' "export=/mnt/media/Stick"
 		exit 0
 		;;
 	stop)
@@ -515,17 +527,34 @@ ZLYME_TRANSFER_LOG="$work/transfer.log" \
 grep -qx start "$work/transfer.log" || fail "pak did not start"
 grep -qx status "$work/transfer.log" || fail "pak did not read status"
 grep -qx stop "$work/transfer.log" || fail "pak exit did not stop"
-grep -q 'lower USB-C' "$work/presenter.log" || fail "pak did not name the port"
-grep -q 'ext4' "$work/presenter.log.pages" || fail "pak did not mention ext4"
-grep -q 'USB: not attached.' "$work/presenter.log.pages" || fail "pak did not repeat the kernel state"
-grep -q 'Storage: other.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
-grep -q 'MENU+START' "$work/presenter.log.pages" || fail "pak did not say how to stop"
-if grep -q '/tmp/example' "$work/presenter.log.pages"; then
+grep -q 'whole data card' "$work/presenter.log.pages" || fail "pak did not warn about the data card"
+grep -q 'Settings and updates' "$work/presenter.log.pages" || fail "pak did not warn about settings"
+grep -q 'boot partition' "$work/presenter.log.pages" || fail "pak did not mention the boot partition"
+grep -q 'MTP is active.' "$work/presenter.log.pages" || fail "pak did not say MTP is active"
+grep -q 'Storage: ZLYME, SD Card, USB.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
+if grep -q 'USB:' "$work/presenter.log.pages"; then
+	fail "pak printed a raw USB state"
+fi
+if grep -q 'MENU+START' "$work/presenter.log.pages"; then
+	fail "pak explained the emergency stop"
+fi
+if grep -q '/mnt/' "$work/presenter.log.pages"; then
 	fail "pak printed a full export path"
 fi
 if grep -q 'connected' "$work/presenter.log.pages"; then
 	fail "pak called the host connected"
 fi
+# Intro still offers A. The running page does not.
+intro_call=$(sed -n '1p' "$work/presenter.log")
+run_call=$(sed -n '2p' "$work/presenter.log")
+printf '%s\n' "$intro_call" | grep -q -- '--confirm-show' || fail "intro hid A"
+printf '%s\n' "$intro_call" | grep -q -- '--confirm-text Start' || fail "intro A is not Start"
+printf '%s\n' "$run_call" | grep -q -- '--confirm-show' && fail "running page showed A"
+printf '%s\n' "$run_call" | grep -q -- '--confirm-button' && fail "running page named A"
+printf '%s\n' "$run_call" | grep -q -- '--cancel-button B' || fail "running page did not bind B"
+printf '%s\n' "$run_call" | grep -q -- '--cancel-text Stop' || fail "running page B is not Stop"
+printf '%s\n' "$run_call" | grep -q -- '--cancel-show' || fail "running page hid B"
+grep -q 'confirm_show = false' "$ROOT/package/system/minui-presenter/src/minui-presenter.c" || fail "presenter no longer ignores a hidden A"
 check_presenter_pages "$work/presenter.log.pages"
 
 printf '%s\n' 0 0 > "$work/presenter.codes"
@@ -540,13 +569,16 @@ ZLYME_PRESENTER_COUNT="$work/presenter.count" \
 ZLYME_TRANSFER_LOG="$work/transfer.log" \
 ZLYME_FAKE_HOST=configured \
 "$PAK"
-grep -q 'USB: host configured.' "$work/presenter.log.pages" || fail "configured state was not shown"
+if grep -q 'USB:' "$work/presenter.log.pages"; then
+	fail "configured screen printed a raw USB state"
+fi
 if grep -q 'not attached' "$work/presenter.log.pages"; then
 	fail "configured screen still says not attached"
 fi
 if grep -q 'connected' "$work/presenter.log.pages"; then
 	fail "configured screen says connected"
 fi
+grep -q 'MTP is active.' "$work/presenter.log.pages" || fail "configured screen did not say MTP is active"
 check_presenter_pages "$work/presenter.log.pages"
 
 # Cancel before start still runs stop, and does not start.
@@ -704,13 +736,15 @@ fi
 grep -q 'not exfat or vfat' "$work/err" || fail "ext4 primary reason: $(cat "$work/err")"
 [ ! -f "$work/run/umtprd.conf" ] || fail "ext4 primary wrote a conf"
 
-# Primary read-only exFAT is not an export.
+# Primary read-only exFAT is shared read-only. It is not remounted.
 reset_tree
 printf 'vol0 %s exfat ro 0 0\n' "$work/storage" > "$work/mounts"
-if run_helper start >"$work/out" 2>"$work/err"; then
-	fail "start exported read-only primary storage"
-fi
-grep -q 'mounted read-only' "$work/err" || fail "read-only reason: $(cat "$work/err")"
+run_helper start
+grep -q "storage \"$work/storage\" \"ZLYME\" \"ro\"" "$work/run/umtprd.conf" || fail "read-only primary was not ro"
+grep -q "storage \"$work/storage\" \"ZLYME\" \"rw\"" "$work/run/umtprd.conf" && fail "read-only primary was rw"
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx 'export_access=ro' || fail "read-only access: $out"
+run_helper stop
 
 # A nested mount under the ROM directory is refused.
 reset_tree
@@ -726,36 +760,211 @@ if [ -f "$work/run/umtprd.conf" ] && grep -q hidden "$work/run/umtprd.conf"; the
 	fail "nested path exported"
 fi
 
-# Secondary exFAT is shared. Secondary ext4, including a symlink into
-# private state, is skipped and left mounted. A read-only exFAT card
-# and a USB library on ext4 are skipped too.
+# Secondary ext4 is skipped without the jail. A read-only exFAT USB
+# volume is shared read-only. An exFAT USB volume is the volume root.
 reset_tree
-mkdir -p "$work/sd2/Roms" "$work/sd2/Bios" "$work/private/.config" \
-	"$work/usb/Roms"
+mkdir -p "$work/sd2" "$work/private/.config" \
+	"$work/media/usb" "$work/media/ro" "$work/media/docs"
 printf '%s\n' secret > "$work/private/.config/key"
-ln -s "$work/private/.config/key" "$work/sd2/Roms/leak"
-printf '%s\n%s\n%s\n%s\n' "$work/storage" "$work/sd2" "$work/ro" "$work/usb" > "$work/libraries"
-mkdir -p "$work/ro/Roms"
-printf 'vol0 %s exfat rw 0 0\nvol1 %s ext4 rw 0 0\nvol2 %s exfat ro 0 0\nvol3 %s ext4 rw 0 0\n' \
-	"$work/storage" "$work/sd2" "$work/ro" "$work/usb" > "$work/mounts"
-# The ext4 card above is the symlink case. Add a separate exFAT card too.
-mkdir -p "$work/sd2b/Roms" "$work/sd2b/Bios"
-printf '%s\n' "$work/sd2b" >> "$work/libraries"
-printf 'vol4 %s exfat rw 0 0\n' "$work/sd2b" >> "$work/mounts"
+ln -s "$work/private/.config/key" "$work/sd2/leak"
+printf '%s\n' "$work/storage" "$work/sd2" "$work/media/ro" \
+	"$work/media/usb" "$work/media/docs" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s ext4 rw 0 0\nvol2 %s exfat ro 0 0\nvol3 %s ext4 rw 0 0\nvol4 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/sd2" "$work/media/ro" "$work/media/usb" \
+	"$work/media/docs" > "$work/mounts"
 run_helper start
 out=$(run_helper status)
-printf '%s\n' "$out" | grep -qx "export=$work/storage/Roms" || fail "primary missing beside skipped cards: $out"
-printf '%s\n' "$out" | grep -qx "export=$work/sd2b/Roms" || fail "secondary exfat missing: $out"
-printf '%s\n' "$out" | grep -qx "export=$work/sd2b/Bios" || fail "secondary exfat BIOS missing: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "primary missing beside skipped cards: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/docs" || fail "usb exfat root missing: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/ro" || fail "read-only usb root missing: $out"
 printf '%s\n' "$out" | grep -q "skipped=$work/sd2 filesystem is ext4" || fail "ext4 skip missing: $out"
-printf '%s\n' "$out" | grep -q "skipped=$work/usb filesystem is ext4" || fail "usb ext4 skip missing: $out"
-printf '%s\n' "$out" | grep -q "skipped=$work/ro mounted read-only" || fail "read-only skip missing: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/media/usb filesystem is ext4" || fail "usb ext4 skip missing: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/media/ro" && fail "read-only volume was skipped: $out"
 conf=$work/run/umtprd.conf
-grep -q "storage \"$work/sd2/" "$conf" && fail "ext4 library exported"
-grep -q "storage \"$work/usb/" "$conf" && fail "usb ext4 library exported"
+grep -q "storage \"$work/sd2\"" "$conf" && fail "ext4 card exported"
+grep -q "storage \"$work/media/usb\"" "$conf" && fail "usb ext4 volume exported"
+grep -q "storage \"$work/media/docs\" \"docs\" \"rw,removable\"" "$conf" || fail "docs storage line"
+grep -q "storage \"$work/media/ro\" \"ro\" \"ro,removable\"" "$conf" || fail "read-only storage line"
 grep -q "$work/private" "$conf" && fail "private symlink target exported"
 grep -q 'mmcblk\|/dev/' "$conf" && fail "device path exported"
-[ -L "$work/sd2/Roms/leak" ] || fail "skipped library was modified"
+[ -L "$work/sd2/leak" ] || fail "skipped library was modified"
+run_helper stop
+
+# USB names, spaces, collisions, boot identity, and the storage cap.
+reset_tree
+mkdir -p "$work/boot" "$work/sd2" "$work/media/My Stick" \
+	"$work/media/ZLYMEBOOT" \
+	"$work/storage/.config" "$work/storage/.logs" "$work/storage/.update"
+printf '%s\n' kept > "$work/storage/.config/key"
+stick_mp=$(printf '%s' "$work/media/My Stick" | sed 's/ /\\040/g')
+printf '%s\n' "$work/storage" "$work/sd2" "$work/media/My Stick" \
+	"$work/media/ZLYMEBOOT" "$work/media/My Stick" \
+	> "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvolboot %s vfat ro 0 0\nvolboot %s vfat rw 0 0\nvolstick %s exfat rw 0 0\nvolusb %s exfat rw 0 0\n' \
+	"$work/storage" "$work/boot" "$work/sd2" "$stick_mp" \
+	"$work/media/ZLYMEBOOT" > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "named primary missing: $out"
+printf '%s\n' "$out" | grep -q "export=$work/sd2" && fail "boot-sourced SD2 was exported: $out"
+printf '%s\n' "$out" | grep -q "export=$work/boot" && fail "boot path was exported: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/My Stick" || fail "spaced volume missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=My Stick' || fail "spaced name missing: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/ZLYMEBOOT" || fail "duplicate label was treated as boot: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/sd2 is the boot volume" || fail "boot source was not skipped: $out"
+conf=$work/run/umtprd.conf
+grep -q "storage \"$work/media/My Stick\" \"My Stick\" \"rw,removable\"" "$conf" || fail "spaced storage line"
+grep -q "storage \"$work/media/ZLYMEBOOT\" \"ZLYMEBOOT\" \"rw,removable\"" "$conf" || fail "label storage line"
+n=$(printf '%s\n' "$out" | grep -c '^export=/' || true)
+[ "$n" = 3 ] || fail "duplicate library changed the export count: $n"
+grep -q '/\.config' "$conf" && fail "hidden directory became its own storage"
+grep -q '/boot' "$conf" && fail "boot path exported"
+run_helper stop
+
+# Two exported volumes can want the same words. The second is suffixed.
+reset_tree
+mkdir -p "$work/sd2" "$work/media/SD Card"
+printf '%s\n' "$work/storage" "$work/sd2" "$work/media/SD Card" > "$work/libraries"
+card_mp=$(printf '%s' "$work/media/SD Card" | sed 's/ /\\040/g')
+printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\nvol2 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/sd2" "$card_mp" > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx 'export_name=SD Card' || fail "SD Card name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=SD Card 2' || fail "collision suffix missing: $out"
+grep -q "storage \"$work/media/SD Card\" \"SD Card 2\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "collision storage line"
+run_helper stop
+
+# The boot device is the mounted source, not a card number or a label.
+reset_tree
+mkdir -p "$work/sd2" "$work/media/other"
+printf '%s\n' "$work/storage" "$work/sd2" "$work/media/other" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\n/dev/mmcblk0p2 %s vfat rw 0 0\n/dev/mmcblk1p1 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/sd2" "$work/media/other" > "$work/mounts"
+ZLYME_BOOT_DEVICE=/dev/mmcblk0p2 run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -q "export=$work/sd2" && fail "boot device was exported: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/other" || fail "other disk was rejected: $out"
+grep -q "storage \"/dev" "$work/run/umtprd.conf" && fail "block device is an MTP path"
+run_helper stop
+
+# Device, sysfs, proc, and the boot mountpoint are not storages.
+reset_tree
+for denied in /dev /sys /proc /boot; do
+	printf '%s\n' "$work/storage" "$denied" > "$work/libraries"
+	printf 'vol0 %s exfat rw 0 0\nudev %s exfat rw 0 0\n' \
+		"$work/storage" "$denied" > "$work/mounts"
+	ZLYME_USB_SD2="$denied" ZLYME_USB_BOOT=/boot run_helper start
+	out=$(run_helper status)
+	printf '%s\n' "$out" | grep -qx "export=$denied" && fail "$denied was exported: $out"
+	case "$denied" in
+		/boot)
+			printf '%s\n' "$out" | grep -q "skipped=$denied is the boot volume" || fail "boot skip missing: $out"
+			;;
+		*)
+			printf '%s\n' "$out" | grep -q "skipped=$denied is not an exportable directory" || fail "$denied skip missing: $out"
+			;;
+	esac
+	grep -q "storage \"$denied\"" "$work/run/umtprd.conf" && fail "$denied is in the conf"
+	run_helper stop
+done
+
+# A queued or half-built update blocks the session before any gadget.
+reset_tree
+mkdir -p "$work/storage/.update/pending"
+: > "$work/storage/.update/pending/zlyme"
+if run_helper start >"$work/out" 2>"$work/err"; then
+	fail "start ran over a pending update"
+fi
+grep -q 'update is staged' "$work/err" || fail "pending reason: $(cat "$work/err")"
+[ ! -d "$gadget" ] || fail "pending update created a gadget"
+rm -rf "$work/storage/.update"
+mkdir -p "$work/storage/.update/reconstruct"
+if run_helper start >"$work/out" 2>"$work/err"; then
+	fail "start ran during reconstruction"
+fi
+grep -q 'update is staged' "$work/err" || fail "reconstruct reason: $(cat "$work/err")"
+rm -rf "$work/storage/.update"
+run_helper start
+run_helper stop
+
+# Sixteen storages, in library order. The rest are named as skipped.
+reset_tree
+mkdir -p "$work/sd2"
+{
+	printf '%s\n' "$work/storage" "$work/sd2"
+	i=1
+	while [ "$i" -le 20 ]; do
+		name=$(printf 'v%02d' "$i")
+		mkdir -p "$work/media/$name"
+		printf '%s\n' "$work/media/$name"
+		i=$((i + 1))
+	done
+} > "$work/libraries"
+{
+	printf 'vol0 %s exfat rw 0 0\nvolsd %s exfat rw 0 0\n' \
+		"$work/storage" "$work/sd2"
+	i=1
+	while [ "$i" -le 20 ]; do
+		name=$(printf 'v%02d' "$i")
+		printf 'vol%s %s exfat rw 0 0\n' "$name" "$work/media/$name"
+		i=$((i + 1))
+	done
+} > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+n=$(printf '%s\n' "$out" | grep -c '^export=/' || true)
+[ "$n" = 16 ] || fail "storage cap is $n"
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "cap dropped primary: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/sd2" || fail "cap dropped SD Card: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/v01" || fail "cap dropped the first usb volume: $out"
+printf '%s\n' "$out" | grep -qx "export=$work/media/v14" || fail "cap dropped v14: $out"
+printf '%s\n' "$out" | grep -q "export=$work/media/v15" && fail "v15 exceeded the cap: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/media/v15 exceeds the 16 storage limit" || fail "cap skip missing: $out"
+[ -f "$work/run/truncated" ] || fail "truncation was not recorded"
+run_helper stop
+
+# The session keeps the storages it opened. A later stick is not added.
+reset_tree
+mkdir -p "$work/media/docs" "$work/media/later"
+printf '%s\n' "$work/storage" "$work/media/docs" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/media/docs" > "$work/mounts"
+run_helper start
+printf '%s\n' "$work/storage" "$work/media/later" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol2 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/media/later" > "$work/mounts"
+rmdir "$work/media/docs"
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx "export=$work/media/docs" || fail "session dropped its snapshot: $out"
+printf '%s\n' "$out" | grep -q "export=$work/media/later" && fail "session adopted a new stick: $out"
+printf '%s\n' "$out" | grep -qx 'state=bound' || fail "removal stopped the session: $out"
+run_helper stop
+
+# A nested mount skips that volume and leaves the primary share up.
+reset_tree
+mkdir -p "$work/media/stick/inner"
+printf '%s\n' "$work/storage" "$work/media/stick" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\nnest %s ext4 rw 0 0\n' \
+	"$work/storage" "$work/media/stick" "$work/media/stick/inner" > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "nested usb hid primary: $out"
+printf '%s\n' "$out" | grep -q "export=$work/media/stick" && fail "nested usb volume was exported: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/media/stick contains a nested mount" || fail "nested usb skip missing: $out"
+run_helper stop
+
+# NTFS and a hidden-directory mountpoint are skipped with a reason.
+reset_tree
+mkdir -p "$work/media/win" "$work/media/.config"
+printf '%s\n' "$work/storage" "$work/media/win" "$work/media/.config" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s ntfs rw 0 0\nvol2 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/media/win" "$work/media/.config" > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -q "skipped=$work/media/win filesystem is ntfs, which is not shared" || fail "ntfs skip missing: $out"
+printf '%s\n' "$out" | grep -q "skipped=$work/media/.config is not an exportable directory" || fail "hidden mount skip missing: $out"
+printf '%s\n' "$out" | grep -q "export=$work/media" && fail "skipped volume was exported: $out"
 run_helper stop
 
 # An unexpected filesystem type on the primary volume fails closed.
@@ -1046,25 +1255,32 @@ int main(void) {
 	out = fopen(outp, "w");
 	if (out == NULL)
 		return 3;
-	snprintf(path, sizeof(path), "%s/game.rom", share);
+	snprintf(path, sizeof(path), "%s/Roms/game.rom", share);
 	record(out, "rom", path);
-	snprintf(path, sizeof(path), "%s/to-config", share);
+	snprintf(path, sizeof(path), "%s/.config/key", share);
+	record(out, "inconfig", path);
+	snprintf(path, sizeof(path), "%s/RomsExtra/secret", share);
+	record(out, "insib", path);
+	snprintf(path, sizeof(path), "%s/Roms/to-config", share);
 	record(out, "config", path);
-	snprintf(path, sizeof(path), "%s/to-boot", share);
+	snprintf(path, sizeof(path), "%s/Roms/to-boot", share);
 	record(out, "boot", path);
-	snprintf(path, sizeof(path), "%s/rel-dot", share);
+	snprintf(path, sizeof(path), "%s/Roms/rel-dot", share);
 	record(out, "reldot", path);
-	snprintf(path, sizeof(path), "%s/to-sibling", share);
+	snprintf(path, sizeof(path), "%s/Roms/to-sibling", share);
 	record(out, "sibling", path);
-	snprintf(path, sizeof(path), "%s/rel-boot", share);
+	snprintf(path, sizeof(path), "%s/Roms/rel-boot", share);
 	record(out, "relboot", path);
-	snprintf(path, sizeof(path), "%s/rel-up", share);
+	snprintf(path, sizeof(path), "%s/Roms/rel-up", share);
 	record(out, "relup", path);
-	snprintf(path, sizeof(path), "%s/hidden/secret", share);
+	snprintf(path, sizeof(path), "%s/Roms/hidden/secret", share);
 	record(out, "nested", path);
-	snprintf(path, sizeof(path), "%s/../RomsExtra/secret", share);
-	record(out, "dotdot-sib", path);
-	snprintf(path, sizeof(path), "%s/../Bios/file.bin", share);
+	snprintf(path, sizeof(path), "%s/../private/.config/key", share);
+	record(out, "escape", path);
+	record(out, "etc", "/etc/passwd");
+	record(out, "dev", "/dev/mmcblk0");
+	record(out, "hostboot", "/boot/secret");
+	snprintf(path, sizeof(path), "%s/Bios/file.bin", share);
 	record(out, "bios", path);
 	snprintf(path, sizeof(path), "%s/created", share);
 	fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
