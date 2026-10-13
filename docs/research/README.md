@@ -34,3 +34,5 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [emulators.md](emulators.md) | before Phase 0, 2026-09-10 | Distribution core comparison and benchmark plan from before the curated list. Not the shipped set. |
 | [performance.md](performance.md) | before Phase 0, undated | Generic RK3566 kernel and runtime tuning brainstorm. Not adopted policy. |
 | [maskrom-entry.md](maskrom-entry.md) | 2026-10-07 | Historical. Stock `rbrom` on serial recovered a board that no longer reached USB MASKROM. The later Linux PMUGRF/CRU restart and the boot-FAT marker were removed. They are not the product path. The shipped recovery mechanism is the one-entry recovery preloader, recorded in `docs/ARCHITECTURE.md` and the hardware wiki. |
+| [usb-mtp-phase12d.md](usb-mtp-phase12d.md) | 12D, 2026-10-12 to 2026-10-13 | Lower-port MTP enumeration failure, the corrected runtime-PM reading, and the tests that did not enumerate. |
+| [linux-7.2.10-preflight.md](linux-7.2.10-preflight.md) | 12D, 2026-10-13 | Read-only review of the then-current stable kernel against the 7.0.2 pin. The defconfig pin did not move. |

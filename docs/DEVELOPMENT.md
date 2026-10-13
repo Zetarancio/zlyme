@@ -37,7 +37,7 @@ The source column is authoritative. Update this table when a pin changes.
 | BL31 | `rk3568_bl31_v1.44.elf` | `BR2_PACKAGE_ROCKCHIP_RKBIN_BL31_FILENAME` in the defconfig |
 | TPL | `rk3566_ddr_1056MHz_v1.23.bin` | `BR2_PACKAGE_ROCKCHIP_RKBIN_TPL_FILENAME` in the defconfig |
 
-Both defconfigs carry the same kernel, U-Boot, and rkbin lines. The defconfigs do not pin GCC or binutils, so those stay on the Buildroot 2026.08 defaults: GCC 15.3.0 and binutils 2.45.1. glibc is that release's 2.44 snapshot. The rkbin commit itself comes from the Buildroot version. TPL and BL31 must be a matching pair. On a normal card boot only BL31 from that pair runs, because the Miyoo SPI-NAND preloader has already done DDR init. The product version is the `ZLYME_VERSION` file. The NextUI pin is `NEXTUI_VERSION` (`docs/MAINTENANCE.md`).
+Both defconfigs carry the same kernel, U-Boot, and rkbin lines. A newer stable kernel was reviewed without moving this pin. That review is `docs/research/linux-7.2.10-preflight.md`. The defconfigs do not pin GCC or binutils, so those stay on the Buildroot 2026.08 defaults: GCC 15.3.0 and binutils 2.45.1. glibc is that release's 2.44 snapshot. The rkbin commit itself comes from the Buildroot version. TPL and BL31 must be a matching pair. On a normal card boot only BL31 from that pair runs, because the Miyoo SPI-NAND preloader has already done DDR init. The product version is the `ZLYME_VERSION` file. The NextUI pin is `NEXTUI_VERSION` (`docs/MAINTENANCE.md`).
 
 ## Defconfigs
 
