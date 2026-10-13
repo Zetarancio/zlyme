@@ -1,0 +1,1855 @@
+DATE 2026-10-13T16:58:13Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:15Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:16Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:18Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:19Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:21Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:22Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:24Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:25Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:27Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:28Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:30Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:31Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:33Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:34Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:35Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:37Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:38Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:40Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:41Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:43Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:44Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:46Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:47Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:49Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:50Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:52Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:53Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:55Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:56Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:57Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:58:59Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e51
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:00Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=0
+usb_type=Unknown [DCP]
+  20:          7          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000dd1
+0080: 0000003e
+0084: 000003c1
+00c0: 003840c8
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:02Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=0
+usb_type=Unknown [DCP]
+  20:          7          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000dd1
+0080: 0000003e
+0084: 000003c1
+00c0: 003840c8
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:03Z
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=0
+usb_type=Unknown [DCP]
+  20:          7          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000dd1
+0080: 0000003e
+0084: 000003c1
+00c0: 003840c8
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:05Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:06Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:08Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:09Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:11Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:12Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:14Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:15Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:17Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:18Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:20Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:21Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:23Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:24Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:26Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:27Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:29Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:30Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:32Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:33Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:35Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:36Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:38Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:39Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:41Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:42Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:44Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:45Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:47Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:48Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:49Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:51Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:52Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:54Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:55Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:57Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T16:59:58Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:00Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:01Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:03Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:04Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:06Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:07Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:09Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:10Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:11Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:13Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:14Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:16Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:18Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:19Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:20Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:22Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:23Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:25Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:26Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:28Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:29Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:31Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:32Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:34Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:36Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:37Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:38Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:40Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:41Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:43Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+state=off
+---
+DATE 2026-10-13T17:00:45Z
+USB=1
+USB-HOST=0
+SDP=1
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+udc=not attached
+Read from remote host 192.168.0.108: Connection reset by peer
+client_loop: send disconnect: Broken pipe
+

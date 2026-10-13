@@ -28,6 +28,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E16 | 2026-10-13 | no demonstrated mechanism | [RK817 SYS_CAN_SD](#12d-e16-rk817-sys_can_sd) |
 | 12D-E17 | 2026-10-13 15:01:56Z | gadget start succeeded, enumeration did not | [active DWC3 sample](#12d-e17-active-dwc3-sample) |
 | 12D-E18 | 2026-10-13 16:27Z–16:36Z | property applied, enumeration untested | [USB2 LPM property](#12d-e18-usb2-lpm-property) |
+| 12D-E19 | 2026-10-13 16:55Z–17:07Z | SDP published, then the boot restarted | [PHY charger trace](#12d-e19-phy-charger-trace) |
 
 ## Experiment ledger
 
@@ -284,6 +285,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Unknown: `DCTL` and `DSTS` while this property is active, and any host result from a session that already has SDP or CDP.
 - Evidence: section 20.
 - Code: the section 19 DTS line stayed. No second property and no new build.
+
+### 12D-E19 PHY charger trace
+
+- When: 2026-10-13 16:55:53Z through 17:07:52Z. The trace that published SDP ended when the Flip rebooted at about 17:00:49Z.
+- Source: the same installed OTA as 12D-E18, `zlyme-my355-20261013-4bd0b1ecec72.tar`. Same kernel `#2`. Notes tree `8f04a8637c8ff663a5f3a3f4d99c54f396b043d0` at the start. No DTS edit and no new image.
+- Setup: USB File Transfer stopped. Dynamic debug enabled only for `rockchip_usb2phy_otg_sm_work` and `rockchip_chg_detect_work`. One unplug/replug. Host monitors ran before that replug. The gadget was not started while SDP was present.
+- Hypothesis: the lower PHY stays at zero extcon because charger detection is not scheduled, or because a finished detection does not publish.
+- Action: read the 7.2.10 state machine, enable those two functions' existing `dev_dbg` lines, and record one cable cycle. No GRF write, no PMIC write, no second quirk.
+- Observed: before the replug the worker was already in `b_peripheral`, every 2 seconds, with VBUS still valid and every extcon cable 0. The replug logged `usb disconnect`, then charger states 0, 1, 2, and 5, then `sdp cable is connected` and `charger = USB_SDP_CHARGER`. Extcon became USB=1, SDP=1. RK817 stayed DCP. The helper was still stopped, and Demetria saw no gadget. The Flip then rebooted. On the new boot the PHY reported DCP, the PAK start wrote watcher `disconnect`, and `ep0out` enable failed. `GUSB2PHYCFG(0)` was still `0x40101408`. `DCTL` `RUN_STOP` was 0.
+- Result: detection can publish SDP when it is allowed to start from `USB_CHG_STATE_UNDEFINED`. A `b_peripheral` worker does not do that by itself. Enumeration was not tested. The LPM property is still neither supported nor contradicted.
+- Excludes: "the worker is not scheduled" as the description of the pre-replug idle, and the six-retry DCD timeout as the classification of this replug.
+- Unknown: which SDP or CDP branch first entered `b_peripheral` before debug was enabled, and why the Flip rebooted. The previous boot's buffer did not survive.
+- Evidence: section 21.
+- Code: left untouched. Dynamic debug returned to off when the machine rebooted.
 
 
 ## 1. Hardware topology
@@ -574,8 +589,8 @@ Status 2026-10-13: section 12's sentence that there was still no Run/Stop sample
 | Gadget start / EP0 fails in every session | 12D-E01 and 12D-E05 logged `failed to enable ep0out` | 12D-E17 had `RUN_STOP` set and both EP0 directions enabled | Contradicted as a universal explanation | A new SDP session fails before `RUN_STOP` |
 | USB2 PHY power-down | A powered-off PHY would not detect VBUS | 12D-E13 matched the power-on encoding. 12D-E18's zero-extcon sample also read `0x00000c00`. The DCP latch earlier in that session was `0x00000dd1`, the DCP `power_off` path | Contradicted for the zero-extcon samples | A zero-extcon sample whose power word stays at the off encoding |
 | Runtime-PM pull-up skip | `dwc3_gadget_pullup` skips the start when `pm_runtime_get_sync` returns 0 | Probe forbids autosuspend. Measured returns were 1 and suspended time stayed 0. 12D-E07, 12D-E11 | Contradicted for the measured sessions | A session whose get-sync return is 0 or negative during pull-up |
-| Awake BVALID / extcon loss after reconnect | 12D-E10 and 12D-E13 left extcon at zero with `utmi_bvalid` 1 and a clear status bit. 12D-E18 did the same after two replugs, and IRQ 20 moved from 0 to 6 before the count stuck | Cable-first sessions already had SDP and still did not enumerate. 12D-E09, 12D-E17 | Open for the replug path. Distinct from the cable-first SDP failure | A replug that publishes SDP or CDP, then a separate MTP start |
-| DWC3 USB2 LPM (`snps,dis_enblslpm_quirk`) | Stock sets the property. 12D-E17 had bit 8 set and sat in Suspend with no host | 12D-E18 booted the property. Stopped `GUSB2PHYCFG(0)` was `0x40101408` | Property applied. Enumeration untested, because SDP and CDP did not appear | An SDP or CDP session on this image |
+| Awake BVALID / extcon loss after reconnect | 12D-E10, 12D-E13, and 12D-E18 left extcon at zero with `utmi_bvalid` 1. 12D-E19 found the worker already in `b_peripheral`, logging every 2 seconds, and not publishing | 12D-E19's observed disconnect ran detection from state 0 and published SDP. Cable-first SDP sessions still failed to enumerate. 12D-E09, 12D-E17 | The stuck `b_peripheral` loop is measured. A fresh detection can publish. Enumeration after that publish was not run | An SDP window on this image where the gadget is started and the host is recorded |
+| DWC3 USB2 LPM (`snps,dis_enblslpm_quirk`) | Stock sets the property. 12D-E17 had bit 8 set and sat in Suspend with no host | 12D-E18 and the 12D-E19 reboot both read `GUSB2PHYCFG(0) = 0x40101408`. SDP was published in 12D-E19 while the gadget stayed stopped | Property applied. Enumeration untested | A gadget start during a stable SDP or CDP window on this image |
 | Rockchip BSP wrapper and clock differences | Stock has `pipe_clk` and the `dwc3` wrapper. Zlyme does not | The core programs registers and reached `RUN_STOP`. 12D-E14, 12D-E17 | Recorded difference. Not shown to be the cause | A clock or reset the core cannot program without that wrapper |
 
 ## 18. Next-experiment queue
@@ -587,7 +602,7 @@ Phase 12D stays open. Enumeration is not accepted. Do not repeat the speed-cap e
    - Observable: `GUSB2PHYCFG(0)` bit 8 becomes 0. The prediction from `0x40101508` is `0x40101408`. 12D-E18 measured that value. `GUCTL1`, the speed cap, and the device role stayed as they were. The success line still requires SDP or CDP.
    - Success: with SDP or CDP already reported, the host enumerates and one small file round trip matches. Failure: bit 8 is clear and the host still sees no device. If extcon is not SDP or CDP, that is the replug problem below, not a result about this bit.
    - Safety: one DTS property on the lower controller. The upper port is the EHCI/OHCI host on `usb2phy1`, not this node. Rollback is deleting the property and rebuilding that configuration. Do not add another quirk in the same test.
-2. Extcon resynchronization after a reconnect, while the system is already awake. Priority: next. Not combined with item 1. Not attempted as its own code change. 12D-E13 is the earlier idle reading, and 12D-E18 is a replug on the LPM image that ended in the same extcon gap. The vendor resume-only rescan is not this repair.
+2. Extcon publication while the OTG worker is already awake. Priority: next. Not combined with item 1. 12D-E19 is the trace. Another schedule of `rockchip_usb2phy_otg_sm_work()` is not the repair: that work was already running every 2 seconds in `b_peripheral` and did not start detection. The vendor resume-only rescan is not this repair either.
    - Preconditions: met by 12D-E18. SDP did not return. `utmi_bvalid` stayed 1, extcon stayed all zero, and the bvalid status bit ended clear.
    - Single variable: one change that reruns charger detection when `utmi_bvalid` is already 1 and extcon is zero. Not a PHY power-policy rewrite.
    - Observable: extcon moves from all zero to SDP or CDP without a suspend/resume, and IRQ or state-machine evidence shows why.
@@ -721,3 +736,76 @@ MTP did not start. There is no active `DCTL`, `DSTS`, `DALEPENA`, EP0, UDC speed
 `snps,dis_enblslpm_quirk` is in the booted tree and bit 8 is clear. The question this property was meant to answer, enumeration while SDP or CDP is valid, did not get a session. Two replugs moved the PHY from a DCP / power-off latch to the power-on, VBUS-valid, extcon-zero state, with the bvalid IRQ consumed. That is the open reconnect gap. It is not a failed LPM result and it is not a successful one.
 
 The next change to design, and not to apply in this note, is one that reruns charger detection when `utmi_bvalid` is already 1 and extcon is all zero. `snps,dis-u2-freeclk-exists-quirk` stays off that change. Bit 30 was still 1, and this session never reached the SDP failure that would rank it. The separate 12D-E17 result, SDP already present and `RUN_STOP` set with no host device, also stays open. This image has not repeated it.
+
+Status 2026-10-13 17:07Z: 12D-E19 found that worker already running in `b_peripheral`. Scheduling it again does not start charger detection. The trace is section 21.
+
+## 21. PHY charger trace, 2026-10-13 16:55 UTC
+
+12D-E19. Same installed image as section 20. No source change. The Flip clock is UTC. Demetria is UTC+2.
+
+### What the 7.2.10 driver does
+
+Linux 7.2.10 `drivers/phy/rockchip/phy-rockchip-inno-usb2.c`. These are source facts. The measurements are below them.
+
+`rockchip_usb2phy_otg_sm_work()` is scheduled from `rockchip_usb2phy_init()` at `OTG_SCHEDULE_DELAY * 3`, from the USB-HOST extcon notifier at `OTG_SCHEDULE_DELAY`, and by itself when `sch_work` is set. `OTG_SCHEDULE_DELAY` is `2 * HZ`. `rockchip_usb2phy_bvalid_irq()` and the charger worker's `USB_CHG_STATE_DETECTED` case call it directly instead of scheduling it. The bvalid handler has no `dev_dbg` line. `rockchip_usb2phy_irq()` is the shared handler for the PHY's ports, so IRQ 20's count is not one sub-event.
+
+Charger detection is scheduled from `B_IDLE` only when VBUS is present and `chg_state` is `USB_CHG_STATE_UNDEFINED`. Other charger states in that switch do not start it. `B_PERIPHERAL` never starts it. While VBUS stays present, `B_PERIPHERAL` sets `sch_work` and returns. The only assignments of `OTG_STATE_B_PERIPHERAL` are the SDP branch and the CDP branch.
+
+Extcon is written only when `rport->vbus_attached` changes and `notify_charger` is set. A charger state that is neither `UNDEFINED` nor `DETECTED` leaves `notify_charger` clear, and that path can still store the new VBUS level. The next `DETECTED` pass then sees the cached level already equal to the pin and skips the extcon write. `B_PERIPHERAL` does not write extcon at all. A function-static `cable` remembers the last type so a later falling edge can clear that cable. It is not a second extcon state.
+
+DCD polls every 100 ms, at most 6 times. One `WAIT_FOR_DCD` pass means contact was seen. Six passes are the timeout. After that, primary detection with `cp_det` clear and a full retry count selects DCP. The same primary result with fewer retries selects SDP. Primary `cp_det` set goes to secondary detection, which selects DCP or CDP from `dcp_det`. The debug lines print the state number and the final charger string. They do not print `dp_det`, `cp_det`, or `dcd_retries`.
+
+State numbers: 0 undefined, 1 waiting for DCD, 2 DCD done, 3 primary done, 4 secondary done, 5 detected.
+
+### Dynamic debug
+
+`/proc/dynamic_debug/control` existed. 5087 lines. `CONFIG_DYNAMIC_DEBUG`, `CONFIG_DYNAMIC_DEBUG_CORE`, and `CONFIG_DEBUG_FS` are set in the built `.config`. `CONFIG_FTRACE` and `CONFIG_KPROBES` are not. No kernel rebuild.
+
+Every `dev_dbg` in the two functions was `=_` before the test. `rockchip_usb2phy_bvalid_irq` has no control-file line. The ten lines were switched to `=p` at 16:55:53Z. Nothing else in that file was enabled for this test. The reboot put those ten lines back to `=_`. That was checked on the new boot.
+
+### Idle, before the replug
+
+16:56:30Z, uptime 1992. Same boot as 12D-E18: IRQ 20 still 6, extcon all zero, GRF `0x0000 = 0x00000c00`, `0x00c0 = 0x00384e73`, RK817 online and `usb_type` DCP, helper `state=off`, UDC `not attached`.
+
+From 1957.197 seconds the only new kernel line was `b_peripheral otg sm work`, about every 2 seconds. There was no `usb disconnect`, no `vbus_attach`, and no charger line. In this driver that means the worker was in `B_PERIPHERAL` and `utmi_bvalid` was still true. That state does not start detection and does not publish a cable. Extcon stayed all zero through 16:58:59Z. The absence of a new IRQ did not mean the worker was idle.
+
+`B_PERIPHERAL` is entered only from the SDP branch or the CDP branch. Debug was turned on after the worker was already there, so this trace does not contain the earlier `sdp cable is connected` or `cdp cable is connected` line. The state and the zero extcon are measurements. Which of those two branches ran, and whether `vbus_attached` was already true when it ran, was not printed.
+
+### One replug
+
+IRQ 20 moved from 6 to 7 in the 16:59:00Z sample. RK817 `online` was 0. GRF `0x0000` was `0x00000dd1`. `0x00c0` was `0x003840c8`, so `utmi_bvalid` was 0. The kernel log at 2141.696 seconds is `b_peripheral otg sm work` and, 50 microseconds later, `usb disconnect`. That pair is one worker invocation. It was about one second after the previous 2-second tick, not on that tick.
+
+A `b_idle` line at 2142.665 seconds has no `vbus_attach` line with it. The next `b_idle` line, at 2146.286 seconds, is followed in the same microsecond burst by `vbus_attach`, charger state 0, then state 1 about 106 ms later, state 2 about 44 ms after that, and state 5 immediately. Then `sdp cable is connected` and `charger = USB_SDP_CHARGER`. One state-1 line is not the six-retry DCD timeout. The separate state-5 invocation matches the source path that schedules another pass when primary detection does not see `cp_det`, and that path selects SDP when the retry count is below the maximum. The log does not show the detect bits themselves.
+
+The 16:59:05Z poll is the first sample with USB=1 and SDP=1. IRQ 20 was 8. `0x0000` was `0x00000c00`. `0x00c0` was `0x00384e73`. RK817 was online again and its `usb_type` was still DCP. PHY SDP and RK817 DCP were true at the same time. The helper stayed `state=off`. UDC stayed `not attached`. SDP was still 1 at 17:00:45Z, the last complete poll before the SSH session dropped.
+
+Demetria's kernel journal and `lsusb` poll covered this window. No `1d6b:0100` appeared. The gadget was stopped, so that empty host log is not a DWC3 enumeration result.
+
+### Reboot, then the PAK
+
+The 17:03:57Z SSH read uptime 188. The boot was about 17:00:49Z, four seconds after the last SDP poll. The new buffer starts at `Booting Linux`. It does not contain the previous boot's oops or panic. The cause of the restart was not captured. Dynamic debug was off again. IRQ 20's count was 0.
+
+The maintainer opened USB File Transfer on that boot. At 17:04:33Z the helper was `state=bound`, the responder was running, and the screen later said MTP was on. Extcon was DCP=1, not SDP. `link.latch` and `link.writes` were `disconnect`. There was no `link.err`. UDC state was `not attached`, speed `UNKNOWN`, function `zlyme-mtp`. This boot's dmesg has `failed to enable ep0out` at 117.606 seconds, then a SETUP timeout and `ep0 out start transfer failed: -110`.
+
+The active regdump at 17:05:02Z, gadget still bound:
+
+| Register | Value | Reading |
+| --- | --- | --- |
+| `GUSB2PHYCFG(0)` | `0x40101408` | Bit 8 still 0 |
+| `GUCTL1` | `0x8504018a` | Bit 26 still 1 |
+| `GCTL` / `GSTS` | `0x30c12004` / `0x7e800000` | Device |
+| `DCFG` | `0x008e0800` | Bits 2:0 are 0, high-speed. The gadget init wrote this |
+| `DCTL` | `0x00f00000` | `RUN_STOP` is 0 |
+| `DSTS` | `0x00120000` | Halt clear, core idle clear, link field 4 (`SS_DIS`) |
+| `DALEPENA` | `0` | EP0 disabled |
+| `GEVNTCOUNT(0)` | `0` | No pending event |
+
+A second read at 17:05:32Z was the same UDC and helper state, SDP 0, DCP 1. Demetria still had no `1d6b:0100`. This start is the DCP / watcher-disconnect path. It is not the missing SDP enumeration test.
+
+`zlyme-usb-transfer stop` at 17:06:07Z reported `state=off`. The UDC function was empty, configfs had no gadget, and FunctionFS was not mounted. The PAK screen was still up at 17:07:52Z, because `launch.sh` and its presenter wait for B. The reaper was still watching that process group. `nextui.elf` is not running while that PAK screen is up. `nextui-session` was still pid 303. B had not been pressed when this note was written.
+
+### What this does and does not decide
+
+The pre-replug loop is measured: `b_peripheral`, VBUS present, extcon zero, no charger work. The replug's SDP publish is measured, and it was not the DCD-timeout DCP path. The host silence during that SDP window is the stopped gadget, not a failed enumeration. The post-reboot PAK start did not have SDP.
+
+A further call to `rockchip_usb2phy_otg_sm_work()` does not repair the loop. That call was already happening every 2 seconds. The branch has to publish, or leave `b_peripheral` and run detection, when VBUS is present and the published cable does not match `chg_type`. It must not turn a real DCP into SDP, and it must not leave the PHY powered on as the policy. `snps,dis-u2-freeclk-exists-quirk` is still a different variable. Enumeration with SDP and a running gadget is still open. Phase 12D stays open.

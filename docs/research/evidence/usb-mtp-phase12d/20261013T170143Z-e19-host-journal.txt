@@ -1,0 +1,2 @@
+journalctl -k -f --since 2026-10-13 18:59:00 local, started 2026-10-13T17:01:43Z
+no kernel lines captured in this follow

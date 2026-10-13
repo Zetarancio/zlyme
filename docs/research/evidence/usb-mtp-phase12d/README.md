@@ -31,4 +31,19 @@ The second table is 12D-E18, on the clean OTA `zlyme-my355-20261013-4bd0b1ecec72
 | `20261013T163606Z-e18-settled.txt` | Extcon still zero at 16:36:06Z. IRQ 20 still 6. Battery status `Discharging`. | `ebd31c0295551fdefad5adccbf1d0dd18bbf29704cc7bc7deafa297345a0cd12` |
 | `20261013T163643Z-e18-charger.txt` | Capacity 100, charger still online, `usb_type` still DCP, at 16:36:43Z. | `e3cd9612b00b1eb68730908ac36af6fd108486bcdbbea8b79969a2fb0f3b0a97` |
 
+The third table is 12D-E19, on that same clean OTA and the same boot until the restart at about 17:00:49Z. Dynamic debug was limited to the OTG worker and the charger worker.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261013T165553Z-e19-dyndbg-before.txt` | The ten `dev_dbg` sites, all `=_`, before the test. No bvalid-irq site exists. | `c8aacf591cf41b3f839ea4a5af661bc7a67d4508440bed257c263b9490309c2f` |
+| `20261013T165553Z-e19-dyndbg-enabled.txt` | Those same ten sites set to `=p`. | `3b10c72f71c14f2c2b9a3d76f8d8a6eaf73a28b1c08814615ceedd3d141dff29` |
+| `20261013T165630Z-e19-initial.txt` | Extcon zero, GRF, RK817 DCP, IRQ 20 count 6, helper off, at 16:56:30Z. | `525924b2c60bdf96b8da4f7fa9b504bb25f317b250f28ee48db6c13635d52938` |
+| `20261013T165745Z-e19-idle-dyndbg.txt` | `dmesg` excerpt of the `b_peripheral` loop before the replug. | `6ac9fbc66fb48caacf6cde7df33155863450ca12f53784763d3333efa1130f55` |
+| `20261013T165809Z-e19-kmsg.txt` | Filtered `/dev/kmsg` from 16:58:09Z through the disconnect, the SDP detection, and the following `b_peripheral` loop. | `2575d68b5aa23bdf19b22563a243589bd687e72b1df2663c9331d763f8f05e00` |
+| `20261013T165812Z-e19-poll.txt` | One-second extcon, IRQ, GRF, and helper poll from 16:58:13Z until the SSH drop at 17:02:45Z. SDP becomes 1 at 16:59:05Z. | `9287e49e050b1dcc8d83992d1f80748276956195aff91ecaa11f965b8018f5b7` |
+| `20261013T170143Z-e19-host-journal.txt` | Demetria kernel follow from 17:01:43Z. No kernel lines. | `2ae3c68454fba9879798b4d22b0ea660237fad0c4da5048ef1a8f65ef202f682` |
+| `20261013T170144Z-e19-host-lsusb-poll.txt` | Host `lsusb` poll from 17:01:44Z. Every line is `no-gadget-id`. | `cb2311651530c059aac1c1d97b4d39b03755ee2d4343ea00a7ec3308c376ef96` |
+| `20261013T170502Z-e19-active-regdump.txt` | DWC3 regdump at 17:05:02Z on the new boot, gadget bound, `RUN_STOP` clear, bit 8 clear. | `b7e2a2a8e6f838bdec8d3a5d3c9472880e8a3258ae0459c1e90f95d0a8b73a7d` |
+| `20261013T170502Z-e19-active-dmesg.txt` | This boot's `ep0out` failure and the dynamic-debug flags back at `=_`. | `a58b23986b9e2049cfbc09a67b245a89844ff235f9f8901b710989fcce315b22` |
+
 The 7.0.2 session directories named in section 10 of `usb-mtp-phase12d.md` were already absent when that section was written. They are still absent.

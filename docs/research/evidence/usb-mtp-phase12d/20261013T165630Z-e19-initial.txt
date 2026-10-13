@@ -1,0 +1,22 @@
+DATE 2026-10-13T16:56:30Z
+UPTIME 1992
+FILE /tmp/zlyme-dbgfs-e19-snap/regmap/dummy-syscon@0x00000000fdca0000/registers
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+online=1
+usb_type=Unknown [DCP]
+bat=Discharging
+cap=100
+  20:          6          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+udc=not attached
+state=off
+unmounted

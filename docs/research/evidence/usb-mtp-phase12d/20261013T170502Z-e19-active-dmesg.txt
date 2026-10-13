@@ -1,0 +1,14 @@
+DATE 2026-10-13T17:05:02Z
+---dmesg---
+[  117.605983] dwc3 fcc00000.usb: failed to enable ep0out
+[  118.301789] dwc3 fcc00000.usb: wait for SETUP phase timed out
+[  118.303843] dwc3 fcc00000.usb: failed to set STALL on ep0out
+[  118.306366] dwc3 fcc00000.usb: ep0 out start transfer failed: -110
+---dyndbg---
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:910 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =_ "charger = %s\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:836 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =_ "chg detection work state = %d\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:774 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "usb otg host disconnect\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:763 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "usb disconnect\n"
+---dt---
+high-speed 
+quirk=present
