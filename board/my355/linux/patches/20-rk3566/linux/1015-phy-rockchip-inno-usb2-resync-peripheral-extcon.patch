@@ -1,0 +1,124 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Zetarancio <zetarancio@users.noreply.github.com>
+Date: Tue, 13 Oct 2026 00:00:00 +0000
+Subject: [PATCH] phy: rockchip-inno-usb2: republish peripheral extcon
+
+B_IDLE records vbus_attached while BC1.2 is still in progress and does
+not publish on that pass. Detection can then enter B_PERIPHERAL with
+the VBUS edge already consumed, so the worker keeps running and the
+cable stays unpublished. When VBUS is still present, detection has
+finished as SDP or CDP, and that extcon is missing, write the same
+cables B_IDLE would have written. Leave DCP, an unknown type, USB-host,
+and an already matching cable alone.
+
+Signed-off-by: Zetarancio <zetarancio@users.noreply.github.com>
+---
+--- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+@@ -670,6 +670,96 @@
+ 	.owner		= THIS_MODULE,
+ };
+ 
++static void rockchip_usb2phy_resync_peripheral_extcon(struct rockchip_usb2phy_port *rport,
++						      struct rockchip_usb2phy *rphy,
++						      unsigned int *cable)
++{
++	struct extcon_dev *edev = rphy->edev;
++	unsigned int chg_id;
++	const char *label;
++	bool want_usb = false;
++	bool changed = false;
++	int host, chg, usb;
++
++	/*
++	 * B_IDLE stores vbus_attached even while charger detection is still
++	 * between UNDEFINED and DETECTED, and that pass does not publish.
++	 * The DETECTED pass then sees no VBUS edge and skips the extcon write
++	 * before entering B_PERIPHERAL. Republish the cable that detection
++	 * already chose. Do not rerun BC1.2 and do not change PHY power.
++	 *
++	 * rockchip_otg_event listens only for EXTCON_USB_HOST, so these writes
++	 * do not schedule this work. No lock is taken: B_IDLE already calls
++	 * extcon_set_state_sync() from this worker without rport->mutex.
++	 * extcon_set_state_sync() notifies even when the value is unchanged,
++	 * so a matching cable is left alone.
++	 *
++	 * SDP also publishes EXTCON_USB, matching B_IDLE. CDP does not.
++	 * A negative extcon_get_state() is an error, not a detached cable.
++	 */
++	if (!edev || IS_ERR(edev))
++		return;
++	if (rphy->chg_state != USB_CHG_STATE_DETECTED)
++		return;
++
++	switch (rphy->chg_type) {
++	case POWER_SUPPLY_TYPE_USB:
++		chg_id = EXTCON_CHG_USB_SDP;
++		label = "USB_SDP_CHARGER";
++		want_usb = true;
++		break;
++	case POWER_SUPPLY_TYPE_USB_CDP:
++		chg_id = EXTCON_CHG_USB_CDP;
++		label = "USB_CDP_CHARGER";
++		break;
++	default:
++		return;
++	}
++
++	host = extcon_get_state(edev, EXTCON_USB_HOST);
++	if (host != 0)
++		return;
++
++	chg = extcon_get_state(edev, chg_id);
++	if (chg < 0)
++		return;
++	if (want_usb) {
++		usb = extcon_get_state(edev, EXTCON_USB);
++		if (usb < 0)
++			return;
++	} else {
++		usb = 1;
++	}
++
++	if (chg > 0 && usb > 0)
++		return;
++
++	if (!chg) {
++		if (extcon_set_state_sync(edev, chg_id, true)) {
++			dev_err_once(&rport->phy->dev,
++				     "failed to restore peripheral extcon\n");
++			return;
++		}
++		changed = true;
++	}
++	if (want_usb && !usb) {
++		if (extcon_set_state_sync(edev, EXTCON_USB, true)) {
++			dev_err_once(&rport->phy->dev,
++				     "failed to restore peripheral extcon\n");
++			*cable = chg_id;
++			rport->vbus_attached = true;
++			return;
++		}
++		changed = true;
++	}
++
++	*cable = chg_id;
++	rport->vbus_attached = true;
++	if (changed)
++		dev_info(&rport->phy->dev, "restored peripheral extcon %s\n",
++			 label);
++}
++
+ static void rockchip_usb2phy_otg_sm_work(struct work_struct *work)
+ {
+ 	struct rockchip_usb2phy_port *rport =
+@@ -766,6 +856,9 @@
+ 			rport->state = OTG_STATE_B_IDLE;
+ 			delay = 0;
+ 			rockchip_usb2phy_power_off(rport->phy);
++		} else {
++			rockchip_usb2phy_resync_peripheral_extcon(rport, rphy,
++								 &cable);
+ 		}
+ 		sch_work = true;
+ 		break;
