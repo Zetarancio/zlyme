@@ -1,0 +1,4 @@
+# A unified diff stores context as a leading space plus the source line.
+# Tab-indented kernel code therefore has a space before a tab, and a blank
+# source line is a single space. Those are the patch format.
+*.patch whitespace=-space-before-tab,-trailing-space

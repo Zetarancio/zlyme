@@ -104,3 +104,10 @@ CONFIG_ZRAM_DEF_COMP="lz4"
 # Keep DEBUG_KERNEL. Too early to strip; OOT this_module size tracks debug flags.
 CONFIG_DEBUG_KERNEL=y
 
+# Linux 7.0.2 hardcoded this to 10 when CONFIG_MODULES=y and left it
+# unset otherwise. 7.2.10 moved that into Kconfig (0 if !MODULES, 10 if
+# MODULES). 0 means the timeout condition is already true at the end of
+# initcalls. 10 is a deferred-probe window, not a ten-second boot stall.
+# Zlyme builds modules, so keep the 7.0.2 modular default.
+CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT=10
+
