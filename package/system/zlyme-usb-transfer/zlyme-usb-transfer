@@ -16,8 +16,11 @@
 # the host never finishes enumeration. After bind, this session
 # soft-disconnects until that port's PHY reports SDP or CDP, then
 # soft-connects once. A later unplug soft-disconnects once, and the
-# next data cable soft-connects once. DCP is not a data host. A
-# healthy control endpoint is left alone. ROCKNIX documents the same
+# next data cable soft-connects once. DCP is not a data host.
+# ep0out/transfer_type is the descriptor class, not a connection.
+# A configured or suspended UDC is left alone. One EP0 enable
+# error gets one recovery, and a failed soft_connect write is
+# not repeated. ROCKNIX documents the same
 # failure and uses UDC soft_connect; this behavior is Zlyme's and
 # does not copy that script. Debugfs is optional. state=bound is not
 # host enumeration.
