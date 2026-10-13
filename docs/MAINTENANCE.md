@@ -20,7 +20,12 @@ This is the maintainer index. The documents below own the detail. This page says
 | Which phase is active | `docs/ROADMAP.md` |
 | Why a past choice was made | `docs/decisions/` and `docs/research/` |
 
-The accepted Phase 9 runtime is `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme44`). A later documentation commit does not replace that SHA. Its acceptance record is in `docs/ROADMAP.md`.
+Product status, kept separate:
+
+- Historical Phase 9 acceptance is runtime `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme44`). A later documentation commit does not replace that SHA. Its acceptance record is in `docs/ROADMAP.md`.
+- Published stable `zlyme44.2` is runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, tag `zlyme-38098037074`. Documentation after that SHA does not replace the published firmware.
+- Development branch `zlyme44.3-phase-12` is the open Phase 12 tree. `ZLYME_VERSION` is still `zlyme44.2`.
+- Phase 12D hardware validation is open. The installed development image is `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`. USB File Transfer on that image did not enumerate. The record is `docs/ROADMAP.md` section 12 and `docs/research/usb-mtp-phase12d.md`.
 
 ## Kernel and board patches
 

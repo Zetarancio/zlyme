@@ -19,6 +19,48 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-13 — Phase 12D documentation and kernel preflight
+
+Phase 12D stays open. No kernel pin, DTS, or DWC3 change was made. The development HEAD at the start of this pass was `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`.
+
+kernel.org listed stable Linux 7.2.10 and mainline 7.3-rc7. The RC was not taken. Official SHA-256 for `linux-7.2.10.tar.xz` is `2feaa70453e91f541be6a5c9078d8168e081af45a3d9718054850538cff2ebf3`. The stored `linux-7.0.2.tar.xz` matches the official hash and `linux.hash`. Sixteen active patches were dry-run with `patch -F0` on pristine 7.2.10. Fourteen apply. The RTL8733BU USB-id hunk does not. The DualSense Edge patch is obsolete: 7.2.10 already reports the same bits. `olddefconfig` with the Buildroot GCC kept the USB, PHY, gadget, MMC, and DRM selections. `CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT` newly defaults to 10 and has to be pinned back in a migration. Mali and DMC were not compiled. The record is `docs/research/linux-7.2.10-preflight.md`.
+
+The earlier runtime-PM note that treated `pm_runtime_get_sync() == 0` as already active is wrong for this kernel. In 7.0.2, 1 means already active and 0 means a successful resume. `dwc3_gadget_pullup()` skips its own start on 0 because it assumes resume started the controller. OTG autosuspend resume does not. The ignored `__dwc3_gadget_start()` return can leave `pullups_connected` set. It is not established as the cause of Test A. Linux 7.2.10 still has that pull-up structure, and it does not contain the ODROID PHY RFC or `dwc3-rockchip.c`. An upgrade is a maintenance baseline. It is not an MTP fix. Detail is `docs/research/usb-mtp-phase12d.md`.
+
+The Test A and Test B log directories were not on disk when this entry was written. The 2026-10-12 entries below are the session reports, not a reread of those files.
+
+## 2026-10-12 — USB enumeration failed on both staged tests
+
+Test A, cable first, older image root SHA-256 `4e7b97590170b7bf8761352e308ac33608e3fd102d0503175b7fdb491e28147d`. PHY SDP, gadget bound, FunctionFS up, responder running. No new `ep0out` line. UDC `not attached`, speed `UNKNOWN`. The host saw no device. B cleanup removed the gadget.
+
+Test B, tool first, installed root SHA-256 `a32ef7214837e90cebdc95f906c704ca873872fa3917832705fecaef7fc64f87` from `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`. Bind with no cable logged `failed to enable ep0out`. The session watcher wrote `disconnect`, then `connect` after SDP. Both writes were accepted. The UDC stayed `not attached`. The host saw no device. No file was copied. B cleanup removed the gadget. MENU+START was not repeated on this image. The teardown line `request was not queued to ep0out` is a dequeue of a request that is no longer queued. It is not a second proof that EP0 setup failed.
+
+The soft-connect watcher is implemented and hardware-exercised. It did not enumerate the gadget.
+
+## 2026-10-12 — Phase 12C MTP, then ext4
+
+`818353bae0abb004825b76e19956d57374f34b5e` and `8430c5eeaaf152b49d3d0c497288e303af66b3a8` added the lower-port helper and the USB File Transfer PAK. The first share list was exFAT and FAT. `6dd5267f9562122112936216f2839417981c78ec` moved teardown to a reaper outside the PAK group. `4103de9a45b8bec81d27e3abacab6494d33f4f8a` superseded the exFAT-only limit: ext4 ROM and BIOS directories are exported through `zlyme-usb-enter`. `7b10000cb45ebb65dcbf24f5f6b7282494884b18` is the confinement host test. `88124805fdbb6f2e23d6b72252f9d34421a6db26` is the six-row PAK. `ada06d5bcd2053800a2fa05a1ce689c21164a348` accepts cleanup that finishes after the group kill. Host tests passed. No Flip enumeration was claimed for those commits. The sentences that said an ext4 library is not shared are the implementation from before `4103de9a`.
+
+## 2026-10-12 — Phase 12B2 kernel test drivers
+
+`11aa947a8cb983679d8f8caaf288150a7fa668b7` turns off `CONFIG_MMC_TEST`, `CONFIG_SND_TEST_COMPONENT`, and `CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE`. The generated config after `olddefconfig` is the check. Boot time was not measured. No Flip check of those symbols was done. They are not on the boot path.
+
+## 2026-10-11 — Phase 12B1 Buildroot 2026.08
+
+`a7afc8cc479f1b092a1458b4e92675dc49dd0551` pins Buildroot 2026.08. Linux stays 7.0.2. Mesa in that release is 26.1.8. `754c2bd5de59b8b11718e81dda51c28e74ca43df` selects the PanVK ICD in the product image. The minimal defconfig does not. `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER` is not set. Flycast, MAME2003-Plus, and Mupen64Plus-Next moved the next day to pins that build on GCC 15. Those pins are source changes. They are not a hardware performance result. PanVK was not enumerated on a Flip.
+
+## 2026-10-11 — Phase 12A
+
+`2f7605ce2d1ead1b7f3f76c77fd468f5344cdea8` samples the battery every 10 seconds and shuts down on two numeric 0% readings with the charger offline. That rule is source. A 0% shutdown was not run on a Flip. `c5214171e8db22756015d7faa44d7a17d60f5c02` stores an SSH root password. `847f9c49d9ce42e67c3b0a32e14f082cb3b20b73` keeps the HTTP clock bootstrap and starts BusyBox ntpd after the first frame. `0c3bab1a96682118f6b215a2f3dad8892300084d` corrects the ntpd callback, one-client locking, and a failed password clear. Phase 12A2, the same day, is the `ZLYME1` launch record and stock PAK logs: `ce67bf612b8345ebf5473de938dafbc983596f8c`, `96a3fe608499b6c398e8c1bc906650a2f9e92c89`, `19abe87cc278ffe3b5e225ceb7171fb58421a0c4`, NextUI pin `e30b7c6d008215315787b04cbd95bf0f06f38f78`. Host-tested. Not a device acceptance.
+
+## 2026-10-11 — Phase 12 preflight
+
+Before 12A, `phase-12-preflight` landed PortMaster mount cleanup, selected-library checks, removable mountpoint names, transactional integration, a Theora compat install that replaces only `libtheoradec.so.1`, and changelog release notes. The branch tip of that pass was `adf188305e8fd7610083a946273a35ab80cb420d`, parented on published-source `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3` after it was promoted. Host scripts named in `docs/ROADMAP.md` passed. The task had no hardware gate. The 44.2 PortMaster acceptance is the published image, not these commits.
+
+## 2026-10-11 — zlyme44.2 published
+
+Run `38098037074` published tag `zlyme-38098037074` from `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. The acceptance entry below was written while that run was the publication gate. Publication did not replace the runtime SHA and did not reopen Phase 11.
+
 ## 2026-10-11 — zlyme44.2 hardware-accepted
 
 Zlyme 44.2 implementation is closed. The accepted runtime/source SHA is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. The accepted NextUI pin is `cf4a16ccbb54320af963a796b173ab8b77e25017`. The maintainer hardware-accepted pristine Etcher image `zlyme.img`, SHA-256 `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`, rootfs SHA-256 `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path obtained `frt_3.3.4` through PortMaster, and Ascent DX, Alien Squatter, and Gravity Defied ran. The historical Ascent `love.aarch64` permission failure and the missing `libtheoradec.so.1` failure were absent. Stable Build run `38098037074` was dispatched from the runtime SHA with `publish_release=true`. That run is the publication gate. `zlyme44.2` is not published until the run publishes the release. A documentation commit does not replace the runtime SHA.
