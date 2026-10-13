@@ -6,9 +6,22 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- USB File Transfer on the lower port soft-disconnects the gadget while no computer cable is attached, and soft-connects it once when that cable is attached, so the RK3566 controller can enable its control endpoint. A charger does not count as a computer. The screen still follows the kernel USB state.
+- Tools → USB File Transfer is in the development image. It is meant to share ROM and BIOS folders on the lower USB-C port from an exFAT, FAT, or ext4 card, and to leave the card mounted. A computer has not seen the Flip as a USB device, so copying files with this tool is not available yet. See Known limitations.
+- The product image builds Mesa's PanVK driver next to the existing Mali library. Games still use the Mali library. PanVK is not selected at runtime, and it has not been tried on a Flip.
+
+### Changed
+
+- The battery sample is every 10 seconds. At 10% or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been tried on a Flip.
+- SSH stays on. Until you set a root password, the password is still empty. A password you set is kept on the card.
+- After the menu is up, the clock can correct itself from the network. The first picture does not wait for that.
+- Update says an install may reboot more than once, and it shows a recent transfer rate.
+- Flycast is v2.7. MAME2003-Plus and Mupen64Plus-Next moved to the revisions named in `docs/UPSTREAMS.md`. That is a source pin. It is not a claim that those games run better.
+
+### Known limitations
+
+- USB File Transfer has not enumerated on the lower USB-C port. Two tries on 2026-10-12 left the host with no USB device, and no file was copied. The on-screen state follows the kernel. `not attached` means the computer has not configured the Flip.
 
 ## [zlyme44.2] - 2026-10-11
 
