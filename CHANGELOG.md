@@ -8,7 +8,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Added
 
-- Tools → USB File Transfer is in the development image. It is meant to share ROM and BIOS folders on the lower USB-C port from an exFAT, FAT, or ext4 card, and to leave the card mounted. A computer has not seen the Flip as a USB device, so copying files with this tool is not available yet. See Known limitations.
+- Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed and Known limitations.
 - The product image builds Mesa's PanVK driver next to the existing Mali library. Games still use the Mali library. PanVK is not selected at runtime, and it has not been tried on a Flip.
 
 ### Changed
@@ -18,11 +18,12 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - After the menu is up, the clock can correct itself from the network. The first picture does not wait for that.
 - Update says an install may reboot more than once, and it shows a recent transfer rate.
 - Flycast is v2.7. MAME2003-Plus and Mupen64Plus-Next moved to the revisions named in `docs/UPSTREAMS.md`. That is a source pin. It is not a claim that those games run better.
-- The development kernel is Linux 7.2.10. It has been booted on one Flip. USB File Transfer still does not appear to a computer.
+- The development kernel is Linux 7.2.10. It has been booted on one Flip.
+- Tools → USB File Transfer shares the whole ZLYME data partition, a mounted second card, and USB volumes that are already mounted. A ROM or BIOS folder is not required. Settings, logs, and update files on the data partition are included. The boot partition is not shared. The running screen shows B to stop and does not print the kernel USB state. The tool does not start while an update is staged. Use a computer you trust.
 
 ### Known limitations
 
-- USB File Transfer has not enumerated on the lower USB-C port. Tries on 2026-10-12 and 2026-10-13 left the host with no USB device, and no file was copied. The on-screen state follows the kernel. `not attached` means the computer has not configured the Flip.
+- On 2026-10-13 one computer saw the Flip as MTP (`1d6b:0100`) and, in a separate session, as a read-only mass-storage gadget (`1d6b:0104`). Both were high speed on one host port. No file was copied. Tries on 2026-10-12, and earlier tries on 2026-10-13, left the host with no USB device. The whole-card share is host-tested. The development update that contains it, `zlyme-my355-20261013-4a2b752bafbe.tar`, has not been installed.
 
 ## [zlyme44.2] - 2026-10-11
 

@@ -1074,3 +1074,25 @@ The session exited on its own timer at 19:45:21Z. Cleanup wrote an empty `UDC`, 
 Both gadgets produced a host connection. The failure in 12D-E20 is not specific to MTP on this receptacle, and it was not repaired by a `soft_connect` write. `GUSB2PHYCFG(0)` did not change between the silent session and these two enumerations. The supported difference is the host port: 12D-E20 never identified the receptacle, and 12D-E21 used bus 7 port 1 after that port had enumerated a hub. Which port 12D-E20 used is still unknown.
 
 Phase 12D stays open. Enumeration happened. A matching file copy did not. The next step is that file copy on this same port. It is not another DTS quirk, not a DWC3 wrapper, and not a move to the upper host controllers.
+
+## 26. Storage roots and retained patches, 2026-10-13
+
+This section is a source change after 12D-E21. It is not a new hardware session and it does not change the 12D-E01 through 12D-E21 results. The installed image for 12D-E21 still shares ROM and BIOS directories. The tree after this note shares filesystem roots. That export is host-tested. It was not installed for 12D-E21, and no file round trip has been run.
+
+`zlyme-usb-transfer` exports `/storage` as `ZLYME`, `/mnt/sd2` as `SD Card` when that library is mounted, and each mounted `/mnt/media/<name>` volume. `/boot` is excluded by the boot mount's source, or by `ZLYME_BOOT_DEVICE`, not by the filesystem label and not by `mmcblk` order. `.config`, `.logs`, and `.update` on `/storage` are inside that one share. `start` refuses while `/storage/.update/reconstruct` or `/storage/.update/pending/zlyme` exists. The private mount namespace stays. No kernel, DTB, PHY, or bootloader file was edited for this.
+
+The first file check, if a supervised session is available, still belongs on the installed 12D-E21 image and the confirmed Demetria receptacle, bus 7 port 1. It is one disposable file in the existing ROM export, with hashes on both sides, and that file is the only one removed. It is not a test of the filesystem-root export. Installing the later image before that check makes the round trip a different experiment.
+
+Patch classification for the Phase 12D USB changes, without removal:
+
+| Change | Class | Why it stays |
+| --- | --- | --- |
+| `snps,dis_u2_susphy_quirk` | Upstream baseline | It comes from `rk356x-base.dtsi`. 12D-E21 did not add or remove it. |
+| `snps,dis_enblslpm_quirk` | Experimentally retained | 12D-E18 applied it. 12D-E21 enumerated with `GUSB2PHYCFG(0)` bit 8 clear. That session does not prove the bit had to be clear. |
+| `1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch` | Experimentally retained, unexercised in 12D-E20 and 12D-E21 | 12D-E19 is the stale-extcon observation that motivated it. Enumeration without calling the repair does not make the repair obsolete. |
+| `snps,dis-u2-freeclk-exists-quirk` | Not enabled | 12D-E21 enumerated while bit 30 stayed set. It is not a removal candidate because it was never added. |
+| PMIC and off-current patches, including `0007` | Unrelated to this MTP export | They are not candidates for a storage-export change. |
+
+A later A/B uses the same receptacle and the same cable. One image omits patch `1015` and keeps the LPM property. Another omits `snps,dis_enblslpm_quirk` and keeps `1015`. They are separate boots. Each one only asks whether MTP `1d6b:0100` enumerates at high speed on bus 7 port 1. This change does not build either image.
+
+The product rebuild from `4a2b752bafbe` produced `zlyme-my355-20261013-4a2b752bafbe.tar`, SHA-256 `4767e45ffdf7ae7fa48e0c1b1d26a2fcdd50f762916d21119f53930b3ddbe08d`. It has not been installed. Its `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, and `u-boot.itb` match the 12D-E21 OTA. The squashfs member contains the new `zlyme-usb-transfer`, `zlyme-usb-enter`, and USB File Transfer `launch.sh`. That is a host pack. It is not a Flip result.

@@ -117,21 +117,19 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 
 ## USB file transfer
 
-Tools → USB File Transfer shares folders over the lower USB-C port, the port you charge with. The upper port stays a USB host.
+Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service.
 
-A starts the session. B goes back to the menu without starting it. The computer can add, change, and delete files in the shared folders. B, or MENU+START, ends the session and returns to the menu. Unplugging the cable leaves the session up until you leave the tool.
+The first screen tells you what is shared. A starts the session. B goes back without starting it. The running screen says MTP is active, names the storages that were actually shared, and shows B to stop. MENU+START still leaves the tool. Unplugging the cable leaves the session up until you leave it.
 
-Shared folders, when they exist and can be written:
+A computer can see:
 
-- On the main card, the first of `Roms/`, `roms/`, and `ROMS/` that exists. The main card is exFAT.
-- On the main card, the first of `Bios/`, `bios/`, and `BIOS/` that exists.
-- The same ROM and BIOS folders on a second SD card, or a USB library, when that card is mounted as exFAT, FAT, or ext4.
+- ZLYME, the whole data partition. That includes games, BIOS, saves, settings, logs, and update files.
+- SD Card, when a second card is mounted. The whole card, including a card that has no ROM folder.
+- USB, each USB stick that was already mounted, using the name the Flip already gave that volume.
 
-A card that uses another filesystem stays mounted and is not shared. The tool says so. A read-only card is not shared. Saves, settings, updates, and the rest of the card stay on the Flip. The card stays mounted, including an ext4 card. The computer gets the shared folders through MTP, which is a file protocol on the mounted card. It does not receive the card as a disk. A shortcut inside a shared folder cannot open settings or the boot partition.
+The boot partition is not shared, and the tool does not unmount it. Use a computer you trust. It can change settings and files staged for an update. If an update is already staged, the tool refuses to start. A missing second card or USB stick is normal and does not stop the ZLYME share. A stick plugged in after the screen is up is not added. A read-only volume stays read-only. NTFS is not shared. The computer receives files through MTP. It does not receive the card as a disk.
 
-The running screen says MTP is on, repeats the kernel USB state, names which cards are shared, and says how to stop. It says the host configured the gadget only when that state is `configured`. It does not call the host connected while the kernel state is `not attached`.
-
-On the development image this tool has not made a computer see the Flip. Opening it, and plugging a computer cable into the lower port, has left the kernel state at `not attached`. Until that changes, do not expect files to appear on the computer. A charger is not a computer. Leaving the tool with B returns to the menu. Unplugging the cable leaves the session up until you leave the tool. macOS would need a separate MTP program once a computer can see the device. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
+On 2026-10-13 one computer saw the Flip on the lower port. No file was copied in that session, so a connection is not proof that a copy worked. The whole-card share described here has not been tried on a Flip. A charger is not a computer. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
 
 
 
