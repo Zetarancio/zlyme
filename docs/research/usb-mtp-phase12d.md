@@ -304,7 +304,7 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 ### 12D-E20 Peripheral extcon resync
 
 - When: not run. The source change and the development OTA are section 22. This row is the hardware gate, and it stays open until that OTA is installed and the two gates are recorded.
-- Source: patch `board/my355/linux/patches/20-rk3566/linux/1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch`, commit `07de7365fda6`. OTA `zlyme-my355-20261013-07de7365fda6.tar`, not installed.
+- Source: the corrected patch `1015`, commit `dd0d717f331f`. OTA `zlyme-my355-20261013-dd0d717f331f.tar`, not installed. The earlier tar `zlyme-my355-20261013-07de7365fda6.tar` is superseded and is not the test image.
 - Hypothesis: a finished SDP or CDP session that is already in `B_PERIPHERAL` with empty extcon will publish again from the existing worker, without a new BC1.2 pass. A later, separate question is whether that published session enumerates.
 - Action: none on the Flip yet.
 - Observed: nothing on hardware.
@@ -849,42 +849,55 @@ The existing `B_IDLE` path sets `EXTCON_USB` for SDP and does not set it for CDP
 
 `board/my355/linux/patches/20-rk3566/linux/1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch`
 
-Commit `07de7365fda6`. It applies after `1013` and before `30-default` `9901`. Number `1014` stays unused because that filename was the removed maskrom restart patch. The permanent change is this file. `output/build` was re-extracted by `linux-dirclean` and patched by Buildroot.
+Commit `dd0d717f331f` replaces the helper in the same patch. `07de7365fda6` was the first revision and has not shipped. It applies after `1013` and before `30-default` `9901`. Number `1014` stays unused because that filename was the removed maskrom restart patch. The permanent change is this file. `output/build` was re-extracted by `linux-dirclean` and patched by Buildroot.
 
-The new helper runs only from `OTG_STATE_B_PERIPHERAL` when `utmi_bvalid` is set. It returns without writing unless `chg_state` is `USB_CHG_STATE_DETECTED`, `chg_type` is `POWER_SUPPLY_TYPE_USB` or `POWER_SUPPLY_TYPE_USB_CDP`, `EXTCON_USB_HOST` reads 0, and the corresponding extcon read is 0 rather than a negative error. SDP writes `EXTCON_CHG_USB_SDP` and `EXTCON_USB`. CDP writes `EXTCON_CHG_USB_CDP` only. A successful write stores that cable in the function-static `cable` and sets `vbus_attached`, so the existing falling-edge path can clear it. A failed `extcon_set_state_sync()` logs once with `dev_err_once` and does not log success. A repair logs one `dev_info`: `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER`. The matching path does not write and does not log. The 2-second schedule is unchanged. PHY `power_on` and `power_off` are unchanged.
+The helper runs only from `OTG_STATE_B_PERIPHERAL` when `utmi_bvalid` is set. It returns without writing unless `chg_state` is `USB_CHG_STATE_DETECTED` and `chg_type` is SDP or CDP. It reads `EXTCON_USB_HOST`, SDP, CDP, DCP, SLOW, and `EXTCON_USB`. A negative read returns before any value is treated as detached. USB-host mode returns before a write. For stored SDP, an already asserted CDP, DCP, or SLOW cable returns with no write; otherwise a missing SDP bit and a missing `EXTCON_USB` bit are written. For stored CDP, an already asserted SDP, DCP, SLOW, or `EXTCON_USB` bit returns with no write; otherwise a missing CDP bit is written and `EXTCON_USB` is left alone. A cable that already matches is not written again. The helper does not clear a contradictory cable. A successful write stores that cable in the function-static `cable` and sets `vbus_attached`, so the existing falling-edge path can clear the cable this helper published. A refused write leaves that cache alone. A failed `extcon_set_state_sync()` logs once with `dev_err_once` and does not log success. A repair logs one `dev_info`: `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER`. The 2-second schedule is unchanged. PHY `power_on` and `power_off` are unchanged.
+
+The first revision could publish SDP or CDP beside a charger cable that was still asserted. That combination is reachable. `devm_extcon_dev_allocate()` is called with the cable list and no mutually exclusive mask, so the core accepts SDP together with CDP, DCP, or SLOW. The `B_IDLE` publish writes only the static `cable`, plus `EXTCON_USB` when that cable is SDP. The falling edge clears only that same id. `B_PERIPHERAL` on loss of VBUS does not clear extcon in that call. It moves to `B_IDLE` and schedules the worker immediately. If VBUS is present again on that next pass, the pass starts detection and returns before the edge compare, so the old bits and `vbus_attached` stay. Detection can then enter `B_PERIPHERAL` as SDP or CDP and skip the publish because the cached VBUS level already matches. The helper then sees the new internal type and the old extcon bits together. This driver never writes `EXTCON_CHG_USB_SLOW`, and the extcon state file is read-only, so SLOW is a guard for a registered cable rather than a path this file is shown to take. The SDP, CDP, DCP, and `EXTCON_USB` overlap does not have that excuse. The guard refuses the write. It does not clear the old cable.
 
 Left unchanged: RK817 `0007`, `dr_mode = "otg"`, DWC3 clocks and resets, `maximum-speed`, USB-C pinctrl, `snps,dis_u2_susphy_quirk`, `snps,dis_enblslpm_quirk`, the MTP helper, the reaper, the upper host port, and suspend and shutdown.
 
 ### Static check
 
-The kernel function was not executed on the host. A host model of its branches, `/tmp/resync-predicate.c`, was compiled with `gcc -Wall -Wextra` and passed 13 assertions. That model is not the patched kernel. Buildroot then applied the patch to a fresh Linux 7.2.10 tree with no hunk offset. `strings` on `output/images/Image` contains `restored peripheral extcon %s` and `failed to restore peripheral extcon`.
+The kernel function was not executed on the Flip. A host model of the guarded helper, compiled with `gcc -Wall -Wextra -Werror`, passed the cases below and a sweep of the SDP/CDP stored types against every combination of the six extcon bits. The sweep checks that a call never raises the number of asserted charger cables when one was already set, and that CDP never writes `EXTCON_USB`. That model is not the patched kernel. `patch -p1 -F0` reproduced the intended source from the unpatched 7.2.10 file. The target toolchain compiled `drivers/phy/rockchip/phy-rockchip-inno-usb2.o` in the build container. Buildroot then applied the same patch to a fresh Linux 7.2.10 tree, with no hunk offset, and compiled that file again. `strings` on `output/images/Image` contains `restored peripheral extcon %s` and `failed to restore peripheral extcon`.
 
 | Condition | Result in the patch |
 | --- | --- |
-| `B_PERIPHERAL`, VBUS high, detected SDP, extcon zero | Write SDP and `EXTCON_USB`, one info line |
-| `B_PERIPHERAL`, VBUS high, detected CDP, extcon zero | Write CDP only, one info line |
-| `B_PERIPHERAL`, cables already matching | No `extcon_set_state_sync()` |
-| `B_PERIPHERAL`, VBUS low | Existing disconnect path, helper not called |
-| `B_IDLE`, detected DCP | Helper not called. DCP stays charge-only |
-| Charger type unknown, or detection not finished | No write |
-| `A_HOST`, or `EXTCON_USB_HOST` set | No gadget cable write |
-| `extcon_get_state()` negative | Treated as an error. No write |
+| All-zero extcon, detected SDP | Write SDP and `EXTCON_USB` |
+| All-zero extcon, detected CDP | Write CDP only |
+| SDP set, `EXTCON_USB` missing | Write `EXTCON_USB` only |
+| `EXTCON_USB` set, SDP missing | Write SDP only |
+| SDP and `EXTCON_USB` already set | No write |
+| CDP already set, `EXTCON_USB` clear | No write |
+| DCP set, stored SDP | No write. DCP stays |
+| SDP set, stored CDP | No write. SDP stays |
+| CDP set, stored SDP | No write. CDP stays |
+| SLOW set, stored SDP or CDP | No write |
+| `EXTCON_USB` set, stored CDP | No write. CDP stays clear |
+| `EXTCON_USB_HOST` set | No write |
+| Unknown charger type | No write |
+| Detection not finished | No write |
+| `extcon_get_state()` negative | No write |
 | `extcon_set_state_sync()` failure | `dev_err_once`, no success line |
+| VBUS low | Existing disconnect path. Helper not called |
+| Second pass after a successful repair | No further write |
 | Deep suspend and power-off | No change to those paths |
 
 ### Build
 
-`./build.sh --config zlyme_my355_defconfig linux-dirclean`, then `./build.sh --config zlyme_my355_defconfig`. Exit 0. Tree at the build was clean `07de7365fda6`. Product version in the squashfs is still `zlyme44.2 (2026-10-13)`. The kernel string is `Linux version 7.2.10 #1 SMP PREEMPT Tue Oct 13 17:35:08 UTC 2026`. The `#1` is a new build count after `linux-dirclean`. The installed 12D-E18 kernel was `#2` at 16:08:35 UTC. The USB source difference from that image is this PHY patch. The DTB hash is unchanged, so the role, the speed cap, and both Synopsys quirks are the same bytes.
+`./build.sh --config zlyme_my355_defconfig linux-dirclean`, then `./build.sh --config zlyme_my355_defconfig`, from clean `dd0d717f331f`. The first image build linked the kernel and then stopped in `post-build.sh` with make error 141, the same SIGPIPE as the earlier image. The retry completed. Product version in the squashfs is still `zlyme44.2 (2026-10-13)`. The kernel string is `Linux version 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026`. The `#1` is a new build count after `linux-dirclean`. The installed 12D-E18 kernel was `#2` at 16:08:35 UTC. The DTB hash is unchanged, so the role, the speed cap, and both Synopsys quirks are the same bytes. `u-boot.itb` and `idbloader.img` in this tar match the superseded tar byte for byte. RK817 `0007` is unchanged.
 
 | Artifact | SHA-256 |
 | --- | --- |
 | `output/images/rk3566-miyoo-flip.dtb` | `cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed` |
-| `output/images/Image` | `4433bfaf13815f1d5e303b16ed0410dfbac63784a9fcf4bacc9cc84b0094b966` |
-| `output/images/Image.gz` | `a9badc9e66a9b3f83e159817f0dc2cb8acccd2405cb346ce993da9d6aa2333b4` |
-| `output/images/zlyme` | `b721bd2b9c697af67ff2ebc5885bbcbc2bf2b4264e5947223328e2a9a9805167` |
-| `output/images/zlyme-my355-20261013-07de7365fda6.tar` | `195ecc2fc9f563565a51ab696cbe61cc8405b38b270027cba4bc6be63a00cb6f` |
+| `output/images/Image` | `1bda9d4258b70f0e6e1693071344590189f1a49315dfac98805df95e5e145fed` |
+| `output/images/Image.gz` | `eafe2a996bf1b0495edf8859ad4a68fbf568c40a8ebafeeace20761b778cd847` |
+| `output/images/zlyme` | `9757e47e9512e36f94f136da8f733f2ba749edc77ca3fb2ff347de561a7eb13c` |
+| `output/images/zlyme-my355-20261013-dd0d717f331f.tar` | `7d600ea6cc604c9be2ae69ff9872431e606b02c86ff9c100060b365c55d036e0` |
 
-`VERSION` in the tar is `07de7365fda6` and `20261013`. The tar members `Image.gz`, `rk3566-miyoo-flip.dtb`, and `zlyme` match those hashes. Decompiled `usb@fcc00000` still has `dr_mode = "otg"`, `maximum-speed = "high-speed"`, `snps,dis_u2_susphy_quirk`, and `snps,dis_enblslpm_quirk`. It does not have `snps,dis-u2-freeclk-exists-quirk`. The OTA was not installed.
+`VERSION` in the tar is `dd0d717f331f` and `20261013`. The tar members `Image.gz`, `rk3566-miyoo-flip.dtb`, and `zlyme` match those hashes. Decompiled `usb@fcc00000` still has `dr_mode = "otg"`, `maximum-speed = "high-speed"`, `snps,dis_u2_susphy_quirk`, and `snps,dis_enblslpm_quirk`. It does not have `snps,dis-u2-freeclk-exists-quirk`. `usb@fd000000` is still `dr_mode = "host"` with `snps,dis_u2_susphy_quirk` and `maximum-speed = "high-speed"`. The upper EHCI node is unchanged. The OTA was not installed.
+
+`zlyme-my355-20261013-07de7365fda6.tar`, SHA-256 `195ecc2fc9f563565a51ab696cbe61cc8405b38b270027cba4bc6be63a00cb6f`, is the first helper revision. It is superseded for testing. Do not install it.
 
 ### Predicted hardware result
 
@@ -894,8 +907,10 @@ The patch does not choose SDP. A DCP result stays DCP. It does not make DWC3 enu
 
 ### Maintainer test
 
-Copy the tar on the OS card. Do not send it over Wi-Fi. Put `zlyme-my355-20261013-07de7365fda6.tar` in `/storage/.update/`. Newest `zlyme-my355-*.tar` wins, so remove older tars in that directory first. Check the SHA-256 on the card. Boot. `S18zlymeupdate` applies a queued tar and reboots. After that second boot, `uname -a` should show `7.2.10 #1 SMP PREEMPT Tue Oct 13 17:35:08 UTC 2026`. Do not flash SPI NAND and do not run `zlyme-update uboot`.
+Copy `zlyme-my355-20261013-dd0d717f331f.tar` on the OS card. Do not send it over Wi-Fi, and do not install `zlyme-my355-20261013-07de7365fda6.tar`. Put the new tar in `/storage/.update/`. Newest `zlyme-my355-*.tar` wins, so remove older tars in that directory first. Check SHA-256 `7d600ea6cc604c9be2ae69ff9872431e606b02c86ff9c100060b365c55d036e0` on the card. Boot. `S18zlymeupdate` applies a queued tar and reboots. After that second boot, `uname -a` should show `7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026`. Do not flash SPI NAND and do not run `zlyme-update uboot`.
 
-Gate 1, extcon recovery. Leave USB File Transfer stopped. Enable dynamic debug only for `rockchip_usb2phy_otg_sm_work` and `rockchip_chg_detect_work`, so a fresh detection is visible. With the cable in the lower port, a pass is `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER` with no `chg detection work` sequence in front of it, and the sysfs cable matching that line. `sdp cable is connected` after charger states 0 through 5 is a fresh detection and does not pass Gate 1. If the edge path already published and the restore line never appears, the stuck state did not occur. Replug and watch again. If the PHY stays DCP, stop and do not start the gadget.
+Start the host kernel journal and an `lsusb` poll before moving the cable, and keep a device `dmesg` or `/dev/kmsg` capture over that same interval. The two clocks need a shared note of when the cable moved. A host log from outside that interval does not score either gate.
 
-Gate 2, enumeration. Run it only while SDP or CDP is actually present, whether that presence came from Gate 1 or from a later fresh detection. Start the host kernel journal and an `lsusb` poll before starting USB File Transfer, and keep them running while the gadget is up. Sample `GUSB2PHYCFG(0)`, `DCTL`, `DSTS`, `DALEPENA`, and the UDC state during that interval. Bit 8 should still be clear. If the host sees `1d6b:0100`, copy one small file and then check B cleanup. If SDP or CDP never appears, Gate 2 stays untested. Do not score a host log that was captured while the gadget was stopped.
+Gate 1, extcon recovery. Leave USB File Transfer stopped. Enable dynamic debug only for `rockchip_usb2phy_otg_sm_work` and `rockchip_chg_detect_work`, so a fresh detection is visible. With the cable in the lower port, a pass is `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER` with no `chg detection work` sequence in front of it, and the sysfs cable matching that line. The host poll in that window should stay empty, because the gadget is stopped. `sdp cable is connected` after charger states 0 through 5 is a fresh detection and does not pass Gate 1. If the edge path already published and the restore line never appears, the stuck state did not occur. Replug and watch again. If another charger cable is already asserted, the helper is supposed to stay silent. Record that and do not clear it by hand. If the PHY stays DCP, stop and do not start the gadget.
+
+Gate 2, enumeration. Run it only while SDP or CDP is actually present, whether that presence came from Gate 1 or from a later fresh detection. Keep the host journal and `lsusb` poll running from before USB File Transfer starts until the gadget is stopped. Sample `GUSB2PHYCFG(0)`, `DCTL`, `DSTS`, `DALEPENA`, and the UDC state during that interval. Bit 8 should still be clear. If the host sees `1d6b:0100`, copy one small file and then check B cleanup. If SDP or CDP never appears, Gate 2 stays untested.
