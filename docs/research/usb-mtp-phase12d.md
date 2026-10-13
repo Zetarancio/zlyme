@@ -32,6 +32,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E20 | 2026-10-13 18:20Z–18:45Z | fresh SDP, restore unexercised, no enumeration | [Extcon and enumeration session](#23-extcon-and-enumeration-session) |
 | 12D-E21 | 2026-10-13 19:17Z–19:45Z | both gadgets enumerated on the identified port | [Host port and gadget session](#25-host-port-and-gadget-session) |
 | 12D-E22 | 2026-10-13 21:05Z–21:22Z | gadget started, host saw no device | [Installed root export](#27-installed-root-export) |
+| 12D-E23 | 2026-10-13 | source defect in the watcher; not a hardware session | [Connection watcher](#28-connection-watcher) |
 
 ## Experiment ledger
 
@@ -344,6 +345,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Unknown: the live `umtprd.conf`, responder log, FunctionFS state, link latch, and DWC3 registers. Those files were already gone. Whether extcon was DCP or SDP while the page was open. Whether the one reconnection happened before or after B.
 - Evidence: section 27.
 - Code: no kernel, DTB, PHY, or bootloader change. No exporter change from this session. The screen text in the tree was shortened afterwards and was not on this image.
+
+### 12D-E23 Connection watcher
+
+- When: 2026-10-13, after 12D-E22. No new Flip session.
+- Source: `13071973a350`. The installed image for 12D-E22 is still `4a2b752bafbe`.
+- Setup: read `link_once` against Linux 7.2.10 `soft_connect_store`, `dwc3_transfer_type_show`, and `dwc3_gadget_pullup`. Host tests use mocked sysfs. They do not open a USB controller.
+- Hypothesis: `ep0out/transfer_type` of `control` was being used as proof that the link was healthy, so a later data cable could be ignored.
+- Action: replace that decision with the PHY cable and the UDC state. Build one product OTA. Do not change the kernel.
+- Observed: `transfer_type` prints `control` when the endpoint is enabled and its descriptor class is control. The old `link_once` returned immediately on that string and stored `healthy`, without reading the UDC state. `soft_connect_store` returns the byte count and ignores the pull-up result. The product OTA is `zlyme-my355-20261013-13071973a350.tar`, SHA-256 `2f41f13de96f231bd8cf8f95cb01b7b2029c6cb17a0010779afb2692a2a89945`. Its kernel, DTB, and bootloader members match 12D-E21. It has not been installed.
+- Result: the source defect is real. It is not evidence that the defect caused 12D-E20 or 12D-E22. 12D-E21 stays a successful enumeration. 12D-E22 stays the failed session on the root-export image. This OTA is not hardware-accepted.
+- Excludes: a storage-layout change as the response to 12D-E22. A kernel, DTB, PHY, or bootloader edit. Treating a `soft_connect` write as enumeration.
+- Unknown: whether SDP or CDP was present while the 12D-E22 page was open. Whether this watcher enumerates on bus 7 port 1.
+- Evidence: section 28. No new hardware log.
+- Code: `package/system/zlyme-usb-transfer/zlyme-usb-transfer`. The filesystem-root exports and `zlyme-usb-enter` are unchanged.
 
 
 ## 1. Hardware topology
@@ -1128,4 +1143,18 @@ Demetria at the same minute had an empty `lsusb -d 1d6b:0100`. Bus 7, the 12D-E2
 
 uMTP-Responder 1.8.1 stores a `storage` line without stating the directory. `storage "/storage" "ZLYME" "rw"` is not, by itself, a parse rejection. This session does not show the generated configuration, so it does not prove what the responder did with that line. It does show that the failure reached the kernel's EP0 path.
 
-No exporter change, kernel patch, or new OTA follows from this reading. The tree's USB File Transfer introduction was shortened after the reading. That text was not on the installed image. The next hardware check is one page left open on bus 7 port 1 while SDP or CDP is 1, with the session files copied before B.
+No exporter change or kernel patch follows from this reading. The tree's USB File Transfer introduction was shortened after the reading. That text was not on the installed image. Section 28 is the later watcher correction. It does not replace this observation.
+
+## 28. Connection watcher, 2026-10-13
+
+12D-E23 is the ledger entry above. It is a source reading and a userspace correction. It is not a Flip session, and it does not change 12D-E21 or 12D-E22.
+
+`dwc3_transfer_type_show` in Linux 7.2.10 prints `control` when `DWC3_EP_ENABLED` is set and `usb_endpoint_type` is control. Otherwise it prints `--`. That file is the descriptor class. The old `link_once` treated `control` as healthy and returned before it looked at the PHY or the UDC. A UDC state of `not attached` could therefore be latched healthy, and a later change from DCP to SDP wrote nothing.
+
+`soft_connect_store` calls `usb_gadget_udc_start_locked` and `usb_gadget_connect_locked`, then returns the write length. It does not return their results. `dwc3_gadget_pullup` returns without `dwc3_gadget_soft_connect` when the pull-up is already in the requested state. A shell write can succeed while the controller does not run endpoint setup again. Binding with no VBUS can log `failed to enable ep0out` from `__dwc3_gadget_start`. The old watcher recovered from that line only while debugfs did not say `control`.
+
+The replacement uses three inputs. No SDP or CDP means one disconnect. A data cable after that idle state means one connect. `configured` and `suspended` are not disconnected by a later pass. One `failed to enable ep0out` for this bind, with SDP or CDP and a UDC that is not configured, gets one disconnect and one connect. A failed write is recorded and not repeated. The responder is not recreated. `loop_on_disconnect` stays 1, and uMTP's `FUNCTIONFS_DISABLE` path keeps the endpoint files open. `start` still binds the UDC after `ep1`, `ep2`, and `ep3` exist. `stop` still unbinds it. Exports stay `/storage`, `/mnt/sd2`, and mounted `/mnt/media/<name>` roots. uMTP 1.8.1 accepts `rw`, `ro`, and `removable` on a storage line and does not reject a filesystem root at parse time.
+
+This does not say the old shortcut caused every silent session. 12D-E20 had `transfer_type` `control`, no `failed to enable ep0out` line, and SDP already present. The corrected watcher also leaves that first bind alone. 12D-E22 logged the enable error, and the DCP reading was taken after the page had closed.
+
+The product rebuild from `13071973a350` is `zlyme-my355-20261013-13071973a350.tar`, SHA-256 `2f41f13de96f231bd8cf8f95cb01b7b2029c6cb17a0010779afb2692a2a89945`. Squashfs `/boot/zlyme` in that pack is `3747acda65ef1417b24df47cb1c34758750e00f8a3b6575de68e2b74de906b3e`. `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, and `u-boot.itb` match the 12D-E21 OTA. The squashfs `zlyme-usb-transfer` is `f5a692fd5865f9cfce4a427b90144b3b60b69ceb0bf631bff677aeaf2acf37be`. `zlyme-usb-enter` is unchanged at `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. USB File Transfer `launch.sh` is `bf24365857f71c3c47a5122c82155bf6f5e02009b987e8565da6cd22186c7c18`, and its introduction is `Connect your computer to the lower USB-C port.` The archive has not been installed. The next check is that archive, on Demetria bus 7 port 1, with the page left open. Host enumeration is still required. A file copy is still required after that.
