@@ -611,4 +611,16 @@ Static check on 2026-10-13, tree `9a972906bec72f52189bb1a1d4445652f86e4279`, bef
 
 The board file now has the one property. The predicted steady value is `GUSB2PHYCFG(0) = 0x40101408`. That prediction is not a measurement. No other Synopsys property, role, speed cap, PHY policy, or RK817 change is in this edit.
 
-Hardware has not installed it. Enumeration is not claimed. The OTA built from this commit is recorded after the build, in the following note, once the packed DTB is checked.
+Build on 2026-10-13, from commit `4bd0b1ecec728aa1e58f091c0aa3f266f80b9c27`, tree clean (`git describe --always --dirty --abbrev=12` printed `4bd0b1ecec72`). `linux-rebuild` copied the board DTS and compiled `rk3566-miyoo-flip.dtb`. The decompiled `usb@fcc00000` node has `snps,dis_enblslpm_quirk` once, and still has `dr_mode = "otg"`, `maximum-speed = "high-speed"`, and `snps,dis_u2_susphy_quirk`. `usb@fd000000` does not have the new property. The first full `./build.sh --config zlyme_my355_defconfig` stopped in `post-build.sh` with make error 141. The retry completed. The OTA member `rk3566-miyoo-flip.dtb` matches the image DTB byte for byte.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `output/images/rk3566-miyoo-flip.dtb` | `cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed` |
+| `output/images/Image` | `dfed9426f78e63aa1cb7ebe9c5b8847cdfd23d8d55a9a37080a10cb34f2375da` |
+| `output/images/Image.gz` | `67745dd7d61b17f7b554b24878b77a45ac7727f0e49a91b8754359fd08821e74` |
+| `output/images/zlyme` | `8ba39f24921be6ef27f01508fd0126929d5c1b9177cebe84b5ac094ac8efea3d` |
+| `output/images/zlyme-my355-20261013-4bd0b1ecec72.tar` | `22655eba69186e0241c775d6c8edc5eec8fddb797fd3b4ae002b9d30d0861637` |
+
+`VERSION` in the tar is `4bd0b1ecec72` and `20261013`. The kernel string in `Image` is `Linux version 7.2.10 #2 SMP PREEMPT Tue Oct 13 16:08:35 UTC 2026`. That is a relink from `linux-rebuild`, not a second USB source change. The image build also refreshed `rk3568-dmc` because its stored source fingerprint did not match the tree. That package was not edited.
+
+Hardware has not installed this OTA. Enumeration is not claimed. Phase 12D stays open.
