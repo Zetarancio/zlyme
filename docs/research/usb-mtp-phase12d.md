@@ -29,6 +29,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E17 | 2026-10-13 15:01:56Z | gadget start succeeded, enumeration did not | [active DWC3 sample](#12d-e17-active-dwc3-sample) |
 | 12D-E18 | 2026-10-13 16:27Z–16:36Z | property applied, enumeration untested | [USB2 LPM property](#12d-e18-usb2-lpm-property) |
 | 12D-E19 | 2026-10-13 16:55Z–17:07Z | SDP published, then the boot restarted | [PHY charger trace](#12d-e19-phy-charger-trace) |
+| 12D-E20 | not run | reserved for the extcon-recovery gate | [Peripheral extcon resync](#22-peripheral-extcon-resync) |
 
 ## Experiment ledger
 
@@ -296,9 +297,19 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Observed: before the replug the worker was already in `b_peripheral`, every 2 seconds, with VBUS still valid and every extcon cable 0. The replug logged `usb disconnect`, then charger states 0, 1, 2, and 5, then `sdp cable is connected` and `charger = USB_SDP_CHARGER`. Extcon became USB=1, SDP=1. RK817 stayed DCP. The helper was still stopped, and Demetria saw no gadget. The Flip then rebooted. On the new boot the PHY reported DCP, the PAK start wrote watcher `disconnect`, and `ep0out` enable failed. `GUSB2PHYCFG(0)` was still `0x40101408`. `DCTL` `RUN_STOP` was 0.
 - Result: detection can publish SDP when it is allowed to start from `USB_CHG_STATE_UNDEFINED`. A `b_peripheral` worker does not do that by itself. Enumeration was not tested. The LPM property is still neither supported nor contradicted.
 - Excludes: "the worker is not scheduled" as the description of the pre-replug idle, and the six-retry DCD timeout as the classification of this replug.
-- Unknown: which SDP or CDP branch first entered `b_peripheral` before debug was enabled, and why the Flip rebooted. The previous boot's buffer did not survive.
-- Evidence: section 21.
-- Code: left untouched. Dynamic debug returned to off when the machine rebooted.
+- Unknown: which SDP or CDP branch first entered `b_peripheral` before debug was enabled. The restart was read later and is still unexplained. Section 22 has that read and the source change that followed.
+- Evidence: section 21. The later boot read is `20261013T173112Z-e19-reboot-read.txt`.
+- Code: left untouched during this session. Dynamic debug returned to off when the machine rebooted.
+
+### 12D-E20 Peripheral extcon resync
+
+- When: not run. The source change and the development OTA are section 22. This row is the hardware gate, and it stays open until that OTA is installed and the two gates are recorded.
+- Source: patch `board/my355/linux/patches/20-rk3566/linux/1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch`, commit `07de7365fda6`. OTA `zlyme-my355-20261013-07de7365fda6.tar`, not installed.
+- Hypothesis: a finished SDP or CDP session that is already in `B_PERIPHERAL` with empty extcon will publish again from the existing worker, without a new BC1.2 pass. A later, separate question is whether that published session enumerates.
+- Action: none on the Flip yet.
+- Observed: nothing on hardware.
+- Result: not run. Do not treat the build as this result.
+- Evidence: section 22.
 
 
 ## 1. Hardware topology
@@ -589,7 +600,7 @@ Status 2026-10-13: section 12's sentence that there was still no Run/Stop sample
 | Gadget start / EP0 fails in every session | 12D-E01 and 12D-E05 logged `failed to enable ep0out` | 12D-E17 had `RUN_STOP` set and both EP0 directions enabled | Contradicted as a universal explanation | A new SDP session fails before `RUN_STOP` |
 | USB2 PHY power-down | A powered-off PHY would not detect VBUS | 12D-E13 matched the power-on encoding. 12D-E18's zero-extcon sample also read `0x00000c00`. The DCP latch earlier in that session was `0x00000dd1`, the DCP `power_off` path | Contradicted for the zero-extcon samples | A zero-extcon sample whose power word stays at the off encoding |
 | Runtime-PM pull-up skip | `dwc3_gadget_pullup` skips the start when `pm_runtime_get_sync` returns 0 | Probe forbids autosuspend. Measured returns were 1 and suspended time stayed 0. 12D-E07, 12D-E11 | Contradicted for the measured sessions | A session whose get-sync return is 0 or negative during pull-up |
-| Awake BVALID / extcon loss after reconnect | 12D-E10, 12D-E13, and 12D-E18 left extcon at zero with `utmi_bvalid` 1. 12D-E19 found the worker already in `b_peripheral`, logging every 2 seconds, and not publishing | 12D-E19's observed disconnect ran detection from state 0 and published SDP. Cable-first SDP sessions still failed to enumerate. 12D-E09, 12D-E17 | The stuck `b_peripheral` loop is measured. A fresh detection can publish. Enumeration after that publish was not run | An SDP window on this image where the gadget is started and the host is recorded |
+| Awake BVALID / extcon loss after reconnect | 12D-E10, 12D-E13, and 12D-E18 left extcon at zero with `utmi_bvalid` 1. 12D-E19 found the worker already in `b_peripheral`, logging every 2 seconds, and not publishing | 12D-E19's observed disconnect ran detection from state 0 and published SDP. Cable-first SDP sessions still failed to enumerate. 12D-E09, 12D-E17 | The stuck loop is measured. Patch `1015` republishes a finished SDP or CDP cable from that loop. The OTA is built and not installed. Enumeration after a real SDP window is still open | 12D-E20, after that OTA is installed |
 | DWC3 USB2 LPM (`snps,dis_enblslpm_quirk`) | Stock sets the property. 12D-E17 had bit 8 set and sat in Suspend with no host | 12D-E18 and the 12D-E19 reboot both read `GUSB2PHYCFG(0) = 0x40101408`. SDP was published in 12D-E19 while the gadget stayed stopped | Property applied. Enumeration untested | A gadget start during a stable SDP or CDP window on this image |
 | Rockchip BSP wrapper and clock differences | Stock has `pipe_clk` and the `dwc3` wrapper. Zlyme does not | The core programs registers and reached `RUN_STOP`. 12D-E14, 12D-E17 | Recorded difference. Not shown to be the cause | A clock or reset the core cannot program without that wrapper |
 
@@ -602,12 +613,12 @@ Phase 12D stays open. Enumeration is not accepted. Do not repeat the speed-cap e
    - Observable: `GUSB2PHYCFG(0)` bit 8 becomes 0. The prediction from `0x40101508` is `0x40101408`. 12D-E18 measured that value. `GUCTL1`, the speed cap, and the device role stayed as they were. The success line still requires SDP or CDP.
    - Success: with SDP or CDP already reported, the host enumerates and one small file round trip matches. Failure: bit 8 is clear and the host still sees no device. If extcon is not SDP or CDP, that is the replug problem below, not a result about this bit.
    - Safety: one DTS property on the lower controller. The upper port is the EHCI/OHCI host on `usb2phy1`, not this node. Rollback is deleting the property and rebuilding that configuration. Do not add another quirk in the same test.
-2. Extcon publication while the OTG worker is already awake. Priority: next. Not combined with item 1. 12D-E19 is the trace. Another schedule of `rockchip_usb2phy_otg_sm_work()` is not the repair: that work was already running every 2 seconds in `b_peripheral` and did not start detection. The vendor resume-only rescan is not this repair either.
-   - Preconditions: met by 12D-E18. SDP did not return. `utmi_bvalid` stayed 1, extcon stayed all zero, and the bvalid status bit ended clear.
-   - Single variable: one change that reruns charger detection when `utmi_bvalid` is already 1 and extcon is zero. Not a PHY power-policy rewrite.
-   - Observable: extcon moves from all zero to SDP or CDP without a suspend/resume, and IRQ or state-machine evidence shows why.
-   - Success: a following, separate MTP start enumerates. Failure: extcon stays zero, or extcon updates and the host still sees nothing.
-   - Safety: do not write GRF from userspace as the experiment. Do not touch `0007`.
+2. Republish a finished SDP or CDP extcon from `B_PERIPHERAL`. The source change is section 22. 12D-E20 is the hardware gate and has not been run. Another schedule of `rockchip_usb2phy_otg_sm_work()` is not the repair: 12D-E19 already saw that work every 2 seconds. Rerunning BC1.2 is not the repair either. The vendor resume-only rescan is not this repair.
+   - Preconditions: 12D-E19. VBUS valid, worker in `b_peripheral`, extcon all zero, no charger restart.
+   - Single variable against the installed 12D-E18 image: patch `1015` only. The DTB is byte-identical. `snps,dis_enblslpm_quirk` stays.
+   - Observable: `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER` without a new `chg detection work` sequence, then the matching sysfs cable. A fresh detection that logs `sdp cable is connected` does not pass this gate.
+   - Success is two separate results. Gate 1 is that restore. Gate 2, only after SDP or CDP is actually present, is host enumeration with the gadget running. Failure of Gate 1 is extcon staying zero. Failure of Gate 2 is SDP or CDP present, the gadget running, and the host still seeing nothing.
+   - Safety: do not write GRF from userspace. Do not touch `0007`. Do not start the gadget on DCP.
 3. `snps,dis-u2-freeclk-exists-quirk`. Priority: only after an SDP or CDP session on the 12D-E18 image still fails to enumerate. Not attempted. 12D-E18 cleared bit 8 and did not reach that session. Stock sets the property. Stopped bit 30 was still 1. It is a different variable.
 
 Hardware test after item 1 is installed, and only then:
@@ -808,4 +819,83 @@ A second read at 17:05:32Z was the same UDC and helper state, SDP 0, DCP 1. Deme
 
 The pre-replug loop is measured: `b_peripheral`, VBUS present, extcon zero, no charger work. The replug's SDP publish is measured, and it was not the DCD-timeout DCP path. The host silence during that SDP window is the stopped gadget, not a failed enumeration. The post-reboot PAK start did not have SDP.
 
-A further call to `rockchip_usb2phy_otg_sm_work()` does not repair the loop. That call was already happening every 2 seconds. The branch has to publish, or leave `b_peripheral` and run detection, when VBUS is present and the published cable does not match `chg_type`. It must not turn a real DCP into SDP, and it must not leave the PHY powered on as the policy. `snps,dis-u2-freeclk-exists-quirk` is still a different variable. Enumeration with SDP and a running gadget is still open. Phase 12D stays open.
+A further call to `rockchip_usb2phy_otg_sm_work()` does not repair the loop. That call was already happening every 2 seconds. The later patch publishes the cable detection already chose. It does not start another BC1.2 pass, and it does not turn a real DCP into SDP. `snps,dis-u2-freeclk-exists-quirk` is still a different variable. Enumeration with SDP and a running gadget is still open. Phase 12D stays open. The source change and the reboot read are section 22.
+
+## 22. Peripheral extcon resync
+
+Built 2026-10-13. Not installed. 12D-E20 is the hardware result and has not been run.
+
+### Reboot at 17:00:49Z
+
+The 12D-E19 poll's last SDP sample was 17:00:45Z. The next SSH, at 17:03:57Z, had uptime 188. A read at 17:24:13Z had uptime 1405, and a read at 17:31:12Z had uptime 1823. All three are the boot that started at 17:00:49Z. The new `dmesg` starts at `Booting Linux` and `Linux version 7.2.10 #2`. It contains no Oops, panic, `BUG:`, or watchdog line.
+
+`/sys/fs/pstore` exists and is empty. It was not deleted. The built `.config` has `CONFIG_PSTORE=y`. `CONFIG_PSTORE_RAM` and `CONFIG_PSTORE_BLK` are unset, so the empty directory does not show that the previous boot was clean. `CONFIG_DW_WATCHDOG=y` and `CONFIG_WATCHDOG_SYSFS` is unset, so `watchdog0` has no boot-status file.
+
+`rk8xx-i2c` logged `ON_SOURCE=0x02 OFF_SOURCE=0x08` at 1.109238 seconds. On this board, `0x02` is the on-source previously recorded after a software reboot with the charger connected. `0x80` is the power-key cold start. `OFF_SOURCE` `0x08` is also the value recorded after a clean power-off, so the pair does not separate a panic from an orderly reboot.
+
+The session did not ask for a restart, and the maintainer had not reported pressing reset. The only WARNING in the new buffer is at 3.709264 seconds, inside `mali_kbase` `kbase_mmu_as_init`, after this boot had already started. Dynamic debug during 12D-E19 was one `b_peripheral` line about every 2 seconds. That volume is not, by itself, evidence of a panic. The restart stays unexplained. It is not a reason to call the kernel unstable, and it is not fixed. The read is `docs/research/evidence/usb-mtp-phase12d/20261013T173112Z-e19-reboot-read.txt`.
+
+### Defect
+
+Linux 7.2.10 `rockchip_usb2phy_otg_sm_work()` writes extcon only from `B_IDLE`, and only when `rport->vbus_attached` changes and `notify_charger` is set. A pass while charger detection is still between `UNDEFINED` and `DETECTED` stores the new VBUS level and leaves `notify_charger` clear. The `DETECTED` pass can then enter `B_PERIPHERAL` for SDP or CDP and skip the extcon write because the cached level already matches the pin. `B_PERIPHERAL` reschedules itself every `OTG_SCHEDULE_DELAY` (`2 * HZ`) and, while VBUS stays present, writes nothing. Those two assignments are the only writes of `OTG_STATE_B_PERIPHERAL`. While that state remains and VBUS stays present, the same function does not clear `chg_state` or `chg_type`. The stored result is still the SDP or CDP value detection finished with. 12D-E19 measured the worker and the empty extcon. It did not print `chg_state` or `chg_type` during the stuck loop. The mapping uses that source invariant. An unknown or DCP type takes the default path and publishes nothing.
+
+Linux master, fetched 2026-10-13, still has the same `B_PERIPHERAL` branch. No upstream power-management change was imported.
+
+`rockchip_otg_event()` listens only for `EXTCON_USB_HOST` and schedules this work. The new writes are `EXTCON_CHG_USB_SDP`, `EXTCON_USB` for SDP, or `EXTCON_CHG_USB_CDP`. They do not schedule this work through that notifier. The worker still does not take `rport->mutex` around `extcon_set_state_sync()`, which is the same context as the existing `B_IDLE` publish. `extcon_set_state_sync()` sends a notification even when the value is unchanged, so a cable that already matches is not written again.
+
+The existing `B_IDLE` path sets `EXTCON_USB` for SDP and does not set it for CDP. This patch keeps that split. CDP consumers that require `EXTCON_USB` are a separate candidate. Generic DWC3 in this tree registers the host-role notifier for `EXTCON_USB_HOST` only. The file-transfer watcher reads the SDP and CDP charger cables.
+
+### Patch
+
+`board/my355/linux/patches/20-rk3566/linux/1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch`
+
+Commit `07de7365fda6`. It applies after `1013` and before `30-default` `9901`. Number `1014` stays unused because that filename was the removed maskrom restart patch. The permanent change is this file. `output/build` was re-extracted by `linux-dirclean` and patched by Buildroot.
+
+The new helper runs only from `OTG_STATE_B_PERIPHERAL` when `utmi_bvalid` is set. It returns without writing unless `chg_state` is `USB_CHG_STATE_DETECTED`, `chg_type` is `POWER_SUPPLY_TYPE_USB` or `POWER_SUPPLY_TYPE_USB_CDP`, `EXTCON_USB_HOST` reads 0, and the corresponding extcon read is 0 rather than a negative error. SDP writes `EXTCON_CHG_USB_SDP` and `EXTCON_USB`. CDP writes `EXTCON_CHG_USB_CDP` only. A successful write stores that cable in the function-static `cable` and sets `vbus_attached`, so the existing falling-edge path can clear it. A failed `extcon_set_state_sync()` logs once with `dev_err_once` and does not log success. A repair logs one `dev_info`: `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER`. The matching path does not write and does not log. The 2-second schedule is unchanged. PHY `power_on` and `power_off` are unchanged.
+
+Left unchanged: RK817 `0007`, `dr_mode = "otg"`, DWC3 clocks and resets, `maximum-speed`, USB-C pinctrl, `snps,dis_u2_susphy_quirk`, `snps,dis_enblslpm_quirk`, the MTP helper, the reaper, the upper host port, and suspend and shutdown.
+
+### Static check
+
+The kernel function was not executed on the host. A host model of its branches, `/tmp/resync-predicate.c`, was compiled with `gcc -Wall -Wextra` and passed 13 assertions. That model is not the patched kernel. Buildroot then applied the patch to a fresh Linux 7.2.10 tree with no hunk offset. `strings` on `output/images/Image` contains `restored peripheral extcon %s` and `failed to restore peripheral extcon`.
+
+| Condition | Result in the patch |
+| --- | --- |
+| `B_PERIPHERAL`, VBUS high, detected SDP, extcon zero | Write SDP and `EXTCON_USB`, one info line |
+| `B_PERIPHERAL`, VBUS high, detected CDP, extcon zero | Write CDP only, one info line |
+| `B_PERIPHERAL`, cables already matching | No `extcon_set_state_sync()` |
+| `B_PERIPHERAL`, VBUS low | Existing disconnect path, helper not called |
+| `B_IDLE`, detected DCP | Helper not called. DCP stays charge-only |
+| Charger type unknown, or detection not finished | No write |
+| `A_HOST`, or `EXTCON_USB_HOST` set | No gadget cable write |
+| `extcon_get_state()` negative | Treated as an error. No write |
+| `extcon_set_state_sync()` failure | `dev_err_once`, no success line |
+| Deep suspend and power-off | No change to those paths |
+
+### Build
+
+`./build.sh --config zlyme_my355_defconfig linux-dirclean`, then `./build.sh --config zlyme_my355_defconfig`. Exit 0. Tree at the build was clean `07de7365fda6`. Product version in the squashfs is still `zlyme44.2 (2026-10-13)`. The kernel string is `Linux version 7.2.10 #1 SMP PREEMPT Tue Oct 13 17:35:08 UTC 2026`. The `#1` is a new build count after `linux-dirclean`. The installed 12D-E18 kernel was `#2` at 16:08:35 UTC. The USB source difference from that image is this PHY patch. The DTB hash is unchanged, so the role, the speed cap, and both Synopsys quirks are the same bytes.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `output/images/rk3566-miyoo-flip.dtb` | `cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed` |
+| `output/images/Image` | `4433bfaf13815f1d5e303b16ed0410dfbac63784a9fcf4bacc9cc84b0094b966` |
+| `output/images/Image.gz` | `a9badc9e66a9b3f83e159817f0dc2cb8acccd2405cb346ce993da9d6aa2333b4` |
+| `output/images/zlyme` | `b721bd2b9c697af67ff2ebc5885bbcbc2bf2b4264e5947223328e2a9a9805167` |
+| `output/images/zlyme-my355-20261013-07de7365fda6.tar` | `195ecc2fc9f563565a51ab696cbe61cc8405b38b270027cba4bc6be63a00cb6f` |
+
+`VERSION` in the tar is `07de7365fda6` and `20261013`. The tar members `Image.gz`, `rk3566-miyoo-flip.dtb`, and `zlyme` match those hashes. Decompiled `usb@fcc00000` still has `dr_mode = "otg"`, `maximum-speed = "high-speed"`, `snps,dis_u2_susphy_quirk`, and `snps,dis_enblslpm_quirk`. It does not have `snps,dis-u2-freeclk-exists-quirk`. The OTA was not installed.
+
+### Predicted hardware result
+
+When the PHY is already in a completed SDP or CDP peripheral session and the published extcon is empty, the existing worker writes the matching cable within one 2-second period. The `dev_info` line is the evidence that this path ran. A new detection that logs `sdp cable is connected` is the old publish path, not this one.
+
+The patch does not choose SDP. A DCP result stays DCP. It does not make DWC3 enumerate. 12D-E17, SDP with `RUN_STOP` and endpoint 0 and no host device, stays open. The 17:00:49Z restart stays unexplained.
+
+### Maintainer test
+
+Copy the tar on the OS card. Do not send it over Wi-Fi. Put `zlyme-my355-20261013-07de7365fda6.tar` in `/storage/.update/`. Newest `zlyme-my355-*.tar` wins, so remove older tars in that directory first. Check the SHA-256 on the card. Boot. `S18zlymeupdate` applies a queued tar and reboots. After that second boot, `uname -a` should show `7.2.10 #1 SMP PREEMPT Tue Oct 13 17:35:08 UTC 2026`. Do not flash SPI NAND and do not run `zlyme-update uboot`.
+
+Gate 1, extcon recovery. Leave USB File Transfer stopped. Enable dynamic debug only for `rockchip_usb2phy_otg_sm_work` and `rockchip_chg_detect_work`, so a fresh detection is visible. With the cable in the lower port, a pass is `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER` with no `chg detection work` sequence in front of it, and the sysfs cable matching that line. `sdp cable is connected` after charger states 0 through 5 is a fresh detection and does not pass Gate 1. If the edge path already published and the restore line never appears, the stuck state did not occur. Replug and watch again. If the PHY stays DCP, stop and do not start the gadget.
+
+Gate 2, enumeration. Run it only while SDP or CDP is actually present, whether that presence came from Gate 1 or from a later fresh detection. Start the host kernel journal and an `lsusb` poll before starting USB File Transfer, and keep them running while the gadget is up. Sample `GUSB2PHYCFG(0)`, `DCTL`, `DSTS`, `DALEPENA`, and the UDC state during that interval. Bit 8 should still be clear. If the host sees `1d6b:0100`, copy one small file and then check B cleanup. If SDP or CDP never appears, Gate 2 stays untested. Do not score a host log that was captured while the gadget was stopped.

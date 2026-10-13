@@ -45,5 +45,6 @@ The third table is 12D-E19, on that same clean OTA and the same boot until the r
 | `20261013T170144Z-e19-host-lsusb-poll.txt` | Host `lsusb` poll from 17:01:44Z. Every line is `no-gadget-id`. | `cb2311651530c059aac1c1d97b4d39b03755ee2d4343ea00a7ec3308c376ef96` |
 | `20261013T170502Z-e19-active-regdump.txt` | DWC3 regdump at 17:05:02Z on the new boot, gadget bound, `RUN_STOP` clear, bit 8 clear. | `b7e2a2a8e6f838bdec8d3a5d3c9472880e8a3258ae0459c1e90f95d0a8b73a7d` |
 | `20261013T170502Z-e19-active-dmesg.txt` | This boot's `ep0out` failure and the dynamic-debug flags back at `=_`. | `a58b23986b9e2049cfbc09a67b245a89844ff235f9f8901b710989fcce315b22` |
+| `20261013T173112Z-e19-reboot-read.txt` | Read-only check of the 17:00:49Z boot: empty pstore, `ON_SOURCE=0x02`, `OFF_SOURCE=0x08`, and the Mali workqueue warning. Nothing was deleted. | `316a5769d3b7f09052d4fcc2ec4485cdcc91b4456379625e9c9db99ff0e6a342` |
 
 The 7.0.2 session directories named in section 10 of `usb-mtp-phase12d.md` were already absent when that section was written. They are still absent.

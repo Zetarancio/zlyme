@@ -1,0 +1,15 @@
+Read-only check of the boot that followed the 12D-E19 restart. No PMIC write, no watchdog write, no reboot was requested. The Flip clock is UTC.
+
+Captured 2026-10-13 17:31:12Z. uptime 1823 seconds, so this boot started at 17:00:49Z. An earlier read at 17:24:13Z had uptime 1405, the same boot. The 17:03:57Z SSH after the drop had uptime 188, also the same boot. The last complete 12D-E19 poll before the drop was 17:00:45Z.
+
+dmesg begins with Booting Linux and Linux version 7.2.10 #2 SMP PREEMPT Tue Oct 13 16:08:35 UTC 2026. The new buffer has no Oops, panic, BUG, or Internal error (grep count 0). It has no watchdog line (grep count 0).
+
+/sys/fs/pstore exists and is empty. It was not mounted as a pstore filesystem. Nothing in it was deleted. The built .config has CONFIG_PSTORE=y and CONFIG_PSTORE_RAM and CONFIG_PSTORE_BLK unset, so an empty directory does not show that the previous boot was clean.
+
+/sys/class/watchdog/watchdog0 exists. CONFIG_WATCHDOG_SYSFS is unset, so the directory has no bootstatus, identity, or state file. CONFIG_DW_WATCHDOG=y. No watchdog message was in this boot's dmesg.
+
+rk8xx-i2c 0-0020 at 1.109238 seconds: ON_SOURCE=0x02 OFF_SOURCE=0x08.
+
+The only WARNING in this boot is at 3.709264 seconds, kernel/workqueue.c:5851 in __alloc_workqueue, CPU 0, kworker/u16:3. The call chain is alloc_workqueue_noprof, kbase_mmu_as_init, kbase_device_misc_init, kbase_device_init, in mali_kbase. Taint is O (out-of-tree module). That warning is on this boot, after Linux had already started. It is not a record of the previous boot's stop.
+
+The session did not ask for a restart. The maintainer had not reported pressing reset. ON_SOURCE 0x02 with OFF_SOURCE 0x08 is the pair previously recorded on this board after a software reboot with the charger connected. It is not the power-key value 0x80. The same OFF_SOURCE is also recorded after a clean power-off, so the pair does not separate a panic from an orderly reboot.
