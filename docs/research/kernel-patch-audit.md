@@ -266,6 +266,10 @@ Chris Morgan `5c74541b46510f2e5ca58a0a86a3678691f0c291`, carried by ROCKNIX as `
 
 Disposition: **A + KEEP**. Do not replace it in 2C. The drain fix stays.
 
+Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `usb-mtp-phase12d.md`, 12D-E16.
+
+Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `usb-mtp-phase12d.md`, 12D-E16.
+
 ### 1992 MHz OPP
 
 `0001` adds `opp-1992000000` at 1.15 V with `turbo-mode` on `&cpu0_opp_table` in `rk3566.dtsi`. The Flip DTS includes that file and only adds `clock-latency-ns` on `opp-408000000`. It does not delete the 1992 MHz point.

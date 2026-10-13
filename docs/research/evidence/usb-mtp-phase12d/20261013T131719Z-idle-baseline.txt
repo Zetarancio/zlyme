@@ -1,0 +1,92 @@
+DATE 2026-10-13T13:17:19+00:00
+UPTIME 3032
+=== uname ===
+Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 08:43:04 UTC 2026 aarch64 GNU/Linux
+RELEASE 7.2.10
+=== os-release ===
+NAME="Zlyme"
+VERSION="zlyme44.2 (2026-10-13)"
+ID=buildroot
+VERSION_ID=2026.08
+PRETTY_NAME="Buildroot 2026.08"
+OS_VERSION="zlyme44.2 (2026-10-13)"
+HW_DEVICE="miyoo-flip"
+=== status ===
+state=off
+=== udc ===
+total 0
+lrwxrwxrwx    1 root     root             0 Oct 13 12:26 fcc00000.usb -> ../../devices/platform/fcc00000.usb/udc/fcc00000.usb
+state=not attached
+speed=UNKNOWN
+function=
+=== driver ===
+/sys/bus/platform/drivers/dwc3
+=== gadget ===
+ls: /sys/kernel/config/usb_gadget: No such file or directory
+=== mounts debug/config/ffs ===
+none
+=== extcon ===
+fe8a name=fe8a0000.usb2phy
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+fe8b name=fe8b0000.usb2phy
+USB=0
+USB-HOST=0
+SDP=0
+CDP=0
+DCP=0
+SLOW-CHARGER=0
+=== charger ===
+charger.type=USB
+charger.usb_type=Unknown [DCP]
+charger.online=1
+battery.status=Charging
+battery.charge_type=Standard
+battery.capacity=99
+=== power ===
+runtime_status=active
+runtime_active_time=3031945
+runtime_suspended_time=0
+control=on
+=== bindings ===
+lrwxrwxrwx    1 root     root             0 Oct 13 12:42 /sys/bus/platform/devices/fcc00000.usb/driver -> ../../../bus/platform/drivers/dwc3
+lrwxrwxrwx    1 root     root             0 Oct 13 12:42 /sys/bus/platform/devices/fe8a0000.usb2phy/driver -> ../../../bus/platform/drivers/rockchip-usb2phy
+lrwxrwxrwx    1 root     root             0 Oct 13 12:42 /sys/bus/platform/devices/fe8b0000.usb2phy/driver -> ../../../bus/platform/drivers/rockchip-usb2phy
+=== procs ===
+  308 root     {nextui-session} /bin/sh /usr/sbin/nextui-session
+24658 root     nextui.elf
+=== interrupts ===
+--- header ---
+            CPU0       CPU1       
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+  67:          1          0  GICv3              202 Level     xhci-hcd:usb1
+  68:          0          0  GICv3              162 Level     ehci_hcd:usb3
+  69:     294635          0  GICv3              165 Level     ehci_hcd:usb4
+  70:          0          0  GICv3              163 Level     ohci_hcd:usb5
+=== dmesg usb ===
+[    0.904495] phy phy-fe8a0000.usb2phy.1: Looking up phy-supply from device node /usb2phy@fe8a0000/host-port
+[    0.905580] phy phy-fe8b0000.usb2phy.1: Looking up phy-supply from device node /usb2phy@fe8b0000/host-port
+[    1.259899] phy phy-fe8a0000.usb2phy.2: Looking up phy-supply from device node /usb2phy@fe8a0000/host-port
+[    1.260906] vcc_3v3: could not add device link phy-fe8a0000.usb2phy.2: -2
+[    1.261186] phy phy-fe8a0000.usb2phy.3: Looking up phy-supply from device node /usb2phy@fe8a0000/otg-port
+[    1.261215] phy phy-fe8a0000.usb2phy.3: Looking up phy-supply property in node /usb2phy@fe8a0000/otg-port failed
+[    1.263109] phy phy-fe8b0000.usb2phy.4: Looking up phy-supply from device node /usb2phy@fe8b0000/host-port
+[    1.263731] vcc_3v3: could not add device link phy-fe8b0000.usb2phy.4: -2
+[    1.264008] phy phy-fe8b0000.usb2phy.5: Looking up phy-supply from device node /usb2phy@fe8b0000/otg-port
+[    1.264171] vcc5v0_host: could not add device link phy-fe8b0000.usb2phy.5: -2
+[   28.785941] dwc3 fcc00000.usb: failed to enable ep0out
+[   29.497934] dwc3 fcc00000.usb: wait for SETUP phase timed out
+[   29.499988] dwc3 fcc00000.usb: failed to set STALL on ep0out
+[   29.502516] dwc3 fcc00000.usb: ep0 out start transfer failed: -110
+[   68.717716] dwc3 fcc00000.usb: request 00000000cbd2461f was not queued to ep0out
+[  119.976298] dwc3 fcc00000.usb: request 00000000a35c529e was not queued to ep0out
+[ 1444.538114] dwc3 fcc00000.usb: request 00000000964fd6c9 was not queued to ep0out
+[ 2038.626586] dwc3 fcc00000.usb: failed to enable ep0out
+[ 2234.698836] dwc3 fcc00000.usb: request 00000000e2d9f0b3 was not queued to ep0out
+[ 2234.699589] udc fcc00000.usb: UDC had already stopped
+END

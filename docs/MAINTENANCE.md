@@ -25,7 +25,7 @@ Product status, kept separate:
 - Historical Phase 9 acceptance is runtime `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme44`). A later documentation commit does not replace that SHA. Its acceptance record is in `docs/ROADMAP.md`.
 - Published stable `zlyme44.2` is runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, tag `zlyme-38098037074`. Documentation after that SHA does not replace the published firmware.
 - Development branch `zlyme44.3-phase-12` is the open Phase 12 tree. `ZLYME_VERSION` is still `zlyme44.2`.
-- Phase 12D hardware validation is open. The installed development image is `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`. USB File Transfer on that image did not enumerate. A later host build produced a Linux 7.2.10 product image and did not install it. The record is `docs/ROADMAP.md` section 12, `docs/research/usb-mtp-phase12d.md`, and `docs/research/linux-7.2.10-migration.md`.
+- Phase 12D hardware validation is open. USB File Transfer has not enumerated. The image booted on 2026-10-13 is the dirty Linux 7.2.10 OTA `zlyme-my355-20261013-0a96c787607b-dirty.tar`, not a clean rebuild of `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`. The ledger is `docs/research/usb-mtp-phase12d.md`. The phase status is `docs/ROADMAP.md` section 12, and the host build record is `docs/research/linux-7.2.10-migration.md`.
 
 ## Kernel and board patches
 

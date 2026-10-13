@@ -1,0 +1,28 @@
+# May 2025 stock DTS excerpt
+
+Source: decompiled `miyoo355_20250527_0.dts` from the May 2025 firmware unpack. Both `_0` and `_1` contain the same properties at these lines. This is an excerpt, not the firmware DTB.
+
+usbdrd compatible: "rockchip,rk3568-dwc3", "rockchip,rk3399-dwc3"
+clock-names: "ref_clk", "suspend_clk", "bus_clk", "pipe_clk"
+
+dwc3@fcc00000:
+  dr_mode = "otg";
+  phy_type = "utmi_wide";
+  maximum-speed = "high-speed";
+  snps,dis_enblslpm_quirk;
+  snps,dis_u2_susphy_quirk;
+  snps,dis-u2-freeclk-exists-quirk;
+  plus other snps properties that Zlyme does not set.
+  extcon = <0x26>;
+
+rk817 charger:
+  compatible = "rk817,charger";
+  extcon = <0x26>;
+  gate_function_disable = <0x01>;
+
+Public BSP charger copy `/tmp/zlyme-usb-bsp/rk817_charger-bsp.c`, in `rk817_charge_pre_init()`:
+
+  if (!charge->pdata->gate_function_disable)
+      rk817_charge_sys_can_sd_disable(charge);
+
+With the property set to 1, that function skips the clear. Historical stock runtime `0xe6 = 0x42` still has bit 7 clear. The instruction in the shipped firmware that produced that value was not identified.

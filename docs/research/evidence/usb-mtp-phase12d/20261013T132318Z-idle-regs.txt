@@ -1,0 +1,126 @@
+DATE 2026-10-13T13:23:18+00:00
+=== mount ===
+none /tmp/zlyme-dbgfs-12d debugfs ro,relatime 0 0
+=== regdump names ===
+8201 /tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/regdump
+=== selected dwc3 ===
+GCTL = 0x30c12004
+GSTS = 0x7e800000
+GUSB2PHYCFG(0) = 0x40101508
+GUSB2PHYCFG(1) = 0x00000000
+GUSB2PHYCFG(2) = 0x00000000
+GUSB2PHYCFG(3) = 0x00000000
+GUSB2PHYCFG(4) = 0x00000000
+GUSB2PHYCFG(5) = 0x00000000
+GUSB2PHYCFG(6) = 0x00000000
+GUSB2PHYCFG(7) = 0x00000000
+GUSB2PHYCFG(8) = 0x00000000
+GUSB2PHYCFG(9) = 0x00000000
+GUSB2PHYCFG(10) = 0x00000000
+GUSB2PHYCFG(11) = 0x00000000
+GUSB2PHYCFG(12) = 0x00000000
+GUSB2PHYCFG(13) = 0x00000000
+GUSB2PHYCFG(14) = 0x00000000
+GUSB2PHYCFG(15) = 0x00000000
+GEVNTCOUNT(0) = 0x00000000
+DCTL = 0x00f00000
+DSTS = 0x00d20001
+DALEPENA = 0x00000000
+=== mode read ===
+device
+mode_rc=0
+=== link_state read ===
+Disconnected
+link_rc=0
+=== ep0 transfer_type ===
+ep0out=--
+ rc=0
+ep0in=--
+ rc=0
+=== grf identity ===
+drwxr-xr-x    2 root     root             0 Jan  1  1970 /tmp/zlyme-dbgfs-12d/regmap/dummy-syscon@0x00000000fdca0000
+drwxr-xr-x    2 root     root             0 Jan  1  1970 /tmp/zlyme-dbgfs-12d/regmap/dummy-syscon@0x00000000fdca8000
+drwxr-xr-x    2 root     root             0 Jan  1  1970 /tmp/zlyme-dbgfs-12d/regmap/dummy-usb2phy@0x00000000fe8a0000
+=== grf fdca0000 first registers ===
+0000: 00000c00
+0004: 000001d2
+0008: 00000000
+000c: 00000019
+0010: 00000000
+0014: 00000000
+0018: 00000000
+001c: 00000000
+0020: 00000000
+0024: 00000000
+0028: 00000000
+002c: 00000000
+0030: 00000000
+0034: 00000000
+0038: 00000000
+003c: 00000000
+0040: 00030100
+0044: 00030100
+0048: 00030100
+004c: 00030100
+0050: 00000000
+0054: 00000000
+0058: 00000000
+005c: 00000000
+0060: 00000000
+0064: 00000000
+0068: 00000000
+006c: 00000000
+0070: 00000000
+0074: 00000000
+0078: 00000000
+007c: 00000000
+0080: 0000003e
+0084: 000003c1
+0088: 00000000
+008c: 00000000
+0090: 00000000
+0094: 00000000
+0098: 00000000
+009c: 00000000
+00a0: 00000000
+00a4: 00000000
+00a8: 00000000
+00ac: 00000000
+00b0: 00000000
+00b4: 00000000
+00b8: 00000000
+00bc: 00000000
+00c0: 00384e73
+00c4: 00000000
+00c8: 00000000
+00cc: 00000000
+00d0: 00000000
+00d4: 00000000
+00d8: 00000000
+00dc: 00000000
+00e0: 00000000
+00e4: 00000000
+00e8: 00000000
+00ec: 00000000
+00f0: 00000000
+00f4: 00000000
+00f8: 00000000
+00fc: 00000000
+=== irq counts ===
+  20:          8          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+  67:          1          0  GICv3              202 Level     xhci-hcd:usb1
+=== extcon and charger ===
+USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=0 SLOW-CHARGER=0 
+online=1
+usb_type=Unknown [DCP]
+battery=Charging
+=== pm after ===
+dwc_runtime=active
+dwc_suspended=0
+udc_state=not attached
+=== clk lines ===
+    xin_osc0_usbphy0_g               1       1        0        24000000    0          0     50000      Y      deviceless                      no_connection_id         
+       clk_usbphy0_ref               2       2        0        24000000    0          0     50000      Y         usb2phy@fe8a0000                no_connection_id         
+          clk_usbphy0_480m           1       1        0        480000000   0          0     50000      Y            deviceless                      no_connection_id         
+END

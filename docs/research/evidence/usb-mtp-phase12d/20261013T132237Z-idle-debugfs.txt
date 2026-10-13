@@ -1,0 +1,206 @@
+DATE 2026-10-13T13:22:37+00:00
+=== dt proof ===
+phy_compatible=rockchip,rk3568-usb2phy 
+phy_reg= 00000000 00008afe 00000000 00000100
+usbgrf_phandle= b1000000
+fdca_phandle= b1000000
+fdca_compatible=rockchip,rk3568-usb2phy-grf syscon 
+fdca_reg= 00000000 0000cafd 00000000 00800000
+fdca8_phandle= b2000000
+=== irq owners ===
+/proc/irq/20:
+total 0
+-r--r--r--    1 root     root             0 Oct 13 13:22 affinity_hint
+-r--r--r--    1 root     root             0 Oct 13 13:22 effective_affinity
+-r--r--r--    1 root     root             0 Oct 13 13:22 effective_affinity_list
+-r--r--r--    1 root     root             0 Oct 13 13:22 node
+dr-xr-xr-x    2 root     root             0 Oct 13 13:22 rockchip_usb2phy
+-rw-r--r--    1 root     root             0 Oct 13 13:22 smp_affinity
+-rw-r--r--    1 root     root             0 Oct 13 13:22 smp_affinity_list
+-r--r--r--    1 root     root             0 Oct 13 13:22 spurious
+
+/proc/irq/21:
+total 0
+-r--r--r--    1 root     root             0 Oct 13 13:22 affinity_hint
+-r--r--r--    1 root     root             0 Oct 13 13:22 effective_affinity
+-r--r--r--    1 root     root             0 Oct 13 13:22 effective_affinity_list
+-r--r--r--    1 root     root             0 Oct 13 13:22 node
+dr-xr-xr-x    2 root     root             0 Oct 13 13:22 rockchip_usb2phy
+-rw-r--r--    1 root     root             0 Oct 13 13:22 smp_affinity
+-rw-r--r--    1 root     root             0 Oct 13 13:22 smp_affinity_list
+-r--r--r--    1 root     root             0 Oct 13 13:22 spurious
+-- irq 20 --
+dir /proc/irq/20/affinity_hint
+dir /proc/irq/20/effective_affinity
+dir /proc/irq/20/effective_affinity_list
+dir /proc/irq/20/node
+dir /proc/irq/20/rockchip_usb2phy
+dir /proc/irq/20/smp_affinity
+dir /proc/irq/20/smp_affinity_list
+dir /proc/irq/20/spurious
+-- irq 21 --
+dir /proc/irq/21/affinity_hint
+dir /proc/irq/21/effective_affinity
+dir /proc/irq/21/effective_affinity_list
+dir /proc/irq/21/node
+dir /proc/irq/21/rockchip_usb2phy
+dir /proc/irq/21/smp_affinity
+dir /proc/irq/21/smp_affinity_list
+dir /proc/irq/21/spurious
+=== phy power ===
+phy_runtime=unsupported
+phy_control=auto
+=== pm before ===
+dwc_runtime=active
+dwc_suspended=0
+=== mounts before ===
+no debugfs
+mount_ro_rc=0
+none /tmp/zlyme-dbgfs-12d debugfs ro,relatime 0 0
+=== usb debug dirs ===
+/tmp/zlyme-dbgfs-12d/usb
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep3in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep3out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep2in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep2out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep1in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep1out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep0in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep0out
+/tmp/zlyme-dbgfs-12d/usb/xhci
+/tmp/zlyme-dbgfs-12d/usb/xhci/xhci-hcd.8.auto
+/tmp/zlyme-dbgfs-12d/usb/ohci
+/tmp/zlyme-dbgfs-12d/usb/ohci/fd840000.usb
+/tmp/zlyme-dbgfs-12d/usb/ehci
+/tmp/zlyme-dbgfs-12d/usb/ehci/fd800000.usb
+/tmp/zlyme-dbgfs-12d/usb/ehci/fd880000.usb
+/tmp/zlyme-dbgfs-12d/usb/usbmon
+=== regmap names ===
+0-0020
+0-0040
+dummy-power-management@0x00000000fdd90000
+dummy-qos@0x00000000fe128000
+dummy-qos@0x00000000fe138080
+dummy-qos@0x00000000fe138100
+dummy-qos@0x00000000fe138180
+dummy-qos@0x00000000fe148000
+dummy-qos@0x00000000fe148080
+dummy-qos@0x00000000fe148100
+dummy-qos@0x00000000fe150000
+dummy-qos@0x00000000fe158000
+dummy-qos@0x00000000fe158100
+dummy-qos@0x00000000fe158180
+dummy-qos@0x00000000fe158200
+dummy-qos@0x00000000fe158280
+dummy-qos@0x00000000fe158300
+dummy-qos@0x00000000fe190000
+dummy-qos@0x00000000fe190280
+dummy-qos@0x00000000fe190300
+dummy-qos@0x00000000fe190380
+dummy-qos@0x00000000fe190400
+dummy-qos@0x00000000fe198000
+dummy-qos@0x00000000fe1a8000
+dummy-qos@0x00000000fe1a8080
+dummy-qos@0x00000000fe1a8100
+dummy-syscon@0x00000000fdc20000
+dummy-syscon@0x00000000fdc50000
+dummy-syscon@0x00000000fdc60000
+dummy-syscon@0x00000000fdca0000
+dummy-syscon@0x00000000fdca8000
+dummy-usb2phy@0x00000000fe8a0000
+dummy-usb2phy@0x00000000fe8b0000
+fe040000.vop-vop2
+fe400000.i2s
+fe410000.i2s
+=== dwc files ===
+/tmp/zlyme-dbgfs-12d/usb
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb/link_state
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb/testmode
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb/mode
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb/lsp_dump
+/tmp/zlyme-dbgfs-12d/usb/fd000000.usb/regdump
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7in/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep7out/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6in/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep6out/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5in/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/descriptor_fetch_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/rx_info_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/rx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/tx_request_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/rx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep5out/tx_fifo_size
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in/GDBGEPINFO
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in/trb_ring
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in/transfer_type
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in/event_queue
+/tmp/zlyme-dbgfs-12d/usb/fcc00000.usb/ep4in/descriptor_fetch_queue
+END_SETUP

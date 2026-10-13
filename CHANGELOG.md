@@ -18,11 +18,11 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - After the menu is up, the clock can correct itself from the network. The first picture does not wait for that.
 - Update says an install may reboot more than once, and it shows a recent transfer rate.
 - Flycast is v2.7. MAME2003-Plus and Mupen64Plus-Next moved to the revisions named in `docs/UPSTREAMS.md`. That is a source pin. It is not a claim that those games run better.
-- The development kernel is Linux 7.2.10. It has not been tried on a Flip. It does not make USB File Transfer appear to a computer.
+- The development kernel is Linux 7.2.10. It has been booted on one Flip. USB File Transfer still does not appear to a computer.
 
 ### Known limitations
 
-- USB File Transfer has not enumerated on the lower USB-C port. Two tries on 2026-10-12 left the host with no USB device, and no file was copied. The on-screen state follows the kernel. `not attached` means the computer has not configured the Flip.
+- USB File Transfer has not enumerated on the lower USB-C port. Tries on 2026-10-12 and 2026-10-13 left the host with no USB device, and no file was copied. The on-screen state follows the kernel. `not attached` means the computer has not configured the Flip.
 
 ## [zlyme44.2] - 2026-10-11
 

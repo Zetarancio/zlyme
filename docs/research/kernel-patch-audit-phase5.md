@@ -68,6 +68,8 @@ ROCKNIX `39b77d22afafa808f8489366deb55f006940ec2b` imports Chris Morgan's pair:
 
 `7.0.2` and `7.3-rc5` have no `RK817_SYS_CAN_SD` in `rk817_charger.c`. The pair is posted-shaped downstream code, not merged upstream. Replacing one proven patch with a binding plus a driver patch does not shrink the Flip patch set. Recommendation: **KEEP Zlyme `0007`**. A REPLACE is only justified later if the pair is actually merged and a kernel bump picks it up.
 
+Status 2026-10-13: the paragraph above is the ROCKNIX `rockchip,gate-function-disable` comparison. The May 2025 stock DTS uses a different property, `gate_function_disable = <1>`, and the public BSP driver skips `rk817_charge_sys_can_sd_disable()` when that field is nonzero. Historical stock runtime still shows `0xe6` bit 7 clear. The shipped instruction that cleared it was not identified. That does not change the KEEP. Detail is `usb-mtp-phase12d.md`, 12D-E16.
+
 ## RK817 fuel gauge, absent from the archived fork
 
 These landed in official ROCKNIX after `1ebff24f36`. They are separate patches.

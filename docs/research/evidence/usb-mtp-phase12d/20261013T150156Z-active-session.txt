@@ -1,0 +1,29 @@
+# Transcribed active sample
+
+This is not a raw log. The SSH stdout from the held-open second start was not written to a file. The values below are the ones reported from that session on 2026-10-13. The host poll that was saved is `20261013T150134Z-host-lsusb-poll.txt`, and it ends at 15:01:44Z.
+
+Date: 2026-10-13 15:01:56 UTC
+Uptime: 9310
+Kernel: Linux 7.2.10 #1 SMP PREEMPT Tue Oct 13 08:43:04 UTC 2026
+Cable: already attached. No replug in this sample.
+Extcon: USB=1 SDP=1 CDP=0
+Helper: state=bound gadget=zlyme-mtp responder running host=not attached
+UDC: state=not attached function=zlyme-mtp speed=UNKNOWN
+GCTL: 0x30c12004 (device)
+GSTS: 0x7e800000 (current mode device)
+GUCTL1: 0x8504018a (bit 26 set)
+GUSB2PHYCFG(0): 0x40101508 (ENBLSLPM 1, U2_FREECLK_EXISTS 1, SUSPHY 0)
+DCTL: 0x80f00000 (RUN_STOP set)
+DSTS: 0x008e0001 (not halted, COREIDLE set, link-state field 3, connect-speed field 1)
+DALEPENA: 0x00000003
+EP0: ep0out=control ep0in=control
+GEVNTCOUNT(0): 0
+GRF 0x00c0: 0x00384e51 (before start the same session read 0x00384e73). utmi_bvalid, utmi_avalid, and utmi_id stayed 1.
+IRQ 20: 10, unchanged from the pre-start read
+Watcher: link.latch=connect. No link.writes file.
+Kernel line at uptime 9309: request was not queued to ep0out, from dwc3_gadget_ep_dequeue. This session did not log failed to enable ep0out.
+Host: Demetria kernel journal from 17:00 local through this sample had no USB entries.
+Stop: zlyme-usb-transfer stop, the same function the PAK B path calls. The panel button was not pressed. After stop: helper off, no umtprd, no configfs gadget, UDC not attached, debugfs unmounted.
+Source and PMIC: unchanged.
+
+The first start in the same hour was torn down by the helper reaper when its SSH shell exited, before a useful register sample. The values above are the second start.

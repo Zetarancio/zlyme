@@ -2162,6 +2162,10 @@ The host build used `./build.sh --config zlyme_my355_defconfig`. The kernel rele
 
 Closure: Booting this image does not close 12D. Enumeration is still required before any MTP file check. The 2026-10-13 sessions and the idle DWC3 and USB2PHY GRF reads are in `docs/research/usb-mtp-phase12d.md`.
 
+#### Current status, 2026-10-13
+
+Phase 12D stays open. MTP has not enumerated, and no file check has started. The experiment ledger is [the Phase 12D USB record](research/usb-mtp-phase12d.md). The speed cap is already present on the running controller. `0007` remains the off-current fix and was not removed. A cable-first session reached DWC3 `RUN_STOP` with endpoint 0 enabled and still produced no host device. That is not acceptance.
+
 ### Phase 12 gate
 
 All of these, and a maintainer decision to release:

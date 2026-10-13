@@ -1,0 +1,13 @@
+mar 13 ott 2026, 15:01:34, UTC
+no-gadget-id
+mar 13 ott 2026, 15:01:36, UTC
+no-gadget-id
+mar 13 ott 2026, 15:01:38, UTC
+no-gadget-id
+mar 13 ott 2026, 15:01:40, UTC
+no-gadget-id
+mar 13 ott 2026, 15:01:42, UTC
+no-gadget-id
+mar 13 ott 2026, 15:01:44, UTC
+no-gadget-id
+HOST_LOOP_DONE
