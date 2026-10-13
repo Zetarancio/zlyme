@@ -182,6 +182,17 @@ printf 'vol0 %s exfat rw 0 0\nvol1 %s ext4 rw 0 0\nvol2 %s ext4 rw 0 0\nvol3 %s 
 	"$base/media/usb" "$base/media/ntfs" \
 	> "$base/mounts"
 : > "$base/mount.log"
+rm -rf "$base/extcon"
+mkdir -p "$base/extcon"
+_i=0
+for _spec in USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0; do
+	_name=${_spec%%=*}
+	_val=${_spec#*=}
+	mkdir -p "$base/extcon/cable.$_i"
+	printf '%s\n' "$_name" > "$base/extcon/cable.$_i/name"
+	printf '%s\n' "$_val" > "$base/extcon/cable.$_i/state"
+	_i=$((_i + 1))
+done
 
 run_real() {
 	ZLYME_USB_RUN=$base/run \
@@ -211,6 +222,7 @@ run_real() {
 	ZLYME_USB_REAP_SLEEP=0.05 \
 	ZLYME_USB_REAP_WAIT=0.05 \
 	ZLYME_USB_LINK_SLEEP=0.05 \
+	ZLYME_USB_EXTCON=$base/extcon \
 	ZLYME_USB_DMESG=$base/dmesg \
 	ZLYME_FAKE_UMTP=ready \
 	"$HELPER" "$@"
@@ -306,6 +318,7 @@ ZLYME_USB_SPAWN_SLEEP=0.05 \
 ZLYME_USB_REAP_SLEEP=0.05 \
 ZLYME_USB_REAP_WAIT=0.05 \
 ZLYME_USB_LINK_SLEEP=0.05 \
+ZLYME_USB_EXTCON=$base/extcon \
 ZLYME_USB_DMESG=$base/dmesg \
 "$PAK" >"$base/pak.out" 2>&1 || fail "pak exit is nonzero: $(cat "$base/pak.out")"
 grep -qx 'Connect your computer to the lower USB-C port.' "$WORK/presenter.log.pages" || fail "pak intro is not the one instruction"

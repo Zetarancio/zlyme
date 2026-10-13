@@ -11,16 +11,16 @@
 # zlyme-usb-enter. ZLYME_USB_JAIL=0 is the host-test seam that keeps
 # the exFAT-only path.
 # This script does not change USB role, VBUS, or regulators.
-# On RK3566, binding while the lower port has no VBUS can make DWC3
-# fail "failed to enable ep0out". The controller then stays bound and
-# the host never finishes enumeration. After bind, this session
-# soft-disconnects until that port's PHY reports SDP or CDP, then
-# soft-connects once. A later unplug soft-disconnects once, and the
-# next data cable soft-connects once. DCP is not a data host.
-# ep0out/transfer_type is the descriptor class, not a connection.
-# A configured or suspended UDC is left alone. One EP0 enable
-# error gets one recovery, and a failed soft_connect write is
-# not repeated. ROCKNIX documents the same
+# On RK3566, writing the UDC name starts DWC3 and enables EP0 inside
+# that write, before any watcher can run. This session therefore
+# leaves the UDC unbound until the lower PHY reports SDP or CDP.
+# DCP, no cable, and an unfinished classification wait. A missing
+# extcon is a failed start, not a charger. The bind itself is the
+# connection attempt. A configured or suspended UDC is left alone,
+# including when a later reading says DCP. ep0out/transfer_type is
+# the descriptor class, not a connection. One EP0 enable error gets
+# one recovery, and a failed soft_connect write is not repeated.
+# ROCKNIX documents the same
 # failure and uses UDC soft_connect; this behavior is Zlyme's and
 # does not copy that script. Debugfs is optional. state=bound is not
 # host enumeration.
@@ -1029,6 +1029,7 @@ bind_udc() {
 		say "UDC bind did not stick (wanted $UDC_NAME, have ${_got:-empty})"
 		return 1
 	fi
+	printf '%s\n' bind >> "$RUN/link.binds"
 }
 
 our_udc_bound() {
@@ -1172,21 +1173,18 @@ soft_write() {
 	printf '%s\n' "$_sw" >> "$RUN/link.writes"
 }
 
-# One decision per cable or error change.
-# idle: no SDP or CDP, and disconnect was written once.
+# waiting: prepared, UDC not bound, no SDP or CDP yet.
+# bind-failed: the one configfs bind failed. It is not retried.
+# idle: bound, then no SDP or CDP, and disconnect was written once.
 # idle-failed: that write failed. It is not retried.
-# pending: a data cable is present and this presence has had its attempt.
+# pending: bound for this data cable. The bind is the attempt.
 # pending-failed: the connect write failed. It is not retried.
 # configured: the UDC is configured or suspended. Leave it alone.
 # recover-failed: the one EP0 recovery write failed. It is not retried.
-# A configured session is not soft-disconnected merely because the
-# watcher runs again. Losing SDP and CDP does disconnect once.
-# The bind is the attempt when a data cable is already present and
-# this bind has no EP0 enable error. A later data cable, after idle,
-# is one connect. soft_connect's handler returns the byte count even
-# when DWC3's pull-up does nothing, so a write is not enumeration.
+# A configured session is not disconnected because a later reading
+# says DCP. soft_connect returns the write length even when DWC3
+# does not change the pull-up, so a write is not enumeration.
 link_once() {
-	our_udc_bound || return 0
 	_fo=$(foreign_owner || true)
 	if [ -n "$_fo" ]; then
 		return 0
@@ -1195,7 +1193,28 @@ link_once() {
 		note_link "lower PHY extcon for $UDC_NAME was not found"
 		return 0
 	fi
+	if ! our_udc_bound; then
+		_last=$(latch_get)
+		if ! data_cable; then
+			latch_set waiting
+			return 0
+		fi
+		case "$_last" in
+			bind-failed) return 0 ;;
+		esac
+		if ! bind_udc; then
+			latch_set bind-failed
+			return 1
+		fi
+		latch_set pending
+	fi
 	_host=$(host_state)
+	case "$_host" in
+		configured|suspended)
+			latch_set configured
+			return 0
+			;;
+	esac
 	if data_cable; then
 		_data=1
 	else
@@ -1213,14 +1232,8 @@ link_once() {
 		fi
 		return 0
 	fi
-	case "$_host" in
-		configured|suspended)
-			latch_set configured
-			return 0
-			;;
-	esac
 	case "$_last" in
-		pending|pending-failed|recover-failed)
+		pending|pending-failed|recover-failed|waiting)
 			if ep0_failed && [ ! -f "$RUN/link.recover" ]; then
 				: > "$RUN/link.recover"
 				if ! soft_write disconnect; then
@@ -1247,7 +1260,7 @@ link_once() {
 		fi
 		return 0
 	fi
-	if ep0_failed; then
+	if ep0_failed && [ ! -f "$RUN/link.recover" ]; then
 		: > "$RUN/link.recover"
 		if ! soft_write disconnect; then
 			latch_set recover-failed
@@ -1282,6 +1295,10 @@ stop_link() {
 	_lp=
 	[ -r "$RUN/link.pid" ] || return 0
 	read -r _lp < "$RUN/link.pid" || true
+	if [ "$_lp" = "$$" ]; then
+		rm -f "$RUN/link.pid"
+		return 0
+	fi
 	if link_pid_ours "$_lp"; then
 		signal_pid TERM "$_lp" || true
 		_i=0
@@ -1303,7 +1320,9 @@ spawn_link() {
 	[ "$LINK" = 1 ] || return 0
 	stop_link
 	: > "$RUN/link.log"
-	link_once
+	if ! link_once; then
+		return 1
+	fi
 	if link_pid_ours "$(cat "$RUN/link.pid" 2>/dev/null || true)"; then
 		return 0
 	fi
@@ -1318,7 +1337,7 @@ spawn_link() {
 cmd_link() {
 	while :; do
 		lock_session || exit 0
-		if ! our_udc_bound; then
+		if [ ! -d "$GADGET" ]; then
 			exit 0
 		fi
 		_now=$(cat "$RUN/generation" 2>/dev/null || true)
@@ -1326,7 +1345,12 @@ cmd_link() {
 		if [ -z "$_own" ] || [ "$_now" != "$_own" ]; then
 			exit 0
 		fi
-		link_once
+		_lp_resp=$(read_pid || true)
+		if [ -z "$_lp_resp" ] || ! pid_is_ours "$_lp_resp"; then
+			cleanup_owned || true
+			exit 0
+		fi
+		link_once || true
 		exec 9>&-
 		sleep "$LINK_SLEEP" || exit 0
 	done
@@ -1457,14 +1481,14 @@ cleanup_owned() {
 	if [ "$_keep_owner" = 1 ]; then
 		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
-			"$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
+			"$RUN/link.log" "$RUN/dmesg.lines"
 	else
 		rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" \
 			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
-			"$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
+			"$RUN/link.log" "$RUN/dmesg.lines"
 	fi
 	if session_left || [ "$_keep_owner" = 1 ]; then
 		say "usb transfer cleanup incomplete"
@@ -1473,14 +1497,24 @@ cleanup_owned() {
 	[ "$_fail" -eq 0 ]
 }
 
-healthy() {
-	our_udc_bound || return 1
+endpoints_ready() {
 	mounts_has "$FFS" || return 1
 	[ -s "$CONF" ] || return 1
 	_pid=$(read_pid || true)
 	[ -n "$_pid" ] || return 1
 	pid_is_ours "$_pid" || return 1
 	[ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] && [ -e "$FFS/ep3" ]
+}
+
+healthy() {
+	our_udc_bound || return 1
+	endpoints_ready
+}
+
+waiting_ready() {
+	our_udc_bound && return 1
+	[ -d "$GADGET" ] || return 1
+	endpoints_ready
 }
 
 on_signal() {
@@ -1513,7 +1547,7 @@ cmd_start() {
 		trap - INT TERM
 		return 1
 	fi
-	if healthy; then
+	if healthy || waiting_ready; then
 		trap - INT TERM
 		return 0
 	fi
@@ -1576,13 +1610,13 @@ cmd_start() {
 		return 1
 	fi
 	mark_dmesg
-	if ! bind_udc; then
+	if ! extcon_dir >/dev/null; then
+		say "lower PHY extcon for $UDC_NAME was not found"
 		cleanup_owned || true
 		trap - INT TERM
 		return 1
 	fi
 	if ! spawn_link; then
-		say "usb link watcher did not start"
 		cleanup_owned || true
 		trap - INT TERM
 		return 1
@@ -1615,8 +1649,12 @@ cmd_status() {
 	if [ -n "$_pid" ] && pid_is_ours "$_pid"; then
 		_responder=1
 	fi
-	if our_udc_bound; then
+	if our_udc_bound && [ "$_responder" = 1 ] \
+		&& [ -e "$FFS/ep1" ] && [ -e "$FFS/ep2" ] && [ -e "$FFS/ep3" ]
+	then
 		printf '%s\n' "state=bound"
+	elif waiting_ready; then
+		printf '%s\n' "state=waiting"
 	elif [ -d "$GADGET" ] || mounts_has "$FFS" || [ "$_responder" = 1 ]; then
 		printf '%s\n' "state=partial"
 	else
@@ -1662,8 +1700,8 @@ cmd_stop() {
 	if ! session_left; then
 		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
-			"$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
+			"$RUN/link.log" "$RUN/dmesg.lines"
 		return 0
 	fi
 	cleanup_owned

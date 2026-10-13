@@ -78,6 +78,21 @@ present_stop() {
 		--timeout 0
 }
 
+# Waiting is expected. The one-second timeout is how this page notices
+# that the PHY became a data cable. Exit 124 means look again.
+present_wait() {
+	_msg=$1
+	if [ ! -x "$PRESENTER" ] && ! command -v "$PRESENTER" >/dev/null 2>&1; then
+		printf '%s\n' "$_msg" >&2
+		return 1
+	fi
+	"$PRESENTER" \
+		--message "$_msg" \
+		--message-alignment top \
+		--cancel-button B --cancel-text "Stop" --cancel-show \
+		--timeout 1
+}
+
 if [ ! -x "$TRANSFER" ]; then
 	present "USB File Transfer is not installed." "OK" "Back"
 	exit 1
@@ -146,18 +161,40 @@ else
 	storage_line="Storage: $storage_bits."
 fi
 
-if [ "$state" != bound ]; then
-	if [ -n "$state" ]; then
-		present "$(reason_screen "USB file transfer did not stay bound." "State: $state.")" "OK" "Back"
-	else
-		present "USB file transfer did not stay bound." "OK" "Back"
-	fi
-	exit 1
-fi
-
-running="USB File Transfer
+while :; do
+	st=$("$TRANSFER" status 2>/dev/null || true)
+	state=
+	while IFS= read -r line; do
+		case "$line" in
+			state=*) state=${line#state=} ;;
+		esac
+	done <<EOF
+$st
+EOF
+	case "$state" in
+		waiting)
+			present_wait "USB File Transfer
+Waiting for a USB data connection."
+			rc=$?
+			if [ "$rc" -eq 124 ]; then
+				continue
+			fi
+			exit "$rc"
+			;;
+		bound)
+			running="USB File Transfer
 Session is open.
 $storage_line"
-
-present_stop "$running"
-exit $?
+			present_stop "$running"
+			exit $?
+			;;
+		*)
+			if [ -n "$state" ]; then
+				present "$(reason_screen "USB file transfer did not stay bound." "State: $state.")" "OK" "Back"
+			else
+				present "USB file transfer did not stay bound." "OK" "Back"
+			fi
+			exit 1
+			;;
+	esac
+done

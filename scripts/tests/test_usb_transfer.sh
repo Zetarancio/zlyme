@@ -157,6 +157,21 @@ reset_tree() {
 	printf 'vol0 %s exfat rw 0 0\n' "$work/storage" > "$work/mounts"
 	printf '%s\n' "$work/storage" > "$work/libraries"
 	: > "$work/mount.log"
+	set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+}
+
+set_cables() {
+	rm -rf "$work/extcon"
+	mkdir -p "$work/extcon"
+	_i=0
+	for _spec in "$@"; do
+		_name=${_spec%%=*}
+		_val=${_spec#*=}
+		mkdir -p "$work/extcon/cable.$_i"
+		printf '%s\n' "$_name" > "$work/extcon/cable.$_i/name"
+		printf '%s\n' "$_val" > "$work/extcon/cable.$_i/state"
+		_i=$((_i + 1))
+	done
 }
 
 run_helper() {
@@ -186,6 +201,7 @@ run_helper() {
 	ZLYME_USB_REAP_SLEEP="${REAP_SLEEP:-0.05}" \
 	ZLYME_USB_REAP_WAIT=0.05 \
 	ZLYME_USB_LINK_SLEEP=0.05 \
+	ZLYME_USB_EXTCON="${ZLYME_USB_EXTCON:-$work/extcon}" \
 	ZLYME_USB_DMESG="$work/dmesg" \
 	ZLYME_USB_SIGNAL="${SIGNAL_CMD:-}" \
 	ZLYME_FAKE_UMTP="${MODE:-ready}" \
@@ -494,7 +510,18 @@ case "$1" in
 		exit 0
 		;;
 	status)
-		printf '%s\n' "state=bound"
+		state=bound
+		if [ -n "${ZLYME_FAKE_STATES:-}" ]; then
+			sn=0
+			if [ -f "${ZLYME_FAKE_STATE_COUNT:-}" ]; then
+				read -r sn < "$ZLYME_FAKE_STATE_COUNT" || sn=0
+			fi
+			sn=$((sn + 1))
+			printf '%s\n' "$sn" > "$ZLYME_FAKE_STATE_COUNT"
+			state=$(sed -n "${sn}p" "$ZLYME_FAKE_STATES")
+			[ -n "$state" ] || state=bound
+		fi
+		printf '%s\n' "state=$state"
 		printf '%s\n' "host=${ZLYME_FAKE_HOST:-not attached}"
 		printf '%s\n' "export=/storage"
 		printf '%s\n' "export=/mnt/sd2"
@@ -581,6 +608,67 @@ if grep -q 'connected' "$work/presenter.log.pages"; then
 fi
 grep -q 'Session is open.' "$work/presenter.log.pages" || fail "configured screen did not say the session is open"
 check_presenter_pages "$work/presenter.log.pages"
+
+# B while the PHY is not a data cable stops a prepared session.
+# The screen does not say the computer is connected.
+printf '%s\n' 0 2 > "$work/presenter.codes"
+printf '%s\n' waiting waiting > "$work/fake.states"
+: > "$work/presenter.log"
+: > "$work/transfer.log"
+rm -f "$work/presenter.count" "$work/state.count"
+set +e
+ZLYME_USB_TRANSFER="$work/bin/transfer" \
+ZLYME_USB_PRESENTER="$work/bin/presenter" \
+ZLYME_PRESENTER_LOG="$work/presenter.log" \
+ZLYME_PRESENTER_CODES="$work/presenter.codes" \
+ZLYME_PRESENTER_COUNT="$work/presenter.count" \
+ZLYME_TRANSFER_LOG="$work/transfer.log" \
+ZLYME_FAKE_STATES="$work/fake.states" \
+ZLYME_FAKE_STATE_COUNT="$work/state.count" \
+"$PAK"
+pak_rc=$?
+set -e
+[ "$pak_rc" -eq 2 ] || fail "waiting B rc=$pak_rc"
+grep -qx start "$work/transfer.log" || fail "waiting B did not start"
+grep -qx stop "$work/transfer.log" || fail "waiting B did not stop"
+grep -q 'Waiting for a USB data connection.' "$work/presenter.log.pages" || fail "waiting screen missing"
+if grep -q 'Session is open.' "$work/presenter.log.pages"; then
+	fail "waiting B showed the open session"
+fi
+if grep -q 'connected' "$work/presenter.log.pages"; then
+	fail "waiting screen says connected"
+fi
+wait_call=$(sed -n '2p' "$work/presenter.log")
+printf '%s\n' "$wait_call" | grep -q -- '--confirm-show' && fail "waiting page showed A"
+printf '%s\n' "$wait_call" | grep -q -- '--cancel-text Stop' || fail "waiting B is not Stop"
+printf '%s\n' "$wait_call" | grep -q -- '--timeout 1' || fail "waiting page did not refresh"
+check_presenter_pages "$work/presenter.log.pages"
+
+# A data cable after the wait replaces that page with the open session.
+printf '%s\n' 0 124 0 > "$work/presenter.codes"
+printf '%s\n' waiting waiting bound > "$work/fake.states"
+: > "$work/presenter.log"
+: > "$work/transfer.log"
+rm -f "$work/presenter.count" "$work/state.count"
+ZLYME_USB_TRANSFER="$work/bin/transfer" \
+ZLYME_USB_PRESENTER="$work/bin/presenter" \
+ZLYME_PRESENTER_LOG="$work/presenter.log" \
+ZLYME_PRESENTER_CODES="$work/presenter.codes" \
+ZLYME_PRESENTER_COUNT="$work/presenter.count" \
+ZLYME_TRANSFER_LOG="$work/transfer.log" \
+ZLYME_FAKE_STATES="$work/fake.states" \
+ZLYME_FAKE_STATE_COUNT="$work/state.count" \
+"$PAK"
+grep -q 'Waiting for a USB data connection.' "$work/presenter.log.pages" || fail "transition missed the wait"
+grep -q 'Session is open.' "$work/presenter.log.pages" || fail "transition missed the open session"
+if grep -q 'connected' "$work/presenter.log.pages"; then
+	fail "transition says connected"
+fi
+open_call=$(sed -n '3p' "$work/presenter.log")
+printf '%s\n' "$open_call" | grep -q -- '--confirm-show' && fail "open page showed A after waiting"
+printf '%s\n' "$open_call" | grep -q -- '--timeout 0' || fail "open page kept refreshing"
+check_presenter_pages "$work/presenter.log.pages"
+unset ZLYME_FAKE_STATES ZLYME_FAKE_STATE_COUNT
 
 # Cancel before start still runs stop, and does not start.
 printf '%s\n' 2 > "$work/presenter.codes"
@@ -1101,6 +1189,7 @@ export ZLYME_USB_KILL_SLEEP=0.05
 export ZLYME_USB_REAP_SLEEP=0.05
 export ZLYME_USB_REAP_WAIT=0.05
 export ZLYME_USB_LINK_SLEEP=0.05
+export ZLYME_USB_EXTCON="$work/extcon"
 export ZLYME_USB_DMESG="$work/dmesg"
 export ZLYME_FAKE_UMOUNT_DELAY=2
 export ZLYME_FAKE_UMOUNT_MARK="$work/umount-delay.mark"
@@ -1133,6 +1222,7 @@ prove_group_reaper "cleanup" "$work/run" "$gadget" "$work/mounts" \
 # No unmount delay, so cleanup finishes inside the 1.5s window.
 # A dead reaper with nothing left behind is success.
 reset_tree
+printf '%s\n' configured > "$work/udc/fcc00000.usb/state"
 sed 's/ZLYME_FAKE_UMOUNT_DELAY=2/ZLYME_FAKE_UMOUNT_DELAY=0/' \
 	"$work/bin/run-pak" > "$work/bin/run-pak-fast"
 chmod 755 "$work/bin/run-pak-fast"
@@ -1156,6 +1246,41 @@ pak_pgrp=$(
 )
 [ "$pak_pgrp" != "$our_pgrp" ] || fail "fast pak shares the test process group"
 prove_group_reaper "early cleanup" "$work/run" "$gadget" "$work/mounts" \
+	"$work/ffs" "$pak_pgrp" "$work/umount-delay.mark"
+
+# MENU+START while the gadget is prepared and the PHY is still DCP.
+reset_tree
+set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+rm -f "$work/pak.pid" "$work/presenter.count" "$work/umount-delay.mark"
+setsid "$work/bin/run-pak-fast" >"$work/pak.out" 2>&1 < /dev/null &
+i=0
+while [ "$i" -lt 50 ]; do
+	[ -s "$work/pak.pid" ] && break
+	i=$((i + 1))
+	sleep 0.05
+done
+[ -s "$work/pak.pid" ] || fail "waiting pak session did not write its pid"
+pak_pid=$(cat "$work/pak.pid")
+pak_pgrp=$(
+	line=$(cat "/proc/$pak_pid/stat")
+	rest=${line#*)}
+	set -f
+	# shellcheck disable=SC2086
+	set -- $rest
+	printf '%s\n' "$3"
+)
+[ "$pak_pgrp" != "$our_pgrp" ] || fail "waiting pak shares the test process group"
+i=0
+while [ "$i" -lt 50 ]; do
+	[ -s "$work/run/link.latch" ] && break
+	i=$((i + 1))
+	sleep 0.05
+done
+[ "$(cat "$work/run/link.latch" 2>/dev/null || true)" = waiting ] \
+	|| fail "waiting pak did not stay unbound: $(cat "$work/run/link.latch" 2>/dev/null || true)"
+got=$(tr -d '[:space:]' < "$gadget/UDC")
+[ -z "$got" ] || fail "waiting pak bound the UDC: $got"
+prove_group_reaper "waiting cleanup" "$work/run" "$gadget" "$work/mounts" \
 	"$work/ffs" "$pak_pgrp" "$work/umount-delay.mark"
 
 # ext4 shares run in a user mount namespace so the jail can bind
