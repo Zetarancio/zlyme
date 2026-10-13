@@ -83,12 +83,7 @@ if [ ! -x "$TRANSFER" ]; then
 	exit 1
 fi
 
-intro="USB File Transfer
-Shares the whole data card.
-Settings and updates are included.
-The boot partition is not shared.
-A trusted computer can change files.
-A starts. B goes back."
+intro="Connect your computer to the lower USB-C port."
 
 present "$intro" "Start" "Back"
 rc=$?
@@ -161,7 +156,7 @@ if [ "$state" != bound ]; then
 fi
 
 running="USB File Transfer
-MTP is active.
+Session is open.
 $storage_line"
 
 present_stop "$running"

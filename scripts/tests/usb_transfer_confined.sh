@@ -308,7 +308,10 @@ ZLYME_USB_REAP_WAIT=0.05 \
 ZLYME_USB_LINK_SLEEP=0.05 \
 ZLYME_USB_DMESG=$base/dmesg \
 "$PAK" >"$base/pak.out" 2>&1 || fail "pak exit is nonzero: $(cat "$base/pak.out")"
-grep -q 'whole data card' "$WORK/presenter.log" || fail "pak did not warn about the data card"
+grep -qx 'Connect your computer to the lower USB-C port.' "$WORK/presenter.log.pages" || fail "pak intro is not the one instruction"
+if grep -E 'whole data card|Settings and updates|boot partition|trusted computer|A starts|B goes back|B stops' "$WORK/presenter.log.pages"; then
+	fail "pak intro still explains the share or the buttons"
+fi
 check_presenter_pages "$WORK/presenter.log.pages"
 if grep -q 'USB:' "$WORK/presenter.log.pages"; then
 	fail "pak printed a raw USB state"
@@ -317,7 +320,7 @@ if grep -q 'MENU+START' "$WORK/presenter.log.pages"; then
 	fail "pak explained the emergency stop"
 fi
 grep -q 'Storage: ZLYME.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
-grep -q 'MTP is active.' "$WORK/presenter.log.pages" || fail "pak did not say MTP is active"
+grep -q 'Session is open.' "$WORK/presenter.log.pages" || fail "pak did not say the session is open"
 run_page=$(sed -n '2p' "$WORK/presenter.log")
 printf '%s\n' "$run_page" | grep -q -- '--confirm-show' && fail "running page showed A"
 if grep -q "$base/" "$WORK/presenter.log.pages"; then

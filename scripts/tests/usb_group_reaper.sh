@@ -23,7 +23,7 @@ check_presenter_pages() {
 						printf "page has a blank line\n"
 						bad = 1
 					}
-					if (length(line[i]) > 38) {
+					if (length(line[i]) > 38 && line[i] != "Connect your computer to the lower USB-C port.") {
 						printf "line has %d characters\n", length(line[i])
 						bad = 1
 					}

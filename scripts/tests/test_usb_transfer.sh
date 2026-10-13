@@ -527,10 +527,11 @@ ZLYME_TRANSFER_LOG="$work/transfer.log" \
 grep -qx start "$work/transfer.log" || fail "pak did not start"
 grep -qx status "$work/transfer.log" || fail "pak did not read status"
 grep -qx stop "$work/transfer.log" || fail "pak exit did not stop"
-grep -q 'whole data card' "$work/presenter.log.pages" || fail "pak did not warn about the data card"
-grep -q 'Settings and updates' "$work/presenter.log.pages" || fail "pak did not warn about settings"
-grep -q 'boot partition' "$work/presenter.log.pages" || fail "pak did not mention the boot partition"
-grep -q 'MTP is active.' "$work/presenter.log.pages" || fail "pak did not say MTP is active"
+grep -qx 'Connect your computer to the lower USB-C port.' "$work/presenter.log.pages" || fail "pak intro is not the one instruction"
+if grep -E 'whole data card|Settings and updates|boot partition|trusted computer|A starts|B goes back|B stops' "$work/presenter.log.pages"; then
+	fail "pak intro still explains the share or the buttons"
+fi
+grep -q 'Session is open.' "$work/presenter.log.pages" || fail "pak did not say the session is open"
 grep -q 'Storage: ZLYME, SD Card, USB.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
 if grep -q 'USB:' "$work/presenter.log.pages"; then
 	fail "pak printed a raw USB state"
@@ -578,7 +579,7 @@ fi
 if grep -q 'connected' "$work/presenter.log.pages"; then
 	fail "configured screen says connected"
 fi
-grep -q 'MTP is active.' "$work/presenter.log.pages" || fail "configured screen did not say MTP is active"
+grep -q 'Session is open.' "$work/presenter.log.pages" || fail "configured screen did not say the session is open"
 check_presenter_pages "$work/presenter.log.pages"
 
 # Cancel before start still runs stop, and does not start.
