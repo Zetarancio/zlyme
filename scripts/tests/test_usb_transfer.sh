@@ -1327,4 +1327,5 @@ CONFINE_RESP=$work/bin/jail-umtprd \
 	sh "$ROOT/scripts/tests/usb_transfer_confined.sh"
 
 kill_responders
+sh "$ROOT/scripts/tests/test_usb_link.sh"
 printf '%s\n' "usb transfer ok"

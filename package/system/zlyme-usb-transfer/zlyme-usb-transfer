@@ -1089,29 +1089,21 @@ data_cable() {
 	return 1
 }
 
-# control: EP0 is enabled. failed: this bind logged the enable error,
-# or debugfs does not say control. unknown: no evidence either way.
-ep0_state() {
+# True when this bind logged "failed to enable ep0out".
+# debugfs ep0out/transfer_type is the descriptor class of an enabled
+# endpoint. "control" means that class. It does not mean the host is
+# attached, that enumeration finished, or that the last transfer worked.
+# ZLYME_USB_EP0=failed is the test stand-in for the kernel line.
+# Any other value, including "control", is not an error.
+ep0_failed() {
 	if [ -n "${ZLYME_USB_EP0:-}" ]; then
-		printf '%s\n' "$ZLYME_USB_EP0"
-		return 0
-	fi
-	_ef=${ZLYME_USB_EP0_FILE:-/sys/kernel/debug/usb/$UDC_NAME/ep0out/transfer_type}
-	if [ -r "$_ef" ]; then
-		_et=$(tr -d '[:space:]' < "$_ef" || true)
-		case "$_et" in
-			*control*) printf '%s\n' control ;;
-			*) printf '%s\n' failed ;;
-		esac
-		return 0
+		[ "$ZLYME_USB_EP0" = failed ]
+		return
 	fi
 	if [ -n "${ZLYME_USB_DMESG+x}" ]; then
-		if [ -r "${ZLYME_USB_DMESG:-}" ] && grep -q "${UDC_NAME}: failed to enable ep0out" "$ZLYME_USB_DMESG"; then
-			printf '%s\n' failed
-		else
-			printf '%s\n' unknown
-		fi
-		return 0
+		[ -r "${ZLYME_USB_DMESG:-}" ] || return 1
+		grep -q "${UDC_NAME}: failed to enable ep0out" "$ZLYME_USB_DMESG"
+		return
 	fi
 	_mark=0
 	if [ -r "$RUN/dmesg.lines" ]; then
@@ -1121,15 +1113,10 @@ ep0_state() {
 		''|*[!0-9]*) _mark=0 ;;
 	esac
 	if ! command -v dmesg >/dev/null 2>&1; then
-		printf '%s\n' unknown
-		return 0
+		return 1
 	fi
 	_hit=$(dmesg 2>/dev/null | awk -v n="$_mark" -v u="$UDC_NAME" 'NR > n && index($0, u ": failed to enable ep0out") { print; exit }' || true)
-	if [ -n "$_hit" ]; then
-		printf '%s\n' failed
-	else
-		printf '%s\n' unknown
-	fi
+	[ -n "$_hit" ]
 }
 
 mark_dmesg() {
@@ -1182,10 +1169,19 @@ soft_write() {
 	printf '%s\n' "$_sw" >> "$RUN/link.writes"
 }
 
-# Decide once. Duplicate cable notifications do not write again.
-# A control endpoint is not reset. Connecting from a failed enable
-# disconnects first, because a connect while pull-ups are already on
-# does not re-run endpoint setup.
+# One decision per cable or error change.
+# idle: no SDP or CDP, and disconnect was written once.
+# idle-failed: that write failed. It is not retried.
+# pending: a data cable is present and this presence has had its attempt.
+# pending-failed: the connect write failed. It is not retried.
+# configured: the UDC is configured or suspended. Leave it alone.
+# recover-failed: the one EP0 recovery write failed. It is not retried.
+# A configured session is not soft-disconnected merely because the
+# watcher runs again. Losing SDP and CDP does disconnect once.
+# The bind is the attempt when a data cable is already present and
+# this bind has no EP0 enable error. A later data cable, after idle,
+# is one connect. soft_connect's handler returns the byte count even
+# when DWC3's pull-up does nothing, so a write is not enumeration.
 link_once() {
 	our_udc_bound || return 0
 	_fo=$(foreign_owner || true)
@@ -1196,41 +1192,72 @@ link_once() {
 		note_link "lower PHY extcon for $UDC_NAME was not found"
 		return 0
 	fi
-	_ep=$(ep0_state)
-	if [ "$_ep" = control ]; then
-		latch_set healthy
-		return 0
-	fi
+	_host=$(host_state)
 	if data_cable; then
-		_want=connect
+		_data=1
 	else
-		_want=disconnect
+		_data=0
 	fi
 	_last=$(latch_get)
-	if [ "$_last" = "$_want" ] || [ "$_last" = "${_want}-failed" ]; then
+	if [ "$_data" = 0 ]; then
+		case "$_last" in
+			idle|idle-failed) return 0 ;;
+		esac
+		if soft_write disconnect; then
+			latch_set idle
+		else
+			latch_set idle-failed
+		fi
 		return 0
 	fi
-	if [ "$_want" = connect ] && [ "$_ep" = failed ] && [ "$_last" != disconnect ]; then
+	case "$_host" in
+		configured|suspended)
+			latch_set configured
+			return 0
+			;;
+	esac
+	case "$_last" in
+		pending|pending-failed|recover-failed)
+			if ep0_failed && [ ! -f "$RUN/link.recover" ]; then
+				: > "$RUN/link.recover"
+				if ! soft_write disconnect; then
+					latch_set recover-failed
+					return 0
+				fi
+				if ! soft_write connect; then
+					latch_set recover-failed
+					return 0
+				fi
+				latch_set pending
+			fi
+			return 0
+			;;
+	esac
+	if [ "$_last" = idle ] || [ "$_last" = idle-failed ]; then
+		if ep0_failed; then
+			: > "$RUN/link.recover"
+		fi
+		if soft_write connect; then
+			latch_set pending
+		else
+			latch_set pending-failed
+		fi
+		return 0
+	fi
+	if ep0_failed; then
+		: > "$RUN/link.recover"
 		if ! soft_write disconnect; then
-			latch_set connect-failed
+			latch_set recover-failed
 			return 0
 		fi
 		if ! soft_write connect; then
-			latch_set connect-failed
+			latch_set recover-failed
 			return 0
 		fi
-		latch_set connect
+		latch_set pending
 		return 0
 	fi
-	if [ "$_want" = connect ] && [ "$_ep" != failed ] && [ "$_last" != disconnect ]; then
-		latch_set connect
-		return 0
-	fi
-	if ! soft_write "$_want"; then
-		latch_set "${_want}-failed"
-		return 0
-	fi
-	latch_set "$_want"
+	latch_set pending
 }
 
 link_pid_ours() {
@@ -1427,12 +1454,14 @@ cleanup_owned() {
 	if [ "$_keep_owner" = 1 ]; then
 		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
+			"$RUN/dmesg.lines"
 	else
 		rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" \
 			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
+			"$RUN/dmesg.lines"
 	fi
 	if session_left || [ "$_keep_owner" = 1 ]; then
 		say "usb transfer cleanup incomplete"
@@ -1601,6 +1630,9 @@ cmd_status() {
 	if [ -s "$RUN/link.err" ]; then
 		printf 'link=%s\n' "$(head -n 1 "$RUN/link.err")"
 	fi
+	if [ -r "$RUN/link.latch" ]; then
+		printf 'latch=%s\n' "$(latch_get)"
+	fi
 	if [ -f "$EXPORTS" ]; then
 		while IFS='	' read -r _path _name _mode; do
 			[ -n "$_path" ] || continue
@@ -1627,7 +1659,8 @@ cmd_stop() {
 	if ! session_left; then
 		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.err" "$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.recover" "$RUN/link.err" "$RUN/link.log" \
+			"$RUN/dmesg.lines"
 		return 0
 	fi
 	cleanup_owned

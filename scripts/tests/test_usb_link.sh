@@ -126,8 +126,21 @@ bind_ours() {
 	mkdir -p "$gadget" "$work/run"
 	printf '%s\n' fcc00000.usb > "$gadget/UDC"
 	printf '%s\n' 'not attached' > "$work/udc/fcc00000.usb/state"
+	rm -f "$work/udc/fcc00000.usb/soft_connect"
 	: > "$work/udc/fcc00000.usb/soft_connect"
-	rm -f "$work/run/link.latch" "$work/run/link.writes" "$work/run/link.err"
+	rm -f "$work/run/link.latch" "$work/run/link.writes" "$work/run/link.err" \
+		"$work/run/link.recover"
+}
+
+set_host() {
+	printf '%s\n' "$1" > "$work/udc/fcc00000.usb/state"
+}
+
+latch_is() {
+	[ "$(cat "$work/run/link.latch")" = "$1" ] || fail "$2 latch: $(cat "$work/run/link.latch")"
+	if [ "$1" = healthy ]; then
+		fail "$2 latched healthy"
+	fi
 }
 
 run_link() {
@@ -173,86 +186,212 @@ other_untouched() {
 	[ "$(cat "$work/udc/fcc00000.usb/state")" = "not attached" ] || fail "UDC state was rewritten"
 }
 
-# 1-2, 6-8. No cable, then SDP, duplicates, unplug, replug.
-zero_cables
-bind_ours
-EP0=failed
-run_link link-once
-expect_writes 'disconnect' "no cable"
-set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
-run_link link-once
-run_link link-once
-expect_writes 'disconnect
-connect' "sdp once"
-zero_cables
-run_link link-once
-set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
-run_link link-once
-run_link link-once
-expect_writes 'disconnect
-connect
-disconnect
-connect' "replug once"
-other_untouched
-
-# 3. CDP after a disconnect, not a second reset while it stays.
-zero_cables
-bind_ours
-EP0=failed
-run_link link-once
-set_cables USB=1 USB-HOST=0 SDP=0 CDP=1 DCP=0 SLOW-CHARGER=0
-run_link link-once
-run_link link-once
-expect_writes 'disconnect
-connect' "cdp once"
-other_untouched
-
-# 4. DCP is not a data host and does not connect.
-zero_cables
-bind_ours
-EP0=failed
+# 1. Not attached, EP0 descriptor class control, DCP. Not a healthy link.
+# One disconnect, then silence.
 set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+bind_ours
+EP0=control
 run_link link-once
 run_link link-once
-expect_writes 'disconnect' "dcp"
+expect_writes 'disconnect' "control plus dcp"
+latch_is idle "control plus dcp"
 other_untouched
 
-# 5. Cable already present, endpoint not known-bad: do not reset.
-set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
-bind_ours
-EP0=unknown
-run_link link-once
-expect_writes '' "cable already present"
-[ "$(cat "$work/run/link.latch")" = connect ] || fail "present latch"
-
-# 5b. Cable already present and ep0 enable failed: one disconnect then connect.
-bind_ours
-EP0=failed
-run_link link-once
-expect_writes 'disconnect
-connect' "present but failed"
-run_link link-once
-expect_writes 'disconnect
-connect' "present but failed stays"
-
-# 8. A control endpoint is not reset, including across duplicate notifies.
+# 2. Not attached, EP0 class control, SDP already present.
+# The bind is the attempt. control is not healthy, and it is not a reset.
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 bind_ours
 EP0=control
 run_link link-once
+run_link link-once
+expect_writes '' "control plus sdp"
+latch_is pending "control plus sdp"
+other_untouched
+
+# 3. CDP, not attached. Same as SDP: no reset while it stays.
+set_cables USB=1 USB-HOST=0 SDP=0 CDP=1 DCP=0 SLOW-CHARGER=0
+bind_ours
+EP0=control
+run_link link-once
+run_link link-once
+expect_writes '' "control plus cdp"
+latch_is pending "control plus cdp"
+other_untouched
+
+# 4. No VBUS. One disconnect.
+zero_cables
+bind_ours
+EP0=control
+run_link link-once
+run_link link-once
+expect_writes 'disconnect' "no vbus"
+latch_is idle "no vbus"
+other_untouched
+
+# 5. DCP, then SDP. The descriptor class does not block the connect.
+set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+bind_ours
+EP0=control
+run_link link-once
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+run_link link-once
+run_link link-once
+expect_writes 'disconnect
+connect' "dcp then sdp"
+latch_is pending "dcp then sdp"
+other_untouched
+
+# 6. Disconnect, then reconnect. One write each way.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+EP0=unknown
+run_link link-once
 zero_cables
 run_link link-once
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 run_link link-once
 run_link link-once
-expect_writes '' "healthy ep0"
-[ "$(cat "$work/run/link.latch")" = healthy ] || fail "healthy latch"
+expect_writes 'disconnect
+connect' "replug once"
+latch_is pending "replug"
+other_untouched
+
+# 7. SDP, then DCP. One disconnect, including after a configured host.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+set_host configured
+EP0=control
+run_link link-once
+run_link link-once
+expect_writes '' "configured before unplug"
+latch_is configured "configured before unplug"
+set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+run_link link-once
+run_link link-once
+expect_writes 'disconnect' "sdp then dcp"
+latch_is idle "sdp then dcp"
+got=$(cat "$work/udc/fd000000.usb/soft_connect")
+[ "$got" = untouched ] || fail "foreign UDC soft_connect changed: $got"
+
+# 8. Configured stays configured across repeated calls. No soft_connect.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+set_host configured
+EP0=control
+run_link link-once
+run_link link-once
+run_link link-once
+expect_writes '' "stable configured"
+latch_is configured "stable configured"
+set_host suspended
+run_link link-once
+expect_writes '' "suspended stays"
+latch_is configured "suspended"
+set_host 'not attached'
+run_link link-once
+run_link link-once
+expect_writes '' "drop without cable loss"
+latch_is pending "drop without cable loss"
+
+# 9. EP0 enable failure, then SDP. One recovery, then the connect.
+set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+bind_ours
+EP0=failed
+run_link link-once
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+run_link link-once
+run_link link-once
+expect_writes 'disconnect
+connect' "ep0 fail then sdp"
+latch_is pending "ep0 fail then sdp"
+other_untouched
+
+# 9b. EP0 enable failure while SDP is already present: one pair, then stop.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+EP0=failed
+run_link link-once
+run_link link-once
+expect_writes 'disconnect
+connect' "ep0 fail on sdp"
+latch_is pending "ep0 fail on sdp"
+
+# 10. EP0 enable failure and DCP only. Disconnect, never connect.
+set_cables USB=0 USB-HOST=0 SDP=0 CDP=0 DCP=1 SLOW-CHARGER=0
+bind_ours
+EP0=failed
+run_link link-once
+run_link link-once
+expect_writes 'disconnect' "ep0 fail on dcp"
+latch_is idle "ep0 fail on dcp"
+other_untouched
+
+# 11. Disconnect write fails once and is not repeated.
+zero_cables
+bind_ours
+rm -f "$work/udc/fcc00000.usb/soft_connect"
+ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
+EP0=control
+run_link link-once >/dev/null 2>&1 || fail "disconnect failure aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "disconnect failure retried as an abort"
+grep -q 'soft_connect disconnect failed' "$work/run/link.err" || fail "disconnect failure was not recorded"
+[ ! -f "$work/run/link.writes" ] || fail "failed disconnect was recorded as a write"
+latch_is idle-failed "disconnect failure"
+[ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "disconnect failure unbound the gadget"
+
+# 12. Connect write fails once after a real disconnect.
+zero_cables
+bind_ours
+EP0=control
+run_link link-once
+rm -f "$work/udc/fcc00000.usb/soft_connect"
+ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+run_link link-once >/dev/null 2>&1 || fail "connect failure aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "connect failure retried as an abort"
+grep -q 'soft_connect connect failed' "$work/run/link.err" || fail "connect failure was not recorded"
+expect_writes 'disconnect' "connect failure"
+latch_is pending-failed "connect failure"
+
+# 13. No debugfs and no enable error. The descriptor class is not consulted.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+EP0=unknown
+run_link link-once
+run_link link-once
+expect_writes '' "no debugfs"
+latch_is pending "no debugfs"
+
+# 14. Missing PHY extcon is recorded. The binding stays. No write.
+bind_ours
+rm -rf "$ext"
+EP0=failed
+run_link link-once >/dev/null 2>&1 || fail "missing extcon aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "missing extcon aborted the repeat"
+grep -q 'extcon' "$work/run/link.err" || fail "missing extcon was not recorded"
+[ ! -f "$work/run/link.writes" ] || fail "missing extcon wrote soft_connect"
+[ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "missing extcon unbound the gadget"
+zero_cables
+
+# 15. After a failed recovery, more calls do not write.
+set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
+bind_ours
+rm -f "$work/udc/fcc00000.usb/soft_connect"
+ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
+EP0=failed
+run_link link-once >/dev/null 2>&1 || fail "recovery failure aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "recovery failure aborted the repeat"
+run_link link-once >/dev/null 2>&1 || fail "recovery failure aborted the third call"
+latch_is recover-failed "failed recovery"
+[ ! -f "$work/run/link.writes" ] || fail "failed recovery recorded a write"
+grep -q 'soft_connect disconnect failed' "$work/run/link.err" || fail "recovery failure was not recorded"
 
 # 9. A foreign gadget is not modified. Our gadget is not bound.
 rm -rf "$gadget"
 mkdir -p "$work/configfs/usb_gadget/other"
 printf '%s\n' keep > "$work/configfs/usb_gadget/other/marker"
 printf '%s\n' fcc00000.usb > "$work/configfs/usb_gadget/other/UDC"
+rm -f "$work/udc/fcc00000.usb/soft_connect"
 printf '%s\n' nope > "$work/udc/fcc00000.usb/soft_connect"
 EP0=failed
 zero_cables
