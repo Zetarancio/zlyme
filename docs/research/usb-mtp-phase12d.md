@@ -567,7 +567,7 @@ Status 2026-10-13: section 12's sentence that there was still no Run/Stop sample
 
 Phase 12D stays open. Enumeration is not accepted. Do not repeat the speed-cap edit, an RK817 bit toggle, or the current soft-connect watcher unchanged.
 
-1. `snps,dis_enblslpm_quirk` on `&usb_host0_xhci` only. Priority: first. Not yet attempted.
+1. `snps,dis_enblslpm_quirk` on `&usb_host0_xhci` only. Priority: first. The DTS line is in section 19. Hardware has not run it.
    - Preconditions: the property is absent on `fcc00000`, live `GUSB2PHYCFG(0)` bit 8 is set, and 7.2.10 `dwc3_phy_setup()` clears that bit when the property is set. No other quirk, role, speed, PHY, or RK817 change in the same build.
    - Observable: `GUSB2PHYCFG(0)` bit 8 becomes 0. The prediction from `0x40101508` is `0x40101408`. That prediction is not evidence until a new kernel is measured. `GUCTL1`, the speed cap, and the device role stay as they are.
    - Success: with SDP or CDP already reported, the host enumerates and one small file round trip matches. Failure: bit 8 is clear and the host still sees no device. If extcon is not SDP or CDP, that is the replug problem below, not a result about this bit.
@@ -594,3 +594,21 @@ Hardware test after item 1 is installed, and only then:
 10. Check B cleanup, RK817 charging, the upper USB host, and suspend/resume.
 
 If extcon does not report SDP or CDP, record a PHY resynchronization failure and do not attribute it to the LPM property. If bit 8 clears and the host still sees nothing, record item 1 as unsuccessful and do not add another quirk in that test.
+
+## 19. ENBLSLPM source change, hardware not run
+
+12D-E18 is reserved for the hardware result. It is not assigned yet, because the device has not booted this DTB.
+
+Static check on 2026-10-13, tree `9a972906bec72f52189bb1a1d4445652f86e4279`, before this DTS edit:
+
+- `output/images/rk3566-miyoo-flip.dtb` decompiled to `usb@fcc00000` with `snps,dis_u2_susphy_quirk` and `maximum-speed = "high-speed"`. `snps,dis_enblslpm_quirk` was absent. The string does not appear in that blob.
+- The stopped regdump has `GUSB2PHYCFG(0) = 0x40101508`. Bit 8, `ENBLSLPM`, is 1. Bit 6, `SUSPHY`, is 0. Bit 30, `U2_FREECLK_EXISTS`, is 1. The active sample in 12D-E17 read the same word.
+- Linux 7.2.10 `dwc3_get_properties()` reads `snps,dis_enblslpm_quirk`. `dwc3_phy_setup()` clears `DWC3_GUSB2PHYCFG_ENBLSLPM`, which is `BIT(8)`, when the flag is set, and sets it otherwise.
+- No file under `board/my355/linux/patches` mentions the property. `rk3566-base.dtsi` does not set it.
+- The upper port is EHCI/OHCI at `fd800000` / `fd840000` on `usb2phy1`. This edit is only `&usb_host0_xhci`. `usb@fd000000` is not edited.
+
+`dwc3_gadget_run_stop()` clears bit 8 for the start or stop sequence and then writes the saved bits back. If `dwc3_phy_setup()` already cleared the bit, the saved value is clear and the restore leaves it clear. The host-role suspend path can set the bit, and the matching resume path clears it again when the quirk is set. MTP on this port uses device role.
+
+The board file now has the one property. The predicted steady value is `GUSB2PHYCFG(0) = 0x40101408`. That prediction is not a measurement. No other Synopsys property, role, speed cap, PHY policy, or RK817 change is in this edit.
+
+Hardware has not installed it. Enumeration is not claimed. The OTA built from this commit is recorded after the build, in the following note, once the packed DTB is checked.
