@@ -5,7 +5,8 @@
 # WiFi half of the RTL8733BU combo chip.
 ################################################################################
 
-# Pin is for kernel 7.0.2. Tip rewires cfg80211_ops for 7.1 and will not compile.
+# Pin is c46aa25. A newer tip rewires cfg80211_ops for 7.1 via wdev_to_ndev(),
+# which Linux 7.2 does not provide. 007 adapts this pin to 7.2 instead.
 RTL8733BU_VERSION = c46aa25e237cb43f33390cf58eee5c69d9b32883
 RTL8733BU_SITE = $(call github,Charliechen114514,rtl8733bu-linux-driver,$(RTL8733BU_VERSION))
 
