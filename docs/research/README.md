@@ -37,3 +37,4 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [usb-mtp-phase12d.md](usb-mtp-phase12d.md) | 12D, 2026-10-12 to 2026-10-13 | Lower-port MTP enumeration failure, the corrected runtime-PM reading, and the tests that did not enumerate. |
 | [linux-7.2.10-preflight.md](linux-7.2.10-preflight.md) | 12D, 2026-10-13 | Read-only review of the then-current stable kernel against the 7.0.2 pin. The defconfig pin did not move in that pass. The deferred-probe recommendation in that file was later corrected. |
 | [linux-7.2.10-migration.md](linux-7.2.10-migration.md) | 12D, 2026-10-13 | Host build of Linux 7.2.10. The image exists. It is not installed and not hardware-accepted. |
+| [driver-source-audit-phase12d.md](driver-source-audit-phase12d.md) | 12D, 2026-10-13 | RTL, libmali, and mali-kbase source comparison after the 7.2.10 host build. Pins were not moved. |

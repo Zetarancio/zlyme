@@ -2,7 +2,7 @@
 
 Host build on 2026-10-13. The my355 kernel pin moved from Linux 7.0.2 to Linux 7.2.10. The product image was built. It was not installed. It has not been booted on a Flip. Phase 12D stays open.
 
-This is not an MTP fix. USB userspace, the gadget configuration, DWC3, and the Rockchip USB2 PHY were not modified. The preflight is `linux-7.2.10-preflight.md`. The enumeration record is `usb-mtp-phase12d.md`.
+This is not an MTP fix. USB userspace, the gadget configuration, DWC3, and the Rockchip USB2 PHY were not modified. The preflight is `linux-7.2.10-preflight.md`. The enumeration record is `usb-mtp-phase12d.md`. A later source audit is `driver-source-audit-phase12d.md`. It corrects the `wdev_to_ndev()` sentence below and reviews the dirty image name.
 
 ## Release and hash
 
@@ -68,6 +68,8 @@ The first RTL compile failed with 16 errors: implicit `strncpy` in three files, 
 `007` keeps a local padded `strncpy` because several copies are counted substrings, not C strings. Station notifications pass `ndev->ieee80211_ptr`. Key and station operations keep their `net_device` implementations and forward from `wdev->netdev`. `remain_on_channel` accepts the new address and ignores it, so the dwell and channel are unchanged. The 5/10 MHz monitor flag is omitted on 7.2 because the enum value is gone. That flag was only under `CONFIG_WIFI_MONITOR`.
 
 The following upstream commit `6821d547` was not taken. It adds similar forwarders, but they call `wdev_to_ndev()`, which 7.2.10 does not provide, and it does not fix `strncpy`, the wiphy flag, or `remain_on_channel`.
+
+That `wdev_to_ndev()` sentence is wrong. The name is a macro in the driver's own `os_dep/linux/ioctl_cfg80211.h` (`#define wdev_to_ndev(w) ((w)->netdev)`), at both `c46aa25` and `6821d547`. Linux does not provide it, and it does not need to. The rest of the sentence stands: that commit does not touch `strncpy`, the removed wiphy flag, or `remain_on_channel`. Detail is `driver-source-audit-phase12d.md`.
 
 `/lib/modules` contains only `7.2.10`. `modules.dep` has 273 lines and no `7.0.2` path.
 
