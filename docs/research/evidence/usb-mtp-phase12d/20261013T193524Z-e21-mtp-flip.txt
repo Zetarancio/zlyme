@@ -1,0 +1,31 @@
+when=19:35:24 up=4693
+udc_state=configured
+udc_speed=high-speed
+helper=state=bound
+udc=fcc00000.usb
+gadget=zlyme-mtp
+responder=running
+host=configured
+exports=/storage/Roms /storage/Bios /mnt/sd2/Roms /mnt/sd2/Bios
+
+when=19:35 follow-up
+ready=1
+latch=connect
+link.writes=absent
+usb=1 sdp=1
+mode=device
+link=On
+GUSB2PHYCFG(0)=0x40101408
+DCFG=0x00ce0808
+DCTL=0x8cf00a00
+DSTS=0x000a0ce0
+DALEPENA=0x0000002f
+GRF 0000=00000c00
+GRF 00c0=00384640
+
+when=19:36:10
+irq20 rockchip_usb2phy=56
+irq21 rockchip_usb2phy=1
+irq66 dwc3=624
+irq67 xhci-hcd:usb1=1
+link.writes file absent

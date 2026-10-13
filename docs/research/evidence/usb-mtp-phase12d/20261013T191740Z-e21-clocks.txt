@@ -1,0 +1,7 @@
+when=2026-10-13T19:17:40Z follow-up clock read
+clk_usbphy0_ref enable=2 rate=24000000
+clk_usb3otg0_ref enable=1 rate=24000000
+clk_usb3otg0_suspend enable=1 rate=24000000
+aclk_usb3otg0 enable=1 rate=200000000
+clk_usbphy0_480m enable=1 rate=480000000
+debugfs unmounted in the same command

@@ -1,0 +1,6 @@
+2026-10-13T19:18:49Z
+3697
+USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0 
+state=not attached
+state=off
+14589

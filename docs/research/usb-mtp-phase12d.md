@@ -30,6 +30,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E18 | 2026-10-13 16:27Z–16:36Z | property applied, enumeration untested | [USB2 LPM property](#12d-e18-usb2-lpm-property) |
 | 12D-E19 | 2026-10-13 16:55Z–17:07Z | SDP published, then the boot restarted | [PHY charger trace](#12d-e19-phy-charger-trace) |
 | 12D-E20 | 2026-10-13 18:20Z–18:45Z | fresh SDP, restore unexercised, no enumeration | [Extcon and enumeration session](#23-extcon-and-enumeration-session) |
+| 12D-E21 | 2026-10-13 19:17Z–19:45Z | both gadgets enumerated on the identified port | [Host port and gadget session](#25-host-port-and-gadget-session) |
 
 ## Experiment ledger
 
@@ -314,6 +315,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Unknown: whether D+ or D- changed at the connector. `snps,dis-u2-freeclk-exists-quirk` was not applied. `GUSB2PHYCFG` bit 30 was still 1. The 17:00:49Z restart is still unexplained. This boot did not restart.
 - Evidence: section 23.
 - Code: left untouched. Dynamic debug was restored to `=_`. No new image.
+
+### 12D-E21 Host port and two gadgets
+
+- When: 2026-10-13 19:17Z through 19:45:21Z, on the same boot as 12D-E20.
+- Source: the same installed image. Kernel `Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026`. No kernel, DTS, PMIC, bootloader, or register write.
+- Setup: Demetria journal, USB uevents, and a full `lsusb` poll were running before any cable move. One known USB hub identified the host receptacle. The Flip was then put back in the original orientation. USB File Transfer was started from NextUI. After B, one temporary read-only mass-storage gadget was bound and removed.
+- Hypothesis: the 12D-E20 silence is either the cable and host port, the USB2 PHY or DWC3 connection sequence, or something specific to the MTP gadget.
+- Action: read the controller through debugfs. Do not write `mode`, `link_state`, or `testmode`. Do not write `soft_connect` unless the MTP gadget is up and a client is not already using it. Bind one disposable configfs mass-storage function only after MTP is gone.
+- Observed: bus 7 port 1 enumerated the hub, then `1d6b:0100` at high speed, then `1d6b:0104` at high speed. `GUSB2PHYCFG(0)` stayed `0x40101408` during both gadget sessions. The link watcher did not create `link.writes`. The soft-connect cycle was not run.
+- Result: both gadgets enumerated on the port that had just enumerated a hub. The 12D-E20 silence did not repeat. A file copy was not checked.
+- Excludes: an MTP-only failure as the description of 12D-E20, for this cable and this receptacle. A missing `soft_connect` write as the step that created the 12D-E21 connection. Clearing `U2_FREECLK_EXISTS` as a requirement for this enumeration. 12D-E06 stays the older image's watcher-write result.
+- Unknown: which receptacle was used in 12D-E20. Whether a file copy matches. The 17:00:49Z restart is still unexplained. This boot did not restart.
+- Evidence: sections 24 and 25.
+- Code: left untouched. The test gadget was removed before the notes were copied. No new image.
 
 
 ## 1. Hardware topology
@@ -1005,3 +1020,57 @@ B returned NextUI. At 18:45:51Z the helper was `state=off`, the UDC function was
 RK817 stayed online with `usb_type` DCP. Battery status stayed `Discharging` at capacity 100, which is the pre-test reading. `current_now` is not present, so this does not measure charge current. The upper EHCI bus had the internal Realtek WLAN `0bda:b733` and no added device. A separate upper-port peripheral and suspend/resume were not run. This boot did not restart.
 
 Phase 12D stays open. Enumeration is not accepted. The next useful step is one electrical or host-port check that can show whether this cable and receptacle ever produce a connect, before any further controller property. The upper USB-C port is not that check. Its EHCI and OHCI controllers are host-only.
+
+Status 2026-10-13 19:45Z: 12D-E21 did that port check on the same boot. The result is section 25. This paragraph stays the 12D-E20 conclusion.
+
+## 24. Upstream RK3566 comparison
+
+12D-E21 compared the lower port with the Linux 7.2.10 tree that this image builds. The tarball is `linux-7.2.10.tar.xz`, SHA-256 `2feaa70453e91f541be6a5c9078d8168e081af45a3d9718054850538cff2ebf3`. That extracted tree is not a separate git checkout, so this section cites the tarball and the file, not a kernel commit. Another board's DTS is not evidence that its gadget enumerates.
+
+`rk356x-base.dtsi` describes `usb@fcc00000` as `rockchip,rk3568-dwc3` and `snps,dwc3` on one node. It sets `dr_mode = "otg"`, `phy_type = "utmi_wide"`, clocks `ref_clk`, `suspend_clk`, and `bus_clk`, the PIPE power domain, one reset, and `snps,dis_u2_susphy_quirk`. The node is disabled. It has no `phys`, no `extcon`, no `maximum-speed`, and no `usb-role-switch`. There is no glue child. `rk3566-base.dtsi` adds `phys = <&usb2phy0_otg>`, `phy-names = "usb2-phy"`, `extcon = <&usb2phy0>`, and `maximum-speed = "high-speed"`. Those are SoC properties. `rk3568.dtsi` gives the same controller `usb2phy0_otg` plus a USB3 combophy. The Flip is RK3566, so it does not inherit that second PHY.
+
+The Flip board enables the node, repeats `dr_mode`, `extcon`, and `phys`, and adds `snps,dis_enblslpm_quirk`. It does not repeat `maximum-speed`. The running DTB still has `maximum-speed = "high-speed"`, which 12D-E15 already recorded and 12D-E21 read again. `usb2phy0_otg` has no `phy-supply`. The board file says the lower USB-C is charge and gadget and has no VBUS supply.
+
+Quartz64-A sets this controller to `dr_mode = "host"`. Quartz64-B and ODROID-M1S enable it without a `dr_mode` override, so they inherit `otg`, and each gives `usb2phy0_otg` a 5 V `phy-supply`. ROCK 3A is RK3568: it sets `extcon` and a `phy-supply`, and it inherits the USB3 PHY. PineNote keeps `otg` and connects `usb2phy0_otg` through a port endpoint to a WillSemi WUSB3801 TCPC whose child is a `usb-c-connector` with dual power and data roles. That is a different connector arrangement. The Flip DTS has no `usb-c-connector`, and this pass does not add one.
+
+Linux 7.2.10 has no `dwc3-rockchip` driver. `dwc3-of-simple` matches `rockchip,rk3399-dwc3` and does not match `rockchip,rk3568-dwc3`. The Flip node binds through `snps,dwc3`. The May 2025 stock excerpt uses a wrapper compatible with `rockchip,rk3568-dwc3` and `rockchip,rk3399-dwc3`, adds `pipe_clk`, and puts `snps,dwc3` on a child. Stock also sets `snps,dis-u2-freeclk-exists-quirk`. Stock enumeration was not captured.
+
+`dwc3_hs_phy_setup()` runs from core init. It clears `SUSPHY` (bit 6). `snps,dis_enblslpm_quirk` clears `ENBLSLPM` (bit 8); otherwise the driver sets it. `snps,dis-u2-freeclk-exists-quirk` clears `U2_FREECLK_EXISTS` (bit 30). There is no sysfs or debugfs file that changes these bits on a live device. A DTS change needs a reboot. Among the RK3566 and RK3568 boards searched in this tree, `snps,dis_enblslpm_quirk` appears on the Flip and `snps,dis-u2-freeclk-exists-quirk` does not appear. The free-clock property does appear on other Rockchip SoCs. This pass does not add it.
+
+The upper USB-C port uses EHCI and OHCI on `usb2phy1_otg`. Those controllers are host-only. They are not a substitute for the `fcc00000` gadget.
+
+`CONFIG_USB_ROLE_SWITCH=y` does not create a switch by itself. `dwc3_setup_role_switch()` runs when the `usb-role-switch` property is present. The running Flip node does not have that property. `/sys/class/usb_role/` existed and was empty. Debugfs `mode` is writable on a dual-role build. 12D-E21 read it and did not write it. `soft_connect` is the UDC sysfs store in `drivers/usb/gadget/udc/core.c`. On DWC3, connect calls `dwc3_gadget_soft_connect()`, which is a driver reset and run sequence, not a userspace register write. `link_state` and `testmode` were not written.
+
+| Difference | Relevance to 12D-E20 | Evidence | Runtime test | Risk if changed in DTS |
+| --- | --- | --- | --- | --- |
+| No host event while `RUN_STOP` and EP0 were up | Highest for 12D-E20. 12D-E21 did not reproduce it on bus 7 port 1 | Sections 23 and 25 | Done, without a rebuild | None for the reading |
+| Flip lower OTG has no `phy-supply` and no Type-C connector | VBUS and SDP already worked in 12D-E20. 12D-E21 enumerated without adding either | Board DTS and PineNote `rk3566-pinenote.dtsi`. Confidence: high that the descriptions differ. Low that the missing node explains 12D-E20 | Not by copying another board's connector | A guessed connector can change charging and role |
+| Direct `snps,dwc3` bind, no `pipe_clk` wrapper | The controller reached `RUN_STOP` in 12D-E20 and enumerated in 12D-E21 | Stock excerpt and `dwc3-of-simple.c`. Confidence: high for the source difference. Low that the wrapper was required | No supported runtime switch | A wrapper port is a kernel change and can change boot |
+| `U2_FREECLK_EXISTS` still 1 | Not required for the 12D-E21 enumeration. The same `0x40101408` enumerated | `dwc3_hs_phy_setup()`, stock excerpt, sections 23 and 25. Confidence: high for the register. The bit is not a remaining blocker for this port | No. Probe-time only | Another image, with unknown suspend effect |
+| `snps,dis_enblslpm_quirk` present | Bit 8 was already clear in 12D-E20 and stayed clear while 12D-E21 enumerated | Running DTB and `GUSB2PHYCFG(0)`. Confidence: high | Already measured | Do not stack more quirks onto it |
+| `snps,dis_u2_susphy_quirk` inherited | Bit 6 of the measured word is 0. This matches the SoC DTS | `rk356x-base.dtsi` and the regdump. Confidence: high | Already present | Not an E21 change |
+| Upper EHCI/OHCI | Not a gadget path | `rk356x-base.dtsi` and the Flip DTS. Confidence: high | Not attempted | Moving the gadget there is the wrong controller |
+
+## 25. Host port and gadget session
+
+12D-E21 is the ledger entry above. The boot is the 12D-E20 boot. At 19:17:21Z uptime was 3609. At 19:44:30Z uptime was 5238. `nextui.elf` was pid 14589 before USB File Transfer and pid 31236 after B. No reboot occurred.
+
+At 19:17:40Z, with the gadget stopped, debugfs `mode` was `device` and `link_state` was `Disconnected`. `GUSB2PHYCFG(0)` was `0x40101408`, `DCTL` was `0x00f00000`, and `DALEPENA` was 0. GRF `0x0000` was `0x00000c00` and `0x00c0` was `0x00384e73`. For `usb2phy0` at `fe8a0000`, Linux 7.2.10 puts `utmi_bvalid` in bit 9 of `0x00c0`, `utmi_avalid` in bit 10, and `utmi_id` in bit 6. The OTG port has no `utmi_ls` field. The clocks `clk_usbphy0_ref`, `clk_usb3otg0_ref`, `clk_usb3otg0_suspend`, `aclk_usb3otg0`, and `clk_usbphy0_480m` were enabled. Runtime PM status was `active`, control was `on`, and the suspended time was 0. IRQ 20 count was still 2 from 12D-E20. No `dwc3` interrupt line was present while the gadget was stopped.
+
+`modprobe usbmon` on Demetria returned `Operation not permitted`. No package was installed. The host record is the kernel journal, `udevadm monitor`, and `lsusb`.
+
+The maintainer plugged a known device into the host receptacle and also into the Flip. At 21:22:04+02 Demetria enumerated a Genesys Logic USB 2.0 hub, `05e3:0608`, at high speed on `usb 7-1`. That bus had been empty. The Flip's USB device list afterwards had no added peripheral. The hub disconnected at 21:25:40+02. The Flip was put back in the original orientation. At 19:30:26Z the lower port was USB=1, SDP=1, DCP=0, and the UDC was `not attached`. Bus 7 stayed empty. The cable orientation was not reversed.
+
+The maintainer opened USB File Transfer. At 21:31:49+02 Demetria enumerated `1d6b:0100`, product `Zlyme File Transfer`, at high speed on `usb 7-1`, with one MTP interface and three endpoints. Dolphin had `kio_mtp` and thumbnail workers on the device. `mtp-detect` found `1d6b:0100` at bus 7 device 3 and could not claim the interface because that client already held it. On the Flip at 19:35:24Z the helper was `state=bound`, the responder was running, FunctionFS `ready` was 1, the UDC was `configured` at `high-speed`, debugfs `mode` was `device`, and `link_state` was `On`. `DCTL` was `0x8cf00a00`, `DSTS` was `0x000a0ce0`, `DCFG` was `0x00ce0808`, and `DALEPENA` was `0x2f`. `GUSB2PHYCFG(0)` was still `0x40101408`. The watcher latch was `connect`. `link.writes` did not exist. At 19:36:10Z the `dwc3` interrupt count was 624 and IRQ 20 was 56. The controlled `soft_connect` cycle was not run: the gadget was configured and a client was reading it. 12D-E06 remains the older image, where the watcher did write `soft_connect` and the host still saw nothing.
+
+B closed the PAK. Demetria logged `usb 7-1: USB disconnect, device number 3` at 21:37:55+02. At 19:40:47Z the helper was `state=off`, the UDC was `not attached`, SDP was still 1, and `nextui.elf` was pid 31236.
+
+The mass-storage session then used the existing built-in configfs function. The writes were: mount configfs at `/sys/kernel/config`; create `/sys/kernel/config/usb_gadget/zlyme-e21-ms`; set `max_speed` to `high-speed`, `bcdUSB` to `0x0200`, device class fields to 0, `idVendor` to `0x1d6b`, `idProduct` to `0x0104`, and `bcdDevice` to `0x0100`; set manufacturer `Zlyme`, product `E21 mass storage`, and serial `e21-ro`; set configuration `bmAttributes` `0xC0`, `MaxPower` `2`, and configuration string `E21 read-only`; set `lun.0/ro` to 1 before setting `lun.0/file` to a 64 KiB mode `444` file on `/run`; link the function; write `fcc00000.usb` to `UDC`. `stall` was read as 0 and was not written. The vendor is the same Linux Foundation vendor as the MTP gadget. `0x0104` is the multifunction composite id, not MTP `0x0100`. The speed and power attributes match `make_gadget()` in `zlyme-usb-transfer`.
+
+At 21:44:28+02 Demetria enumerated `1d6b:0104`, product `E21 mass storage`, serial `e21-ro`, at high speed. `usb-storage` attached it. The SCSI disk had 128 blocks of 512 bytes, write protect on, and no mount. The Flip snapshot at 19:44:30Z showed UDC `configured`, function `zlyme-e21-ms`, speed `high-speed`, `lun_ro=1`, `mode=device`, `link=On`, `DALEPENA=0x0000000f`, and `GUSB2PHYCFG(0)` still `0x40101408`. The new `dmesg` lines are the mass-storage function banner and `LUN: removable file: (no medium)` from function creation, before the backing file was stored. The host inquiry is the record that the medium was visible.
+
+The session exited on its own timer at 19:45:21Z. Cleanup wrote an empty `UDC`, removed the function link, the function, the configuration, the strings, and the gadget directory, deleted the image, and unmounted configfs. The recorded result was `cleanup_rc=0`, an empty UDC function, no gadget directory, the image removed, helper `state=off`, and `nextui.elf` still pid 31236. Demetria logged the disconnect of device 4 at 21:45:21+02. A later check found no `1d6b:0104` and no `sdb`. `/run/zlyme-e21-ms` was removed after these notes were copied. No debugfs `mode`, `link_state`, `testmode`, GRF, or PHY write occurred. No `soft_connect` write occurred.
+
+Both gadgets produced a host connection. The failure in 12D-E20 is not specific to MTP on this receptacle, and it was not repaired by a `soft_connect` write. `GUSB2PHYCFG(0)` did not change between the silent session and these two enumerations. The supported difference is the host port: 12D-E20 never identified the receptacle, and 12D-E21 used bus 7 port 1 after that port had enumerated a hub. Which port 12D-E20 used is still unknown.
+
+Phase 12D stays open. Enumeration happened. A matching file copy did not. The next step is that file copy on this same port. It is not another DTS quirk, not a DWC3 wrapper, and not a move to the upper host controllers.

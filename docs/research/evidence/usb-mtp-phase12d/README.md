@@ -72,3 +72,20 @@ The fourth table is 12D-E20, on `zlyme-my355-20261013-dd0d717f331f.tar`, kernel 
 | `20261013T183800Z-e20-active2-host.txt` | Host poll around both snapshots and a kernel journal query with no entries. | `eb8d3812fe75420743b814f74d49cd807183bb1ea0f4cd758c99498f2e1d833e` |
 | `20261013T184200Z-e20-dmesg-scan.txt` | Whole-boot scan: no gadget or EP0-enable lines. `soft_connect` is write-only. Log still starts at boot. | `4d741136de01ce1ff4f27b5d505f7890ef01489068341d36959190428e2d1eeb` |
 | `20261013T184500Z-e20-cleanup.txt` | After B: helper off, gadget gone, FunctionFS unmounted, NextUI back, dynamic debug restored. | `d6e5f561d6539c857e8c1d569640ce03795927d152999427f3f16077bf3718a2` |
+
+The fifth table is 12D-E21, on the same image and the same boot as 12D-E20. Working copies were taken from `/tmp/zlyme-usb-12d-e21`. The repeated `lsusb` poll is reduced to the blocks where the device list changed. `usbmon` was not loaded: `modprobe` returned `Operation not permitted`, and no package was installed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261013T191708Z-e21-host-lsusb-before.txt` | Demetria `lsusb` and `lsusb -t` at 19:17:08Z. Bus 7 has only its root hub. | `ee2dba3f25dc6bbe5f6108ad57a8e8ac05fcf4cc229a8e4d827f89b6260ca9d7` |
+| `20261013T191740Z-e21-baseline-debugfs.txt` | Stopped DWC3 mode, link, key registers, and lower GRF at 19:17:40Z. `mode` is `device`. | `f429609824ab553f6d9e8564f5b4bba5c55d441b9978ff60983710dc1832bf1d` |
+| `20261013T191740Z-e21-clocks.txt` | Lower USB clock enable counts and rates from the following read-only debugfs mount. | `f2b1168c4668e3034a935a05a77b1beec44cd0d7a49e8145de3ba40b51b17cc8` |
+| `20261013T191849Z-e21-baseline-userspace.txt` | Extcon SDP, UDC not attached, helper off, NextUI pid 14589, at 19:18:49Z. | `7a07b4ffd11af8fb88b463e15b9ff5a92d8aefcbc7b8cfce8e1433862eda0185` |
+| `20261013T191859Z-e21-host-journal.txt` | Demetria kernel follow: hub connect, hub disconnect, MTP connect, MTP disconnect, mass-storage connect, and mass-storage disconnect. | `8c258f6a0e95650d7275d509ac1d475de2edbf3e6718beaa234357755d717db3` |
+| `20261013T191859Z-e21-host-udev.txt` | USB uevents for those same three connections and three removals. | `9dd8e2876c9c23a551470ee3654a4496e1170453ddba325e96838cecd6a4046f` |
+| `20261013T191859Z-e21-host-lsusb-changes.txt` | `lsusb` blocks that differ from the previous sample, 19:18:59Z through the mass-storage removal. | `d089e07c7148164130564e60a8809bf8226343825968eca5dddf9b5b9be00396` |
+| `20261013T193257Z-e21-host-mtp-lsusb-v.txt` | `lsusb -v -d 1d6b:0100` at 19:32:57Z. High speed, one MTP interface, three endpoints. | `95114c718e7e21811175a0de11b116b108eede3dbebb3da894b9a2769e1de15a` |
+| `20261013T193524Z-e21-mtp-flip.txt` | Transcribed Flip readings while MTP was configured. `link.writes` was absent. | `45802eee0a56ffbf46542ceea82deeb9bc8f85a686b693c09f2212db37be39a7` |
+| `20261013T194426Z-e21-ms-remote.txt` | Stage log of the temporary mass-storage session, including cleanup at 19:45:21Z. | `d8859219188852dc65cb6c0a6709ee4adf5087661956422484b57a233f092512` |
+| `20261013T194430Z-e21-ms-flip.txt` | Bound snapshot, cleanup record, the two new `dmesg` lines, and the stage log. | `dcb47db8a381edf768af7538e305fb99785619a5bc213edbcb492dad95d526e5` |
+| `20261013T194459Z-e21-host-ms-lsusb-v.txt` | `lsusb -v -d 1d6b:0104` at 19:44:59Z. High speed, one mass-storage interface. The descriptor read says the device was busy. | `227d96bde1817938ec580667296c8ea3ba1c1f015c39c12dae6d6967bed9e5d6` |

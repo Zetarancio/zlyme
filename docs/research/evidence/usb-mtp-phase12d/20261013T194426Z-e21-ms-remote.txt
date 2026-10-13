@@ -1,0 +1,10 @@
+19:44:27 precheck
+19:44:28 configfs mounted
+128+0 records in
+128+0 records out
+19:44:28 create gadget
+19:44:28 bind
+19:44:30 bound
+19:45:21 stop requested
+19:45:21 cleanup begin rc=0
+19:45:21 cleanup end

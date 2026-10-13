@@ -1,0 +1,40 @@
+when=2026-10-13T19:44:30Z up=5238
+sdp=1 cdp=0
+udc_state=configured
+udc_function=zlyme-e21-ms
+udc_speed=high-speed
+gadget_udc=fcc00000.usb
+max_speed=high-speed
+idVendor=0x1d6b
+idProduct=0x0104
+lun_ro=1
+lun_file=/run/zlyme-e21-ms/disk.img
+stall=0
+mode=device
+link=On
+GUSB2PHYCFG(0) = 0x40101408
+DCFG = 0x00ce0808
+DCTL = 0x8cf00a00
+DSTS = 0x008215e8
+DALEPENA = 0x0000000f
+0000: 00000c00
+00c0: 00384644
+=====
+cleanup_rc=0
+udc_function=
+gadget_left=
+image_left=removed
+nextui=31236
+helper=state=off
+=====
+[ 5235.998445] Mass Storage Function, version: 2009/09/11
+[ 5235.998489] LUN: removable file: (no medium)
+=====
+19:44:27 precheck
+19:44:28 configfs mounted
+19:44:28 create gadget
+19:44:28 bind
+19:44:30 bound
+19:45:21 stop requested
+19:45:21 cleanup begin rc=0
+19:45:21 cleanup end
