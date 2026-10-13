@@ -96,4 +96,8 @@ The sixth table is 12D-E22, after `zlyme-my355-20261013-4a2b752bafbe.tar` was in
 | --- | --- | --- |
 | `20261013T212222Z-e22-stopped.txt` | Installed hashes, update paths, mounts, this boot's EP0 lines, UDC `not attached`, extcon0 DCP, and Demetria bus 7 with no gadget. | `1b044de27964ae6c0fdcb0ee115dd196bbce6ea390c687ae8c5b9496c73cace0` |
 
-12D-E23 is a source correction. It has no new hardware file. The candidate OTA is `zlyme-my355-20261013-13071973a350.tar`, SHA-256 `2f41f13de96f231bd8cf8f95cb01b7b2029c6cb17a0010779afb2692a2a89945`. It has not been installed.
+12D-E23 is a source correction. The candidate OTA is `zlyme-my355-20261013-13071973a350.tar`, SHA-256 `2f41f13de96f231bd8cf8f95cb01b7b2029c6cb17a0010779afb2692a2a89945`. A later reading found that archive installed. The seventh table is that reading. The PAK was not launched.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261013T222106Z-e24-prestart.txt` | Installed hashes, `state=off`, UDC `not attached`, extcon0 DCP, and Demetria with no Flip gadget. | `9bdbe4998cc03029709db9d180405a56c965a08168fdf6a8f2211644b693e323` |

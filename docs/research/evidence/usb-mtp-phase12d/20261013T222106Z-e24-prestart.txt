@@ -1,0 +1,31 @@
+12D-E24 pre-start reading. The PAK was not launched. No cable was moved.
+Flip clock is UTC. Demetria's date line is UTC+2, printed by the host locale.
+
+Flip, 2026-10-13 22:21:06Z:
+f5a692fd5865f9cfce4a427b90144b3b60b69ceb0bf631bff677aeaf2acf37be  /usr/sbin/zlyme-usb-transfer
+302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982  /usr/sbin/zlyme-usb-enter
+state=off
+UDC fcc00000.usb: not attached
+extcon0:
+USB 0
+USB-HOST 0
+SDP 0
+CDP 0
+DCP 1
+SLOW-CHARGER 0
+
+Flip, same minute, separate command:
+3747acda65ef1417b24df47cb1c34758750e00f8a3b6575de68e2b74de906b3e  /boot/zlyme
+bf24365857f71c3c47a5122c82155bf6f5e02009b987e8565da6cd22186c7c18  /usr/share/nextui/paks/Tools/USB File Transfer.pak/launch.sh
+
+Those four hashes match zlyme-my355-20261013-13071973a350.tar.
+/run/zlyme/usb-transfer was not present because status was off.
+No DWC3 regdump was taken. The gadget was not bound.
+
+Demetria, 2026-10-13 22:21:27Z:
+lsusb -d 1d6b:0100: empty
+lsusb -t: bus 7 has only its root hub. Bus 5 has a hub and HID devices.
+Bus 6 has a hub and one mass-storage device. No 1d6b:0100 and no 1d6b:0104.
+Kernel journal since 23:40 local has one high-speed device on usb 5-1.1,
+idVendor=05e3, idProduct=0751, product "USB Storage", connected at 00:01:25
+and disconnected at 00:02:37. That is not the Flip.
