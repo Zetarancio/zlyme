@@ -1,0 +1,10 @@
+when=2026-10-13T18:44:09Z up=1618
+=== gadget lines ===
+0
+=== ep0 fail ===
+0
+=== soft_connect ===
+--w-------    1 root     root          4096 Oct 13 18:41 /sys/class/udc/fcc00000.usb/soft_connect
+=== oldest ===
+[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x412fd050]
+[    0.000000] Linux version 7.2.10 (@a383cf815588) (aarch64-buildroot-linux-gnu-gcc.br_real (Buildroot 2026.08) 15.3.0, GNU ld (GNU Binutils) 2.45.1) #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026

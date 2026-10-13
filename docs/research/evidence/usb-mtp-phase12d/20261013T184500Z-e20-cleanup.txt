@@ -1,0 +1,45 @@
+when=2026-10-13T18:45:51Z up=1720
+=== helper ===
+state=off
+=== procs ===
+  352 root     {nextui-session} /bin/sh /usr/sbin/nextui-session
+ 6540 root     sh -c i=0; while [ "$i" -lt 900 ]; do ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); up=$(cut -d. -f1 /proc/uptime); printf "%s up=%s " "$ts" "$up"; n=0; while [ "$n" -le 5 ]; do c=/sys/class/extcon/extcon0/cable.$n; printf "%s=%s " "$(cat "$c/name")" "$(cat "$c/state")"; n=$((n+1)); done; irq=$(awk "/rockchip_usb2phy/ {print \$1 \$2; exit}" /proc/interrupts); online=$(cat /sys/class/power_supply/charger/online 2>/dev/null); utype=$(cat /sys/class/power_supply/charger/usb_type 2>/dev/null); udc=$(cat /sys/class/udc/fcc00000.usb/state 2>/dev/null); spd=$(cat /sys/class/udc/fcc00000.usb/current_speed 2>/dev/null); st=$(zlyme-usb-transfer status 2>/dev/null); printf "irq=%s online=%s type=%s udc=%s speed=%s %s\n" "$irq" "$online" "$utype" "$udc" "$spd" "$st"; i=$((i+1)); sleep 1; done
+14589 root     nextui.elf
+=== udc ===
+state=not attached
+function=
+=== mounts ===
+none
+=== gadget dir ===
+no-configfs-gadget
+=== run ===
+generation
+jail
+lock
+reaper.log
+reaper.pgid
+reaper.pid
+reaper.watch
+=== extcon ===
+USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0 
+=== charger ===
+online=1
+type=Unknown [DCP]
+battery=Discharging
+=== debugfs ===
+no-debugfs
+=== dyndbg before restore ===
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:1026 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =p "charger = %s\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:952 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =p "chg detection work state = %d\n"
+=== dyndbg after ===
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:1026 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =_ "charger = %s\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:952 [phy_rockchip_inno_usb2]rockchip_chg_detect_work =_ "chg detection work state = %d\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:890 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "usb otg host disconnect\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:876 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "usb disconnect\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:841 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "cdp cable is connected\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:834 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "dcp cable is connected\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:826 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "sdp cable is connected\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:818 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "vbus_attach\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:813 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "usb otg host connect\n"
+drivers/phy/rockchip/phy-rockchip-inno-usb2.c:802 [phy_rockchip_inno_usb2]rockchip_usb2phy_otg_sm_work =_ "%s otg sm work\n"
+CLEANUP_DONE

@@ -1,0 +1,121 @@
+when=2026-10-13T18:36:23Z up=1151
+=== helper ===
+state=bound
+udc=fcc00000.usb
+gadget=zlyme-mtp
+responder=running
+host=not attached
+export=/storage/Roms
+export=/storage/Bios
+export=/mnt/sd2/Roms
+export=/mnt/sd2/Bios
+=== extcon ===
+USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0 
+=== irq ===
+  20:          2          0  GICv3              167 Level     rockchip_usb2phy
+  21:          1          0  GICv3              168 Level     rockchip_usb2phy
+=== rk817 ===
+online=1
+type=Unknown [DCP]
+=== udc ===
+state=not attached
+function=zlyme-mtp
+speed=UNKNOWN
+=== procs ===
+  352 root     {nextui-session} /bin/sh /usr/sbin/nextui-session
+ 1949 root     {launch.sh} /bin/sh /storage/Tools/my355/USB File Transfer.pak/launch.sh
+ 2226 root     {zlyme-usb-trans} /bin/sh /usr/sbin/zlyme-usb-transfer reap 1949 109243 109572.2174
+ 3753 root     /usr/sbin/umtprd -conf /run/zlyme/usb-transfer/umtprd.conf
+ 3813 root     {zlyme-usb-trans} /bin/sh /usr/sbin/zlyme-usb-transfer link
+ 3880 root     minui-presenter --message MTP is on.?USB: not attached.?Storage: main, SD.?B or MENU+START stops. --message-alignment top --confirm-button A --confirm-text Stop --confirm-show --cancel-button B --cancel-text Stop --cancel-show --timeout 0
+ 6540 root     sh -c i=0; while [ "$i" -lt 900 ]; do ts=$(date -u +%Y-%m-%dT%H:%M:%SZ); up=$(cut -d. -f1 /proc/uptime); printf "%s up=%s " "$ts" "$up"; n=0; while [ "$n" -le 5 ]; do c=/sys/class/extcon/extcon0/cable.$n; printf "%s=%s " "$(cat "$c/name")" "$(cat "$c/state")"; n=$((n+1)); done; irq=$(awk "/rockchip_usb2phy/ {print \$1 \$2; exit}" /proc/interrupts); online=$(cat /sys/class/power_supply/charger/online 2>/dev/null); utype=$(cat /sys/class/power_supply/charger/usb_type 2>/dev/null); udc=$(cat /sys/class/udc/fcc00000.usb/state 2>/dev/null); spd=$(cat /sys/class/udc/fcc00000.usb/current_speed 2>/dev/null); st=$(zlyme-usb-transfer status 2>/dev/null); printf "irq=%s online=%s type=%s udc=%s speed=%s %s\n" "$irq" "$online" "$utype" "$udc" "$spd" "$st"; i=$((i+1)); sleep 1; done
+=== run ===
+total 48
+drwxr-xr-x    3 root     root           380 Oct 13 18:35 .
+drwxr-xr-x    3 root     root           180 Oct 13 18:21 ..
+-rw-r--r--    1 root     root             0 Oct 13 18:35 configfs-mounted-by-us
+-rw-r--r--    1 root     root             5 Oct 13 18:35 dmesg.lines
+-rw-r--r--    1 root     root            92 Oct 13 18:35 exports
+-rw-r--r--    1 root     root            12 Oct 13 18:35 generation
+drwxr-xr-x    2 root     root            40 Oct 13 18:35 jail
+-rw-r--r--    1 root     root            12 Oct 13 18:35 link.gen
+-rw-r--r--    1 root     root             8 Oct 13 18:35 link.latch
+-rw-r--r--    1 root     root             0 Oct 13 18:35 link.log
+-rw-r--r--    1 root     root             5 Oct 13 18:35 link.pid
+-rw-r--r--    1 root     root             0 Oct 13 18:36 lock
+-rw-r--r--    1 root     root             0 Oct 13 18:35 reaper.log
+-rw-r--r--    1 root     root             5 Oct 13 18:35 reaper.pgid
+-rw-r--r--    1 root     root             5 Oct 13 18:35 reaper.pid
+-rw-r--r--    1 root     root             5 Oct 13 18:35 reaper.watch
+-rw-r--r--    1 root     root             5 Oct 13 18:35 responder.pid
+-rw-r--r--    1 root     root           623 Oct 13 18:35 umtprd.conf
+-rw-r--r--    1 root     root          2328 Oct 13 18:35 umtprd.log
+=== link files ===
+-- link.writes
+missing
+-- link.err
+missing
+-- link.log
+-- link.latch
+connect
+-- link.gen
+109572.2174
+=== mounts ===
+configfs /sys/kernel/config configfs rw,relatime 0 0
+mtp /dev/ffs-mtp functionfs rw,relatime 0 0
+=== gadget ===
+max_speed=high-speed
+
+UDC=fcc00000.usb
+
+bcdUSB=0x0200
+
+bcdDevice=0x0100
+
+idProduct=0x0100
+
+idVendor=0x1d6b
+
+bMaxPacketSize0=0x00
+
+bDeviceProtocol=0x00
+
+bDeviceSubClass=0x00
+
+bDeviceClass=0x00
+
+functions/ffs.mtp/ready=1
+
+configs/c.1/bmAttributes=0xc0
+
+configs/c.1/MaxPower=2
+
+strings/0x409/serialnumber=zlyme
+
+strings/0x409/product=Zlyme File Transfer
+
+strings/0x409/manufacturer=Zlyme
+
+os_desc/qw_sign=
+
+os_desc/b_vendor_code=0x00
+
+os_desc/use=0
+
+webusb/landingPage=
+
+webusb/bVendorCode=0x00
+
+webusb/bcdVersion=0x0000
+
+webusb/use=0
+
+=== ffs ===
+total 0
+dr-x------    1 root     root             0 Oct 13 18:35 .
+drwxr-xr-x   13 root     root          3100 Oct 13 18:35 ..
+-rw-------    1 root     root             0 Oct 13 18:35 ep0
+-rw-------    1 root     root             0 Oct 13 18:35 ep1
+-rw-------    1 root     root             0 Oct 13 18:35 ep2
+-rw-------    1 root     root             0 Oct 13 18:35 ep3
+SNAP1_DONE

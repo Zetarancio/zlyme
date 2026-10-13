@@ -1,0 +1,34 @@
+=== 2026-10-13T18:41:48Z ===
+=== journal since local 20:34 ===
+-- No entries --
+=== follower bytes ===
+0 /tmp/zlyme-usb-12d-e20/20261013T182135Z-host-journal.txt
+=== udev lines ===
+4 /tmp/zlyme-usb-12d-e20/20261013T182135Z-host-udev.txt
+=== poll non-idle ===
+=== poll around snapshots ===
+2026-10-13T18:36:20Z no-gadget-id
+2026-10-13T18:36:21Z no-gadget-id
+2026-10-13T18:36:22Z no-gadget-id
+2026-10-13T18:36:23Z no-gadget-id
+2026-10-13T18:36:24Z no-gadget-id
+2026-10-13T18:36:25Z no-gadget-id
+2026-10-13T18:36:26Z no-gadget-id
+2026-10-13T18:36:27Z no-gadget-id
+2026-10-13T18:36:28Z no-gadget-id
+2026-10-13T18:36:29Z no-gadget-id
+2026-10-13T18:36:30Z no-gadget-id
+2026-10-13T18:36:31Z no-gadget-id
+2026-10-13T18:36:32Z no-gadget-id
+2026-10-13T18:36:33Z no-gadget-id
+2026-10-13T18:36:34Z no-gadget-id
+2026-10-13T18:36:35Z no-gadget-id
+2026-10-13T18:36:36Z no-gadget-id
+2026-10-13T18:36:37Z no-gadget-id
+2026-10-13T18:36:38Z no-gadget-id
+2026-10-13T18:36:39Z no-gadget-id
+2026-10-13T18:36:40Z no-gadget-id
+=== poll now ===
+2026-10-13T18:41:46Z no-gadget-id
+2026-10-13T18:41:47Z no-gadget-id
+2026-10-13T18:41:48Z no-gadget-id

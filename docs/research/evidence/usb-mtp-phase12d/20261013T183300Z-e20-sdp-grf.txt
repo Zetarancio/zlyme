@@ -1,0 +1,9 @@
+2026-10-13T18:33Z private debugfs, read-only, unmounted
+lower PHY fe8a0000 GRF fdca0000 after the single replug, gadget stopped
+0000: 00000c00
+0080: 0000003e
+0084: 000003c1
+00c0: 00384e73
+extcon at the same window: USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW=0
+no "restored peripheral extcon" line in the capture
+detection: chg states 0,1,2,5 then "sdp cable is connected" / "charger = USB_SDP_CHARGER"

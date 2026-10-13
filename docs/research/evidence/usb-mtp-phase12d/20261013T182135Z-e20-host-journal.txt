@@ -1,0 +1,1 @@
+2026-10-13T20:50:21+02:00 Demetria kernel: amdgpu 0000:c4:00.0: VM memory stats for proc Discord(372188) task Discord:cs0(372161) is non-zero when fini

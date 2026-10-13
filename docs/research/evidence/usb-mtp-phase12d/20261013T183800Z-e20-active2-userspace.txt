@@ -1,0 +1,92 @@
+when=2026-10-13T18:41:49Z up=1477
+helper=state=bound udc=fcc00000.usb gadget=zlyme-mtp responder=running host=not attached export=/storage/Roms export=/storage/Bios export=/mnt/sd2/Roms export=/mnt/sd2/Bios 
+udc_state=not attached
+udc_speed=UNKNOWN
+soft_connect=missing
+latch=connect
+writes=missing
+USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0 
+=== dmesg usb ===
+[ 1356.913966] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1358.929855] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1360.949525] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1362.961222] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1364.977069] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1366.992949] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1369.008867] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1371.024478] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1373.040614] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1375.056298] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1377.071989] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1379.087868] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1381.103879] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1383.119353] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1385.135275] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1387.151075] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1389.167116] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1391.182591] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1393.199578] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1395.214461] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1397.230416] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1399.245890] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1401.262219] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1403.277548] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1405.293418] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1407.309307] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1409.325126] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1411.340958] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1413.360816] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1415.376625] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1417.388326] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1419.404142] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1421.419950] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1423.436007] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1425.451789] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1427.467549] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1429.483253] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1431.499100] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1433.515061] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1435.530853] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1437.546628] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1439.562405] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1441.578286] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1443.594222] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1445.609779] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1447.625432] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1449.641281] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1451.656829] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1453.672495] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1455.688281] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1457.703944] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1459.719589] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1461.739030] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1463.751127] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1465.767379] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1467.782664] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1469.798661] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1471.814150] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1473.829983] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+[ 1475.845398] phy phy-fe8a0000.usb2phy.3: b_peripheral otg sm work
+=== umtprd ===
+2328 /run/zlyme/usb-transfer/umtprd.log
+[uMTPrd - 18:35:32 - Info] Product string : Zlyme File Transfer
+[uMTPrd - 18:35:32 - Info] Serial string : zlyme
+[uMTPrd - 18:35:32 - Info] Firmware Version string : Zlyme
+[uMTPrd - 18:35:32 - Info] MTP Exstensions string : 
+[uMTPrd - 18:35:32 - Info] Interface string : MTP
+[uMTPrd - 18:35:32 - Info] USB Vendor ID : 0x1D6B
+[uMTPrd - 18:35:32 - Info] USB Product ID : 0x0100
+[uMTPrd - 18:35:32 - Info] USB class ID : 0x06
+[uMTPrd - 18:35:32 - Info] USB subclass ID : 0x01
+[uMTPrd - 18:35:32 - Info] USB Protocol ID : 0x01
+[uMTPrd - 18:35:32 - Info] USB Device version : 0x3008
+[uMTPrd - 18:35:32 - Info] USB FunctionFS Mode
+[uMTPrd - 18:35:32 - Info] Wait for connection : 0
+[uMTPrd - 18:35:32 - Info] Loop on disconnect : 1
+[uMTPrd - 18:35:32 - Info] Show hidden files : 1
+[uMTPrd - 18:35:32 - Info] File creation umask : System default umask
+[uMTPrd - 18:35:32 - Info] Default UID : 0
+[uMTPrd - 18:35:32 - Info] Default GID : 0
+[uMTPrd - 18:35:32 - Info] inotify : yes
+[uMTPrd - 18:35:32 - Info] Sync when close : yes
+SNAP2_USER_DONE
