@@ -2154,11 +2154,13 @@ Remaining: A later candidate has to enumerate before any file check. Repeating t
 
 #### Kernel baseline
 
-Scope: Read-only preflight of the current stable kernel, recorded in `docs/research/linux-7.2.10-preflight.md`. The defconfig pin stays 7.0.2 in this package. No DTS edit, no DWC3 patch, and no image.
+Scope: Move the my355 kernel from Linux 7.0.2 to Linux 7.2.10 and rebuild the product image. The record is `docs/research/linux-7.2.10-migration.md`. The earlier read-only review is `docs/research/linux-7.2.10-preflight.md`.
 
-Implementation status: Source-reviewed. Not implemented.
+Implementation status: Image-built. Not installed. Not hardware-accepted.
 
-Closure: A separate task may move the pin only if that preflight says the migration can be built alone. Hardware validation of that image is a later task. It does not close 12D by itself.
+The host build used `./build.sh --config zlyme_my355_defconfig`. The kernel release is 7.2.10. Mali, DMC, the gamepad, RTL8733BU, and the radio-power module were built against that release. The board DTS was not edited. USB userspace, DWC3, and the USB2 PHY were not patched. `zlyme.img` stayed 1409306624 bytes, so the boot partition geometry was not changed.
+
+Closure: Hardware validation of this image is a later task. It does not close 12D by itself. Enumeration is still required before any MTP file check.
 
 ### Phase 12 gate
 

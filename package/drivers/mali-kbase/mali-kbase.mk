@@ -2,7 +2,7 @@
 #
 # mali-kbase
 #
-# Out-of-tree mali_kbase for RK3566. Pin must match kernel 7.0.2.
+# Out-of-tree mali_kbase for RK3566. Pin matches Linux 7.2.10.
 ################################################################################
 
 MALI_KBASE_VERSION = 39da994bb6fc8819e5e8c1873907dd21d17e53c1

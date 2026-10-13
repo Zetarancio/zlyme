@@ -32,12 +32,12 @@ The source column is authoritative. Update this table when a pin changes.
 | --- | --- | --- |
 | Buildroot | `2026.08` | `BUILDROOT_VERSION` in `build.sh` |
 | Mesa | `26.1.8` | Mesa package in the pinned Buildroot release. The product defconfig selects `BR2_PACKAGE_MESA3D_VULKAN_DRIVER_PANFROST`. The minimal defconfig keeps Panfrost GLES and does not select PanVK |
-| Linux | `7.0.2` | `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` in `configs/zlyme_my355_defconfig` |
+| Linux | `7.2.10` | `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` in `configs/zlyme_my355_defconfig` |
 | U-Boot | `2026.01`, board defconfig `quartz64-a-rk3566` | `BR2_TARGET_UBOOT_CUSTOM_VERSION_VALUE` in the defconfig |
 | BL31 | `rk3568_bl31_v1.44.elf` | `BR2_PACKAGE_ROCKCHIP_RKBIN_BL31_FILENAME` in the defconfig |
 | TPL | `rk3566_ddr_1056MHz_v1.23.bin` | `BR2_PACKAGE_ROCKCHIP_RKBIN_TPL_FILENAME` in the defconfig |
 
-Both defconfigs carry the same kernel, U-Boot, and rkbin lines. A newer stable kernel was reviewed without moving this pin. That review is `docs/research/linux-7.2.10-preflight.md`. The defconfigs do not pin GCC or binutils, so those stay on the Buildroot 2026.08 defaults: GCC 15.3.0 and binutils 2.45.1. glibc is that release's 2.44 snapshot. The rkbin commit itself comes from the Buildroot version. TPL and BL31 must be a matching pair. On a normal card boot only BL31 from that pair runs, because the Miyoo SPI-NAND preloader has already done DDR init. The product version is the `ZLYME_VERSION` file. The NextUI pin is `NEXTUI_VERSION` (`docs/MAINTENANCE.md`).
+Both defconfigs carry the same kernel, U-Boot, and rkbin lines. The kernel pin moved to Linux 7.2.10 in Phase 12D. The preflight is `docs/research/linux-7.2.10-preflight.md` and the host validation is `docs/research/linux-7.2.10-migration.md`. The defconfigs do not pin GCC or binutils, so those stay on the Buildroot 2026.08 defaults: GCC 15.3.0 and binutils 2.45.1. glibc is that release's 2.44 snapshot. Kernel headers use Buildroot's `7.1.x or later` series because that release has no 7.2 series symbol; the headers themselves are the 7.2.10 tree. The rkbin commit itself comes from the Buildroot version. TPL and BL31 must be a matching pair. On a normal card boot only BL31 from that pair runs, because the Miyoo SPI-NAND preloader has already done DDR init. The product version is the `ZLYME_VERSION` file. The NextUI pin is `NEXTUI_VERSION` (`docs/MAINTENANCE.md`).
 
 ## Defconfigs
 

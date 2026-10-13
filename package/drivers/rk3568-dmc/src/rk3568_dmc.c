@@ -29,10 +29,10 @@
 
 #include <soc/rockchip/rockchip_sip.h>
 
-/* RK3568 V2 SIP values. Linux 7.0.2 already has ROCKCHIP_SIP_DRAM_FREQ
+/* RK3568 V2 SIP values. Linux 7.2.10 still has ROCKCHIP_SIP_DRAM_FREQ
  * and the RK3399 DRAM subcommands. These six are the ones the old 1012b
  * patch added to that header. They stay here so this module does not
- * patch the kernel header.
+ * patch the kernel header. Upstream 0x08 is SET_ODT_PD, not GET_VERSION.
  */
 #define RK3568_SIP_SHARE_MEM			0x82000009
 #define RK3568_SIP_SHARE_PAGE_DDR		2

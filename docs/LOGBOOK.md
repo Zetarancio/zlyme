@@ -19,6 +19,18 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-13 — Phase 12D Linux 7.2.10 host build
+
+Phase 12D stays open. The pin moved from Linux 7.0.2 to Linux 7.2.10 on both my355 defconfigs. kernel.org still listed stable 7.2.10 and mainline 7.3-rc7. The official tarball hash matched `linux.hash`. The product image was built and was not installed.
+
+`CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT` stays 10. Linux 7.0.2 hardcodes 10 when modules are enabled. Setting 0 would make the timeout condition true at the end of initcalls. That is a behavior change, and the preflight's recommendation to pin 0 is not the migration decision.
+
+Fifteen patches remain. The Bluetooth USB id `0bda:b733` was rebased onto the 7.2.10 `btusb` table. The DualSense Edge patch was removed because 7.2.10 already reports bits 4–7 as the Edge Fn and paddle keys. `40-kernel-7.0` is no longer in `BR2_GLOBAL_PATCH_DIR`. The RK817 power-off clear, deep-suspend PM config, DFI suspend, CMA reservation, and Mali DTS compatible stay.
+
+The panel driver now uses `devm_drm_panel_alloc()`. Timing and power sequencing were not changed. Mali, DMC, the gamepad, and the radio-power module compiled without source changes. RTL8733BU stayed on `c46aa25` and gained a local patch for `strncpy`, the wiphy 5/10 MHz flag, and `cfg80211` wireless_dev callbacks. The next upstream commit was not taken: it calls `wdev_to_ndev()`, which 7.2.10 does not have, and it does not cover the other three failures.
+
+`zlyme.img` is still 1409306624 bytes. The OTA written by this build is `output/images/zlyme-my355-20261013-0a96c787607b-dirty.tar` because the tree was dirty. No Flip test. USB MTP was not modified and is not claimed fixed. Detail is `docs/research/linux-7.2.10-migration.md`.
+
 ## 2026-10-13 — Phase 12D documentation and kernel preflight
 
 Phase 12D stays open. No kernel pin, DTS, or DWC3 change was made. The development HEAD at the start of this pass was `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`.

@@ -58,7 +58,7 @@ The global `external.mk` stays small. It includes every `package/*/*/*.mk`, incl
 
 Miyoo Flip-only Linux and U-Boot hooks live in `board/my355/board.mk`, not in the global file.
 
-Kernel and U-Boot patches come from `BR2_GLOBAL_PATCH_DIR` in a fixed order: `board/my355/linux/patches/10-mainline`, `20-rk3566`, `30-default`, `40-kernel-7.0`, then `board/my355/uboot/patches`. The order is load-bearing. The same directories carry `linux.hash` and `uboot.hash`.
+Kernel and U-Boot patches come from `BR2_GLOBAL_PATCH_DIR` in a fixed order: `board/my355/linux/patches/10-mainline`, `20-rk3566`, `30-default`, then `board/my355/uboot/patches`. The order is load-bearing. The same directories carry `linux.hash` and `uboot.hash`. `40-kernel-7.0` held the DualSense Edge paddle patch until Linux 7.2.10, which already reports those buttons. That directory is no longer in the patch path.
 
 ## 4. Device boundary
 
@@ -123,7 +123,7 @@ ZLYME_USB_GADGET_UDC=fcc00000.usb
 
 `post-build.sh`, `post-image.sh`, `make-update-tar.sh`, `zlyme-update`, and the Settings release lookup read it. The initramfs carries the same file.
 
-`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. They are not a requirement that another board use MMC or these names. The right-hand slot is `sdmmc0`. The my355 DTS aliases `mmc0` to `&sdmmc0` and `mmc1` to `&sdmmc1`. Linux 7.0.2 uses that `mmc` alias as the MMC host index, and the MMC block driver names the disk `mmcblkN` from that index, so this tree makes the right slot `/dev/mmcblk0`. Pinned U-Boot `arch/arm/dts/rk356x-u-boot.dtsi` aliases `mmc0` to `&sdhci` and `mmc1` to `&sdmmc0`, so that same slot is U-Boot `mmc 1`. The SPL boot order stays `&sdmmc0`. `genimage.cfg` then places GPT partition 1 as `uboot`, partition 2 as `boot` (`ZLYMEBOOT`), and partition 3 as `storage` (`ZLYME`). The paths select those nodes. The labels confirm them. A cloned card repeats the labels, so boot, storage, resize, and raw bootloader writes do not search by label.
+`ZLYME_OS_DISK`, `ZLYME_BOOT_DEVICE`, and `ZLYME_STORAGE_DEVICE` are the current my355 OS card. They are not a requirement that another board use MMC or these names. The right-hand slot is `sdmmc0`. The my355 DTS aliases `mmc0` to `&sdmmc0` and `mmc1` to `&sdmmc1`. Linux 7.2.10 uses that `mmc` alias as the MMC host index, and the MMC block driver names the disk `mmcblkN` from that index, so this tree makes the right slot `/dev/mmcblk0`. Pinned U-Boot `arch/arm/dts/rk356x-u-boot.dtsi` aliases `mmc0` to `&sdhci` and `mmc1` to `&sdmmc0`, so that same slot is U-Boot `mmc 1`. The SPL boot order stays `&sdmmc0`. `genimage.cfg` then places GPT partition 1 as `uboot`, partition 2 as `boot` (`ZLYMEBOOT`), and partition 3 as `storage` (`ZLYME`). The paths select those nodes. The labels confirm them. A cloned card repeats the labels, so boot, storage, resize, and raw bootloader writes do not search by label.
 
 Only put values here that generic code genuinely needs.
 
@@ -197,7 +197,7 @@ extlinux/extlinux.conf on ZLYMEBOOT
   v
 Image.gz + rk3566-miyoo-flip.dtb + FDTOVERLAYS
   v
-Linux 7.0.2 with the embedded Zlyme initramfs
+Linux 7.2.10 with the embedded Zlyme initramfs
   v
 mount /dev/mmcblk0p2 read-only when its label is ZLYMEBOOT, then /dev/mmcblk0p3 when its label is ZLYME
   v
@@ -611,7 +611,7 @@ The export list is built from `/run/zlyme/libraries`. A share has to be a writab
 
 MENU+START is unchanged: `package/system/nextui/zlyme/zlyme-pak-hotkey.c` sends SIGTERM to the PAK process group and SIGKILL after 1.5 seconds. Before the gadget exists, `start` runs `setsid` on a reaper that is not in that group. The rootfs BusyBox provides `setsid`. The initramfs BusyBox does not, and this helper does not run there. The reaper calls `stop` once when the group leader's `/proc` start time is gone, then it exits. It is not a boot service. A normal exit from the tool calls `stop` in the PAK and shows the failure when teardown did not finish. After reboot the `/run` directory is gone, so transfer is off.
 
-The USB identity is the Linux Foundation PTP gadget id used by the uMTP sample, `1d6b:0100`. It is a shared sample id. The serial string is the constant `zlyme`. `max_speed` is `high-speed` because the uMTP 1.8.1 FunctionFS descriptors have no SuperSpeed configuration. The configuration is self-powered (`bmAttributes` `0xC0`) with `MaxPower` 2, which is 2 mA on Linux 7.0.2. Charging stays on the RK817 path.
+The USB identity is the Linux Foundation PTP gadget id used by the uMTP sample, `1d6b:0100`. It is a shared sample id. The serial string is the constant `zlyme`. `max_speed` is `high-speed` because the uMTP 1.8.1 FunctionFS descriptors have no SuperSpeed configuration. The configuration is self-powered (`bmAttributes` `0xC0`) with `MaxPower` 2, which is 2 mA on Linux 7.2.10. Charging stays on the RK817 path.
 
 `status` prints the kernel UDC state. The Tools screen treats `configured` as the host having set the gadget configuration. Any other state is reported as that state. Host enumeration on a Flip failed on 2026-10-12 and remains a Phase 12D check.
 

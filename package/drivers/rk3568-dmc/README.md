@@ -120,7 +120,7 @@ SIP API reports version `0x101` or newer. It uses:
 - `MCU_START`
 - `POST_SET_RATE`
 
-The six RK3568 V2 values that stock Linux 7.0.2 does not put in
+The six RK3568 V2 values that Linux 7.2.10 still does not put in
 `rockchip_sip.h` are defined in this module. The DRAM service ID and
 the ordinary `DRAM_INIT` / `DRAM_SET_RATE` subcommands come from that
 header.
