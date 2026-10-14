@@ -32,19 +32,32 @@ link_zip() {
 # Game first so a same-named zip in Bios/ cannot hide the ROM.
 link_zip "$ROM"
 
-for d in \
-	"$BIOS_PATH" \
-	"$BIOS_PATH/$TAG" \
-	"$BIOS_PATH/fbneo" \
-	"$BIOS_PATH/FBNEO" \
-	"$BIOS_PATH/mame2003-plus" \
-	"$BIOS_PATH/MAME"
-do
-	[ -d "$d" ] || continue
+stage_dir() {
+	d=$1
+	[ -d "$d" ] || return 0
 	for f in "$d"/*.zip "$d"/*.7z "$d"/*.ZIP "$d"/*.7Z; do
 		[ -e "$f" ] || continue
 		link_zip "$f"
 	done
-done
+}
+
+# FBNEO.pak passes TAG FBNEO. Search Bios/fbneo, then Bios/FBNEO, then
+# Bios/. A BIOS that exists only in a MAME folder still stages after
+# those three, so it cannot replace an earlier copy. MAME's order is
+# the other branch.
+if [ "$TAG" = "FBNEO" ]; then
+	stage_dir "$BIOS_PATH/fbneo"
+	stage_dir "$BIOS_PATH/FBNEO"
+	stage_dir "$BIOS_PATH"
+	stage_dir "$BIOS_PATH/mame2003-plus"
+	stage_dir "$BIOS_PATH/MAME"
+else
+	stage_dir "$BIOS_PATH"
+	stage_dir "$BIOS_PATH/$TAG"
+	stage_dir "$BIOS_PATH/fbneo"
+	stage_dir "$BIOS_PATH/FBNEO"
+	stage_dir "$BIOS_PATH/mame2003-plus"
+	stage_dir "$BIOS_PATH/MAME"
+fi
 
 echo "$dest/$(basename "$ROM")"
