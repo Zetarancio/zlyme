@@ -1,0 +1,33 @@
+12D-E30 candidate, built 2026-10-14T10:04:26Z. Not installed.
+
+Source: 7caa0871a82f784ffd8889face036fd3955cbf8f
+Archive: output/images/zlyme-my355-20261014-7caa0871a82f.tar
+Archive SHA-256: 2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea
+
+The only source change is the removal of snps,dis_enblslpm_quirk from &usb_host0_xhci. linux-rebuild recopied the board DTS. The kernel-tree copy matches the board file. rk3566-miyoo-flip.dtb was compiled at 12:01:16 +0200.
+
+DTB: f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18
+E29 DTB: cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed
+dtc -s of the two blobs differs by one line. usb@fcc00000 lost snps,dis_enblslpm_quirk. snps,dis_u2_susphy_quirk, dr_mode = "otg", maximum-speed = "high-speed", phy-names, phy_type, phys, and extcon stayed. The archive member matches output/images/rk3566-miyoo-flip.dtb.
+
+Image: 07601d1bd80168a133968bdf5c7efd6b8632883ec716ae81732106902e6c215d
+E29 Image: e54daf5c4fde61c2d6e8c79cb180d14b1e423ba45c9f2100eaa20a08c29a404b
+Both are 26273800 bytes. Sixty-six bytes differ: compile-user token, build count #1 at 09:09:00 versus #2 at 10:01:20 UTC, and one 20-byte build id. The files compiled in that relink were init/version.o, init/version-timestamp.o, and panel-generic-dsi.o. Extracted configuration matches. strings has no "restored peripheral extcon".
+Image.gz: 8b5ceb6dec96b998904afef3a5cb6e87ee020eb157a1b2e1ca25ec8a0ea0d938
+gzip -dc of Image.gz hashes to the new Image. The product build did not compile the kernel again.
+
+squashfs: a568584c4ff9b4fad976ac126bb63bb923dd19c47f027e94eaa8b83d95a27bce
+zlyme-usb-transfer: 30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6
+zlyme-usb-enter: 302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982
+USB File Transfer launch.sh: fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766
+idbloader.img: 2d714dff7b1af96dabcbc172c269276f36f6409afa3c9f7940addce0ca6af380
+u-boot.itb: 0e2a5e6ed9d669401ee43a3df58cc8613797118bca435b830f14a8342b87ee56
+u-boot-rockchip.bin: 9b5d9a4819e1865a4c24de30315b1d61a10f601b626bdc7b64e933f49f4f95d8
+
+Out-of-tree modules keep 13 October timestamps. vermagic is 7.2.10 SMP preempt mod_unload aarch64.
+
+E29 archive still af6a54666715b8cb41fe1c4a477a6270d04189462746550f406896b3435af95d.
+E28 archive still 0bf1e16c24c132fb6ffc98afbfb2eba5e5c7d9e7c800f3722b139102b291f5b6.
+E24 archive still be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a.
+
+Host: usb transfer ok, usb link ok, post-build config ok. This candidate was not copied to the Flip.

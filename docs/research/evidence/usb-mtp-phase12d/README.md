@@ -137,3 +137,9 @@ The thirteenth table is 12D-E29 installed. The maintainer reports that MTP works
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T095100Z-e29-installed.txt` | Installed squashfs, kernel, and DTB hashes, the missing restore string, cleanup, and the host enumeration log kept separate from a file copy. | `49767a9a29f778ebe08fdd4e33b92a60b3417c5b52d436eff32b57456d2b27ff` |
+
+The fourteenth table is 12D-E30. The lower-controller ENBLSLPM property is absent from this candidate. The candidate is not installed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T100426Z-e30-candidate.txt` | One-line DTB difference, the 66-byte kernel relink, and the candidate archive hashes. | `e50664bee64df152c49c5dedbb1fe8fa127004e6b041453b717547be3b854ed5` |
