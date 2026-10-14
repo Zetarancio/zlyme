@@ -8,11 +8,14 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Added
 
+- Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list.
 - Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed.
 - The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver and turns on Mesa's experimental Vulkan setting for programs launched afterwards. One orange frame was shown on a Flip. That is not a claim that games render, and PPSSPP on Panfrost still does not attach the display. The Mali driver remains the Vulkan path PPSSPP can use.
 
 ### Changed
 
+- RetroArch's menu uses Classic Orange on a new setup. A theme you already saved stays. Zlyme's old menu colors are replaced when they are still the original set.
+- FinalBurn Neo looks for a BIOS archive in `Bios/fbneo/`, then `Bios/FBNEO/`, then `Bios/`. A game archive with the same filename is the one that runs. MAME's BIOS folders stay in their existing order.
 - The boot splash and README lockup use the new circle-above-word mark (slime loop). Update and resize progress use the stars loop instead of the galaxy clip.
 - The battery sample is every 10 seconds. At 10% or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been tried on a Flip.
 - SSH stays on. Until you set a root password, the password is still empty. A password you set is kept on the card.

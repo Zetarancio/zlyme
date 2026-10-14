@@ -8,7 +8,12 @@
 
 CFGDIR="${XDG_CONFIG_HOME:-/storage/.config}/retroarch"
 CFG=$CFGDIR/retroarch.cfg
-ETC=/etc/retroarch.cfg
+# ZLYME_RA_ETC is a host-test override. The device uses /etc/retroarch.cfg.
+ETC=${ZLYME_RA_ETC:-/etc/retroarch.cfg}
+# RetroArch 1.22.2 menu/menu_defines.h: RGUI_THEME_CLASSIC_ORANGE is 2.
+# The menu shows that number as "Classic Orange". The words are not a
+# value this pin reads. Upstream's own default is Classic Green.
+ZLYME_RGUI_CLASSIC_ORANGE='rgui_menu_color_theme = "2"'
 SEED_OPTS=/usr/share/zlyme/retroarch/config
 CARD_OPTS=/storage/.config/zlyme/retroarch/config
 MINUI_RA=/tmp/zlyme-minui-ra.cfg
@@ -24,11 +29,91 @@ if [ -f "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
 	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep -v '^$')"
 fi
 
+# Exact line match. A changed color or preset is a user theme and stays.
+cfg_has_exact() {
+	_file=$1
+	_want=$2
+	[ -f "$_file" ] || return 1
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		[ "$_line" = "$_want" ] && return 0
+	done < "$_file"
+	return 1
+}
+
+cfg_theme_count() {
+	_file=$1
+	_n=0
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		case "$_line" in
+			'rgui_menu_color_theme = "'*) _n=$((_n + 1)) ;;
+		esac
+	done < "$_file"
+	printf '%s\n' "$_n"
+}
+
+# The old seed wrote theme "custom" plus this preset and these colors.
+# "0" is the same enum if RetroArch rewrote the word. Anything else stays.
+migrate_zlyme_rgui_theme() {
+	_cfg=$1
+	[ -f "$_cfg" ] || return 0
+	cfg_has_exact "$_cfg" 'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"' || return 0
+	for _need in \
+		'rgui_entry_normal_color = "0xFFF2F3F5"' \
+		'rgui_entry_hover_color = "0xFFFA7C08"' \
+		'rgui_title_color = "0xFFFA7C08"' \
+		'rgui_bg_dark_color = "0xFF050608"' \
+		'rgui_bg_light_color = "0xFF050608"' \
+		'rgui_border_dark_color = "0xFFEC2A01"' \
+		'rgui_border_light_color = "0xFFFA7C08"'
+	do
+		cfg_has_exact "$_cfg" "$_need" || return 0
+	done
+	[ "$(cfg_theme_count "$_cfg")" = 1 ] || return 0
+	if ! cfg_has_exact "$_cfg" 'rgui_menu_color_theme = "custom"' \
+		&& ! cfg_has_exact "$_cfg" 'rgui_menu_color_theme = "0"'; then
+		return 0
+	fi
+	_tmp=$(mktemp)
+	_placed=0
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		case "$_line" in
+			'rgui_menu_color_theme = "custom"'|'rgui_menu_color_theme = "0"')
+				if [ "$_placed" -eq 0 ]; then
+					printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE"
+					_placed=1
+				fi
+				;;
+			'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"'|\
+			'rgui_entry_normal_color = "0xFFF2F3F5"'|\
+			'rgui_entry_hover_color = "0xFFFA7C08"'|\
+			'rgui_title_color = "0xFFFA7C08"'|\
+			'rgui_bg_dark_color = "0xFF050608"'|\
+			'rgui_bg_light_color = "0xFF050608"'|\
+			'rgui_border_dark_color = "0xFFEC2A01"'|\
+			'rgui_border_light_color = "0xFFFA7C08"')
+				;;
+			*)
+				printf '%s\n' "$_line"
+				;;
+		esac
+	done < "$_cfg" > "$_tmp"
+	mv "$_tmp" "$_cfg"
+}
+
 mkdir -p "$CFGDIR" "$CFGDIR/assets"
+_ra_fresh=0
 if [ ! -s "$CFG" ]; then
 	rm -f "$CFG"
 	[ -f "$ETC" ] && cp "$ETC" "$CFG"
+	_ra_fresh=1
 fi
+# Theme is not part of --appendconfig. Those files used to force the
+# Zlyme preset on every launch, which hid a theme saved in this cfg.
+migrate_zlyme_rgui_theme "$CFG"
+if [ "$_ra_fresh" = 1 ] && [ -f "$CFG" ] && [ "$(cfg_theme_count "$CFG")" = 0 ]; then
+	printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE" >> "$CFG"
+fi
+unset _ra_fresh
 
 # Cores read system_directory (/storage/Bios). MinUI launchers also
 # mkdir Bios/TAG. Link one level of those files into Bios/ so a dump
@@ -265,9 +350,6 @@ if [ -n "${_ra_rom:-}" ] && [ -x /usr/sbin/zlyme-overlay ]; then
 	fi
 	unset _ov
 fi
-THEME=/usr/share/retroarch/rgui-theme.cfg
-[ -s "$THEME" ] || THEME=/usr/share/zlyme/retroarch/rgui-theme.cfg
-[ -s "$THEME" ] && APPEND="$APPEND|$THEME"
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"

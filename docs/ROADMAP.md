@@ -26,7 +26,7 @@ Phases 0–12 are closed. Phase 13A is host-tested. The rest of Phase 13 is plan
 | 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
 | 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
 | 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | 13A host-tested on 2026-10-15. 13B–13E planned. | [Phase 13](#phase-13) |
+| 13 | 13A and 13B1 host-tested on 2026-10-15. B6 blocked. B2, B5, B7 and 13C–13E planned. | [Phase 13](#phase-13) |
 
 Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
 
@@ -1321,6 +1321,8 @@ Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase
 
 The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
 
+Phase 13B1 (B1, B3, B4, and B8) is host-tested in source and is not on that image. B6 is blocked on the pinned RGUI font. B2, B5, and B7 stay planned. Phase 13B is not complete.
+
 #### Phase 13A — Build reliability and small corrections
 
 Host-tested on 2026-10-15. No image was built for these items.
@@ -1409,7 +1411,9 @@ Dependencies: the pinned emulator configs and their append order. No change to `
 
 Acceptance criteria: source review shows menu confirm/back follows A/B, game-action bindings are untouched, and a saved user remap is not rewritten.
 
-Status: Planned.
+Status: Host-tested.
+
+RetroArch 1.22.2 keeps menu OK on RetroPad A when `input_menu_swap_ok_cancel_buttons` is false (`menu/menu_driver.c`). The SDL2 Xbox autoconfig maps button 0 to RetroPad A and button 1 to RetroPad B. InputPlumber names the Flip's east button A and emits Xbox South, which SDL reports as button 0. NextUI confirms on that button. Those autoconfig numbers stay. DraStic's UI select is button 1024 and its UI exit is 1025, the same pair as its A and B game buttons. PPSSPP's default button preference is Cross, and the seed maps Cross to SDL A and Circle to SDL B. AetherSX2's first-run pad maps Cross to SDL A. Dolphin's first-run GameCube A is Xbox South. Flycast's seed does not set face buttons. None of those programs has a separate menu confirm setting that disagrees with its game map, so the game bindings were left as they are.
 
 ##### B2. Automatic save and resume
 
@@ -1433,7 +1437,9 @@ Dependencies: the pinned RetroArch version and the last-writer of the theme sett
 
 Acceptance criteria: no Zlyme theme is installed or forced, Classic Orange is the default that this pin understands, and a later user setting still wins.
 
-Status: Planned.
+Status: Host-tested.
+
+`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The config value is `"2"`. Upstream's default is Classic Green, so the new user cfg sets 2 itself. `/etc/retroarch.cfg`, `ra-perf.cfg`, and `ra-run` no longer append a theme. A saved theme stays. A user cfg that still has the original Zlyme preset path and the original six colors, with the theme still `custom` or `0`, is rewritten to 2 once. A changed color is left alone.
 
 ##### B4. Standalone RetroArch tool
 
@@ -1445,7 +1451,9 @@ Dependencies: the current RetroArch runtime, GPU, audio, input, DRM, logging, an
 
 Acceptance criteria: the tool is present, it launches through `ra-run` without a content path, and the session uses the same teardown as a game launch.
 
-Status: Planned.
+Status: Host-tested.
+
+The pak is `package/system/nextui/paks/Tools/RetroArch.pak/launch.sh`. It execs `ra-run` with no arguments. The clock profile is `play`, the same profile as the other Tools paks.
 
 ##### B5. User-installed libretro cores
 
@@ -1469,7 +1477,9 @@ Dependencies: the pinned source's RGUI scale and font options. No renderer patch
 
 Acceptance criteria: filenames and settings remain usable at 640×480, and the chosen options exist in the pinned source.
 
-Status: Planned.
+Status: Blocked.
+
+RetroArch 1.22.2 draws RGUI into a 320×240 framebuffer when the display is taller than 240 (`rgui_set_aspect_ratio`). The 4:3 width at that height is 320. A 640×480 screen scales that buffer by 2, so the glyphs are already at the size this menu produces for the Flip. `menu_rgui_internal_upscale_level` enlarges the texture after the glyphs are drawn. At 2× that texture matches 640×480 and the glyphs stay the same size. A larger factor is scaled back down to the screen. `menu_scale_factor` is not read by RGUI. English uses the built-in bitmap font. The 10×10 font is selected by language. A larger font would be a source change to the glyph blit and to the terminal row and column counts, which also clips filenames and list rows. That patch is not bounded enough for this pass. The working menu is unchanged.
 
 ##### B7. Quit through RetroArch menus
 
@@ -1493,7 +1503,9 @@ Dependencies: the existing multi-card BIOS union. MAME configuration is out of t
 
 Acceptance criteria: host checks cover the three directories, a name that exists in more than one of them, and a MAME search that still uses MAME's order. The README does not carry the credit.
 
-Status: Planned.
+Status: Host-tested.
+
+`zlyme-arcade-stage` links the game archive first. For tag `FBNEO` it then links `Bios/fbneo/`, `Bios/FBNEO/`, and `Bios/`. A BIOS that exists only under a MAME folder is still linked after those three. Tag `MAME` keeps the previous directory order.
 
 #### Phase 13C — PortMaster integration
 

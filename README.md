@@ -1,4 +1,6 @@
-<img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="444">
+<p align="center">
+  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="444">
+</p>
 
 **Low latency. High viscosity.**
 

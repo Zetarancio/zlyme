@@ -65,14 +65,8 @@ endef
 
 define RETROARCH_INSTALL_TARGET_CMDS
 	$(TARGET_MAKE_ENV) $(MAKE) -C $(@D) DESTDIR=$(TARGET_DIR) install
-	$(INSTALL) -D -m 0644 $(RETROARCH_PKGDIR)/zlyme/rgui-theme.cfg \
-		$(TARGET_DIR)/usr/share/retroarch/rgui-theme.cfg
-	$(INSTALL) -D -m 0644 $(RETROARCH_PKGDIR)/zlyme/assets-rgui-zlyme.cfg \
-		$(TARGET_DIR)/usr/share/retroarch/assets/rgui/zlyme.cfg
 	$(INSTALL) -D -m 0644 "$(RETROARCH_PKGDIR)/zlyme/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg" \
 		"$(TARGET_DIR)/usr/share/retroarch/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg"
-	$(INSTALL) -D -m 0644 $(RETROARCH_PKGDIR)/zlyme/rgui-theme.cfg \
-		$(TARGET_DIR)/usr/share/zlyme/retroarch/rgui-theme.cfg
 	$(INSTALL) -D -m 0644 "$(RETROARCH_PKGDIR)/zlyme/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg" \
 		"$(TARGET_DIR)/usr/share/zlyme/retroarch/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg"
 endef

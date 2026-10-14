@@ -138,6 +138,7 @@ Seeing the Flip on the computer is not proof that a copy worked. On 2026-10-14 o
 - Put BIOS files in `Bios/` on any mounted library. The [systems table](#systems-and-emulators) lists the names and subfolders.
 - When a game starts, Zlyme combines the `Bios/` folders of every mounted library. If the same file exists on more than one card, the copy on the card that holds the game wins.
 - A file in a one-level subfolder, such as `Bios/PS/scph5501.bin`, is also found at the `Bios/` root, unless a root file already has that name.
+- FinalBurn Neo uses a BIOS archive from `Bios/fbneo/` when that file is there, then `Bios/FBNEO/`, then `Bios/`. A game archive with the same filename is the one that runs. MAME still uses its own folder order.
 
 
 
@@ -204,6 +205,14 @@ Settings → System → Joysticks has:
 - **Test Rumble**: a short motor pulse.
 
 Printed A and B are fixed: A is the east button and B is the south button. Settings → System → Haptic feedback defaults to on and only turns NextUI's own pulses on or off. Replacement Switch-style sticks have not been tested on hardware.
+
+## RetroArch
+
+Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu returns to the list.
+
+A confirms and B goes back in the RetroArch menu, including the menu opened from a game. The buttons a game uses, and a controller remap you saved, stay as they are.
+
+A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. The previous Zlyme colors are replaced when every one of them is still the original color.
 
 ## Settings
 
