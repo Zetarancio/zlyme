@@ -107,3 +107,9 @@ The eighth table is 12D-E25. The E24 archive was installed. A file copy was not 
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T004529Z-e25-acceptance.txt` | Installed E24 hashes, the high-speed enumeration on Demetria bus 1 port 2, the PTP I/O errors, the disconnect, and the post-reboot inspection. | `fc26a4629fc8f502f2b8d2a31e5de02f30e43e06f86436e62d3f7e454aae2538` |
+
+The ninth table is 12D-E26, on that same installed image and the following boot. The PAK session was already up. Disposable SHA-256 values matched in both directions. B was not pressed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T020236Z-e26-file-match.txt` | Live session on Demetria bus 1 port 2, the matching SHA-256 pairs, the second-card copy, rename and delete, and the still-bound gadget. | `4f738302c1b2631e2b1b597a3d0505e5dfe893f829e7e2c0acee10cfe101c711` |

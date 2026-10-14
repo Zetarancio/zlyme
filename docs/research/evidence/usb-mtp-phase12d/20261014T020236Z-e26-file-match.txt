@@ -1,0 +1,74 @@
+12D-E26 file match. The PAK session was already up. It was not started from SSH, and the cable was not moved for these copies.
+
+Installed /boot/zlyme SHA-256, read at 02:17:07Z:
+06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d
+That is the squashfs from zlyme-my355-20261013-7951a37668e3.tar. /boot is vfat, read-only, /dev/mmcblk0p2. Nothing was written there.
+
+Boot id 6b0451a8-3c6d-42bc-ac50-2ddc73c6037c at uptime 2915.25 seconds, and the same id at uptime 3883.87 seconds after the copies. This is the boot that followed the 12D-E25 restart. It did not restart again during the copies.
+
+Demetria receptacle: bus 1 port 2, PCI 0000:c4:00.3 (1022:15b9), sysfs /sys/devices/pci0000:00/0000:00:08.1/0000:c4:00.3/usb1/1-2. This is not the bus 7 port used in 12D-E21.
+
+Host kernel, local time UTC+2:
+03:50:09 device 45, 1d6b:0100, high speed, then disconnect.
+03:50:12 device 46, address not accepted, error -71.
+03:50:17 device 48, 1d6b:0100, high speed, Zlyme File Transfer, serial zlyme.
+Device 48 was still present at 02:21:00Z. From 04:02 through that reading the host kernel log has no further usb 1-2 line. lsusb -v: high speed, self-powered, MaxPower 2 mA, one PTP interface, bulk 512-byte endpoints. kiod6 held /dev/bus/usb/001/048. No libmtp program was started beside it.
+
+Flip helper, read before the copies and again at 02:21:00Z:
+state=bound, udc=fcc00000.usb, gadget=zlyme-mtp, responder=running, host=configured, latch=configured.
+Exports: /storage ZLYME rw, /mnt/sd2 SD Card rw.
+UDC state file: configured. current_speed: high-speed.
+FunctionFS /dev/ffs-mtp had ep0, ep1, ep2, ep3.
+Responder pid 23929. uMTP 1.8.1 started 01:50:05Z. link.binds contains one line, bind.
+extcon0 is fe8a0000.usb2phy, the supplier of fcc00000.usb. At 02:12:00Z: USB=1, USB-HOST=0, SDP=1, CDP=0, DCP=0, SLOW-CHARGER=0.
+umtprd.log ends with incoming_packet Read Error (-1) at 01:50:12Z, during the device 45 disconnect. No later responder line was logged. That error was not repeated during the copies.
+
+KIO storages before the copies, and again after deletion: ZLYME and SD Card. ZLYMEBOOT was not a storage. /mnt/media is an empty tmpfs and was not exported. No USB stick was mounted. That case stays deferred.
+
+Responder mountinfo for pid 23929: a tmpfs root, /storage on /dev/mmcblk0p3 exfat, /mnt/sd2 on /dev/mmcblk1p1 ext4, the umtprd.conf file, FunctionFS, and the responder binary plus loader and libc from the read-only squashfs. /boot is not in that namespace.
+
+Host files, generated on Demetria:
+e26-4k.bin 4096 bytes, SHA-256 3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7
+e26-1m.bin 1048576 bytes, SHA-256 d7f02edbe6d89ed61d10038a71bbdc827c1b20ee4744bbac8e5bec1aadb9e5cc
+
+MTP operations used kioclient only. Directory zlyme-mtp-test-20261014-E26 did not exist before mkdir.
+
+ZLYME, host to Flip, through MTP:
+mkdir at 02:02:36Z.
+e26-4k.bin copied 02:02:42Z–02:02:43Z. KIO size 4096.
+e26-1m.bin copied 02:02:49Z. KIO size 1048576.
+Flip sha256sum of /storage/zlyme-mtp-test-20261014-E26/e26-4k.bin:
+3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7
+Flip sha256sum of /storage/zlyme-mtp-test-20261014-E26/e26-1m.bin:
+d7f02edbe6d89ed61d10038a71bbdc827c1b20ee4744bbac8e5bec1aadb9e5cc
+kioclient cat of each file hashed to the same two values. On-disk mode was 0755, owner root.
+
+One SSH read of the 4 KiB file on /storage did not return within 8 seconds. A later read returned 4096 bytes, and the hash above is from a later sha256sum. The cause of that stall was not established.
+
+Flip to host:
+dd wrote /storage/zlyme-mtp-test-20261014-E26/e26-from-flip.bin, 4096 bytes, at 02:11:29Z.
+Flip SHA-256 b3fb756a1c6d5f819d65f35e6c9ac6024d04f59000cccda28e854c1f08059f08
+kioclient copy to Demetria at 02:12:43Z. Local size 4096.
+Demetria SHA-256 b3fb756a1c6d5f819d65f35e6c9ac6024d04f59000cccda28e854c1f08059f08
+
+SD Card, ext4 /mnt/sd2:
+mkdir and copy of e26-4k.bin to e26-sd-4k.bin at 02:04:10Z. KIO size 4096.
+kioclient cat SHA-256 3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7
+Flip sha256sum of /mnt/sd2/zlyme-mtp-test-20261014-E26/e26-sd-4k.bin:
+3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7
+
+Rename at 02:13:02Z, through MTP:
+e26-4k.bin to e26-4k-renamed.bin on ZLYME.
+e26-sd-4k.bin to e26-sd-4k-renamed.bin on SD Card.
+Both new paths hashed to 3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7.
+The second-card directory listing on the Flip showed one file, e26-sd-4k-renamed.bin. KIO printed each new name twice.
+
+Delete at 02:14:13Z–02:14:14Z, through MTP: the renamed files, e26-1m.bin, e26-from-flip.bin, and both test directories.
+Flip ls of both directories then reported No such file or directory.
+KIO still listed only ZLYME and SD Card.
+
+No PTP 02ff line was logged on Demetria during these operations. kiod6 at 03:50:09 and 03:50:17 local logged that 1d6b:0100 is unknown to libmtp. That is not an object error.
+
+This boot's dmesg has one dwc3 line, at 1157.237844 seconds: request was not queued to ep0out. That is before these copies. No Oops, BUG, or further dwc3 line appears later in that log. The Mali workqueue warning at 3.64 seconds is the probe warning already recorded for this boot. It was not repeated.
+
+B was not pressed. The gadget was still bound at 02:21:00Z. A second Start was not tested. MENU+START was not tested. No USB, kernel, DTS, or responder source was changed.

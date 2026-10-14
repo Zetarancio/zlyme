@@ -35,6 +35,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E23 | 2026-10-13 | source defect in the watcher; installed later the same day | [Connection watcher](#28-connection-watcher) |
 | 12D-E24 | 2026-10-13 22:21Z | installed watcher image, PHY DCP, gadget stopped | [Deferred UDC bind](#29-deferred-udc-bind) |
 | 12D-E25 | 2026-10-14 00:45Z–01:26Z | E24 image installed; MTP enumerated; file bytes not checked; boot restarted | [Installed E24 acceptance](#30-installed-e24-acceptance) |
+| 12D-E26 | 2026-10-14 01:50Z–02:21Z | disposable SHA-256 matched both ways; B not pressed; same boot | [PAK MTP file match](#32-pak-mtp-file-match) |
 
 ## Experiment ledger
 
@@ -390,6 +391,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Evidence: section 30.
 - Code: left untouched. No kernel, DTS, watcher, or export change.
 - Clarification, 2026-10-14: the maintainer reports that the USB cable was disconnected during this pass. The setup line that says the cable was not unplugged is the assumption written at the time, and it is withdrawn. The original evidence file is unchanged. The host logged `usb 1-2` device 26 disconnecting at 01:05:24Z. That line is not identified as the maintainer's action. The same port then logged more connect attempts and descriptor errors. High-speed enumeration was observed. The storage names `ZLYME` and `SD Card` were listed. A file transfer was not observed. PTP `02ff` was observed. The restart was observed and its cause is unknown. Physical B was not tested. A second PAK start with the cable left seated was not tested. The enumeration at 00:48:05Z and the SSH helper start at 00:50:27Z are not one proven continuous session. None of this is hardware acceptance. The restart and the Mali workqueue warning stay separate observations.
+
+### 12D-E26 PAK MTP file match
+
+- When: 2026-10-14 01:50:05Z through 02:21:00Z. The file copies ran from 02:02:36Z to 02:14:14Z.
+- Source: the same installed OTA as 12D-E25. `/boot/zlyme` read at 02:17:07Z is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`. `/boot` stayed read-only. No source file changed.
+- Setup: the maintainer reported that MTP was already connected and working. The helper was not started from SSH. The cable was not unplugged. Demetria's device was bus 1 port 2, PCI `0000:c4:00.3`, device 48, from 01:50:17Z. `kiod6` held that usbfs node. No second MTP client was started.
+- Hypothesis: the already-open PAK session can copy disposable bytes in both directions with matching SHA-256 values.
+- Action: list the storages with `kioclient`. Create `zlyme-mtp-test-20261014-E26` through MTP. Copy a 4096-byte file and a 1048576-byte file onto `ZLYME`. Hash them on the Flip over SSH. Create a third file on the Flip and copy it back through MTP. Repeat one file on `SD Card`. Rename and delete only those paths.
+- Observed: helper `state=bound`, UDC `configured`, `current_speed` `high-speed`, one `bind` line, FunctionFS `ep0` through `ep3`, responder pid 23929. extcon0 (`fe8a0000.usb2phy`) at 02:12:00Z was USB=1, SDP=1, CDP=0, DCP=0. KIO listed `ZLYME` and `SD Card`. `ZLYMEBOOT` was absent. The responder mount namespace had `/storage`, `/mnt/sd2`, the configuration file, FunctionFS, and the responder binary. It did not have `/boot`. Host-to-Flip SHA-256 `3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7` (4096 bytes) and `d7f02edbe6d89ed61d10038a71bbdc827c1b20ee4744bbac8e5bec1aadb9e5cc` (1048576 bytes) matched on `/storage` and again when KIO read the files back. The Flip-created file `b3fb756a1c6d5f819d65f35e6c9ac6024d04f59000cccda28e854c1f08059f08` matched after the MTP copy to Demetria. The ext4 card at `/mnt/sd2` matched `3b9ccb9cea630922d5ea2320b00f932d9f835e5007c0fcffc806382cc7edf5f7`. Rename kept that hash. Delete removed both test directories. `/mnt/media` was an empty tmpfs and was not exported. Boot id `6b0451a8-3c6d-42bc-ac50-2ddc73c6037c` was unchanged from uptime 2915.25 seconds to 3883.87 seconds. No PTP `02ff` was logged during the copies. `umtprd.log` still ends at the 01:50:12Z read error from the device 45 disconnect, before device 48. One `dwc3` line at 1157 seconds, `request was not queued to ep0out`, is earlier on this boot. The Mali probe warning at 3.64 seconds was not repeated. At 02:21:00Z device 48 was still present and the helper was still `bound`.
+- Result: disposable file bytes matched in both directions, and on the mounted second card. Rename and delete of those files matched the Flip directories. PTP `02ff` was not reproduced in this session. That does not assign a cause to the 12D-E25 errors. B was not pressed, so cleanup and a second Start are not results. Phase 12D stays open. The 12D-E25 restart stays unexplained.
+- Excludes: an SSH-started gadget. A USB-stick copy. A write to `/boot`. Treating this match as hardware acceptance of audio, controls, charging, or the earlier restart.
+- Unknown: why one SSH read of the new exFAT file did not return within 8 seconds, while a later read hashed correctly. Why device 45 disconnected and device 46 logged `-71` before device 48 stayed up. Why B cleanup behaves on this image.
+- Evidence: section 32.
+- Code: left untouched.
 
 ## 1. Hardware topology
 
@@ -1221,6 +1236,8 @@ The next file check needs SDP or CDP on the receptacle that enumerated, the same
 
 Clarification, 2026-10-14: the maintainer reports that the cable was disconnected during 12D-E25. The evidence file is unchanged. The 01:05:24Z host disconnect is not identified as that action. After it, `usb 1-2` kept attempting to enumerate and logged descriptor errors. A storage name on the computer was not a confirmed file. The restart remains unexplained, and it is not attributed to the Mali warning or to the cable report.
 
+12D-E26, later the same day and on the following boot, recorded the file match. Section 32. It does not close the 12D-E25 restart.
+
 ## 31. MTP reduction candidates
 
 This section is a plan. Nothing in it was removed, rebuilt, or retried.
@@ -1230,7 +1247,7 @@ The working comparison for a later pass is the E24 image, Demetria bus 1 port 2,
 | Candidate | Why it is here | What 12D-E25 did with it | Removal risk |
 | --- | --- | --- | --- |
 | `snps,dis_u2_susphy_quirk` | Inherited USB2 suspend-PHY quirk. | Present. Not isolated. | Highest. Leave it until the others have a rollback that still enumerates. |
-| Deferred UDC bind and the SDP/CDP watcher | E24 waits for a data cable before `usb_gadget_register_driver`. The watcher binds once. | One `bind` line after SDP was already 1. Enumeration happened on this image. | High. This is the image that enumerated. Dropping it returns to the earlier bind-at-start path. Test it only after a SHA-256 match exists on this image. |
+| Deferred UDC bind and the SDP/CDP watcher | E24 waits for a data cable before `usb_gadget_register_driver`. The watcher binds once. | One `bind` line after SDP was already 1. Enumeration happened on this image. | High. This is the image that enumerated, and 12D-E26 matched a SHA-256 on it. Dropping it returns to the earlier bind-at-start path. Leave it until B cleanup is recorded on this image. |
 | `1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch` | Experimental resync of the peripheral extcon. | Not shown to run. Ordinary detection can publish SDP without it, as in 12D-E20. | Medium. One quiet session does not prove it is unused. |
 | `snps,dis_enblslpm_quirk` | Experimentally retained. 12D-E21 enumerated with `GUSB2PHYCFG(0)` bit 8 clear. | Not read in this pass. | Medium. E21 does not prove the bit had to be clear. |
 | EP0 recovery and `soft_connect` | One disconnect plus one connect after `failed to enable ep0out`. A failed write is not repeated. `configured` and `suspended` are not written. | No `failed to enable ep0out` in the lines read after the SSH start. `link.recover` was not present. Unplug was not tested. | Medium for the unplug path. The steady configured path already avoids a gratuitous write. |
@@ -1238,3 +1255,15 @@ The working comparison for a later pass is the E24 image, Demetria bus 1 port 2,
 | Filesystem-root export and `zlyme-usb-enter` | The share. Private mount namespace, `O_NOFOLLOW`, non-recursive clone. | Names were listed. Bytes were not copied. Confinement was not re-probed on the device. Host confinement tests passed. | Not a link simplification. Removing it changes the product. |
 
 The first A/B, when a file hash has already passed on this image, is one candidate at a time. The rollback is this OTA, written to the card from the host, not over Wi-Fi. Do not combine the quirk, the extcon patch, and the watcher in one image.
+
+12D-E26 later recorded matching SHA-256 values in both directions on this image, including one file on the mounted ext4 card. The responder mount namespace contained `/storage`, `/mnt/sd2`, the configuration file, FunctionFS, and the responder binary. It did not contain `/boot`. Stopping with B, and a second Start with the cable left seated, were not recorded. No candidate is removed here.
+
+## 32. PAK MTP file match
+
+12D-E26 is the ledger entry above. The installed image is still the E24 archive. `/boot/zlyme` at 02:17:07Z is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`, and `/boot` stayed read-only.
+
+The session was already open. Demetria bus 1 port 2, PCI `0000:c4:00.3`, had device 48, `1d6b:0100`, at high speed from 01:50:17Z. The helper was `bound`, the UDC was `configured` at high speed, and extcon0 reported SDP. KIO was the only MTP client. It listed `ZLYME` and `SD Card`. `ZLYMEBOOT` was not a storage. No USB stick was mounted.
+
+A 4096-byte file and a 1048576-byte file copied from Demetria to `/storage` matched SHA-256 on the Flip. A 4096-byte file created on the Flip matched after KIO copied it back. The same 4096-byte hash matched on `/mnt/sd2`. Rename kept the hash. Delete removed both test directories. PTP `02ff` did not recur. The boot id did not change. B was not pressed, and the gadget was still bound at 02:21:00Z.
+
+The pairs, the namespace, and the earlier `ep0out` line from this boot are in `docs/research/evidence/usb-mtp-phase12d/20261014T020236Z-e26-file-match.txt`. This match does not explain the 12D-E25 restart, and it is not Phase 12 acceptance. Patch reduction still waits for a recorded cleanup with the cable left seated.
