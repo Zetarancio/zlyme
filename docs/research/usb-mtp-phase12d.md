@@ -37,6 +37,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E25 | 2026-10-14 00:45Z–01:26Z | E24 image installed; MTP enumerated; file bytes not checked; boot restarted | [Installed E24 acceptance](#30-installed-e24-acceptance) |
 | 12D-E26 | 2026-10-14 01:50Z–02:21Z | disposable SHA-256 matched both ways; B not pressed; same boot | [PAK MTP file match](#32-pak-mtp-file-match) |
 | 12D-E27 | 2026-10-14 02:26Z–02:35Z | E26 session gone; second enumeration not logged | [Stopped session](#33-stopped-session) |
+| 12D-E28 | 2026-10-14 | EP0 recovery removed in source; not installed | [EP0 recovery removal, not yet on a Flip](#34-ep0-recovery-removal-not-yet-on-a-flip) |
 
 ## Experiment ledger
 
@@ -1289,6 +1290,22 @@ The E26 hashes are the MTP file baseline for later A/B images. The archive above
 | Responder, FunctionFS, configfs ownership | Running, then gone after the disconnect | Required for the session and for cleanup. |
 | Export jail | `/storage` and `/mnt/sd2` only. No `/boot` | The share. Leave it. |
 | Patch `1015`, `snps,dis_enblslpm_quirk`, `snps,dis_u2_susphy_quirk` | Not isolated in E26 | Not removed because they were quiet. |
+
+## 34. EP0 recovery removal, not yet on a Flip
+
+`52e84b069d9aacde39ca7a95c38be78a4d4746b1` removes `ep0_failed` and the one disconnect-then-connect that followed `failed to enable ep0out`. The deferred bind, the SDP/CDP wait, the single disconnect after a configured session loses its data cable, and the single connect when that cable returns are still there. `soft_connect` is not written while the UDC is `configured` or `suspended`. The jail and the export list are unchanged. Host tests, including the mocked enable-error case, pass and do not open a USB controller. No candidate from this commit has been installed. Patch `1015` and the LPM quirks are unchanged.
+
+The comparison, after that candidate is installed from the card, uses the same cable, the same Demetria receptacle (bus 1 port 2, PCI `0000:c4:00.3`), KDE's MTP client, and the USB File Transfer PAK:
+
+1. Start with the cable already connected. Expect `1d6b:0100` at high speed and UDC `configured`.
+2. Copy one disposable file to `/storage` and compare SHA-256.
+3. Copy one disposable file back and compare SHA-256.
+4. If `SD Card` is listed, copy one small file and compare SHA-256.
+5. Press B and confirm the gadget is gone.
+6. Open the PAK again without moving the cable and confirm a new enumeration, then stop.
+7. In a separate idle session, unplug once and plug back in. Confirm it enumerates again without a controller reset.
+
+Keep the responder log and any `failed to enable ep0out` line. If this image fails where the E24 archive succeeds on that same cable and receptacle, put the recovery back. A pass means the repair was not required in that session. It does not retire patch `1015` or the LPM quirks.
 
 ## 32. PAK MTP file match
 

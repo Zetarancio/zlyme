@@ -23,7 +23,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- On the installed development image `zlyme-my355-20261013-7951a37668e3.tar` (SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`), one computer copied disposable files to and from the Flip over MTP and the checksums matched, including a mounted second card. The maintainer reports that opening the tool again and leaving it with MENU+START worked. The computer log shows that connection ending and does not show a separate later connection. The session record is `docs/research/usb-mtp-phase12d.md`.
+- On the installed development image `zlyme-my355-20261013-7951a37668e3.tar` (SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`), one computer copied disposable files to and from the Flip over MTP and the checksums matched, including a mounted second card. The maintainer reports that opening the tool again and leaving it with MENU+START worked. The computer log shows that connection ending and does not show a separate later connection. A later development build drops the one-shot repair after an EP0 enable error. That build is not installed and has not been tried on a Flip. The session record is `docs/research/usb-mtp-phase12d.md`.
 
 ## [zlyme44.2] - 2026-10-11
 
