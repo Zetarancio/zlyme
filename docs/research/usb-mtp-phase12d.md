@@ -38,6 +38,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E26 | 2026-10-14 01:50Z–02:21Z | disposable SHA-256 matched both ways; B not pressed; same boot | [PAK MTP file match](#32-pak-mtp-file-match) |
 | 12D-E27 | 2026-10-14 02:26Z–02:35Z | E26 session gone; second enumeration not logged | [Stopped session](#33-stopped-session) |
 | 12D-E28 | 2026-10-14 | EP0 recovery removed; image installed; maintainer reports MTP works; no new file hash | [EP0 recovery removal, installed](#34-ep0-recovery-removal-installed) |
+| 12D-E29 | 2026-10-14 | patch 1015 removed; candidate built; not installed | [USB2 PHY extcon resync, candidate](#35-usb2-phy-extcon-resync-candidate) |
 
 ## Experiment ledger
 
@@ -963,6 +964,8 @@ The existing `B_IDLE` path sets `EXTCON_USB` for SDP and does not set it for CDP
 
 Commit `dd0d717f331f` replaces the helper in the same patch. `07de7365fda6` was the first revision and has not shipped. It applies after `1013` and before `30-default` `9901`. Number `1014` stays unused because that filename was the removed maskrom restart patch. The permanent change is this file. `output/build` was re-extracted by `linux-dirclean` and patched by Buildroot.
 
+On 2026-10-14, 12D-E29 deletes that file from the patch directory. The text stays in git history and in this section. The candidate is not installed. Section 35 is the build record and the hardware gate.
+
 The helper runs only from `OTG_STATE_B_PERIPHERAL` when `utmi_bvalid` is set. It returns without writing unless `chg_state` is `USB_CHG_STATE_DETECTED` and `chg_type` is SDP or CDP. It reads `EXTCON_USB_HOST`, SDP, CDP, DCP, SLOW, and `EXTCON_USB`. A negative read returns before any value is treated as detached. USB-host mode returns before a write. For stored SDP, an already asserted CDP, DCP, or SLOW cable returns with no write; otherwise a missing SDP bit and a missing `EXTCON_USB` bit are written. For stored CDP, an already asserted SDP, DCP, SLOW, or `EXTCON_USB` bit returns with no write; otherwise a missing CDP bit is written and `EXTCON_USB` is left alone. A cable that already matches is not written again. The helper does not clear a contradictory cable. A successful write stores that cable in the function-static `cable` and sets `vbus_attached`, so the existing falling-edge path can clear the cable this helper published. A refused write leaves that cache alone. A failed `extcon_set_state_sync()` logs once with `dev_err_once` and does not log success. A repair logs one `dev_info`: `restored peripheral extcon USB_SDP_CHARGER` or `USB_CDP_CHARGER`. The 2-second schedule is unchanged. PHY `power_on` and `power_off` are unchanged.
 
 The first revision could publish SDP or CDP beside a charger cable that was still asserted. That combination is reachable. `devm_extcon_dev_allocate()` is called with the cable list and no mutually exclusive mask, so the core accepts SDP together with CDP, DCP, or SLOW. The `B_IDLE` publish writes only the static `cable`, plus `EXTCON_USB` when that cable is SDP. The falling edge clears only that same id. `B_PERIPHERAL` on loss of VBUS does not clear extcon in that call. It moves to `B_IDLE` and schedules the worker immediately. If VBUS is present again on that next pass, the pass starts detection and returns before the edge compare, so the old bits and `vbus_attached` stay. Detection can then enter `B_PERIPHERAL` as SDP or CDP and skip the publish because the cached VBUS level already matches. The helper then sees the new internal type and the old extcon bits together. This driver never writes `EXTCON_CHG_USB_SLOW`, and the extcon state file is read-only, so SLOW is a guard for a registered cable rather than a path this file is shown to take. The SDP, CDP, DCP, and `EXTCON_USB` overlap does not have that excuse. The guard refuses the write. It does not clear the old cable.
@@ -1318,3 +1321,40 @@ The comparison, after that candidate is installed from the card, uses the same c
 7. In a separate idle session, unplug once and plug back in. Confirm it enumerates again without a controller reset.
 
 Those steps were not run in the install reading. The maintainer's report is not that list. Keep the responder log and any `failed to enable ep0out` line if a later session is instrumented. If this image fails where the E24 archive succeeds on that same cable and receptacle, put the recovery back. The maintainer's report does not retire patch `1015` or the LPM quirks.
+
+## 35. USB2 PHY extcon resync, candidate
+
+12D-E29 removes only `1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch`. No renamed copy remains in the patch directory. Deferred UDC binding, the SDP/CDP wait, cable `soft_connect`, the gadget identity, uMTP, the export list, the jail, RK817, Linux 7.2.10, the kernel configuration, U-Boot, and the preloader are unchanged. `snps,dis_enblslpm_quirk` stays on the lower DWC3 node. `snps,dis_u2_susphy_quirk` stays in `rk356x-base.dtsi`. The compiled DTB hash is the same as the installed image.
+
+`./build.sh --config zlyme_my355_defconfig linux-dirclean` removed `output/build/linux-7.2.10`. The product build then extracted `linux-7.2.10.tar.xz` and applied the remaining patches. The log applies `1013` and then `9901`. It does not apply `1015`. After that extract, `drivers/phy/rockchip/phy-rockchip-inno-usb2.c` has no `rockchip_usb2phy_resync_peripheral_extcon`. In `OTG_STATE_B_PERIPHERAL`, loss of VBUS returns to `B_IDLE` and powers the PHY off. While VBUS stays, that state only reschedules. Linux master, fetched 2026-10-14, has that same branch and does not publish extcon from it. `B_IDLE` still writes SDP, CDP, or DCP only when `vbus_attached` changes and `notify_charger` is set. A charger state between `UNDEFINED` and `DETECTED` stores the VBUS level with `notify_charger` clear, so the later `DETECTED` pass can enter `B_PERIPHERAL` with the edge already consumed.
+
+The helper was the only extcon write inside `B_PERIPHERAL`. It republished a stored SDP or CDP result. It did not rerun BC1.2 and it did not change PHY power. DCP stays in `B_IDLE` and does not call it. `A_HOST` does not call it. The same driver file serves `fe8a0000.usb2phy` and `fe8b0000.usb2phy`. The call site is the OTG worker only.
+
+12D-E19 measured `b_peripheral` with VBUS present and extcon zero, on an image that did not have this helper. That condition is observed. The 12D-E19 and 12D-E20 replugs published SDP through `sdp cable is connected`. 12D-E20 had the helper and did not log `restored peripheral extcon`. The installed boot read for 12D-E28 also has no such line, and the helper was off. The info line is logged only when a bit changes, so a quiet log does not show that the function was skipped. Whether a cold start on the unpatched image publishes SDP is untested. Whether upper-port host, Wi-Fi, charging, or suspend change is untested. The code path for those does not call the helper.
+
+`phy-rockchip-inno-usb2.o` was compiled at 11:08:49 +0200. `vmlinux` was linked at 11:09:06 +0200. `nm` on that object has no resync symbol. `strings` on the new `Image` has no `restored peripheral extcon`. The previous `Image`, SHA-256 `1bda9d4258b70f0e6e1693071344590189f1a49315dfac98805df95e5e145fed`, contains that string. The new `Image` is `e54daf5c4fde61c2d6e8c79cb180d14b1e423ba45c9f2100eaa20a08c29a404b`. `Image.gz` is `affdb99bcae1bf32127d0c51249a5a7ef810ed59fcc34c6da705f3a5335f1b38`. The kernel release is `7.2.10`. `CONFIG_PHY_ROCKCHIP_INNO_USB2=y`. Extracted configuration from the new `Image` and from the installed image's `Image.gz` matches. `Module.symvers` matches the copy saved before `linux-dirclean`. `mali_kbase.ko`, `miyoo-flip-gamepad.ko`, `rk3568_dmc.ko`, `8733bu.ko`, and `rtl8733bu_power.ko` were not rebuilt. Their vermagic is `7.2.10 SMP preempt mod_unload aarch64`, the same string as this kernel and as the in-tree `panfrost.ko` built in this run.
+
+The squashfs is `a73d6198e1509e7e5ad05c80322bcfaaf28716fd9ad8e34293667479e8a2d1dd`. Inside it, `zlyme-usb-transfer` is `30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6`, `zlyme-usb-enter` is `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`, and the USB File Transfer `launch.sh` is `fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766`. The DTB is `cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed`. `idbloader.img` is `2d714dff7b1af96dabcbc172c269276f36f6409afa3c9f7940addce0ca6af380`. `u-boot.itb` is `0e2a5e6ed9d669401ee43a3df58cc8613797118bca435b830f14a8342b87ee56`. `u-boot-rockchip.bin` is `9b5d9a4819e1865a4c24de30315b1d61a10f601b626bdc7b64e933f49f4f95d8`.
+
+The candidate is `output/images/zlyme-my355-20261014-97fbcfb253c1.tar`, SHA-256 `af6a54666715b8cb41fe1c4a477a6270d04189462746550f406896b3435af95d`, from `97fbcfb253c11200d70df05a5b180367a7da9ac6`. It is not installed. `zlyme-my355-20261014-d4feee1e9e08.tar` and `zlyme-my355-20261013-7951a37668e3.tar` are still in `output/images` with their previous hashes.
+
+Install it from the card. Use the same cable and the Demetria receptacle on bus 1 port 2, PCI `0000:c4:00.3`. Start the host log and the device log before opening the PAK. Do not write VBUS, a USB role, or a regulator. Do not force suspend.
+
+Test A, cable already connected:
+
+1. Read the lower PHY. Expect SDP or CDP.
+2. Open USB File Transfer.
+3. Expect `1d6b:0100` at high speed and UDC `configured`.
+4. Expect the host to list ZLYME and SD Card.
+5. Copy one disposable file to ZLYME and compare SHA-256.
+6. Copy one file back and compare SHA-256.
+7. If the second card is present, copy one small file to SD Card and compare SHA-256.
+8. Press B and confirm the gadget, FunctionFS, and responder are gone.
+
+Test B, cable left in place: open the PAK again, confirm a new enumeration and host access, then stop.
+
+Test C, one unplug and one replug during an idle session: record the extcon bits before the unplug, the transition after it, and the bits after the replug. Expect MTP to return without a reboot or a host-controller reset. A pass after the replug does not show that a cold start publishes SDP.
+
+Test D: charging on the lower connector, the upper USB host with a known device if one is available, Wi-Fi after a reboot, both cards, NextUI, and the absence of new PHY, DWC3, or PMIC faults.
+
+If this image fails where the installed 12D-E28 image succeeds on that cable and receptacle, restore the patch. A pass covers the scenarios that were run. It is not a general reliability result.

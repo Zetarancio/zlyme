@@ -125,3 +125,9 @@ The eleventh table is 12D-E28. The EP0-recovery removal archive is installed. Th
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T085310Z-e28-installed.txt` | Installed archive and squashfs hashes, the live helper and kernel identity, helper off, and the maintainer's report kept separate from a file copy. | `eff4f0c6191b9216bea88e0f00365e24e7f8b62a764d9d06830b46f82ad0b46d` |
+
+The twelfth table is 12D-E29. The USB2 PHY extcon resync patch is absent from this candidate. The candidate is not installed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T091045Z-e29-candidate.txt` | Clean Linux extract, the unpatched PHY object, and the candidate archive hashes. | `cb13d2a7d7cac03b1319a6e59f6f74a73861386365ca8629bc5e88967d9d5caf` |
