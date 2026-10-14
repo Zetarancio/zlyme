@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-14 — Phase 12 closed for development
+
+Phase 12 implementation is finished on `zlyme44.3-phase-12`. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image was built and no release was published. The installed Flip image is still the earlier E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. The maintainer accepts it. Within-session cable recovery was not measured. One PortMaster port on the second card returned to NextUI. Panfrost was bound. PanVK was not enumerated and no Vulkan frame was drawn. Phase 13 is not scoped. The record is `docs/ROADMAP.md`.
+
 ## 2026-10-13 — Phase 12D Linux 7.2.10 host build
 
 Phase 12D stays open. The pin moved from Linux 7.0.2 to Linux 7.2.10 on both my355 defconfigs. kernel.org still listed stable 7.2.10 and mainline 7.3-rc7. The official tarball hash matched `linux.hash`. The product image was built and was not installed.

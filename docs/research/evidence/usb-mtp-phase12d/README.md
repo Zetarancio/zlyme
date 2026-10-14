@@ -167,3 +167,5 @@ The eighteenth table is 12D-E33. The Flip was still the E30 image. The E32 candi
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T113707Z-e33-not-installed.txt` | E30 hashes on a new boot, the device 16 disconnect, and the unidentified reboot before any E32 test. | `585064242e2ed2929a7fd56d9bc81228b79c65fff47c7d2a44cdaceef120af36` |
+
+12D-E34 in the research ledger is the later E32 install and acceptance. It does not add another evidence file.

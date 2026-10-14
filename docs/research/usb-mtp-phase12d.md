@@ -1,6 +1,6 @@
 # Phase 12D USB MTP investigation
 
-This is the investigation record for the lower-port MTP session. It is not a driver patch, and it does not say that a proposed change is correct. Shipped behavior is in `docs/ARCHITECTURE.md`. The open gate is in `docs/ROADMAP.md` section 12.
+This is the investigation record for the lower-port MTP session. It is not a driver patch, and it does not say that a proposed change is correct. Shipped behavior is in `docs/ARCHITECTURE.md`. Phase 12 development closed on 2026-10-14. Section 41 is that reading. Earlier sections keep the wording from the day they were written. Sequencing is `docs/ROADMAP.md`.
 
 The raw directories `/tmp/zlyme-usb-testa-47oCJM`, `/tmp/zlyme-usb-testb-xZXaSr`, and `/tmp/zlyme-usb-stage0-20261012T145707Z` were not on the development machine on 2026-10-13. The hardware rows below are the maintainer-supervised session reports from 2026-10-12. They are not a fresh reading of those files.
 
@@ -43,6 +43,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E31 | 2026-10-14 | fixed-cable MTP SHA-256 match accepted; B and second Start pending | [ENBLSLPM property, installed, coverage open](#37-enblslpm-property-installed-coverage-open) |
 | 12D-E32 | 2026-10-14 | cable-loss `soft_connect` pair removed; candidate built; not installed | [Cable recovery pair, candidate](#39-cable-recovery-pair-candidate) |
 | 12D-E33 | 2026-10-14 | Flip still on the E30 image; E32 not installed; removal not tested | [Cable recovery pair, not installed](#40-cable-recovery-pair-not-installed) |
+| 12D-E34 | 2026-10-14 | E32 installed and accepted; cable recovery not measured | [E32 installed and accepted](#41-e32-installed-and-accepted) |
 
 ## Experiment ledger
 
@@ -1450,7 +1451,7 @@ Linux 7.2.10 `dwc3_gadget_disconnect_interrupt` marks the gadget not-attached an
 
 At 11:08:06Z the open session was device 16 on Demetria bus 1 port 2, high-speed `1d6b:0100`, UDC `configured`, same boot id `6a14efb9-ee1b-47ee-80d3-c75bd6bd9799`. Device 15 had disconnected at 11:06:46Z. The responder, watcher, and reaper pids were new. `link.binds` had one `bind` and `link.writes` was absent. One `ep0out` line matches that disconnect window. The session was left running. It is not a test of this candidate.
 
-The archive is `output/images/zlyme-my355-20261014-522e4573010a.tar`, SHA-256 `e235ca9953fcab8f0bd93ecd7f4feb2f1c3338d15a5201b06c4b8187d69d71e0`, from `522e4573010adb6e04d62b547e5cf373f688750d`. Squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. Packed helper `9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859`, matching the source, with no `soft_write`. `zlyme-usb-enter` is still `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. `Image`, `Image.gz`, the DTB, and the bootloaders match the installed E30 image. Host tests printed `usb link ok` and `usb transfer ok`. The E30 archive remains `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`. This candidate is not installed. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T111800Z-e32-candidate.txt`.
+The archive is `output/images/zlyme-my355-20261014-522e4573010a.tar`, SHA-256 `e235ca9953fcab8f0bd93ecd7f4feb2f1c3338d15a5201b06c4b8187d69d71e0`, from `522e4573010adb6e04d62b547e5cf373f688750d`. Squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. Packed helper `9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859`, matching the source, with no `soft_write`. `zlyme-usb-enter` is still `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. `Image`, `Image.gz`, the DTB, and the bootloaders match the installed E30 image. Host tests printed `usb link ok` and `usb transfer ok`. The E30 archive remains `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`. This candidate is not installed. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T111800Z-e32-candidate.txt`. Section 41 is the later install and acceptance.
 
 Install it from the card after the current PAK has been closed normally. E30 is the rollback. Do not write VBUS, a USB role, a regulator, or a DWC3 register. Do not reset the host controller.
 
@@ -1477,3 +1478,15 @@ The reboot cause was not identified. The host had lost device 16 at 11:24:19Z, a
 Ordinary MTP, B, a second Start, cable recovery, and MENU+START on E32 were not tested. The local archives are unchanged: E30 `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`, E32 `e235ca9953fcab8f0bd93ecd7f4feb2f1c3338d15a5201b06c4b8187d69d71e0`. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T113707Z-e33-not-installed.txt`.
 
 Install the E32 archive from the card before any test of the removal. Close a running PAK normally first. The ordinary path is a high-speed enumeration, one small file each way, B, and a second Start with the cable left seated. The removal itself still needs one unplug and one replug inside a running session, or an inconclusive result if the connector makes that reading unclear. A working first session does not accept the removal.
+
+## 41. E32 installed and accepted
+
+12D-E34 is the later install. The maintainer installed the E32 archive and accepts it for ordinary transfer, including a second Start with the cable left in place. Within-session unplug and replug was not measured. That limit stays. E30 remains the rollback for it. `snps,dis_u2_susphy_quirk` stays. No new evidence file was added for this reading. The harness notes stayed under `/tmp`.
+
+The boot was `5243a19c-f221-420e-9802-d72f12435153`, `btime` 14:42:04Z, and that boot was still running at the idle reading. `/boot/zlyme` hashed to `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. The live helper hashed to `9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859`. `uname` was `Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026`. This pass did not hash `Image.gz` or the DTB again. The image was built before `ZLYME_VERSION` became `zlyme44.3`, so the live `os-release` text is still the previous version string.
+
+Demetria bus 1 port 2 saw device 21 and then device 22, both high-speed `1d6b:0100`. Host to Flip matched 4 KiB `6108e445bb8ec73271431f615891d097f363b706c67466ad3fcf589469e5ed2b` and 1 MiB `8b9572ed96dabf7a17e0ceb8449d87bdde8817ea6ac1dfbcff2fc0bb9a9e66ce` on `/storage` and on an MTP read-back. The second card matched the 4 KiB hash over MTP. Flip to host matched `ee5ce3479bcfecf2b4a819e8f4e3cbd501e90672f8b1919fcae692e129aa1900`. A rename matched. Pressing B disconnected device 21. SSH did not answer in that window, so the stopped UDC, responder, and FunctionFS were not read at that instant. Device 22 was the later session on the same boot, cable unmoved, and its 4 KiB MTP read-back matched. Demetria logged device 22 disconnecting at 15:51:50Z. There was no PTP `02ff` and no USB reset in the host log of those two sessions. One kernel `dev_err` at an earlier disconnect said a request was not queued to `ep0out`. There was no Oops and no WARNING.
+
+A later idle reading, at 16:24:34Z on the same boot, found `zlyme-usb-transfer` `state=off`, no `umtprd`, no helper process, no configfs gadget, and FunctionFS not mounted. `/dev/ffs-mtp` was an empty directory from the earlier session, not a mount. Reaper pid files named dead processes. `/boot` was read-only, `/storage` and `/mnt/sd2` were mounted, and NextUI was running. The UDC class was empty and `fcc00000.usb` was still bound to `dwc3`. Extcon reported USB-HOST with no SDP or CDP. That is the idle host role when no data cable is present, not a leftover gadget. Demetria's data port had no `1d6b:0100`. This reading is the resulting state. It is not a trace of the 15:51:50Z transition.
+
+The maintainer accepts this image with the cable-recovery limit. No further reduction is open. The broader Phase 12 closure, including the PortMaster and PanVK readings, is in `docs/ROADMAP.md`.
