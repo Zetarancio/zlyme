@@ -37,7 +37,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E25 | 2026-10-14 00:45Z–01:26Z | E24 image installed; MTP enumerated; file bytes not checked; boot restarted | [Installed E24 acceptance](#30-installed-e24-acceptance) |
 | 12D-E26 | 2026-10-14 01:50Z–02:21Z | disposable SHA-256 matched both ways; B not pressed; same boot | [PAK MTP file match](#32-pak-mtp-file-match) |
 | 12D-E27 | 2026-10-14 02:26Z–02:35Z | E26 session gone; second enumeration not logged | [Stopped session](#33-stopped-session) |
-| 12D-E28 | 2026-10-14 | EP0 recovery removed in source; not installed | [EP0 recovery removal, not yet on a Flip](#34-ep0-recovery-removal-not-yet-on-a-flip) |
+| 12D-E28 | 2026-10-14 | EP0 recovery removed; image installed; maintainer reports MTP works; no new file hash | [EP0 recovery removal, installed](#34-ep0-recovery-removal-installed) |
 
 ## Experiment ledger
 
@@ -1274,6 +1274,16 @@ The first A/B, when a file hash has already passed on this image, is one candida
 
 12D-E26 later recorded matching SHA-256 values in both directions on this image, including one file on the mounted ext4 card. The responder mount namespace contained `/storage`, `/mnt/sd2`, the configuration file, FunctionFS, and the responder binary. It did not contain `/boot`. Section 33 records the stopped session. No candidate is removed in that section.
 
+## 32. PAK MTP file match
+
+12D-E26 is the ledger entry above. The installed image is still the E24 archive. `/boot/zlyme` at 02:17:07Z is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`, and `/boot` stayed read-only.
+
+The session was already open. Demetria bus 1 port 2, PCI `0000:c4:00.3`, had device 48, `1d6b:0100`, at high speed from 01:50:17Z. The helper was `bound`, the UDC was `configured` at high speed, and extcon0 reported SDP. KIO was the only MTP client. It listed `ZLYME` and `SD Card`. `ZLYMEBOOT` was not a storage. No USB stick was mounted.
+
+A 4096-byte file and a 1048576-byte file copied from Demetria to `/storage` matched SHA-256 on the Flip. A 4096-byte file created on the Flip matched after KIO copied it back. The same 4096-byte hash matched on `/mnt/sd2`. Rename kept the hash. Delete removed both test directories. PTP `02ff` did not recur. The boot id did not change. B was not pressed, and the gadget was still bound at 02:21:00Z.
+
+The pairs, the namespace, and the earlier `ep0out` line from this boot are in `docs/research/evidence/usb-mtp-phase12d/20261014T020236Z-e26-file-match.txt`. This match does not explain the 12D-E25 restart, and it is not Phase 12 acceptance. Section 33 records the later reading of the stopped session.
+
 ## 33. Stopped session
 
 12D-E27 is the reading after the maintainer left the 12D-E26 session. The maintainer accepts the E26 file match and reports that a second Start and MENU+START succeeded. Those two reports are not tied to a host connect line. Demetria logged `usb 1-2` device 48 disconnecting at 02:26:43Z and no later device on that port. At the following Flip reading, `zlyme-usb-transfer status` was `off`, `fcc00000.usb` was `not attached`, configfs was not mounted, FunctionFS was not mounted, and no `umtprd` or watcher process remained. `/storage` and `/mnt/sd2` stayed mounted. `/boot` stayed read-only. `nextui.elf` was running. The boot id was still `6b0451a8-3c6d-42bc-ac50-2ddc73c6037c`. Stale reaper files under `/run/zlyme/usb-transfer` name pid 22803, which was not running. `state=off` does not treat them as a session. The local E24 archive still hashes to `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`.
@@ -1291,9 +1301,11 @@ The E26 hashes are the MTP file baseline for later A/B images. The archive above
 | Export jail | `/storage` and `/mnt/sd2` only. No `/boot` | The share. Leave it. |
 | Patch `1015`, `snps,dis_enblslpm_quirk`, `snps,dis_u2_susphy_quirk` | Not isolated in E26 | Not removed because they were quiet. |
 
-## 34. EP0 recovery removal, not yet on a Flip
+## 34. EP0 recovery removal, installed
 
-`52e84b069d9aacde39ca7a95c38be78a4d4746b1` removes `ep0_failed` and the one disconnect-then-connect that followed `failed to enable ep0out`. The deferred bind, the SDP/CDP wait, the single disconnect after a configured session loses its data cable, and the single connect when that cable returns are still there. `soft_connect` is not written while the UDC is `configured` or `suspended`. The jail and the export list are unchanged. Host tests, including the mocked enable-error case, pass and do not open a USB controller. No candidate from this commit has been installed. Patch `1015` and the LPM quirks are unchanged.
+`52e84b069d9aacde39ca7a95c38be78a4d4746b1` removes `ep0_failed` and the one disconnect-then-connect that followed `failed to enable ep0out`. The deferred bind, the SDP/CDP wait, the single disconnect after a configured session loses its data cable, and the single connect when that cable returns are still there. `soft_connect` is not written while the UDC is `configured` or `suspended`. The jail and the export list are unchanged. Host tests, including the mocked enable-error case, pass and do not open a USB controller. Patch `1015` and the LPM quirks are unchanged.
+
+When this section was first written, `zlyme-my355-20261014-d4feee1e9e08.tar` had not been installed. The maintainer later installed that archive from the card and reports that USB File Transfer works. That sentence is the maintainer's report. This reading did not copy a file, so it does not add a SHA-256 pair. The archive hashes to `0bf1e16c24c132fb6ffc98afbfb2eba5e5c7d9e7c800f3722b139102b291f5b6`. The Flip `/boot/zlyme` hashes to `d35d18971158d6724d7a73523b7644763cc84e302723ac0860cb5028452a8f19`. The live helper hashes to `30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6`. `uname` is `Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026`. At that reading `zlyme-usb-transfer status` was `off`, Demetria had no `1d6b:0100`, and the boot id was `3c3ebcc5-7d49-4c5b-a86b-a5da35f344cd`. That boot's dmesg has no `restored peripheral extcon` line. The line is `dev_info` and appears only when the helper changes an extcon bit, so its absence does not show that patch `1015` was skipped. The E24 archive is still `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`. The E26 file hashes remain the instrumented baseline.
 
 The comparison, after that candidate is installed from the card, uses the same cable, the same Demetria receptacle (bus 1 port 2, PCI `0000:c4:00.3`), KDE's MTP client, and the USB File Transfer PAK:
 
@@ -1305,14 +1317,4 @@ The comparison, after that candidate is installed from the card, uses the same c
 6. Open the PAK again without moving the cable and confirm a new enumeration, then stop.
 7. In a separate idle session, unplug once and plug back in. Confirm it enumerates again without a controller reset.
 
-Keep the responder log and any `failed to enable ep0out` line. If this image fails where the E24 archive succeeds on that same cable and receptacle, put the recovery back. A pass means the repair was not required in that session. It does not retire patch `1015` or the LPM quirks.
-
-## 32. PAK MTP file match
-
-12D-E26 is the ledger entry above. The installed image is still the E24 archive. `/boot/zlyme` at 02:17:07Z is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`, and `/boot` stayed read-only.
-
-The session was already open. Demetria bus 1 port 2, PCI `0000:c4:00.3`, had device 48, `1d6b:0100`, at high speed from 01:50:17Z. The helper was `bound`, the UDC was `configured` at high speed, and extcon0 reported SDP. KIO was the only MTP client. It listed `ZLYME` and `SD Card`. `ZLYMEBOOT` was not a storage. No USB stick was mounted.
-
-A 4096-byte file and a 1048576-byte file copied from Demetria to `/storage` matched SHA-256 on the Flip. A 4096-byte file created on the Flip matched after KIO copied it back. The same 4096-byte hash matched on `/mnt/sd2`. Rename kept the hash. Delete removed both test directories. PTP `02ff` did not recur. The boot id did not change. B was not pressed, and the gadget was still bound at 02:21:00Z.
-
-The pairs, the namespace, and the earlier `ep0out` line from this boot are in `docs/research/evidence/usb-mtp-phase12d/20261014T020236Z-e26-file-match.txt`. This match does not explain the 12D-E25 restart, and it is not Phase 12 acceptance. Section 33 records the later reading of the stopped session.
+Those steps were not run in the install reading. The maintainer's report is not that list. Keep the responder log and any `failed to enable ep0out` line if a later session is instrumented. If this image fails where the E24 archive succeeds on that same cable and receptacle, put the recovery back. The maintainer's report does not retire patch `1015` or the LPM quirks.

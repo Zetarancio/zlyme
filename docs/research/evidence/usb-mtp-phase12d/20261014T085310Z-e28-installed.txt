@@ -1,0 +1,28 @@
+12D-E28 installed image, read 2026-10-14 before the next kernel change.
+
+The maintainer installed zlyme-my355-20261014-d4feee1e9e08.tar and reports that USB File Transfer works. That report is the maintainer's. This file does not add a SHA-256 pair for a copied file.
+
+Host measurements:
+
+- Archive SHA-256: 0bf1e16c24c132fb6ffc98afbfb2eba5e5c7d9e7c800f3722b139102b291f5b6
+- Squashfs member of that archive: d35d18971158d6724d7a73523b7644763cc84e302723ac0860cb5028452a8f19
+- zlyme-usb-transfer inside that squashfs: 30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6
+- zlyme-usb-enter inside that squashfs: 302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982
+- Earlier E24 archive, left in place: be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a
+- SSH sha256sum of the Flip /boot/zlyme: d35d18971158d6724d7a73523b7644763cc84e302723ac0860cb5028452a8f19
+- Demetria lsusb -d 1d6b:0100 at 08:53:10Z: empty. No MTP session was open, so no disposable copy was made.
+- A later uname and a live helper hash did not return on the first attempt. The Flip then stopped answering ping.
+
+Reading after that, same day, SSH answered again:
+
+- uname: Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026
+- /usr/sbin/zlyme-usb-transfer: 30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6
+- /usr/sbin/zlyme-usb-enter: 302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982
+- zlyme-usb-transfer status: off
+- boot id: 3c3ebcc5-7d49-4c5b-a86b-a5da35f344cd
+- uptime at that reading: 583.76 seconds
+- dmesg on that boot has no "restored peripheral extcon" line. That is this boot only. It does not show whether the function returned without writing.
+
+The installed squashfs is the image that removed the one-shot EP0 recovery. Deferred UDC binding, the SDP/CDP wait, and the physical-cable disconnect and connect remain. Patch 1015 and both LPM device-tree properties are unchanged in that image. The maintainer reports that USB File Transfer works on it. No disposable file was copied during this reading.
+
+The E26 SHA-256 pairs stay the instrumented file baseline. They were measured on the E24 image.

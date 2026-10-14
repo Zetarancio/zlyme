@@ -119,3 +119,9 @@ The tenth table is 12D-E27. The E26 gadget was gone. A second host enumeration w
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T022643Z-e27-cleanup.txt` | Device 48 disconnect, empty gadget check, mounted data partitions, and the maintainer's second-Start report kept separate from the log. | `a959b0537be38af28df794b4eb01f1b06fa19f09f481171e2258c9982a3940a3` |
+
+The eleventh table is 12D-E28. The EP0-recovery removal archive is installed. The maintainer reports that USB File Transfer works. No new file checksum was taken.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T085310Z-e28-installed.txt` | Installed archive and squashfs hashes, the live helper and kernel identity, helper off, and the maintainer's report kept separate from a file copy. | `eff4f0c6191b9216bea88e0f00365e24e7f8b62a764d9d06830b46f82ad0b46d` |
