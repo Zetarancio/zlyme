@@ -79,8 +79,11 @@ if [ "${ZLYME_PM_NO_SLEEP:-}" != 1 ]; then
 	sleep 0.4
 fi
 
+# nextui-session always exports LOGS_PATH. When system logs are off
+# that path is the NextUI userdata directory, not a pak log.
+# pak-log.sh sets ZLYME_PAK_LOG only when system logs are on.
 log=/tmp/portmaster.log
-if [ -n "${LOGS_PATH:-}" ]; then
+if [ -n "${ZLYME_PAK_LOG:-}" ] && [ -n "${LOGS_PATH:-}" ]; then
 	log="$LOGS_PATH/portmaster.txt"
 	mkdir -p "$LOGS_PATH"
 fi
