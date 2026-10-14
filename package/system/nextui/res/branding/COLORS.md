@@ -25,14 +25,14 @@ on a color2 pill.
 The looping lockup is `zlyme_slime_loop.gif` (do not edit). Splash is
 every frame, 75% of max-fit, centered on 640×480 `#050608`:
 `splash.rgb565` (frame 0) in initramfs plus `splash.anim` on FAT
-(33 ms ZLYA, 30 FPS). Galaxy `zlyme_galaxy_loop.gif` (do not edit)
+(33 ms ZLYA, 30 FPS). Stars `zlyme_stars_loop.gif` (do not edit)
 is the same size and place as `progress.rgb565` + `progress.anim` for
 resize / OTA. README uses `zlyme_slime_loop.gif` as-is.
 
 - `zlyme_slime_loop.gif` → `../background.png`, initramfs
   `splash.rgb565`, FAT `splash.anim`, GitHub README
-- `zlyme_galaxy_loop.gif` → initramfs `progress.rgb565`, FAT `progress.anim`
-- `zlyme_charge_loop.gif` → `../charging-640-480.png` (mid-loop still)
+- `zlyme_stars_loop.gif` → initramfs `progress.rgb565`, FAT `progress.anim`,
+  `../charging-640-480.png` (mid-loop still)
 - `Z.png` / `zlyme_beaker-exact.svg` → `../logo.png` and PortMaster
   `zlyme-theme/logo.png` (512×512)
 

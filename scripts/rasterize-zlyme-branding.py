@@ -4,8 +4,8 @@
 Splash and the OTA/resize lockup use the same centered 75% fit so a
 switch does not jump. Sources stay the GIFs in branding/; this script
 never writes those files. `splash.rgb565` is slime frame 0;
-`splash.anim` is every slime frame. Galaxy goes to `progress.*`.
-Charging is a mid-loop still from the charge GIF; NextUI background
+`splash.anim` is every slime frame. Stars go to `progress.*`.
+Charging is a mid-loop still from the stars GIF; NextUI background
 is a mid-loop still from slime. README uses zlyme_slime_loop.gif.
 Keep every unique frame. ZLYA delay is 33 ms (30 FPS).
 """
@@ -38,8 +38,7 @@ LOOP_NAMES = (
     "zlyme_slime_loop.png",
     "zlyme_slime_loop.webp",
 )
-GALAXY_NAME = "zlyme_galaxy_loop.gif"
-CHARGE_NAME = "zlyme_charge_loop.gif"
+STARS_NAME = "zlyme_stars_loop.gif"
 
 
 def rsvg_png(svg: Path, dest: Path, width: int) -> None:
@@ -356,21 +355,20 @@ def main() -> None:
         write_png(bg, res / "charging-640-480.png")
         write_rgb565(bg, ramfs / "splash.rgb565")
 
-    charge = branding / CHARGE_NAME
-    if charge.is_file():
-        _, _, wall, _ = rasterize_gif(charge, 1.0, 3)
+    stars = branding / STARS_NAME
+    if stars.is_file():
+        _, _, wall, _ = rasterize_gif(stars, 1.0, 3)
         write_png(wall, res / "charging-640-480.png")
     elif slime is not None:
         _, _, wall, _ = rasterize_gif(slime, 1.0, 3)
         write_png(wall, res / "charging-640-480.png")
 
-    galaxy = branding / GALAXY_NAME
-    if galaxy.is_file():
-        g_frames, g_still, _, _ = rasterize_gif(
-            galaxy, SPLASH_SCALE, ANIM_FRAMES
+    if stars.is_file():
+        s_frames, s_still, _, _ = rasterize_gif(
+            stars, SPLASH_SCALE, ANIM_FRAMES
         )
-        write_rgb565(g_still, ramfs / "progress.rgb565")
-        write_splash_anim(g_frames, ramfs / "progress.anim", ZLYA_DELAY_MS)
+        write_rgb565(s_still, ramfs / "progress.rgb565")
+        write_splash_anim(s_frames, ramfs / "progress.anim", ZLYA_DELAY_MS)
 
 
 if __name__ == "__main__":

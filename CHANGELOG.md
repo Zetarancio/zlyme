@@ -13,6 +13,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
+- The boot splash and README lockup use the new circle-above-word mark (slime loop). Update and resize progress use the stars loop instead of the galaxy clip.
 - The battery sample is every 10 seconds. At 10% or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been tried on a Flip.
 - SSH stays on. Until you set a root password, the password is still empty. A password you set is kept on the card.
 - After the menu is up, the clock can correct itself from the network. The first picture does not wait for that.
