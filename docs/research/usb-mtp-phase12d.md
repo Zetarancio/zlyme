@@ -389,6 +389,7 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Unknown: why object operations returned PTP `02ff` after the storage names were listed. Whether the SSH start replaced a session that was already enumerated at 00:48:05Z. Why the boot restarted. Whether bus 1 port 2 is the receptacle the maintainer intends to keep.
 - Evidence: section 30.
 - Code: left untouched. No kernel, DTS, watcher, or export change.
+- Clarification, 2026-10-14: the maintainer reports that the USB cable was disconnected during this pass. The setup line that says the cable was not unplugged is the assumption written at the time, and it is withdrawn. The original evidence file is unchanged. The host logged `usb 1-2` device 26 disconnecting at 01:05:24Z. That line is not identified as the maintainer's action. The same port then logged more connect attempts and descriptor errors. High-speed enumeration was observed. The storage names `ZLYME` and `SD Card` were listed. A file transfer was not observed. PTP `02ff` was observed. The restart was observed and its cause is unknown. Physical B was not tested. A second PAK start with the cable left seated was not tested. The enumeration at 00:48:05Z and the SSH helper start at 00:50:27Z are not one proven continuous session. None of this is hardware acceptance. The restart and the Mali workqueue warning stay separate observations.
 
 ## 1. Hardware topology
 
@@ -1217,6 +1218,8 @@ The other Phase 12 checks from this boot are inspections, not acceptance of beha
 Host tests that passed the same morning are named in the evidence file. They do not open the Flip. A PortMaster launch, a 0% shutdown, a clock step, and the updater screen were not run on the device.
 
 The next file check needs SDP or CDP on the receptacle that enumerated, the same MTP client, and a SHA-256 on both sides. It does not need a new image. It has not been started again after the reboot.
+
+Clarification, 2026-10-14: the maintainer reports that the cable was disconnected during 12D-E25. The evidence file is unchanged. The 01:05:24Z host disconnect is not identified as that action. After it, `usb 1-2` kept attempting to enumerate and logged descriptor errors. A storage name on the computer was not a confirmed file. The restart remains unexplained, and it is not attributed to the Mali warning or to the cable report.
 
 ## 31. MTP reduction candidates
 

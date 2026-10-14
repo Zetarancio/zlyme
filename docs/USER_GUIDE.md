@@ -129,7 +129,7 @@ A computer can see:
 
 The boot partition is not shared, and the tool does not unmount it. Use a computer you trust. It can change settings and files staged for an update. If an update is already staged, the tool refuses to start. A missing second card or USB stick is normal and does not stop the ZLYME share. A stick plugged in after the screen is up is not added. A read-only volume stays read-only. NTFS is not shared. The computer receives files through MTP. It does not receive the card as a disk.
 
-On 2026-10-13 one computer saw the Flip, and on 2026-10-14 the installed development image was seen again at high speed, with ZLYME and a mounted second card named as storages. No file copy has been checked, so a connection is not proof that a copy worked. A charger is not a computer. The waiting screen stays up until the lower port is a data connection. It does not say the computer has connected. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
+Seeing the Flip on the computer is not proof that a copy worked. A charger is not a computer. The waiting screen stays up until the lower port is a data connection. It does not say the computer has connected. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
 
 
 

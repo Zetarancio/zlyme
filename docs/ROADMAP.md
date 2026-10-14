@@ -2142,7 +2142,7 @@ Closure: Those checks hardware-accepted. Until enumeration works, the file check
 
 Status 2026-10-13: 12D-E21 enumerated the gadget on one host port. The file checks are still open. The share list in the scope paragraph is the 12C implementation. This branch now exports filesystem roots. That export is in `docs/ARCHITECTURE.md`. It is host-tested. 12D-E22 installed it, the gadget started, and the computer saw no USB device. 12D-E23 changes the watcher and does not change the export list. That image was later found installed, with the gadget stopped and the PHY reporting DCP. 12D-E24 postpones the first bind until SDP or CDP. It is host-tested and not hardware-accepted.
 
-Status 2026-10-14: that postponed-bind archive is the installed image. 12D-E25 enumerated `1d6b:0100` at high speed. Storage names were listed. A file copy was not verified. The Flip restarted during the pass. The file checks stay open.
+Status 2026-10-14: that postponed-bind archive is the installed image. 12D-E25 saw `1d6b:0100` at high speed and listed storage names. A file copy was not verified. The maintainer later reported that the cable was disconnected during that pass. The host disconnect at 01:05:24Z is not identified as that action. The Flip restarted, and that cause is unknown. The file checks stay open.
 
 ### Phase 12D — open hardware gate
 
@@ -2179,6 +2179,14 @@ All of these, and a maintainer decision to release:
 - The 12A battery, SSH, and clock checks above have a result.
 - Documentation matches the source, including this section.
 - `ZLYME_VERSION` and the changelog section for the release exist. This phase does not create them.
+
+### After Phase 12 — Miyoo Flip hardware wiki review
+
+Once Phase 12 is ready for closure, and controlled comparisons have established the minimum kernel, device-tree, and userspace requirements for reliable MTP, review the final Miyoo Flip USB device tree against upstream Linux and the stock hardware evidence.
+
+If a board-specific device-tree change is actually required, consider updating the distribution-independent hardware wiki, `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`. Record only verified hardware facts: the final required properties, the kernel versions and source context, why each property is needed, which properties are inherited from upstream, which experimental properties were rejected, and the hardware tests that establish the final configuration. If no device-tree change is needed, record that conclusion.
+
+This is a documentation checkpoint after the MTP simplification experiments. It does not authorize an edit to that wiki now. A wiki change needs maintainer review. Zlyme remains the authority for its own MTP userspace. The hardware wiki owns reusable Miyoo Flip hardware knowledge.
 
 ## Suggested commit/checkpoint rhythm
 

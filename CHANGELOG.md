@@ -23,7 +23,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- On 2026-10-13 one computer saw the Flip as MTP (`1d6b:0100`) and, in a separate session, as a read-only mass-storage gadget (`1d6b:0104`). Both were high speed on one host port. No file was copied. Tries on 2026-10-12, and earlier tries on 2026-10-13, left the host with no USB device. The whole-card update `zlyme-my355-20261013-4a2b752bafbe.tar` was installed later that day. USB File Transfer reached the controller, and that computer did not see a USB device. That watcher update, `zlyme-my355-20261013-13071973a350.tar`, was later found installed. Before any new session the lower port was reporting a dedicated charger and the gadget was stopped. The development update `zlyme-my355-20261013-7951a37668e3.tar`, SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`, waits to bind the controller until that port reports a data connection. On 2026-10-14 that archive was the installed image. One computer saw `1d6b:0100` at high speed, and the storage names ZLYME and SD Card. A file copy was not verified. The Flip restarted during that check. The whole-card share is not hardware-accepted.
+- On the installed development image `zlyme-my355-20261013-7951a37668e3.tar` (SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`), a computer has seen USB File Transfer at high speed. A file copied through MTP has not been checked byte for byte. The session record is `docs/research/usb-mtp-phase12d.md`.
 
 ## [zlyme44.2] - 2026-10-11
 
