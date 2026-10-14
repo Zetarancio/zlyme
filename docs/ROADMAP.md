@@ -9,7 +9,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Active summary
 
-Phases 0–12 are closed. Phase 13 is not scoped. It continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`.
+Phases 0–12 are closed. Phase 13 is scoped and not yet implemented. It continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`.
 
 | Phase | Closed result | Where the detail stayed |
 |-------|----------------|-------------------------|
@@ -26,7 +26,7 @@ Phases 0–12 are closed. Phase 13 is not scoped. It continues on `zlyme44.3-pha
 | 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
 | 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
 | 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | Not scoped. No behavior is implemented. | [Phase 13](#phase-13) |
+| 13 | Scoped on 2026-10-15. No behavior is implemented. | [Phase 13](#phase-13) |
 
 Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
 
@@ -42,7 +42,7 @@ The sections below keep the phase records. The Phase 3C integration log moved to
 
 ## Current phase
 
-Phase 12 development is closed. Phase 13 is next and is not scoped. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped and remains on this branch.
+Phase 12 development is closed. Phase 13 is scoped in [Phase 13](#phase-13) and is not implemented. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is scoped below and remains on this branch.
 
 Status words in this section are not interchangeable:
 
@@ -1317,7 +1317,283 @@ WestonPack cleanup remains covered by host tests. Earlier hardware evidence is a
 
 ### Phase 13
 
-Phase 13 is planned and not scoped. The maintainer will define it. It is developed on `zlyme44.3-phase-12`. It is not a new branch. It shares the eventual `zlyme44.3` release with Phase 12. No Phase 13 behavior is implemented here. No `zlyme44.3` release exists.
+Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase-12` from `a428bff51c4c6b0989fce16024831de4277ebf69`. This is the same branch as Phase 12 and the same eventual `zlyme44.3` release. `ZLYME_VERSION` stays `zlyme44.3`. No `zlyme44.3` image or release exists. The installed Flip image remains the E32 archive named in the Phase 12 closure. Phase 13 does not edit the hardware wiki.
+
+The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
+
+#### Phase 13A — Build reliability and small corrections
+
+##### A1. Incremental branding rebuild
+
+Objective: a later `./build.sh` with no make target notices changes under `package/boot/zlyme-initramfs/` and refreshes the installed initramfs, the initramfs embedded in `Image`, `Image.gz`, the rootfs splash and progress files, and the image and update artifacts.
+
+Implementation owner: `build.sh` (`refresh_compiled_package`) and the existing linux stamp edge in `board/my355/board.mk`.
+
+Dependencies: branding assets already committed in `f4c9ad1d733dada1ca61f072850b5d7c84f57791`. The kernel rebuilds `initramfs_data.cpio` when an included file is newer. The toolchain and the kernel sources stay.
+
+Acceptance criteria: a changed splash or progress file changes that package fingerprint and dircleans `zlyme-initramfs` only. The next image build installs the current bytes and rebuilds the kernel image from the new install stamp. No full image build is required to accept the host check.
+
+Status: Planned.
+
+##### A2. Windows-compatible image partition type
+
+Objective: a freshly written image gives the storage partition GPT type Microsoft Basic Data. The filesystem stays exFAT with label `ZLYME`. Boot, the bootloader, and the rest of the layout stay as they are. An existing card is left alone. An OTA does not rewrite the partition table.
+
+Implementation owner: `board/my355/genimage.cfg`.
+
+Dependencies: genimage's `F` alias for `ebd0a0a2-b9e5-4433-87c0-68b6b72699c7`. Boot already uses `F`. The `uboot` partition stays `L`.
+
+Acceptance criteria: a host check resolves storage to that UUID and leaves the idbloader offset, the `uboot` type and placement, the boot type and placement, and the filesystem label unchanged.
+
+Status: Planned.
+
+##### A3. MTP storage naming
+
+Objective: the computer and the tool screen show `SDCARD1` for `/storage`, `SDCARD2` for `/mnt/sd2`, `OTG` for the first USB volume, and `OTG 2` onward when more USB volumes are shared. Mountpoints and filesystem labels stay. The boot partition stays out of the share.
+
+Implementation owner: `package/system/zlyme-usb-transfer/zlyme-usb-transfer` and the USB File Transfer page, which reads the export name the helper already prints.
+
+Dependencies: the existing duplicate-name suffix. `/run/zlyme/libraries` still decides which volumes exist.
+
+Acceptance criteria: host checks cover a primary card alone, a listed second card that is not mounted, a mounted second card, one USB volume, several USB volumes, and two volumes that would otherwise share a name. `/boot` is absent from the export list.
+
+Status: Planned.
+
+##### A4. VTree language resources
+
+Objective: Files shows the upstream translations for keys such as `FileOp_Copy`, `FileOp_Cut`, and `Footer_Pane`. The installed tree includes upstream `lang/`. Files.pak can resolve those files from its runtime directory. User themes and settings stay. Icons stay on the existing `res/` install.
+
+Implementation owner: `package/system/vtree/vtree.mk` and `package/system/nextui/paks/Tools/Files.pak/launch.sh`.
+
+Dependencies: VTree `560205b6198ac9e0e28975d42fcaee4c28989015`. `lang.c` loads `lang/` from the directory of `/proc/self/exe`, which is `/usr/share/vtree/vtree`. The runtime directory links `lang` the same way it links `res` and `fonts`. No upstream VTree patch.
+
+Acceptance criteria: a host check resolves the English strings from the Files runtime directory and a second launch leaves a user theme and `ShowHidden` in place.
+
+Status: Planned.
+
+##### A5. README branding GIF
+
+Objective: the README lockup is displayed at 444 pixels wide. The GIF file stays byte-for-byte.
+
+Implementation owner: `README.md`.
+
+Dependencies: `package/system/nextui/res/branding/zlyme_slime_loop.gif` from `f4c9ad1`.
+
+Acceptance criteria: the image tag width is 444 and the GIF hash is unchanged by the edit.
+
+Status: Planned.
+
+##### A6. Unreleased changelog cleanup
+
+Objective: `CHANGELOG.md` under Unreleased drops the MTP experiment chronology and the PanVK/Weston test chronology. An empty Known limitations heading goes with them. Those records stay in this file, in `docs/LOGBOOK.md`, and in `docs/research/`.
+
+Implementation owner: `CHANGELOG.md`.
+
+Dependencies: the Phase 12 closure and `docs/research/usb-mtp-phase12d.md`.
+
+Acceptance criteria: both paragraphs are absent from Unreleased, and the same evidence is still in the roadmap, the logbook, and the research record.
+
+Status: Planned.
+
+#### Phase 13B — RetroArch and emulator consistency
+
+##### B1. A/B navigation conventions
+
+Objective: menus confirm with A and go back with B. Game actions and InputPlumber's virtual Xbox 360 control layout stay. A user's own controller remap stays.
+
+Implementation owner: RetroArch and standalone emulator configuration, using each program's own defaults.
+
+Dependencies: the pinned emulator configs and their append order. No change to `miyoo-flip-gamepad` or the xb360 target.
+
+Acceptance criteria: source review shows menu confirm/back follows A/B, game-action bindings are untouched, and a saved user remap is not rewritten.
+
+Status: Planned.
+
+##### B2. Automatic save and resume
+
+Objective: RetroArch sets `savestate_auto_save` and `savestate_auto_load`. Ordinary exit gives RetroArch a chance to write that state. MENU+START still reaches SIGKILL after SIGTERM. A Hardcore RetroAchievements session keeps that program's restriction. A standalone emulator gets native automatic save and resume only where that emulator already supports it.
+
+Implementation owner: the RetroArch config layers and the narrow exit path for a RetroArch session. Standalone support is per emulator.
+
+Dependencies: existing save paths and config precedence. The pak hotkey in `zlyme-pak-hotkey.c` remains the emergency stop.
+
+Acceptance criteria: the settings are in the shipped config, a normal menu exit can flush state, and the document names the MENU+START limit and every standalone that has no automatic save. Manual saves stay. Unsupported savestate support is not invented.
+
+Status: Planned.
+
+##### B3. Remove the broken custom Zlyme RGUI theme
+
+Objective: unused custom theme files and forced theme overrides leave every config layer. The pinned RetroArch build selects its built-in Classic Orange theme with the setting that build actually reads. A user can still change the theme afterwards.
+
+Implementation owner: RetroArch package install and the appended config.
+
+Dependencies: the pinned RetroArch version and the last-writer of the theme setting.
+
+Acceptance criteria: no Zlyme theme is installed or forced, Classic Orange is the default that this pin understands, and a later user setting still wins.
+
+Status: Planned.
+
+##### B4. Standalone RetroArch tool
+
+Objective: Tools → RetroArch starts RetroArch with no ROM through the existing `ra-run` path.
+
+Implementation owner: a NextUI Tools pak that calls `ra-run`.
+
+Dependencies: the current RetroArch runtime, GPU, audio, input, DRM, logging, and cleanup. No second emulator runtime.
+
+Acceptance criteria: the tool is present, it launches through `ra-run` without a content path, and the session uses the same teardown as a game launch.
+
+Status: Planned.
+
+##### B5. User-installed libretro cores
+
+Objective: a compatible core placed in `/storage/.config/retroarch/cores/` can be found and loaded. System cores stay in `/usr/lib/libretro`. The read-only squashfs stays read-only.
+
+Implementation owner: the RetroArch core path configuration and the launcher that selects a core.
+
+Dependencies: the exFAT config tree. Online core download stays off.
+
+Acceptance criteria: the documented precedence is deterministic, a present user core loads, a missing user core does not replace a working system core, and no launcher points every system at an absent file.
+
+Status: Planned.
+
+##### B6. Readable RetroArch menu
+
+Objective: RGUI text is legible on the Flip's 640×480 display, using options the pinned RetroArch already has.
+
+Implementation owner: RetroArch menu settings.
+
+Dependencies: the pinned source's RGUI scale and font options. No renderer patch unless those options cannot do it.
+
+Acceptance criteria: filenames and settings remain usable at 640×480, and the chosen options exist in the pinned source.
+
+Status: Planned.
+
+##### B7. Quit through RetroArch menus
+
+Objective: Quick Menu can leave a game and return to NextUI, and that exit still allows the automatic save in B2. A ROM launched from NextUI and Tools → RetroArch keep different close behavior. The credit in the commit message is Icy_Mammoth1805.
+
+Implementation owner: RetroArch's Close Content and Quit on Close Content settings, if this pin supports them.
+
+Dependencies: B2's save-on-exit and B4's no-ROM session. A source patch is used only when no supported option does this.
+
+Acceptance criteria: closing content from a NextUI launch returns to NextUI and can write the automatic state. Closing content in the standalone tool leaves RetroArch running when that is the native meaning. The README does not carry the credit.
+
+Status: Planned.
+
+##### B8. FBNeo BIOS precedence
+
+Objective: FBNeo searches BIOS archives in `Bios/fbneo/`, then `Bios/FBNEO/`, then `Bios/`. The game archive stays ahead of those directories. MAME's own order stays. The credit in the commit message is Icy_Mammoth1805.
+
+Implementation owner: the FBNeo BIOS search used by the Zlyme launcher.
+
+Dependencies: the existing multi-card BIOS union. MAME configuration is out of this item.
+
+Acceptance criteria: host checks cover the three directories, a name that exists in more than one of them, and a MAME search that still uses MAME's order. The README does not carry the credit.
+
+Status: Planned.
+
+#### Phase 13C — PortMaster integration
+
+##### C1. Multi-card installed-port visibility
+
+Objective: PortMaster's list shows installed ports from both cards, and the selected card remains the place where a new install, update, or removal is written. NextUI's library list stays. An existing install is not moved. Two ports with the same name do not write onto each other.
+
+Implementation owner: a Zlyme-side integration. Upstream PortMaster-GUI stays unmodified unless a later note says why that failed.
+
+Dependencies: `HM_PORTS_DIR` is one path today. The selected library is the install target.
+
+Acceptance criteria: both cards' installed ports are visible, writes still land on the selected card, and an update or removal addresses the card that holds that install. If a combined directory cannot keep those write targets, the item stops, records that limit, and names the alternatives before any union or symlink farm is added.
+
+Status: Planned.
+
+##### C2. PortMaster media integration
+
+Objective: after PortMaster installs a port, suitable cover or screenshot art shows up in NextUI as `.media/<launcher stem>.png` on the card that holds the port. Art the user already chose stays.
+
+Implementation owner: a small post-install or post-exit hook on the Zlyme side.
+
+Dependencies: the art files a PortMaster install actually writes, on either card. Launcher names and duplicate port names have to be matched explicitly. No upstream PortMaster patch unless the hook cannot see the files.
+
+Acceptance criteria: a host check maps a real PortMaster image layout to the NextUI name, skips a missing image, leaves a hand-picked `.media` file in place, and does not attach one card's art to the other card's copy of the same port.
+
+Status: Planned.
+
+#### Phase 13D — Network and power policy
+
+##### D1. Samba authentication and Windows compatibility
+
+Objective: the share requires a username and password. The initial development account is `zlyme` / `zlyme`. Samba stays off until the user turns it on. The user can change the password. The password is not written to a log or passed as a process argument. The account survives reboot on the read-only root and the exFAT card, and `smbd` still starts, stops, and restarts.
+
+Implementation owner: the Samba package and `zlyme` service scripts. The user guide explains connecting to `\\<address>\storage`, how to read the Flip's address, the initial password, how to change it, and that the share includes settings.
+
+Dependencies: Samba's private files have to live where exFAT's missing Unix permissions cannot break them. `disable netbios = yes` stays. WS-Discovery, `wsdd`, `wsdd2`, NetBIOS, `nmbd`, and SMBv1 are out of scope. The guide does not say the Flip appears in Windows Explorer's Network list. The commit message credits Icy_Mammoth1805. The README does not.
+
+Acceptance criteria: guest access is gone, the development account works in the host configuration check, a changed password is what the next start uses, service stop and restart still succeed, and the user guide matches that behavior.
+
+Status: Planned.
+
+##### D2. Lid-close deep suspend
+
+Objective: closing the lid uses the existing deep suspend path while NextUI owns the screen and while an emulator or pak owns the screen.
+
+Implementation owner: `zlyme-keylidmon` and NextUI's power-button sleep, sharing the current suspend helper and the radio and governor sequence.
+
+Dependencies: the power-button deep sleep path, the resume guard, wake handling, hall open and close events, and separate input ownership. The DTS hall switch already has `wakeup-source` and `wakeup-event-action = <EV_ACT_DEASSERTED>`. The DTS stays unless a source-proven hardware requirement shows up. No power-register experiment. The commit message credits Icy_Mammoth1805. The README does not.
+
+Acceptance criteria: one close requests one deep suspend in both ownership cases, a second close does not stack another request, and power-button sleep still uses the same helper. Source review is the check. No suspend hardware run is part of this item.
+
+Status: Planned.
+
+#### Phase 13E — Documentation and final integration
+
+##### E1. README USB File Transfer description
+
+Objective: the README names USB File Transfer next to the other tools, including the lower USB-C port and the MTP names the image exports.
+
+Implementation owner: `README.md`, in the style of `docs/WRITING.md`.
+
+Dependencies: A3's names, and the user guide for the longer account. The README does not copy that account.
+
+Acceptance criteria: the paragraph matches the tool that exists and does not describe a planned behavior.
+
+Status: Planned.
+
+##### E2. User guide updates
+
+Objective: the user guide matches the behavior Phase 13 actually shipped: MTP names, Samba credentials and a direct address, the RetroArch tool and user cores, automatic save and its limits, A/B menu confirm and back, PortMaster's two-card list and art, and lid suspend.
+
+Implementation owner: `docs/USER_GUIDE.md`.
+
+Dependencies: 13A through 13D. The guide describes the source that landed, including a limit that the implementation kept.
+
+Acceptance criteria: each shipped item has a user-facing sentence, and an item that is still Planned is absent.
+
+Status: Planned.
+
+##### E3. Changelog
+
+Objective: user-visible Phase 13 changes are under Unreleased. There is no `zlyme44.3` heading and no release date.
+
+Implementation owner: `CHANGELOG.md`.
+
+Dependencies: the behaviors in 13A through 13D. A6 may already have cleared the old Known limitations text.
+
+Acceptance criteria: each user-visible change is one short entry. Test history stays out. The release-notes check still rejects Unreleased as a release body.
+
+Status: Planned.
+
+##### E4. Final source and documentation acceptance
+
+Objective: the host regression suites for the phase pass, and the record separates source-validated work from behavior that the installed E32 image has not measured.
+
+Implementation owner: this section, after 13A through 13E3.
+
+Dependencies: the suites named by the items above. No new hardware gate. No release preparation and no Phase 14.
+
+Acceptance criteria: the report lists the checks that ran and names the E32 image as the installed system. A source-only change is not described as installed.
+
+Status: Planned.
 
 ### After Phase 12 — Miyoo Flip hardware wiki review
 
