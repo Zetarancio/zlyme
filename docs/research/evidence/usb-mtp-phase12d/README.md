@@ -131,3 +131,9 @@ The twelfth table is 12D-E29. The USB2 PHY extcon resync patch is absent from th
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T091045Z-e29-candidate.txt` | Clean Linux extract, the unpatched PHY object, and the candidate archive hashes. | `cb13d2a7d7cac03b1319a6e59f6f74a73861386365ca8629bc5e88967d9d5caf` |
+
+The thirteenth table is 12D-E29 installed. The maintainer reports that MTP works. Demetria logged five high-speed enumerations. No new file checksum was taken.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T095100Z-e29-installed.txt` | Installed squashfs, kernel, and DTB hashes, the missing restore string, cleanup, and the host enumeration log kept separate from a file copy. | `49767a9a29f778ebe08fdd4e33b92a60b3417c5b52d436eff32b57456d2b27ff` |

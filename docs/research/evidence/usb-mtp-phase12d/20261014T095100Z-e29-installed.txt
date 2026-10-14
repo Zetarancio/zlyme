@@ -1,0 +1,37 @@
+12D-E29 installed image, read 2026-10-14 after the maintainer's MTP report.
+
+The maintainer installed zlyme-my355-20261014-97fbcfb253c1.tar and reports that MTP works, including file copying, cleanup, and the other operations that were tried. That report is the maintainer's. This file does not add a SHA-256 pair for a copied file. The E26 pairs stay the instrumented file baseline.
+
+Host archive SHA-256: af6a54666715b8cb41fe1c4a477a6270d04189462746550f406896b3435af95d
+
+Flip measurements:
+
+- /boot/zlyme: a73d6198e1509e7e5ad05c80322bcfaaf28716fd9ad8e34293667479e8a2d1dd
+- root loop backing file: /boot/zlyme
+- /boot/Image.gz: affdb99bcae1bf32127d0c51249a5a7ef810ed59fcc34c6da705f3a5335f1b38
+- /boot/rk3566-miyoo-flip.dtb: cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed
+- uname: Linux zlyme 7.2.10 #1 SMP PREEMPT Wed Oct 14 09:09:00 UTC 2026
+- zcat /boot/Image.gz | grep -a -c -F "restored peripheral extcon": 0
+- /proc/device-tree/usb@fcc00000 has snps,dis_enblslpm_quirk and snps,dis_u2_susphy_quirk
+- boot id: 43ef641a-5ae8-4142-a8b5-15e129eb44ea
+- /boot: /dev/mmcblk0p2 vfat ro
+- /storage: /dev/mmcblk0p3 exfat rw
+- /mnt/sd2: /dev/mmcblk1p1 ext4 rw
+- configfs gadget directory: absent
+- fcc00000.usb: not attached
+- umtprd: not running
+- zlyme-usb process: not running
+- nextui.elf: pid 491
+- zlyme-usb-transfer status did not return
+
+Demetria bus 1 is PCI 0000:c4:00.3. Kernel log, local time UTC+2, usb 1-2, high-speed 1d6b:0100, product Zlyme File Transfer:
+
+- device 7, 11:18:24 to 11:20:17
+- device 8, 11:23:57 to 11:24:37
+- device 9, 11:25:10 to 11:28:52
+- device 10, 11:34:14 to 11:34:21
+- device 11, 11:34:54 to 11:47:01
+
+No usb 1-2 line in that window matched error, reset, fail, or descriptor. lsusb -d 1d6b:0100 was empty at 11:51 local. The log does not identify a button and does not contain file bytes.
+
+The E28 archive is still 0bf1e16c24c132fb6ffc98afbfb2eba5e5c7d9e7c800f3722b139102b291f5b6. The E24 archive is still be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a.
