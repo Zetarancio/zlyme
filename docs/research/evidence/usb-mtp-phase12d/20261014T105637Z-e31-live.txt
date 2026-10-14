@@ -1,0 +1,69 @@
+12D-E31 live retest. Same boot as 20261014T103652Z-e31-installed.txt. The PAK was already open. It was not started from SSH, and the cable was not moved for these copies.
+
+Boot id 6a14efb9-ee1b-47ee-80d3-c75bd6bd9799. At 10:53:14Z uptime was 2119.27 seconds. At 10:56:37Z the same boot id was still current and the UDC was still configured. uname: Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026. The root is squashfs on /dev/loop0, backing file /boot/zlyme. /boot is vfat read-only on /dev/mmcblk0p2. The earlier hashes of /boot/zlyme, Image.gz, and the DTB were not repeated. This is that boot.
+
+Demetria, local time UTC+2, PCI 0000:c4:00.3, sysfs /sys/devices/pci0000:00/0000:00:08.1/0000:c4:00.3/usb1/1-2:
+12:40:12 device 14, high-speed 1d6b:0100, Zlyme File Transfer, serial zlyme.
+12:40:20 device 14 disconnect.
+12:40:27 device 15, high-speed 1d6b:0100, same identity.
+Device 15 was still present at 10:56:37Z. lsusb -t shows bus 1 port 2, 480M, usbfs. kiod6 pid 235843 held /dev/bus/usb/001/015. No other MTP client was started.
+
+Host kernel log for those two devices has no descriptor error, reset, or failed enumeration. kiod6 logged that 1d6b:0100 is unknown to libmtp at 12:40:12 and again at 12:40:27. At 12:40:20 it logged "Could not close session" and usb_get_endpoint_status "No such device" on both endpoints. That is the device 14 disconnect. No PTP 02ff line was logged during the copies.
+
+Flip, read before the copies at 10:53:14Z:
+zlyme-usb-transfer status: state=bound, udc=fcc00000.usb, gadget=zlyme-mtp, responder=running, host=configured, latch=configured.
+Exports: /storage ZLYME rw, /mnt/sd2 SD Card rw.
+UDC state file: configured. current_speed: high-speed.
+extcon0: USB=1, USB-HOST=0, SDP=1, CDP=0, DCP=0, SLOW-CHARGER=0.
+FunctionFS /dev/ffs-mtp had ep0, ep1, ep2, ep3.
+configfs gadget zlyme-mtp UDC file: fcc00000.usb.
+umtprd pid 11807, configuration /run/zlyme/usb-transfer/umtprd.conf.
+link watcher pid 11880. reaper pid 10902, watching process group 10824.
+link.latch: configured. link.binds: one line, bind. link.writes: absent.
+This boot's dmesg has no ep0, fcc00000, or dwc3 line.
+KIO listed ZLYME and SD Card. ZLYMEBOOT was not a storage.
+
+Responder mountinfo for pid 11807: tmpfs root, /storage on /dev/mmcblk0p3, /mnt/sd2 on /dev/mmcblk1p1, the umtprd.conf file, FunctionFS, and umtprd plus loader and libc from /dev/loop0 read-only. /boot is not in that namespace.
+
+umtprd.log starts at 10:40:12Z, the device 14 connect, with loop_on_disconnect 1. The next line is incoming_packet Read Error (-1) at 10:40:26Z, in the gap before device 15. No later responder line was logged. The same pid served the copies. The helper was not restarted between device 14 and device 15.
+
+The maintainer reports that the Flip USB connector is contact-sensitive and that the plug had been positioned so MTP was working before this test. That report is separate from the log. The log does not name who moved the plug, and these copies did not move it.
+
+Host files, generated on Demetria:
+e31-4k.bin 4096 bytes, SHA-256 7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1
+e31-1m.bin 1048576 bytes, SHA-256 eafef5ae0d452d6c428231fcd348642b62609bc9120ecce30a18a8fd4fcdb77b
+
+The directory zlyme-mtp-test-20261014-E31 did not exist on /storage or /mnt/sd2 before mkdir. MTP operations used kioclient only.
+
+ZLYME, host to Flip, through MTP, at 10:54:04Z–10:54:05Z:
+e31-4k.bin KIO size 4096.
+e31-1m.bin KIO size 1048576.
+Flip sha256sum of /storage/zlyme-mtp-test-20261014-E31/e31-4k.bin:
+7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1
+Flip sha256sum of /storage/zlyme-mtp-test-20261014-E31/e31-1m.bin:
+eafef5ae0d452d6c428231fcd348642b62609bc9120ecce30a18a8fd4fcdb77b
+kioclient cat of each file hashed to the same two values.
+
+Flip to host:
+dd wrote /storage/zlyme-mtp-test-20261014-E31/e31-from-flip.bin, 4096 bytes, at 10:54:20Z.
+Flip SHA-256 47d4a15d546cbc5691098d4470682c399e5978eda54da4fe90a995ba73d61e1b
+kioclient copy to Demetria at 10:54:30Z. Local size 4096.
+Demetria SHA-256 47d4a15d546cbc5691098d4470682c399e5978eda54da4fe90a995ba73d61e1b
+
+SD Card, ext4 /mnt/sd2:
+mkdir and copy of e31-4k.bin to e31-sd-4k.bin at 10:54:30Z. KIO size 4096.
+kioclient cat SHA-256 7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1
+Flip sha256sum of /mnt/sd2/zlyme-mtp-test-20261014-E31/e31-sd-4k.bin:
+7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1
+
+Rename at 10:54:39Z–10:54:40Z, through MTP:
+e31-4k.bin to e31-4k-renamed.bin on ZLYME.
+e31-sd-4k.bin to e31-sd-4k-renamed.bin on SD Card.
+Both new paths hashed to 7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1.
+Flip ls showed e31-4k-renamed.bin, e31-1m.bin, and e31-from-flip.bin on /storage, and e31-sd-4k-renamed.bin as the only file on the second-card directory.
+
+Delete at 10:55:09Z, through MTP: the three ZLYME files, the renamed SD Card file, and both test directories. Flip ls of both directories then reported No such file or directory. A following KIO ls of each deleted directory returned NoEntry. KIO still listed only ZLYME and SD Card.
+
+After the copies, through 10:56:37Z: boot id unchanged, device number still 15, UDC configured, high-speed, SDP=1, helper state=bound, latch=configured, the same three pids, no new host usb 1-2 line, no new dwc3 line, no PTP 02ff. B was not pressed. A second Start was not opened. MENU+START was not used. The cable was not unplugged.
+
+E30 MTP functional transfer: pass, with the cable left in the position that was already working. This is not a lifecycle pass and it is not a claim that every plug position enumerates.

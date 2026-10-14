@@ -1,0 +1,28 @@
+12D-E31. The 12D-E30 archive is installed. USB File Transfer was not opened on this boot, so there is no file checksum and no lifecycle trace.
+
+Local archive, hashed again on the development host:
+zlyme-my355-20261014-7caa0871a82f.tar
+2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea
+The 12D-E29 archive is still present:
+zlyme-my355-20261014-97fbcfb253c1.tar
+af6a54666715b8cb41fe1c4a477a6270d04189462746550f406896b3435af95d
+
+Flip, read at 10:36:52Z. Boot id 6a14efb9-ee1b-47ee-80d3-c75bd6bd9799. btime 1791973075 is 10:17:55Z. Uptime at that reading was 1138.25 seconds, the same boot.
+/boot/zlyme a568584c4ff9b4fad976ac126bb63bb923dd19c47f027e94eaa8b83d95a27bce
+/boot/Image.gz 8b5ceb6dec96b998904afef3a5cb6e87ee020eb157a1b2e1ca25ec8a0ea0d938
+/boot/rk3566-miyoo-flip.dtb f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18
+uname: Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026
+
+Live /proc/device-tree/usb@fcc00000 contains snps,dis_u2_susphy_quirk. It does not contain snps,dis_enblslpm_quirk. dr_mode is otg. maximum-speed is high-speed. phy-names is usb2-phy. extcon phandle bytes 00 00 00 15. phys phandle bytes 00 00 00 14. Those match the sorted 12D-E30 decompile.
+
+Stopped GUSB2PHYCFG(0), read from debugfs regdump and unmounted afterward, twice on this boot: 0x40101508. Bit 8 (ENBLSLPM) is 1. Bit 6 (SUSPHY) is 0. The with-property samples were 0x40101408. The difference is 0x100. No register was written. After the second read, debugfs was not mounted.
+
+This boot's dmesg has no fcc00000 line. WARNING count is 0. Taint is 4096. Loaded modules include mali_kbase, panfrost, rk3568_dmc, 8733bu, rtl8733bu_power, and miyoo_flip_gamepad. vermagic on those five out-of-tree modules is 7.2.10 SMP preempt mod_unload aarch64. wlan0 operstate is up. nextui.elf pid 513. /boot is vfat ro on mmcblk0p2. /storage is exfat rw on mmcblk0p3. /mnt/sd2 is ext4 rw on mmcblk1p1. Battery status Discharging, capacity 100. Charger online 1, usb_type Unknown [DCP]. At the same time extcon0 was USB=1, USB-HOST=0, SDP=1, CDP=0, DCP=0, SLOW-CHARGER=0. Flip lsusb shows the onboard Realtek WLAN on bus 5 and the root hubs. No upper-port peripheral was attached.
+
+Helper status returned state=off. UDC state was not attached. /proc/locks had no usb-transfer entry. fuser on /run/zlyme/usb-transfer/lock found no holder. The 12D-E29 status command that returned no output is not reproduced on this stopped boot. That earlier command also fell in a window of SSH banner timeouts. This pass did not capture a lock holder, and it does not treat the earlier stall as disproven.
+
+Demetria, current host boot, local time UTC+2: device 12, high-speed 1d6b:0100, 12:13:14–12:13:36; device 13, 12:14:12–12:15:48. Both ended before this Flip boot. The host kernel log after 12:16 local has no usb 1-2 line. From the first look on this boot through 10:36:52Z, lsusb -d 1d6b:0100 stayed empty. SDP was already 1 and the helper stayed off, so the PAK was not started from SSH.
+
+No host-to-storage copy, no Flip-to-host copy, no SD Card copy, no rename, and no delete were run. B, a second Start, and a physical unplug were not performed. MENU+START was not used. The helper was not edited. No OTA was built.
+
+E30 is installed. The live tree and the idle register match the property removal. The file and lifecycle checks are open. This is not acceptance and it is not a failure against 12D-E29. The 12D-E29 archive remains the rollback.

@@ -143,3 +143,15 @@ The fourteenth table is 12D-E30. The lower-controller ENBLSLPM property is absen
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T100426Z-e30-candidate.txt` | One-line DTB difference, the 66-byte kernel relink, and the candidate archive hashes. | `e50664bee64df152c49c5dedbb1fe8fa127004e6b041453b717547be3b854ed5` |
+
+The fifteenth table is the 12D-E31 stopped inspection, before the PAK was opened.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T103652Z-e31-installed.txt` | Installed squashfs, kernel, and DTB hashes, the live tree without the ENBLSLPM property, idle `GUSB2PHYCFG(0) = 0x40101508`, and the empty MTP window at that reading. | `ec0ae711d702068a56b9ffbbdcf277641839b2b97418729ac7770e6be951d02d` |
+
+The sixteenth table is the later 12D-E31 session on that same boot. The PAK was already open. Disposable SHA-256 values matched. The cable was not moved.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T105637Z-e31-live.txt` | Device 15 on Demetria bus 1 port 2, the matching SHA-256 pairs, the second-card copy, rename and delete, and the still-configured gadget. | `e9fa78a1a2d76498c3d838686d3ce3319539d737b6c69e35d4e6072673f4293e` |

@@ -39,7 +39,8 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E27 | 2026-10-14 02:26Z–02:35Z | E26 session gone; second enumeration not logged | [Stopped session](#33-stopped-session) |
 | 12D-E28 | 2026-10-14 | EP0 recovery removed; image installed; maintainer reports MTP works; no new file hash | [EP0 recovery removal, installed](#34-ep0-recovery-removal-installed) |
 | 12D-E29 | 2026-10-14 | patch 1015 removed; installed; maintainer reports MTP works; host logged enumerations; no new file hash | [USB2 PHY extcon resync, installed](#35-usb2-phy-extcon-resync-installed) |
-| 12D-E30 | 2026-10-14 | `snps,dis_enblslpm_quirk` removed; candidate built; not installed | [ENBLSLPM property, candidate](#36-enblslpm-property-candidate) |
+| 12D-E30 | 2026-10-14 | `snps,dis_enblslpm_quirk` removed; installed; idle bit 8 set; file match in 12D-E31 | [ENBLSLPM property, candidate](#36-enblslpm-property-candidate) |
+| 12D-E31 | 2026-10-14 | stopped reading, then same-boot MTP SHA-256 match; B and second Start pending | [ENBLSLPM property, installed, coverage open](#37-enblslpm-property-installed-coverage-open) |
 
 ## Experiment ledger
 
@@ -1382,7 +1383,7 @@ The same rebuild relinked `Image`. The C files compiled in that run were `init/v
 
 `mali_kbase.ko`, `miyoo-flip-gamepad.ko`, `rk3568_dmc.ko`, `8733bu.ko`, and `rtl8733bu_power.ko` keep their 13 October timestamps. Vermagic is `7.2.10 SMP preempt mod_unload aarch64`, the same string as this kernel. The bootloader hashes match 12D-E29. The squashfs is `a568584c4ff9b4fad976ac126bb63bb923dd19c47f027e94eaa8b83d95a27bce`. Inside it, `zlyme-usb-transfer` is `30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6`, `zlyme-usb-enter` is `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`, and the USB File Transfer `launch.sh` is `fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766`. The DTB in the archive is `f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18`.
 
-The candidate is `output/images/zlyme-my355-20261014-7caa0871a82f.tar`, SHA-256 `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`, from `7caa0871a82f784ffd8889face036fd3955cbf8f`. It is not installed. The 12D-E29, 12D-E28, and E24 archives are still present with their previous hashes. Host tests printed `usb transfer ok`, `usb link ok`, and `post-build config ok`. They do not open the Flip.
+The candidate is `output/images/zlyme-my355-20261014-7caa0871a82f.tar`, SHA-256 `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`, from `7caa0871a82f784ffd8889face036fd3955cbf8f`. When this section was first written, that archive was not installed. The 12D-E29, 12D-E28, and E24 archives are still present with their previous hashes. Host tests printed `usb transfer ok`, `usb link ok`, and `post-build config ok`. They do not open the Flip. Section 37 is the later install reading.
 
 Install it from the card. Use the same cable and Demetria bus 1 port 2, PCI `0000:c4:00.3`. Do not write a DWC3 register, VBUS, a USB role, or a regulator. Do not force suspend or a low-battery shutdown.
 
@@ -1391,3 +1392,46 @@ After boot, compare the squashfs and DTB hashes. Expect Linux 7.2.10, no `snps,d
 With the cable already connected, open USB File Transfer. Expect SDP or CDP, high-speed `1d6b:0100`, and UDC `configured`. Copy one disposable file to `/storage` and one back, and compare SHA-256 both ways. Check SD Card if it is present. Press B and confirm cleanup. Leave the cable, open the PAK again, confirm a new enumeration, and stop. On a separate idle session, unplug once and plug back in once. Record the extcon bits. One failed transition is a failure. Leave an ordinary idle interval before the final stop and confirm the session is still usable. Also check lower-port charging, the upper host if a device is available, Wi-Fi, NextUI, both cards, and the absence of new DWC3, PHY, or PMIC warnings.
 
 If this image fails where the installed 12D-E29 image succeeds on that cable and receptacle, restore the property and keep 12D-E29 as the rollback. A pass means clearing bit 8 was not required for the scenarios that were run. It is not a long-term reliability result. The next source audit, if this passes, is the userspace connection watcher. `snps,dis_u2_susphy_quirk` stays until its own pass.
+
+## 37. ENBLSLPM property, installed, coverage open
+
+12D-E31 reads the installed 12D-E30 archive on boot id `6a14efb9-ee1b-47ee-80d3-c75bd6bd9799`. `btime` 1791973075 is 10:17:55Z. At 10:36:52Z the uptime was 1138.25 seconds, the same boot. `/boot/zlyme` hashes to `a568584c4ff9b4fad976ac126bb63bb923dd19c47f027e94eaa8b83d95a27bce`. `/boot/Image.gz` hashes to `8b5ceb6dec96b998904afef3a5cb6e87ee020eb157a1b2e1ca25ec8a0ea0d938`. `/boot/rk3566-miyoo-flip.dtb` hashes to `f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18`. `uname` is `Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026`. The local archive hash is still `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`. The 12D-E29 archive is still `af6a54666715b8cb41fe1c4a477a6270d04189462746550f406896b3435af95d`.
+
+`/proc/device-tree/usb@fcc00000` lists `snps,dis_u2_susphy_quirk` and does not list `snps,dis_enblslpm_quirk`. `dr_mode` is `otg`, `maximum-speed` is `high-speed`, and `phy-names` is `usb2-phy`. The extcon phandle is `0x15` and the phys phandle is `0x14`, the same values as the sorted 12D-E30 decompile. A stopped debugfs read of `GUSB2PHYCFG(0)`, taken twice and unmounted afterward, is `0x40101508`. Bit 8 is 1. Bit 6 is 0. The with-property word was `0x40101408`. No register was written.
+
+This boot has no `fcc00000` dmesg line. The WARNING count is 0 and the taint is 4096. `mali_kbase`, `panfrost`, `rk3568_dmc`, `8733bu`, `rtl8733bu_power`, and `miyoo_flip_gamepad` are loaded. Vermagic on the five out-of-tree modules is `7.2.10 SMP preempt mod_unload aarch64`. `wlan0` is up. `nextui.elf` is pid 513. `/boot` is read-only vfat, `/storage` is read-write exfat, and `/mnt/sd2` is read-write ext4. The battery reads Discharging at capacity 100. The charger is online with RK817 `usb_type` `Unknown [DCP]`, while extcon0 reads USB=1 and SDP=1. Flip `lsusb` shows the onboard WLAN and the root hubs. No upper-port peripheral was attached.
+
+`zlyme-usb-transfer status` returned `state=off`. The UDC was `not attached`. Nothing held `/run/zlyme/usb-transfer/lock`. The 12D-E29 status command that returned no output is not reproduced. That command also sat in a window of SSH banner timeouts. This pass did not capture a holder, and it does not treat that stall as disproven. The helper still takes a blocking `flock` on that file. The responder, the reaper, and the link watcher are started with that descriptor closed.
+
+Demetria devices 12 and 13, high-speed `1d6b:0100` at 12:13:14–12:13:36 and 12:14:12–12:15:48 local, ended before this Flip boot. After 12:16 local the host log has no `usb 1-2` line. Through 10:36:52Z the helper stayed off and `lsusb -d 1d6b:0100` stayed empty, with SDP already 1. The PAK was not started from SSH. No file was copied, B was not pressed, a second Start was not opened, and the cable was not unplugged. The removal is installed and the idle register matches it. At this reading the file check was still open, and this boot was not a failure against 12D-E29. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T103652Z-e31-installed.txt`. The later session on this boot follows the mechanism table.
+
+The helper was read and not changed. The connection pieces, from that source and from the earlier sessions:
+
+| Piece | Class | Why |
+| --- | --- | --- |
+| SDP/CDP wait | Essential, and observed on earlier images | 12D-E22 reached EP0 while the PHY reported a dedicated charger, and Demetria saw no device. 12D-E26 enumerated with SDP=1. This boot already had SDP=1 while the gadget was stopped, so the wait itself was not exercised. |
+| Deferred initial bind | Essential, and observed on 12D-E26 | `spawn_link` calls `link_once` once before the background loop. A data cable binds the UDC once, latches `pending`, and does not write `soft_connect`. 12D-E26 recorded one `bind` and then `configured`. |
+| Link watcher | Essential for the wait, the cable edges, and responder exit | The background loop is what binds if SDP or CDP appears after start, writes the cable edges, and tears the session down if the responder pid is gone. Removing the process would also remove that deferred bind. |
+| Cable-loss `soft_connect disconnect` | Unproven on a working MTP session | One write when the host state is neither `configured` nor `suspended` and both SDP and CDP are 0, then latch `idle`. 12D-E26 did not unplug. This boot did not either. |
+| Cable-return `soft_connect connect` | Unproven, and separable from the initial bind | Written only from latch `idle` or `idle-failed` when a data cable is present. The first bind does not use it. |
+| Latches and the link state files | Essential for not repeating a write | A failed or finished write is not retried. The kernel accepts the write length without proving the pull-up changed. |
+| The 0.2 second poll | Essential for this file-based watcher | Extcon and the UDC state are files. The loop closes the lock descriptor before it sleeps. |
+| Cleanup reaper | Outside this reduction | It is the MENU+START path. 12D-E27 did not capture a second enumeration for that report. |
+| Process-group split | Essential for that reaper | The watcher stays in the PAK group. The reaper calls `setsid` so it can outlive the group. |
+
+No connection function in the helper is uncalled. The full-root export, the mount jail, foreign UDC protection, MENU+START, and the FunctionFS and responder lifecycle stay as they are. `snps,dis_u2_susphy_quirk` stays for its own experiment.
+
+The file check on this image is the later reading below. B, a second Start, and MENU+START were still pending when that reading was written. The one separable candidate after that file check remains the cable-return `soft_connect connect`, together with the cable-loss disconnect that creates the `idle` latch, leaving the SDP wait and the initial bind in place. The risk is that an unplug drops the pull-up and a replug does not restore it, so the host never sees the device again. That experiment is not built here. It needs its own unplug, and the live reading did not move the cable.
+
+Later on the same boot the PAK was already open. Demetria, PCI `0000:c4:00.3`, bus 1 port 2, logged device 14 at 10:40:12Z–10:40:20Z and device 15 from 10:40:27Z. Both were high-speed `1d6b:0100`. The host log for those lines has no descriptor error. kiod6 recorded the unknown-VID notice and, at the device 14 disconnect, `Could not close session`. No PTP `02ff` line appears. Device 15 was still present at 10:56:37Z, owned by kiod6. The helper was `state=bound`, UDC `configured` at high speed, latch `configured`, SDP=1, FunctionFS `ep0` through `ep3`, one `bind` in `link.binds`, and no `link.writes` file. `umtprd` pid 11807 had started at 10:40:12Z. Its log has `incoming_packet : Read Error (-1)` at 10:40:26Z and no later line. The same pid served device 15. The responder namespace had `/storage`, `/mnt/sd2`, the configuration, and FunctionFS. `/boot` was not in it. KIO listed ZLYME and SD Card.
+
+Disposable copies through kioclient, cable left where it was:
+
+| Path | SHA-256 |
+| --- | --- |
+| Host `e31-4k.bin`, Flip `/storage/.../e31-4k.bin`, and the MTP read-back | `7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1` |
+| Host `e31-1m.bin`, Flip `/storage/.../e31-1m.bin`, and the MTP read-back | `eafef5ae0d452d6c428231fcd348642b62609bc9120ecce30a18a8fd4fcdb77b` |
+| Flip `e31-from-flip.bin` and the MTP copy on Demetria | `47d4a15d546cbc5691098d4470682c399e5978eda54da4fe90a995ba73d61e1b` |
+| SD Card `e31-sd-4k.bin`, the Flip hash, and the MTP read-back | `7927a8660e35db2c573755522b6ef35d3bb05e5dea1c7323d5e8c84bd4586de1` |
+
+Rename kept the 4 KiB hash on both storages. MTP delete removed both test directories. After that, the boot id was unchanged, the device number was still 15, and the UDC was still `configured`. The maintainer reports that the connector is contact-sensitive and had been positioned so this session worked. The copies did not move the plug, and the log does not identify the device 14 disconnect as that positioning. E30 MTP functional transfer passes for this fixed position. B, a second Start, and MENU+START were not pressed. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T105637Z-e31-live.txt`. The stopped-session file is unchanged.
