@@ -1,0 +1,36 @@
+12D-E25. Demetria is the host. Times below are UTC. The Flip clock is UTC.
+
+Installed image, read 2026-10-14 00:45:29Z through 00:49Z, before this pass started the helper. Gadget status was off. UDC state was not attached.
+
+Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 18:02:11 UTC 2026 aarch64
+/boot/zlyme 06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d
+/usr/sbin/zlyme-usb-transfer 15e2e682012eb08363a02e2c888814d524d5c7f32b34562cc81c2dc06f332557
+/usr/sbin/zlyme-usb-enter 302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982
+image launch.sh fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766
+/storage/Tools/my355/USB File Transfer.pak/launch.sh fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766
+/boot/Image.gz eafe2a996bf1b0495edf8859ad4a68fbf568c40a8ebafeeace20761b778cd847
+/boot/rk3566-miyoo-flip.dtb cbb249cd244b32595c29d3df61cd968b7cd6e0533085072549f78b14280eefed
+loop0 backing file /boot/zlyme
+/dev/mmcblk0p2 LABEL ZLYMEBOOT mounted /boot vfat ro
+/dev/mmcblk0p3 LABEL ZLYME mounted /storage exfat rw
+/dev/mmcblk1p1 mounted /mnt/sd2 ext4 rw
+/run/zlyme/libraries listed /storage and /mnt/sd2
+No /mnt/media volume. No /storage/.update/reconstruct. No /storage/.update/pending/zlyme.
+
+extcon0 at the start that followed, before the helper was launched: USB 1, USB-HOST 0, SDP 1, CDP 0, DCP 0, SLOW-CHARGER 0.
+
+Helper start from a held SSH at 00:50:27Z returned 0. status was state=bound, udc=fcc00000.usb, responder=running, host=not attached, latch=pending. Exports were /storage as ZLYME rw and /mnt/sd2 as SD Card rw. current_speed later read high-speed. The UDC state file still read not attached. link.binds contained one bind line. umtprd, the link watcher, and the reaper were running. uMTP 1.8.1 logged both storages, high-speed max packet 0x200, and show-hidden 1. The log stayed at that banner during the later host errors.
+
+Demetria kernel: usb 1-2 device 26, 1d6b:0100, high-speed, at 00:48:05Z, which is before the SSH start. The same port had devices 21 through 25 from 00:32:54Z to 00:42:32Z, each a Zlyme File Transfer connect and disconnect. Bus 7 had only its root hub during the SSH session. lsusb -v on device 26: bcdUSB 2.01, iManufacturer Zlyme, iProduct Zlyme File Transfer, iSerial zlyme, bulk wMaxPacketSize 512. iConfiguration and iInterface read as error. kiod6 held the usbfs node. kioclient listed mtp storages ZLYME and SD Card. ZLYMEBOOT was not a storage.
+
+kioclient mkdir and copy failed. kiod6 at 00:53:44Z and 00:56:50Z: LIBMTP_Get_Children, LIBMTP_Create_Folder, and send_file_object_info returned PTP 02ff I/O errors. mtp-detect found no raw device while kiod held the node, and still none after that hold was released. No disposable file was confirmed on the Flip. There is no SHA-256 pair.
+
+Host disconnect of usb 1-2 device 26 at 01:05:24Z. A usbfs reset ioctl returned ENODEV. The gadget did not reappear. Wi-Fi ARP to 192.168.0.108 failed from about 00:56Z until 01:11:59Z.
+
+New boot: uptime 891s at 01:26:26Z, so the boot is about 01:11:35Z. /boot/zlyme-dmesg.txt is 41995 bytes, mtime 01:11, and contains no "Kernel panic", "Oops", or "restart" line. /sys/fs/pstore was empty. This boot's dmesg has no "failed to enable ep0out". At 3.64s Mali logged a workqueue WARNING in kbase_mmu_as_init, then "Probed as mali0". That is not a panic.
+
+Post-reboot, gadget off, UDC not attached, extcon0 all zero. charger online 0, usb_type "Unknown [DCP]", battery capacity 99, status Discharging. /boot still ro. Libraries unchanged. nextui.elf maps /dev/mali0. zlyme-led watch is running. One ntpd is running. mali_kbase is loaded. panfrost is not loaded. panfrost.ko vermagic is 7.2.10 SMP preempt mod_unload aarch64. /proc/config.gz has the three test options unset. Vulkan ICD files present: mali_icd.json and panfrost_icd.cortex-a55.json. /usr/share/nextui/version.txt is 184bbd7e56b767eaa12e0cff53409a6e23ab558e. os-release is zlyme44.2 (2026-10-13), Buildroot 2026.08. wlan0 operstate up. Panel card0-DSI-1 connected and enabled. Backlight brightness 16 of 263. ALSA card rk817_ext. Input names include Miyoo Flip Gamepad and Microsoft X-Box 360 pad. DMC governor powersave, cur_freq 324000000. GPU governor simple_ondemand. No weston or FRT mount. /storage/.config/zlyme/ssh.password is absent. /etc/shadow is a tmpfs mount. No password was changed.
+
+Host regression the same morning: test_portmaster_root.sh, test_portmaster_prepare.sh, test_portmaster_theora_compat.sh, test_portmaster_mounts.sh, test_storage_libraries.sh, test_storage_slot.sh, test_changelog_release_notes.sh, test_pak_launch.sh, test_pak_logging.sh, test_zlyme_led_battery.sh, test_zlyme_ssh_auth.sh, test_zlyme_ntp.sh, test_doc_contracts.py, test_doc_links.py, and test_usb_transfer.sh (which runs the link tests) passed. shellcheck on the USB helper, the PAK launch.sh, and the USB tests exited 0. Those are host results.
+
+Not done on the Flip: a SHA-256 file copy, rename, delete, a second-card copy, a second Start, a physical B press, MENU+START, a PortMaster launch, a 0% shutdown, a password reboot, a clock step, and an updater screen. Audio, buttons, picture quality, and charging were not exercised beyond the nodes above.

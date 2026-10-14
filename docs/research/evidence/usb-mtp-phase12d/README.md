@@ -101,3 +101,9 @@ The sixth table is 12D-E22, after `zlyme-my355-20261013-4a2b752bafbe.tar` was in
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261013T222106Z-e24-prestart.txt` | Installed hashes, `state=off`, UDC `not attached`, extcon0 DCP, and Demetria with no Flip gadget. | `9bdbe4998cc03029709db9d180405a56c965a08168fdf6a8f2211644b693e323` |
+
+The eighth table is 12D-E25. The E24 archive was installed. A file copy was not verified. The Flip restarted during the pass.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T004529Z-e25-acceptance.txt` | Installed E24 hashes, the high-speed enumeration on Demetria bus 1 port 2, the PTP I/O errors, the disconnect, and the post-reboot inspection. | `fc26a4629fc8f502f2b8d2a31e5de02f30e43e06f86436e62d3f7e454aae2538` |

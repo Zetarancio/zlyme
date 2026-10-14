@@ -34,6 +34,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E22 | 2026-10-13 21:05Z–21:22Z | gadget started, host saw no device | [Installed root export](#27-installed-root-export) |
 | 12D-E23 | 2026-10-13 | source defect in the watcher; installed later the same day | [Connection watcher](#28-connection-watcher) |
 | 12D-E24 | 2026-10-13 22:21Z | installed watcher image, PHY DCP, gadget stopped | [Deferred UDC bind](#29-deferred-udc-bind) |
+| 12D-E25 | 2026-10-14 00:45Z–01:26Z | E24 image installed; MTP enumerated; file bytes not checked; boot restarted | [Installed E24 acceptance](#30-installed-e24-acceptance) |
 
 ## Experiment ledger
 
@@ -375,6 +376,19 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Evidence: section 29.
 - Code: `zlyme-usb-transfer` binds only after SDP or CDP. The PAK accepts `state=waiting`. Exports and `zlyme-usb-enter` are unchanged.
 
+### 12D-E25 Installed E24 acceptance
+
+- When: 2026-10-14 00:45:29Z through 01:26:26Z.
+- Source: installed OTA `zlyme-my355-20261013-7951a37668e3.tar`, SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`. `/boot/zlyme` is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`. `zlyme-usb-transfer` is `15e2e682012eb08363a02e2c888814d524d5c7f32b34562cc81c2dc06f332557`. `zlyme-usb-enter` is `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. Both copies of USB File Transfer `launch.sh` are `fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766`. `Image.gz` and `rk3566-miyoo-flip.dtb` match 12D-E21. The root loop is `/boot/zlyme`. `ZLYMEBOOT` is `/boot`, read-only. `ZLYME` is `/storage`.
+- Setup: the maintainer reported that a bad cable had been corrected and that MTP was working. Demetria's lower-port history for this window is bus 1 port 2, not the bus 7 port 1 of 12D-E21. The helper was started from a held SSH after extcon0 already read SDP. The cable was not unplugged for this pass.
+- Hypothesis: the installed deferred-bind image can enumerate and a disposable file survives MTP with a matching SHA-256.
+- Action: compare the installed hashes with the E24 archive. List the MTP storages. Copy disposable files through KIO and compare SHA-256 on the Flip. Leave the cable seated.
+- Observed: before the SSH start, Demetria had already enumerated `1d6b:0100` at high speed on bus 1 port 2 (`usb 1-2`, device 26, 00:48:05Z). The same port had connected and disconnected devices 21 through 25 from 00:32:54Z to 00:42:32Z. After the SSH start the helper reported `state=bound`, one `bind` line, high-speed, and exports `ZLYME` (`/storage`) and `SD Card` (`/mnt/sd2`). KIO listed those two names. `ZLYMEBOOT` was not a storage. `kioclient` mkdir and copy failed. `kiod6` logged PTP `02ff` I/O errors for object handles, folder creation, and object info. `mtp-detect` found no raw device. No disposable file was confirmed on the Flip. The UDC state file read `not attached` while `current_speed` was `high-speed`. String descriptors for the configuration and interface read as errors. Device 26 disconnected at 01:05:24Z. Wi-Fi then stopped answering until 01:11:59Z. The next boot is about 01:11:35Z. The saved `/boot/zlyme-dmesg.txt` from that boot has no panic line. After the reboot the gadget was off and extcon0 was all zeros. Battery capacity was 99 and status was Discharging. Charger `online` was 0.
+- Result: the E24 archive is the installed image, and this host enumerated it at high speed. A file copy was not verified. The restart is unexplained. Phase 12D stays open. Earlier failures are unchanged. A bad cable may explain some of them. This session is not that comparison.
+- Excludes: a mismatched install. A second Start, a physical B press, and MENU+START on this image. A SHA-256 match. Treating KIO's storage names as a completed copy.
+- Unknown: why object operations returned PTP `02ff` after the storage names were listed. Whether the SSH start replaced a session that was already enumerated at 00:48:05Z. Why the boot restarted. Whether bus 1 port 2 is the receptacle the maintainer intends to keep.
+- Evidence: section 30.
+- Code: left untouched. No kernel, DTS, watcher, or export change.
 
 ## 1. Hardware topology
 
@@ -1190,4 +1204,34 @@ This reading does not show a filesystem-root failure. The PHY classification and
 
 The host tests in `scripts/tests/test_usb_transfer.sh` and `scripts/tests/test_usb_link.sh` cover the waiting and bound paths with mocked sysfs. They do not open a USB controller. The target `umtprd` is aarch64. This host has no `qemu-aarch64` and no `functionfs` filesystem, so the real responder was not executed here. The generated configuration is still the one those tests check, and uMTP 1.8.1 does not reject a filesystem root at parse time.
 
-The product rebuild from `7951a37668e3` is `zlyme-my355-20261013-7951a37668e3.tar`, SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`. Squashfs `/boot/zlyme` in that pack is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`. `zlyme-usb-transfer` inside it is `15e2e682012eb08363a02e2c888814d524d5c7f32b34562cc81c2dc06f332557`. `zlyme-usb-enter` is unchanged at `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. USB File Transfer `launch.sh` is `fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766`. `Image` is `1bda9d4258b70f0e6e1693071344590189f1a49315dfac98805df95e5e145fed`. `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, `u-boot.itb`, and `u-boot-rockchip.bin` match the 12D-E21 kernel generation. It has not been installed. The next hardware check is that archive, on the same cable and the physical receptacle that was Demetria bus 7 port 1 in 12D-E21. Confirm SDP or CDP before launching the PAK. Leave the page up. If the PHY stays DCP, the screen should stay on the waiting line and the computer should not see a device. That is not a pass. If `1d6b:0100` is configured and the storages are visible, copy one disposable file and compare its SHA-256, then stop and confirm the gadget is gone.
+The product rebuild from `7951a37668e3` is `zlyme-my355-20261013-7951a37668e3.tar`, SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`. Squashfs `/boot/zlyme` in that pack is `06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d`. `zlyme-usb-transfer` inside it is `15e2e682012eb08363a02e2c888814d524d5c7f32b34562cc81c2dc06f332557`. `zlyme-usb-enter` is unchanged at `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. USB File Transfer `launch.sh` is `fd7f9d58ef38d7a6b0411dff17951e10423fef68e3882213d0987a9b9fdbf766`. `Image` is `1bda9d4258b70f0e6e1693071344590189f1a49315dfac98805df95e5e145fed`. `Image.gz`, `rk3566-miyoo-flip.dtb`, `idbloader.img`, `u-boot.itb`, and `u-boot-rockchip.bin` match the 12D-E21 kernel generation. It had not been installed when this section was written. Section 30 records the later install.
+
+## 30. Installed E24 acceptance
+
+12D-E25 is the ledger entry above. The installed hashes match the E24 archive. The root loop's backing file is `/boot/zlyme`. `ZLYME` is `/dev/mmcblk0p3` on `/storage`. `ZLYMEBOOT` is `/dev/mmcblk0p2` on `/boot`, still read-only. `/mnt/sd2` is the ext4 card and is listed in `/run/zlyme/libraries`. No USB volume was mounted.
+
+Demetria bus 1 port 2 enumerated `1d6b:0100` at high speed before the SSH start, and KIO then showed storage names `ZLYME` and `SD Card`. Object creation and copy failed with PTP `02ff`. No SHA-256 pair exists. The gadget disconnected at 01:05:24Z. The following boot, about 01:11:35Z, has no panic in `/boot/zlyme-dmesg.txt`. After that boot the lower PHY was all zeros, the battery read 99% and Discharging, and the charger `online` value was 0. RK817 `usb_type` still showed DCP while extcon0 was all zeros. Those are different reporters.
+
+The other Phase 12 checks from this boot are inspections, not acceptance of behavior. NextUI was running and its maps include `/dev/mali0`. `mali_kbase` was loaded. `panfrost` was not. The PanVK ICD file is installed. It was not opened. `/proc/config.gz` has `CONFIG_MMC_TEST`, `CONFIG_SND_TEST_COMPONENT`, and `CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE` unset. Module vermagic is `7.2.10 SMP preempt mod_unload aarch64`. One `ntpd` was running. `zlyme-led watch` was running. The panel node was connected and enabled. ALSA had `rk817_ext`. The input names included the Miyoo Flip gamepad and a virtual Xbox 360 pad. DMC was `powersave` at 324 MHz. None of those were changed, and none of audio, buttons, picture, or charging was exercised. Mali logged a workqueue warning at 3.64 seconds and then probed as `mali0`. There is no pending update. `/storage/.config/zlyme/ssh.password` is absent, so a saved-password reboot was not available to test. No password was set or cleared.
+
+Host tests that passed the same morning are named in the evidence file. They do not open the Flip. A PortMaster launch, a 0% shutdown, a clock step, and the updater screen were not run on the device.
+
+The next file check needs SDP or CDP on the receptacle that enumerated, the same MTP client, and a SHA-256 on both sides. It does not need a new image. It has not been started again after the reboot.
+
+## 31. MTP reduction candidates
+
+This section is a plan. Nothing in it was removed, rebuilt, or retried.
+
+The working comparison for a later pass is the E24 image, Demetria bus 1 port 2, the cable that enumerated on 2026-10-14, KIO or libmtp, the filesystem-root exports, and a SHA-256 of a disposable file in both directions. Each candidate keeps that image, or a newer image built only to drop that one candidate, as the rollback. A candidate that was not on the path of one successful enumeration is not obsolete.
+
+| Candidate | Why it is here | What 12D-E25 did with it | Removal risk |
+| --- | --- | --- | --- |
+| `snps,dis_u2_susphy_quirk` | Inherited USB2 suspend-PHY quirk. | Present. Not isolated. | Highest. Leave it until the others have a rollback that still enumerates. |
+| Deferred UDC bind and the SDP/CDP watcher | E24 waits for a data cable before `usb_gadget_register_driver`. The watcher binds once. | One `bind` line after SDP was already 1. Enumeration happened on this image. | High. This is the image that enumerated. Dropping it returns to the earlier bind-at-start path. Test it only after a SHA-256 match exists on this image. |
+| `1015-phy-rockchip-inno-usb2-resync-peripheral-extcon.patch` | Experimental resync of the peripheral extcon. | Not shown to run. Ordinary detection can publish SDP without it, as in 12D-E20. | Medium. One quiet session does not prove it is unused. |
+| `snps,dis_enblslpm_quirk` | Experimentally retained. 12D-E21 enumerated with `GUSB2PHYCFG(0)` bit 8 clear. | Not read in this pass. | Medium. E21 does not prove the bit had to be clear. |
+| EP0 recovery and `soft_connect` | One disconnect plus one connect after `failed to enable ep0out`. A failed write is not repeated. `configured` and `suspended` are not written. | No `failed to enable ep0out` in the lines read after the SSH start. `link.recover` was not present. Unplug was not tested. | Medium for the unplug path. The steady configured path already avoids a gratuitous write. |
+| debugfs `transfer_type` | Old health check. | Not used. `ep0_failed` reads `dmesg`. | Low as a runtime dependency. The comment that rejects it should stay until the recovery path is the thing under test. |
+| Filesystem-root export and `zlyme-usb-enter` | The share. Private mount namespace, `O_NOFOLLOW`, non-recursive clone. | Names were listed. Bytes were not copied. Confinement was not re-probed on the device. Host confinement tests passed. | Not a link simplification. Removing it changes the product. |
+
+The first A/B, when a file hash has already passed on this image, is one candidate at a time. The rollback is this OTA, written to the card from the host, not over Wi-Fi. Do not combine the quirk, the extcon patch, and the watcher in one image.
