@@ -1,6 +1,11 @@
 #!/bin/sh
 # shellcheck disable=SC1007,SC2002
-# Soft-connect decisions for the RK3566 ep0out failure.
+# Link decisions for the lower-port gadget. A mock sysfs change is not
+# host enumeration. Cable loss and cable return do not write soft_connect.
+# Linux 7.2.10 leaves DCTL.RUN_STOP set on a disconnect event. The old
+# sysfs disconnect cleared that bit, and the matching connect set it
+# again after a core soft reset. This helper no longer takes that path.
+# Whether a physical replug enumerates is hardware evidence, not this test.
 # Mocked sysfs only. This does not open the host's USB controllers.
 set -eu
 
@@ -398,19 +403,35 @@ run_link link-once
 expect_writes '' "suspended"
 latch_is configured "suspended"
 
-# Real unplug drops the host state. One disconnect, then one connect.
+# Host leaves configured and SDP/CDP drop. No soft_connect write.
+# The UDC stays bound. Latch pending is not a reconnected host.
 set_host 'not attached'
 zero_cables
 run_link link-once
 run_link link-once
-expect_writes 'disconnect' "unplug"
-latch_is idle "unplug"
+expect_writes '' "unplug"
+latch_is pending "unplug"
+[ "$(udc_value)" = fcc00000.usb ] || fail "unplug unbound the gadget"
+got=$(run_link status)
+printf '%s\n' "$got" | grep -qx 'state=bound' || fail "unplug status: $got"
+printf '%s\n' "$got" | grep -qx 'host=not attached' || fail "unplug host: $got"
+[ "$(cat "$work/udc/fcc00000.usb/soft_connect")" = idle ] || fail "unplug wrote soft_connect"
+
+# Data classification returns. The mock does not change the host state,
+# so the latch stays pending. Setting the host file afterwards is the
+# test's injection, not an enumeration result.
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 run_link link-once
 run_link link-once
-expect_writes 'disconnect
-connect' "replug"
+expect_writes '' "replug"
 latch_is pending "replug"
+expect_one_bind "replug"
+got=$(run_link status)
+printf '%s\n' "$got" | grep -qx 'host=not attached' || fail "replug host: $got"
+set_host configured
+run_link link-once
+latch_is configured "replug configured"
+expect_writes '' "replug configured"
 [ "$(cat "$work/udc/fd000000.usb/soft_connect")" = untouched ] || fail "replug touched the other UDC"
 
 # EP0 enable failure while SDP is already present: bind once, no soft_connect.
@@ -448,34 +469,22 @@ run_link link-once
 expect_writes '' "ep0 configured"
 latch_is configured "ep0 configured"
 
-# Disconnect write fails once and is not repeated.
+# A refusing soft_connect node is not used on cable loss or cable return.
 quiet_stop
 zero_cables
 bind_ours
 rm -f "$work/udc/fcc00000.usb/soft_connect"
 ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
 EP0=control
-run_link link-once >/dev/null 2>&1 || fail "disconnect failure aborted link-once"
-run_link link-once >/dev/null 2>&1 || fail "disconnect failure retried as an abort"
-grep -q 'soft_connect disconnect failed' "$work/run/link.err" || fail "disconnect failure was not recorded"
-[ ! -s "$work/run/link.writes" ] || fail "failed disconnect was recorded as a write"
-latch_is idle-failed "disconnect failure"
-[ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "disconnect failure unbound the gadget"
-
-# Connect write fails once after a real disconnect.
-quiet_stop
-zero_cables
-bind_ours
-EP0=control
-run_link link-once
-rm -f "$work/udc/fcc00000.usb/soft_connect"
-ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
+run_link link-once >/dev/null 2>&1 || fail "unplug aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "unplug repeat aborted link-once"
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
-run_link link-once >/dev/null 2>&1 || fail "connect failure aborted link-once"
-run_link link-once >/dev/null 2>&1 || fail "connect failure retried as an abort"
-grep -q 'soft_connect connect failed' "$work/run/link.err" || fail "connect failure was not recorded"
-expect_writes 'disconnect' "connect failure"
-latch_is pending-failed "connect failure"
+run_link link-once >/dev/null 2>&1 || fail "return aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "return repeat aborted link-once"
+[ ! -s "$work/run/link.err" ] || fail "cable edge recorded an error: $(cat "$work/run/link.err")"
+expect_writes '' "refusing soft_connect"
+latch_is pending "refusing soft_connect"
+[ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "cable edge unbound the gadget"
 
 # Missing extcon after a bind is recorded. The binding stays. No write.
 quiet_stop
