@@ -1,0 +1,15 @@
+12D-E32 candidate. The cable-loss soft_connect pair is absent from this source. The archive is not installed. The open PAK was not changed.
+
+At 11:08:06Z, before this source change, Demetria still had a high-speed 1d6b:0100. It was device 16, not the E31 device 15. Device 15 disconnected at 11:06:46Z. Device 16 enumerated at 11:07:37Z. The Flip boot id was still 6a14efb9-ee1b-47ee-80d3-c75bd6bd9799. UDC configured, high-speed. umtprd pid 1715, link watcher pid 1784, reaper pid 795. Latch configured. link.binds contained one bind. link.writes was absent. dmesg had one line at 2931.223413 seconds, the device 15 disconnect window: request was not queued to ep0out. That session was not stopped, copied, or used as the candidate test.
+
+Source 522e4573010adb6e04d62b547e5cf373f688750d. The helper no longer calls soft_write. link_once still binds once on SDP or CDP, leaves configured and suspended alone, and sets latch pending when the kernel state is anything else. It does not treat a bound UDC as a reconnected host.
+
+Linux 7.2.10 dwc3_gadget_disconnect_interrupt sets the gadget not-attached and does not clear DCTL.RUN_STOP. soft_connect disconnect calls pullup(0), which runs dwc3_gadget_soft_disconnect and clears RUN_STOP, then udc_stop. soft_connect connect calls udc_start and dwc3_gadget_soft_connect, which soft-resets the core before setting RUN_STOP. The programming-guide comment in that function is about a reconnect after a device-initiated disconnect. Removing both writes avoids that halt. A physical replug while RUN_STOP stays set is not proven by this source reading.
+
+Host tests printed usb link ok and usb transfer ok. Shellcheck was clean. They do not enumerate a gadget.
+
+The product build did not relink the kernel. Image 07601d1bd80168a133968bdf5c7efd6b8632883ec716ae81732106902e6c215d. Image.gz 8b5ceb6dec96b998904afef3a5cb6e87ee020eb157a1b2e1ca25ec8a0ea0d938. DTB f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18. idbloader 2d714dff7b1af96dabcbc172c269276f36f6409afa3c9f7940addce0ca6af380. u-boot.itb 0e2a5e6ed9d669401ee43a3df58cc8613797118bca435b830f14a8342b87ee56. u-boot-rockchip.bin 9b5d9a4819e1865a4c24de30315b1d61a10f601b626bdc7b64e933f49f4f95d8. Those match the installed E30 image.
+
+Squashfs /boot/zlyme ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c. Packed zlyme-usb-transfer 9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859, the same as the source file. The packed script has no soft_write. zlyme-usb-enter is still 302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982.
+
+Archive output/images/zlyme-my355-20261014-522e4573010a.tar SHA-256 e235ca9953fcab8f0bd93ecd7f4feb2f1c3338d15a5201b06c4b8187d69d71e0. The E30 archive is still 2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea. This candidate was not installed and was not copied to the Flip.

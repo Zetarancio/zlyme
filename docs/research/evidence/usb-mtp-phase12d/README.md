@@ -155,3 +155,9 @@ The sixteenth table is the later 12D-E31 session on that same boot. The PAK was 
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T105637Z-e31-live.txt` | Device 15 on Demetria bus 1 port 2, the matching SHA-256 pairs, the second-card copy, rename and delete, and the still-configured gadget. | `e9fa78a1a2d76498c3d838686d3ce3319539d737b6c69e35d4e6072673f4293e` |
+
+The seventeenth table is 12D-E32. The cable-loss soft_connect pair is absent from this candidate. The candidate is not installed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T111800Z-e32-candidate.txt` | The reconnect source reading, unchanged kernel and bootloader hashes, and the candidate archive. | `4cfc5e0f7091315491614a7a9e74aab98eb64cc10c14594bfc627592592c83df` |
