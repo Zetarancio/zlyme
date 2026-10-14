@@ -18,8 +18,9 @@
 # extcon is a failed start, not a charger. The bind itself is the
 # connection attempt. A configured or suspended UDC is left alone,
 # including when a later reading says DCP. ep0out/transfer_type is
-# the descriptor class, not a connection. One EP0 enable error gets
-# one recovery, and a failed soft_connect write is not repeated.
+# the descriptor class, not a connection. A failed soft_connect write
+# is not repeated. An EP0 enable error does not get its own
+# disconnect and connect.
 # ROCKNIX documents the same
 # failure and uses UDC soft_connect; this behavior is Zlyme's and
 # does not copy that script. Debugfs is optional. state=bound is not
@@ -1093,47 +1094,6 @@ data_cable() {
 	return 1
 }
 
-# True when this bind logged "failed to enable ep0out".
-# debugfs ep0out/transfer_type is the descriptor class of an enabled
-# endpoint. "control" means that class. It does not mean the host is
-# attached, that enumeration finished, or that the last transfer worked.
-# ZLYME_USB_EP0=failed is the test stand-in for the kernel line.
-# Any other value, including "control", is not an error.
-ep0_failed() {
-	if [ -n "${ZLYME_USB_EP0:-}" ]; then
-		[ "$ZLYME_USB_EP0" = failed ]
-		return
-	fi
-	if [ -n "${ZLYME_USB_DMESG+x}" ]; then
-		[ -r "${ZLYME_USB_DMESG:-}" ] || return 1
-		grep -q "${UDC_NAME}: failed to enable ep0out" "$ZLYME_USB_DMESG"
-		return
-	fi
-	_mark=0
-	if [ -r "$RUN/dmesg.lines" ]; then
-		read -r _mark < "$RUN/dmesg.lines" || _mark=0
-	fi
-	case "$_mark" in
-		''|*[!0-9]*) _mark=0 ;;
-	esac
-	if ! command -v dmesg >/dev/null 2>&1; then
-		return 1
-	fi
-	_hit=$(dmesg 2>/dev/null | awk -v n="$_mark" -v u="$UDC_NAME" 'NR > n && index($0, u ": failed to enable ep0out") { print; exit }' || true)
-	[ -n "$_hit" ]
-}
-
-mark_dmesg() {
-	if [ -n "${ZLYME_USB_DMESG+x}" ]; then
-		return 0
-	fi
-	_n=$(dmesg 2>/dev/null | wc -l) || _n=0
-	case "$_n" in
-		''|*[!0-9]*) _n=0 ;;
-	esac
-	printf '%s\n' "$_n" > "$RUN/dmesg.lines"
-}
-
 latch_get() {
 	_lg=
 	[ -r "$RUN/link.latch" ] || return 0
@@ -1180,10 +1140,10 @@ soft_write() {
 # pending: bound for this data cable. The bind is the attempt.
 # pending-failed: the connect write failed. It is not retried.
 # configured: the UDC is configured or suspended. Leave it alone.
-# recover-failed: the one EP0 recovery write failed. It is not retried.
 # A configured session is not disconnected because a later reading
 # says DCP. soft_connect returns the write length even when DWC3
 # does not change the pull-up, so a write is not enumeration.
+# failed to enable ep0out is not repaired from here.
 link_once() {
 	_fo=$(foreign_owner || true)
 	if [ -n "$_fo" ]; then
@@ -1233,44 +1193,16 @@ link_once() {
 		return 0
 	fi
 	case "$_last" in
-		pending|pending-failed|recover-failed|waiting)
-			if ep0_failed && [ ! -f "$RUN/link.recover" ]; then
-				: > "$RUN/link.recover"
-				if ! soft_write disconnect; then
-					latch_set recover-failed
-					return 0
-				fi
-				if ! soft_write connect; then
-					latch_set recover-failed
-					return 0
-				fi
-				latch_set pending
-			fi
+		pending|pending-failed)
 			return 0
 			;;
 	esac
 	if [ "$_last" = idle ] || [ "$_last" = idle-failed ]; then
-		if ep0_failed; then
-			: > "$RUN/link.recover"
-		fi
 		if soft_write connect; then
 			latch_set pending
 		else
 			latch_set pending-failed
 		fi
-		return 0
-	fi
-	if ep0_failed && [ ! -f "$RUN/link.recover" ]; then
-		: > "$RUN/link.recover"
-		if ! soft_write disconnect; then
-			latch_set recover-failed
-			return 0
-		fi
-		if ! soft_write connect; then
-			latch_set recover-failed
-			return 0
-		fi
-		latch_set pending
 		return 0
 	fi
 	latch_set pending
@@ -1481,14 +1413,12 @@ cleanup_owned() {
 	if [ "$_keep_owner" = 1 ]; then
 		rm -f "$EXPORTS" "$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
-			"$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.binds" "$RUN/link.err" "$RUN/link.log"
 	else
 		rm -f "$CONF" "$CONF.tmp" "$PIDFILE" "$EXPORTS" \
 			"$RUN/truncated" "$RUN/umtprd.log" "$RUN/skipped" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
-			"$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.binds" "$RUN/link.err" "$RUN/link.log"
 	fi
 	if session_left || [ "$_keep_owner" = 1 ]; then
 		say "usb transfer cleanup incomplete"
@@ -1609,7 +1539,6 @@ cmd_start() {
 		trap - INT TERM
 		return 1
 	fi
-	mark_dmesg
 	if ! extcon_dir >/dev/null; then
 		say "lower PHY extcon for $UDC_NAME was not found"
 		cleanup_owned || true
@@ -1700,8 +1629,7 @@ cmd_stop() {
 	if ! session_left; then
 		rm -f "$PIDFILE" "$CONF" "$EXPORTS" "$RUN/truncated" "$RUN/generation" \
 			"$RUN/link.gen" "$RUN/link.latch" "$RUN/link.writes" \
-			"$RUN/link.recover" "$RUN/link.binds" "$RUN/link.err" \
-			"$RUN/link.log" "$RUN/dmesg.lines"
+			"$RUN/link.binds" "$RUN/link.err" "$RUN/link.log"
 		return 0
 	fi
 	cleanup_owned

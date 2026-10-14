@@ -413,19 +413,17 @@ connect' "replug"
 latch_is pending "replug"
 [ "$(cat "$work/udc/fd000000.usb/soft_connect")" = untouched ] || fail "replug touched the other UDC"
 
-# EP0 enable failure while SDP is already present: one recovery, then stop.
+# EP0 enable failure while SDP is already present: bind once, no soft_connect.
 quiet_stop
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 EP0=failed
 run_link start >/dev/null
 expect_one_bind "ep0 sdp"
-expect_writes 'disconnect
-connect' "ep0 sdp"
+expect_writes '' "ep0 sdp"
 latch_is pending "ep0 sdp"
-[ -f "$work/run/link.recover" ] || fail "ep0 sdp did not record the recovery"
+[ ! -f "$work/run/link.recover" ] || fail "ep0 sdp recorded a recovery"
 run_link link-once
-expect_writes 'disconnect
-connect' "ep0 sdp repeat"
+expect_writes '' "ep0 sdp repeat"
 other_untouched
 
 # EP0 enable failure on an already-bound gadget that is not configured.
@@ -435,11 +433,11 @@ bind_ours
 EP0=failed
 run_link link-once
 run_link link-once
-expect_writes 'disconnect
-connect' "ep0 bound"
+expect_writes '' "ep0 bound"
 latch_is pending "ep0 bound"
+[ ! -f "$work/run/link.recover" ] || fail "ep0 bound recorded a recovery"
 
-# A configured gadget does not recover, even if the enable error is set.
+# A configured gadget does not write soft_connect, even if the enable error is set.
 quiet_stop
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 bind_ours
@@ -492,18 +490,20 @@ grep -q 'extcon' "$work/run/link.err" || fail "missing extcon was not recorded"
 [ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "missing extcon unbound the gadget"
 mkdir -p "$ext"
 
-# Recovery write fails once.
+# An EP0 enable error does not attempt soft_connect, even when that node would fail.
 quiet_stop
 set_cables USB=1 USB-HOST=0 SDP=1 CDP=0 DCP=0 SLOW-CHARGER=0
 bind_ours
 rm -f "$work/udc/fcc00000.usb/soft_connect"
 ln -s /dev/full "$work/udc/fcc00000.usb/soft_connect"
 EP0=failed
-run_link link-once >/dev/null 2>&1 || fail "recovery failure aborted link-once"
-run_link link-once >/dev/null 2>&1 || fail "recovery failure aborted the repeat"
-latch_is recover-failed "failed recovery"
-[ ! -s "$work/run/link.writes" ] || fail "failed recovery recorded a write"
-grep -q 'soft_connect disconnect failed' "$work/run/link.err" || fail "recovery failure was not recorded"
+run_link link-once >/dev/null 2>&1 || fail "ep0 failure aborted link-once"
+run_link link-once >/dev/null 2>&1 || fail "ep0 failure aborted the repeat"
+latch_is pending "ep0 ignored"
+[ ! -s "$work/run/link.writes" ] || fail "ep0 failure recorded a write"
+[ ! -f "$work/run/link.recover" ] || fail "ep0 failure recorded a recovery"
+[ ! -s "$work/run/link.err" ] || fail "ep0 failure recorded a soft_connect error"
+[ "$(cat "$gadget/UDC")" = fcc00000.usb ] || fail "ep0 failure unbound the gadget"
 
 # A foreign owner that appears while we are waiting is not touched.
 quiet_stop
