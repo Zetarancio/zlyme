@@ -157,7 +157,7 @@ The built module's version string is `r54p2-02eac0` (`MALI_RELEASE_NAME` in the 
 
 `002-lowercase-interrupts-first.patch` tries `job`, `mmu`, `gpu` before `JOB`, `MMU`, `GPU`. The built `rk356x-base.dtsi` names the GPU interrupts `job`, `mmu`, `gpu`. The pin's unpatched source tries the capital names first. The patch is still the thing that matches the DT. No upstream equivalent appeared in a later kbase commit, because there is no later commit.
 
-GPU voltage and clocks were not touched. The board DTS `mali-supply` is still `vdd_gpu`. Panfrost remains the other stack, selected by `/storage/.config/zlyme/gpu`, with libmali as the default. Mesa 26.1.8's PanVK still returns `VK_ERROR_INCOMPATIBLE_DRIVER` for Mali-G52 unless `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`, and `zlyme-gpu-env.sh` does not set that. Making Panfrost the default would be a separate product decision with its own GLES and power measurements. This audit does not make it.
+GPU voltage and clocks were not touched. The board DTS `mali-supply` is still `vdd_gpu`. Panfrost remains the other stack, selected by `/storage/.config/zlyme/gpu`, with libmali as the default. Mesa 26.1.8's PanVK still returns `VK_ERROR_INCOMPATIBLE_DRIVER` for Mali-G52 unless `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`. This audit did not set that. Later source exports it only for an exact `panfrost` choice. Making Panfrost the default would be a separate product decision with its own GLES and power measurements. This audit does not make it.
 
 ## 8. The 7.2.10 commits, re-read
 

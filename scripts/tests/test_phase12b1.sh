@@ -33,8 +33,8 @@ grep -q 'clang.br_real' "$ROOT/external.mk" || fail "libclc unwrapped clang over
 env_src=$ROOT/board/my355/fsoverlay/etc/zlyme-gpu-env.sh
 grep -q 'PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1' "$env_src" \
 	|| fail "gpu env does not record the Mali-G52 opt-in"
-grep -q '^[[:space:]]*export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER' "$env_src" \
-	&& fail "gpu env enables the broken-driver flag"
+grep -q '^[[:space:]]*export PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1' "$env_src" \
+	|| fail "gpu env does not export the broken-driver flag"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -70,19 +70,50 @@ line2=$(printf '%s\n' "$got" | sed -n '2p')
 line3=$(printf '%s\n' "$got" | sed -n '3p')
 [ "$line1" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost ICD is '$line1'"
 [ "$line2" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost driver files is '$line2'"
-[ -z "$line3" ] || fail "panfrost set the broken-driver flag"
+[ "$line3" = 1 ] || fail "panfrost opt-in is '$line3'"
 printf '%s\n' "$got" | grep -q mali_icd && fail "panfrost selected the Mali ICD"
 
-printf '%s' libmali > "$work/gpu"
+for name in libmali mali mali_kbase; do
+	printf '%s' "$name" > "$work/gpu"
+	got=$(read_icd)
+	line1=$(printf '%s\n' "$got" | sed -n '1p')
+	line3=$(printf '%s\n' "$got" | sed -n '3p')
+	[ "$line1" = "$work/icd/mali_icd.json" ] || fail "$name ICD is '$line1'"
+	[ -z "$line3" ] || fail "$name set the broken-driver flag"
+	printf '%s\n' "$got" | grep -q panfrost_icd && fail "$name selected PanVK"
+done
+
+printf '%s' something-else > "$work/gpu"
 got=$(read_icd)
 line1=$(printf '%s\n' "$got" | sed -n '1p')
-[ "$line1" = "$work/icd/mali_icd.json" ] || fail "libmali ICD is '$line1'"
-printf '%s\n' "$got" | grep -q panfrost_icd && fail "libmali selected PanVK"
+line3=$(printf '%s\n' "$got" | sed -n '3p')
+[ "$line1" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "unknown ICD is '$line1'"
+[ -z "$line3" ] || fail "unknown GPU opted into PanVK"
+
+# An inherited opt-in must not survive a Mali or unknown selection.
+# shellcheck disable=SC2016
+read_inherited() {
+	env -u VK_ICD_FILENAMES -u VK_DRIVER_FILES \
+		PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1 \
+		sh -c '. "$1"
+			printf "%s\n" "${VK_ICD_FILENAMES-}" "${PAN_I_WANT_A_BROKEN_VULKAN_DRIVER-}"' \
+		sh "$work/env.sh"
+}
+printf '%s' libmali > "$work/gpu"
+got=$(read_inherited)
+line2=$(printf '%s\n' "$got" | sed -n '2p')
+[ -z "$line2" ] || fail "libmali kept an inherited opt-in"
+printf '%s' something-else > "$work/gpu"
+got=$(read_inherited)
+line2=$(printf '%s\n' "$got" | sed -n '2p')
+[ -z "$line2" ] || fail "unknown GPU kept an inherited opt-in"
 
 rm -f "$work/icd/panfrost_icd.cortex-a55.json"
 printf '%s' panfrost > "$work/gpu"
 got=$(read_icd)
 line1=$(printf '%s\n' "$got" | sed -n '1p')
+line3=$(printf '%s\n' "$got" | sed -n '3p')
 [ -z "$line1" ] || fail "missing PanVK ICD still exported '$line1'"
+[ "$line3" = 1 ] || fail "missing PanVK ICD dropped the opt-in"
 
 echo "phase12b1 ok"

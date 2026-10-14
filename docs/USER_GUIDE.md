@@ -93,7 +93,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 | Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
 
 
-- **PSP:** PPSSPP renders with OpenGL, or with Vulkan when you pick it in PPSSPP and the Mali driver is active.
+- **PSP:** PPSSPP renders with OpenGL. Vulkan is available when the Mali driver is active and you pick it in PPSSPP. Panfrost turns on Mesa's experimental Vulkan driver. PPSSPP on that driver does not attach the display, so a PSP game was not shown that way.
 
 
 
@@ -263,7 +263,7 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 
 Settings → System → Advanced:
 
-- **GPU**: mali_kbase (the default, OpenGL ES and Vulkan) or Panfrost (OpenGL ES). Takes effect on the next boot.
+- **GPU**: mali_kbase (the default, OpenGL ES and Vulkan) or Panfrost (OpenGL ES, plus an experimental Vulkan driver). Takes effect on the next boot.
 - **CPU undervolt**: Off, L1, L2, or L3. It stays off unless you turn it on. Takes effect on the next boot.
 - **ZRAM swap**: on by default. The menu suggests turning it off if a heavy emulator feels spongy.
 - **USB OTG (top)**, **HDMI port**, and **Second SD slot**: on by default. Turning one off saves some power. Takes effect on the next boot.
@@ -308,6 +308,7 @@ Logs are off by default. Turn on Settings → System → Advanced → System log
 - `README.txt` explains the layout.
 - `system-0/` is the newest logged boot. `system-1/` to `system-4/` are earlier ones. Each holds files such as `dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, and `nextui.txt`.
 - `paks/TAG.log` is the newest run of that pak (`FC.log`, `PS2.log`, `Settings.log`, …). `TAG.log.1` and `TAG.log.2` are the two runs before it.
+- Tools → PortMaster writes `paks/portmaster.txt` when system logs are on. When they are off, that transcript stays in a temporary file and an error on screen still comes from it.
 
 When something fails, copy that folder off the card, or fetch `/storage/.logs` over SSH.
 

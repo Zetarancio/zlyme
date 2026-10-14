@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-14 — Phase 12 closed after the correction
+
+The earlier note the same day closed the phase too soon. Source now exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`. The maintainer presented one orange frame twice. PPSSPP still does not acquire the DRM display. The PortMaster GUI transcript stays off the card unless system logs are on. The installed image is still the E32 archive and does not contain those source changes. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped. The record is `docs/ROADMAP.md`.
+
 ## 2026-10-14 — Phase 12 closed for development
 
 Phase 12 implementation is finished on `zlyme44.3-phase-12`. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image was built and no release was published. The installed Flip image is still the earlier E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. The maintainer accepts it. Within-session cable recovery was not measured. One PortMaster port on the second card returned to NextUI. Panfrost was bound. PanVK was not enumerated and no Vulkan frame was drawn. Phase 13 is not scoped. The record is `docs/ROADMAP.md`.

@@ -9,7 +9,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Added
 
 - Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed and Known limitations.
-- The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver. PanVK is installed and does not offer a Vulkan device on this GPU unless an experimental Mesa setting is turned on. Zlyme does not turn that setting on. PPSSPP therefore does not list Vulkan. A game was not rendered with it.
+- The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver and turns on Mesa's experimental Vulkan setting for programs launched afterwards. One orange frame was shown on a Flip. That is not a claim that games render, and PPSSPP on Panfrost still does not attach the display. The Mali driver remains the Vulkan path PPSSPP can use.
 
 ### Changed
 
@@ -29,6 +29,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Known limitations
 
 - On the installed development image `zlyme-my355-20261013-7951a37668e3.tar` (SHA-256 `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`), one computer copied disposable files to and from the Flip over MTP and the checksums matched, including a mounted second card. The maintainer reports that opening the tool again and leaving it with MENU+START worked. The computer log shows that connection ending and does not show a separate later connection. A later development build drops the one-shot repair after an EP0 enable error. The maintainer installed that build and reports that USB File Transfer works. No new file checksum was taken on it. The maintainer then installed the build that removes the USB2 PHY extcon resync and reports that USB File Transfer works, including file copying. Demetria logged the enumerations. No new file checksum was taken on that image. The maintainer then installed the build that removes `snps,dis_enblslpm_quirk` from the lower USB controller. The installed squashfs, kernel, and DTB match that archive, and a stopped read of the USB register has the suspend-signal bit set. On that same boot, with the cable left in a working position, disposable files copied both ways over MTP and the checksums matched, including a mounted second card. Opening the tool again and MENU+START were not repeated on that session. The installed development image now drops that cable-loss recovery and keeps the first connection. Ordinary copies matched both ways, including a file on the second card, and opening the tool again with the cable left in place worked. Unplugging and plugging the cable back during one session has not been measured. The session record is `docs/research/usb-mtp-phase12d.md`.
+- Panfrost's experimental Vulkan driver showed one frame on a Flip. PPSSPP does not present a game through it. Games that use Weston were checked on an earlier image, not on the installed development image.
 
 ## [zlyme44.2] - 2026-10-11
 

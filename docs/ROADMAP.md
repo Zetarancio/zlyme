@@ -8,7 +8,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Current phase
 
-Phase 12 development is closed. Phase 13 is next and is not scoped. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`.
+Phase 12 development is closed. Phase 13 is next and is not scoped. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped and remains on this branch.
 
 Status words in this section are not interchangeable:
 
@@ -21,7 +21,7 @@ Status words in this section are not interchangeable:
 - Hardware-accepted: the maintainer accepted that behavior.
 - Released: published as a stable GitHub release.
 
-Phase 12 is not hardware-accepted and is not released. Do not merge it or publish it from this record. On 2026-10-14 the maintainer closed Phase 12 development, with the limits in the closure section. It is still not released.
+Phase 12 is not released. Do not merge it or publish it from this record. On 2026-10-14 the maintainer closed Phase 12 development, then corrected that closure the same day. The correction is the note under the Phase 12 closure. Phase 12 is closed and is still not released.
 
 Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
 
@@ -2104,7 +2104,7 @@ Hardware evidence: The installed development image boots far enough to open Tool
 
 Remaining checks: Panfrost GLES still presents. PanVK is not required for that. A later, separate pass may enumerate the Vulkan ICD. Do not treat a successful boot as that pass.
 
-Closure: GLES regression check hardware-accepted. PanVK stays packaged and not hardware-accepted until its own check. On 2026-10-14 Panfrost owned the GPU and no Vulkan tool was installed. The missing PPSSPP Vulkan choice matches Mesa's v7 opt-in. Enumeration and rendering were not run. The diagnosis is in the Phase 12 closure. It is not a blocker, and the opt-in stays unset.
+Closure: GLES regression check hardware-accepted. PanVK stays packaged and not hardware-accepted until its own check. On 2026-10-14 Panfrost owned the GPU and no Vulkan tool was installed. The missing PPSSPP Vulkan choice matches Mesa's v7 opt-in. Enumeration and rendering were not run. The diagnosis is in the Phase 12 closure. It is not a blocker, and the opt-in stays unset. Later the same day the maintainer accepted one presented frame and `zlyme-gpu-env.sh` exports the opt-in for an exact `panfrost` choice. PPSSPP still does not acquire the DRM display. That limit is in the correction under the Phase 12 closure.
 
 ### Phase 12B2 — unused kernel test drivers
 
@@ -2197,6 +2197,18 @@ PortMaster's selected library was `/mnt/sd2`, which was mounted and listed in `/
 PanVK is built in the product image. The installed ICD is `panfrost_icd.cortex-a55.json`, and `libvulkan_panfrost.so` and `libvulkan.so.1` are present. Mesa 26.1.8 was compiled with `VK_USE_PLATFORM_DISPLAY_KHR` and `VK_USE_PLATFORM_WAYLAND_KHR`. Mali-G52 is Panfrost architecture v7. That driver returns `VK_ERROR_INCOMPATIBLE_DRIVER` unless `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`. Zlyme does not set that variable, and NextUI's environment on this boot did not contain it. PPSSPP 1.19.3 is compiled with `VULKAN=ON` and hides the Vulkan choice when `VulkanMayBeAvailable()` finds no device. The maintainer had selected Panfrost, rebooted, opened PPSSPP, and did not see Vulkan. No `vulkaninfo` or `vkcube` is installed, so this pass did not enumerate devices and did not set the opt-in even for one process. No Vulkan frame was drawn. That missing menu entry matches Mesa's documented v7 gate. It is not a Phase 12 blocker, and the opt-in stays unset.
 
 Deferred, and not reopened by this closure: within-session cable recovery, a 0% discharge, Weston port cleanup, PanVK enumeration and rendering, and the post-phase wiki review. Host-only checks stay host-only.
+
+#### Correction, later on 2026-10-14
+
+The paragraphs above closed the phase before the logging contract and the PanVK result were finished. This note supersedes those two readings. The earlier text stays as the record of what had been checked.
+
+The PortMaster GUI transcript is fixed in source. System logs off writes `/tmp/portmaster.log`. System logs on writes the persistent pak log. An error on screen still comes from that file. The installed E32 image does not contain this fix. Host tests cover it. It was not launched on the Flip.
+
+`/etc/zlyme-gpu-env.sh` exports `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1` only when the saved GPU choice is exactly `panfrost`. libmali and an unrecognized choice unset it. The ICD selection is unchanged. The maintainer launched a temporary frame test twice on the Flip. The recorded run acquired DRM master, saw the 640×480 display, created a Vulkan device, surface, and swapchain, presented one orange frame, and returned to NextUI. The boot id was unchanged. No new kernel warning or Panfrost fault appeared. PanVK remains experimental. That frame is not broad compatibility.
+
+PPSSPP 1.19.3 is compiled with Vulkan. Under Panfrost the opt-in can make physical-device detection succeed. PPSSPP's `VK_KHR_display` path does not call `vkGetDrmDisplayEXT` or `vkAcquireDrmDisplayEXT`. The frame test succeeded because it did that acquisition itself. PPSSPP Vulkan gameplay under Panfrost is not established. The libmali Vulkan path and Panfrost OpenGL ES stay as they are. PPSSPP was not modified.
+
+WestonPack cleanup remains covered by host tests. Earlier hardware evidence is a different image. It was not re-run on this card. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped.
 
 ### Phase 13
 
