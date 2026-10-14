@@ -1,0 +1,28 @@
+12D-E27 cleanup reading. The E24 archive was hashed on the development host before this note:
+zlyme-my355-20261013-7951a37668e3.tar
+be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a
+That file was not overwritten. The installed squashfs from 12D-E26 remains
+06b5f3577aea9ba45dc85c9763375a9e555283b40403f6d2623929c8ed8e712d.
+No stop command was sent over SSH.
+
+Maintainer report, not an instrumented button trace: the E26 file match is accepted. A second Start succeeded. MENU+START succeeded. The host log does not assign either report to a connect or disconnect line.
+
+Demetria, bus 1 port 2, PCI 0000:c4:00.3. Local clock is UTC+2.
+04:26:43 usb 1-2: USB disconnect, device number 48.
+That is 02:26:43Z. Device 48 had been the 12D-E26 session since 03:50:17 local. From that disconnect through 02:32:16Z the kernel log has no later usb 1-2 line. lsusb -d 1d6b:0100 was empty. lsusb -t showed port 2 empty. Bus 7 had only its root hub. The host controller was not reset.
+
+Flip, same boot id 6b0451a8-3c6d-42bc-ac50-2ddc73c6037c, uptime 4905.81 seconds:
+zlyme-usb-transfer status: state=off
+UDC fcc00000.usb: not attached
+/sys/kernel/config/usb_gadget: absent. configfs is not mounted.
+No functionfs mount. No /dev/ffs-mtp listing.
+No umtprd process. No zlyme-usb-transfer process.
+nextui-session pid 306. nextui.elf pid 5554.
+/dev/mmcblk0p3 on /storage exfat rw.
+/dev/mmcblk1p1 on /mnt/sd2 ext4 rw.
+/dev/mmcblk0p2 on /boot vfat ro.
+/mnt/media is the empty zlyme-media tmpfs. No other gadget mount.
+
+/run/zlyme/usb-transfer still has generation, an empty lock, a jail directory, and reaper.pid, reaper.pgid, reaper.watch, and an empty reaper.log. reaper.pid is 22803. That pid is not in the process list. reaper.watch is 22718. generation is 230539.22790. status=off does not treat those files as a session. No link.pid, responder pid, configuration, or export list remains.
+
+The button that disconnected device 48 is not identified. A second enumeration after that disconnect was not logged.

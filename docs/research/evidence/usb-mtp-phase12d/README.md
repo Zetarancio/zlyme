@@ -113,3 +113,9 @@ The ninth table is 12D-E26, on that same installed image and the following boot.
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T020236Z-e26-file-match.txt` | Live session on Demetria bus 1 port 2, the matching SHA-256 pairs, the second-card copy, rename and delete, and the still-bound gadget. | `4f738302c1b2631e2b1b597a3d0505e5dfe893f829e7e2c0acee10cfe101c711` |
+
+The tenth table is 12D-E27. The E26 gadget was gone. A second host enumeration was not logged.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T022643Z-e27-cleanup.txt` | Device 48 disconnect, empty gadget check, mounted data partitions, and the maintainer's second-Start report kept separate from the log. | `a959b0537be38af28df794b4eb01f1b06fa19f09f481171e2258c9982a3940a3` |

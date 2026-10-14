@@ -36,6 +36,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E24 | 2026-10-13 22:21Z | installed watcher image, PHY DCP, gadget stopped | [Deferred UDC bind](#29-deferred-udc-bind) |
 | 12D-E25 | 2026-10-14 00:45Z–01:26Z | E24 image installed; MTP enumerated; file bytes not checked; boot restarted | [Installed E24 acceptance](#30-installed-e24-acceptance) |
 | 12D-E26 | 2026-10-14 01:50Z–02:21Z | disposable SHA-256 matched both ways; B not pressed; same boot | [PAK MTP file match](#32-pak-mtp-file-match) |
+| 12D-E27 | 2026-10-14 02:26Z–02:35Z | E26 session gone; second enumeration not logged | [Stopped session](#33-stopped-session) |
 
 ## Experiment ledger
 
@@ -404,6 +405,20 @@ The first start in that hour is not this sample. Its SSH shell exited, the reape
 - Excludes: an SSH-started gadget. A USB-stick copy. A write to `/boot`. Treating this match as hardware acceptance of audio, controls, charging, or the earlier restart.
 - Unknown: why one SSH read of the new exFAT file did not return within 8 seconds, while a later read hashed correctly. Why device 45 disconnected and device 46 logged `-71` before device 48 stayed up. Why B cleanup behaves on this image.
 - Evidence: section 32.
+- Code: left untouched.
+
+### 12D-E27 Stopped session
+
+- When: 2026-10-14 02:26:43Z through 02:35Z.
+- Source: the same installed E24 image. The local archive `zlyme-my355-20261013-7951a37668e3.tar` hashes to `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`. It was not overwritten.
+- Setup: the maintainer accepts the E26 file match and reports that a second Start and MENU+START succeeded. No new PAK launch was requested for this reading. No `stop` was sent over SSH.
+- Hypothesis: the session that copied the E26 files is gone, and the data mounts are unchanged.
+- Action: read helper status, the UDC, configfs, mounts, and the process list. Read Demetria's `usb 1-2` log from the E26 device through the following minutes.
+- Observed: device 48 disconnected at 02:26:43Z. No later `usb 1-2` device was logged. Helper `state=off`. UDC `not attached`. Configfs was not mounted. FunctionFS was not mounted. No `umtprd` and no watcher process. `nextui.elf` was running. `/storage` and `/mnt/sd2` stayed read-write. `/boot` stayed read-only. Boot id unchanged. Reaper pid file 22803 was not a running process.
+- Result: the E26 gadget is gone. That is the observed cleanup. The maintainer's second Start and MENU+START stay reports, because the host log has no second enumeration. The E26 hashes stay the file baseline. Phase 12 stays open.
+- Excludes: naming the 02:26:43Z disconnect as B or as MENU+START. A logged second Start. Charging, audio, and the earlier restarts.
+- Unknown: which control ended device 48. Whether the reported second Start enumerated on a port this log does not show.
+- Evidence: section 33.
 - Code: left untouched.
 
 ## 1. Hardware topology
@@ -1256,7 +1271,24 @@ The working comparison for a later pass is the E24 image, Demetria bus 1 port 2,
 
 The first A/B, when a file hash has already passed on this image, is one candidate at a time. The rollback is this OTA, written to the card from the host, not over Wi-Fi. Do not combine the quirk, the extcon patch, and the watcher in one image.
 
-12D-E26 later recorded matching SHA-256 values in both directions on this image, including one file on the mounted ext4 card. The responder mount namespace contained `/storage`, `/mnt/sd2`, the configuration file, FunctionFS, and the responder binary. It did not contain `/boot`. Stopping with B, and a second Start with the cable left seated, were not recorded. No candidate is removed here.
+12D-E26 later recorded matching SHA-256 values in both directions on this image, including one file on the mounted ext4 card. The responder mount namespace contained `/storage`, `/mnt/sd2`, the configuration file, FunctionFS, and the responder binary. It did not contain `/boot`. Section 33 records the stopped session. No candidate is removed in that section.
+
+## 33. Stopped session
+
+12D-E27 is the reading after the maintainer left the 12D-E26 session. The maintainer accepts the E26 file match and reports that a second Start and MENU+START succeeded. Those two reports are not tied to a host connect line. Demetria logged `usb 1-2` device 48 disconnecting at 02:26:43Z and no later device on that port. At the following Flip reading, `zlyme-usb-transfer status` was `off`, `fcc00000.usb` was `not attached`, configfs was not mounted, FunctionFS was not mounted, and no `umtprd` or watcher process remained. `/storage` and `/mnt/sd2` stayed mounted. `/boot` stayed read-only. `nextui.elf` was running. The boot id was still `6b0451a8-3c6d-42bc-ac50-2ddc73c6037c`. Stale reaper files under `/run/zlyme/usb-transfer` name pid 22803, which was not running. `state=off` does not treat them as a session. The local E24 archive still hashes to `be106fe994fef189d7ff150d9b997f28d7c4b96323cb3ec76d8b89f355db528a`.
+
+The E26 hashes are the MTP file baseline for later A/B images. The archive above is the rollback. A second enumeration after the disconnect was not captured, so the maintainer's second Start is not rewritten here as a logged host session.
+
+| Piece | In the E26 session | Role |
+| --- | --- | --- |
+| Deferred UDC bind | One `bind`, then `configured` at high speed | The start order on this image. Leave it. |
+| SDP/CDP wait | extcon0 was SDP=1 before the copies | Binds only for a data cable. DCP and no cable wait. Leave it. |
+| `soft_connect` after the UDC leaves `configured` | `link.writes` contained `disconnect` and `connect` during bring-up. No timed unplug was recorded | One disconnect when the data cable is gone, one connect when it returns. Leave it. A configured session is not written. |
+| EP0 recovery | No `failed to enable ep0out` and no `link.recover` during the matched copies | One `soft_connect` disconnect plus one connect after that kernel line. Separate from the cable path. Earlier sessions did log the enable error. Removal is a hypothesis. |
+| dmesg scan for that line | Present. debugfs `transfer_type` is not the check | Feeds the recovery decision only. |
+| Responder, FunctionFS, configfs ownership | Running, then gone after the disconnect | Required for the session and for cleanup. |
+| Export jail | `/storage` and `/mnt/sd2` only. No `/boot` | The share. Leave it. |
+| Patch `1015`, `snps,dis_enblslpm_quirk`, `snps,dis_u2_susphy_quirk` | Not isolated in E26 | Not removed because they were quiet. |
 
 ## 32. PAK MTP file match
 
@@ -1266,4 +1298,4 @@ The session was already open. Demetria bus 1 port 2, PCI `0000:c4:00.3`, had dev
 
 A 4096-byte file and a 1048576-byte file copied from Demetria to `/storage` matched SHA-256 on the Flip. A 4096-byte file created on the Flip matched after KIO copied it back. The same 4096-byte hash matched on `/mnt/sd2`. Rename kept the hash. Delete removed both test directories. PTP `02ff` did not recur. The boot id did not change. B was not pressed, and the gadget was still bound at 02:21:00Z.
 
-The pairs, the namespace, and the earlier `ep0out` line from this boot are in `docs/research/evidence/usb-mtp-phase12d/20261014T020236Z-e26-file-match.txt`. This match does not explain the 12D-E25 restart, and it is not Phase 12 acceptance. Patch reduction still waits for a recorded cleanup with the cable left seated.
+The pairs, the namespace, and the earlier `ep0out` line from this boot are in `docs/research/evidence/usb-mtp-phase12d/20261014T020236Z-e26-file-match.txt`. This match does not explain the 12D-E25 restart, and it is not Phase 12 acceptance. Section 33 records the later reading of the stopped session.
