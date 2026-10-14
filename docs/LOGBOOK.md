@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-14 — Roadmap index, Phase 3C log moved
+
+The active roadmap gained a phase index and the still-open Phase 12 limits. The Phase 3C integration log moved unchanged to `docs/archive/roadmap-phase-3c.md`. Conclusions were not rewritten. The hardware wiki received a short lower-port note for the development Linux 7.2.10 boot. That note does not call the device tree proven. Phase 13 is not scoped.
+
 ## 2026-10-14 — Phase 12 closed after the correction
 
 The earlier note the same day closed the phase too soon. Source now exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`. The maintainer presented one orange frame twice. PPSSPP still does not acquire the DRM display. The PortMaster GUI transcript stays off the card unless system logs are on. The installed image is still the E32 archive and does not contain those source changes. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped. The record is `docs/ROADMAP.md`.

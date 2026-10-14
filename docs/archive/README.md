@@ -13,3 +13,5 @@ These two files are kept because they still contain session-specific warnings, S
 They are never normative. They may still say, in the present tense, things that were true when they were written and are not current policy: architecture, which repository has which role, what counts as a source of truth, and what was implemented or still open. The current authority model is in `docs/ARCHITECTURE.md` and `docs/UPSTREAMS.md`.
 
 `TODO.md` stays gitignored under `NOTES/`.
+
+`roadmap-phase-3c.md` is the Phase 3C integration log, moved unchanged from `docs/ROADMAP.md` on 2026-10-14. The roadmap keeps the acceptance note.
