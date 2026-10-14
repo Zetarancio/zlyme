@@ -1316,7 +1316,6 @@
 	extcon = <&usb2phy0>;
 	phys = <&usb2phy0_otg>;
 	phy-names = "usb2-phy";
-	snps,dis_enblslpm_quirk;
 };
 
 /* Host DWC3: usb2phy0_host, USB2-only (no USB3 routing). */
