@@ -42,6 +42,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 | 12D-E30 | 2026-10-14 | `snps,dis_enblslpm_quirk` removed; installed; idle bit 8 set; file match in 12D-E31 | [ENBLSLPM property, candidate](#36-enblslpm-property-candidate) |
 | 12D-E31 | 2026-10-14 | fixed-cable MTP SHA-256 match accepted; B and second Start pending | [ENBLSLPM property, installed, coverage open](#37-enblslpm-property-installed-coverage-open) |
 | 12D-E32 | 2026-10-14 | cable-loss `soft_connect` pair removed; candidate built; not installed | [Cable recovery pair, candidate](#39-cable-recovery-pair-candidate) |
+| 12D-E33 | 2026-10-14 | Flip still on the E30 image; E32 not installed; removal not tested | [Cable recovery pair, not installed](#40-cable-recovery-pair-not-installed) |
 
 ## Experiment ledger
 
@@ -1456,3 +1457,23 @@ Install it from the card after the current PAK has been closed normally. E30 is 
 First, with the cable already in a working position, open USB File Transfer. Expect high-speed `1d6b:0100`. Copy one small file each way and compare SHA-256. Check SD Card if it is mounted. Press B and confirm cleanup. Leave the cable seated, open the PAK again, and expect a new enumeration. That pass only shows the initial bind still works.
 
 Then, if one unplug and one replug can be done without stressing the contact-sensitive connector, record extcon and the UDC, wait for the host disconnect to settle, reconnect once, and see whether `1d6b:0100` returns without starting the PAK again. One small transfer if it does. Do not wiggle the plug. If the connector makes the result unclear, record it as inconclusive. A working first session does not accept this removal. If E30 recovers on that cable and receptacle and this image does not, keep the pair.
+
+12D-E33 later read the Flip. That boot was still the E30 image. Section 40 is that reading.
+
+## 40. Cable recovery pair, not installed
+
+12D-E33 found the Flip still running the 12D-E30 image. The 12D-E32 archive was not on the card, and this pass did not install it, start the PAK, or move the cable. The removal is not accepted and is not rejected. E30 stays the installed image and the rollback.
+
+Demetria had no `1d6b:0100`. Bus 1 port 2 was absent. The last `usb 1-2` line is a disconnect of device 16 at 11:24:19Z. That device had enumerated at 11:07:37Z as high-speed `1d6b:0100`. The log around the disconnect has no descriptor error, reset, or failed enumeration.
+
+The boot id was `27b291c9-d783-4fa0-a3fd-79f3d249e426`. `btime` 1791977357 is 11:29:17Z. The previous boot was `6a14efb9-ee1b-47ee-80d3-c75bd6bd9799`. `/boot/zlyme` hashes to `a568584c4ff9b4fad976ac126bb63bb923dd19c47f027e94eaa8b83d95a27bce`. `/boot/Image.gz` hashes to `8b5ceb6dec96b998904afef3a5cb6e87ee020eb157a1b2e1ca25ec8a0ea0d938`. `/boot/rk3566-miyoo-flip.dtb` hashes to `f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18`. `uname` is `Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026`. The live helper hashes to `30f8d89fdd98a42857ecad753bbfc650720f3f17d5d2254360fd21caacd2b9b6` and still contains `soft_write`. `zlyme-usb-enter` is still `302021bd49173579aded79dcdb27072148646d11fff33494ae7c5c32a9cd4982`. `/storage/.update/apply.log` ends with `zlyme-my355-20261014-7caa0871a82f.tar`. The E32 name is not in that log, and no update tar was at `/storage/.update`, `/storage`, or the `/mnt/sd2` root.
+
+`zlyme-usb-transfer status` was `state=off`. The UDC was `not attached`. The run directory held `lock` and no latch or bind file. `nextui.elf` was pid 490. `wlan0` was up. `/mnt/sd2` was read-write ext4. The battery was Discharging at capacity 100. The charger was online with RK817 `usb_type` `Unknown [DCP]`, and extcon0 read USB=1 and SDP=1. Taint was 4096. The new boot's saved dmesg has no WARNING, `dwc3`, panic, or Oops line. pstore was empty.
+
+The previous boot's NextUI log shows PAK launches at 10:40:05Z and 11:07:25Z, then a NextUI banner with no further launch. That banner fits a frontend that had returned after the second PAK. It does not name B, a second Start, or MENU+START. `state=off` on the new boot is not a cleanup measurement of device 16.
+
+The reboot cause was not identified. The host had lost device 16 at 11:24:19Z, and the new boot began at 11:29:17Z. SDP on the new boot shows a data cable after the boot. It does not show the cable state at the reset. This reboot is not an E32 result. It does not electrically explain the earlier restarts, and it is not recorded here as a separate software release blocker. A restart with USB disconnected, or with a connection that stays seated, still reopens that investigation.
+
+Ordinary MTP, B, a second Start, cable recovery, and MENU+START on E32 were not tested. The local archives are unchanged: E30 `2113ee676428eeede198e9aa21a422d3dedebd1bf0112112d880f82a3e7248ea`, E32 `e235ca9953fcab8f0bd93ecd7f4feb2f1c3338d15a5201b06c4b8187d69d71e0`. The evidence file is `docs/research/evidence/usb-mtp-phase12d/20261014T113707Z-e33-not-installed.txt`.
+
+Install the E32 archive from the card before any test of the removal. Close a running PAK normally first. The ordinary path is a high-speed enumeration, one small file each way, B, and a second Start with the cable left seated. The removal itself still needs one unplug and one replug inside a running session, or an inconclusive result if the connector makes that reading unclear. A working first session does not accept the removal.

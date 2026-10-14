@@ -161,3 +161,9 @@ The seventeenth table is 12D-E32. The cable-loss soft_connect pair is absent fro
 | File | What it is | SHA-256 |
 | --- | --- | --- |
 | `20261014T111800Z-e32-candidate.txt` | The reconnect source reading, unchanged kernel and bootloader hashes, and the candidate archive. | `4cfc5e0f7091315491614a7a9e74aab98eb64cc10c14594bfc627592592c83df` |
+
+The eighteenth table is 12D-E33. The Flip was still the E30 image. The E32 candidate was not installed.
+
+| File | What it is | SHA-256 |
+| --- | --- | --- |
+| `20261014T113707Z-e33-not-installed.txt` | E30 hashes on a new boot, the device 16 disconnect, and the unidentified reboot before any E32 test. | `585064242e2ed2929a7fd56d9bc81228b79c65fff47c7d2a44cdaceef120af36` |
