@@ -122,6 +122,10 @@ LINUX_PRE_BUILD_HOOKS += ZLYME_LINUX_ASSERT_CONFIG
 
 ifeq ($(BR2_PACKAGE_ZLYME_INITRAMFS),y)
 # linux/linux.mk $(eval)s before this file; LINUX_DEPENDENCIES += is ignored.
+# A zlyme-initramfs dirclean deletes the install stamp. The next image
+# build recreates it, and this edge rebuilds the kernel so Image embeds
+# the new splash.rgb565 and progress.rgb565. Image.gz, the rootfs copies,
+# and the update archive follow that rebuild. The kernel sources stay.
 $(LINUX_DIR)/.stamp_built: $(ZLYME_INITRAMFS_DIR)/.stamp_target_installed
 define ZLYME_LINUX_SET_INITRAMFS
 	$(Q)if [ ! -x $(BINARIES_DIR)/initramfs/init ]; then \

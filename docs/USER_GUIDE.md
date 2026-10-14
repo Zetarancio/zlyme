@@ -123,11 +123,11 @@ The first screen says: Connect your computer to the lower USB-C port. A starts t
 
 A computer can see:
 
-- ZLYME, the whole data partition. That includes games, BIOS, saves, settings, logs, and update files.
-- SD Card, when a second card is mounted. The whole card, including a card that has no ROM folder.
-- USB, each USB stick that was already mounted, using the name the Flip already gave that volume.
+- SDCARD1, the whole data partition. That includes games, BIOS, saves, settings, logs, and update files.
+- SDCARD2, when a second card is mounted. The whole card, including a card that has no ROM folder.
+- OTG, each USB stick that was already mounted. A second stick is OTG 2, and the names continue that way.
 
-The boot partition is not shared, and the tool does not unmount it. Use a computer you trust. It can change settings and files staged for an update. If an update is already staged, the tool refuses to start. A missing second card or USB stick is normal and does not stop the ZLYME share. A stick plugged in after the screen is up is not added. A read-only volume stays read-only. NTFS is not shared. The computer receives files through MTP. It does not receive the card as a disk.
+The boot partition is not shared, and the tool does not unmount it. Use a computer you trust. It can change settings and files staged for an update. If an update is already staged, the tool refuses to start. A missing second card or USB stick is normal and does not stop the SDCARD1 share. A stick plugged in after the screen is up is not added. A read-only volume stays read-only. NTFS is not shared. The computer receives files through MTP. It does not receive the card as a disk.
 
 Seeing the Flip on the computer is not proof that a copy worked. On 2026-10-14 one computer copied disposable files both ways, including a file on a mounted second card, and the checksums matched. Opening the tool again with the cable left in place also worked. Unplugging and plugging the cable back during one session has not been measured. A charger is not a computer. The waiting screen stays up until the lower port is a data connection. It does not say the computer has connected. macOS needs a separate MTP program. Windows and many Linux desktops include one. USB networking is a different feature and this tool does not start it.
 

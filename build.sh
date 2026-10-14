@@ -390,6 +390,16 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
         package/emulators/pico8
     refresh_compiled_package rtl8723fu-firmware BR2_PACKAGE_RTL8723FU_FIRMWARE \
         package/drivers/rtl8723fu-firmware
+    # Splash and progress bytes live in this package directory and are
+    # copied at install. dirclean recreates the initramfs install stamp.
+    # board.mk makes the linux build stamp depend on that stamp, so the
+    # same image build embeds the new files. The kernel sources stay.
+    refresh_compiled_package zlyme-initramfs BR2_PACKAGE_ZLYME_INITRAMFS \
+        package/boot/zlyme-initramfs
+    # The VTree tree is downloaded. The recipe directory is what changes
+    # when the install commands change, including lang/.
+    refresh_compiled_package vtree BR2_PACKAGE_VTREE \
+        package/system/vtree
     say "building ${ZLYME_DEFCONFIG}"
     logged_make
     say "images in ${ZLYME_OUTPUT}/images"

@@ -111,49 +111,29 @@ err=$("$TRANSFER" start 2>&1) || {
 	exit 1
 }
 
-STORAGE=${ZLYME_USB_STORAGE:-/storage}
-SD2=${ZLYME_USB_SD2:-/mnt/sd2}
-MEDIA=${ZLYME_USB_MEDIA:-/mnt/media}
 st=$("$TRANSFER" status 2>/dev/null || true)
 state=
-shared=
+storage_bits=
 while IFS= read -r line; do
 	case "$line" in
 		state=*) state=${line#state=} ;;
-		export=*)
-			if [ -z "$shared" ]; then
-				shared=${line#export=}
-			else
-				shared="$shared
-${line#export=}"
-			fi
+		export_name=*)
+			_kind=${line#export_name=}
+			[ -n "$_kind" ] || continue
+			case ", $storage_bits," in
+				*", $_kind,"*) ;;
+				*)
+					if [ -z "$storage_bits" ]; then
+						storage_bits=$_kind
+					else
+						storage_bits="$storage_bits, $_kind"
+					fi
+					;;
+			esac
 			;;
 	esac
 done <<EOF
 $st
-EOF
-
-storage_bits=
-while IFS= read -r _path; do
-	case "$_path" in
-		"$STORAGE") _kind=ZLYME ;;
-		"$SD2") _kind="SD Card" ;;
-		"$MEDIA"/*) _kind=USB ;;
-		'') continue ;;
-		*) continue ;;
-	esac
-	case ", $storage_bits," in
-		*", $_kind,"*) ;;
-		*)
-			if [ -z "$storage_bits" ]; then
-				storage_bits=$_kind
-			else
-				storage_bits="$storage_bits, $_kind"
-			fi
-			;;
-	esac
-done <<EOF
-$shared
 EOF
 if [ -z "$storage_bits" ]; then
 	storage_line="Storage: none."

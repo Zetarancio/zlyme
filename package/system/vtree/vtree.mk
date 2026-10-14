@@ -56,6 +56,8 @@ define VTREE_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/vtree/theme/Zlyme.ini
 	cp -r $(@D)/res   $(TARGET_DIR)/usr/share/vtree/
 	cp -r $(@D)/fonts $(TARGET_DIR)/usr/share/vtree/
+	test -d $(@D)/lang
+	cp -a $(@D)/lang $(TARGET_DIR)/usr/share/vtree/
 	printf '#!/bin/sh\ncd /usr/share/vtree && exec ./vtree "$$@"\n' \
 		> $(TARGET_DIR)/usr/bin/vtree
 	chmod 0755 $(TARGET_DIR)/usr/bin/vtree

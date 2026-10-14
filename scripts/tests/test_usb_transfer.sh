@@ -230,7 +230,9 @@ run_helper start
 out=$(run_helper status)
 printf '%s\n' "$out" | grep -qx 'state=bound' || fail "start did not bind: $out"
 printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "primary root missing: $out"
-printf '%s\n' "$out" | grep -qx 'export_name=ZLYME' || fail "primary name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=SDCARD1' || fail "primary name missing: $out"
+printf '%s\n' "$out" | grep -q 'export_name=SDCARD2' && fail "absent SD2 was named: $out"
+printf '%s\n' "$out" | grep -q 'export_name=OTG' && fail "absent USB was named: $out"
 printf '%s\n' "$out" | grep -qx 'export_access=rw' || fail "primary access missing: $out"
 printf '%s\n' "$out" | grep -q '/Roms' && fail "primary exported a ROM directory: $out"
 printf '%s\n' "$out" | grep -qx 'host=not attached' || fail "host state not passed through: $out"
@@ -239,7 +241,7 @@ grep -q 'usb_vendor_id 0x1D6B' "$conf" || fail "vendor id missing"
 grep -q 'usb_product_id 0x0100' "$conf" || fail "product id missing"
 grep -q 'serial "zlyme"' "$conf" || fail "serial is not the fixed string"
 grep -q 'usb_functionfs_mode 0x1' "$conf" || fail "functionfs mode missing"
-grep -q "storage \"$work/storage\" \"ZLYME\" \"rw\"" "$conf" || fail "ZLYME storage line"
+grep -q "storage \"$work/storage\" \"SDCARD1\" \"rw\"" "$conf" || fail "SDCARD1 storage line"
 grep -q mmcblk "$conf" && fail "block device name leaked into the conf"
 grep -q '/\.config' "$conf" && fail "config path exported"
 grep -q '/boot' "$conf" && fail "boot path exported"
@@ -347,8 +349,9 @@ printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\n' \
 run_helper start
 out=$(run_helper status)
 printf '%s\n' "$out" | grep -qx "export=$work/sd2" || fail "mounted SD2 root missing: $out"
-printf '%s\n' "$out" | grep -qx 'export_name=SD Card' || fail "SD Card name missing: $out"
-grep -q "storage \"$work/sd2\" \"SD Card\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "SD Card mode"
+printf '%s\n' "$out" | grep -qx 'export_name=SDCARD2' || fail "SDCARD2 name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=SDCARD1' || fail "primary missing beside SD2: $out"
+grep -q "storage \"$work/sd2\" \"SDCARD2\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "SDCARD2 mode"
 run_helper stop
 
 # Private OS paths and a block-device mount source stay out of the conf.
@@ -524,8 +527,13 @@ case "$1" in
 		printf '%s\n' "state=$state"
 		printf '%s\n' "host=${ZLYME_FAKE_HOST:-not attached}"
 		printf '%s\n' "export=/storage"
+		printf '%s\n' "export_name=SDCARD1"
 		printf '%s\n' "export=/mnt/sd2"
+		printf '%s\n' "export_name=SDCARD2"
 		printf '%s\n' "export=/mnt/media/Stick"
+		printf '%s\n' "export_name=OTG"
+		printf '%s\n' "export=/mnt/media/Other"
+		printf '%s\n' "export_name=OTG 2"
 		exit 0
 		;;
 	stop)
@@ -559,7 +567,7 @@ if grep -E 'whole data card|Settings and updates|boot partition|trusted computer
 	fail "pak intro still explains the share or the buttons"
 fi
 grep -q 'Session is open.' "$work/presenter.log.pages" || fail "pak did not say the session is open"
-grep -q 'Storage: ZLYME, SD Card, USB.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
+grep -q 'Storage: SDCARD1, SDCARD2, OTG, OTG 2.' "$work/presenter.log.pages" || fail "pak did not summarize storage"
 if grep -q 'USB:' "$work/presenter.log.pages"; then
 	fail "pak printed a raw USB state"
 fi
@@ -829,8 +837,8 @@ grep -q 'not exfat or vfat' "$work/err" || fail "ext4 primary reason: $(cat "$wo
 reset_tree
 printf 'vol0 %s exfat ro 0 0\n' "$work/storage" > "$work/mounts"
 run_helper start
-grep -q "storage \"$work/storage\" \"ZLYME\" \"ro\"" "$work/run/umtprd.conf" || fail "read-only primary was not ro"
-grep -q "storage \"$work/storage\" \"ZLYME\" \"rw\"" "$work/run/umtprd.conf" && fail "read-only primary was rw"
+grep -q "storage \"$work/storage\" \"SDCARD1\" \"ro\"" "$work/run/umtprd.conf" || fail "read-only primary was not ro"
+grep -q "storage \"$work/storage\" \"SDCARD1\" \"rw\"" "$work/run/umtprd.conf" && fail "read-only primary was rw"
 out=$(run_helper status)
 printf '%s\n' "$out" | grep -qx 'export_access=ro' || fail "read-only access: $out"
 run_helper stop
@@ -872,8 +880,8 @@ printf '%s\n' "$out" | grep -q "skipped=$work/media/ro" && fail "read-only volum
 conf=$work/run/umtprd.conf
 grep -q "storage \"$work/sd2\"" "$conf" && fail "ext4 card exported"
 grep -q "storage \"$work/media/usb\"" "$conf" && fail "usb ext4 volume exported"
-grep -q "storage \"$work/media/docs\" \"docs\" \"rw,removable\"" "$conf" || fail "docs storage line"
-grep -q "storage \"$work/media/ro\" \"ro\" \"ro,removable\"" "$conf" || fail "read-only storage line"
+grep -q "storage \"$work/media/ro\" \"OTG\" \"ro,removable\"" "$conf" || fail "read-only storage line"
+grep -q "storage \"$work/media/docs\" \"OTG 2\" \"rw,removable\"" "$conf" || fail "second usb storage line"
 grep -q "$work/private" "$conf" && fail "private symlink target exported"
 grep -q 'mmcblk\|/dev/' "$conf" && fail "device path exported"
 [ -L "$work/sd2/leak" ] || fail "skipped library was modified"
@@ -898,30 +906,50 @@ printf '%s\n' "$out" | grep -qx "export=$work/storage" || fail "named primary mi
 printf '%s\n' "$out" | grep -q "export=$work/sd2" && fail "boot-sourced SD2 was exported: $out"
 printf '%s\n' "$out" | grep -q "export=$work/boot" && fail "boot path was exported: $out"
 printf '%s\n' "$out" | grep -qx "export=$work/media/My Stick" || fail "spaced volume missing: $out"
-printf '%s\n' "$out" | grep -qx 'export_name=My Stick' || fail "spaced name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG' || fail "first usb name missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=My Stick' && fail "directory name became the MTP label: $out"
 printf '%s\n' "$out" | grep -qx "export=$work/media/ZLYMEBOOT" || fail "duplicate label was treated as boot: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG 2' || fail "second usb name missing: $out"
 printf '%s\n' "$out" | grep -q "skipped=$work/sd2 is the boot volume" || fail "boot source was not skipped: $out"
 conf=$work/run/umtprd.conf
-grep -q "storage \"$work/media/My Stick\" \"My Stick\" \"rw,removable\"" "$conf" || fail "spaced storage line"
-grep -q "storage \"$work/media/ZLYMEBOOT\" \"ZLYMEBOOT\" \"rw,removable\"" "$conf" || fail "label storage line"
+grep -q "storage \"$work/media/My Stick\" \"OTG\" \"rw,removable\"" "$conf" || fail "spaced storage line"
+grep -q "storage \"$work/media/ZLYMEBOOT\" \"OTG 2\" \"rw,removable\"" "$conf" || fail "second usb storage line"
 n=$(printf '%s\n' "$out" | grep -c '^export=/' || true)
 [ "$n" = 3 ] || fail "duplicate library changed the export count: $n"
 grep -q '/\.config' "$conf" && fail "hidden directory became its own storage"
 grep -q '/boot' "$conf" && fail "boot path exported"
 run_helper stop
 
-# Two exported volumes can want the same words. The second is suffixed.
+# One USB volume is OTG. Further volumes are OTG 2 and OTG 3.
+# The directory name is not the label, so two sticks still get unique names.
 reset_tree
-mkdir -p "$work/sd2" "$work/media/SD Card"
-printf '%s\n' "$work/storage" "$work/sd2" "$work/media/SD Card" > "$work/libraries"
-card_mp=$(printf '%s' "$work/media/SD Card" | sed 's/ /\\040/g')
-printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\nvol2 %s exfat rw 0 0\n' \
-	"$work/storage" "$work/sd2" "$card_mp" > "$work/mounts"
+mkdir -p "$work/media/Stick"
+printf '%s\n' "$work/storage" "$work/media/Stick" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/media/Stick" > "$work/mounts"
 run_helper start
 out=$(run_helper status)
-printf '%s\n' "$out" | grep -qx 'export_name=SD Card' || fail "SD Card name missing: $out"
-printf '%s\n' "$out" | grep -qx 'export_name=SD Card 2' || fail "collision suffix missing: $out"
-grep -q "storage \"$work/media/SD Card\" \"SD Card 2\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "collision storage line"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG' || fail "one usb name missing: $out"
+printf '%s\n' "$out" | grep -q 'export_name=OTG ' && fail "one usb grew a suffix: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=Stick' && fail "usb used its directory name: $out"
+grep -q "storage \"$work/media/Stick\" \"OTG\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "one usb storage line"
+run_helper stop
+reset_tree
+mkdir -p "$work/sd2" "$work/media/Stick" "$work/media/Other" "$work/media/Third"
+printf '%s\n' "$work/storage" "$work/sd2" "$work/media/Stick" \
+	"$work/media/Other" "$work/media/Third" > "$work/libraries"
+printf 'vol0 %s exfat rw 0 0\nvol1 %s exfat rw 0 0\nvol2 %s exfat rw 0 0\nvol3 %s exfat rw 0 0\nvol4 %s exfat rw 0 0\n' \
+	"$work/storage" "$work/sd2" "$work/media/Stick" \
+	"$work/media/Other" "$work/media/Third" > "$work/mounts"
+run_helper start
+out=$(run_helper status)
+printf '%s\n' "$out" | grep -qx 'export_name=SDCARD1' || fail "multi primary missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=SDCARD2' || fail "multi sd2 missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG' || fail "multi first usb missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG 2' || fail "multi second usb missing: $out"
+printf '%s\n' "$out" | grep -qx 'export_name=OTG 3' || fail "multi third usb missing: $out"
+grep -q "storage \"$work/media/Other\" \"OTG 2\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "OTG 2 storage line"
+grep -q "storage \"$work/media/Third\" \"OTG 3\" \"rw,removable\"" "$work/run/umtprd.conf" || fail "OTG 3 storage line"
 run_helper stop
 
 # The boot device is the mounted source, not a card number or a label.

@@ -231,20 +231,20 @@ run_real() {
 run_real start >"$base/start.out" 2>"$base/start.err" || fail "ext4 start failed: $(cat "$base/start.err")"
 st=$(run_real status)
 printf '%s\n' "$st" | grep -qx "export=$base/storage" || fail "primary missing: $st"
-printf '%s\n' "$st" | grep -qx 'export_name=ZLYME' || fail "primary name missing: $st"
+printf '%s\n' "$st" | grep -qx 'export_name=SDCARD1' || fail "primary name missing: $st"
 printf '%s\n' "$st" | grep -qx "export=$base/sd2" || fail "ext4 sd2 missing: $st"
-printf '%s\n' "$st" | grep -qx 'export_name=SD Card' || fail "sd2 name missing: $st"
+printf '%s\n' "$st" | grep -qx 'export_name=SDCARD2' || fail "sd2 name missing: $st"
 printf '%s\n' "$st" | grep -qx "export=$base/media/usb" || fail "ext4 usb missing: $st"
 printf '%s\n' "$st" | grep -qx "export=$base/media/empty" || fail "empty volume missing: $st"
 printf '%s\n' "$st" | grep -qx "export=$base/media/ro" || fail "read-only ext4 missing: $st"
 printf '%s\n' "$st" | grep -q "skipped=$base/media/missing is not mounted" || fail "missing volume was not reported: $st"
 printf '%s\n' "$st" | grep -q "skipped=$base/media/ntfs filesystem is ntfs" || fail "ntfs was not skipped: $st"
 conf=$base/run/umtprd.conf
-grep -q "storage \"$base/storage\" \"ZLYME\" \"rw\"" "$conf" || fail "primary storage line missing"
-grep -q "storage \"$base/sd2\" \"SD Card\" \"rw,removable\"" "$conf" || fail "ext4 storage line missing"
-grep -q "storage \"$base/media/usb\" \"usb\" \"rw,removable\"" "$conf" || fail "usb ext4 storage line missing"
-grep -q "storage \"$base/media/ro\" \"ro\" \"ro,removable\"" "$conf" || fail "read-only line missing"
-grep -q "storage \"$base/media/empty\" \"empty\" \"rw,removable\"" "$conf" || fail "empty volume line missing"
+grep -q "storage \"$base/storage\" \"SDCARD1\" \"rw\"" "$conf" || fail "primary storage line missing"
+grep -q "storage \"$base/sd2\" \"SDCARD2\" \"rw,removable\"" "$conf" || fail "ext4 storage line missing"
+grep -q "storage \"$base/media/empty\" \"OTG\" \"rw,removable\"" "$conf" || fail "empty volume line missing"
+grep -q "storage \"$base/media/ro\" \"OTG 2\" \"ro,removable\"" "$conf" || fail "read-only line missing"
+grep -q "storage \"$base/media/usb\" \"OTG 3\" \"rw,removable\"" "$conf" || fail "usb ext4 storage line missing"
 grep -q mmcblk "$conf" && fail "block device exported"
 grep -q '/\.config' "$conf" && fail "config path exported"
 grep -q '/boot' "$conf" && fail "boot path exported"
@@ -332,7 +332,7 @@ fi
 if grep -q 'MENU+START' "$WORK/presenter.log.pages"; then
 	fail "pak explained the emergency stop"
 fi
-grep -q 'Storage: ZLYME.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
+grep -q 'Storage: SDCARD1.' "$WORK/presenter.log.pages" || fail "pak did not summarize storage"
 grep -q 'Session is open.' "$WORK/presenter.log.pages" || fail "pak did not say the session is open"
 run_page=$(sed -n '2p' "$WORK/presenter.log")
 printf '%s\n' "$run_page" | grep -q -- '--confirm-show' && fail "running page showed A"

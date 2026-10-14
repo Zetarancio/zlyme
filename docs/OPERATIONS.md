@@ -47,7 +47,7 @@ The my355 image uses:
 - idbloader beginning at 32 KiB;
 - `uboot` GPT partition at 8 MiB;
 - FAT32 `ZLYMEBOOT`;
-- exFAT `ZLYME`;
+- exFAT `ZLYME`, GPT type Microsoft Basic Data on a freshly written image;
 - no rootfs GPT partition.
 
 The squashfs root is a file on `ZLYMEBOOT`. A fresh image also puts `miyoo355_fw.img` at the FAT root. Stock consumes that installer. An ordinary OTA does not write it.

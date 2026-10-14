@@ -4,9 +4,10 @@
 # The controller name comes from device.conf (ZLYME_USB_GADGET_UDC).
 # Test seams override every host path. Configfs is mounted only while
 # a transfer starts, and only when it is not already mounted.
-# Each MTP entry is one mounted data filesystem root: /storage,
-# /mnt/sd2, and /mnt/media/<name>. ROM and BIOS directories are not
-# required. /boot is never an entry. ext4 is shared only when the
+# Each MTP entry is one mounted data filesystem root: /storage
+# (SDCARD1), /mnt/sd2 (SDCARD2), and /mnt/media/<name> (OTG, then
+# OTG 2). Those are display names. The mountpoints stay. ROM and
+# BIOS directories are not required. /boot is never an entry. ext4 is shared only when the
 # responder is started in the private mount namespace built by
 # zlyme-usb-enter. ZLYME_USB_JAIL=0 is the host-test seam that keeps
 # the exFAT-only path.
@@ -366,17 +367,6 @@ add_export() {
 	printf '%s	%s	%s\n' "$_path" "$_try" "$_mode" >> "$EXPORTS"
 }
 
-# The directory name is already zlyme-storage's mountpoint component,
-# including its collision suffix. MTP shows that name.
-volume_label() {
-	_base=${1##*/}
-	_base=$(trim "$_base")
-	if [ -z "$_base" ] || [ "$_base" = "." ] || [ "$_base" = ".." ]; then
-		_base=Volume
-	fi
-	printf '%s\n' "$_base"
-}
-
 record_skip() {
 	printf '%s	%s\n' "$1" "$2" >> "$RUN/skipped"
 	say "skipped $1: $2"
@@ -505,9 +495,9 @@ add_mount_root() {
 build_exports() {
 	rm -f "$EXPORTS" "$RUN/truncated" "$RUN/skipped"
 	: > "$EXPORTS"
-	add_mount_root "$STORAGE" "ZLYME" 1 || return 1
+	add_mount_root "$STORAGE" "SDCARD1" 1 || return 1
 	if listed_in_libraries "$SD2"; then
-		add_mount_root "$SD2" "SD Card" 0 || return 1
+		add_mount_root "$SD2" "SDCARD2" 0 || return 1
 	fi
 	if [ -r "$LIBS" ]; then
 		while IFS= read -r _line || [ -n "$_line" ]; do
@@ -519,8 +509,7 @@ build_exports() {
 				"$MEDIA"/*) ;;
 				*) continue ;;
 			esac
-			_label=$(volume_label "$_line")
-			add_mount_root "$_line" "$_label" 0 || return 1
+			add_mount_root "$_line" "OTG" 0 || return 1
 		done < "$LIBS"
 	fi
 	if [ ! -s "$EXPORTS" ]; then

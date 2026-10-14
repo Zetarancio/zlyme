@@ -110,12 +110,16 @@ Buildroot copies a local package's source once and does not notice a later edit.
 | `gpudriver` | `package/system/gpudriver` |
 | `pico8` | `package/emulators/pico8` |
 | `rtl8723fu-firmware` | `package/drivers/rtl8723fu-firmware` |
+| `zlyme-preloader` | `package/system/zlyme-preloader` |
+| `zlyme-usb-transfer` | `package/system/zlyme-usb-transfer` |
+| `zlyme-initramfs` | `package/boot/zlyme-initramfs` |
+| `vtree` | `package/system/vtree` |
 
-When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh.
+When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh. A missing fingerprint file also dircleans that package once, so the first image build after the entry is added installs the current files.
 
 Every package with `SITE_METHOD = local` is in this table. A local package that must stay out of it is named in `scripts/tests/fingerprint-exceptions.txt` with a rationale. There are no such exceptions. `<pkg>-reinstall` copies the source again but can keep a previously compiled binary.
 
-Files that a downloaded package installs from its own package directory are not fingerprinted either, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again.
+Other files that a downloaded package installs from its own package directory are not fingerprinted, such as the InputPlumber YAML and init script or the PortMaster wrappers. `<pkg>-reinstall` copies them again. `zlyme-initramfs` is fingerprinted because `splash.rgb565`, `progress.rgb565`, `splash.anim`, and `progress.anim` live in that package directory and the install copies them into the initramfs directory, `/usr/share/zlyme`, and `output/images`. `board/my355/board.mk` makes `$(LINUX_DIR)/.stamp_built` depend on the initramfs install stamp. After the dirclean, the image build recreates that stamp, rebuilds the kernel so `Image` embeds the new stills, and packs `Image.gz`, the rootfs copies, and the update archive from those outputs. It does not dirclean the toolchain or the kernel sources. Linux rebuilds `initramfs_data.cpio` when an included file is newer than the cpio. `vtree` is fingerprinted at the recipe directory so an install-command change, including `lang/`, is picked up. The downloaded VTree tree is not hashed.
 
 PortMaster's Buildroot package installs `PortMaster.zip` and the Zlyme integration files. It does not unpack a live tree into the rootfs. The pin is `PORTMASTER_VERSION` in `package/system/portmaster/portmaster.mk`, with the zip hash in `portmaster.hash`. The current pin is the upstream stable release `2026.06.23-0015`. Do not point the package at GitHub `latest`. A newer tag whose release text says beta or alpha is not the stable channel. `zlyme-portmaster-prepare` unpacks the seed on the selected library at first use. `portmaster-theora-compat` is libtheora 1.1.1's decoder, installed under `/usr/lib/compat` for PortMaster. It does not replace the system libtheora.
 

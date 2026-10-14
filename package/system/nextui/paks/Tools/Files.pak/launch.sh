@@ -57,6 +57,11 @@ seed_vtree() {
 	if [ -e "$SHARE/fonts" ]; then
 		ln -sfn "$SHARE/fonts" "$RUN/fonts"
 	fi
+	# vtree loads lang next to its binary. This link is the same
+	# directory, so the runtime folder resolves the same strings.
+	if [ -e "$SHARE/lang" ]; then
+		ln -sfn "$SHARE/lang" "$RUN/lang"
+	fi
 }
 
 if [ "${ZLYME_VTREE_TEST:-}" = 1 ]; then

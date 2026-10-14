@@ -9,7 +9,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Active summary
 
-Phases 0–12 are closed. Phase 13 is scoped and not yet implemented. It continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`.
+Phases 0–12 are closed. Phase 13A is host-tested. The rest of Phase 13 is planned. It continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`.
 
 | Phase | Closed result | Where the detail stayed |
 |-------|----------------|-------------------------|
@@ -26,7 +26,7 @@ Phases 0–12 are closed. Phase 13 is scoped and not yet implemented. It continu
 | 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
 | 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
 | 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | Scoped on 2026-10-15. No behavior is implemented. | [Phase 13](#phase-13) |
+| 13 | 13A host-tested on 2026-10-15. 13B–13E planned. | [Phase 13](#phase-13) |
 
 Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
 
@@ -42,7 +42,7 @@ The sections below keep the phase records. The Phase 3C integration log moved to
 
 ## Current phase
 
-Phase 12 development is closed. Phase 13 is scoped in [Phase 13](#phase-13) and is not implemented. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is scoped below and remains on this branch.
+Phase 12 development is closed. Phase 13A is host-tested. The rest of [Phase 13](#phase-13) is planned. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13A is host-tested below. The rest of Phase 13 remains planned on this branch.
 
 Status words in this section are not interchangeable:
 
@@ -1317,11 +1317,13 @@ WestonPack cleanup remains covered by host tests. Earlier hardware evidence is a
 
 ### Phase 13
 
-Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase-12` from `a428bff51c4c6b0989fce16024831de4277ebf69`. This is the same branch as Phase 12 and the same eventual `zlyme44.3` release. `ZLYME_VERSION` stays `zlyme44.3`. No `zlyme44.3` image or release exists. The installed Flip image remains the E32 archive named in the Phase 12 closure. Phase 13 does not edit the hardware wiki.
+Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase-12` from `a428bff51c4c6b0989fce16024831de4277ebf69`. This is the same branch as Phase 12 and the same eventual `zlyme44.3` release. `ZLYME_VERSION` stays `zlyme44.3`. No `zlyme44.3` image or release exists. The installed Flip image remains the E32 archive named in the Phase 12 closure. Phase 13A is host-tested and is not on that image. Phase 13 does not edit the hardware wiki.
 
 The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
 
 #### Phase 13A — Build reliability and small corrections
+
+Host-tested on 2026-10-15. No image was built for these items.
 
 ##### A1. Incremental branding rebuild
 
@@ -1333,7 +1335,7 @@ Dependencies: branding assets already committed in `f4c9ad1d733dada1ca61f072850b
 
 Acceptance criteria: a changed splash or progress file changes that package fingerprint and dircleans `zlyme-initramfs` only. The next image build installs the current bytes and rebuilds the kernel image from the new install stamp. No full image build is required to accept the host check.
 
-Status: Planned.
+Status: Host-tested.
 
 ##### A2. Windows-compatible image partition type
 
@@ -1345,7 +1347,7 @@ Dependencies: genimage's `F` alias for `ebd0a0a2-b9e5-4433-87c0-68b6b72699c7`. B
 
 Acceptance criteria: a host check resolves storage to that UUID and leaves the idbloader offset, the `uboot` type and placement, the boot type and placement, and the filesystem label unchanged.
 
-Status: Planned.
+Status: Host-tested.
 
 ##### A3. MTP storage naming
 
@@ -1357,7 +1359,7 @@ Dependencies: the existing duplicate-name suffix. `/run/zlyme/libraries` still d
 
 Acceptance criteria: host checks cover a primary card alone, a listed second card that is not mounted, a mounted second card, one USB volume, several USB volumes, and two volumes that would otherwise share a name. `/boot` is absent from the export list.
 
-Status: Planned.
+Status: Host-tested.
 
 ##### A4. VTree language resources
 
@@ -1369,7 +1371,7 @@ Dependencies: VTree `560205b6198ac9e0e28975d42fcaee4c28989015`. `lang.c` loads `
 
 Acceptance criteria: a host check resolves the English strings from the Files runtime directory and a second launch leaves a user theme and `ShowHidden` in place.
 
-Status: Planned.
+Status: Host-tested.
 
 ##### A5. README branding GIF
 
@@ -1381,7 +1383,7 @@ Dependencies: `package/system/nextui/res/branding/zlyme_slime_loop.gif` from `f4
 
 Acceptance criteria: the image tag width is 444 and the GIF hash is unchanged by the edit.
 
-Status: Planned.
+Status: Host-tested.
 
 ##### A6. Unreleased changelog cleanup
 
@@ -1393,7 +1395,7 @@ Dependencies: the Phase 12 closure and `docs/research/usb-mtp-phase12d.md`.
 
 Acceptance criteria: both paragraphs are absent from Unreleased, and the same evidence is still in the roadmap, the logbook, and the research record.
 
-Status: Planned.
+Status: Host-tested.
 
 #### Phase 13B — RetroArch and emulator consistency
 
