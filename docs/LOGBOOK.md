@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Mountinfo parent ids
+
+`zlyme-portmaster-cleanup` decides the visible mount from mountinfo parent ids. The last line for a path is not that mount. A recorded mount that is covered, hidden by a prefix, or sitting in an ambiguous table stays mounted. A mount id can be reused after unmount, and the check and the path unmount are not one operation. The host test used a fake mount table. This was not run on a Flip. The original port-to-MTP leak is still open.
+
 ## 2026-10-15 — Documentation and source review
 
 The canonical docs now describe the current suspend helper, RetroArch's stock file and writable cores, and the open RGUI and one-directory PortMaster GUI limits. Phase 13 is not closed. No image was built. A mount the wrapper never recorded can still block USB File Transfer. The read-only check is in `docs/OPERATIONS.md`. Flycast's save bind and Wine's `dosdevices` tmpfs are still released by path after their own checks. They were not given mount ids in this pass. This was not run on a Flip.

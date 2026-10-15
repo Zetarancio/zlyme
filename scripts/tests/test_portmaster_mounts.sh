@@ -29,6 +29,7 @@ export ZLYME_LIBRARY_SH="$LIB"
 export ZLYME_FAKE_UMOUNT_LOG="$work/umount.log"
 export ZLYME_FAKE_MOUNT_FAIL=0
 export ZLYME_FAKE_UMOUNT_FAIL=0
+export ZLYME_PORTMASTER_MOUNTS="$ROOT/package/system/portmaster/zlyme-portmaster-mounts.sh"
 export ZLYME_PYTHON_LOG="$work/python.log"
 export PATH="$work/bin:$PATH"
 : > "$ZLYME_PYTHON_LOG"
@@ -113,8 +114,14 @@ if [ ! -s "$seq" ]; then
 fi
 id=$(cat "$seq")
 printf '%s\n' "$((id + 1))" > "$seq"
+# shellcheck disable=SC1090
+. "${ZLYME_PORTMASTER_MOUNTS:?}"
+parent=$(pm_new_parent "$dest") || exit 1
+case "$parent" in
+	''|*[!0-9]*) exit 1 ;;
+esac
 printf '%s %s fake rw 0 0\n' "$srcenc" "$enc" >> "$ZLYME_PM_MOUNTS"
-printf '%s 1 0:1 / %s rw - fake %s rw\n' "$id" "$enc" "$srcenc" >> "$ZLYME_PM_MOUNTINFO"
+printf '%s %s 0:1 / %s rw - fake %s rw\n' "$id" "$parent" "$enc" "$srcenc" >> "$ZLYME_PM_MOUNTINFO"
 EOF
 
 cat > "$work/bin/umount" << 'EOF'
@@ -122,6 +129,8 @@ cat > "$work/bin/umount" << 'EOF'
 set -eu
 # shellcheck disable=SC1090
 . "$ZLYME_MOUNTS_LIB"
+# shellcheck disable=SC1090
+. "${ZLYME_PORTMASTER_MOUNTS:?}"
 target=
 for arg in "$@"; do
 	case "$arg" in
@@ -134,45 +143,67 @@ if [ "${ZLYME_FAKE_UMOUNT_FAIL:-0}" = 1 ]; then
 	exit 1
 fi
 [ -n "$target" ] || exit 1
-
-# Drop the last matching line. umount(path) removes the top mount.
-drop_last_field() {
-	file=$1
-	fieldn=$2
-	[ -f "$file" ] || return 1
-	tmp=$(mktemp)
-	n=0
-	last=0
-	while IFS= read -r line || [ -n "$line" ]; do
-		n=$((n + 1))
-		printf '%s\n' "$line" >> "$tmp"
-		got=$(printf '%s\n' "$line" | awk -v n="$fieldn" 'NF >= n { print $n; exit }')
-		if [ -n "$got" ] && [ "$(mounts_decode "$got")" = "$target" ]; then
-			last=$n
-		fi
-	done < "$file"
-	if [ "$last" -eq 0 ]; then
-		rm -f "$tmp"
-		return 1
+# umount(path) detaches the visible mount, not the last line.
+# A mounts line with no mountinfo record is the only layer at that
+# path in this harness. Two layers and no proved id stay mounted.
+vid=$(pm_visible_id "$target" 2>/dev/null || true)
+if [ -z "$vid" ]; then
+	if [ "$(mounts_count "$ZLYME_PM_MOUNTS" "$target")" -ne 1 ]; then
+		exit 1
 	fi
-	out=$(mktemp)
-	i=0
+	drop_mounts=$(mktemp)
+	removed=0
 	while IFS= read -r line || [ -n "$line" ]; do
-		i=$((i + 1))
-		if [ "$i" -eq "$last" ]; then
-			continue
+		if [ "$removed" -eq 0 ]; then
+			f2=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
+			if [ -n "$f2" ] && [ "$(mounts_decode "$f2")" = "$target" ]; then
+				removed=1
+				continue
+			fi
 		fi
 		printf '%s\n' "$line"
-	done < "$tmp" > "$out"
-	mv -f "$out" "$file"
-	rm -f "$tmp"
-}
-drop_last_field "$ZLYME_PM_MOUNTS" 2
-st=$?
-if [ -f "${ZLYME_PM_MOUNTINFO:-}" ]; then
-	drop_last_field "$ZLYME_PM_MOUNTINFO" 5 || true
+	done < "$ZLYME_PM_MOUNTS" > "$drop_mounts"
+	if [ "$removed" -ne 1 ]; then
+		rm -f "$drop_mounts"
+		exit 1
+	fi
+	mv -f "$drop_mounts" "$ZLYME_PM_MOUNTS"
+	exit 0
 fi
-[ "$st" -eq 0 ]
+src=$(awk -v id="$vid" '
+	$1 == id {
+		for (i = 1; i <= NF; i++) {
+			if ($i == "-") {
+				print $(i + 2)
+				exit
+			}
+		}
+	}
+' "$ZLYME_PM_MOUNTINFO")
+[ -n "$src" ] || exit 1
+drop_mountinfo=$(mktemp)
+awk -v id="$vid" '$1 != id { print }' "$ZLYME_PM_MOUNTINFO" > "$drop_mountinfo"
+drop_mounts=$(mktemp)
+removed=0
+while IFS= read -r line || [ -n "$line" ]; do
+	if [ "$removed" -eq 0 ]; then
+		f1=$(printf '%s\n' "$line" | awk 'NF >= 1 { print $1; exit }')
+		f2=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
+		if [ -n "$f1" ] && [ -n "$f2" ] \
+			&& [ "$(mounts_decode "$f1")" = "$(mounts_decode "$src")" ] \
+			&& [ "$(mounts_decode "$f2")" = "$target" ]; then
+			removed=1
+			continue
+		fi
+	fi
+	printf '%s\n' "$line"
+done < "$ZLYME_PM_MOUNTS" > "$drop_mounts"
+if [ "$removed" -ne 1 ]; then
+	rm -f "$drop_mountinfo" "$drop_mounts"
+	exit 1
+fi
+mv -f "$drop_mountinfo" "$ZLYME_PM_MOUNTINFO"
+mv -f "$drop_mounts" "$ZLYME_PM_MOUNTS"
 EOF
 chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
 
@@ -489,6 +520,161 @@ not_unmounted() {
 		fail "$1 was unmounted"
 	fi
 }
+
+# The covering mount is the first mountinfo line. The recorded mount
+# is last. Parent ids say the first line is the visible mount.
+reset
+printf '%s\n' \
+	'low /var/port/rev fake rw 0 0' \
+	'high /var/port/rev fake rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'7 40 0:7 / /var/port/rev rw - fake high rw' \
+	'40 1 0:40 / /var/port/rev rw - fake low rw' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '40\t/var/port/rev\n' > "$ZLYME_PM_REGISTRY"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN" 2>"$work/rev.err"; then
+	fail "reversed order reported the covered mount free"
+fi
+grep -q 'is covered; leaving it' "$work/rev.err" \
+	|| fail "reversed order did not report the covered mount"
+grep -F -q 'low /var/port/rev ' "$ZLYME_PM_MOUNTS" \
+	|| fail "reversed order removed the recorded lower mount"
+grep -F -q 'high /var/port/rev ' "$ZLYME_PM_MOUNTS" \
+	|| fail "reversed order removed the covering mount"
+not_unmounted /var/port/rev
+reg_exact /var/port/rev || fail "reversed order dropped the covered id"
+
+# One recorded mount is the visible mount and is released.
+reset
+"$EXEC" mount --bind /src /var/port/one || fail "single mount failed"
+"$CLEAN" || fail "single mount cleanup failed"
+if grep -F -q ' /var/port/one ' "$ZLYME_PM_MOUNTS"; then
+	fail "single mount stayed"
+fi
+if reg_exact /var/port/one; then
+	fail "single mount stayed registered"
+fi
+
+# Two recorded mounts, stacked. The visible mount has the smaller id
+# and is the first mountinfo line. Both are released.
+reset
+printf '%s\n' \
+	'low /var/port/both fake rw 0 0' \
+	'high /var/port/both fake rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'4 50 0:4 / /var/port/both rw - fake high rw' \
+	'50 1 0:50 / /var/port/both rw - fake low rw' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '4\t/var/port/both\n50\t/var/port/both\n' > "$ZLYME_PM_REGISTRY"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+"$CLEAN" || fail "stacked mounts were not both released"
+if grep -F -q ' /var/port/both ' "$ZLYME_PM_MOUNTS"; then
+	fail "a stacked mount stayed"
+fi
+if reg_exact /var/port/both; then
+	fail "a stacked mount stayed registered"
+fi
+high_line=$(grep -n -Fx /var/port/both "$ZLYME_FAKE_UMOUNT_LOG" | head -n 1 | cut -d: -f1)
+low_count=$(grep -c -Fx /var/port/both "$ZLYME_FAKE_UMOUNT_LOG" || true)
+[ "$low_count" -eq 2 ] || fail "stacked cleanup unmounted $low_count times"
+[ -n "$high_line" ] || fail "stacked cleanup did not unmount"
+
+# A recorded mount under a covered prefix is not the visible mount,
+# even when it is the only line at its own path.
+reset
+printf '%s\n' \
+	'base /var/port/hide fake rw 0 0' \
+	'top /var/port/hide fake rw 0 0' \
+	'game /var/port/hide/game fake rw 0 0' \
+	'save /var/port/hide/game/save fake rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'20 10 0:20 / /var/port/hide rw - fake top rw' \
+	'10 1 0:10 / /var/port/hide rw - fake base rw' \
+	'30 10 0:30 / /var/port/hide/game rw - fake game rw' \
+	'40 30 0:40 / /var/port/hide/game/save rw - fake save rw' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '40\t/var/port/hide/game/save\n' > "$ZLYME_PM_REGISTRY"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN" 2>"$work/hide.err"; then
+	fail "hidden mount cleanup reported success"
+fi
+grep -q 'is hidden; leaving it' "$work/hide.err" \
+	|| fail "hidden mount was not reported"
+grep -F -q 'save /var/port/hide/game/save ' "$ZLYME_PM_MOUNTS" \
+	|| fail "hidden mount was removed"
+grep -F -q 'top /var/port/hide ' "$ZLYME_PM_MOUNTS" \
+	|| fail "hidden cleanup removed the covering mount"
+not_unmounted /var/port/hide/game/save
+reg_exact /var/port/hide/game/save || fail "hidden id left the registry"
+
+# The same prefix stack does not hide a mount attached to its top.
+reset
+printf '%s\n' \
+	'base /var/port/shown fake rw 0 0' \
+	'top /var/port/shown fake rw 0 0' \
+	'ok /var/port/shown/ok fake rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'20 10 0:20 / /var/port/shown rw - fake top rw' \
+	'10 1 0:10 / /var/port/shown rw - fake base rw' \
+	'50 20 0:50 / /var/port/shown/ok rw - fake ok rw' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '50\t/var/port/shown/ok\n' > "$ZLYME_PM_REGISTRY"
+"$CLEAN" || fail "visible nested mount stayed"
+if grep -F -q 'ok /var/port/shown/ok ' "$ZLYME_PM_MOUNTS"; then
+	fail "visible nested mount was not released"
+fi
+grep -F -q 'top /var/port/shown ' "$ZLYME_PM_MOUNTS" \
+	|| fail "visible nested cleanup removed the prefix"
+grep -F -q 'base /var/port/shown ' "$ZLYME_PM_MOUNTS" \
+	|| fail "visible nested cleanup removed the covered prefix"
+
+# Two well-formed mounts that do not form one stack are ambiguous.
+reset
+printf '%s\n' \
+	'a /var/port/bad fake rw 0 0' \
+	'b /var/port/bad fake rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'11 1 0:11 / /var/port/bad rw - fake a rw' \
+	'12 1 0:12 / /var/port/bad rw - fake b rw' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '11\t/var/port/bad\n' > "$ZLYME_PM_REGISTRY"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN" 2>"$work/bad.err"; then
+	fail "ambiguous topology reported success"
+fi
+grep -q 'ambiguous topology' "$work/bad.err" \
+	|| fail "ambiguous topology was not reported"
+grep -F -q 'a /var/port/bad ' "$ZLYME_PM_MOUNTS" \
+	|| fail "ambiguous topology removed a mount"
+grep -F -q 'b /var/port/bad ' "$ZLYME_PM_MOUNTS" \
+	|| fail "ambiguous topology removed the other mount"
+not_unmounted /var/port/bad
+reg_exact /var/port/bad || fail "ambiguous topology dropped the id"
+
+# A line that is not mountinfo makes the table unusable.
+reset
+printf '%s\n' 'z /var/port/junk fake rw 0 0' > "$ZLYME_PM_MOUNTS"
+printf '%s\n' \
+	'5 1 0:5 / /var/port/junk rw - fake z rw' \
+	'not-a-mount' \
+	> "$ZLYME_PM_MOUNTINFO"
+printf '5\t/var/port/junk\n' > "$ZLYME_PM_REGISTRY"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN" 2>"$work/junk.err"; then
+	fail "malformed mountinfo reported success"
+fi
+grep -q 'ambiguous topology' "$work/junk.err" \
+	|| fail "malformed mountinfo was not reported"
+grep -F -q 'z /var/port/junk ' "$ZLYME_PM_MOUNTS" \
+	|| fail "malformed mountinfo unmounted the path"
+not_unmounted /var/port/junk
+reg_exact /var/port/junk || fail "malformed mountinfo dropped the id"
 
 if grep -E -q 'pm_snapshot|pm_consume_snapshot|pm_storage_nested|portmaster_mark|storage-before' \
 	"$CLEAN" \

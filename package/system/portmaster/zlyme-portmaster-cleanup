@@ -6,7 +6,7 @@
 # WestonPack at /tmp/weston is still cleaned here: TERM holders, KILL
 # after 6 s, then unmount deepest child first. A mount recorded by
 # zlyme-portmaster-exec is unmounted after that only when its
-# mountinfo id is still the top mount at the recorded path. A mount
+# mountinfo id is still the visible mount at the recorded path. A mount
 # that was not recorded stays, including one created while the port
 # was running and one that replaced a recorded mount. /roms/ports is
 # unbound through zlyme-library.sh. Library roots, /storage itself,

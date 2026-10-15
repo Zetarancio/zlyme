@@ -5,7 +5,7 @@
 # A mount is recorded under /run/zlyme-portmaster/owned-mounts only when
 # it adds one new mountinfo id at its target. A remount is not owned.
 # A successful umount drops that id when it is gone. nextui-session
-# unmounts a recorded mount only while that id is still the top mount.
+# unmounts a recorded mount only while that id is still the visible mount.
 # /tmp/weston is still the WestonPack lifecycle PortMaster launchers
 # already share. This is not a sudo replacement and it does not
 # intercept wp_weston, westonwrap.sh, or other graphics calls.
