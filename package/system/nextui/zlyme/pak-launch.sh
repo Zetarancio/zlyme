@@ -267,6 +267,15 @@ portmaster_cleanup() {
 	"$_bin" || true
 }
 
+# Baseline for mounts nested under /storage. Written after the
+# pre-launch cleanup and before the port starts. The post-exit cleanup
+# releases layers that were not in this list.
+portmaster_mark() {
+	_bin=${ZLYME_PORTMASTER_CLEANUP:-/usr/sbin/zlyme-portmaster-cleanup}
+	[ -x "$_bin" ] || return 0
+	"$_bin" snapshot || echo "zlyme-portmaster: storage snapshot failed" >&2
+}
+
 # WINE.pak execs zlyme-weston-run, which stays in this pak group.
 # wineserver can still outlive the group.
 wine_prefix_cleanup() {
@@ -330,6 +339,7 @@ run_pak_cmd() {
 	launch_skip_bt "$_exe" && skip_bt=1
 	if launch_is_ports "$_exe"; then
 		portmaster_cleanup
+		portmaster_mark
 	fi
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup

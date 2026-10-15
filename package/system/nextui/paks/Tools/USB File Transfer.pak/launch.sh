@@ -107,7 +107,13 @@ if [ "$rc" -ne 0 ]; then
 fi
 
 err=$("$TRANSFER" start 2>&1) || {
-	present "$(reason_screen "USB file transfer did not start." "$err")" "OK" "Back"
+	printf '%s\n' "$err" >&2
+	if printf '%s\n' "$err" | grep -q 'primary storage contains a nested mount'; then
+		present "USB transfer cannot start.
+Another filesystem is mounted inside storage." "OK" "Back"
+	else
+		present "$(reason_screen "USB file transfer did not start." "$err")" "OK" "Back"
+	fi
 	exit 1
 }
 

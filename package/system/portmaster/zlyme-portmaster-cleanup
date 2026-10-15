@@ -6,8 +6,12 @@
 # WestonPack at /tmp/weston is still cleaned here: TERM holders, KILL
 # after 6 s, then unmount deepest child first. Mounts recorded by
 # zlyme-portmaster-exec are unmounted after that, deepest first.
-# /roms/ports is unbound through zlyme-library.sh. Library roots and
-# any mount this launch did not register are left alone.
+# A mount nested under /storage that was not in the pre-launch snapshot
+# is adopted into that same registry first, including one created by
+# mount(8) rather than the wrapper. /roms/ports is unbound through
+# zlyme-library.sh. Library roots, /storage itself, mounts outside
+# /storage, and a nested mount that was already there are left alone.
+# `snapshot` records that baseline and does not unmount anything.
 #
 # A stranded wp_weston has ignored SIGTERM for at least four seconds, so
 # the TERM grace is longer than the hotkey helper's 1.5s.
@@ -276,9 +280,18 @@ fi
 return 0
 }
 
+if [ "${1:-}" = snapshot ]; then
+	if ! pm_load; then
+		exit 1
+	fi
+	pm_snapshot_storage
+	exit $?
+fi
+
 rc=0
 weston_cleanup || rc=$?
 if pm_load; then
+	pm_adopt_storage_delta || rc=$?
 	pm_cleanup_owned || rc=$?
 else
 	rc=1

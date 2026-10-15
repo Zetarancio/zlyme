@@ -171,17 +171,25 @@ cover_mount() {
 	[ -n "$COVER_MP" ]
 }
 
-nested_mount() {
-	_nm_path=$1
+nested_targets() {
+	_nt_path=$1
 	[ -r "$MOUNTS" ] || return 1
-	while read -r _nm_dev _nm_mp _nm_rest; do
-		[ -n "${_nm_mp:-}" ] || continue
-		_nm_mp=$(decode_mount "$_nm_mp")
-		case "$_nm_mp" in
-			"$_nm_path"/*) return 0 ;;
+	_nt_any=1
+	while read -r _nt_dev _nt_mp _nt_rest; do
+		[ -n "${_nt_mp:-}" ] || continue
+		_nt_mp=$(decode_mount "$_nt_mp")
+		case "$_nt_mp" in
+			"$_nt_path"/*)
+				printf '%s\n' "$_nt_mp"
+				_nt_any=0
+				;;
 		esac
 	done < "$MOUNTS"
-	return 1
+	return "$_nt_any"
+}
+
+nested_mount() {
+	nested_targets "$1" >/dev/null
 }
 
 opt_has() {
@@ -443,6 +451,10 @@ add_mount_root() {
 	if nested_mount "$_ar_path"; then
 		if [ "$_ar_primary" = 1 ]; then
 			say "primary storage contains a nested mount"
+			nested_targets "$_ar_path" | while IFS= read -r _ar_nested || [ -n "$_ar_nested" ]; do
+				[ -n "$_ar_nested" ] || continue
+				say "nested mount $_ar_nested"
+			done
 			return 1
 		fi
 		record_skip "$_ar_path" "contains a nested mount"

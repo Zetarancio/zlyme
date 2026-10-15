@@ -851,11 +851,24 @@ printf 'vol0 %s exfat rw 0 0\nnest %s ext4 rw 0 0\n' \
 if run_helper start >"$work/out" 2>"$work/err"; then
 	fail "start exported a nested mount"
 fi
-grep -q 'nested mount' "$work/err" || fail "nested reason: $(cat "$work/err")"
+grep -q 'primary storage contains a nested mount' "$work/err" || fail "nested reason: $(cat "$work/err")"
+grep -q "nested mount $work/storage/Roms/hidden" "$work/err" || fail "nested path: $(cat "$work/err")"
+grep -q 'USB transfer cannot start.' "$PAK" || fail "pak has no short nested title"
+grep -q 'Another filesystem is mounted inside storage.' "$PAK" || fail "pak has no short nested body"
 [ -d "$work/storage/Roms/hidden" ] || fail "nested mount test removed the directory"
 if [ -f "$work/run/umtprd.conf" ] && grep -q hidden "$work/run/umtprd.conf"; then
 	fail "nested path exported"
 fi
+
+# The same primary with the nested line removed is the table left
+# after the port cleanup. The nested-mount refusal must not fire.
+reset_tree
+printf 'vol0 %s exfat rw 0 0\n' "$work/storage" > "$work/mounts"
+run_helper start >"$work/out" 2>"$work/err"
+if grep -q 'nested mount' "$work/err"; then
+	fail "start refused a storage root with no nested mount: $(cat "$work/err")"
+fi
+run_helper stop
 
 # Secondary ext4 is skipped without the jail. A read-only exFAT USB
 # volume is shared read-only. An exFAT USB volume is the volume root.

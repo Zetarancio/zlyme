@@ -244,7 +244,7 @@ Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A 
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. It has not started. Do not start it from the roadmap alone.
+13E is the last integration pass for `zlyme44.3`. 13E1 is host-tested. 13E2 onward has not started.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -254,7 +254,7 @@ Objective: find which owner creates the mount and which step should release it. 
 
 This is Phase 13 because it breaks USB File Transfer. Broader port compatibility is Phase 14.
 
-Status: Planned.
+Status: Host-tested. A mount nested under `/storage` that appears while a port runs is released when the port exits or MENU+START kills it, including a mount that did not go through `zlyme-portmaster-exec`. A nested mount that was already there stays, and USB File Transfer still refuses it. The screen says another filesystem is mounted inside storage. The host tests use a fake mount table. They do not reproduce the Flip leak, and this was not run on a Flip.
 
 #### 13E2. Syncthing credentials
 

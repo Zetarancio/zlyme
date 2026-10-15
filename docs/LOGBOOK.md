@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — PortMaster nested mounts
+
+A port can call `mount` without `zlyme-portmaster-exec`. Those binds were left in place, and USB File Transfer then refused `/storage`. The session now records layers nested under `/storage` before the port starts and releases only layers that appeared during that launch. A mount that was already there, a library root, and a busy mount stay. The refusal itself stays. The tool screen says another filesystem is mounted inside storage. Host tests use a fake mount table. They do not show that the earlier Flip image leaked, and this was not run on a Flip.
+
 ## 2026-10-15 — Roadmap shortened
 
 The active roadmap as it stood at `b926b9976c12ccdb3de20b629f8a550e574f8e51` moved unchanged to `docs/archive/roadmap-2026-10-15.md`. Conclusions in that file were not rewritten. The active roadmap keeps the closed-phase summaries and the open Phase 13E and Phase 14 plans. Phase 13 is scoped. Earlier entries that say Phase 13 is not scoped are the record from before this note. The hardware wiki update is not an open roadmap task. It does not call the device tree proven.

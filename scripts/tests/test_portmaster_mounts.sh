@@ -12,6 +12,7 @@ trap 'rm -rf "$work"' EXIT
 
 export ZLYME_PM_MOUNTS="$work/mounts"
 export ZLYME_PM_REGISTRY="$work/owned"
+export ZLYME_PM_SNAPSHOT="$work/before"
 export ZLYME_LIBRARIES_FILE="$work/libraries"
 export ZLYME_MOUNTS_LIB="$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh"
 export ZLYME_LIBRARY_SH="$LIB"
@@ -118,7 +119,7 @@ chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
 
 reset() {
 	: > "$ZLYME_PM_MOUNTS"
-	rm -f "$ZLYME_PM_REGISTRY"
+	rm -f "$ZLYME_PM_REGISTRY" "$ZLYME_PM_SNAPSHOT"
 	: > "$ZLYME_FAKE_UMOUNT_LOG"
 	ZLYME_FAKE_MOUNT_FAIL=0
 	ZLYME_FAKE_UMOUNT_FAIL=0
@@ -139,10 +140,12 @@ fail() {
 # The session sources pak-launch.sh, which cleans up after the pak wait returns.
 LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 awk '
+	/portmaster_mark/ { if (!mark) mark = NR }
+	/spawn_pak "/ { if (!spawn) spawn = NR }
 	/wait "\$_pak_pid"/ { seen = 1 }
 	seen && /portmaster_cleanup/ { found = 1 }
-	END { exit found ? 0 : 1 }
-' "$LAUNCH" || fail "session does not clean up after the pak exits"
+	END { exit (found && mark && spawn && mark < spawn) ? 0 : 1 }
+' "$LAUNCH" || fail "session does not snapshot before the pak and clean up after it"
 grep -q 'launch_with_reload' "$SESSION" || fail "session does not run the pak helper"
 
 reset
@@ -324,6 +327,67 @@ if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
 fi
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/stack)" -eq 1 ] \
 	|| fail "cleanup removed more than the owned layer"
+
+# A port that calls mount(8) directly never reaches the wrapper.
+# The snapshot is the pre-launch table. Cleanup adopts only new
+# layers nested under /storage. MENU+START is this same cleanup:
+# the port's own umount does not run.
+reset
+printf '%s\n' \
+	'/dev/mmcblk0p3 /storage exfat rw 0 0' \
+	'/dev/mmcblk1p1 /mnt/sd2 ext4 rw 0 0' \
+	'kept /storage/.config/kept ext4 rw 0 0' \
+	> "$ZLYME_PM_MOUNTS"
+"$CLEAN" snapshot || fail "snapshot failed"
+printf '%s\n' \
+	'bypass /storage/.config/nextui/my355/godot ext4 rw 0 0' \
+	'stack /storage/.config/nextui/my355/godot ext4 rw 0 0' \
+	'bind /storage/.config/game\040dir ext4 rw 0 0' \
+	>> "$ZLYME_PM_MOUNTS"
+"$CLEAN" || fail "direct nested cleanup failed"
+if grep -q 'my355/godot' "$ZLYME_PM_MOUNTS"; then
+	fail "direct nested mount stayed"
+fi
+if grep -F -q 'game\040dir' "$ZLYME_PM_MOUNTS"; then
+	fail "escaped nested mount stayed"
+fi
+grep -q ' /storage ' "$ZLYME_PM_MOUNTS" || fail "direct cleanup unmounted /storage"
+grep -q ' /mnt/sd2 ' "$ZLYME_PM_MOUNTS" || fail "direct cleanup unmounted SD2"
+grep -q ' /storage/.config/kept ' "$ZLYME_PM_MOUNTS" || fail "pre-existing nested mount was removed"
+if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
+	fail "direct cleanup left a registration"
+fi
+godot_count=$(grep -c 'my355/godot' "$ZLYME_FAKE_UMOUNT_LOG" || true)
+[ "$godot_count" -eq 2 ] || fail "stacked direct mount was unmounted $godot_count times"
+"$CLEAN" || fail "repeated cleanup failed"
+if grep -q ' /storage/.config/kept ' "$ZLYME_FAKE_UMOUNT_LOG"; then
+	fail "repeated cleanup unmounted a pre-existing mount"
+fi
+
+reset
+printf '%s\n' '/dev/mmcblk0p3 /storage exfat rw 0 0' > "$ZLYME_PM_MOUNTS"
+"$CLEAN" snapshot || fail "busy snapshot failed"
+printf '%s\n' 'busy /storage/.config/busy ext4 rw 0 0' >> "$ZLYME_PM_MOUNTS"
+ZLYME_FAKE_UMOUNT_FAIL=1
+if "$CLEAN"; then
+	fail "busy direct umount reported success"
+fi
+grep -q ' /storage/.config/busy ' "$ZLYME_PM_MOUNTS" || fail "busy mount was detached"
+reg_exact /storage/.config/busy || fail "busy mount was dropped from the registry"
+ZLYME_FAKE_UMOUNT_FAIL=0
+"$CLEAN" || fail "busy mount did not recover"
+if grep -q ' /storage/.config/busy ' "$ZLYME_PM_MOUNTS"; then
+	fail "recovered direct mount stayed"
+fi
+
+# The wrapper and the snapshot must not umount the same layer twice.
+reset
+printf '%s\n' '/dev/mmcblk0p3 /storage exfat rw 0 0' > "$ZLYME_PM_MOUNTS"
+"$CLEAN" snapshot || fail "wrapper snapshot failed"
+"$EXEC" mount --bind /src /storage/.config/owned || fail "owned mount failed"
+"$CLEAN" || fail "owned-plus-snapshot cleanup failed"
+owned_count=$(grep -c '/storage/.config/owned' "$ZLYME_FAKE_UMOUNT_LOG" || true)
+[ "$owned_count" -eq 1 ] || fail "owned layer was unmounted $owned_count times"
 
 if [ -s "$ZLYME_PYTHON_LOG" ]; then
 	fail "mount helper invoked python3"
