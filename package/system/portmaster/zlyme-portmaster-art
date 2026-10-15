@@ -3,8 +3,9 @@
 # PortMaster 2026.06.23-0015 stores cover.png, cover.jpg, screenshot.png,
 # and screenshot.jpg in the port directory. NextUI reads
 # Roms/Ports (PORTS)/.media/<launcher stem>.png on that same card.
-# An existing image stays. A JPEG is published only when ffmpeg can
-# write a PNG. The card is exFAT, so this copies bytes and does not
+# An existing image stays. A JPEG is published by zlyme-portmaster-artpng.
+# The image ffmpeg has no swscale, so it cannot do this conversion.
+# The card is exFAT, so this copies bytes and does not
 # create a symlink. It does not move a port or change the selected library.
 
 set -eu
@@ -121,18 +122,17 @@ art_publish_one() {
 			fi
 			;;
 		*.jpg|*.jpeg)
-			_ff=${ZLYME_PM_ART_FFMPEG:-ffmpeg}
-			if command -v "$_ff" >/dev/null 2>&1; then
-				if "$_ff" -nostdin -y -loglevel error -i "$_src" -c:v png -f image2 "$_tmp"; then
-					if art_png_ok "$_tmp"; then
-						_ok=1
-					fi
+			_conv=${ZLYME_PM_ART_JPEG:-/usr/sbin/zlyme-portmaster-artpng}
+			if [ -x "$_conv" ] && "$_conv" "$_src" "$_tmp"; then
+				if art_png_ok "$_tmp"; then
+					_ok=1
 				fi
 			fi
 			;;
 	esac
 	if [ "$_ok" != 1 ] || [ ! -s "$_tmp" ]; then
 		rm -f "$_tmp"
+		printf '%s\n' "zlyme-portmaster-art: $_base: could not publish ${_src##*/}" >&2
 		return 0
 	fi
 	if [ -e "$_dest" ] || [ -L "$_dest" ]; then

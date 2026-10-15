@@ -16,12 +16,18 @@ PORTMASTER_SITE = https://github.com/PortsMaster/PortMaster-GUI/releases/downloa
 PORTMASTER_LICENSE = MIT
 PORTMASTER_LICENSE_FILES = LICENSE
 PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates xz \
-	portmaster-theora-compat
+	portmaster-theora-compat jpeg libpng
 
 define PORTMASTER_EXTRACT_CMDS
 	mkdir -p $(@D)
 	cp -f $(PORTMASTER_DL_DIR)/$(PORTMASTER_SOURCE) $(@D)/PortMaster.zip
 	cp -f $(PORTMASTER_PKGDIR)/LICENSE $(@D)/LICENSE
+endef
+
+define PORTMASTER_BUILD_CMDS
+	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra -o $(@D)/zlyme-portmaster-artpng \
+		$(PORTMASTER_PKGDIR)/zlyme-portmaster-artpng.c \
+		$(TARGET_LDFLAGS) -ljpeg -lpng
 endef
 
 define PORTMASTER_INSTALL_TARGET_CMDS
@@ -39,6 +45,8 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-cleanup
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-art \
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-art
+	$(INSTALL) -D -m 0755 $(@D)/zlyme-portmaster-artpng \
+		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-artpng
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-exec \
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-exec
 	$(INSTALL) -D -m 0644 $(PORTMASTER_PKGDIR)/zlyme-portmaster-mounts.sh \
