@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Syncthing GUI login
+
+`S75syncthing` calls Syncthing 2.0.13 `generate` only when `/storage/.config/syncthing/config.xml` is absent. The GUI user is `zlyme`. The password `zlyme` is passed on stdin and stored as bcrypt. An existing file is not given to `generate`. If it has no GUI user and bcrypt password, and it is not LDAP, the listener on `0.0.0.0:8384` stays down. A host build of the pinned source verified the hash and a `127.0.0.1` login. This was not run on a Flip.
+
 ## 2026-10-15 — PortMaster nested mounts
 
 A port can call `mount` without `zlyme-portmaster-exec`. Those binds were left in place, and USB File Transfer then refused `/storage`. The session now records layers nested under `/storage` before the port starts and releases only layers that appeared during that launch. A mount that was already there, a library root, and a busy mount stay. The refusal itself stays. The tool screen says another filesystem is mounted inside storage. Host tests use a fake mount table. They do not show that the earlier Flip image leaked, and this was not run on a Flip.

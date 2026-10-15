@@ -244,7 +244,7 @@ Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A 
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. 13E1 is host-tested. 13E2 onward has not started.
+13E is the last integration pass for `zlyme44.3`. 13E1 and 13E2 are host-tested. 13E3 onward has not started.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -260,7 +260,7 @@ Status: Host-tested. A mount nested under `/storage` that appears while a port r
 
 Objective: a new Syncthing config gets GUI username `zlyme` and password `zlyme`, stored as Syncthing 2.0.13's supported hash, not as plaintext in the saved XML. Syncthing stays off until the user enables it. The GUI listens on `0.0.0.0:8384` today and must not be reachable without authentication. Generate the normal per-device identity. Do not ship a fixed device ID, TLS key, or API key. Do not replace a config the user already has, on boot or on update. The user changes the GUI login in Syncthing's own page. There is no Settings password row. If setup fails, do not start an open GUI. The default password is public and the guide says to change it.
 
-Status: Planned. The provisioning and first-run order still have to be read from Syncthing 2.0.13. They are not implemented.
+Status: Host-tested. A new home is created with `syncthing generate` before the listener starts. The GUI user is `zlyme` and the password is a bcrypt hash of `zlyme`. An existing authenticated `config.xml` is not rewritten. A missing or corrupt login does not start `0.0.0.0:8384`. The host test ran Syncthing 2.0.13 from the pinned source, checked the hash with its bcrypt package, and logged in on `127.0.0.1`. That was not a Flip test.
 
 #### 13E3. About credentials
 

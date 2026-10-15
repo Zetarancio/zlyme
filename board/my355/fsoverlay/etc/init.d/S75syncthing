@@ -2,24 +2,86 @@
 #
 # Syncthing. Off until zlyme-ctl set syncthing on. Home is
 # /storage/.config/syncthing so the index survives a reboot.
+#
+# A new home is created with `syncthing generate` before the listener
+# starts. The GUI user is zlyme and the password is zlyme, stored as
+# Syncthing's bcrypt hash. The password is passed on stdin
+# (--gui-password=-), not as an argument. An existing config.xml is
+# not passed to generate. If that file has no GUI user and bcrypt
+# password, and it is not LDAP, the listener stays down.
 
-. /etc/zlyme.conf
+if [ -r "${ZLYME_CONF:-/etc/zlyme.conf}" ]; then
+	# shellcheck disable=SC1090
+	. "${ZLYME_CONF:-/etc/zlyme.conf}"
+fi
 
-HOME_DIR="${ZLYME_CFG}/syncthing"
-USER=root
+HOME_DIR="${ZLYME_CFG:-/storage/.config}/syncthing"
+SYNCTHING=${ZLYME_SYNCTHING:-/usr/bin/syncthing}
+CFG="$HOME_DIR/config.xml"
+
+# 0 when the GUI will require authentication. LDAP counts. A static
+# password has to be a bcrypt hash, the form SetPassword writes.
+gui_ready() {
+	[ -f "$1" ] || return 1
+	awk '
+		BEGIN { in_gui = 0; user = ""; pass = ""; mode = "" }
+		/<gui[ >]/ { in_gui = 1 }
+		in_gui && /<\/gui>/ { in_gui = 0 }
+		in_gui && match($0, /<user>[^<]*<\/user>/) {
+			s = substr($0, RSTART, RLENGTH)
+			gsub(/<\/?user>/, "", s)
+			user = s
+		}
+		in_gui && match($0, /<password>[^<]*<\/password>/) {
+			s = substr($0, RSTART, RLENGTH)
+			gsub(/<\/?password>/, "", s)
+			pass = s
+		}
+		in_gui && match($0, /<authMode>[^<]*<\/authMode>/) {
+			s = substr($0, RSTART, RLENGTH)
+			gsub(/<\/?authMode>/, "", s)
+			mode = s
+		}
+		END {
+			if (mode == "ldap") exit 0
+			if (user == "") exit 1
+			if (pass !~ /^\$2[aby]\$[0-9]+\$/) exit 1
+			if (length(pass) < 59) exit 1
+			exit 0
+		}
+	' "$1"
+}
+
+provision_new() {
+	# Public initial password. Stdin keeps it out of argv.
+	printf '%s\n' zlyme | "$SYNCTHING" --home="$HOME_DIR" generate \
+		--gui-user=zlyme --gui-password=- --no-port-probing
+}
 
 start() {
-	if [ ! -x /usr/bin/syncthing ]; then
+	if [ ! -x "$SYNCTHING" ]; then
 		return 0
 	fi
 	if ! zlyme-ctl want syncthing; then
 		echo "Syncthing: disabled"
 		return 0
 	fi
-	mkdir -p "$HOME_DIR" 2>/dev/null
+	mkdir -p "$HOME_DIR" 2>/dev/null || true
+	if [ ! -f "$CFG" ]; then
+		if ! provision_new; then
+			echo "Syncthing: could not create the initial configuration"
+			return 1
+		fi
+	fi
+	if ! gui_ready "$CFG"; then
+		echo "Syncthing: GUI authentication is missing or not a supported hash"
+		echo "Syncthing: not starting"
+		echo "Syncthing: set a login with: syncthing --home=$HOME_DIR generate --gui-user=<user> --gui-password=- --no-port-probing"
+		return 1
+	fi
 	printf "Starting syncthing: "
 	start-stop-daemon -S -q -b -m -p /var/run/syncthing.pid \
-		--exec /usr/bin/syncthing -- \
+		--exec "$SYNCTHING" -- \
 		serve --no-upgrade --home="$HOME_DIR" \
 		--gui-address=0.0.0.0:8384
 	echo "OK"
