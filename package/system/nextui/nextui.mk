@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 3f4120cc15a3b6041534b1da972f80bc06eaeb3c
+NEXTUI_VERSION = e06814c9bb1f93172d8c942dfb47bd801344e477
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -109,6 +109,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/keyboardprompt.cpp \
 		$(@D)/workspace/all/settings/zlymemenu.cpp \
 		$(@D)/workspace/all/settings/aboutcreds.cpp \
+		$(@D)/workspace/all/settings/sambasettings.cpp \
 		$(@D)/workspace/all/settings/zlymeupdate.cpp \
 		$(@D)/workspace/all/settings/zlymejoystick.cpp \
 		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/cal_logic.c \
