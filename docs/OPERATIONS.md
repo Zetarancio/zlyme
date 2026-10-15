@@ -200,7 +200,7 @@ Use names/capabilities/stable interfaces.
 
 ## Suspend
 
-Every suspend is Linux `mem` sleep, and `mem` is BL31 deep suspend (`/sys/power/mem_sleep` reads `s2idle [deep]`). The node, masks, rail policy, entry paths, and radio ordering are in `docs/ARCHITECTURE.md` ("Sleep and suspend" and "Deep suspend"). Use the power button to suspend. In a PAK, closing the lid blanks the screen and stops the radios. It does not enter `mem`.
+Every suspend is Linux `mem` sleep, and `mem` is BL31 deep suspend (`/sys/power/mem_sleep` reads `s2idle [deep]`). The node, masks, rail policy, entry paths, and radio ordering are in `docs/ARCHITECTURE.md` ("Sleep and suspend" and "Deep suspend"). Closing the lid requests that `mem` path while NextUI is on screen and while a pak owns the screen. The power button uses the same helper. This is the current source behavior. Lid-open wake has not been measured on a Flip.
 
 Published `zlyme44` clears the RTC wake alarm and then programs a 24-hour relative alarm before every `mem`. That was software policy left from suspend testing, not a Miyoo Flip hardware sleep limit. A full 24-hour suspend was not a hardware-acceptance test. The power button, volume keys, and lid open remain the normal wake sources. Published `zlyme44.2` does not read, clear, or program `/sys/class/rtc/rtc0/wakealarm`, so an alarm programmed on purpose survives suspend. RTC wake stays available. That helper was device-accepted in the unpublished `zlyme44.1` source at `6a398b311310246ef6a5515ed72805c6f58d787d` and shipped in `zlyme44.2`. The acceptance record is in `docs/MAINTENANCE.md`.
 

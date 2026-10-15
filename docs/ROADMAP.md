@@ -2,7 +2,7 @@
 
 Miyoo Flip (`my355`) is the only supported device. This file says where the work is. It is not the architecture. Current behavior is in `docs/ARCHITECTURE.md` and the other owning documents. How to write this file is in `docs/WRITING.md`.
 
-The long record that used to live here was moved unchanged on 2026-10-15 to [docs/archive/roadmap-2026-10-15.md](archive/roadmap-2026-10-15.md). It is the text at `b926b9976c12ccdb3de20b629f8a550e574f8e51`. Sentences there that say Phase 13 is not scoped are that day's plan.
+The long record that used to live here was moved on 2026-10-15 to [docs/archive/roadmap-2026-10-15.md](archive/roadmap-2026-10-15.md). The immutable reference is `b926b9976c12ccdb3de20b629f8a550e574f8e51`. Four relative links in that copy were retargeted for `docs/archive/`. Sentences there that say Phase 13 is not scoped are that day's plan.
 
 ## Where we are
 
@@ -146,7 +146,7 @@ Reference: [docs/research/usb-mtp-phase12d.md](research/usb-mtp-phase12d.md), [d
 
 Phase 13 is not closed. It stays on `zlyme44.3-phase-12` for the same eventual `zlyme44.3` release. Nothing here is on the installed E32 image. The maintainer has not asked for a Phase 13 hardware run yet. 13E6 is that later candidate.
 
-13A, 13B except B6, 13C2, and 13D are host-tested. B6 and C1 are blocked. Phase 13B is not complete. 13E has not started. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
+13A, the rest of 13B, 13C2, and 13D are host-tested. B6 and C1 are outstanding limitations. They are not implemented, and they are separate from Phase 13E release-readiness. Phase 13B is not complete because of B6. Phase 13 as a whole is not closed. Whether that final scope is accepted waits on the maintainer. Phase 12's hardware campaign stays closed. 13E has not started. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
 
 The earlier 13E list, E1 through E4, is in the archive. The milestones below replace it.
 
@@ -160,7 +160,7 @@ Reference: the archived roadmap, section Phase 13A.
 
 ### Phase 13B. RetroArch and emulators
 
-Phase 13B is not complete while B6 stays blocked.
+Phase 13B is not complete. B6 is an outstanding limitation. It does not hold the Phase 13E work.
 
 ##### B1. Menu confirm and back
 
@@ -198,7 +198,7 @@ Status: Host-tested. The 2026-10-15 host test of the tmpfs symlink directory doe
 
 Objective: make RGUI text usable on the Flip with options the pinned RetroArch already has.
 
-Status: Blocked. RetroArch 1.22.2 draws RGUI into a 320×240 buffer and scales it. The existing scale options do not make the glyphs larger. A font patch is not approved. The working menu stays as it is.
+Status: Blocked. RetroArch 1.22.2 draws RGUI into a 320×240 buffer and scales it. The existing scale options do not make the glyphs larger. A font patch is not approved. The working menu stays as it is. This is an outstanding limitation, separate from Phase 13E.
 
 ##### B7. Quit through RetroArch menus
 
@@ -218,7 +218,7 @@ Status: Host-tested. The 2026-10-15 host test of `zlyme-arcade-stage` does not v
 
 Objective: show installed ports from both cards, and still write an install, update, or removal to the card that owns it.
 
-Status: Blocked. PortMaster-GUI has one ports directory. Two ports with the same name cannot both live there.
+Status: Blocked. PortMaster-GUI has one ports directory. Two ports with the same name cannot both live there. This is an outstanding limitation, separate from Phase 13E. It is not implemented.
 
 REJECTED — a union or a symlink farm. A removal or extract can hit the wrong card. NextUI already lists each card's Ports folder. An upstream change would have to record which directory owns each port. No such change is approved.
 
