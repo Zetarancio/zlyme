@@ -1,5 +1,5 @@
 /*
- * Volume, MENU+vol brightness, and lid sleep while a pak owns the screen.
+ * Volume, MENU+vol brightness, and lid suspend while a pak owns the screen.
  * NextUI already applies volume/brightness in PWR_update; do not steal
  * those keys while nextui.elf is running. Stay the msettings shm host.
  */
@@ -14,9 +14,11 @@
 #include <string.h>
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
+#include "lid_policy.h"
 #include "msettings.h"
 #include "virtpad.h"
 
@@ -24,17 +26,14 @@
 #define HALL_NAME "gpio-keys-hall"
 #define PWR_NAME "rk805 pwrkey"
 #define MAX_PADS 8
-#define BLANK_PATH "/sys/class/backlight/backlight/bl_power"
-#define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
 #define VOLUME_MAX 20
 #define BRIGHTNESS_MAX 10
-#define FB_BLANK_UNBLANK 0
-#define FB_BLANK_POWERDOWN 4
 /* Same window NextUI uses after resume (pwr.resume_tick). */
 #define POWER_RESUME_GUARD_MS 1000
 
 /* 0 means no guard. Armed only after radios resume returns. */
 static unsigned long long power_ignore_until_ms;
+static struct zlyme_lid_policy lid_policy;
 
 static unsigned long long monotonic_ms(void)
 {
@@ -124,25 +123,6 @@ static int open_by_name(const char *want)
 	return found;
 }
 
-static void write_int(const char *path, int v)
-{
-	char buf[16];
-	int n, fd;
-
-	fd = open(path, O_WRONLY | O_CLOEXEC);
-	if (fd < 0) {
-		perror(path);
-		return;
-	}
-	n = snprintf(buf, sizeof(buf), "%d\n", v);
-	if (n <= 0 || (size_t)n >= sizeof buf)
-		fprintf(stderr, "zlyme-keylidmon: invalid value for %s\n", path);
-	else if (write(fd, buf, (size_t)n) != n)
-		perror(path);
-	if (close(fd) < 0)
-		perror(path);
-}
-
 static void run_command(const char *command)
 {
 	int status = system(command);
@@ -152,69 +132,72 @@ static void run_command(const char *command)
 			status, command);
 }
 
-static void screen_off(void)
+/* SW_LID 1 is closed. -1 means the switch could not be read. */
+static int hall_switch_closed(int fd)
 {
-	write_int(BLANK_PATH, FB_BLANK_POWERDOWN);
-	write_int(BRIGHTNESS_PATH, 0);
+	unsigned char sw[(SW_MAX / 8) + 1];
+
+	if (fd < 0)
+		return -1;
+	memset(sw, 0, sizeof sw);
+	if (ioctl(fd, EVIOCGSW(sizeof sw), sw) < 0)
+		return -1;
+	return (sw[SW_LID / 8] & (1u << (SW_LID % 8))) ? 1 : 0;
 }
 
-static void screen_on(void)
+static int guard_active(void)
 {
-	write_int(BLANK_PATH, FB_BLANK_UNBLANK);
-	SetBrightness(GetBrightness());
+	unsigned long long now = monotonic_ms();
+
+	if (!power_ignore_until_ms || !now)
+		return 0;
+	return now < power_ignore_until_ms;
 }
 
-/* Lid: screen + radios off, wait for open. Power uses mem. */
-static void do_lid_sleep(int hall_fd)
-{
-	struct pollfd p = { .fd = hall_fd, .events = POLLIN };
-	struct input_event ev;
-
-	if (menu_owns_keys() || hall_fd < 0)
-		return;
-	run_command("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
-	screen_off();
-	while (!quit) {
-		if (poll(&p, 1, 300) < 0) {
-			if (errno == EINTR)
-				continue;
-			break;
-		}
-		if (!(p.revents & POLLIN))
-			continue;
-		while (read(hall_fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
-			if (ev.type == EV_SW && ev.code == SW_LID && ev.value == 0)
-				goto wake;
-		}
-	}
-wake:
-	screen_on();
-	run_command("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
-}
-
+/* Lid and power both use this. Radios run once on the way in and out. */
 static void do_mem_sleep(void)
 {
-	if (menu_owns_keys())
-		return;
+	int st = -1;
+	int ok = 0;
+
 	run_command("/usr/sbin/zlyme-governor idle >/dev/null 2>&1");
 	run_command("/usr/sbin/zlyme-radios pre >/dev/null 2>&1");
 	if (access("/usr/share/nextui/bin/suspend", X_OK) == 0)
-		run_command("/usr/share/nextui/bin/suspend");
+		st = system("/usr/share/nextui/bin/suspend");
 	else
-		run_command("echo mem > /sys/power/state");
+		st = system("echo mem > /sys/power/state");
 	run_command("/usr/sbin/zlyme-governor resume >/dev/null 2>&1");
 	run_command("/usr/sbin/zlyme-radios resume >/dev/null 2>&1");
 	/*
 	 * The wake press is delivered as KEY_POWER=1 after mem returns.
 	 * Arm the ignore window only once radio recovery has finished,
 	 * so a resume that takes longer than the window cannot expire
-	 * before that queued press is read.
+	 * before that queued press is read. A lid edge in that window
+	 * is dropped the same way.
 	 */
 	{
 		unsigned long long now = monotonic_ms();
 
 		power_ignore_until_ms = now ? now + POWER_RESUME_GUARD_MS : 0;
 	}
+	if (st >= 0 && WIFEXITED(st) && WEXITSTATUS(st) == 0)
+		ok = 1;
+	zlyme_lid_suspend_done(&lid_policy, ok);
+}
+
+static void maybe_lid(int ev)
+{
+	if (zlyme_lid_apply(&lid_policy, ev, guard_active()))
+		do_mem_sleep();
+}
+
+static void sync_owner(int hall_fd, int menu)
+{
+	int closed = hall_switch_closed(hall_fd);
+
+	if (closed >= 0)
+		lid_policy.lid_closed = closed;
+	maybe_lid(menu ? ZLYME_LID_EV_MENU : ZLYME_LID_EV_PAK);
 }
 
 static void apply_vol(int up)
@@ -402,6 +385,8 @@ int main(void)
 		int in_game = !menu_owns_keys();
 		int i;
 
+		sync_owner(hall_fd, !in_game);
+
 		if (vol_fd >= 0 && grabbed != in_game) {
 			int g = in_game ? 1 : 0;
 			ioctl(vol_fd, EVIOCGRAB, g);
@@ -472,16 +457,12 @@ int main(void)
 				continue;
 			while (read(pf[i].fd, &ev, sizeof(ev)) == (ssize_t)sizeof(ev)) {
 				if (pf[i].fd == hall_fd && ev.type == EV_SW &&
-				    ev.code == SW_LID && ev.value == 1)
-					do_lid_sleep(hall_fd);
+				    ev.code == SW_LID && (ev.value == 0 || ev.value == 1))
+					maybe_lid(ev.value ? ZLYME_LID_EV_CLOSE
+							    : ZLYME_LID_EV_OPEN);
 				if (pf[i].fd == pwr_fd && ev.type == EV_KEY &&
-				    ev.code == KEY_POWER && ev.value == 1) {
-					unsigned long long now = monotonic_ms();
-
-					if (!power_ignore_until_ms || !now ||
-					    now >= power_ignore_until_ms)
-						do_mem_sleep();
-				}
+				    ev.code == KEY_POWER && ev.value == 1)
+					maybe_lid(ZLYME_LID_EV_POWER);
 				if (pf[i].fd == vol_fd && ev.type == EV_KEY &&
 				    (ev.value == 1 || ev.value == 2) &&
 				    (ev.code == KEY_VOLUMEUP || ev.code == KEY_VOLUMEDOWN)) {
