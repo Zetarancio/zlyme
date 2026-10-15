@@ -267,9 +267,9 @@ portmaster_cleanup() {
 	"$_bin" || true
 }
 
-# Baseline for mounts nested under /storage. Written after the
-# pre-launch cleanup and before the port starts. The post-exit cleanup
-# releases layers that were not in this list.
+# One-launch record, written after pre-launch cleanup and before the
+# port starts. Post-exit cleanup deletes it. Recorded wrapper mounts
+# are what that cleanup releases.
 portmaster_mark() {
 	_bin=${ZLYME_PORTMASTER_CLEANUP:-/usr/sbin/zlyme-portmaster-cleanup}
 	[ -x "$_bin" ] || return 0

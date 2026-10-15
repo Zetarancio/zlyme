@@ -4,9 +4,11 @@
 # the number of mounts at that target increases by one layer. A remount
 # does not. A matching successful umount removes one line. nextui-session runs
 # zlyme-portmaster-cleanup outside the pak process group, and that
-# cleanup unmounts paths this file can prove the launch owns: a
-# recorded wrapper mount, and a layer nested under /storage that was
-# not in the pre-launch snapshot. Library roots stay mounted.
+# cleanup unmounts paths this file can prove the launch owns.
+# That proof is a recorded wrapper mount. A layer that merely
+# appears under /storage is not proof: the mount table cannot tell
+# a port's direct mount from one another program created. Library
+# roots stay mounted.
 # Sourced, not executed.
 
 pm_mounts_file() {
@@ -17,9 +19,8 @@ pm_registry() {
 	printf '%s\n' "${ZLYME_PM_REGISTRY:-/run/zlyme-portmaster/owned-mounts}"
 }
 
-# Decoded targets nested under /storage before the port runs.
-# One line per mount-table layer. /proc/mounts already lists a stack
-# as more than one line at the same target.
+# One launch writes this file and the matching cleanup deletes it.
+# Cleanup does not choose mounts from its contents.
 pm_snapshot_file() {
 	printf '%s\n' "${ZLYME_PM_SNAPSHOT:-/run/zlyme-portmaster/storage-before}"
 }
@@ -163,52 +164,29 @@ pm_storage_nested() {
 }
 
 # Written after the pre-launch cleanup and before the port starts.
+# The previous file is removed first, so a failed write cannot leave
+# an older launch's list in place.
 pm_snapshot_storage() {
 	_ss_file=$(pm_snapshot_file)
 	_ss_dir=$(dirname "$_ss_file")
 	mkdir -p "$_ss_dir" || return 1
+	rm -f "$_ss_file" || return 1
 	_ss_tmp=$(mktemp "$_ss_dir/storage-before.XXXXXX") || return 1
 	if ! pm_storage_nested "$_ss_tmp"; then
 		rm -f "$_ss_tmp"
 		return 1
 	fi
-	mv -f "$_ss_tmp" "$_ss_file"
-}
-
-# A layer nested under /storage that was not in the snapshot is owned
-# by this launch, including a mount that called mount(8) directly.
-# Layers already registered are not added again. A busy umount stays
-# registered for a later pass. This does not unmount by directory name.
-pm_adopt_storage_delta() {
-	_ad_snap=$(pm_snapshot_file)
-	[ -f "$_ad_snap" ] || return 0
-	_ad_now=$(mktemp) || return 1
-	if ! pm_storage_nested "$_ad_now"; then
-		rm -f "$_ad_now"
+	if ! mv -f "$_ss_tmp" "$_ss_file"; then
+		rm -f "$_ss_tmp" "$_ss_file"
 		return 1
 	fi
-	_ad_paths=$(mktemp) || {
-		rm -f "$_ad_now"
-		return 1
-	}
-	sort -u "$_ad_snap" "$_ad_now" > "$_ad_paths"
-	_ad_reg=$(pm_registry)
-	while IFS= read -r _ad_path || [ -n "$_ad_path" ]; do
-		[ -n "$_ad_path" ] || continue
-		_ad_before=$(grep -Fx -c -- "$_ad_path" "$_ad_snap" || true)
-		_ad_after=$(grep -Fx -c -- "$_ad_path" "$_ad_now" || true)
-		_ad_held=0
-		if [ -f "$_ad_reg" ]; then
-			_ad_held=$(grep -Fx -c -- "$_ad_path" "$_ad_reg" || true)
-		fi
-		_ad_extra=$((_ad_after - _ad_before - _ad_held))
-		while [ "$_ad_extra" -gt 0 ]; do
-			echo "zlyme-portmaster-cleanup: adopting $_ad_path" >&2
-			pm_register "$_ad_path"
-			_ad_extra=$((_ad_extra - 1))
-		done
-	done < "$_ad_paths"
-	rm -f "$_ad_now" "$_ad_paths"
+}
+
+# Deletes the one-launch file. Does not read it and does not register
+# any path. A second call is a no-op.
+pm_consume_snapshot() {
+	_cs_file=$(pm_snapshot_file)
+	rm -f "$_cs_file"
 }
 
 # Deepest target first. A path that is already gone is dropped.

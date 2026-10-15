@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — PortMaster mount ownership
+
+`zlyme-portmaster-cleanup` releases a mount only when `zlyme-portmaster-exec` recorded it. `/run/zlyme-portmaster/storage-before` belongs to one launch and is deleted at cleanup. It is not an ownership list. A mount created between launches, or while the port is open, stays mounted. A direct `mount` outside the wrapper stays for the same reason. USB File Transfer still refuses the primary storage while that mount remains. Host tests use a fake mount table. This was not run on a Flip.
+
 ## 2026-10-15 — About credentials
 
 Settings → About in NextUI `620a64cead96d7934c3edf369199d147a5550a65` reads SSH, Samba, and Syncthing when the page opens. Redraws use that copy. Samba shows `zlyme` only when the NT hash is still the initial password. Syncthing shows the GUI user and `(set)` for a bcrypt hash. The hash is not displayed, and Syncthing is not started to check it. The label functions were compiled on the host. The page was not opened on a Flip.

@@ -118,7 +118,7 @@ Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the g
 
 ## USB file transfer
 
-Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service. If a game left another filesystem mounted inside storage, the tool says so and does not start. Leave that game from its own menu, or restart the Flip, then try again.
+Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service. If another filesystem is mounted inside storage, the tool says so and does not start. Leaving a PortMaster game removes a filesystem that game mounted through Zlyme. A filesystem mounted another way stays until it is unmounted or the Flip restarts.
 
 The first screen says: Connect your computer to the lower USB-C port. A starts the session. B goes back without starting it. If the lower port is not a data connection yet, the next screen says it is waiting for a USB data connection and shows B to stop. It does not say the computer is connected. When the controller is bound, the screen says the session is open, names the storages that were actually shared, and shows B to stop. An open session is not the same as the computer seeing the Flip. MENU+START still leaves the tool. Unplugging the cable leaves the session up until you leave it.
 

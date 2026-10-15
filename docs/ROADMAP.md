@@ -254,7 +254,7 @@ Objective: find which owner creates the mount and which step should release it. 
 
 This is Phase 13 because it breaks USB File Transfer. Broader port compatibility is Phase 14.
 
-Status: Host-tested. A mount nested under `/storage` that appears while a port runs is released when the port exits or MENU+START kills it, including a mount that did not go through `zlyme-portmaster-exec`. A nested mount that was already there stays, and USB File Transfer still refuses it. The screen says another filesystem is mounted inside storage. The host tests use a fake mount table. They do not reproduce the Flip leak, and this was not run on a Flip.
+Status: Host-tested. Cleanup releases a mount only when `zlyme-portmaster-exec` recorded it. The one-launch snapshot under `/run/zlyme-portmaster/storage-before` is deleted at cleanup and is not an ownership list. An unrelated mount created between launches, or while the port is running, stays mounted. A mount created by calling `mount` outside the wrapper stays for the same reason. USB File Transfer still refuses the primary storage while such a mount remains. The screen says another filesystem is mounted inside storage. A busy recorded mount stays registered and is tried again. Library roots and the second card stay mounted. The host tests use a fake mount table. They do not reproduce the Flip leak, and this was not run on a Flip.
 
 #### 13E2. Syncthing credentials
 
