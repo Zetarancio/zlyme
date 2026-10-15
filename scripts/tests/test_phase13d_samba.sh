@@ -13,6 +13,8 @@ fail() {
 	exit 1
 }
 
+grep -q '/var/run/samba' "$init" || fail "start does not create the pipe directory parent"
+grep -q 'pidof smbd' "$init" || fail "start does not check that smbd stayed up"
 grep -q 'map to guest = Never' "$shipped" || fail "shipped map to guest"
 grep -q 'guest ok = no' "$shipped" || fail "shipped guest ok"
 grep -q 'disable netbios = yes' "$shipped" || fail "shipped netbios"
@@ -46,6 +48,10 @@ cat > "$work/bin/smbpasswd" <<'EOF'
 #!/bin/sh
 set -eu
 log=${ZLYME_SAMBA_LOG:?}
+if [ "${ZLYME_SAMBA_PASSWD_FAIL:-0}" = 1 ]; then
+	printf 'smbpasswd %s\n' "$*" >> "$log.argv"
+	exit 1
+fi
 printf 'smbpasswd %s\n' "$*" >> "$log.argv"
 env >> "$log.env"
 conf=
@@ -117,10 +123,13 @@ case "$mode" in
 	export)
 		file=${spec#smbpasswd:}
 		hash=$(cat "$priv/nt.hash")
-		printf 'zlyme:980:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:%s:[U          ]:LCT-00000001\n' "$hash" > "$file"
+		# Samba 4.24.6 writes uid 0. Import must not treat that as success.
+		printf 'zlyme:0:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:%s:[U          ]:LCT-00000001\n' "$hash" > "$file"
 		;;
 	import)
 		file=${spec#smbpasswd:}
+		uid=$(awk -F: '$1=="zlyme" { print $2; exit }' "$file")
+		[ "$uid" = 980 ] || exit 1
 		hash=$(awk -F: '$1=="zlyme" { print $4; exit }' "$file")
 		printf '%s\n' "$hash" | grep -Eq '^[0-9A-Fa-f]{32}$' || exit 1
 		mkdir -p "$priv"
@@ -141,7 +150,43 @@ EOF
 
 cat > "$work/bin/start-stop-daemon" <<'EOF'
 #!/bin/sh
-printf '%s\n' "$*" >> "${ZLYME_SAMBA_LOG:?}.ssd"
+log=${ZLYME_SAMBA_LOG:?}
+printf '%s\n' "$*" >> "$log.ssd"
+start=0
+while [ $# -gt 0 ]; do
+	case $1 in
+		-S) start=1 ;;
+		-K) rm -f "$log.running" ;;
+	esac
+	shift
+done
+if [ "$start" -eq 1 ] && [ "${ZLYME_SAMBA_SMBD_EXITS:-0}" != 1 ]; then
+	: > "$log.running"
+fi
+exit 0
+EOF
+
+cat > "$work/bin/pidof" <<'EOF'
+#!/bin/sh
+[ "$1" = smbd ] && [ -f "${ZLYME_SAMBA_LOG:?}.running" ]
+EOF
+
+cat > "$work/bin/mkdir" <<'EOF'
+#!/bin/sh
+log=${ZLYME_SAMBA_LOG:?}
+real=0
+for arg in "$@"; do
+	case $arg in
+		-*) ;;
+		/var/run/samba|/var/cache/samba|/var/lock/samba|/var/log/samba)
+			printf '%s\n' "$arg" >> "$log.mkdir"
+			;;
+		*) real=1 ;;
+	esac
+done
+if [ "$real" -eq 1 ]; then
+	/usr/bin/mkdir "$@"
+fi
 exit 0
 EOF
 
@@ -150,7 +195,8 @@ cat > "$work/bin/smbd" <<'EOF'
 exit 0
 EOF
 chmod 755 "$work/bin/smbpasswd" "$work/bin/pdbedit" "$work/bin/zlyme-ctl" \
-	"$work/bin/start-stop-daemon" "$work/bin/smbd" "$auth"
+	"$work/bin/start-stop-daemon" "$work/bin/pidof" "$work/bin/mkdir" \
+	"$work/bin/smbd" "$auth"
 ln -s "$auth" "$work/bin/zlyme-samba-auth"
 
 write_conf() {
@@ -244,6 +290,8 @@ store=$ZLYME_CFG/zlyme/samba.account
 [ -f "$store" ] || fail "account export missing"
 h0=$(hash_of "$store")
 [ "${#h0}" -eq 32 ] || fail "export is not an NT hash"
+awk -F: '$1=="zlyme" && $2=="980" { ok=1 } END { exit ok ? 0 : 1 }' "$store" \
+	|| fail "export kept uid 0"
 [ "$h0" != zlyme ] || fail "export stored the password"
 grep -q '^zlyme:x:980:980:Samba:/var/empty:/bin/false$' "$ZLYME_SAMBA_RUNTIME/passwd" || fail "unix account"
 grep -q '^root:x:0:0:root:/root:/bin/sh$' "$ZLYME_SAMBA_RUNTIME/passwd" || fail "root account changed"
@@ -336,6 +384,33 @@ fi
 grep -q 'smbpasswd .* -a ' "$ZLYME_SAMBA_LOG.argv" || fail "recovery without a live account did not create one"
 tail -n 1 "$ZLYME_SAMBA_LOG.stdin" | grep -qx "$recover" || fail "recovery did not use the typed password"
 
+# A failed password tool leaves the previous export in place.
+: > "$ZLYME_SAMBA_LOG.argv"
+: > "$ZLYME_SAMBA_LOG.stdin"
+kept=$(hash_of "$store")
+if printf '%s\n' 'should-not-stick' | ZLYME_SAMBA_PASSWD_FAIL=1 "$auth" set >"$work/failset.out" 2>"$work/failset.err"; then
+	fail "a failed password tool was treated as success"
+fi
+[ "$(hash_of "$store")" = "$kept" ] || fail "a failed password tool replaced the export"
+if grep -F 'should-not-stick' "$work/failset.out" "$work/failset.err" "$ZLYME_SAMBA_LOG.argv" "$store"; then
+	fail "a failed password tool leaked the typed password"
+fi
+
+# Samba 4.24.6 leaves uid 0 on the card. The next start repairs that
+# field and imports the same hash.
+rm -rf "$ZLYME_SAMBA_RUNTIME"
+mkdir -p "$ZLYME_SAMBA_RUNTIME"
+printf 'zlyme:0:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:%s:[U          ]:LCT-00000001\n' "$h1" > "$store"
+: > "$ZLYME_SAMBA_LOG.argv"
+"$auth" prepare
+if grep -q 'smbpasswd .* -a ' "$ZLYME_SAMBA_LOG.argv"; then
+	fail "uid 0 export was replaced with the public password"
+fi
+[ "$(hash_of "$store")" = "$h1" ] || fail "uid repair changed the hash"
+awk -F: '$1=="zlyme" && $2=="980" { ok=1 } END { exit ok ? 0 : 1 }' "$store" \
+	|| fail "uid 0 export was not repaired"
+grep -q "$h1" "$ZLYME_SAMBA_RUNTIME/private/nt.hash" || fail "uid 0 export was not imported"
+
 # A changed password left on the card is what the next image imports.
 rm -rf "$ZLYME_SAMBA_RUNTIME"
 mkdir -p "$ZLYME_SAMBA_RUNTIME" "$ZLYME_CFG/zlyme"
@@ -388,5 +463,16 @@ fi
 ZLYME_SAMBA_WANT=1 "$init" restart >"$work/live-restart.out" 2>"$work/live-restart.err"
 grep -q -- '-S -q --exec /usr/sbin/smbd' "$ZLYME_SAMBA_LOG.ssd" || fail "restart after recovery did not start smbd"
 [ "$(hash_of "$store")" = "$hr2" ] || fail "restart after recovery replaced the password"
+
+# The launcher exits 0 and the process is already gone. That is not a share.
+: > "$ZLYME_SAMBA_LOG.ssd"
+rm -f "$ZLYME_SAMBA_LOG.running"
+if ZLYME_SAMBA_SMBD_EXITS=1 "$init" start >"$work/gone.out" 2>"$work/gone.err"; then
+	fail "a dead smbd was reported as started"
+fi
+grep -q 'FAIL' "$work/gone.out" || fail "a dead smbd was not reported"
+if [ -f "$ZLYME_SAMBA_LOG.running" ]; then
+	fail "a dead smbd stayed marked running"
+fi
 
 echo "phase 13D samba auth ok"

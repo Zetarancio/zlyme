@@ -273,6 +273,30 @@ feed_password() {
 	} | "$smbpasswd_bin" "$@"
 }
 
+# Samba 4.24.6's smbpasswd export writes uid 0 even when the unix user
+# is 980. pdbedit -i then exits 0 without adding the user, because the
+# import looks the user up by the RID of that uid. The NT hash is kept.
+# Only field 2 changes.
+fix_account_uid() {
+	file=$1
+	account_valid "$file" || return 1
+	uidfile=$file.uid.$$
+	rm -f "$uidfile"
+	awk -F: -v uid="$uid" 'BEGIN { OFS=":" } { $2=uid; print }' "$file" > "$uidfile" || {
+		rm -f "$uidfile"
+		return 1
+	}
+	account_valid "$uidfile" || {
+		rm -f "$uidfile"
+		return 1
+	}
+	awk -F: -v uid="$uid" '$2==uid { found=1 } END { exit found?0:1 }' "$uidfile" || {
+		rm -f "$uidfile"
+		return 1
+	}
+	mv -f "$uidfile" "$file"
+}
+
 export_account() {
 	tmp=$store.new.$$
 	mkdir -p "$(dirname "$store")" || return 1
@@ -281,7 +305,7 @@ export_account() {
 		rm -f "$tmp"
 		return 1
 	}
-	account_valid "$tmp" || {
+	fix_account_uid "$tmp" || {
 		rm -f "$tmp"
 		return 1
 	}
@@ -293,7 +317,35 @@ export_account() {
 
 import_account() {
 	account_valid "$store" || return 1
-	"$pdbedit_bin" -s "$conf" -i "smbpasswd:$store"
+	imp=$(mktemp "${TMPDIR:-/tmp}/zlyme-samba.XXXXXX") || return 1
+	chmod 0600 "$imp" || {
+		rm -f "$imp"
+		return 1
+	}
+	cp "$store" "$imp" || {
+		rm -f "$imp"
+		return 1
+	}
+	fix_account_uid "$imp" || {
+		rm -f "$imp"
+		return 1
+	}
+	"$pdbedit_bin" -s "$conf" -i "smbpasswd:$imp"
+	st=$?
+	if [ "$st" -eq 0 ] && ! cmp -s "$imp" "$store"; then
+		fixed=$store.uid.$$
+		rm -f "$fixed"
+		cp "$imp" "$fixed" || {
+			rm -f "$imp" "$fixed"
+			return 1
+		}
+		mv -f "$fixed" "$store" || {
+			rm -f "$imp" "$fixed"
+			return 1
+		}
+	fi
+	rm -f "$imp"
+	return "$st"
 }
 
 prepare_db() {

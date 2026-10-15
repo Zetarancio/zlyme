@@ -21,13 +21,26 @@ start() {
 		echo "Samba: authentication failed"
 		return 1
 	fi
+	# smbd creates ncalrpc inside this directory and does not create
+	# the parent. A missing parent makes the process exit immediately.
+	# The log directory is the same class of failure for a daemon start.
+	mkdir -p /var/run/samba /var/cache/samba /var/lock/samba /var/log/samba || {
+		echo "FAIL"
+		return 1
+	}
 	printf "Starting smbd: "
-	if start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D; then
-		echo "OK"
-	else
+	if ! start-stop-daemon -S -q --exec /usr/sbin/smbd -- -D; then
 		echo "FAIL"
 		return 1
 	fi
+	# start-stop-daemon returns when the parent exits. A child that
+	# then quits must not be reported as a running share.
+	if ! pidof smbd >/dev/null 2>&1; then
+		echo "FAIL"
+		start-stop-daemon -K -q --exec /usr/sbin/smbd 2>/dev/null || true
+		return 1
+	fi
+	echo "OK"
 }
 
 stop() {
