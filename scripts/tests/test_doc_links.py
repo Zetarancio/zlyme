@@ -25,6 +25,21 @@ DOCS = (
     "docs/research/README.md",
     "docs/research/documentation-audit-phase10.md",
 )
+
+# Archived notes keep historical backtick paths. Their Markdown links
+# and anchors are still checked. Backtick paths are not.
+def archive_docs():
+    found = []
+    root = os.path.join(ROOT, "docs", "archive")
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            if name.endswith(".md"):
+                full = os.path.join(dirpath, name)
+                found.append(os.path.relpath(full, ROOT).replace(os.sep, "/"))
+    return tuple(sorted(found))
+
+
+ARCHIVE = archive_docs()
 # Logbook, roadmap, and the audit record name old paths, file:line
 # citations, and the hardware wiki. Link targets in this repository are
 # still checked. Backtick paths are checked only in the current-contract
@@ -68,7 +83,7 @@ def anchors(path):
 
 def main():
     bad = []
-    for rel in DOCS:
+    for rel in DOCS + ARCHIVE:
         full = os.path.join(ROOT, rel)
         text = open(full, encoding="utf-8").read()
         base = os.path.dirname(rel)
