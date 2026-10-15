@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — NextUI settings link
+
+The pinned NextUI commit calls `zlyme_about_samba_password` and `zlyme_about_syncthing_read` from `settings.cpp`. Those functions are in `aboutcreds.cpp`. `nextui.mk` compiles `settings.elf` from an explicit source list and did not include that file, so the product link failed. The list now includes it. This was a host link failure, not a Flip test.
+
 ## 2026-10-15 — Mountinfo parent ids
 
 `zlyme-portmaster-cleanup` decides the visible mount from mountinfo parent ids. The last line for a path is not that mount. A recorded mount that is covered, hidden by a prefix, or sitting in an ambiguous table stays mounted. A mount id can be reused after unmount, and the check and the path unmount are not one operation. The host test used a fake mount table. This was not run on a Flip. The original port-to-MTP leak is still open.

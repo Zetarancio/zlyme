@@ -108,6 +108,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/btmenu.cpp \
 		$(@D)/workspace/all/settings/keyboardprompt.cpp \
 		$(@D)/workspace/all/settings/zlymemenu.cpp \
+		$(@D)/workspace/all/settings/aboutcreds.cpp \
 		$(@D)/workspace/all/settings/zlymeupdate.cpp \
 		$(@D)/workspace/all/settings/zlymejoystick.cpp \
 		$(NEXTUI_PKGDIR)/zlyme/joystick-cal/cal_logic.c \
