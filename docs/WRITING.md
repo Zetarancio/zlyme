@@ -53,13 +53,16 @@ A gate has to match the risk. A source-only change does not automatically need a
 
 ## Changelog and release notes
 
-`CHANGELOG.md` is for people upgrading. The roadmap names the phase. `docs/LOGBOOK.md` and `docs/archive/` keep the engineering history.
+`CHANGELOG.md` is for people who use Zlyme. It is not an engineering log, a phase report, a source tour, or a hardware-test transcript. The roadmap names the phase. `docs/LOGBOOK.md` and `docs/archive/` keep the engineering history. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-- The format follows Keep a Changelog: newest release first, ISO dates (`YYYY-MM-DD`), and an `Unreleased` section kept up to date during development. Use Added, Changed, Fixed, Removed and Known limitations, and leave out empty categories.
+- Describe the result a person can see. One sentence is the usual entry. A second sentence is for an instruction, a warning, or compatibility.
+- Group related work into one change. Do not describe the same feature under more than one heading.
+- Leave out paths, hashes, commit IDs, package internals, and rejected experiments unless a person using Zlyme needs them. A longer procedure belongs in `docs/USER_GUIDE.md`, with a link from the entry.
+- Do not record which hardware tests were or were not run. Do not describe a feature that has not been shown to work. A limitation a person can hit stays in the entry, in plain language.
+- Newest release first, ISO dates (`YYYY-MM-DD`), and an `Unreleased` section for work that is not in a release. Headings are Added, Changed, Deprecated, Removed, Fixed, Security, and Known limitations. Leave out empty headings.
 - Zlyme does not use Semantic Versioning. `zlymeNN` is a baseline. `zlymeNN.M` is a point release on the same major. Release and delta policy is in `docs/MAINTENANCE.md`.
-- One entry describes one behavior change, even if it took twenty commits. Internal refactors with no effect on users or contributors stay out.
 - A removal or a change in behavior goes under its own heading and says what users have to do.
-- GitHub release notes match the changelog entry. A raw git log or a generated compare link alone is not release notes. The release workflow prints the `## [ZLYME_VERSION]` section and fails if that section is missing or empty. It does not ask GitHub to build notes from the commit list. `Unreleased` is not a release body.
+- GitHub release notes use that release's changelog wording. A raw git log or a generated compare link alone is not release notes. The release workflow prints the `## [ZLYME_VERSION]` section and fails if that section is missing or empty. It does not ask GitHub to build notes from the commit list. `Unreleased` is not a release body.
 
 ## AI-assisted documentation
 

@@ -8,40 +8,37 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Added
 
-- Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list.
+- Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list, and closing a game from inside it stays in RetroArch.
 - Settings → Game → Reset RetroArch configuration restores the stock RetroArch file. Core options, cores, saves, and BIOS stay.
-- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is. A JPEG is stored as a PNG.
-- Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed.
-- The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver and turns on Mesa's experimental Vulkan setting for programs launched afterwards. One orange frame was shown on a Flip. That is not a claim that games render, and PPSSPP on Panfrost still does not attach the display. The Mali driver remains the Vulkan path PPSSPP can use.
+- Tools → USB File Transfer shares the data card as SDCARD1, a mounted second card as SDCARD2, and a USB stick that is already mounted as OTG, on the lower USB-C port. Details are in the [user guide](docs/USER_GUIDE.md#usb-file-transfer).
+- Panfrost can load Mesa's experimental Vulkan driver. PPSSPP still uses the Mali driver.
 
 ### Changed
 
-- Settings → About shows the SSH, Samba, and Syncthing account and password status, then the IP address. It reads them when you open the page. The Samba password is shown only while it is still the first password. Syncthing's password is shown as set, not as the saved hash. A Syncthing username or password that appears only in a comment is not shown.
-- Syncthing stays off until Settings → Network → Syncthing is on. The first time it starts, the web UI username is `zlyme` and the password is `zlyme`. Change it in Syncthing's own page. A login you already set stays. If that saved login is missing, damaged, or present only as a comment in the file, Syncthing stays off instead of opening the page. The recovery command is in the user guide.
-- Samba stays off until Settings → Network → Samba is on. The share is `/storage`. The username is `zlyme` and the first password is `zlyme`. Change it in Settings → Network → Samba Password. The keyboard starts empty, and leaving it empty does not change the saved password. The new password stays across a reboot and an update. If Samba cannot start, the switch goes back to off and Settings says why. If that saved password is damaged, Samba stays off until you set a new one. It does not go back to `zlyme` on its own. In Windows File Explorer, use `\\` and the address from Settings → About → IP, then `\storage`. The Flip may not appear under Network.
-- Closing the lid sleeps the same way as a short press of the power button, in the list and during a game. If the lid opens while the Flip is waking and that open is missed, the next close still sleeps. On one Flip, opening the lid woke it after that close. A long sleep was not part of that check.
-- RetroArch writes a savestate when you quit from its menu and loads it the next time that game starts, on a new configuration. A configuration you already saved stays, including across an update. Quitting does not write that session's save folder into the configuration. Saving the configuration from RetroArch's own menu does. Resetting the RetroArch configuration installs the stock file again. Hardcore RetroAchievements leaves that state unloaded. MENU+START still leaves immediately. Closing a game from the quick menu returns to the list. In Tools → RetroArch, closing the game stays in RetroArch until you quit.
-- Included libretro cores are copied to `/storage/.config/retroarch/cores/`. The first copy is about 213 MiB, before the list appears. A reboot without an update leaves a core you replaced. An update puts the image's copy back for every included filename. A core the image does not include stays. The file is a native program and has to come from a source you trust. An incompatible file fails when RetroArch loads it. The online core installer stays off.
-- Dreamcast writes a savestate when you quit Flycast and loads it the next time, on a new Flycast configuration. A Flycast configuration you already saved stays. MENU+START does not write that savestate.
-- RetroArch's menu uses Classic Orange on a new setup. A theme you already saved stays. Resetting the RetroArch configuration installs Classic Orange again. The menu text stays small. The scale settings in this RetroArch do not enlarge it.
-- FinalBurn Neo looks for a BIOS archive in the game folder, then `Bios/fbneo/`, then `Bios/`. The names are case-sensitive. MAME 2003-Plus reads ROM and BIOS zips from the game folder. Samples use `Bios/mame2003-plus/`.
-- The boot splash and README lockup use the new circle-above-word mark (slime loop). Update and resize progress use the stars loop instead of the galaxy clip.
-- The battery sample is every 10 seconds. At 10% or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been tried on a Flip.
-- SSH stays on. Until you set a root password, the password is still empty. A password you set is kept on the card.
-- After the menu is up, the clock can correct itself from the network. The first picture does not wait for that.
+- Settings → About shows the SSH, Samba, and Syncthing account and password status, then the IP address. A Samba password you changed, and the Syncthing password, are not shown.
+- Syncthing stays off until you turn it on. The first web login is username `zlyme` and password `zlyme`. Change it in Syncthing's own page. A login you already set stays. Recovery is in the [user guide](docs/USER_GUIDE.md#network).
+- Samba stays off until you turn it on. It shares `/storage` as `zlyme`, and the first password is `zlyme`. Change it under Settings → Network → Samba Password. An empty entry leaves the saved password. The [user guide](docs/USER_GUIDE.md#network) has the Windows address.
+- Closing the lid sleeps the same way as a short press of the power button, in the list and during a game. Opening the lid wakes the Flip.
+- On a new RetroArch configuration, quitting from the menu writes a savestate and the next launch loads it. A configuration you already saved stays. Hardcore RetroAchievements leaves that state unloaded, and MENU+START still leaves immediately.
+- Included libretro cores are copied to the card once, about 213 MiB, before the list appears. A reboot leaves a core you replaced. An update replaces each included file. A core the image does not include stays. The file is a native program and has to come from a source you trust.
+- On a new Flycast configuration, quitting writes a savestate and the next launch loads it. A configuration you already saved stays. MENU+START does not write that savestate.
+- A new RetroArch setup uses the Classic Orange menu. A theme you already saved stays. The menu text stays small.
+- FinalBurn Neo looks for a BIOS archive in the game folder, then `Bios/fbneo/`, then `Bios/`. MAME 2003-Plus reads ROM and BIOS zips from the game folder.
+- The boot splash uses the circle-above-word mark. Update progress uses the stars loop.
+- At 10% battery or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been confirmed on a Flip.
+- SSH stays on with an empty root password until you set one. A password you set is kept.
+- After the menu is up, the clock can set itself from the network. The first picture does not wait for that.
 - Update says an install may reboot more than once, and it shows a recent transfer rate.
-- Flycast is v2.7. MAME2003-Plus and Mupen64Plus-Next moved to the revisions named in `docs/UPSTREAMS.md`. That is a source pin. It is not a claim that those games run better.
-- The development kernel is Linux 7.2.10. It has been booted on one Flip.
-- Leaving a PortMaster game returns to the menu and removes temporary filesystems that game mounted. One game on the second card was checked. Games that use Weston were not part of that check.
-- Tools → USB File Transfer shares the whole data partition as SDCARD1, a mounted second card as SDCARD2, and a USB volume that is already mounted as OTG. Another USB volume is OTG 2. The folders on the cards are unchanged. A ROM or BIOS folder is not required. Settings, logs, and update files on the data partition are included. The boot partition is not shared. The first screen says to connect the computer to the lower USB-C port. If the lower port is not a data connection yet, the next screen says it is waiting for one and shows B to stop. It does not say the computer is connected. When the controller is bound, the screen says the session is open and shows B to stop. It does not print the kernel USB state. The controller is not bound until the lower port reports a data connection. A charger does not count as that connection. A session the computer has already configured is left alone. The tool does not start while an update is staged. Use a computer you trust.
-- A fresh card image gives the data partition the Windows basic-data type. The filesystem is still exFAT, labeled ZLYME. A card already in use keeps its partition type. An update does not rewrite the partition table.
-- Tools → Files includes VTree's language files, so commands such as copy and cut use those words. A theme or a hidden-file setting you already chose stays.
+- Flycast is v2.7.
+- The kernel is Linux 7.2.10.
+- A fresh card image gives the data partition the Windows basic-data type. The filesystem is still exFAT, labeled ZLYME. A card already in use keeps its partition type.
+- Tools → Files uses VTree's own words for commands such as copy and cut. A theme or a hidden-file setting you already chose stays.
 
 ### Fixed
 
-- A port whose only picture is a JPEG now gets that picture in the list. The file is named for the launcher. A picture you already chose stays.
-- Leaving a PortMaster game releases a filesystem that game mounted through Zlyme only when that filesystem is still the one visible at its path. A filesystem mounted another way stays mounted, including one stacked on top of the game's mount or put at the same place after the game's own mount is already gone. USB File Transfer still will not start while some other filesystem remains mounted inside storage. The screen says that, instead of a cut-off storage error.
-- Tools → PortMaster writes its transcript to a temporary file when System logs is off. It no longer writes that file onto the card. An error on screen still comes from that transcript. With System logs on, the transcript is stored with the other tool logs.
+- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays.
+- Leaving a PortMaster game removes a filesystem that game mounted through Zlyme when that filesystem is still the one at its path. Anything else mounted inside storage stays, and USB File Transfer will not start while it does.
+- With System logs off, PortMaster keeps its transcript off the card. An error on screen still comes from that transcript.
 
 ## [zlyme44.2] - 2026-10-11
 
