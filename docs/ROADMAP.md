@@ -1,1693 +1,347 @@
-# Zlyme roadmap and sequencing
+# Zlyme roadmap
 
-This roadmap is ordered to minimize overlapping variables during hardware bring-up.
+Miyoo Flip (`my355`) is the only supported device. This file says where the work is. It is not the architecture. Current behavior is in `docs/ARCHITECTURE.md` and the other owning documents. How to write this file is in `docs/WRITING.md`.
 
-The Miyoo Flip (`my355`) remains the only supported device.
+The long record that used to live here was moved unchanged on 2026-10-15 to [docs/archive/roadmap-2026-10-15.md](archive/roadmap-2026-10-15.md). It is the text at `b926b9976c12ccdb3de20b629f8a550e574f8e51`. Sentences there that say Phase 13 is not scoped are that day's plan.
 
-`ROADMAP.md` is sequencing guidance, not the current architecture specification. Current architecture and invariants live in `AGENTS.md` and the canonical documents under `docs/`.
+## Where we are
 
+Phase 13 is open on `zlyme44.3-phase-12`. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published release is `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, run `38098037074`. The installed Flip image is still the Phase 12 E32 archive. Phase 14 does not start until Phase 13 is accepted and that branch is on `main`. The checklist is in `docs/MAINTENANCE.md`.
 
-## Active summary
+Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
-Phases 0–12 are closed. Phase 13A is host-tested. The Phase 13 table names which later items are host-tested, blocked, or still planned. Phase 13 continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`. On 2026-10-15 the maintainer replaced the B2, B5, and B8 requirements. The earlier host tests of those three items do not validate the replacement.
+## Closed phases
 
-| Phase | Closed result | Where the detail stayed |
-|-------|----------------|-------------------------|
-| 0 | Product image built. The etched card booted to NextUI. | [Section 0](#0--repositorycontext-refactor-and-baseline) |
-| 1 | Application-scoped Weston and WestonPack returned to NextUI on both GPU stacks. | [Section 1](#1--application-scoped-westonwestonpack-support) |
-| 2 | Kernel-patch audit. Eighteen patches remained. | [Section 2](#2--refresh-upstream-evidence-and-audit-the-kernel-patch-inventory), `docs/research/kernel-patch-audit.md` |
-| 3 | Built-in gamepad driver accepted. Switch sticks were not required. | [Section 3](#3--rebuild-the-miyoo-flip-gamepad-stack-around-the-actual-hardware), [3C log](archive/roadmap-phase-3c.md) |
-| 4 | InputPlumber virtual pads for applications. | [Section 4](#4--introduce-inputplumber-as-the-application-controller) |
-| 5 | Second patch reduction. Accepted runtime `7eaecf794830a15c53f6b417a1b408dd31ceee53`. | [Section 5](#5--second-kernel-patch-reduction-pass) |
-| 6 | Deep suspend accepted. Runtime `b709719aac5c5540394d0369e5e06981b8aa00bc`. | [Section 6](#6--deep-suspend-bring-up), `docs/research/deep-suspend-phase6.md` |
-| 7 | DMC is an external module. Runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`. | [Section 7](#7--dmc-driver-modularization--patch-extraction) |
-| 8 | NextUI fork and platform boundary. | [Section 8](#8--frontend-source-ownership-platformization-and-performance), `docs/research/frontend-source-phase8.md` |
-| 9 | First stable release, `zlyme44`, runtime `337ccbce2587393463a4b49c551f94e33e318e44`. | [Section 9](#9--product-polish-integrations-and-release-preparation) |
-| 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
-| 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
-| 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | 13A, 13B1, B2, B5, B7, B8, and 13C2 host-tested. B6 and 13C1 blocked. 13D–13E planned. | [Phase 13](#phase-13) |
+| Phase | Closed | Reference |
+| --- | --- | --- |
+| 0 | 2026-09-22. The product image booted to NextUI. | [Phase 0](#phase-0-repository-and-baseline) |
+| 1 | 2026-09-23. Application-scoped Weston returned to NextUI. | [Phase 1](#phase-1-application-scoped-weston) |
+| 2 | 2026-09-23. Eighteen kernel patches remained. | [Phase 2](#phase-2-kernel-patch-audit) |
+| 3 | 2026-09-25. The built-in gamepad was accepted. | [Phase 3](#phase-3-built-in-gamepad) |
+| 4 | 2026-09-28. Applications use InputPlumber `xb360` pads. | [Phase 4](#phase-4-inputplumber) |
+| 5 | 2026-09-28. Second patch reduction. | [Phase 5](#phase-5-second-patch-reduction) |
+| 6 | Deep suspend from the power button. | [Phase 6](#phase-6-deep-suspend) |
+| 7 | DMC is an external module. | [Phase 7](#phase-7-dmc-module) |
+| 8 | 2026-09-30. NextUI is a pinned fork. | [Phase 8](#phase-8-nextui-fork) |
+| 9 | 2026-10-04. Published `zlyme44`. | [Phase 9](#phase-9-first-stable-release) |
+| 10 | 2026-10-06. Documentation closure. `zlyme44.1` was not published. | [Phase 10](#phase-10-documentation) |
+| 11 | 2026-10-08. Published `zlyme44.2`. | [Phase 11](#phase-11-zlyme442) |
+| 12 | 2026-10-14. Development closed, with the limits below. | [Phase 12](#phase-12-zlyme443-development) |
 
-Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
+## Phase 0. Repository and baseline
 
-Still unverified, and not reopened by that closure:
+Objective: make the tree's documents, board hooks, and `my355` identity explicit without changing runtime behavior.
 
-- Unplugging and plugging the lower USB-C cable back during one session. The E30 image remains the rollback. `snps,dis_u2_susphy_quirk` stays.
-- A discharge to 0%.
-- PPSSPP presenting a game through PanVK. The experimental driver is not broadly compatible. Panfrost OpenGL ES and the Mali Vulkan path stay as they are.
-- The PortMaster log guard and the Panfrost PanVK opt-in. Both are in source. The installed image does not contain them.
-- WestonPack cleanup on this card. Host tests cover the current cleanup. Earlier hardware evidence is another image.
+Status: Closed, 2026-09-22. Both my355 defconfigs configured, and a clean product image booted to NextUI.
 
-The sections below keep the phase records. The Phase 3C integration log moved to `docs/archive/roadmap-phase-3c.md` without a wording change.
+Reference: `docs/LOGBOOK.md`, 2026-09-22.
 
-## Current phase
+## Phase 1. Application-scoped Weston
 
-Phase 12 development is closed. Phase 13A is host-tested. Later Phase 13 items are host-tested, blocked, or still planned, as the [Phase 13](#phase-13) table says. Both phases stay on `zlyme44.3-phase-12` and both are for the eventual `zlyme44.3` release. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image has been built, and no `zlyme44.3` release has been published. The published stable release is still `zlyme44.2`: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, GitHub Actions run `38098037074`, tag `zlyme-38098037074`. The Flip's installed development image was built before this version change. It is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`, and its `os-release` text is still the previous version string. The maintainer accepts that image for the Phase 12 behavior named in the closure below. Within-session USB cable recovery was not instrumentally verified. `snps,dis_u2_susphy_quirk` stays. The session record is [the Phase 12D USB ledger](research/usb-mtp-phase12d.md). Phase 11 and the published 44.2 acceptance stay in section 11 and in `docs/LOGBOOK.md`. The closure written earlier on 2026-10-14 was premature. The later correction exports the experimental PanVK opt-in when the saved GPU choice is exactly `panfrost`, after one orange frame was presented twice. Tools → PortMaster keeps its transcript off the card unless system logs are on. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 continues on this branch. The Phase 13 table names what is host-tested, blocked, or still planned.
+Objective: run a Wayland or X11 program without a permanent compositor.
 
-Status words in this section are not interchangeable:
+Status: Closed, 2026-09-23. Temporary Weston recovered NextUI on Panfrost and libmali. WestonPack and Wine returned the same way. No open work.
 
-- Implemented: the source is on this branch.
-- Source-reviewed: the source was read and compared. Nothing was changed for that review.
-- Host-tested: a host check passed. That is not a Flip result.
-- Image-built: a product image was packed on the host.
-- Image-installed: that image, or a later image that contains the change, was installed on a Flip.
-- Hardware-exercised: the maintainer ran the behavior on a Flip. A failed run still counts.
-- Hardware-accepted: the maintainer accepted that behavior.
-- Released: published as a stable GitHub release.
+Reference: [docs/research/weston.md](research/weston.md).
 
-Phase 12 is not released. Do not merge it or publish it from this record. On 2026-10-14 the maintainer closed Phase 12 development, then corrected that closure the same day. The correction is the note under the Phase 12 closure. Phase 12 is closed and is still not released.
+## Phase 2. Kernel patch audit
 
-Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted that image (`zlyme44 (2026-10-03)`, installed root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`). `main` was fast-forwarded to that SHA. GitHub Actions Build run `37164297221` built it from a clean tree and succeeded on 2026-10-04. It published the first stable release, `zlyme44 (2026-10-04)`, tag `zlyme-37164297221`, which points at that SHA. That closed the Phase 9 release gate. A documentation commit does not replace the runtime SHA. "Complete and hardware-validated through zlyme43" below is the Phase 3 calibration result, not the current product.
+Objective: classify the inherited Linux patches against the selected kernel, upstream, the hardware wiki, and current comparison trees, then remove only what that audit justified.
 
-## Rule for every phase
+Status: Closed, 2026-09-23. Evidence pin `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. Eighteen Linux patches remained. Joypad, deep suspend, and DMC stayed in later phases.
 
-Before starting a phase:
+Reference: [docs/research/kernel-patch-audit.md](research/kernel-patch-audit.md).
 
-1. begin from a known-good commit;
-2. record the relevant baseline;
-3. read the canonical docs required by `AGENTS.md`;
-4. separate research from production changes;
-5. make one architectural change at a time;
-6. run the narrowest useful build/check first;
-7. run the phase-specific Miyoo Flip smoke test when runtime behavior changes;
-8. commit the known-good state before starting the next phase.
+## Phase 3. Built-in gamepad
 
-Do not ask an agent to execute this entire roadmap in one pass.
+Objective: replace the ROCKNIX joypad stack with `miyoo-flip-gamepad` for the Flip's UART pad.
 
-Do not turn discovery in one phase into implementation of a later phase.
+Status: Closed, 2026-09-25. Original sticks, buttons, MENU, and rumble were accepted. Switch 1 replacement sticks were a compatibility target and were not called validated.
 
-## External evidence and upstream intake
+Dependency: the hardware and protocol record. Applications were Phase 4.
 
-Zlyme is not a downstream synchronization project.
+Reference: [docs/research/joypad-driver.md](research/joypad-driver.md), [docs/archive/roadmap-phase-3c.md](archive/roadmap-phase-3c.md).
 
-Use external projects to reduce uncertainty, not to replace Zlyme's own architecture decisions.
+## Phase 4. InputPlumber
 
-Source-of-truth order for roadmap work:
+Objective: give each application one virtual `xb360` pad per player. The built-in pad stays the calibration device.
 
-1. **Zlyme repository** — authoritative for current Zlyme implementation and policy.
-2. **Miyoo Flip hardware wiki** (`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`) — primary device/hardware evidence.
-3. **Selected Linux kernel and upstream Linux history** — authoritative for whether kernel behavior is already upstream, backported, changed, or obsolete for the selected kernel.
-4. **Current official ROCKNIX `next` and other distributions** — current comparison and implementation evidence, not authority for Zlyme behavior.
-5. **Archived Zetarancio ROCKNIX fork and historical notes** — historical evidence only.
+Status: Closed, 2026-09-28. Accepted image `zlyme-my355-20260927-0b139e9099ee.tar` from `0b139e9099eec699e31d1cb5313998f57f387e12`. External controllers were not part of that acceptance.
 
-For external kernel code or patches:
+Reference: [docs/research/inputplumber.md](research/inputplumber.md).
 
-- pin the exact source commit or patch revision used for comparison;
-- preserve authorship, provenance, copyright, and license notices;
-- prefer an upstream/mainline implementation when it is applicable and semantically equivalent;
-- do not assume a newer downstream patch is better merely because it is newer;
-- understand the failure mode and mechanism before adopting a workaround;
-- compare external behavior against the Miyoo Flip hardware evidence and Zlyme's selected kernel;
-- keep only the smallest Zlyme delta that remains necessary;
-- do not merge or synchronize another distribution wholesale;
-- do not import unrelated userspace/package changes during a kernel phase.
+## Phase 5. Second patch reduction
 
-When research finds useful work outside the active phase, record it for the appropriate later phase or backlog instead of implementing it immediately.
+Objective: drop kernel patches the new gamepad and the newer kernel made obsolete, and record what stayed.
 
-## 0 — Repository/context refactor and baseline
+Status: Closed, 2026-09-28. The first accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The corrected stack that entered Phase 6 is `8119387e0fdb729f1f013bed9dbc48c76e37a1df`. `7eaecf79` was not rewritten as that later stack.
 
-Goals:
+Reference: [docs/research/kernel-patch-audit-phase5.md](research/kernel-patch-audit-phase5.md).
 
-- add `AGENTS.md` and canonical docs;
-- split `NOTES/` by responsibility;
-- make `my355` target identity explicit;
-- move board-only Linux/U-Boot hooks into `board/my355/board.mk`;
-- introduce immutable device metadata;
-- preserve runtime behavior.
+## Phase 6. Deep suspend
 
-This should be primarily structural.
+Objective: enter and leave Linux mem suspend through the existing RK3568 BL31 path, from the menu and from a game, using the power button.
 
-### Gate
+Status: Closed. Accepted runtime `b709719aac5c5540394d0369e5e06981b8aa00bc`. The PM config driver stays built in. RK817 `005` stayed unapplied. Lid-open wake was not measured. The 2026-10-15 lid-close work does not add that measurement.
 
-Before phase 1:
+Not a closure requirement: long cycle counts, a standby-current number, and a full USB or radio matrix. Those were not claimed.
 
-- both my355 defconfigs configure;
-- full image builds;
-- image boots;
-- NextUI reaches first frame;
-- normal controls/audio/storage work;
-- standard suspend/resume works;
-- update status/verification still works.
+Reference: [docs/research/deep-suspend-phase6.md](research/deep-suspend-phase6.md).
 
-Record a baseline first-frame boot time and a short device smoke log.
+## Phase 7. DMC module
 
-### Status
+Objective: run the RK3568 DMC devfreq driver as an out-of-tree module instead of a kernel patch.
 
-Complete, 2026-09-22. Both my355 defconfigs configure, and the product image was built from a clean `output/` through `./build.sh --config zlyme_my355_defconfig`. The etched card booted to NextUI. Smoke notes are in `docs/LOGBOOK.md` (2026-09-22).
+Status: Closed. Accepted runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`. `1012a` and `1012b` are gone. DFI patch `1010` stayed. A later failure-path correction, `70acb1d27443447df84903e2043a2af05dbd9ee3`, was source-reviewed and was not given its own hardware run.
 
-## 1 — Application-scoped Weston/WestonPack support
+Reference: `package/drivers/rk3568-dmc/README.md`.
 
-Goal:
+## Phase 8. NextUI fork
 
-Support software that needs Wayland/X11 without changing Zlyme's normal compositor-free architecture.
+Objective: fetch Zlyme's NextUI from a pinned commit, keep other-platform source in the fork, and leave `/boot` read-only.
 
-Architecture:
+Status: Closed, 2026-09-30. Hardware-equivalent runtime `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. The profile did not justify a frontend optimization. Upstream pins were not moved.
 
-```text
-normal:
-NextUI -> SDL/KMSDRM -> DRM/KMS
+Reference: [docs/research/frontend-source-phase8.md](research/frontend-source-phase8.md).
 
-compat app:
-NextUI releases DRM
-  -> temporary Weston
-  -> native Wayland and/or Xwayland client
-  -> app exits
-  -> Weston exits
-  -> NextUI reacquires DRM
-```
+## Phase 9. First stable release
 
-Start with the smallest tracer bullet:
+Objective: finish the product surface for the first stable `zlyme44` and publish it from a clean remote build.
 
-```text
-launch Weston -> render one test client -> exit -> recover NextUI
-```
+Status: Closed, 2026-10-04. Implementation `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer accepted the 2026-10-03 image, including a ZcrapeGoat cheat and a root-sized delta. Run `37164297221` published `zlyme-37164297221`.
 
-Then test:
-- a PortMaster title that requires Weston/X11;
-- Wine graphical smoke test;
-- Xwayland fallback if needed.
+Reference: [docs/research/product-phase9.md](research/product-phase9.md).
 
-Do not make Weston a boot service.
+## Phase 10. Documentation
 
-### Gate
+Objective: make the owning documents match the source, and add the maintenance index, without a new product feature.
 
-Repeatedly pass:
+Status: Closed, 2026-10-06. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published. Run `37375071442` was dispatched with `publish_release` false. Deferred findings `(i)`, `(m)`, `(n)`, and `(q)` were not Phase 10 blockers. `(i)` later changed in Phase 12A1.
 
-```text
-NextUI -> Weston app -> NextUI -> Weston app -> NextUI
-```
+Reference: `docs/MAINTENANCE.md`, [docs/research/documentation-audit-phase10.md](research/documentation-audit-phase10.md).
 
-with correct input/audio/DRM cleanup.
+## Phase 11. zlyme44.2
 
-### Status
+Objective: ship the Settings, runtime, and recovery work that became published `zlyme44.2`.
 
-Complete, 2026-09-23. Native application-scoped Weston recovered NextUI repeatedly on both Panfrost/Mesa and libmali. PortMaster Alex the Allegator 2 ran through WestonPack and Xwayland, was visible, and answered controls. Normal exit and MENU+START returned to NextUI on both GPU stacks, with no permanent Weston, `seatd`, or Xwayland left behind. On Panfrost, WestonPack used `card0` for KMS and `renderD128` for Mesa. Wine 11 under Box64 showed PuTTY through native `winewayland.drv` and Zlyme's temporary Weston, not WestonPack, on both stacks, including normal exit, relaunch, and MENU+START. Notes are in `docs/LOGBOOK.md`.
+Status: Closed, 2026-10-08. 11A and 11B were hardware-accepted on 2026-10-06. 11C's recovery preloader was hardware-accepted on 2026-10-08. Erase is not USB MASKROM. The published runtime is `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. PortMaster mounts left behind by `PORTS.pak` were Phase 12 preflight, not a 44.2 gate.
 
-## 2 — Refresh upstream evidence and audit the kernel patch inventory
+Reference: `docs/LOGBOOK.md` and the archived roadmap. The UART logs are in the hardware wiki.
 
-Goal:
+## Phase 12. zlyme44.3 development
 
-Create a small, current, explainable kernel delta for the Miyoo Flip before rewriting input or power-facing components.
+Objective: battery, SSH, clock, updater, launch logs, Buildroot 2026.08, PanVK as an experimental opt-in, unused kernel-test cleanup, and USB File Transfer.
 
-Phase 2 is not "update from ROCKNIX". It is an evidence-driven audit of Zlyme's current kernel baseline using the current selected Linux kernel, current upstream history, the hardware wiki, and current external implementations.
+Status: Closed, 2026-10-14, after the same-day correction. The installed image is the E32 archive, squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c`. It was built before `ZLYME_VERSION` became `zlyme44.3`. The maintainer accepted ordinary MTP on that image, including a second start with the cable left in place, one PortMaster port on the second card, and charging and upper-port host use by report. The maintainer presented one orange frame twice. PPSSPP did not present a game through PanVK. The archive `7951a37668e3` is an earlier file-copy baseline, not this accepted image.
 
-Baseline for Phase 2:
+Limits, not open work: within-session cable removal was not measured, E30 stays the rollback for that limit, and `snps,dis_u2_susphy_quirk` stays. A discharge to 0% was not run. The maintainer required no further Phase 12 hardware test. WestonPack cleanup and removal of obsolete PAKs are not a new hardware gate.
 
-```text
-main after Phase 1:
-56cc4c38c5189b96e724c9227d69e6b92203339d
-```
+The hardware wiki was updated for the development Linux 7.2.10 boot and the lower-port session. That update does not call the device tree proven.
 
-If `main` changes before Phase 2 begins, record the actual starting SHA instead of silently using this historical value.
+Dependency: published 44.2 source. No Phase 12 item waits on a wiki edit.
 
-### 2A — Refresh upstream evidence
+Reference: [docs/research/usb-mtp-phase12d.md](research/usb-mtp-phase12d.md), [docs/research/linux-7.2.10-migration.md](research/linux-7.2.10-migration.md).
 
-This substage is research-only.
+## Phase 13. Compatibility on this branch
 
-Do not modify kernel patches, DTS, kernel configuration, U-Boot, BL31, drivers, or runtime behavior during 2A.
+Phase 13 is not closed. It stays on `zlyme44.3-phase-12` for the same eventual `zlyme44.3` release. Nothing here is on the installed E32 image. The maintainer has not asked for a Phase 13 hardware run yet. 13E6 is that later candidate.
 
-Create or update a focused research document, preferably:
+13A, 13B except B6, 13C2, and 13D are host-tested. B6 and C1 are blocked. Phase 13B is not complete. 13E has not started. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
 
-```text
-docs/research/kernel-patch-audit.md
-```
+The earlier 13E list, E1 through E4, is in the archive. The milestones below replace it.
 
-Record exact revisions for:
+### Phase 13A. Small corrections
 
-- current Zlyme `main`;
-- Zlyme's selected Linux version/tree;
-- current official `ROCKNIX/distribution` `next`;
-- the Miyoo Flip hardware wiki revision used;
-- the archived Zetarancio ROCKNIX fork only where historical comparison is useful.
+Objective: branding rebuild, the Windows Basic Data partition type, MTP names, VTree translations, the README lockup width, and the Unreleased cleanup.
 
-Review external changes since the last recorded comparison, but filter them to plausible Miyoo Flip relevance. Do not manually review unrelated distribution churn merely because it is newer.
+Status: Host-tested, 2026-10-15. No image was built for these items. No open work inside 13A.
 
-At minimum search for changes involving:
+Reference: the archived roadmap, section Phase 13A.
 
-```text
-my355 / Miyoo Flip
-RK3566 / RK3568
-RK817
-power-off / shutdown / battery / fuel gauge
-suspend / resume / wake
-regulators / power domains / clocks
-GPU / Panfrost / Mali / runtime PM
-DMC / devfreq / DFI / SIP
-joypad / input / UART / GPIO
-USB host / PHY / Type-C where relevant
-SD / MMC / shared vqmmc
-Wi-Fi / Bluetooth power and suspend interactions
-DTS / bindings used by the Flip
-kernel-version changes that make Zlyme patches upstream or obsolete
-```
+### Phase 13B. RetroArch and emulators
 
-For every relevant external candidate, record:
+Phase 13B is not complete while B6 stays blocked.
 
-| Field | Required evidence |
-| --- | --- |
-| Candidate | concise description |
-| Source | repository + exact commit/patch revision |
-| Subsystem | kernel area affected |
-| my355 relevance | yes / no / uncertain, with reason |
-| Zlyme overlap | exact Zlyme patch/file or `none` |
-| Selected-kernel status | upstream / backport / downstream-only / obsolete / uncertain |
-| Hardware evidence | what is known specifically on Miyoo Flip |
-| Architectural owner | Phase 2 / 3 / 6 / 7 / future / ignore |
-| Recommendation | compare / adopt / replace / keep current / defer / ignore |
-| Validation needed | build/config/device evidence required |
+##### B1. Menu confirm and back
 
-The recommendation is not permission to implement a later-phase feature.
+Objective: menus confirm with A and go back with B. Game actions stay.
 
-Examples of deferral:
-
-- joypad architecture changes belong to Phase 3;
-- InputPlumber policy belongs to Phase 4;
-- deep-suspend enablement belongs to Phase 6;
-- DMC modularization/extraction belongs to Phase 7.
-
-A Phase-2 candidate may be implemented later in Phase 2 only if it is a kernel-baseline correctness fix or a direct replacement/removal of an existing Zlyme patch and does not start one of those later architectural changes.
-
-#### 2A checkpoint
-
-Stop after producing the evidence matrix.
-
-Review the findings before changing the kernel patch stack.
-
-The 2A checkpoint must answer:
-
-- which Zlyme patches may already be upstream;
-- which current patches overlap newer external work;
-- which external fixes are relevant to current my355 correctness;
-- which findings belong to later roadmap phases;
-- which external changes are irrelevant to Zlyme.
-
-### 2B — Classify every current Zlyme kernel patch
-
-After 2A is reviewed, inventory every currently applied Linux patch in order.
-
-Classify each patch:
-
-```text
-A: required specifically for Miyoo Flip
-B: reusable RK3566/RK3568 platform fix still required by the selected kernel
-C: upstream/backport still required by the selected kernel
-D: irrelevant inherited device patch
-E: historical/debug-only
-F: candidate for external module or later architectural extraction
-```
-
-For each patch record:
-
-```text
-path/order
-purpose
-original reason
-affected subsystem
-my355 dependency
-external/upstream equivalent, if any
-classification
-KEEP / REPLACE / REMOVE / DEFER decision
-validation needed
-```
-
-Do not classify a patch from filename alone.
-
-Read the patch and inspect the selected kernel source it modifies.
-
-The current `20-rk3566` directory contains inherited device-specific material; determine applicability from code and hardware evidence rather than assuming that every RK3566 patch belongs on my355.
-
-### 2C — Apply only the kernel-baseline decisions that belong to Phase 2
-
-After the inventory is reviewed:
-
-- remove category D/E patches in small logical families;
-- remove category C patches only when the selected kernel already contains the required behavior;
-- replace a current patch with a better upstream/current implementation only after comparing semantics;
-- adopt a newly discovered baseline correctness fix only when it is clearly relevant to current my355 behavior and does not start a later roadmap phase;
-- preserve provenance when importing external code;
-- do not rewrite the joypad driver here;
-- do not enable deep suspend here;
-- do not modularize/extract DMC here;
-- do not introduce InputPlumber here.
-
-One conceptual reason per commit.
-
-After each logical patch family:
-
-1. regenerate/verify kernel configuration if relevant;
-2. build the kernel or affected image;
-3. boot on Miyoo Flip when runtime behavior changed;
-4. run a smoke test appropriate to the subsystem;
-5. inspect logs for new warnings/regressions;
-6. commit the known-good state before the next family.
-
-### Phase 2 gate
-
-Phase 2 is complete only when:
-
-- the current external/upstream evidence snapshot is pinned and documented;
-- every active Zlyme kernel patch has an explicit classification and disposition;
-- irrelevant/historical patches selected for removal are gone;
-- any Phase-2 replacements are documented with provenance;
-- later-phase findings are deferred rather than partially implemented;
-- both my355 defconfigs still configure;
-- the full product image builds from the resulting baseline;
-- the image boots on Miyoo Flip;
-- NextUI reaches first frame;
-- normal display/input/audio/storage still work;
-- standard suspend/resume still works;
-- Panfrost/libmali selection still behaves as expected if touched;
-- no new kernel warnings attributable to the audit remain unexplained;
-- `docs/LOGBOOK.md`, `docs/research/kernel-patch-audit.md`, and any canonical docs affected by actual decisions are updated.
-
-The result should be a cleaner kernel baseline, not the smallest possible patch count at any cost.
-
-### Status
-
-Complete, 2026-09-23. 2A evidence is `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. 2B classification is in `docs/research/kernel-patch-audit.md`. 2C removed the foreign-board, unused-driver, perf-Rust, inert-initramfs, and unused RK3568 OTP patches. The OTP-removal image booted on the Flip: NextUI, display, controls, audio, Wi-Fi, and standard suspend/resume passed, with no OTP provider left. Eighteen Linux patches remain. Joypad architecture stays in Phase 3. DFI `1010` stays in Phase 6. DMC `1012a`/`1012b` stays in Phase 7.
-
-## 3 — Rebuild the Miyoo Flip gamepad stack around the actual hardware
-
-Do this **before making InputPlumber the default**.
-
-Phase 2 deliberately preserved the current joypad implementation and its supporting kernel patches so Phase 3 can redesign the input mechanism against a known-good kernel baseline.
-
-The goal is not to rename or incrementally clean up the existing `rocknix-joypad` integration.
-
-The goal is to establish the Miyoo Flip's actual gamepad hardware boundary, then implement the smallest clear Zlyme driver around that hardware.
-
-The new implementation should not carry distribution branding in its driver, device-tree compatible, input-device name, or public ABI.
-
-If implementation code is reused from ROCKNIX, stock Miyoo sources, Linux, or another external project, preserve the applicable authorship, provenance, copyright, and license information. A new architecture does not erase provenance for copied code.
-
-### Current evidence
-
-The built-in gamepad currently combines several mechanisms:
-
-* face buttons, d-pad, shoulders, triggers, MENU, and stick-click buttons are GPIO-backed;
-* analog-stick values reach the RK3566 over UART1;
-* stock Miyoo software configures that UART as 9600 8N1;
-* the observed stock analog frame is six bytes:
-
-```text
-FF YL XL YR XR FE
-```
-
-* stock software separately reads buttons through `/dev/miyooio`;
-* stock calibration stores per-stick minimum, maximum, and center values;
-* Zlyme currently combines GPIO buttons, UART axes, calibration, and PWM rumble into one Linux input device through the inherited joypad driver.
-
-The current implementation also carries architecture that is not naturally specific to the Flip, including generic ADC support, input polling, direct `/dev/ttyS1` access from kernel space, delayed initialization, a serial kthread, custom calibration sysfs, and coupling to a patched `adc-keys` global input pointer.
-
-Phase 3 should not assume those mechanisms are the correct final design.
-
-### Replacement-stick evidence
-
-Multiple users have fitted standard Nintendo Switch 1 non-Hall-effect potentiometer stick modules to the Miyoo Flip and reported that they work under the stock Miyoo OS.
-
-Treat this as evidence that the Flip's physical analog-stick modules are likely mechanically and electrically compatible with the standard Switch 1 potentiometer-stick family, possibly using the same component family or a compatible clone.
-
-Do **not** infer Nintendo HID protocol compatibility from physical stick compatibility.
-
-Phase 3A did not identify the part between the potentiometers and UART1. The RK3566 is the receiver. The sender is not a Joy-Con HID device. `hid-nintendo`, Switchroot Joy-Con parsing, and `adc-joystick` do not apply to this frame. One driver and one protocol cover original modules and Switch 1 non-Hall replacements. Only the observed minimum, center, maximum, and noise change.
-
-Designed compatibility is not hardware-validated compatibility. Phase 3B does not wait for replacement modules. Phase 3D does not call them validated until the community protocol passes.
-
-### Linux input ABI
-
-The physical device should expose standard Linux gamepad semantics.
-
-Expected capabilities include, as applicable:
-
-```text
-BTN_SOUTH
-BTN_EAST
-BTN_NORTH
-BTN_WEST
-BTN_DPAD_UP
-BTN_DPAD_DOWN
-BTN_DPAD_LEFT
-BTN_DPAD_RIGHT
-BTN_TL
-BTN_TR
-BTN_TL2
-BTN_TR2
-BTN_THUMBL
-BTN_THUMBR
-BTN_SELECT
-BTN_START
-BTN_MODE
-
-ABS_X
-ABS_Y
-ABS_RX
-ABS_RY
-
-FF_RUMBLE
-```
-
-Use positional Linux button semantics rather than encoding printed A/B/X/Y labels into the kernel ABI.
-
-The physical driver must represent the actual Miyoo Flip hardware.
-
-Do not identify it as an Xbox, Xbox 360, Nintendo Switch, or other unrelated commercial controller solely for application compatibility.
-
-If a later userspace policy layer benefits from exposing a virtual Xbox-compatible controller, that belongs to Phase 4 and InputPlumber, not to the physical kernel driver.
-
-Volume, lid, and PMIC power-key devices remain separate from the gamepad.
-
-### Architectural preference
-
-Research should evaluate rather than assume the final structure, but the preferred target is currently:
-
-```text
-Miyoo Flip gamepad
-  |
-  +-- UART1 / serdev
-  |     `-- analog frame parser
-  |
-  +-- gamepad GPIO inputs
-  |     `-- interrupt/event driven where hardware permits
-  |
-  +-- calibration transform
-  |
-  +-- PWM5
-  |     `-- FF_RUMBLE
-  |
-  +-- suspend/resume
-  |
-  `-- one standard Linux input_dev
-```
-
-One Linux input device for the physically integrated handheld gamepad is not inherently problematic merely because it reports many buttons.
-
-The architectural question is whether one driver can own those resources with clear boundaries and lower complexity than exposing several physical input devices and relying on userspace aggregation before Phase 4.
-
-Phase 3A selected that shape. Linux 7.0.2 models the analog path as a `serdev` child of UART1 at 9600 8N1. Phase 3B proved interrupt-driven GPIO on all seventeen gamepad lines, including press and release. The observed ~66.8 Hz rate is the analog sender delivering UART frames. It is not a button poll. The old driver polled GPIOs every 6 ms. Those are different mechanisms.
-
-The 3B tracer keeps the current UART1 pinmux, including `uart1m0_ctsn`, and the current DMA setup. Stock userspace disables hardware flow control, and the stock DTB still muxes CTS and describes DMA. Those are not the same fact. Dropping either is a later experiment, not part of the driver replacement.
-
-SARADC stays enabled through the initial Phase 3 work. The stick axes are UART. Unused-ADC cleanup is Phase 5 unless the new node actually conflicts with it.
-
-### Calibration boundary
-
-Calibration is normal. The potentiometer modules vary from unit to unit, and Switch 1 non-Hall replacements are a designed target for the same UART protocol. Do not treat stock raw defaults as universal, and do not assume four axes share one range.
-
-```text
-persistent, independently per axis:  min, zero, and max
-boot:                                 a fresh center when the sticks are still
-```
-
-Userspace owns the full-range procedure, the files under `/storage`, the UI, and restore/apply policy. The kernel owns UART decoding, the runtime transform, deadzone/noise handling, and standard `ABS_*` output. The kernel must not open persistent files. A small sysfs attribute is enough. Do not add a character device for calibration.
-
-The driver loads early and starts from the protocol fallback `0/128/255`. Its bounded boot runtime recenter then runs asynchronously. It may update only `runtime_zero`. It never learns min/max and never writes persistence. If that recenter accepts, the fresh center becomes the runtime zero. If it rejects or times out, the current runtime source stays. After the existing frontend first-frame wait, userspace restores saved min, saved zero, and max. A restore may install the saved zero as the runtime zero only while the source is still `default` or `persisted`. A source of `boot` keeps the accepted fresh runtime zero. The kernel never opens the persistent files. Full min/zero/max calibration is manual only. No infinite wait, no delayed probe, and no calibration loop inside `probe`. Buttons stay available if UART never produces a frame.
-
-The full calibration application still captures `x_min`, `x_zero`, `x_max`, `y_min`, `y_zero`, and `y_max` independently for each stick, including asymmetric travel. A narrow diagnostic report of raw bytes, observed extrema, center, active calibration, normalized axes, and frame errors is part of 3C/3D. It is not a permanent broad debug ABI.
-
-Missing, corrupt, or unexpected UART data must not block probe, button registration, NextUI, boot, or suspend/resume. Axes may degrade on their own. Parsing resumes when valid frames return.
-
-### 3A — Hardware, protocol, and ABI research
-
-This substage is research-only.
-
-Do not modify the production driver, DTS, kernel patches, or userspace input policy.
-
-Establish:
-
-* complete current Zlyme gamepad dependency graph;
-* stock Miyoo button and analog architecture;
-* UART1 protocol and line configuration;
-* hardware between the physical sticks and UART1 as far as evidence permits;
-* GPIO ownership and IRQ feasibility;
-* UART DMA/CTS requirements;
-* rumble hardware;
-* suspend/resume requirements;
-* calibration behavior;
-* current synthetic or inherited input identity values;
-* applicability of `serdev`;
-* applicability of `hid-nintendo`, Switchroot Joy-Con support, `adc-joystick`, and other upstream Linux drivers;
-* implications of successful Nintendo Switch stick replacements;
-* likely causes and limitations of the historical modified-stick/ROCKNIX black-screen report;
-* one-driver versus split-device architecture.
-
-Use the Zlyme repository as authority for current implementation, the Miyoo Flip hardware wiki and stock artifacts as primary hardware evidence, and upstream Linux as the authority for Linux interfaces and driver patterns.
-
-Do not expose additional stock NAND partitions merely for exploratory research while equivalent evidence exists in saved stock images, binaries, source fragments, logs, or an intact stock OS.
-
-#### 3A checkpoint
-
-The evidence report is `docs/research/joypad-driver.md`.
-
-It records the hardware boundary, UART/`serdev` transport, GPIO model, one-`input_dev` topology, truthful Miyoo identity, calibration split, PWM rumble, the DTS contract, the cutover list, and the measurements that still need a tracer or a scope.
-
-### Status
-
-```text
-Phase 3C2b COMPLETE — 2026-09-25
-Phase 3C3 COMPLETE — 2026-09-25
-Phase 3D COMPLETE — 2026-09-25
-Phase 3 COMPLETE — 2026-09-25
-Phase 4A COMPLETE
-Phase 4B COMPLETE — 2026-09-26
-Phase 4C COMPLETE — 2026-09-26
-Phase 4D COMPLETE — 2026-09-28
-Phase 4 COMPLETE — 2026-09-28
-Phase 5 COMPLETE — 2026-09-28
-```
-
-Earlier gates: Phase 3A complete 2026-09-23, Phase 3B complete 2026-09-23, Phase 3C1 complete 2026-09-24, Phase 3C2a complete 2026-09-24.
-
-### 3B — Minimal new-driver tracer
-
-After 3A is reviewed, create the new Zlyme gamepad implementation as an out-of-tree kernel module.
-
-Use a Miyoo/Zlyme hardware name rather than distribution branding, for example:
-
-```text
-miyoo-flip-gamepad
-miyoo,flip-gamepad
-Miyoo Flip Gamepad
-```
-
-Exact names should follow the conclusion of 3A.
-
-Start with the narrowest useful tracer.
-
-At minimum prove:
-
-```text
-module loads
-hardware resources bind
-UART frames are received and parsed
-GPIO buttons report
-one Linux input device appears
-axes report stable values
-module unload/cleanup is correct if unload is supported
-buttons still report when UART is silent
-```
-
-Treat every gamepad GPIO IRQ as unproven until that tracer shows request, polarity, debounce, and press/release. Do not wait for Switch replacement sticks before this tracer. Do not change UART CTS pinmux or DMA in the same step.
-
-Do not implement every calibration or compatibility feature before proving the resource model.
-
-Keep the existing driver available as a **mutually exclusive build-time fallback**.
-
-Never bind the old and new drivers to the same UART, GPIO, or PWM resources simultaneously.
-
-#### 3B result
-
-Hardware-validated on the zlyme41 tracer image. The module is `miyoo_flip_gamepad`, compatible `miyoo,flip-gamepad`, input name `Miyoo Flip Gamepad`, `BUS_HOST`, vendor/product/version 0. The old `rocknix-singleadc-joypad` module stayed on disk and was not loaded or bound.
-
-UART was 9600 8N1, frame `FF YL XL YR XR FE`, about 66.8 valid frames per second, and 0 bad frames in the final test. An untouched boot accepted centers YL 139, XL 103, YR 138, XR 112, each after the 1.5 s settle and two confirming windows. Resting normalized axes stayed at 0.
-
-Directed original-stick extrema, diagnostics only:
-
-```text
-YL 25 / 139 / 239
-XL 2 / 103 / 223
-YR 49 / 138 / 226
-XR 17 / 112 / 203
-```
-
-Fallback 85/200 does not describe those ranges. Signs match the Linux gamepad convention: negative is left/up, positive is right/down. All seventeen `BTN_*` lines, including `BTN_DPAD_*`, passed press and release. No keyboard arrows and no autorepeat. The 10 ms debounce kept extra GPIO edges out of evdev. Suspend/resume left the same driver bound, probe count 1, the port open, frames running, and both a stick and a button working. NextUI opened the new event device directly.
-
-Not done in 3B: persistent calibration, `FF_RUMBLE`, Switch-stick hardware validation, userspace name cutover, and emulator compatibility.
-
-### 3C — Complete physical gamepad integration
-
-The integration log is [archived unchanged](archive/roadmap-phase-3c.md).
-
-On `zlyme-my355-20260925-4d1c1d44d2a2.tar`, `miyoo_flip_gamepad` advertised `FF_RUMBLE` and `FF_GAIN`, and the maintainer confirmed rumble at 0%, 10%, 50%, and 100%. The phase gate treats the physical hardware evidence as Phases 3B through 3C3. Switch replacement sticks were not required to finish Phase 3. InputPlumber stayed in Phase 4. Suspend while an effect was playing, and forced driver removal, were not exercised.
-
-### 3D — Physical-input cutover and legacy cleanup
-
-Complete 2026-09-25. The old ROCKNIX package is not in the tree. The image must not contain `rocknix-singleadc-joypad.ko`. OTA deletes Autocal, the old serial-joypad config directory, and a hot-copied copy of that module. Current settings stay in `/storage/.config/zlyme/miyoo-flip-gamepad/`.
-
-`CONFIG_KEYBOARD_GPIO_POLLED=y` still needs the `input-polldev` patch, so that patch stays. The adc-keys keycode redirect is unused on the Flip, which has no `adc-keys` node, and remains for Phase 5 rather than a kernel re-extract in this cutover. Non-Flip dts-overrides that still mention the old compatible are not the product image.
-
-After 3C, the physical driver, calibration, deadzone, and rumble are already accepted. Do not repeat those hardware tests here.
-
-3D owns:
-
-```text
-NextUI and direct platform code that still need the name Miyoo Flip Gamepad
-removal of retrogame and old-driver fallbacks once that path is safe
-current NextUI device lookup still tied to the old identity
-a check that the physical device is not itself emitting duplicate events
-removal of rocknix-singleadc-joypad from the normal product
-old-driver-only package and build dependencies
-input-polldev, adc-keys, and joypad_input_g only where they exist solely for the old driver
-clean build and image inspection
-```
-
-3D does not own per-emulator mappings, standalone controller configuration, RetroArch ABI validation, independent virtual controllers, player order, hotplug, connect and disconnect during games, or making every emulator bind to `Miyoo Flip Gamepad`. Those are Phase 4.
-
-Switch 1 non-Hall replacement sticks stay a designed compatibility target on the same UART frame. Community validation is not a Phase 3 blocker, and they are not called physically validated.
-
-Git history remains the fallback for the old driver. Broader kernel-patch reduction remains Phase 5. Module loading of the new gamepad stays on the existing early boot path.
-
-Some NextUI controls may act twice. The kernel reported one press and one release on one device. 3D only has to show the physical device is not the source. Do not change the button ABI to hide an application bug. If Phase 4 later exposes both the physical device and a virtual device, exclusive grab owns that separate problem.
-
-### Phase 3 gate
-
-Before Phase 4:
-
-* current gamepad hardware ownership is documented;
-* the new driver uses no ROCKNIX-branded public identity;
-* no unrelated controller identity is spoofed;
-* all built-in gamepad buttons work;
-* both analog sticks work across their usable ranges;
-* persistent per-axis min, zero, and max calibration works;
-* boot runtime recenter changes only runtime zero and never persistence;
-* boot runtime recenter is bounded and non-blocking, and rejects an unstable or out-of-range center;
-* full min/zero/max calibration occurs only through an explicit userspace action;
-* persistent saved calibration restore is outside the frontend first-frame critical path;
-* original sticks are hardware-validated;
-* Switch 1 non-Hall replacement sticks are a designed compatibility target on the same UART protocol;
-* replacement-stick support is not called validated until the community hardware tests pass;
-* L3/R3 work;
-* MENU works;
-* rumble works through standard force feedback;
-* input capabilities and device identity are stable;
-* GPIO handling does not retain unnecessary polling where interrupts are suitable;
-* UART ownership and recovery are deterministic;
-* malformed/missing UART data cannot block boot or frontend startup;
-* standard suspend/resume of the physical gamepad works;
-* the old driver is no longer required for the normal build after 3D;
-* the known-good old implementation remains recoverable through Git history rather than parallel runtime ownership;
-* documentation reflects the implemented architecture.
-
-Game launch, external controllers, hotplug, and per-emulator mappings are Phase 4. They are not prerequisites for finishing the physical gamepad.
-
-The physical hardware gate is the evidence from Phase 3B through Phase 3C3. Switch replacement sticks are not required to finish Phase 3.
-
-## 4 — Introduce InputPlumber as the application controller
-
-Phase 4 owns the controllers that emulators and standalone applications see. Each physical player controller stays independent:
-
-```text
-one physical player controller
-        ->
-one InputPlumber composite
-        ->
-one virtual controller
-        |
-        +-> RetroArch
-        +-> standalone emulators
-        +-> native and PAK applications that need a controller
-```
-
-Several physical player controllers stay several composites:
-
-```text
-multiple physical player controllers
-        ->
-multiple independent InputPlumber composites
-        ->
-multiple ordered application-facing virtual controllers
-```
-
-Applications should not bind to the board-specific name `Miyoo Flip Gamepad`. InputPlumber owns each physical player controller as its own composite and exposes one virtual controller for that composite. After the handoff, NextUI, RetroArch, standalones, and PAK applications that need a controller use those virtual devices. Settings → System → Joysticks stays on the physical built-in pad and its sysfs for calibration, deadzone, and rumble. Entering that screen should unmanage only the internal source. Leaving it restores InputPlumber. Do not stop every controller to calibrate one stick if a per-device control exists.
-
-P1 is the first position among those independent virtual controllers. With no external controller, the built-in pad is P1. If any external controller is connected, external controllers come first, in connection order unless InputPlumber has a stronger stable order, and the built-in pad is last. Do not use `/dev/input/eventN` as priority. HDMI does not change this. An HDMI cable with no external controller leaves the built-in pad as P1.
-
-Do not require a Switch Pro, DualShock, DualSense, or hotplug test on this unit. Match external devices through InputPlumber's own interfaces and say they are not physically validated here. The device test is the built-in pad: InputPlumber sees it, the virtual target appears, normal consumers do not also see the physical source, buttons and sticks match, rumble returns to the motor if the target supports it, and a supported unmanage/manage of the internal source drops and restores virtual input. Do not unload `miyoo-flip-gamepad` to simulate that.
-
-InputPlumber starts after the current first frame. NextUI keeps the physical path until the virtual controller is ready, then closes that handle and uses the virtual device. One owner at a time. Measure startup, time to a usable virtual pad, RSS, and wakeups before making InputPlumber block the first frame.
-
-This is an intentional Zlyme design choice relative to historical implementations. Do not infer the current official ROCKNIX state without fresh research.
-
-The previous Zlyme research correctly concluded that InputPlumber was unnecessary merely to fix Nintendo controller support. That remains true: vendor HID drivers such as `hid-nintendo` solve vendor report-mode problems.
-
-Adopt InputPlumber for the application-policy goal:
-
-- one virtual controller per physical player controller;
-- player order, with the built-in pad first when it is alone and external controllers first when any external is connected;
-- exclusive grabs when useful;
-- consistent mapping;
-- hotplug policy;
-- game launch and in-game controller behavior;
-- decoupling emulators and standalones from the physical Flip identity.
-
-### 4A — Package InputPlumber
-
-Complete. At the 4A checkpoint, Buildroot `cargo-package` built pinned v0.81.0 (`ea60d873cca17edd1cb655ede26f557108135252`). The image contained `/usr/bin/inputplumber`, the D-Bus policy, upstream `default.yaml`, and `20-zlyme_miyoo_flip.yaml`. That file is a CompositeDevice named Miyoo Flip Gamepad, matched by evdev name, `maximum_sources: 1`, `auto_manage: false`, `persist: false`, target `xb360`. At that checkpoint nothing started it, and there was no device test. Phase 4B added the init script, the capability map, post-first-frame startup, and live validation.
-
-### 4B — Built-in controller integration and latency
-
-Complete — 2026-09-26. The service starts after the first frame and owns zero controllers until management is enabled. Live checks covered exclusive grab, one `xb360` target, face buttons, sticks, MENU/Guide, L3/R3, D-pad as `ABS_HAT0X`/`ABS_HAT0Y`, virtual `FF_RUMBLE`, manage/unmanage recovery, and UART health. Physical L2 and R2 are digital GPIO buttons, `BTN_TL2` and `BTN_TR2`. The capability map sends them as trigger values, so the virtual pad writes binary `ABS_Z` and `ABS_RZ`: 255 pressed and 0 released, matching the axis maximum from `EVIOCGABS`. A typical routing estimate is about 1.8 ms: about 1.25 ms expected poll wait plus about 0.56 ms measured average internal work. The 1.8 ms figure is partly inferred. Managed idle cost was about 13.0 MiB RSS and about 1.5% of one core. The Phase 3 driver, the 10 ms debounce, and the UART path stay as they are. Event-driven InputPlumber evdev is a later candidate. Details are in `docs/research/inputplumber.md`.
-
-### 4C — NextUI handoff and player policy
-
-Complete — 2026-09-26. The persistent OTA `e911db674811` was installed and accepted on the Miyoo Flip. InputPlumber starts after the first frame. There is one composite and one `xb360` target per player controller. External controllers stay ahead of the built-in pad, in their relative order, with the built-in pad last. `release` and `reclaim` return only when the built-in target state is ready, and the same `zlyme-input` process restores management after an InputPlumber restart. Settings → Joysticks is the physical-maintenance exception and releases only the built-in composite. Printed A/B/X/Y match Xbox A/B/X/Y, and digital L2/R2 are binary trigger axes. MENU remains Guide; NextUI takes `BTN_MENU` timing from the raw guide button because SDL holds Guide for 250 ms. Virtual `FF_RUMBLE` reaches the motor. Volume, power, and the lid switch stay outside InputPlumber. External-controller ordering is source policy; specific external models were not part of this acceptance.
-
-### 4D — Application cutover
-
-Complete — 2026-09-28. The accepted image is `zlyme-my355-20260927-0b139e9099ee.tar` from `0b139e9099eec699e31d1cb5313998f57f387e12`, SHA-256 `9bedb4874f8a834c362fc9cccbd61aaece882595ac221865128ae6a3a4f3437e`. Application exit and in-pak brightness read each InputPlumber `xb360` target. MENU+START on one virtual controller exits the pak. Volume, power, and the lid stay on their own devices. Shipped controller consumers use that virtual xb360 pad. On that installed image, PPSSPP showed a picture with working audio and controls, MENU+Volume changed brightness in a pak, and RetroArch, PICO-8 Splore, and PortMaster launched, took the controller, and returned to NextUI on MENU+START. PPSSPP 1.19.3 presents through the SDL KMSDRM window (`USING_EGL` off). Details are in `docs/research/inputplumber.md`.
-
-Phase 4 is complete. 4A through 4D are accepted. Phase 5 research is recorded in `docs/research/kernel-patch-audit-phase5.md`. No Phase 5 patch has been added or removed.
-
-### Start optional
-
-The old "package it experimentally" step is Phase 4A. It is not optional, and it is not a first-frame service.
-
-## 5 — Second kernel patch reduction pass
-
-Complete — 2026-09-28. The accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The accepted image is `zlyme-my355-20260928-7eaecf794830.tar`, SHA-256 `71a7fbc507d7e725641d1d6ed8d8b3856e40e438adaf6ee832323ddd31fd1947`. On the Miyoo Flip that image booted to NextUI. Built-in d-pad, ABXY, both sticks, and MENU worked. One emulator took those controls and MENU+START returned to NextUI. Bluetooth could be enabled and scanning worked. Volume, one suspend/resume cycle, and a clean shutdown passed. Controller pairing was not part of the gate.
-
-Phase 5 started from eighteen Linux patches on Linux 7.0.2. Phase 5A removed the `input-polldev` restoration, the adc-keys joypad export, and the RK817 ON/OFF diagnostic log. Phase 5D removed the shared UART1 `dma-names` patch and the historical Bluetooth SSP patch. Thirteen patches remain, in application order: `0005`, `0001`, `0002`, `0007`, `0008`, `0666`, `1001`, `1010`, `1012a`, `1012b`, `1013`, `9901`, `0006`. Retained filenames were not renumbered.
-
-`0007` still clears `SYS_CAN_SD`. With that bit set the off current is about 8 mA. With it clear, about 0.05 mA. An overnight unplugged power-off left `OFF_CNT` at 50, `BAT_CON` clear, and `SYS_CAN_SD` clear. `PWRON_VOL` was 3.947810 V. The Flip OCV table returned 82%. `Q_INIT` was about 2.460 Ah. The visible gauge was about 81% after the measured runtime load. That `OFF_CNT >= 3` reseed was reproduced and matched the table. Phase 5 did not adopt RK817 `001`, `002`, or `008`. Patch `001` corrects a saved-SoC ceiling. On the reachable 7.0.2 boot paths that were observed, that corrected value is overwritten before display, so an `001`-only image was not justified. `005` stays with Phase 6.
-
-`1010`, `9901`, and the GPU suspend/power-domain question stay with Phase 6. `1012a` and `1012b` stay with Phase 7. Phase 6 has not started. The evidence note is `docs/research/kernel-patch-audit-phase5.md`.
-
-After that hardware closure the maintainer corrected the retained kernel-delta policy. The image above remains the tested Phase 5 result and is no longer the intended final patch stack. The correction applies sixteen Linux patches: those thirteen, plus `0021`, `0030`, and local `0003`. `0021` keeps `dma-names` beside the RK356x UART1 DMA descriptors. The Flip DTS enables UART1, selects the CTS pinmux, and owns the gamepad child; it does not repeat `dma-names`. The effective Flip UART1 node is unchanged. `0030` is a DEBUG probe log of the ON and OFF source registers. It only reads those registers. `0003` is ROCKNIX patch `001` and changes the NVRAM SoC ceiling from `10000` to `100000`. That bounds check was objectively wrong. On the observed Linux 7.0.2 boot paths the saved value is still replaced by the coulomb counter or the `PWRON_VOL` OCV result before it is displayed, so `0003` does not fix the overnight reseed. ROCKNIX `002` and `008` stay disabled. `005` remains a Phase 6 evaluation. `0007` stays as it was. The Bluetooth SSP patch, `input-polldev`, and the adc-keys joypad export stay removed.
-
-That corrected stack is accepted on the Miyoo Flip. The runtime is `8119387e0fdb729f1f013bed9dbc48c76e37a1df`. The image is `zlyme-my355-20260928-8119387e0fdb.tar`, SHA-256 `4b831245e8f25ba8f1f1960021917ad631f6df734cb83bc589aa73981da292ae`. Boot to NextUI, built-in controls, one game with MENU+START, volume, Bluetooth enable and scan, one suspend/resume, a plausible battery percentage, and shutdown passed. At 1.118675 seconds the probe logged `ON_SOURCE=0x02 OFF_SOURCE=0x08`, so the DEBUG facility is working. `7eaecf794830` stays the original Phase 5 closure image. `8119387e` is the intended baseline entering Phase 6. Phase 6 has not started.
-
-After the input transition, remove patches made obsolete by:
-- the new joypad module;
-- newer upstream kernel code discovered since Phase 2;
-- no-longer-supported devices.
-
-For every affected patch, record one of:
-
-```text
-KEEP — required and why
-UPSTREAMED — remove, with upstream commit/version
-MODULE — functionality moved to external module
-DROP — irrelevant to my355
-DEBUG — keep only in debug profile, or delete
-```
-
-Re-check upstream status rather than relying blindly on the Phase-2 snapshot if significant time has passed.
-
-This should leave a small explainable my355 kernel delta.
-
-## 6 — Deep suspend bring-up
-
-**Phase 6 — COMPLETE.** The accepted runtime is `b709719aac5c5540394d0369e5e06981b8aa00bc`, image `zlyme-my355-20260928-b709719aac5c.tar`, SHA-256 `02cd1d769d146bb71d11631dcc649d0cdc5b041c0b202c93053ab324497332ba`, kernel `Linux 7.0.2 #2 SMP PREEMPT Mon Sep 28 14:31:17 UTC 2026`. Later commits on `phase-6-deep-suspend` are documentation and research only. No replacement Phase 6 OTA was built to close the phase. Evidence is `docs/research/deep-suspend-phase6.md`.
-
-The shipped ABI is `compatible = "rockchip,pm-rk3568"`, `sleep-mode-config = 0x5ec`, `wakeup-config = 0x10`, `sleep-debug-en = 0`, BL31 `rk3568_bl31_v1.44.elf`. Linux mem sleep is `s2idle [deep]`. Firmware returned `res.a0=0` for `LINUX_PM_STATE` `cfg1=0x3`, mode `cfg1=0x5ec`, and wake `cfg1=0x10`. Phase 6D turns `vdd_logic` / RK817 `DCDC_REG1` off in mem suspend and keeps `regulator-always-on` and `regulator-boot-on`. The mask still includes `RKPM_SLP_ARMOFF_LOGOFF`. Repeated maintainer power-button cycles passed. The exact total is not in the ring buffer.
-
-Phase 6C covered the normal NextUI path and the in-game path. Display, audio, the built-in pad, and the virtual Xbox 360 pad returned. `/storage` stayed usable. Wi-Fi and SSH returned. DMC devfreq stayed present. `mali_kbase` stayed loaded. No filesystem corruption and no Oops, panic, or hung task attributable to deep suspend was observed. An SSH suspend that slept twice was a userspace artifact: it bypassed `PWR_sleepNow()`, so `pwr.resume_tick` was never armed. It was not a BL31 failure, a kernel retry, or a firmware wake failure. The `xHC error in resume, USBSTS 0x401, Reinit` line recovered with the USB radio. Lid policy was not given a separate deep-suspend test and is unchanged.
-
-2026-10-15: Phase 13D points lid close at that same mem helper in userspace. Phase 6 did not measure lid-open wake, and this note does not add that measurement.
-
-`CONFIG_ROCKCHIP_PM_CONFIG=y` stays built-in. The per-suspend `.prepare` path is part of the firmware configuration, and that built-in driver is what the hardware test ran. The module question is closed: keep built-in. Successful `dev_info` lines at probe and suspend stay. They are low-frequency ABI diagnostics. Changing their level would be a new kernel runtime, so it is not part of this closure.
-
-DFI `1010` stays applied. Deep suspend did not show a fatal DFI or DMC resume failure. Dynamic DMC scaling is Phase 7, so `1010` is kept through Phase 6 and re-evaluated with the DMC module lifecycle in Phase 7. The deferred ROCKNIX GPU power-domain change was not imported. No GPU resume failure required it.
-
-RK817 `001` stays applied as local `0003`. `002` stays disabled. `005` stays unapplied: Test A showed no discharge jump, charging ratio 1.22 did not repeat at 0.98, and the published fallback only credits an under-count. `008` stays disabled. `0007` is unchanged. Phase 7 does not reopen those gauge decisions.
-
-The device wiki establishes:
-
-- standard suspend already works;
-- deep suspend is a separate BL31/SIP configuration feature;
-- `vdd_logic` off-in-suspend is unsafe without `ARMOFF_LOGOFF`;
-- historical Miyoo Flip implementations deferred deep suspend for userspace/lifecycle reasons.
-
-That historical userspace decision does **not automatically apply** to Zlyme. Zlyme uses NextUI and must validate its own lifecycle.
-
-Phase 2 may discover newer suspend fixes or implementations. Preserve that evidence for this phase instead of enabling deep suspend early.
-
-### Do not combine two experiments initially
-
-First bring up deep suspend using the best-supported implementation shape established by current hardware and upstream research.
-
-Do not simultaneously:
-- rewrite the joypad driver;
-- change BL31 for unrelated reasons;
-- change DMC architecture;
-- change input policy.
-
-Prove deep suspend first.
-
-### Module question
-
-Closed: **keep built-in**. `CONFIG_ROCKCHIP_PM_CONFIG=y`. The hardware-proven driver registers with `builtin_platform_driver` and reprograms BL31 from `.prepare` on every suspend. Turning that into a loadable module is not part of Phase 6.
-
-### Gate
-
-Phase 6 is complete when:
-
-- the stock/BSP-compatible RK3568 suspend configuration is implemented;
-- BL31 accepts the required SMC calls;
-- Linux deep mem suspend enters and resumes;
-- `vdd_logic` off-in-suspend works with `ARMOFF_LOGOFF`;
-- repeated physical power-button suspend/resume works;
-- normal NextUI suspend/resume works;
-- in-game suspend/resume works;
-- display, audio, and input recover;
-- persistent storage remains healthy;
-- normal networking can recover;
-- no serious kernel or filesystem failure attributable to deep suspend remains;
-- RK817 sleep-gauge behavior has been evaluated and given an explicit disposition.
-
-These are useful extended checks and are not closure blockers: dozens of cycles, every USB-host attached and unattached combination, a full Wi-Fi/BT on/off matrix, a quantitative standby-current measurement, and DMC dynamic-scaling validation. DMC scaling and the DMC module lifecycle are Phase 7. Standby current characterizes power. It does not prove that the suspend architecture resumes. USB and Bluetooth combinatorial stress is extended regression coverage, not a prerequisite for accepting the proven BL31 and `vdd_logic` design. Those extended checks were not claimed as done. Lid behavior keeps the existing userspace policy and was not a separate deep-suspend closure test.
-
-`vdd_logic` off-in-suspend was enabled together with BL31 `ARMOFF_LOGOFF` (`0x5ec`) and resumed.
-
-## 7 — DMC driver modularization / patch extraction
-
-**Phase 7A — HARDWARE ACCEPTED.** Image `zlyme-my355-20260929-81c7fc87331d.tar`, SHA-256 `ebec9766147adf6ef69d64240834f4510eca474a6586a39376aa73ee828669c3`, runtime `81c7fc87331d5f4c8ab3d39d6da7e6b28dc06ffb`, kernel `Linux zlyme 7.0.2 #1 SMP PREEMPT Tue Sep 29 23:34:11 CEST 2026`. The only change from the Phase 6 kernel was `CONFIG_ARM_RK3568_DMC_DEVFREQ=m`. `rk3568_dmc` autoloaded from the `rockchip,rk3568-dmc` modalias. Before any SSH governor command the live state was `powersave` at 324/324/324 MHz. Observed rates were 324, 528, 780, and 1056 MHz. One physical deep suspend left the same module loaded and Smart at 324 MHz. The BL31 `.prepare` calls returned `res.a0=0`. A `_regulator_disable` warning from `mali_kbase` `pm_callback_runtime_off` is not a DMC failure.
-
-**Phase 7B — HARDWARE ACCEPTED.** Image `zlyme-my355-20260929-b3bb23748aa6.tar`, SHA-256 `53931e4f039ab01eecd9e1e838288969558b11ef144ad735e4ee6d1a0aed8527`, runtime `b3bb23748aa64742416ac477dea620e7c72ee8e2`. The module is `/lib/modules/7.0.2/updates/rk3568_dmc.ko`, SHA-256 `2a713b1bc0ce8f5ecf669319fa2000c7c486dcd5c8f4796bd182d82e9afc3e4c`. It autoloaded, held Smart at 324 MHz, changed rate under Play, and survived one physical deep suspend with the same post-resume Smart state.
-
-**Phase 7 — COMPLETE.** The DMC driver is the external package `package/drivers/rk3568-dmc`. It installs at `/lib/modules/7.0.2/updates/rk3568_dmc.ko` and autoloads from `rockchip,rk3568-dmc`. The Device Tree contract is `package/drivers/rk3568-dmc/README.md`. `1012a` and `1012b` are removed. `1010-devfreq-event-rockchip-dfi-add-pm-suspend-resume.patch` stays, because DFI is still the in-tree load provider and the accepted suspend tests ran with that PM restore. Sixteen Linux patches remain.
-
-The physical hardware acceptance point is runtime `21de8081d6e6a419d708e8f3c792e4f1357eaafc`, image `zlyme-my355-20260929-21de8081d6e6.tar`, SHA-256 `ecd2d58a3b6060c8aed320ca411c742138649d8f0c13c00eba81c292c7b87f5a`. That installed module SHA-256 is `f0b8739266ad67d9ba94ebecb5a874603e7d6773ecbbfda42cb085035633715d`. It autoloaded, stayed at `powersave` 324/324/324 MHz before any governor command, changed rate under Play, and survived one physical deep suspend. `.prepare` returned `res.a0=0` for `LINUX_PM_STATE` `0x3`, mode `0x5ec`, and wake `0x10`. Storage, both pads, Wi-Fi, and `mali_kbase` recovered. The `_regulator_disable` warning is `mali_kbase` `pm_callback_runtime_off`, not a DMC failure. After wake, Play moved DDR off 324 MHz and Smart restored 324/324/324.
-
-Commit `70acb1d27443447df84903e2043a2af05dbd9ee3` is the later source correction. After `DRAM_SET_RATE` has been issued, a failed upscale keeps the raised center voltage instead of rolling it back. It was accepted by source review, `git diff --check`, and a clean `rk3568-dmc-dirclean` plus `rk3568-dmc` rebuild. That module SHA-256 is `0a6ace5494d1b2cae787a58a556170bd3c6d8dbcc224a2ad710ea85fd8440016`. It was not given its own hardware test: it changes only that failure path, those failures were not induced, and the successful target and suspend sequences are unchanged. All four Flip DMC OPPs are 900000 µV, so the accepted image did not move the rail between those rates.
-
-Phase 2 must first establish the current upstream/external state of the RK3568 DMC/DFI patches. This phase owns the architectural migration.
-
-Important: the current Zlyme `rk3568_dmc` patch defines:
-
-```text
-CONFIG_ARM_RK3568_DMC_DEVFREQ
-```
-
-as `tristate`, and the driver uses `module_platform_driver()`.
-
-Therefore separate two goals.
-
-### 7A — build it as a module
-
-Change:
-
-```text
-CONFIG_ARM_RK3568_DMC_DEVFREQ=y
-```
-
-to:
-
-```text
-CONFIG_ARM_RK3568_DMC_DEVFREQ=m
-```
-
-while keeping the source-injection patch initially.
-
-Validate module load timing, devfreq availability, suspend/resume, and gaming profiles.
-
-This is the smaller experiment.
-
-### 7B — stop injecting the driver through a kernel patch
-
-Only after 7A is proven, move the driver source into a Buildroot out-of-tree kernel-module package, for example:
-
-```text
-package/drivers/rk3568-dmc/
-```
-
-The external module must be self-contained with respect to the V2 SIP constants it needs.
-
-This can potentially remove the patch that adds the driver/Kconfig/Makefile entries to the kernel tree.
-
-It does **not** automatically remove an in-tree DFI PM patch if that patch still modifies the selected kernel's `rockchip-dfi` behavior.
-
-Review DTS/binding changes separately; runtime functionality does not justify retaining documentation/binding patches that are no longer required by code or validation.
-
-### Gate
-
-Test:
-- module autoload/probe;
-- available DMC frequencies;
-- dynamic scaling;
-- governor switching;
-- performance profile forcing;
-- suspend/resume;
-- deep suspend if Phase 6 is enabled;
-- module unload only if explicitly supported and safe.
-
-## 8 — Frontend source ownership, platformization, and performance
-
-Detailed findings: `docs/research/frontend-source-phase8.md`.
-
-Do this in order. Do not combine the fork with a LoveRetro version bump. Do not comment out large regions of upstream code. Prefer a build exclusion, a platform or feature conditional, or deletion of code that exists only in the Zlyme tree and is demonstrably dead. Leave harmless upstream code in place when removing it would only add merge conflicts.
-
-1. **Storage preflight.** Done. ZLYMEBOOT stays read-only and the squashfs loop is read-only (`loop0/ro=1`); a shutdown-time remount of `/boot` is not the mechanism. Primary `/storage` is unmounted with a normal `umount` before `reboot -f` / `poweroff -f`. Both were hardware-accepted. Do not add boot-time fsck or repair the inherited exFAT dirty bit in this phase.
-2. **Baseline.** Keep a measured known-good frontend (first frame and a normal menu path) before moving source.
-3. **Fork from the vendored pin.** Reconstruct Zlyme's NextUI as commits on LoveRetro `ae652648548edf6ab24cbb816cf4e4194e609fb3`, not on current upstream HEAD. Preserve PolyForm Noncommercial 1.0.0 and the LoveRetro / MinUI attribution.
-4. **Fetch the fork.** Switch `nextui.mk` from `SITE_METHOD=local` to that exact commit after the tree matches current behavior.
-5. **Platform boundary.** Device code stays in `workspace/<platform>` (`workspace/my355` today). `BR2_PACKAGE_NEXTUI_PLATFORM` remains the selector. Joystick-calibration UI visibility is part of this boundary.
-6. **MinUI helpers.** Vendor `minui-list` 0.15.2 and `minui-presenter` 0.13.2 in-tree, with upstream repo, tag, and commit recorded. There is no source delta today; vendoring is so later platform edits stay local and reproducible. Build the vendored trees. Derive the platform from `BR2_PACKAGE_NEXTUI_PLATFORM`. Do not create GitHub forks just to vendor them. Do not bump to `0.15.4` / `0.13.4` in the same step; evaluate those tags only after the vendored build matches current behavior.
-7. **Equivalence.** Current user-visible behavior stays, or the change is written down. Targeted frontend builds. One incremental device image is allowed to prove the migration. Source or build comparison is not hardware acceptance.
-8. **Upstream, after that.** Current LoveRetro HEAD at research time was `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7`, two commits past the pin. Rebase only once the fork matches today's image. Re-fetch HEAD at that time.
-9. **Profile, then optimize.** First frame, menu frame time, extra filesystem I/O, image and font loads, redraws, allocations, logging, controller enumeration, Settings startup. `-O3` is not a substitute for a measurement.
-10. **Dead code.** Drop or exclude only what the image cannot reach. A full clean Buildroot build is not required at the end of this phase.
-
-### Gate
-
-- Storage preflight is already hardware-accepted: `/boot` read-only, `loop0/ro=1`, and a normal `umount /storage` before forced reboot.
-- Frontend behavior matches the pre-migration baseline, or differences are documented.
-- Buildroot fetches a pinned Zlyme NextUI commit.
-- `minui-list` / `minui-presenter` are vendored at the current tags, platform-neutral, and behavior-equivalent. Newer tags are not mixed into that step.
-- A profile exists for the paths that were optimized.
-
-Status, 2026-09-30: Phase 8 is complete. The hardware-equivalent runtime is `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`, image `zlyme-my355-20260930-7a0fc397cb5b.tar`, SHA-256 `eff4cd7643b32f53ed7bb284bbc6b3c60732f54da85527150de19c358f1a9bac`. The later commit `b7c5a19` excludes build-only `res/branding/` from the target. That exclusion was checked in the build tree and was not given a second hardware OTA. It does not change the accepted runtime. Other-platform NextUI source stays in the fork. Upstream pins were not moved. The profile did not justify a frontend optimization.
-
-## 9 — Product polish, integrations, and release preparation
-
-Detailed dispositions: `docs/research/product-phase9.md`.
-
-Group related work so one implementation and test cycle covers a subsystem. README updates ride along with each user-facing change, and the release gate below still reconciles the README against the last non-prerelease. No OTA per text or default tweak. Items already implemented or intentionally designed (trash globs, the three PortMaster directories, `/tmp/poweroff` through `zlyme-halt`, RTL8723FU Bluetooth firmware) are not reopen tasks. Do not start this work until the Phase 8 closure is on `main`.
-
-Detailed governor and gpSP notes: `docs/research/product-phase9.md`.
-
-1. **Emulator speed and governor policy.** This comes before cosmetic Settings work. GBA is the known regression. Two decisions are already made. Update libretro-gpsp from `4caf7a167d159866479ea94d6b2d13c26ceb3e72` to exactly `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the gpSP revision in ROCKNIX `next` at `a55d58a1209b35e287dd55a3aad67a5543b467ce`. KNULLI `knulli-main` at `6a23957a19a1df18989ac6aa5e9fff003ae611ed` carries the older gpSP `d6decfa351b575e2936afebba26d41ec20e4ddcd`. Take the newer of those two carried revisions. Do not move to current libretro/gpSP HEAD, and do not pick a commit past the ROCKNIX pin. The February 2024 Zlyme pin is history, not a candidate. Inspect the delta and the Zlyme recipe for build compatibility. Do not add a `gpSP.opt` override just to restate the upstream default sound rate of 32768. Adopt SpruceOS `2b7bc4a79359de14ea4d4f00da9801a937e2846d` per-system `scaling_min_freq` values as the CPU minimum floors. Do not invent replacement floors, and do not collapse a Spruce system back to a generic play/heavy minimum. Do not copy Spruce's ondemand governor, two-core Smart layout, or DMC policy. Zlyme keeps schedutil, the existing online-core counts, and the existing in-game DMC and GPU behavior. Resolve each Spruce floor to the lowest mainline OPP that is greater than or equal to it: 240000 and 312000 become 408000, 648000 becomes 816000, 1008000 becomes 1104000, and an exact OPP stays unchanged. Never round down. `zlyme-governor emu <tag>` owns that table. Launchers pass the tag. `ZLYME_GOVERNOR` from MENU+Y still wins, and that explicit choice is not replaced by the Spruce floor. A system Spruce does not cover keeps the existing Zlyme profile and is written down. Audit every shipped tag in static checks. Gameplay is not a Phase 9A gate; the maintainer may report it later. Zlyme already sets RetroArch `video_threaded = true`.
-2. **Correctness.** Save format, save-state format, and extracted-file-name rows are hidden on my355. Shared NextUI still stores them and still shows them on other platforms. Zlyme's RetroArch launcher does not consume them. Wi-Fi country is the global `country=` line in `wpa_supplicant.conf`; no line means World/default. Diagnostic logs keep five system boots and three PAK launches. Timezone presentation is `/etc/localtime` pointing at the storage zone file. `S15` seeds that file before returning. `S49ntp` sets the system clock from the HTTP `Date` header as UTC and writes the RTC with `hwclock -u -w`. A timezone change does not write the RTC. The Bluetooth status pill drops when the radio flag is off. GZDoom already reads the virtual pad through SDL joysticks. Orphan cleanup is an indexed same-card scan with a dry-run before DELETE. Standalone reset deletes settings files only. VTree settings persist, with hidden files on for a new config. `FSCK*.REC` is a historical FAT recovery name, not a current writer.
-3. **Settings.** Done: Quick Menu, keyboard L1 DELETE, no CLTMP hint on my355, VTree hidden files, rumble default 40%, Time zone, Advanced (GPU, undervolt, ZRAM, OTG, HDMI, second SD, logs, Reset Settings, Factory Reset), one reboot prompt for `gpu` / `undervolt` / `otg` / `hdmi` / `sd2`, and pill rows for the per-game governor and emulator. The selectable A/B swap was dropped in Phase 9K; the built-in map is fixed. PortMaster keeps upstream `default_theme`. A `Zlyme` color scheme derived from Darkest Mode is the fresh default, with selected text `#FC9C14`. The separate cloned `themes/Zlyme` theme is removed. A stored selection of that obsolete standalone theme converts once to `default_theme` with the `Zlyme` scheme. A later user theme or scheme choice is kept. CPU undervolt stays off until the L1 voltage delta and failure evidence are written down; L1 remains selectable. The exact reset file list is in `docs/research/product-phase9.md`.
-4. **Library and launch.** Done: PortMaster location through the existing `HM_*` variables, guarded formatting of removable media, one overlay assignment per content directory, separate native PICO-8 and Fake-8, per-ROM delete, and splash only when the kernel command line has a `quiet` token. Phase 9K supersedes "BIOS and saves follow only the ROM library": BIOS is a runtime union of every mounted library, with the game card winning duplicate paths, and saves pick one writable library (existing data across cards, game card wins, new saves on the game card). Each winning card keeps its own tmpfs BIOS view, so switching cards does not rebuild the other view. The synthetic Splore row is created by `zlyme-storage` in the Pico-8 folder of the library that holds the native runtime, with a `000)` sort prefix so it is the first row. Downloaded carts stay under `Pico-8-native/bbs/carts` and open through `PICO.pak`. The graphical splash is the product boot, including update progress. A non-quiet LCD text console was tried and dropped. The command line is `quiet` plus `console=ttyS2`. Native PICO-8 can find `Bios/PICO/pico8_64` and `pico8.dat` on any active library. Splore downloads land in `Pico-8-native/bbs/carts`. CPU undervolt stays off.
-5. **Optional PAKs.** Ruffle and Music Player stay. Artwork Scraper and Cheat Downloader are removed. ZcrapeGoat, the Zlyme integration of ScrapeGoat, is the sole built-in ScreenScraper artwork, metadata, and manual tool, and the sole Libretro cheat installer. `BR2_PACKAGE_ZCRAPEGOAT` compiles `package/system/zcrapegoat/src/`: a pristine upstream v2.3.0 import at `c52f749eae21a4c02c767e485fef2abbb773f2d7`, then normal Zlyme commits, with no ScrapeGoat patch stack. The PAK is `Tools/ZcrapeGoat.pak` and the binary is `/usr/lib/zlyme/zcrapegoat/zcrapegoat`. Private state is `/storage/.config/ZcrapeGoat`. Nothing migrates `/storage/.config/ScrapeGoat` or `.userdata/shared/ScrapeGoat`. Libraries are the lines in `/run/zlyme/libraries`. Artwork is written beside the actual ROM, under `.media`. Installed cheats stay at `/storage/Cheats` and do not follow the ROM card. ScreenScraper developer credentials are private build inputs, from the ignored file `package/system/zcrapegoat/credentials.local` or the GitHub Actions secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. The credential-bearing compile disables ccache. Pak Store stays deferred past the first stable release. Flash is the pinned `SilverPsychoo/Ruffle-Handheld` v4.2 appliance: small Zlyme launch/environment glue only. Do not maintain a Zlyme Ruffle frontend, do not swap in current official Ruffle, and do not take on renderer or runtime patches. Music Player is a direct pinned integration, not a Pak Store delivery. Do not keep Music Player's own cpufreq writes. Do not put the Libretro cheat database in the image.
-6. **Release cleanup.** The Weston test PAK is off the production image. Weston and `zlyme-weston-run` stay. After a successful OTA, the OS card loses only the exact stale stock paths `Tools/my355/Weston.pak`, `Tools/my355/Artwork Scraper.pak`, `Tools/my355/Cheat Downloader.pak`, and `Tools/my355/ScrapeGoat.pak`. The dead-file audit runs after the Phase 9 surface stops moving. The Actions build writes the full log to an artifact and prints the tail on the job console. Community text for other RK3566 ports can wait until after the first stable release and is not a Phase 9 release blocker.
-7. **Incremental OTA transport.** A maintenance release may publish zstd `--patch-from` deltas beside the full OTA. The device reconstructs a complete squashfs on `/storage`, checks its SHA-256, and only then writes `/storage/.update/pending/zlyme`. The existing boot-apply and initramfs copy are unchanged. Never patch `/boot/zlyme` in place. A baseline version (`zlyme44`) publishes a full OTA only. A point version (`zlyme44.1`) may add direct deltas from the same-major baseline and the last three same-major point releases. The installed root hash, not the version string, decides whether a delta applies. Local `build.sh` does not generate deltas or query GitHub. Details are in `docs/research/product-phase9.md`.
-
-### Gate
-
-The earlier plan started the remote clean build in parallel with the local smoke OTA and held `main` until that clean artifact was hardware-accepted. That is superseded. The process below is the one this closure follows.
-
-After the product work, in order:
-
-1. Finish the Phase 9 product changes on `phase-9-product`: remove Artwork Scraper and Cheat Downloader, make ZcrapeGoat the sole scraper and cheat integration, replace the cloned PortMaster theme with the `Zlyme` scheme, and add the stale-PAK post-update cleanup.
-2. Reconcile the README with the last non-prerelease GitHub release, `zlyme40 (2026-09-23)`, tag `zlyme-35854070921`. Ignore `zlyme43 (2026-09-28)` because that release is a prerelease. The README must describe the user-facing behavior the final image actually ships: emulators, Tools/PAKs, Settings, and install/update steps. Do not describe deferred or experimental work as supported. Ride-along README edits during the phase do not replace this pass. Keep joystick text to calibration, deadzone, the stick test, rumble, and that built-in controls work in games. GPIO, UART, force-feedback, and InputPlumber topology stay in the technical docs. Remove or rewrite the claim that core pinning and per-emulator performance settings are the SpruceOS policy; Zlyme's current policy is not that per-system Smart table. Run the dead-file audit in the same reconciliation, limited to files Phase 9 made obsolete.
-3. The closure candidate is `zlyme44`, a new baseline. Do not attach a build date to `ZLYME_VERSION`. Artifact filenames and the displayed build date are generated when the image is built. `zlyme44` publishes a full OTA and a manifest with zero deltas. Later `zlyme44.1` and `zlyme44.2` may publish same-major deltas. `zlyme45` is the next full baseline. A delta applies only when `from_sha256` equals the SHA-256 of the installed squashfs.
-4. Local validation does not wipe the Buildroot output tree. Clean and rebuild the Phase 9 packages that remain shipped, and the packages this pass changes, then build one incremental image with `./build.sh --config zlyme_my355_defconfig`. Do not dispatch GitHub Actions for that proof.
-5. The maintainer installs that one local OTA. Phase 9 is not closed, and `phase-9-product` does not move, until that image is hardware-accepted.
-6. After that acceptance, `phase-9-product` may fast-forward into `main`.
-7. Immediately after that merge, the maintainer may dispatch the GitHub Actions `Build` workflow from that exact Phase 9 SHA. The runner starts from an empty Buildroot `output/`. Restoring compiler ccache is allowed. That is the full clean-build proof. It is not started during the local closure pass.
-8. Phase 9 implementation closure does not wait for the remote build to finish.
-9. The remote clean build remains the reproducibility and release-artifact gate. A failed remote clean build still requires a correction before a stable release can be considered valid. The local incremental OTA does not prove a different clean image.
-10. Pak Store stays post-first-stable. The CPU undervolt default stays off. Community text for other RK3566 ports is not a Phase 9 release blocker.
-
-```text
-product work and README reconciliation
-        |
-        v
-targeted package rebuilds, one local incremental OTA
-(product version is zlyme44, a full baseline)
-        |
-        v
-maintainer hardware acceptance of that local image
-        |
-        v
-fast-forward phase-9-product into main
-        |
-        v
-dispatch the GitHub clean build from that SHA
-        |
-        +------------------------------+
-        |                              |
-        v                              v
-Phase 9 implementation closure   remote clean build
-(does not wait for the runner)   (release artifact;
-                                 failure blocks a
-                                 stable release)
-```
-
-`ZLYME_VERSION` is `zlyme44`. Dates belong on the artifact that was built that day, not on the version name. Earlier `zlyme43` images stay historical. The published `zlyme43` GitHub release is a prerelease and is left as it is.
-
-Status, 2026-10-02: the maintainer installed `zlyme-my355-20261001-f0143dd5b067.tar` and accepted GZDoom controls and saves, Cheat Downloader navigation, Music song download and radio, Ruffle launch and `Saves/FLASH` persistence, ROM-driven system visibility, and Create game folders under Settings → System → Storage. That acceptance does not keep Artwork Scraper or Cheat Downloader. The maintainer then installed `zlyme-my355-20261002-1f5dab487ee4.tar`. No other accepted surface regressed, and the stale Artwork Scraper, Cheat Downloader, and Weston test PAK cleanup was not reported as regressed. ScrapeGoat did not open: the launcher built a log path from the binary path and died before the program started. PortMaster's Zlyme selected text was too close to white.
-
-The maintainer then installed `zlyme-my355-20261002-daebc6f5dbab.tar` (`daebc6f5dbabf1a2470cba416067b38176034c20`). That image passed the personal ScreenScraper credential flow, `/storage` and SD2 artwork, Libretro cheats under `/storage/Cheats`, `/storage/.config/ZcrapeGoat` with no old ScrapeGoat or `.userdata` state created, MENU+START, removal of `ScrapeGoat.pak`, and the PortMaster Zlyme scheme, orange selection, persistence, and PAK handoff. Still open on that artifact: the logical system list omitted systems whose first library folder was empty, Settings → Manual download directory aborted, About ran past `MIT License.`, and a same-name ROM on two cards was not confirmed on the device. The list and picker failures are the representative-library emptiness check and the Apostrophe POSIX `realpath` fixed-buffer abort. PortMaster stays accepted.
-
-The maintainer then installed `zlyme-my355-20261002-93a6714f658f.tar` (`93a6714f658f659f3cdebf31c2cff155f9b99846`). On that artifact, ScreenScraper artwork works and manual downloading works. Cheats fail before the database clone because ZcrapeGoat looks for Git at `/usr/lib/zlyme/zcrapegoat/resources/bin/git`. No other focused check on that image was reported.
-
-The maintainer then installed `zlyme-my355-20261003-4d4b110b32ea.tar` (`4d4b110b32ead08908504c687df4aaa9da3d4d5d`, root SHA-256 `8d9bcf918053f20702cb78164823aeb85d47672f3e5389028dbd77287fc3747a`). The cheat log selected the PAK Git. A live `ls-remote` failed with `Could not resolve host: github.com` while the link was unstable, and the same clone options succeeded after name resolution worked. Git's fatal text was not in the PAK log. At that moment Phase 9 was not complete and the remote clean build had not been dispatched.
-
-Closure, 2026-10-04: implementation is closed at `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer hardware-accepted `zlyme44 (2026-10-03)`, root `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`, including a fresh ZcrapeGoat cheat under `/storage/Cheats/GB` and a root-sized delta reconstruction through the installed updater after `--mmap-dict`. `main` was fast-forwarded to that SHA. Build run `37164297221` built it cleanly and succeeded, and published the stable release `zlyme-37164297221`, `zlyme44 (2026-10-04)`. The release shows 2026-10-04 because that is its image date. The source is the same SHA as the 2026-10-03 image the maintainer accepted.
-
-## 10 — Documentation, maintainability, and cross-repository knowledge
-
-This is not a product-feature phase. Closure, 2026-10-06: Phase 10 is closed. Source and documentation closure and `zlyme44.1` device validation are complete. The accepted runtime/source SHA is `6a398b311310246ef6a5515ed72805c6f58d787d`. The accepted local root SHA-256 is `9e4f8a772b04e937a87b92ed4ffd5e950b756bcbcf0beda55c1b7b0744058b65`. `zlyme44.1` is still unpublished. GitHub Actions run `37375071442` was dispatched from that SHA with `publish_release=false` and remains the clean-build and release gate. Finishing that run is release administration, not unfinished Phase 10 implementation. At this closure, no `zlyme44.2` implementation had started. Phase 11 is the `zlyme44.2` work that follows it. `zlyme44.1-maintenance` was the release-source branch at the accepted SHA. That commit stays reachable from `main`. The canonical procedure is `docs/MAINTENANCE.md`. The research outline in `docs/research/maintenance-phase10.md` stays historical planning material. The hardware wiki stays on published `zlyme44` until `zlyme44.1` is published. Build run `37164297221` succeeded and published `zlyme-37164297221`. That closed the Phase 9 release gate.
-
-### 10A. Zlyme documentation and comments
-
-Review Zlyme-owned code in this repository. Comments explain hardware quirks, safety order, ownership, lifecycle constraints, compatibility, upstream workarounds, and why a magic value or a simpler design is wrong. Do not narrate syntax. Do not comment vendored minui-list, minui-presenter, or parson for style. Do not change the NextUI pin for a comment pass. A comment commit is not a refactor. A functional bug found during the pass is a separate commit.
-
-### 10B. Maintenance playbook
-
-`AGENTS.md` already points at `docs/UPSTREAMS.md`, `docs/DEVELOPMENT.md`, `docs/OPERATIONS.md`, and `docs/ENGINEERING_PRINCIPLES.md`. Phase 10 adds one index, `docs/MAINTENANCE.md`, and points agents at it. It links those documents. It does not replace them. The index covers kernel and ROCKNIX-derived patch review, emulator updates, vendored helper updates, NextUI fork maintenance, and README/release notes. The last non-prerelease remains the user-visible README baseline. Release notes describe accepted behavior. The Phase 9 local incremental OTA is the hardware-acceptance image. The remote clean build dispatched from the merged Phase 9 SHA is the release artifact. Implementation closure does not wait for that runner. A failed remote build still blocks treating a stable release as valid.
-
-### 10C. Wiki synchronization
-
-`Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` already has `AGENTS.md`, `docs/DOCUMENTATION_MODEL.md`, a hardware-versus-implementation hierarchy, and a test for what belongs in the wiki. Keep that model. The published wiki snapshot is `zlyme44`. Do not update that page for an unpublished `zlyme44.1` candidate. After `zlyme44.1` is published, one sync moves the Zlyme snapshot to that release, records the retained U-Boot 2026.01 / BL31 v1.44 / no-OP-TEE serial proof and the accepted shared-card SD2 behavior, and keeps this ownership boundary. Do not paste the Zlyme architecture manual into the wiki.
-
-Ownership stays split. Hardware, electrical, protocol, and firmware facts stay in the wiki. Zlyme packaging, init, policy, frontend, and build architecture stay in this repository. A short statement of how Zlyme implements a hardware mechanism goes in `docs/implementations/zlyme.md` with `Last synchronized against Zlyme <release / exact SHA>`. Joypad protocol stays in the wiki; the driver, InputPlumber topology, and calibration plumbing stay here. BL31/SIP and `vdd_logic` constraints stay in the wiki; the DTS and runtime stay here. The RK3566/RK3568 V2 DMC protocol stays in the wiki; the external module and its policy stay here. Do not mirror Markdown both ways. Historical ROCKNIX evidence stays historical.
-
-### Gate
-
-- Zlyme and the wiki name the same ownership boundaries.
-- The wiki Zlyme page uses the Phase 9 implementation SHA for runtime evidence and the Phase 10 documentation SHA for wording. Wiki synchronization with published `zlyme44.1` waits until that release exists. It is not open Phase 10 work.
-- Hardware facts found during the roadmap are on the wiki page that owns them.
-- Historical ROCKNIX evidence is still marked historical.
-- Non-obvious Zlyme-owned code has short comments, and obvious code does not.
-- Update procedures are reachable from `AGENTS.md`.
-- Documentation cleanup did not change a technical conclusion or a runtime feature.
-- Links and paths were checked.
-
-## 11 — zlyme44.2 user-facing reliability and compatibility
-
-Related user-visible fixes ship as a few OTA candidates. Each subphase still uses separate commits. Miyoo Flip (`my355`) stays the only device. `/boot` stays read-only at runtime. The squashfs root stays read-only. Persistent state stays under `/storage` with the owners already documented. Host tests stay in the repository and are not installed into the image.
-
-`ZLYME_VERSION` for this phase is `zlyme44.2`. The date stays on the image, not on that name.
-
-### 11A — Settings, network, updater, and build UX
-
-One candidate covers Settings order, an application proxy, updater reinstall wording, scrollable release notes, and live build progress.
-
-Settings stays `Settings.pak`. The visible label stays `Settings`. NextUI's existing `map.txt` alias `000) Settings` sorts it before the other Tools entries. Those stay alphabetical. No separate C sort. The stored entry keeps the `000)` prefix; display strips it.
-
-Proxy lives at Settings → Network → Proxy: Off/On, HTTP or SOCKS5, host, port, and Test proxy. No username or password. SOCKS uses `socks5h://` so name lookup can go through the proxy. `localhost`, `127.0.0.1`, and `::1` stay direct. One file, `/storage/.config/zlyme/proxy.conf`, is the canonical config. `zlyme-proxy` parses it, writes it by atomic replace, and fails closed on a malformed file. The file is not evaluated as shell. The updater reads it when it makes a request. `nextui-session` applies the validated environment once, at pak launch. Changing the setting does not rewrite the environment of the already-running NextUI process. This is an application HTTP/HTTPS/SOCKS proxy for clients that honor it. It is not a VPN, and it does not cover Wi-Fi association, DHCP, or arbitrary UDP.
-
-The updater may download and reinstall the running release. The same `zlymeNN.M` warns and still allows it. An available root SHA-256 that equals the installed `/boot/zlyme` says the exact firmware is already installed and still allows a deliberate redownload. Delta selection stays the existing `from_sha256` match. Filename and date heuristics are not the decision when the release metadata is present.
-
-Release notes show the release body in a scrolling view, with NextUI's normal button hints. B goes back, Up and Down scroll a line, and L1 and R1 scroll a page. Empty notes and notes the metadata fallback could not retrieve are different sentences.
-
-GitHub Actions keeps the full build log artifact. The job console streams Buildroot `>>>` lifecycle lines and useful error lines while the build is running. The filter does not replace the build's exit status. The staged ccache, timeout, and retry behavior stay as they are.
-
-The README carries a short proxy and update note. The user guide carries the proxy steps.
-
-Gate: host tests, the affected NextUI and Zlyme components compile, no tests in the rootfs, and one local `zlyme44.2` OTA. The maintainer's device check covers Settings order, proxy, same-version update, and scrolling notes. That check is not done by the image build.
-
-Hardware-accepted on 2026-10-06. Zlyme source `64d87e4a20809680b3a02b81246463d34113dd03`. NextUI `bbaafd5aa894d90f75517e7f56c4b35791b19ae8`. Root SHA-256 `6b715f9a7319c65b09385fdfa4bd3b935827ed016eb7efa5e9968e5782aae97e`. OTA `zlyme-my355-20261006-64d87e4a2080.tar`.
-
-On that image, Settings is first in Tools and displays normally. The HTTP and SOCKS5 proxy UI persists. An HTTP proxy and a SOCKS5H proxy both worked on the Flip, and public GitHub release metadata worked through both. Turning the proxy off restored direct access, with no stale proxy left in the helper. Same-version and exact-root warnings remain host-tested; a real release case waits for 11D. Release notes scroll. The native hints are U/D SCROLL, L1/R1 PAGE, and B BACK. A general NextUI and PAK smoke passed. Logs showed no 11A crash. This does not accept the `zlyme44.2` product.
-
-### 11B — Compatibility and runtime
-
-OpenBOR, MKXP-Z, and Wine share one emulator/runtime OTA so they can be tested together. There is no migration. Nobody is relying on OpenBOR, MKXP-Z, or Wine state from earlier Zlyme releases, so 44.2 does not scan legacy paths, copy saves forward, convert a prefix, or keep a second layout. Old OpenBOR and MKXP-Z files may sit unused. The cleanup does not delete `Roms/`, `Saves/`, or `Bios/`. The one discarded object is the exact file `/storage/.config/nextui/my355/wine-prefix.ext4`, a Zlyme-created ext4 image of about 1 GiB. Post-update removes that file and does not read it.
-
-OpenBOR's upstream defaults create `Paks`, `Saves`, `Logs`, and `ScreenShots` relative to the working directory. A package-local patch honors `OPENBOR_PAKS_DIR`, `OPENBOR_SAVES_DIR`, `OPENBOR_LOGS_DIR`, and `OPENBOR_SCREENSHOTS_DIR` when they are set, and keeps those relative defaults when they are absent. The launcher passes the ROM as an argument and does not use the ROM directory as the working directory. Saves use the library `Saves/OPENBOR` tag. Engine paks and screenshots stay under the OpenBOR user directory. Engine log files follow the existing log switch: `/tmp` when system logs are off, and `/storage/.logs/paks/OPENBOR` when they are on. The PAK stdout log stays the primary log. Orphan cleanup no longer treats a `.sav` beside the ROM as an OpenBOR save.
-
-MKXP-Z stays at white-axe `650cb0888a07d0b5044e131160ddfa53feaf595b`. The hardware log already showed Mali GLES 3.1 and ALSA. The launch failure is the content root: an archive whose project sits in one top directory is mounted so `Game.ini` is not at `/Game`. A direct project path, and an archive whose project is at the archive root, stay as they are. One unambiguous wrapper directory is unwrapped inside the core VFS. Anything else fails as it does today. Fonts and FluidSynth wait. The README lists the extensions `retro_get_system_info` actually advertises.
-
-Wine's first 44.2 runtime is Kron4ek 11.6 `amd64-wow64` (vanilla), SHA-256 `045549657b513c2fb191734b0434c81000b36ba4d482d1688bf99f80a8ee07a5`, with Box64 still at `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` (v0.4.4) and Box32 off. The path stays NextUI, release DRM, application-scoped Weston, Wine, Weston exits, NextUI recovers DRM. Persistent prefix files live on exFAT at `/storage/.config/nextui/<platform>/wine-prefix/`. A 1 MiB tmpfs covers only `dosdevices`, where `c:` points at `../drive_c` and `z:` points at `/`. `prepare` creates `drive_c` before that link and copies missing PE builtins plus the x86 WinSxS common-controls DLL, because exFAT cannot store wineboot's symlinks. There is no loop device, no ext4 prefix image, and no fsck. GL4ES, a MIDI bridge, a SoundFont, and gamepad-to-mouse are not in this candidate. They wait for a hardware result that shows they are required. "Wine newer than 11.6 OOMs" stays one observation, not a rule. Linux 7.0.2 already builds `CONFIG_NTSYNC=y`; this candidate does not make NTSYNC a requirement and does not change the kernel for it.
-
-Gate: one OTA. Check that OpenBOR no longer writes into the ROM directory, that MKXP-Z opens a root archive and a one-directory archive, and that Wine runs one 32-bit and one 64-bit program, keeps the prefix across a restart, and returns to NextUI. GL4ES and MIDI are not part of this check.
-
-Hardware-accepted on 2026-10-06. Zlyme source `cdf7f6f4fff73687c173f532e7cb05bdd9d23e67`. Root SHA-256 `80436cfe3e22637efe240d809fbcdd33c84fe3a735c869ea6f6cb25c6a9097e6`. Image version `zlyme44.2 (2026-10-06)`.
-
-OpenBOR launches, does not use the ROM directory as its working directory, and does not leave runtime files there. Return to NextUI still works.
-
-MKXP-Z visibly ran Knight Blade, a one-wrapper archive, and Legionwood Tale of the Two Swords, an archive-root project. That is the layout gate. It is not a claim that every RPG Maker game works. Knight Blade later asks for Standard RTP MIDI, and the WASI FluidSynth `stat` stub blocks that lookup. Witch's House ships an MP3 that libsndfile rejects. Some titles call Win32API functions the libretro sandbox does not provide. Missing-font warnings are not layout failures.
-
-Wine 11.6 `amd64-wow64` under Box64 `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` showed a visible window for `zlyme-notepad64.exe`, `zlyme-notepad32.exe`, and PuTTY x64. 64-bit and 32-bit `cmd.exe /c ver` both exited 0. The exFAT prefix stayed. The `dosdevices` tmpfs was mounted for the launch and gone afterward. NextUI returned with no leftover Weston, wineserver, or Box64. PuTTY x86 can hit an intermittent `c0000409` fast-fail. The 7-Zip 26.04 x86 installer can stay running without a window the maintainer can use. Neither of those is the base WoW64 GUI path. GL4ES, MIDI, DXVK, gamepad-to-mouse, and Box32 stay out of this phase. This does not accept the `zlyme44.2` product.
-
-### 11C — Installation, preloader recovery, and the hardware wiki
-
-Stock-assisted preparation replaces the old user-facing apommel multiboot steps. `miyoo355_fw.img` is not a foreign preloader. Stock runs the installer. The installer reads that unit's preloader, patches the relevant `/pinctrl` data, backs up the original, verifies it, and writes the repaired image. Attribution to `apommel/baseos-my355` stays. Ship `miyoo355_fw.img` on `ZLYMEBOOT`. Generate it from pinned upstream source when that fits the build. Otherwise pin the exact artifact, version, hash, and provenance. Leaving the file on the boot FAT after a successful run is acceptable when stock ignores an already-patched unit. The README and the install guide retire multiboot as the recommended install.
-
-Recovery adds the Buildroot MTD tools the safe path needs: `flash_erase`, `nandwrite`, and `mtdinfo`. There is no general NAND flashing UI. Two operations, both fail closed: restore the stock preloader from a valid per-device backup, and erase the preloader on purpose. The original plan treated that erase as MASKROM entry. The 2026-10-07 report below rejects that claim. Checks, as they apply: my355 identity, the exact MTD partition name, expected size and geometry, battery and charger, a readable backup of the expected size, backup and readback hashes, bad blocks, an explicit destructive confirmation, and no fallback to a device that only roughly matches. Fixture and dry-run tests cover validation and the command line. Automated testing does not erase or restore a live preloader. The maintainer runs those two operations and reports the result. The automated gate is build, static, and fixture proof. Destructive acceptance is `MANUAL — MAINTAINER REPORT REQUIRED`.
-
-The hardware wiki `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering` follows its own `AGENTS.md`. Retire multiboot as the recommended Zlyme install, keep the attribution and the history, document the stock-assisted `miyoo355_fw.img` method, and update eraser and restore guidance. Document the Linux-host xrock workaround the maintainer supplied (smaller bulk chunks, a longer timeout, chunked large receives) only after checking the current xrock source. If Zlyme keeps a patch, ship the patch file. Describe it as a Flip-tested workaround for Linux bulk-transfer failures, not as an upstream xrock requirement. Do not update `docs/implementations/zlyme.md` to call a `zlyme44.2` runtime hardware-accepted before the maintainer accepts it.
-
-This candidate generates `miyoo355_fw.img` from `apommel/baseos-my355` `e09d37bb0f03c34e564d61bd02164f332d8515a8` and puts it on a fresh `ZLYMEBOOT`. The ordinary OTA does not. `zlyme-preloader` stays the NAND backend. The product UI is Settings → System → Advanced → Recovery, not a Tools pak. Restore checks the current preloader and its DDR payload before erase, retries a failed write three times, then rolls back to the saved current image. A failed erase does the same and is not reported as MASKROM. Erase removes the SPI preloader. It does not promise USB MASKROM while another loader, including a Zlyme card idbloader, can still boot. MASKROM recovery is the recovery preloader: the vendor SPL boot order is only the right-slot SD. A bootable Zlyme card there still boots Zlyme. No bootable card there resets to the boot ROM. The earlier one-shot boot-file request was removed. A fresh stock-assisted `zlyme.img` install did succeed on 2026-10-07: stock ran the card's `miyoo355_fw.img`, the installer rebooted, and Zlyme booted with root `14b2cd609ba37d66a6414627026af2da30001064429674d16aaa0def5bf97a03`. That accepts the fresh-install path only. It does not accept Phase 11C. The direct Linux MASKROM request on that root logged the restart command and then produced no loader text and no USB `2207:350a`. A physical reset was required. That Linux path was removed. Phase 11C is not hardware-accepted.
-
-Maintainer report, 2026-10-07, not acceptance. `zlyme-preloader restore` performed a real restore: battery 27% with the charger online, the current preloader saved under `/storage/.config/zlyme/preloader-backups/`, `/dev/mtd0` erased, `nandwrite` of the complete 2 MiB image, the backend line `restored original preloader`, and a later `status` that recognized the original backup. That is positive evidence for the restore backend. The same session ran the erase command then named `erase-maskrom`. `flash_erase` completed. The product claim “erase the preloader, and the next power-on enters USB MASKROM” is not an invariant: with a bootable Zlyme card installed, the RK3566 boot ROM can load that card's idbloader. Do not describe a finished erase as MASKROM entry. `Preloader Recovery.pak` did not work for the maintainer and is not the recovery UI. The stock `rbrom` path that did enumerate `2207:350a` is recorded in `docs/research/maskrom-entry.md`. A userspace flag write followed by ordinary `reboot -f`, and the same flag followed by a CRU first reset on an unreliable USB path, did not prove MASKROM. Later the same day the maintainer installed that candidate from a fresh `zlyme.img`, not an OTA. Stock detected `miyoo355_fw.img`, the installer patched the preloader, and Zlyme booted. The Recovery page was present. Both restore confirmations and both MASKROM confirmations kept Cancel as the default, and the final labels were correct. The preloader status text was superimposed and hard to read. The final `REBOOT TO MASKROM` action turned the screen black. The host never saw `2207:350a`. A physical reset booted Zlyme again, and the preloader was still present. One serial diagnostic then ran `sync` and `/usr/sbin/zlyme-maskrom` once. The kernel line was `Restarting system with command 'maskrom'`, and the UART stayed silent afterward. `PMUGRF_OS_REG0` was `0x5242C300` before the request. The platform driver `miyoo-flip-maskrom` was bound to `maskrom-restart`. The USB gadget state was `not attached`. No second MASKROM request was made. PMU OS registers 1 and 4 through 11 are not a proven one-shot handoff: registers 2 and 3 hold DRAM geometry, register 0 is the boot-mode word, and the others are not shown to survive the DDR blob. The direct Linux path is a product failure and was removed. The replacement at that time was the boot-FAT request consumed by U-Boot `rbrom`. Later the same day the maintainer wrote the image from `0e09c31933bd5c429e5f24238307838717231c28`. The fixed preloader status page was readable. Reboot to MASKROM left `/boot/zlyme-maskrom.request` in place and returned to Zlyme. That consumer opened U-Boot `mmc 0:2` (`sdhci`) instead of `mmc 1:2` (`sdmmc0`, Linux `/dev/mmcblk0`). `rbrom` was not reached and is not classified as failed. That request path was later removed. Restore still prefers one per-device `mtd5-original-<sha256>.img`. A missing backup may use the wiki stock image only when the installed preloader is that image's exact patched counterpart. Other revisions are refused. The wiki does not grant redistribution of that vendor preloader, so a public release is not cleared to ship it. Phase 11C is not hardware-accepted.
-
-Closure item recorded 2026-10-08, not done. The development card still runs the diagnostic U-Boot with `CONFIG_BOOTDELAY=5`. That timeout only affects a successful boot into Zlyme U-Boot. It is not part of an SPL MASKROM decision. Before Phase 11C or the zlyme44.2 release is closed, the installed U-Boot returns to production `CONFIG_BOOTDELAY=-2`. `board/my355/board.mk` still writes `-2` when U-Boot is configured. The card image is the exception, and this note does not change it.
-
-NAND cycle recorded 2026-10-08, not acceptance. On the live `fd57d042a890` root, `arm-recovery` installed the derived right-slot image and a full readback matched `f7d9a25255080ac19e88df88d1232bf45a90bdf2e86c9f7e23b73d32a003f367`. `disarm-recovery` restored `ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d`, and the full readback matched the saved source. Linux was not rebooted.
-
-Hardware paths recorded 2026-10-08, not closure. With the recovery image installed, a known-good Zlyme card in the right slot booted Zlyme after `Trying to boot from MMC2`. With that card removed, the Nov 02 SPL tried only MMC2, failed voltage select (`mmc_init: -95`), printed `SPL: failed to boot from all boot devices`, and reset to the boot ROM. The host saw `2207:350a`. An `xrock` RAM usbplug used afterward identified the NAND and did not write it. The two hashes are that unit's pair. Phase 11C is not hardware-accepted. The development card still has diagnostic `CONFIG_BOOTDELAY=5` until the production U-Boot from the closure candidate is installed. That install is not part of the source closure.
-
-Production U-Boot recorded 2026-10-08, not acceptance. `zlyme-update uboot` wrote idbloader `2312107bacc63dacb00f333cec93852d46620ddf015ca054bb767e3adf163719` and FIT `38dd59c86c8f4f7745a38cd555a73c2dfe3378ff275ff13ad3565d1bef29b6ee`. Raw readback of those files at 32 KiB and 8 MiB matched. That build has `CONFIG_BOOTDELAY=-2`. Linux booted afterward. The missing UART transcript is not a remaining failure. On the installed root `fdb123fb053f1be82fb2af72ed5dcf43739ffb2aab7df8878afef46439b01606`, `zlyme-preloader status-machine` exited 2 with no output and Preloader status left Settings.
-
-Status page recorded 2026-10-08. The maintainer installed root `9af9a425473639c96695b6415299cfa4944cab9d9fe4547dffbc9738fc8a7ae6`. `/dev/mtd0ro` stayed `ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d`. `status-machine` exited 0 with `mode=normal`, `recovery=ready`, `source_backup=available`, `stock_restore=unavailable`, `backup=unavailable`, and `fallback=incompatible`. Preloader status opened and the rows were readable. That accepts the status collector and the Settings page. This unit has no `mtd5-original-*` backup, so that result is the no-bundle reading. The next candidate restores the known bundled stock image for live image `ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d`. Phase 11C stays open until that candidate reports `stock_restore=available`, `backup=unavailable`, and `fallback=compatible`, and Stock restore on the status page reads Available. Do not arm, disarm, rewrite U-Boot, or collect UART for that check.
-
-Closure, 2026-10-08. Phase 11C is hardware-accepted. Local candidate `4783f6989f12da25bb6b8a1f6423a9f6aab02d18`, root `b61cb24b4712c375cd7b56d0c6e5932e2b55b46fd47d3b81cc87ca8e0e7be7a0`, reported `stock_restore=available`, `backup=unavailable`, and `fallback=compatible` with NAND `ed10591f62ae0b8845ac9bd6cf80c896a2b172d32c7c4ef6564d305e8662c13d`. The recovery image `f7d9a25255080ac19e88df88d1232bf45a90bdf2e86c9f7e23b73d32a003f367` was armed for the serial evidence. With the right card removed, the UART log reached BootROM and the host saw `2207:350a`. With that card in the right slot, the same preloader booted to `zlyme login:` on production U-Boot, with no diagnostic countdown. Disarm then restored the saved source byte for byte. Restore stock was available and was not run. Sentences above that say Phase 11C is not hardware-accepted are the record from before this closure.
-
-### 11D — closure and release handoff
-
-The earlier plan waited on a published `zlyme44.1`, a partial OTA from that exact root, and field feedback before Phase 11 could close. That plan is superseded. No Phase 11 completion criterion waits for a later 44.1 or 44.2 build. There is no time-based field-aging gate. Accepted Phase 11C hardware evidence stays authoritative. The remote build after the merge is a candidate pipeline step. It is not a reason to leave this engineering phase open for weeks, and this task does not publish a release.
-
-Closure means:
-
-- reconcile the documentation and the hardware-wiki evidence
-- capture the canonical serial logs
-- finish the local tests and the local candidate build
-- merge the accepted development branch
-- start the remote candidate build
-
-Closed 2026-10-08 with the candidate and the NAND result named in the 11C closure note. The UART logs are in the hardware wiki.
-
-### Gate
-
-- 11A, 11B, and 11C each have their own candidate and the checks named above. 11C is hardware-accepted on the 2026-10-08 closure note.
-- Erase is not USB MASKROM. The boot-file MASKROM request was removed. Production U-Boot is `CONFIG_BOOTDELAY=-2`. The card readback matched that build, and the right-slot UART log has no diagnostic countdown.
-- 11D is the closure and release handoff above. It is complete. It does not publish `zlyme44.2`.
-- The accepted `zlyme44.1` source `6a398b311310246ef6a5515ed72805c6f58d787d` stays reachable from `main`. Publication of `zlyme44.1` is separate from this phase. The `zlyme44.1-maintenance` branch is not kept.
-
-Writable PortMaster on the published image, recorded 2026-10-11: runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, NextUI `cf4a16ccbb54320af963a796b173ab8b77e25017`, Etcher image SHA-256 `154cab142bb1f29622c6f9674833f474e7b3775d704918d0d8496802f138a42c`, rootfs SHA-256 `e2f88f6f293d9ab78d1fb5cd093025dd2014787fc939b8b23e807ce944916fdb`. PortMaster seed installation, the second keep-live launch, Reset PortMaster, and reseed passed. A Key(s) Path, Ascent DX, Alien Squatter, and Gravity Defied passed. Run `38098037074` later published tag `zlyme-38098037074`. That publication did not reopen Phase 11. The sentences in the 11C notes that say Phase 11C is not hardware-accepted, and any sentence that says `zlyme44.2` is unpublished, are the record from before those closures.
-
-Standalone stock-side helpers were packaged after the 2026-10-08 Phase 11C closure. On 2026-10-08 one Flip accepted the restore helper, the MASKROM helper from the repaired preloader, the MASKROM helper from the original stock preloader, the following right-slot Zlyme boot, and `disarm-recovery`. That acceptance is that unit's image pair. It is not a new Phase 11 gate, and it does not accept every vendor SPL revision.
-
-`PORTS.pak` can leave `/roms/ports`, an Ascent save bind, and an FRT squashfs mounted after NextUI returns. That launcher already used the same trap and exec pattern at `9622ea7f7c56048b3319f82884ea593a671811b5`. Cleanup of those mounts is Phase 12 preflight, below, and was not a 44.2 gate.
-
-## 12 — zlyme44.3 development
-
-Work stays on `zlyme44.3-phase-12`. The published runtime above does not move until a later release. Dates and SHAs below are the commits that landed the behavior. A commit, a host test, or an image build is not hardware acceptance.
-
-### Phase 12 preflight
-
-Scope: PortMaster mount cleanup after a port returns, a selected library that has to be a line in `/run/zlyme/libraries`, removable library mountpoint names, a transactional PortMaster integration copy, a Theora compat install that replaces only `libtheoradec.so.1`, and release notes taken from the changelog section. Started on `phase-12-preflight` at `b193d05f14b75973f227a36ddbfc03f088d03d95` and reached `adf188305e8fd7610083a946273a35ab80cb420d` on 2026-10-11. The task that promoted it onto this branch added the mounted-library requirement, rollback when the old tree cannot be restored, mount-count ownership, and the minimal-runtime library path. There was no separate hardware gate. Those checks belong to the first Phase 12 device pass.
-
-Dependencies: published 44.2 source `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3` as the parent. No kernel or DTS change.
-
-Implementation status: Implemented.
-
-Source/host evidence: Host-tested on 2026-10-11. The recorded passing scripts were `test_portmaster_root.sh`, `test_portmaster_prepare.sh`, `test_portmaster_theora_compat.sh`, `test_storage_slot.sh`, `test_storage_format.sh` (refusals only), `test_portmaster_mounts.sh`, `test_storage_libraries.sh`, `test_changelog_release_notes.sh`, `test_doc_contracts.py`, `test_doc_links.py`, `test_phase9_apps.sh`, and `test_phase9n.sh`. A Flip, a full image build, a rebuilt Theora decoder, and a release dispatch were not part of that run.
-
-Hardware evidence: None for this package. The 44.2 PortMaster acceptance is the earlier published image, not these commits. Later development images contain the code. No preflight-specific device check was recorded.
-
-Remaining checks: A port that mounts a runtime returns to NextUI with that mount gone, and `/storage` and `/boot` stay mounted. A selected library that is not in `/run/zlyme/libraries` is refused. The private Theora decoder still loads for a LÖVE port.
-
-Closure: Hardware-accepted for those three checks, or an explicit decision that a named check stays deferred.
-
-### Phase 12A1 — battery, SSH, clock, updater
-
-Scope: `zlyme-led` samples every 10 seconds. At 10% or below the red LED stays on and flashes about once a minute. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply is online. SSH stays on. An empty root password remains until one is stored, and a failed clear rolls back. The HTTP date bootstrap stays, and one BusyBox `ntpd` runs after the first frame. The updater says an install may reboot more than once and shows a recent transfer rate. `2f7605ce2d1ead1b7f3f76c77fd468f5344cdea8`, `c5214171e8db22756015d7faa44d7a17d60f5c02`, `847f9c49d9ce42e67c3b0a32e14f082cb3b20b73`, and NextUI pin `024e76ab4a88dde7078b6e68506fdaf243f1df89` on 2026-10-11. The same-day correction `0c3bab1a96682118f6b215a2f3dad8892300084d` reads the ntpd offset from the environment, writes the RTC only for a step of 30 seconds or more, serializes the one client, and rolls back a failed password clear.
-
-Dependencies: Phase 12 preflight on this branch. No kernel change.
-
-Implementation status: Implemented. Host-tested. No image was built for 12A1 by itself.
-
-Source/host evidence: The 12A1 and correction tasks reported host tests passing and no Flip run. This record does not repeat a script list that was not written into the tree.
-
-Hardware evidence: None. "Confirmed 0%" in the battery commit is the two-reading rule in source. It is not a device shutdown that was accepted.
-
-Remaining checks: A 0% reading with the charger offline powers off, and a charger online does not. A set SSH password survives reboot. A cleared password returns to empty, including a failed clear. The clock steps from the network after the first frame and does not block it. The updater shows the reboot warning and a rate.
-
-Closure: Hardware-accepted for those checks.
-
-### Phase 12A2 — launch record and PAK logs
-
-Scope: NextUI writes a `ZLYME1` file instead of a shell command. `pak-launch.sh` execs that `launch.sh` and optional ROM. A record with bytes after its last field is rejected, including a trailing fragment that has no newline. Stock PAK diagnostics stay off unless system logs are on. Commits `ce67bf612b8345ebf5473de938dafbc983596f8c`, `96a3fe608499b6c398e8c1bc906650a2f9e92c89`, `19abe87cc278ffe3b5e225ceb7171fb58421a0c4`, and NextUI pin `e30b7c6d008215315787b04cbd95bf0f06f38f78` on 2026-10-11.
-
-Dependencies: 12A1 correction. The NextUI `zlyme` commit has to stay the pin.
-
-Implementation status: Implemented. Host-tested.
-
-Source/host evidence: The 12A2 report recorded host protocol and logging checks and a NextUI compile. No Flip run.
-
-Hardware evidence: None as a dedicated pass. Later images boot to the menu, which uses this launcher. That is not acceptance of the malformed-record or log-switch cases.
-
-Remaining checks: A normal PAK still starts. A truncated record does not. With system logs off, a stock PAK does not create its diagnostic log.
-
-Closure: Hardware-accepted for those checks, or a note that menu launches on the installed image covered the normal path and the other two stay host-only.
-
-### Phase 12B1 — Buildroot 2026.08 and PanVK
-
-Scope: `BUILDROOT_VERSION` is `2026.08`. Linux stays 7.0.2. Mesa in that Buildroot is 26.1.8. The product defconfig selects PanVK beside the default libmali. The minimal defconfig does not select PanVK. Flycast, MAME2003-Plus, and Mupen64Plus-Next moved to pins that already build on GCC 15, and the temporary patches for those three were removed. `a7afc8cc479f1b092a1458b4e92675dc49dd0551` and `754c2bd5de59b8b11718e81dda51c28e74ca43df` on 2026-10-11, with the emulator pin commits on 2026-10-12.
-
-Dependencies: 12A2. The kernel pin does not move in this package.
-
-Implementation status: Implemented. Host-tested. Image-built as part of later product images, including the installed `132b7e04` image.
-
-Source/host evidence: The product config selects `BR2_PACKAGE_MESA3D_VULKAN_DRIVER_PANFROST`. Mali-G52 Vulkan with PanVK needs `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`, which Zlyme does not set. The pins are in `docs/DEVELOPMENT.md` and `docs/UPSTREAMS.md`.
-
-Hardware evidence: The installed development image boots far enough to open Tools. That does not accept PanVK, and it does not accept the emulator pin moves. No Vulkan device enumeration was recorded.
-
-Remaining checks: Panfrost GLES still presents. PanVK is not required for that. A later, separate pass may enumerate the Vulkan ICD. Do not treat a successful boot as that pass.
-
-Closure: GLES regression check hardware-accepted. PanVK stays packaged and not hardware-accepted until its own check. On 2026-10-14 Panfrost owned the GPU and no Vulkan tool was installed. The missing PPSSPP Vulkan choice matches Mesa's v7 opt-in. Enumeration and rendering were not run. The diagnosis is in the Phase 12 closure. It is not a blocker, and the opt-in stays unset. Later the same day the maintainer accepted one presented frame and `zlyme-gpu-env.sh` exports the opt-in for an exact `panfrost` choice. PPSSPP still does not acquire the DRM display. That limit is in the correction under the Phase 12 closure.
-
-### Phase 12B2 — unused kernel test drivers
-
-Scope: `board/my355/linux/my355.fragment` turns off `CONFIG_MMC_TEST`, `CONFIG_SND_TEST_COMPONENT`, and `CONFIG_SND_AUDIO_GRAPH_CARD2_CUSTOM_SAMPLE`. `11aa947a8cb983679d8f8caaf288150a7fa668b7` on 2026-10-12.
-
-Dependencies: 12B1 kernel tree. No DTS change.
-
-Implementation status: Implemented. The generated config after `olddefconfig` is the source check that those three stayed off.
-
-Source/host evidence: Kernel and image sizes from that rebuild are host measurements. Boot time was not measured.
-
-Hardware evidence: None for these symbols. They are not on the boot path. The installed image contains the change.
-
-Remaining checks: None that are specific to these drivers. The ordinary boot, audio, and card checks in the Phase 12 gate cover the risk.
-
-Closure: Folded into the Phase 12 hardware gate. No separate acceptance.
-
-### Phase 12C — USB file transfer
-
-Scope: Tools → USB File Transfer. One on-demand configfs gadget, `zlyme-mtp`, on `fcc00000.usb`. Buildroot uMTP-Responder 1.8.1. FunctionFS is mounted, the responder starts, and then the UDC name is written. The first implementation exported exFAT and FAT only. `4103de9a45b8bec81d27e3abacab6494d33f4f8a` superseded that limit: ext4 ROM and BIOS directories are exported through `zlyme-usb-enter`, a private mount namespace. `open_tree` is called without `AT_RECURSIVE`. The card stays mounted. A block device is not a share. Configfs is mounted when the tool starts, not at boot. Teardown runs in a `setsid` reaper outside the PAK process group. The PAK is six rows. `ada06d5bcd2053800a2fa05a1ce689c21164a348` accepts cleanup that finishes after the group kill. No init script starts the responder.
-
-Dependencies: 12B. `CONFIG_NAMESPACES` is already enabled. Landlock and user namespaces stay off.
-
-Implementation status: Implemented. Host-tested. Image-built. Image-installed, as the `132b7e04` image and the earlier image used for the cable-first test.
-
-Source/host evidence: `scripts/tests/test_usb_transfer.sh` and `scripts/tests/usb_transfer_confined.sh`. The confinement test rejects a symlink and a sibling escape. The host USB controllers are not used.
-
-Hardware evidence: Hardware-exercised on 2026-10-12, and not hardware-accepted. The gadget bound, FunctionFS came up, and the responder ran. The host did not see a USB device. No ROM was copied. B returned to the menu and the gadget was gone. MENU+START was not repeated on the image that contains the soft-connect watcher. The ext4 share was not written from a computer. Detail is `docs/research/usb-mtp-phase12d.md`.
-
-Remaining checks: Enumeration on the lower port, one copied file whose bytes match, delete and rename, an exFAT or FAT second card, an ext4 second card that stays mounted, a symlink that cannot read settings or `/boot`, unplug and replug, MENU+START cleanup, and the upper host and Wi-Fi afterward. Charging on RK817 stays the charge path.
-
-Closure: Those checks hardware-accepted. Until enumeration works, the file checks cannot start.
-
-Status 2026-10-13: 12D-E21 enumerated the gadget on one host port. The file checks are still open. The share list in the scope paragraph is the 12C implementation. This branch now exports filesystem roots. That export is in `docs/ARCHITECTURE.md`. It is host-tested. 12D-E22 installed it, the gadget started, and the computer saw no USB device. 12D-E23 changes the watcher and does not change the export list. That image was later found installed, with the gadget stopped and the PHY reporting DCP. 12D-E24 postpones the first bind until SDP or CDP. It is host-tested and not hardware-accepted.
-
-Status 2026-10-14: that postponed-bind archive is the installed image. 12D-E25 saw `1d6b:0100` at high speed and listed storage names. A file copy was not verified in that pass. The maintainer later reported that the cable was disconnected during that pass. The host disconnect at 01:05:24Z is not identified as that action. The Flip restarted, and that cause is unknown. 12D-E26, on the following boot, matched SHA-256 for disposable files in both directions, including the mounted ext4 card. That match is accepted as the MTP file baseline. 12D-E27 found the gadget gone: helper off, UDC not attached, no configfs gadget, and no responder. The maintainer reports a second Start and MENU+START succeeded. Device 48 disconnected at 02:26:43Z, and no later connection was logged, so those reports are not a captured second enumeration. Those two restarts, about 17:00:49Z on 2026-10-13 and about 01:11:35Z on 2026-10-14, were unexplained when they were recorded. On 2026-10-14 the maintainer reports that the unexpected restarts occurred only while USB was connected, and that the connector is contact-sensitive. Historical USB-connected restarts: suspected physical connector/contact instability; not currently a separate software release blocker. That report does not electrically prove the cause. A restart with USB disconnected, or with a connection that stays seated, reopens the software investigation. The original records stay. Phase 12 is not accepted. `52e84b069d9aacde39ca7a95c38be78a4d4746b1` removes the one-shot EP0 soft-connect repair. The maintainer installed `zlyme-my355-20261014-d4feee1e9e08.tar` and reports that USB File Transfer works. The installed squashfs matches that archive. No new file checksum was taken on it. Patch `1015` is still in that installed kernel. `97fbcfb253c11200d70df05a5b180367a7da9ac6` removes it. The maintainer installed `zlyme-my355-20261014-97fbcfb253c1.tar` and reports that MTP works, including file copying and cleanup. The installed squashfs, `Image.gz`, and DTB match that archive. Demetria logged five high-speed `1d6b:0100` sessions and no new file checksum was taken. That result is hardware-exercised for the reported operations. It is not proof of every PHY transition. `7caa0871a82f784ffd8889face036fd3955cbf8f` removes `snps,dis_enblslpm_quirk` from the lower controller. The maintainer installed `zlyme-my355-20261014-7caa0871a82f.tar`. The live tree lacks that property, and a stopped `GUSB2PHYCFG(0)` read was `0x40101508`. Later the same boot matched SHA-256 for disposable files in both directions, including the mounted ext4 card, with the cable left in place. B and a second Start were not pressed. That is a functional transfer result for this position, not a lifecycle pass and not Phase 12 acceptance. `snps,dis_u2_susphy_quirk` stays. `522e4573010adb6e04d62b547e5cf373f688750d` removes the cable-loss `soft_connect` pair and leaves the initial bind. Candidate `zlyme-my355-20261014-522e4573010a.tar` is not installed and is not a hardware result. E30 remains the rollback. A first-session copy would not accept that removal. The replug result is still required, and an unclear connector result stays inconclusive. 12D-E33, boot id `27b291c9-d783-4fa0-a3fd-79f3d249e426` at 11:29:17Z, still hashed to the E30 squashfs, kernel, and DTB. The live helper still contains `soft_write`. Demetria's last line was a clean disconnect of device 16 at 11:24:19Z. The E32 archive was not on the card, and the PAK was not opened. The reboot cause was not identified. That boot is not an E32 result. The later E32 install and the Phase 12 closure are recorded after the Phase 12 gate.
-
-### Phase 12D — open hardware gate
-
-This package stays open. It is the device pass for the preflight and for 12A through 12C, plus the USB failure that blocked the file checks.
-
-#### Enumeration
-
-Scope: Explain the lower-port failure and do not call the userspace watcher a fix. `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b` adds a session watcher that writes `soft_connect` once for disconnect and once for connect. That commit is implemented, host-tested, image-built, and image-installed.
-
-Hardware evidence: On 2026-10-12 Test A, cable first, on the older installed image, the PHY reported SDP, the gadget bound, and the host saw no device. On Test B, tool first, on `132b7e04`, the kernel logged `failed to enable ep0out`, the watcher wrote `disconnect` and then `connect`, both writes were accepted, and the UDC stayed `not attached` at speed `UNKNOWN`. The host saw no device. Cleanup with B passed on both images. The raw log directories were not on this machine when this section was written. The session reports are the evidence.
-
-Remaining: A later candidate has to enumerate before any file check. Repeating the same soft-connect sequence is not that candidate.
-
-#### Kernel baseline
-
-Scope: Move the my355 kernel from Linux 7.0.2 to Linux 7.2.10 and rebuild the product image. The record is `docs/research/linux-7.2.10-migration.md`. The earlier read-only review is `docs/research/linux-7.2.10-preflight.md`.
-
-Implementation status: Image-built on 2026-10-13. The host record first said the image was not installed. Later that day the dirty OTA was installed and booted. `uname -r` was 7.2.10. A maintainer smoke check reported ordinary operation. That is not hardware acceptance. MTP enumeration failed. Phase 12D stays open.
-
-The host build used `./build.sh --config zlyme_my355_defconfig`. The kernel release is 7.2.10. Mali, DMC, the gamepad, RTL8733BU, and the radio-power module were built against that release. The board DTS was not edited. USB userspace, DWC3, and the USB2 PHY were not patched. `zlyme.img` stayed 1409306624 bytes, so the boot partition geometry was not changed.
-
-Closure: Booting this image does not close 12D. Enumeration is still required before any MTP file check. The 2026-10-13 sessions and the idle DWC3 and USB2PHY GRF reads are in `docs/research/usb-mtp-phase12d.md`.
-
-#### Current status, 2026-10-13
-
-Phase 12D stays open. 12D-E21 enumerated the MTP gadget and a separate read-only mass-storage gadget at high speed on Demetria bus 7 port 1. A file copy has not been checked. The filesystem-root export is a later source change. It was not on the 12D-E21 image. That OTA, `zlyme-my355-20261013-4a2b752bafbe.tar`, was installed afterwards. 12D-E22 started the gadget and Demetria saw no USB device. The lower PHY was reporting a dedicated charger after the page had already closed. 12D-E23 is a userspace watcher correction. Its OTA `zlyme-my355-20261013-13071973a350.tar` was later found installed. 12D-E24 then read DCP with the gadget stopped and postponed the first UDC bind. That candidate is `zlyme-my355-20261013-7951a37668e3.tar`. No kernel patch was removed. The experiment ledger is [the Phase 12D USB record](research/usb-mtp-phase12d.md). The speed cap is already present on the running controller. `0007` remains the off-current fix and was not removed. A cable-first session reached DWC3 `RUN_STOP` with endpoint 0 enabled and still produced no host device. Later on 2026-10-13, 12D-E18 booted `snps,dis_enblslpm_quirk` and read `GUSB2PHYCFG(0)` bit 8 clear. The lower PHY did not report SDP or CDP, so MTP was not started. 12D-E19 then traced the PHY worker: it was already in `b_peripheral` and not publishing, and one observed disconnect published SDP. The gadget was not started in that SDP window. That is not an LPM result and it is not acceptance. Patch `1015` is installed. 12D-E20 did not exercise its restore path: one replug published SDP by ordinary detection. With that SDP present, the gadget reached `RUN_STOP` and endpoint 0, `GUSB2PHYCFG(0)` stayed `0x40101408`, and Demetria saw no device. That 12D-E20 silence is not the 12D-E21 result. A matching file copy is still required. The 17:00:49Z restart remains unexplained. 12D-E25, on 2026-10-14, found the postponed-bind archive installed, enumerated MTP at high speed, did not verify a file copy, and then the Flip restarted. That restart is also unexplained. 12D-E26 then matched disposable SHA-256 values in both directions on that same image. That file match is accepted. 12D-E27 found no gadget left. The maintainer's second Start is not a logged host enumeration. On 2026-10-14 the maintainer reports that the 17:00:49Z restart and the 12D-E25 restart occurred only while USB was connected. They are suspected physical contact instability and are not a separate software release blocker. The chronological record still says the cause was not captured. Phase 12 still includes a reboot check. 12D-E33 found a later boot, at 11:29:17Z, still on the E30 image. Demetria had lost device 16 at 11:24:19Z. The reboot cause was not identified, the E32 archive was not on the card, and that boot is not a test of the cable-loss removal.
-
-### Phase 12 gate
-
-All of these, and a maintainer decision to release:
-
-- The lower-port gadget enumerates, a file copy matches, and cleanup leaves no gadget. Charging still follows RK817.
-- Boot, both card slots, the panel, ALSA, the gamepad, Wi-Fi, Mali or Panfrost, and DMC still come up on that image.
-- The 12A battery, SSH, and clock checks above have a result.
-- Documentation matches the source, including this section.
-- `ZLYME_VERSION` and the changelog section for the release exist. This phase does not create them.
-
-The MTP enumeration, the matching file copy, and the absence of a gadget after that session are accepted for the installed E24 image. Charging on that same gate line was not rechecked. The maintainer reports a second Start and MENU+START succeeded. The computer log shows the E26 device disconnecting and does not show another device, so that report stays separate from the captured cleanup. The other gate lines stay open in this paragraph. The 2026-10-14 closure below is the later decision.
-
-### Phase 12 closure, 2026-10-14
-
-Phase 12 implementation is finished on `zlyme44.3-phase-12`. The maintainer accepts the installed E32 image for ordinary use, with the limits in this section. No further reduction is open. The wiki review below stays a later checkpoint and is not a wiki edit.
-
-The installed image, read on boot `5243a19c-f221-420e-9802-d72f12435153`, is squashfs `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c` and helper `9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859`. The kernel is `Linux zlyme 7.2.10 #2 SMP PREEMPT Wed Oct 14 10:01:20 UTC 2026`. That boot was still running for the checks below. The image was built before `ZLYME_VERSION` became `zlyme44.3`, so the live Flip is not a `zlyme44.3` build.
-
-On that boot, disposable MTP copies matched. Host to Flip: 4 KiB `6108e445bb8ec73271431f615891d097f363b706c67466ad3fcf589469e5ed2b` and 1 MiB `8b9572ed96dabf7a17e0ceb8449d87bdde8817ea6ac1dfbcff2fc0bb9a9e66ce`, including the files on `/storage` and an MTP read-back. The second card matched the 4 KiB hash over MTP. Flip to host: `ee5ce3479bcfecf2b4a819e8f4e3cbd501e90672f8b1919fcae692e129aa1900`. Device 21 was the first high-speed `1d6b:0100` session. Pressing B disconnected it. SSH did not answer in that window, so the stopped UDC, responder, and FunctionFS were not read at that instant. Device 22 was a later high-speed session on the same boot, with the cable left in place, and a 4 KiB MTP read-back matched. Demetria logged device 22 disconnecting at 15:51:50Z. A later idle reading, at 16:24:34Z on the same boot, found `zlyme-usb-transfer` `state=off`, no `umtprd`, no helper process, no configfs gadget, FunctionFS not mounted, `/boot` read-only, `/storage` and `/mnt/sd2` mounted, NextUI running, and no kernel WARNING. Demetria's data port had no `1d6b:0100`. The empty `/dev/ffs-mtp` directory and stale reaper pid files were not live sessions. The lower controller was bound to `dwc3` with no UDC registered and extcon reporting host, which is the idle role when no data cable is present. That idle reading is the resulting state. It is not a trace of the 15:51:50Z transition. One `dev_err` at an earlier disconnect said a request was not queued to `ep0out`. There was no PTP `02ff` and no USB reset in the host log of those two sessions. Within-session unplug and replug was not tested. E30 remains the rollback for that unverified recovery. `snps,dis_u2_susphy_quirk` stays.
-
-The maintainer accepts charging on the lower port and host use of the upper port. Those were not measured again in this pass. Battery behavior is accepted by the same report. A discharge to 0% was not run. SSH, the clock correction, and the updater are accepted by that report and were not retested. ALSA was not given a new Phase 12 test. Earlier audio acceptance stays the audio evidence.
-
-Wi-Fi on this boot had `8733bu` loaded, `wlan0` up, and an association at about -63 dBm. The driver still logs C2H enqueue failures. The link was usable. The saved GPU choice was `panfrost`. `panfrost` owned `card1` and `renderD128`. `mali_kbase` was not loaded. `rk3568_dmc` was loaded. Its devfreq governor read `powersave` at 324 MHz. No DMC error line was in the kernel log.
-
-PortMaster's selected library was `/mnt/sd2`, which was mounted and listed in `/run/zlyme/libraries`. The maintainer launched A Key(s) Path from `/mnt/sd2/Roms/Ports (PORTS)/A Key(s) Path.sh` and then closed it. That port mounts the Godot FRT squashfs through `zlyme-portmaster-exec`. After return, NextUI was running, the boot id was unchanged, `/boot`, `/storage`, and `/mnt/sd2` were the same mounts, `/run/zlyme-portmaster/owned-mounts` was empty, and `/storage/.config/nextui/my355/godot` was an empty directory and not a mount. No Weston, Xwayland, or seatd process was left. This launch does not cover Weston cleanup.
-
-PanVK is built in the product image. The installed ICD is `panfrost_icd.cortex-a55.json`, and `libvulkan_panfrost.so` and `libvulkan.so.1` are present. Mesa 26.1.8 was compiled with `VK_USE_PLATFORM_DISPLAY_KHR` and `VK_USE_PLATFORM_WAYLAND_KHR`. Mali-G52 is Panfrost architecture v7. That driver returns `VK_ERROR_INCOMPATIBLE_DRIVER` unless `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`. Zlyme does not set that variable, and NextUI's environment on this boot did not contain it. PPSSPP 1.19.3 is compiled with `VULKAN=ON` and hides the Vulkan choice when `VulkanMayBeAvailable()` finds no device. The maintainer had selected Panfrost, rebooted, opened PPSSPP, and did not see Vulkan. No `vulkaninfo` or `vkcube` is installed, so this pass did not enumerate devices and did not set the opt-in even for one process. No Vulkan frame was drawn. That missing menu entry matches Mesa's documented v7 gate. It is not a Phase 12 blocker, and the opt-in stays unset.
-
-Deferred, and not reopened by this closure: within-session cable recovery, a 0% discharge, Weston port cleanup, PanVK enumeration and rendering, and the post-phase wiki review. Host-only checks stay host-only.
-
-#### Correction, later on 2026-10-14
-
-The paragraphs above closed the phase before the logging contract and the PanVK result were finished. This note supersedes those two readings. The earlier text stays as the record of what had been checked.
-
-The PortMaster GUI transcript is fixed in source. System logs off writes `/tmp/portmaster.log`. System logs on writes the persistent pak log. An error on screen still comes from that file. The installed E32 image does not contain this fix. Host tests cover it. It was not launched on the Flip.
-
-`/etc/zlyme-gpu-env.sh` exports `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1` only when the saved GPU choice is exactly `panfrost`. libmali and an unrecognized choice unset it. The ICD selection is unchanged. The maintainer launched a temporary frame test twice on the Flip. The recorded run acquired DRM master, saw the 640×480 display, created a Vulkan device, surface, and swapchain, presented one orange frame, and returned to NextUI. The boot id was unchanged. No new kernel warning or Panfrost fault appeared. PanVK remains experimental. That frame is not broad compatibility.
-
-PPSSPP 1.19.3 is compiled with Vulkan. Under Panfrost the opt-in can make physical-device detection succeed. PPSSPP's `VK_KHR_display` path does not call `vkGetDrmDisplayEXT` or `vkAcquireDrmDisplayEXT`. The frame test succeeded because it did that acquisition itself. PPSSPP Vulkan gameplay under Panfrost is not established. The libmali Vulkan path and Panfrost OpenGL ES stay as they are. PPSSPP was not modified.
-
-WestonPack cleanup remains covered by host tests. Earlier hardware evidence is a different image. It was not re-run on this card. The maintainer requires no further Phase 12 hardware test. Phase 12 is closed. Phase 13 is not scoped.
-
-### Phase 13
-
-Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase-12` from `a428bff51c4c6b0989fce16024831de4277ebf69`. This is the same branch as Phase 12 and the same eventual `zlyme44.3` release. `ZLYME_VERSION` stays `zlyme44.3`. No `zlyme44.3` image or release exists. The installed Flip image remains the E32 archive named in the Phase 12 closure. Phase 13A is host-tested and is not on that image. Phase 13 does not edit the hardware wiki.
-
-The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
-
-Phase 13B1 (B1, B3, and B4) is host-tested in source and is not on that image. B2, B5, B7, and B8 are host-tested in source and are not on that image. The B2, B5, and B8 host tests from earlier on 2026-10-15 do not validate the revised policy. B6 is blocked on the pinned RGUI font. Phase 13B is not complete. Phase 13C1 is blocked on PortMaster's single ports directory. Phase 13C2 is host-tested in source, including the PNG signature, and is not on that image. Phase 13D and 13E are not started.
-
-#### Phase 13A — Build reliability and small corrections
-
-Host-tested on 2026-10-15. No image was built for these items.
-
-##### A1. Incremental branding rebuild
-
-Objective: a later `./build.sh` with no make target notices changes under `package/boot/zlyme-initramfs/` and refreshes the installed initramfs, the initramfs embedded in `Image`, `Image.gz`, the rootfs splash and progress files, and the image and update artifacts.
-
-Implementation owner: `build.sh` (`refresh_compiled_package`) and the existing linux stamp edge in `board/my355/board.mk`.
-
-Dependencies: branding assets already committed in `f4c9ad1d733dada1ca61f072850b5d7c84f57791`. The kernel rebuilds `initramfs_data.cpio` when an included file is newer. The toolchain and the kernel sources stay.
-
-Acceptance criteria: a changed splash or progress file changes that package fingerprint and dircleans `zlyme-initramfs` only. The next image build installs the current bytes and rebuilds the kernel image from the new install stamp. No full image build is required to accept the host check.
-
-Status: Host-tested.
-
-##### A2. Windows-compatible image partition type
-
-Objective: a freshly written image gives the storage partition GPT type Microsoft Basic Data. The filesystem stays exFAT with label `ZLYME`. Boot, the bootloader, and the rest of the layout stay as they are. An existing card is left alone. An OTA does not rewrite the partition table.
-
-Implementation owner: `board/my355/genimage.cfg`.
-
-Dependencies: genimage's `F` alias for `ebd0a0a2-b9e5-4433-87c0-68b6b72699c7`. Boot already uses `F`. The `uboot` partition stays `L`.
-
-Acceptance criteria: a host check resolves storage to that UUID and leaves the idbloader offset, the `uboot` type and placement, the boot type and placement, and the filesystem label unchanged.
-
-Status: Host-tested.
-
-##### A3. MTP storage naming
-
-Objective: the computer and the tool screen show `SDCARD1` for `/storage`, `SDCARD2` for `/mnt/sd2`, `OTG` for the first USB volume, and `OTG 2` onward when more USB volumes are shared. Mountpoints and filesystem labels stay. The boot partition stays out of the share.
-
-Implementation owner: `package/system/zlyme-usb-transfer/zlyme-usb-transfer` and the USB File Transfer page, which reads the export name the helper already prints.
-
-Dependencies: the existing duplicate-name suffix. `/run/zlyme/libraries` still decides which volumes exist.
-
-Acceptance criteria: host checks cover a primary card alone, a listed second card that is not mounted, a mounted second card, one USB volume, several USB volumes, and two volumes that would otherwise share a name. `/boot` is absent from the export list.
-
-Status: Host-tested.
-
-##### A4. VTree language resources
-
-Objective: Files shows the upstream translations for keys such as `FileOp_Copy`, `FileOp_Cut`, and `Footer_Pane`. The installed tree includes upstream `lang/`. Files.pak can resolve those files from its runtime directory. User themes and settings stay. Icons stay on the existing `res/` install.
-
-Implementation owner: `package/system/vtree/vtree.mk` and `package/system/nextui/paks/Tools/Files.pak/launch.sh`.
-
-Dependencies: VTree `560205b6198ac9e0e28975d42fcaee4c28989015`. `lang.c` loads `lang/` from the directory of `/proc/self/exe`, which is `/usr/share/vtree/vtree`. The runtime directory links `lang` the same way it links `res` and `fonts`. No upstream VTree patch.
-
-Acceptance criteria: a host check resolves the English strings from the Files runtime directory and a second launch leaves a user theme and `ShowHidden` in place.
-
-Status: Host-tested.
-
-##### A5. README branding GIF
-
-Objective: the README lockup is displayed at 444 pixels wide. The GIF file stays byte-for-byte.
-
-Implementation owner: `README.md`.
-
-Dependencies: `package/system/nextui/res/branding/zlyme_slime_loop.gif` from `f4c9ad1`.
-
-Acceptance criteria: the image tag width is 444 and the GIF hash is unchanged by the edit.
-
-Status: Host-tested.
-
-##### A6. Unreleased changelog cleanup
-
-Objective: `CHANGELOG.md` under Unreleased drops the MTP experiment chronology and the PanVK/Weston test chronology. An empty Known limitations heading goes with them. Those records stay in this file, in `docs/LOGBOOK.md`, and in `docs/research/`.
-
-Implementation owner: `CHANGELOG.md`.
-
-Dependencies: the Phase 12 closure and `docs/research/usb-mtp-phase12d.md`.
-
-Acceptance criteria: both paragraphs are absent from Unreleased, and the same evidence is still in the roadmap, the logbook, and the research record.
-
-Status: Host-tested.
-
-#### Phase 13B — RetroArch and emulator consistency
-
-##### B1. A/B navigation conventions
-
-Objective: menus confirm with A and go back with B. Game actions and InputPlumber's virtual Xbox 360 control layout stay. A user's own controller remap stays.
-
-Implementation owner: RetroArch and standalone emulator configuration, using each program's own defaults.
-
-Dependencies: the pinned emulator configs and their append order. No change to `miyoo-flip-gamepad` or the xb360 target.
-
-Acceptance criteria: source review shows menu confirm/back follows A/B, game-action bindings are untouched, and a saved user remap is not rewritten.
-
-Status: Host-tested.
-
-RetroArch 1.22.2 keeps menu OK on RetroPad A when `input_menu_swap_ok_cancel_buttons` is false (`menu/menu_driver.c`). The SDL2 Xbox autoconfig maps button 0 to RetroPad A and button 1 to RetroPad B. InputPlumber names the Flip's east button A and emits Xbox South, which SDL reports as button 0. NextUI confirms on that button. Those autoconfig numbers stay. DraStic's UI select is button 1024 and its UI exit is 1025, the same pair as its A and B game buttons. PPSSPP's default button preference is Cross, and the seed maps Cross to SDL A and Circle to SDL B. AetherSX2's first-run pad maps Cross to SDL A. Dolphin's first-run GameCube A is Xbox South. Flycast's seed does not set face buttons. None of those programs has a separate menu confirm setting that disagrees with its game map, so the game bindings were left as they are.
+Status: Host-tested. No separate menu-confirm setting disagreed with the game map, so those bindings were left alone.
 
 ##### B2. Stock emulator configuration
 
-Objective: a supported emulator that can use a configuration ships one stock file. That file is copied to its writable path when the file is missing. After that, the user owns it. No launcher adds, migrates, or overrides preferences in an existing file. An explicit reset replaces the file with the stock file on the current image. A settings reset does not delete saves, savestates, BIOS files, or core libraries.
-
-Implementation owner: `zlyme-stock-seed`, run when storage is up and from the matching reset action. `ra-run` and the standalone launchers do not rewrite an existing configuration.
-
-Dependencies: each program's existing writable path. Saves, ROM folders, and `/storage/.config/retroarch/cores` stay out of these resets. MENU+START in `zlyme-pak-hotkey.c` stays the emergency stop.
-
-Acceptance criteria: a missing file becomes the stock file. An existing file is byte-for-byte unchanged by a launch, a later boot, and an update. Reset installs the current stock file and leaves saves, states, BIOS, and cores in place. The RetroArch stock file contains `savestate_auto_save = "true"`, `savestate_auto_load = "true"`, `quit_on_close_content = "2"`, and `rgui_menu_color_theme = "2"`. The Flycast stock file contains `Dreamcast.AutoSaveState` and `Dreamcast.AutoLoadState`. No obsolete custom RGUI preset remains. Session parameters for the ROM's save path, pad routing, and NextUI achievements are not written into the user file.
+Objective: ship one stock file, copy it only when the user's file is missing, and let an explicit reset replace it. Launchers do not rewrite an existing file.
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-On 2026-10-15 an earlier implementation inserted missing RetroArch and Flycast keys at launch and rewrote a user file that still had the original Zlyme theme. That implementation is superseded.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. This branch pins `7cb6ecaa`, which is that commit plus lid-close mem. Neither is on NextUI `zlyme` yet.
 
-The RetroArch stock file is `/usr/share/zlyme/retroarch/retroarch.cfg`. Its writable copy is `/storage/.config/retroarch/retroarch.cfg`. Settings → Game → Reset RetroArch configuration calls `zlyme-game-cleanup ra-cfg` and replaces that copy. Reset RetroArch core options is the separate `ra-cores` action and deletes `retroarch/config` only. Reset standalone settings deletes the standalone files listed by that action, then the seed restores the stock files Zlyme actually ships. Reset Settings and Factory Reset stay the existing `zlyme-reset` actions. The settings row landed on NextUI `2d95d33f`. This development branch pins `7cb6ecaa`, which is that commit plus lid-close mem. Both are on NextUI `zlyme44.3-phase-12`. Neither is on NextUI `zlyme` yet.
+##### B3. RGUI theme
 
-`ra-run` may append only session values: achievement fields from NextUI's settings file, `savefile_directory`, `savestate_directory`, and `system_directory` for the ROM's card, the SDL2 driver, joypad autoconfig directory, and player index 0, and a selected content overlay. It does not append the theme, automatic savestate, quit-on-close, `config_save_on_exit`, video, or audio preferences. `/etc/retroarch.cfg` and `ra-perf.cfg` are not a second copy of those preferences and are not appended.
+Objective: stop forcing the custom Zlyme theme. Classic Orange is the stock default this pin understands.
 
-RetroArch 1.22.2 defaults `config_save_on_exit` to true. `retroarch_main_quit` then calls `CMD_EVENT_MENU_SAVE_CURRENT_CONFIG`, which writes the running settings, including values loaded from `--appendconfig`. The stock file sets the key to false, so that quit does not rewrite the user file. `savestate_auto_save` is a separate step in the same function and still runs. Save Current Configuration does not read `config_save_on_exit`, so that menu action still writes the running settings, including the session's save path. A configuration that omits the key, or sets it true, keeps RetroArch's save-on-quit behavior until the configuration reset installs the stock file. `ra-run` does not append the key.
-
-Flycast's stock file stays `/usr/share/zlyme/emu-defaults/flycast/emu.cfg`, with both automatic state keys set to yes. `DC.pak` does not edit an existing cfg. It still bind-mounts the card save directory and execs Flycast. `pak-launch` still unmounts the recorded path after `wait`. A busy mount keeps the record.
-
-Other programs, from their launchers and the pinned source where it was read:
-
-- PPSSPP 1.19.3 has a stock ini, including its pad map. It can load a state and has no save-on-exit setting. The launcher does not append a pad map to an existing ini.
-- DraStic is a closed binary. Its shipped cfg is copied when missing. It has no automatic save-on-exit key. The launcher does not rewrite button numbers in an existing cfg.
-- AetherSX2 is a prebuilt binary. The launcher writes the first ini. On later launches it updates only the BIOS, savestate, and memory-card paths so they follow the active library. No automatic save or load key was verified. Other lines are left as the user saved them.
-- Dolphin writes its first ini and GameCube pad map when those files are missing. Memory cards are bind-mounted. Automatic savestate resume is unsupported.
-- ScummVM uses `--savepath`. GZDoom g4.14.2 writes `$HOME/.config/gzdoom/gzdoom.ini` with `HOME` set to the storage root. Standalone reset removes that file and leaves soundfonts, FM banks, and autoexec. It uses `-savedir` and its own in-game autosave. OpenBOR uses `OPENBOR_SAVES_DIR`. Amiberry, Hypseus, native PICO-8, Wine, and Ports have no Zlyme stock template. None was invented.
-
-`retroarch_main_quit` still writes the automatic state when the stock key is true. Hardcore still skips the automatic load inside RetroArch. One SIGTERM from MENU+START still does not call that quit.
-
-##### B3. Remove the broken custom Zlyme RGUI theme
-
-Objective: unused custom theme files and forced theme overrides leave every config layer. The pinned RetroArch build selects its built-in Classic Orange theme with the setting that build actually reads. A user can still change the theme afterwards.
-
-Implementation owner: RetroArch package install and the appended config.
-
-Dependencies: the pinned RetroArch version and the last-writer of the theme setting.
-
-Acceptance criteria: no Zlyme theme is installed or forced, Classic Orange is the default that this pin understands, and a later user setting still wins.
-
-Status: Host-tested.
-
-`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The stock configuration sets `"2"`. Upstream's default is Classic Green. `ra-run` does not append a theme. The same-day B2 revision stopped rewriting an existing file, including one that still has the old Zlyme theme. That file stays until the RetroArch configuration reset installs the stock file. `board/my355/post-build.sh` removes the three retired theme files from the target. Other RetroArch assets stay.
+Status: Host-tested. An existing file that still names the old theme stays until the configuration reset.
 
 ##### B4. Standalone RetroArch tool
 
-Objective: Tools → RetroArch starts RetroArch with no ROM through the existing `ra-run` path.
-
-Implementation owner: a NextUI Tools pak that calls `ra-run`.
-
-Dependencies: the current RetroArch runtime, GPU, audio, input, DRM, logging, and cleanup. No second emulator runtime.
-
-Acceptance criteria: the tool is present, it launches through `ra-run` without a content path, and the session uses the same teardown as a game launch.
+Objective: Tools → RetroArch starts `ra-run` with no ROM.
 
 Status: Host-tested.
-
-The pak is `package/system/nextui/paks/Tools/RetroArch.pak/launch.sh`. It execs `ra-run` with no arguments. The clock profile is `play`, the same profile as the other Tools paks.
 
 ##### B5. Persistent libretro cores
 
-Objective: packaged cores are copied into `/storage/.config/retroarch/cores/` when that set is first installed. An ordinary reboot leaves a hand-replaced shipped core in place. A newly installed image refreshes every filename that image ships, including when the shipped core bytes match the previous image. A core the image does not ship stays, including a core the user installed and a core from an older image.
+Objective: copy packaged cores to `/storage/.config/retroarch/cores/`. A reboot leaves a hand-replaced shipped core. A new image refreshes the filenames it ships. A core the image does not ship stays.
 
-Implementation owner: `zlyme-core-sync`, from the frontend start, before NextUI. `ra-run` resolves a launcher core by filename. It does not copy cores and it does not build a directory of links.
-
-Dependencies: `/usr/lib/libretro` on the read-only root, and the exFAT config tree. Cards mount `rw,noatime`, without `noexec`. Online core download stays off.
-
-Acceptance criteria: an empty writable directory receives the packaged set. A reboot with the same image copies nothing and leaves a hand-replaced shipped core. A newly installed image replaces that core even when the core-set hash is unchanged, adds a new shipped core, and leaves a removed name and a user-only name. A failed or interrupted copy leaves the previous file, does not record success, and can be retried. A launcher uses the writable file, and the packaged file when the writable one is absent. Resetting core options does not delete core binaries.
-
-Status: Host-tested. The 2026-10-15 host test of `/tmp/zlyme-ra-cores` does not validate this policy.
-
-On 2026-10-15 an earlier implementation rebuilt a tmpfs symlink directory on every RetroArch launch. That directory is not part of this policy. Cores are real files in the writable directory. The stock `libretro_directory` is that directory. A launcher may still pass `/usr/lib/libretro/<name>_libretro.so`. `ra-run` loads the same filename from the writable directory, then the packaged file. `ZLYME_EMU_CORE` and the mupen64plus dash and underscore names still select by filename. Zlyme does not read the ELF header and does not delete the core directory. The online updater stays off.
-
-The copy identity of the core bytes is a stamp, not `ZLYME_VERSION`. That stamp is not an image identity: two images can ship the same cores. Initramfs writes `/storage/.config/zlyme/os-image-new` after it copies a new squashfs onto `/boot/zlyme`. An ordinary reboot does not. `zlyme-core-sync` returns immediately when the stamp matches and that marker is absent, without hashing the cores or the root. When the marker is present, it still copies only shipped files whose bytes differ, then removes the marker. The marker stays if a copy fails. Each file is written to a temporary name in the same directory and renamed into place. The stamp is recorded only after every shipped file that needed a copy has been renamed. A name the image does not ship is not removed.
-
-`post-build.sh` rewrites `cores.stamp` from `/usr/lib/libretro` on every image finalize, including an incremental build that reaches that hook. The stamp is the core bytes. It does not change when the rest of the image changes and the cores do not.
-
-The local Buildroot output measured on 2026-10-15 had 35 packaged `*_libretro.so` files, 222958480 bytes, about 213 MiB. The first boot copies that set onto the card before NextUI starts. That copy is on the path to the first frame. Its duration was not measured. A later boot with the same image and the same stamp does not copy. An installed image copies the shipped files whose bytes differ, which is the whole set only when a hand-replaced file or a changed core needs a write.
+Status: Host-tested. The 2026-10-15 host test of the tmpfs symlink directory does not validate this policy. Cores are real files. The first copy is about 213 MiB and was not timed on a Flip.
 
 ##### B6. Readable RetroArch menu
 
-Objective: RGUI text is legible on the Flip's 640×480 display, using options the pinned RetroArch already has.
+Objective: make RGUI text usable on the Flip with options the pinned RetroArch already has.
 
-Implementation owner: RetroArch menu settings.
-
-Dependencies: the pinned source's RGUI scale and font options. No renderer patch unless those options cannot do it.
-
-Acceptance criteria: filenames and settings remain usable at 640×480, and the chosen options exist in the pinned source.
-
-Status: Blocked.
-
-RetroArch 1.22.2 draws RGUI into a 320×240 framebuffer when the display is taller than 240 (`rgui_set_aspect_ratio`). The 4:3 width at that height is 320. A 640×480 screen scales that buffer by 2, so the glyphs are already at the size this menu produces for the Flip. `menu_rgui_internal_upscale_level` enlarges the texture after the glyphs are drawn. At 2× that texture matches 640×480 and the glyphs stay the same size. A larger factor is scaled back down to the screen. `menu_scale_factor` is not read by RGUI. English uses the built-in bitmap font. The 10×10 font is selected by language. A larger font would be a source change to the glyph blit and to the terminal row and column counts, which also clips filenames and list rows. That patch is not bounded enough for this pass. The working menu is unchanged.
+Status: Blocked. RetroArch 1.22.2 draws RGUI into a 320×240 buffer and scales it. The existing scale options do not make the glyphs larger. A font patch is not approved. The working menu stays as it is.
 
 ##### B7. Quit through RetroArch menus
 
-Objective: Quick Menu can leave a game and return to NextUI, and that exit still allows the automatic save in B2. A ROM launched from NextUI and Tools → RetroArch keep different close behavior. The credit in the commit message is Icy_Mammoth1805.
+Objective: Close Content from a NextUI launch returns to NextUI and can write the automatic state. The standalone tool stays in RetroArch.
 
-Implementation owner: RetroArch's Close Content and Quit on Close Content settings, if this pin supports them.
-
-Dependencies: B2's save-on-exit and B4's no-ROM session. A source patch is used only when no supported option does this.
-
-Acceptance criteria: closing content from a NextUI launch returns to NextUI and can write the automatic state. Closing content in the standalone tool leaves RetroArch running when that is the native meaning. The README does not carry the credit.
-
-Status: Host-tested.
-
-`quit_on_close_content` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`: 0 disabled, 1 enabled, 2 CLI. The stock configuration sets `"2"`. `ra-run` does not write or append the key. A saved value stays. `should_quit_on_close` quits when the value is CLI and the process was started with a core or content argument. A game pak runs `ra-run -L <core> <rom>`, so Close Content quits. That quit calls `retroarch_main_quit`, which writes the automatic savestate when B2's key is true. Tools → RetroArch runs `ra-run` with no arguments, so Close Content unloads the core and stays in the menu. Unload also writes the automatic savestate. Quit RetroArch from that menu returns to NextUI through the same quit path.
-
-MENU+START is unchanged in `zlyme-pak-hotkey.c`. One SIGTERM does not enter that quit path on this pin, and SIGKILL follows 1.5 seconds later. The credit for this quit behavior is in the implementation commit. The README and changelog do not carry it.
+Status: Host-tested. MENU+START is unchanged.
 
 ##### B8. Native arcade BIOS lookup
 
-Objective: FinalBurn Neo and MAME 2003-Plus use the archive lookup in their pinned cores. Zlyme does not stage BIOS archives beside the game.
+Objective: let the pinned FBNeo and MAME 2003-Plus cores find BIOS archives themselves.
 
-Implementation owner: none. `zlyme-arcade-stage` is removed. The cores already search.
+Status: Host-tested. The 2026-10-15 host test of `zlyme-arcade-stage` does not validate this policy. That stage is superseded. The lookup order is in `docs/USER_GUIDE.md`.
 
-Dependencies: the existing BIOS directory the launcher passes as RetroArch's system directory. That cross-card resolution stays. No new staging layer replaces the one that was removed.
+### Phase 13C. PortMaster on two cards
 
-Acceptance criteria: the stage program, its install rule, and its launcher calls are gone. The user guide states the native paths, their order, and the case-sensitive names. It does not say Zlyme links a BIOS zip next to the game archive.
+##### C1. Installed ports on both cards
 
-Status: Host-tested. The 2026-10-15 host test of `zlyme-arcade-stage` does not validate this policy. That stage is superseded.
+Objective: show installed ports from both cards, and still write an install, update, or removal to the card that owns it.
 
-FBNeo `ae41c16` `locate_archive()` searches, in order and with the path's own case: the game's directory, then `system/fbneo/`, then the system directory, then configured custom ROM directories. It also looks in `arcade/` and `consoles/` under the game directory and under `system/fbneo/`. It does not search `system/FBNEO/`. The previous uppercase fallback existed only because the stage linked that directory. A game archive in the ROM directory is found before the system copies, so the same filename in the ROM directory is the one that runs.
+Status: Blocked. PortMaster-GUI has one ports directory. Two ports with the same name cannot both live there.
 
-MAME 2003-Plus `5da0428` opens ROM and parent archives only from the content directory. `osd_get_path` for `FILETYPE_ROM` copies `libretro_content_path`, and `osd_get_path_count` returns 1. It does not open those zips from `Bios/`, `Bios/MAME/`, or `Bios/mame2003-plus/`. Samples and artwork use `system/mame2003-plus/` when the core option `mame2003-plus_core_sys_subfolder` is enabled, which is its default. A BIOS zip that was found only because the stage linked it next to the game is not found after the stage is removed. No replacement was added. The credit for the old stage stays in that earlier commit. The README does not carry it.
+REJECTED — a union or a symlink farm. A removal or extract can hit the wrong card. NextUI already lists each card's Ports folder. An upstream change would have to record which directory owns each port. No such change is approved.
 
-#### Phase 13C — PortMaster integration
+##### C2. Cover art
 
-##### C1. Multi-card installed-port visibility
+Objective: after an install, publish suitable art as `.media/<launcher>.png` on that port's card. Art the user already chose stays.
 
-Objective: PortMaster's list shows installed ports from both cards, and the selected card remains the place where a new install, update, or removal is written. NextUI's library list stays. An existing install is not moved. Two ports with the same name do not write onto each other.
+Status: Host-tested. A JPEG is published only when the bytes are a PNG. This was not run on a Flip.
 
-Implementation owner: a Zlyme-side integration. Upstream PortMaster-GUI stays unmodified unless a later note says why that failed.
+### Phase 13D. Samba and lid suspend
 
-Dependencies: `HM_PORTS_DIR` is one path today. The selected library is the install target.
+##### D1. Samba authentication
 
-Acceptance criteria: both cards' installed ports are visible, writes still land on the selected card, and an update or removal addresses the card that holds that install. If a combined directory cannot keep those write targets, the item stops, records that limit, and names the alternatives before any union or symlink farm is added.
+Objective: require the `zlyme` account, keep a changed password across reboot and update, and leave guest access off. Samba stays off until Settings enables it.
 
-Status: Blocked.
-
-PortMaster-GUI `2026.06.23-0015` has one `HM_PORTS_DIR`. `zlyme-portmaster-root export` sets that path to `Roms/Ports (PORTS)` on the selected library. `harbour.py` `load_ports` reads `*/port.json` from that directory, and `installed_ports` is keyed by the port name. `install_port` extracts into the same directory. `uninstall_port` deletes those relative names. A host check with Python 3.14 showed that `Path.unlink` removes a file symlink and leaves its target, `ZipFile.extract` follows a file symlink and overwrites the target, and `shutil.rmtree` on a directory symlink fails and leaves both the link and the target. Two ports with the same name cannot both occupy one directory, so an update or a removal cannot be aimed at both cards. NextUI already lists each card's Ports folder on its own. The PortMaster GUI stays on the library chosen in Settings. No combined directory was added. Showing both cards inside that GUI needs an upstream change that records which directory owns each installed port.
-
-##### C2. PortMaster media integration
-
-Objective: after PortMaster installs a port, suitable cover or screenshot art shows up in NextUI as `.media/<launcher stem>.png` on the card that holds the port. Art the user already chose stays.
-
-Implementation owner: a small post-install or post-exit hook on the Zlyme side.
-
-Dependencies: the art files a PortMaster install actually writes, on either card. Launcher names and duplicate port names have to be matched explicitly. No upstream PortMaster patch unless the hook cannot see the files.
-
-Acceptance criteria: a host check maps a real PortMaster image layout to the NextUI name, skips a missing image, leaves a hand-picked `.media` file in place, and does not attach one card's art to the other card's copy of the same port.
-
-Status: Host-tested.
-
-`portmaster-launch` runs `zlyme-portmaster-art` after pugwash returns. The helper reads `/storage` and `/run/zlyme/libraries`. For each `Roms/Ports (PORTS)/*.sh` it looks for `cover.png`, then `screenshot.png`, then a JPEG of those names, in a directory with the launcher's stem or in the `port.json` whose `items` list names that script. It copies a PNG. A JPEG is encoded with an explicit PNG encoder and published only when the output starts with the PNG signature. `-f image2` alone can leave JPEG bytes in the `.png` name. A host check reads the PNG signature, including a JPEG that ffmpeg encoded. An existing file stays. A missing image, a symlink, and the `PortMaster` directory are skipped. A second run does not rewrite a file it already published. The selected library flag is not changed. This was not run on a Flip.
-
-#### Phase 13D — Network and power policy
-
-##### D1. Samba authentication and Windows compatibility
-
-Objective: the share requires a username and password. The initial development account is `zlyme` / `zlyme`. Samba stays off until the user turns it on. The user can change the password. The password is not written to a log or passed as a process argument. The account survives reboot on the read-only root and the exFAT card, and `smbd` still starts, stops, and restarts.
-
-Implementation owner: the Samba package and `zlyme` service scripts. The user guide explains connecting to `\\<address>\storage`, how to read the Flip's address, the initial password, how to change it, and that the share includes settings.
-
-Dependencies: Samba's private files have to live where exFAT's missing Unix permissions cannot break them. `disable netbios = yes` stays. WS-Discovery, `wsdd`, `wsdd2`, NetBIOS, `nmbd`, and SMBv1 are out of scope. The guide does not say the Flip appears in Windows Explorer's Network list. The commit message credits Icy_Mammoth1805. The README does not.
-
-Acceptance criteria: guest access is gone, the development account works in the host configuration check, a changed password is what the next start uses, service stop and restart still succeed, and the user guide matches that behavior.
-
-Status: Host-tested.
-
-`zlyme-samba-auth` adds a Unix account `zlyme` with shell `/bin/false` and uid 980, and a Samba account of the same name. The first password is `zlyme`, written to `smbpasswd` on stdin. A changed password is an smbpasswd NT-hash export at `/storage/.config/zlyme/samba.account`. The live passdb stays on tmpfs (`/tmp/samba-lib`). A later start, a restart, a wiped runtime, and a kept export all import that hash. They do not write the public password back. A missing export creates the initial account. A corrupt export refuses to start `smbd` whether or not a tmpfs account is already loaded. It does not turn guest access on and it does not write the public password back. `zlyme-samba-auth set` is the recovery: the typed password's hash replaces the damaged file. `smb.conf` sets `map to guest = Never`, `guest ok = no`, `disable netbios = yes`, and `server min protocol = SMB2`. `S70samba` starts only `smbd`, and only when Samba is enabled. The change command is `zlyme-samba-auth set`. `scripts/tests/test_phase13d_samba.sh` stubs `smbpasswd` and `pdbedit`. Those stubs are not the target binaries. The target tools are aarch64 and were not executed; `qemu-aarch64` is not installed on the host that ran the test. The test does not include a Windows client. The share path is still `/storage`, with `force user = root` after the account has authenticated.
+Status: Host-tested. A damaged `/storage/.config/zlyme/samba.account` does not start `smbd`, including when a tmpfs account is already loaded. `zlyme-samba-auth set` is the recovery and does not restore the public password. The host test stubs `smbpasswd` and `pdbedit`. The target binaries were not executed. There is no Windows client in the test. No NetBIOS, `nmbd`, or WS-Discovery.
 
 ##### D2. Lid-close deep suspend
 
-Objective: closing the lid uses the existing deep suspend path while NextUI owns the screen and while an emulator or pak owns the screen.
+Objective: one lid close requests the existing mem path once, in the menu and in a pak. A second close in that closed period does not. The power button stays on the same helper.
 
-Implementation owner: `zlyme-keylidmon` and NextUI's power-button sleep, sharing the current suspend helper and the radio and governor sequence.
+Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A switch sample that reads open clears the period when the open event was missed. The DTS was not changed. Lid-open wake was not tried on a Flip.
 
-Dependencies: the power-button deep sleep path, the resume guard, wake handling, hall open and close events, and separate input ownership. The DTS hall switch already has `wakeup-source` and `wakeup-event-action = <EV_ACT_DEASSERTED>`. The DTS stays unless a source-proven hardware requirement shows up. No power-register experiment. The commit message credits Icy_Mammoth1805. The README does not.
+### Phase 13E. Final compatibility
 
-Acceptance criteria: one close requests one deep suspend in both ownership cases, a second close does not stack another request, and power-button sleep still uses the same helper. Source review is the check. No suspend hardware run is part of this item.
+13E is the last integration pass for `zlyme44.3`. It has not started. Do not start it from the roadmap alone.
 
-Status: Host-tested.
+#### 13E1. PortMaster mounts and MTP
 
-NextUI `7cb6ecaa` handles a lid-close edge with `PWR_sleepNow`. The screen timeout still calls `PWR_sleep`. `zlyme-keylidmon` uses the same governor, radio, and suspend sequence for a lid close as for the power button, and only after NextUI has been on screen and has exited. A second close while that period is already asleep does not request mem again. A switch sample that reads open clears that period even when no open event was queued, so the next close can request mem once. A sample that still reads closed does not. The one-second resume guard drops a lid edge and a power edge. A failed suspend does not retry on the queued close. Boot, before the frontend has appeared, does not treat a closed lid as a pak. The suspend helper still does not write the RTC wake alarm. The hall node is unchanged: `wakeup-source` and `wakeup-event-action = <EV_ACT_DEASSERTED>`. `scripts/tests/test_phase13d_lid.sh` drives the decision with mocked events. Phase 6 measured power-button mem suspend. It did not measure lid-open wake. This item does not add that measurement. The NextUI sources were not compiled into an image.
+A port can leave a mount nested under `/storage` after NextUI returns. USB File Transfer then rejects the primary storage because that tree contains a nested mount. A restart clears the case that was seen. The earlier AGS ports bind-mount under the NextUI state tree.
 
-#### Phase 13E — Documentation and final integration
+Objective: find which owner creates the mount and which step should release it. Keep MTP's check that refuses a nested mount. Do not recursively unmount `/storage`. Make the user-facing MTP error readable when the text is cut off.
 
-##### E1. README USB File Transfer description
-
-Objective: the README names USB File Transfer next to the other tools, including the lower USB-C port and the MTP names the image exports.
-
-Implementation owner: `README.md`, in the style of `docs/WRITING.md`.
-
-Dependencies: A3's names, and the user guide for the longer account. The README does not copy that account.
-
-Acceptance criteria: the paragraph matches the tool that exists and does not describe a planned behavior.
+This is Phase 13 because it breaks USB File Transfer. Broader port compatibility is Phase 14.
 
 Status: Planned.
 
-##### E2. User guide updates
+#### 13E2. Syncthing credentials
 
-Objective: the user guide matches the behavior Phase 13 actually shipped: MTP names, Samba credentials and a direct address, the RetroArch tool and user cores, automatic save and its limits, A/B menu confirm and back, PortMaster's two-card list and art, and lid suspend.
+Objective: a new Syncthing config gets GUI username `zlyme` and password `zlyme`, stored as Syncthing 2.0.13's supported hash, not as plaintext in the saved XML. Syncthing stays off until the user enables it. The GUI listens on `0.0.0.0:8384` today and must not be reachable without authentication. Generate the normal per-device identity. Do not ship a fixed device ID, TLS key, or API key. Do not replace a config the user already has, on boot or on update. The user changes the GUI login in Syncthing's own page. There is no Settings password row. If setup fails, do not start an open GUI. The default password is public and the guide says to change it.
 
-Implementation owner: `docs/USER_GUIDE.md`.
+Status: Planned. The provisioning and first-run order still have to be read from Syncthing 2.0.13. They are not implemented.
 
-Dependencies: 13A through 13D. The guide describes the source that landed, including a limit that the implementation kept.
+#### 13E3. About credentials
 
-Acceptance criteria: each shipped item has a user-facing sentence, and an item that is still Planned is absent.
+Objective: Settings → About shows, in order, SSH account, SSH password, Samba account, Samba password, Syncthing account, Syncthing password, then IP. Read them when About opens. Do not run the helpers on every redraw. Show the real usernames. Show `zlyme` as a password only when that default is still in force. After the user changes a Samba or Syncthing password, show that it was changed or that it cannot be read. Do not show a hash. Do not keep a second plaintext copy for this screen. Labels have to fit the Flip. About does not edit Samba or Syncthing passwords.
 
-Status: Planned.
+Status: Planned. The SSH password is already available to About.
 
-##### E3. Changelog
+#### 13E4. Obsolete configuration
 
-Objective: user-visible Phase 13 changes are under Unreleased. There is no `zlyme44.3` heading and no release date.
-
-Implementation owner: `CHANGELOG.md`.
-
-Dependencies: the behaviors in 13A through 13D. A6 may already have cleared the old Known limitations text.
-
-Acceptance criteria: each user-visible change is one short entry. Test history stays out. The release-notes check still rejects Unreleased as a release body.
+Objective: remove Phase 12 and 13 scaffolding that is proven unused, and leave the one stock RetroArch configuration. Candidates include `board/my355/fsoverlay/etc/retroarch.cfg`, `ra-perf.cfg`, retired RGUI theme files, obsolete launcher references, the removed arcade stage, and temporary core mechanisms. Read the pinned RetroArch fallback before deleting `/etc/retroarch.cfg`. Review AetherSX2's edits of existing INI paths against the user-owned configuration rule, and keep ROM and card paths working. Do not delete a file because it only looks unused.
 
 Status: Planned.
 
-##### E4. Final source and documentation acceptance
+#### 13E5. Documentation coherence
 
-Objective: the host regression suites for the phase pass, and the record separates source-validated work from behavior that the installed E32 image has not measured.
-
-Implementation owner: this section, after 13A through 13E3.
-
-Dependencies: the suites named by the items above. No new hardware gate. No release preparation and no Phase 14.
-
-Acceptance criteria: the report lists the checks that ran and names the E32 image as the installed system. A source-only change is not described as installed.
+Objective: make `docs/ARCHITECTURE.md`, `docs/MAINTENANCE.md`, `docs/OPERATIONS.md`, `docs/DEVELOPMENT.md`, `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md`, `docs/USER_GUIDE.md`, `docs/LOGBOOK.md`, and `CHANGELOG.md` agree with current behavior. Link to evidence. Do not paste it twice. Dated logbook entries stay as they were written. The changelog stays short and user-facing.
 
 Status: Planned.
 
-### After Phase 12 — Miyoo Flip hardware wiki review
+#### 13E6. Source review and acceptance
 
-On 2026-10-14 the hardware wiki recorded the development Linux 7.2.10 boot, the lower-port gadget session, and the removal of `snps,dis_enblslpm_quirk`. That note does not finish the comparison in the next paragraph, and it does not call the device tree proven.
+Objective: review Phase 12 and 13 for ownership, persistent data, cleanup, first-boot order, dependencies, dead code, and duplicated policy. Run the host checks that match those paths. After the implementation is done, build one local candidate. The maintainer does the focused hardware acceptance, including the PortMaster mount that blocks MTP.
 
-Once Phase 12 is ready for closure, and controlled comparisons have established the minimum kernel, device-tree, and userspace requirements for reliable MTP, review the final Miyoo Flip USB device tree against upstream Linux and the stock hardware evidence.
+Do not reopen an accepted hardware campaign without a concrete regression. B6 stays a documented limit unless a bounded fix is approved separately. C1 stays a documented limit. Do not add an unsafe ports union.
 
-If a board-specific device-tree change is actually required, consider updating the distribution-independent hardware wiki, `Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering`. Record only verified hardware facts: the final required properties, the kernel versions and source context, why each property is needed, which properties are inherited from upstream, which experimental properties were rejected, and the hardware tests that establish the final configuration. If no device-tree change is needed, record that conclusion.
+Status: Planned. No image, OTA, or release is part of the planning record.
 
-This is a documentation checkpoint after the MTP simplification experiments. It does not authorize an edit to that wiki now. A wiki change needs maintainer review. Zlyme remains the authority for its own MTP userspace. The hardware wiki owns reusable Miyoo Flip hardware knowledge.
+## Phase 14. PortMaster compatibility
 
-## Suggested commit/checkpoint rhythm
+Phase 14 starts only after Phase 13 is accepted and the integration checklist in `docs/MAINTENANCE.md` has put that result on `main`. It then starts on a new branch. Its aim is the broadest practical match with official PortMaster on the Miyoo Flip. It does not claim that every port runs. Research notes belong in `docs/research/`, not here.
 
-Use separate known-good checkpoints such as:
+### 14A. Capability baseline
 
-```text
-phase-2-roadmap
-phase-2-upstream-evidence
-phase-2-patch-inventory
-kernel-patch-prune-<family>
-kernel-patch-replace-<family>
-joypad-driver
-inputplumber-optional
-inputplumber-default
-kernel-patch-prune-2
-deep-suspend
-dmc-as-module
-dmc-external-module
-bootfat-remount
-nextui-fork
-nextui-fetch
-nextui-profile
-product-polish
-release-image
-```
+Audit upstream PortMaster requirements, what this CFW reports, architecture tags, kernel features, graphics, input, runtimes, storage, display limits, and the Phase 13 logs of ports that failed. Write the exact support and the missing pieces. Do not advertise a capability the image does not have.
 
-Names are illustrative; the important part is one reason per checkpoint.
+Status: Planned.
 
-The Phase-2 research checkpoint should not contain kernel implementation changes. The Phase 8 research checkpoint should not contain the NextUI fork.
+### 14B. ARMHF userspace
+
+Find what AArch64 plus 32-bit ARM actually requires: the kernel compat config, the EABI and hard-float ABI, the dynamic linker, glibc, a multilib toolchain or a separate root, packaging, licenses, size, and PortMaster's runtimes.
+
+Do not set `DEVICE_HAS_ARMHF=Y` until those 32-bit binaries run.
+
+Status: Planned.
+
+### 14C. Box86 and Box64
+
+Keep the Box64 path that exists. Compare native Box86 with the ARMHF userspace and with the runtimes PortMaster expects. Do not duplicate the Wine integration or break current Box64 users.
+
+Status: Planned.
+
+### 14D. GL4ES and graphics
+
+Evaluate OpenGL ES, GL4ES, SDL 1.2, SDL 2, SDL 3, KMS/DRM, WestonPack, Xwayland, the libmali and Panfrost choice, and the Vulkan limits. Keep graphics application-scoped. Do not add a permanent compositor.
+
+Status: Planned.
+
+### 14E. GPTK and input
+
+Audit gptokeyb, gptokeyb2, `.gptk` files, PortMaster `control.txt`, the InputPlumber `xb360` map, gamepad enumeration, keyboard and mouse emulation, and EXIT hotkeys. Shards of God is one regression case.
+
+Status: Planned.
+
+### 14F. Shared runtimes
+
+Audit runtime download and install, squashfs mount and teardown, AArch64 and ARMHF discovery, SDL, OpenAL, PulseAudio where a port requires it, Mono, `taskset`, and `/usr/lib/compat`. Do not preinstall a large runtime without a demonstrated need.
+
+Status: Planned.
+
+### 14G. Named ports
+
+Use the maintainer's logs. The cases are Shards of God, LISA The Painful, Rakuen, Steel Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers, and Mina the Hollower. Separate an OS bug, a missing dependency, a port packaging problem, missing commercial data, and a real GPU or hardware limit.
+
+`systemctl` was reported missing.
+
+REJECTED — a fake `systemctl`, until the commands those ports actually run are known.
+
+Status: Planned.
+
+### 14H. Acceptance
+
+Build a small matrix of CPU and ABI, graphics, and input categories. Say what the hardware cannot do. Do not claim every PortMaster game works. Do not ship a third-party runtime until its license and provenance are checked.
+
+Status: Planned.

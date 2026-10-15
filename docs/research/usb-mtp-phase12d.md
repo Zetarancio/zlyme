@@ -2,6 +2,8 @@
 
 This is the investigation record for the lower-port MTP session. It is not a driver patch, and it does not say that a proposed change is correct. Shipped behavior is in `docs/ARCHITECTURE.md`. Phase 12 development closed on 2026-10-14. Section 41 is that reading. Earlier sections keep the wording from the day they were written. Sequencing is `docs/ROADMAP.md`.
 
+2026-10-15: the active roadmap no longer has an "After Phase 12" wiki task. The hardware wiki was already updated for the development Linux 7.2.10 boot and the lower-port session. The 2026-10-14 logbook note is that update. It does not call the device tree proven. A comparison that would establish the minimum USB device tree against upstream Linux and the stock evidence has not been done. That comparison stays here. It is not an open roadmap item.
+
 The raw directories `/tmp/zlyme-usb-testa-47oCJM`, `/tmp/zlyme-usb-testb-xZXaSr`, and `/tmp/zlyme-usb-stage0-20261012T145707Z` were not on the development machine on 2026-10-13. The hardware rows below are the maintainer-supervised session reports from 2026-10-12. They are not a fresh reading of those files.
 
 IDs below are assigned once. Later notes add entries. They do not renumber these.

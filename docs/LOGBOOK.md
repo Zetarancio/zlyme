@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Roadmap shortened
+
+The active roadmap as it stood at `b926b9976c12ccdb3de20b629f8a550e574f8e51` moved unchanged to `docs/archive/roadmap-2026-10-15.md`. Conclusions in that file were not rewritten. The active roadmap keeps the closed-phase summaries and the open Phase 13E and Phase 14 plans. Phase 13 is scoped. Earlier entries that say Phase 13 is not scoped are the record from before this note. The hardware wiki update is not an open roadmap task. It does not call the device tree proven.
+
 ## 2026-10-14 — Roadmap index, Phase 3C log moved
 
 The active roadmap gained a phase index and the still-open Phase 12 limits. The Phase 3C integration log moved unchanged to `docs/archive/roadmap-phase-3c.md`. Conclusions were not rewritten. The hardware wiki received a short lower-port note for the development Linux 7.2.10 boot. That note does not call the device tree proven. Phase 13 is not scoped.

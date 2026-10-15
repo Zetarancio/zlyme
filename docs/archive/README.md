@@ -15,3 +15,5 @@ They are never normative. They may still say, in the present tense, things that 
 `TODO.md` stays gitignored under `NOTES/`.
 
 `roadmap-phase-3c.md` is the Phase 3C integration log, moved unchanged from `docs/ROADMAP.md` on 2026-10-14. The roadmap keeps the acceptance note.
+
+`roadmap-2026-10-15.md` is the active roadmap as it stood at `b926b9976c12ccdb3de20b629f8a550e574f8e51`, moved on 2026-10-15. The body was not rewritten.
