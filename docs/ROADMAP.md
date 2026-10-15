@@ -26,7 +26,7 @@ Phases 0–12 are closed. Phase 13A is host-tested. The rest of Phase 13 is plan
 | 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
 | 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
 | 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | 13A and 13B1 host-tested on 2026-10-15. B6 blocked. B2, B5, B7 and 13C–13E planned. | [Phase 13](#phase-13) |
+| 13 | 13A, 13B1, B2, B5, and B7 host-tested on 2026-10-15. B6 blocked. 13C–13E planned. | [Phase 13](#phase-13) |
 
 Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
 
@@ -1321,7 +1321,7 @@ Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase
 
 The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
 
-Phase 13B1 (B1, B3, B4, and B8) is host-tested in source and is not on that image. B6 is blocked on the pinned RGUI font. B2, B5, and B7 stay planned. Phase 13B is not complete.
+Phase 13B1 (B1, B3, B4, and B8) is host-tested in source and is not on that image. B2, B5, and B7 are host-tested in source and are not on that image. B6 is blocked on the pinned RGUI font. Phase 13B is not complete.
 
 #### Phase 13A — Build reliability and small corrections
 
@@ -1425,7 +1425,33 @@ Dependencies: existing save paths and config precedence. The pak hotkey in `zlym
 
 Acceptance criteria: the settings are in the shipped config, a normal menu exit can flush state, and the document names the MENU+START limit and every standalone that has no automatic save. Manual saves stay. Unsupported savestate support is not invented.
 
-Status: Planned.
+Status: Host-tested.
+
+`ra-run` writes `savestate_auto_save = "true"` and `savestate_auto_load = "true"` into the user cfg when those keys are absent. RetroArch 1.22.2 defaults both to false in `config.def.h`. The keys are not in `/etc/retroarch.cfg` or `ra-perf.cfg`, so a saved `false` stays. Save RAM (`savefile_directory`) and savestates (`savestate_directory`) both follow `SAVES_PATH` and the system tag, so the same ROM basename on two cards keeps two directories.
+
+`retroarch_main_quit` and core unload both call `command_event_save_auto_state` when automatic save is on. `runloop.c` skips automatic load, and the entry-state load, when `cheevos_enable` and `cheevos_hardcore_mode_enable` are both true. `ra-run` still appends hardcore from `minuisettings.txt` on that launch. Host checks cover the cfg keys and that append. They do not show a Flip writing a savestate.
+
+`frontend/drivers/platform_unix.c` installs one handler for SIGINT and SIGTERM. The first signal only increments a counter, except on the Dingux build this image does not use. `RUNLOOP_TIME_TO_EXIT` does not read that counter. A second signal calls `exit(1)`. `zlyme-pak-hotkey` sends one SIGTERM to the pak process group and SIGKILL 1.5 seconds later. That path does not call `retroarch_main_quit`. Quit and Close Content from the RetroArch menu do.
+
+Flycast `5aa091f` (v2.7) has `Dreamcast.AutoSaveState` and `Dreamcast.AutoLoadState` in the `config` section, default false. `unloadGame` writes the state. `dc_loadstate` returns immediately when achievements hardcore is on. The first-run seed sets both to yes. A cfg that already has a value keeps it. A missing key is added beside the cfg, then renamed into place.
+
+`DC.pak` bind-mounts the card save directory for the life of Flycast and then execs it, so Flycast can finish that autosave before it exits. The exec replaces the launcher shell, so an EXIT trap does not unmount. The launcher writes the mount path to `/tmp/zlyme-flycast-bind`. `pak-launch` is outside the process group and unmounts that path after `wait` returns. MENU+START kills the group before `unloadGame`, so that stop does not write the automatic state. The mount is released after the group is gone. The recorded path has to be a mount ending in `/flycast`. A path with `..`, a path that is not a mount, and a busy mount are left alone. A busy mount keeps the record so a later session can retry.
+
+Other standalone programs, from their shipped launchers and the pinned source where it was read:
+
+- PPSSPP 1.19.3 has `AutoLoadSaveState` and skips that load in hardcore. It has no save-on-exit setting. Needs separate integration. Turning on the load alone would resume a manual state.
+- DraStic's shipped cfg has savestate slots and a backup directory. It has no automatic save-on-exit key, and the binary is closed. Needs separate integration.
+- AetherSX2's first-run ini sets savestate and memory-card folders. No automatic save or load key was verified for that prebuilt binary. Needs separate integration.
+- Dolphin's memory-card and Wii NAND directories are already bind-mounted onto the card's Saves tree. The shipped ini has no savestate-on-exit setting, and nogui does not load a state at launch. Memory cards are already handled. Automatic savestate resume is unsupported.
+- ScummVM is already handled: `--savepath` is the card's `Saves/SCUMMVM`. There is no global savestate on exit.
+- GZDoom g4.14.2 is launched with `-savedir`. Its own autosave during play is left as the engine ships it. Loading the newest save at startup is not wired, because one save directory is shared across WADs. Needs separate integration.
+- OpenBOR is already handled: `OPENBOR_SAVES_DIR` is the card's save directory. Saves stay per game script.
+- Amiberry 7.1.0 is started with the ROM and no state-file setting. Needs separate integration.
+- Hypseus has no savestate path in its launcher. Unsupported.
+- Native PICO-8 is the user's own binary. fake-08 goes through RetroArch, so B2 covers that core. The native binary needs separate integration.
+- Wine and Ports are not emulator savestate sessions.
+
+MENU+START remains the emergency stop for every one of these. None of them gained a kill-time savestate.
 
 ##### B3. Remove the broken custom Zlyme RGUI theme
 
@@ -1439,7 +1465,7 @@ Acceptance criteria: no Zlyme theme is installed or forced, Classic Orange is th
 
 Status: Host-tested.
 
-`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The config value is `"2"`. Upstream's default is Classic Green, so the new user cfg sets 2 itself. `/etc/retroarch.cfg`, `ra-perf.cfg`, and `ra-run` no longer append a theme. A saved theme stays. A user cfg that still has the original Zlyme preset path and the original six colors, with the theme still `custom` or `0`, is rewritten to 2 once. A changed color is left alone.
+`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The config value is `"2"`. Upstream's default is Classic Green, so the new user cfg sets 2 itself. `/etc/retroarch.cfg`, `ra-perf.cfg`, and `ra-run` no longer append a theme. A saved theme stays. A user cfg that still has the original Zlyme preset path and the original six colors, with the theme still `custom` or `0`, is rewritten to 2 once. The replacement is written in the cfg's directory and renamed over the original after the new file checks out. A failed write or rename leaves the original. A changed color is left alone. `board/my355/post-build.sh` removes `/usr/share/retroarch/rgui-theme.cfg`, `/usr/share/retroarch/assets/rgui/zlyme.cfg`, and `/usr/share/zlyme/retroarch/rgui-theme.cfg` from the target so an incremental output tree cannot pack them. Other RetroArch assets stay.
 
 ##### B4. Standalone RetroArch tool
 
@@ -1465,7 +1491,15 @@ Dependencies: the exFAT config tree. Online core download stays off.
 
 Acceptance criteria: the documented precedence is deterministic, a present user core loads, a missing user core does not replace a working system core, and no launcher points every system at an absent file.
 
-Status: Planned.
+Status: Host-tested.
+
+`ra-run` keeps `/usr/lib/libretro` immutable. A user file belongs in `/storage/.config/retroarch/cores/`. Neither directory is copied. Cards mount `rw,noatime` from `zlyme-storage`, without `noexec`, so the kernel allows executing a file there. exFAT does not store symlinks. RetroArch 1.22.2 scans one `libretro_directory` and lists a non-directory whose name ends in `.so`. A symlink is not treated as a directory: `DT_LNK` is followed with `stat`, and a link to a regular file is kept under the link's own name.
+
+Each RetroArch launch rebuilds `/tmp/zlyme-ra-cores` on tmpfs. The directory holds symbolic links, packaged `*_libretro.so` names first, then user files of that same pattern. A user file with the same name replaces that link. A user-only name is added. Removing the user file restores the packaged link on the next launch. A running RetroArch is not refreshed. The directory is appended last. `config_save_on_exit` can copy the temporary path into the user cfg. The next `ra-run` creates the directory again before RetroArch starts. The link lives on tmpfs. Its target can be a regular file on exFAT. No symlink is written to the card.
+
+A launcher `-L` uses that same directory. `ZLYME_EMU_CORE` selects that core's name in the view. The mupen64plus dash and underscore names still resolve to whichever spelling is present. The filename check only rejects a name that is not a single `*_libretro.so` component, so a path cannot be selected by accident. Zlyme does not read the ELF header. An incompatible user file fails when RetroArch loads it. The file is a native library and runs with the frontend's access to the card. It has to come from a source the user trusts. The online updater stays off (`--disable-update_cores`, `menu_show_core_updater = "false"`). User cores are not copied into `/usr`. Reset RetroArch core options deletes `retroarch/config`, not `retroarch/cores`.
+
+The view path is fixed. It is refused when it is a symlink, is not a directory, is not on tmpfs, or is owned by another user. Nothing in that directory is deleted in those cases. When the directory is accepted, cleanup unlinks only the `*_libretro.so` symlinks directly inside it. A regular file and a subdirectory stay. An earlier draft of this item checked the ELF header and could recursively delete an environment-selected directory. That check is not in this implementation.
 
 ##### B6. Readable RetroArch menu
 
@@ -1491,7 +1525,11 @@ Dependencies: B2's save-on-exit and B4's no-ROM session. A source patch is used 
 
 Acceptance criteria: closing content from a NextUI launch returns to NextUI and can write the automatic state. Closing content in the standalone tool leaves RetroArch running when that is the native meaning. The README does not carry the credit.
 
-Status: Planned.
+Status: Host-tested.
+
+`quit_on_close_content` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`: 0 disabled, 1 enabled, 2 CLI. `ra-run` writes `"2"` when the user cfg has no `quit_on_close_content` line. It does not append the key. `should_quit_on_close` quits when the value is CLI and the process was started with a core or content argument. A game pak runs `ra-run -L <core> <rom>`, so Close Content quits. That quit calls `retroarch_main_quit`, which writes the automatic savestate when B2's key is true. Tools → RetroArch runs `ra-run` with no arguments, so Close Content unloads the core and stays in the menu. Unload also writes the automatic savestate. Quit RetroArch from that menu returns to NextUI through the same quit path.
+
+MENU+START is unchanged in `zlyme-pak-hotkey.c`. One SIGTERM does not enter that quit path on this pin, and SIGKILL follows 1.5 seconds later. The credit for this quit behavior is in the implementation commit. The README and changelog do not carry it.
 
 ##### B8. FBNeo BIOS precedence
 

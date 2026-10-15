@@ -14,6 +14,9 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
+- RetroArch writes a savestate when you quit from its menu and loads it the next time that game starts. A choice you already saved stays. Hardcore RetroAchievements leaves that state unloaded. MENU+START still leaves immediately. Closing a game from the quick menu returns to the list. In Tools → RetroArch, closing the game stays in RetroArch until you quit.
+- A libretro core in `/storage/.config/retroarch/cores/` replaces an included core with the same filename, and a new filename is listed with the included cores. Removing that file brings the included core back the next time RetroArch starts. The file is a native program and has to come from a source you trust. An incompatible file fails when RetroArch loads it. The online core installer stays off.
+- Dreamcast writes a savestate when you quit Flycast and loads it the next time. A Flycast setting you already chose stays. MENU+START does not write that savestate.
 - RetroArch's menu uses Classic Orange on a new setup. A theme you already saved stays. Zlyme's old menu colors are replaced when they are still the original set.
 - FinalBurn Neo looks for a BIOS archive in `Bios/fbneo/`, then `Bios/FBNEO/`, then `Bios/`. A game archive with the same filename is the one that runs. MAME's BIOS folders stay in their existing order.
 - The boot splash and README lockup use the new circle-above-word mark (slime loop). Update and resize progress use the stars loop instead of the galaxy clip.

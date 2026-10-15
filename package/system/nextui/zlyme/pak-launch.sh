@@ -275,6 +275,51 @@ wine_prefix_cleanup() {
 	"$_bin" cleanup || true
 }
 
+# DC.pak execs flycast, so that shell cannot unmount its save bind.
+# The record is one path on tmpfs. This session is outside the pak
+# group, so it still runs after a normal exit and after MENU+START.
+flycast_bind_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+		return $?
+	fi
+	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts
+}
+
+flycast_bind_release() {
+	_fb_rec=/tmp/zlyme-flycast-bind
+	if [ ! -e "$_fb_rec" ] && [ ! -L "$_fb_rec" ]; then
+		return 0
+	fi
+	if [ -L "$_fb_rec" ] || [ ! -f "$_fb_rec" ]; then
+		rm -f "$_fb_rec"
+		return 0
+	fi
+	_fb_mp=
+	IFS= read -r _fb_mp < "$_fb_rec" || true
+	case "$_fb_mp" in
+		/*/flycast) ;;
+		*)
+			rm -f "$_fb_rec"
+			return 0
+			;;
+	esac
+	case "$_fb_mp" in
+		*..*|*//*|*\ *)
+			rm -f "$_fb_rec"
+			return 0
+			;;
+	esac
+	if ! flycast_bind_mounted "$_fb_mp"; then
+		rm -f "$_fb_rec"
+		return 0
+	fi
+	# A busy mount stays, and the record stays, so a later session can retry.
+	if umount "$_fb_mp" 2>/dev/null; then
+		rm -f "$_fb_rec"
+	fi
+}
+
 # setsid so MENU+START can SIGTERM the pak group. BlueZ work stays in
 # this shell so a hung bluetoothctl cannot become the session leader.
 # ZLYME_PAK_BT=0 is a host-test seam. nextui-session unsets it.
@@ -289,6 +334,7 @@ run_pak_cmd() {
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup
 	fi
+	flycast_bind_release
 	spawn_pak "$_exe" "$_rom"
 	_hk=
 	_hotkey=${ZLYME_PAK_HOTKEY:-/usr/sbin/zlyme-pak-hotkey}
@@ -329,6 +375,7 @@ run_pak_cmd() {
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup
 	fi
+	flycast_bind_release
 }
 
 # zlyme-audio export prints one whitelisted sink id.

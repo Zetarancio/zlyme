@@ -94,6 +94,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 
 - **PSP:** PPSSPP renders with OpenGL. Vulkan is available when the Mali driver is active and you pick it in PPSSPP. Panfrost turns on Mesa's experimental Vulkan driver. PPSSPP on that driver does not attach the display, so a PSP game was not shown that way.
+- **Dreamcast:** Flycast writes a savestate when you quit and loads it the next time that game starts. A savestate setting you already chose in Flycast stays. Hardcore achievements, when that mode is on, leave the savestate unloaded. MENU+START does not write that savestate.
 
 
 
@@ -208,11 +209,17 @@ Printed A and B are fixed: A is the east button and B is the south button. Setti
 
 ## RetroArch
 
-Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu returns to the list.
+Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu returns to the list. Closing a game from inside that menu stays in RetroArch.
 
-A confirms and B goes back in the RetroArch menu, including the menu opened from a game. The buttons a game uses, and a controller remap you saved, stay as they are.
+A game opened from the list uses the same menu. A confirms and B goes back. The buttons a game uses, and a controller remap you saved, stay as they are. Closing the game from the Quick Menu returns to the list.
+
+A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Turning automatic save or automatic load off in RetroArch keeps that choice. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
+
+MENU+START stops the session immediately. Leave from the RetroArch menu when you want the automatic savestate written.
 
 A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. The previous Zlyme colors are replaced when every one of them is still the original color.
+
+A core you put in `/storage/.config/retroarch/cores/` replaces an included core with the same filename. A new filename is listed with the included cores. Removing the file brings the included core back the next time RetroArch starts. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
 
 ## Settings
 

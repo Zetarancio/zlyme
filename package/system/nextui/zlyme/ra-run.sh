@@ -16,7 +16,7 @@ ETC=${ZLYME_RA_ETC:-/etc/retroarch.cfg}
 ZLYME_RGUI_CLASSIC_ORANGE='rgui_menu_color_theme = "2"'
 SEED_OPTS=/usr/share/zlyme/retroarch/config
 CARD_OPTS=/storage/.config/zlyme/retroarch/config
-MINUI_RA=/tmp/zlyme-minui-ra.cfg
+MINUI_RA=${ZLYME_RA_MINUI:-/tmp/zlyme-minui-ra.cfg}
 MINUI_SETTINGS="${SHARED_USERDATA_PATH:-/storage/.config/nextui/shared}/minuisettings.txt"
 
 [ -r /etc/zlyme-gpu-env.sh ] && . /etc/zlyme-gpu-env.sh
@@ -40,6 +40,18 @@ cfg_has_exact() {
 	return 1
 }
 
+cfg_has_key() {
+	_file=$1
+	_key=$2
+	[ -f "$_file" ] || return 1
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		case "$_line" in
+			"$_key ="*) return 0 ;;
+		esac
+	done < "$_file"
+	return 1
+}
+
 cfg_theme_count() {
 	_file=$1
 	_n=0
@@ -53,10 +65,27 @@ cfg_theme_count() {
 
 # The old seed wrote theme "custom" plus this preset and these colors.
 # "0" is the same enum if RetroArch rewrote the word. Anything else stays.
-migrate_zlyme_rgui_theme() {
+cfg_line_is_zlyme_theme() {
+	case "$1" in
+		'rgui_menu_color_theme = "custom"'|'rgui_menu_color_theme = "0"'|\
+		'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"'|\
+		'rgui_entry_normal_color = "0xFFF2F3F5"'|\
+		'rgui_entry_hover_color = "0xFFFA7C08"'|\
+		'rgui_title_color = "0xFFFA7C08"'|\
+		'rgui_bg_dark_color = "0xFF050608"'|\
+		'rgui_bg_light_color = "0xFF050608"'|\
+		'rgui_border_dark_color = "0xFFEC2A01"'|\
+		'rgui_border_light_color = "0xFFFA7C08"')
+			return 0
+			;;
+	esac
+	return 1
+}
+
+zlyme_theme_needs_migration() {
 	_cfg=$1
-	[ -f "$_cfg" ] || return 0
-	cfg_has_exact "$_cfg" 'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"' || return 0
+	[ -f "$_cfg" ] || return 1
+	cfg_has_exact "$_cfg" 'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"' || return 1
 	for _need in \
 		'rgui_entry_normal_color = "0xFFF2F3F5"' \
 		'rgui_entry_hover_color = "0xFFFA7C08"' \
@@ -66,53 +95,190 @@ migrate_zlyme_rgui_theme() {
 		'rgui_border_dark_color = "0xFFEC2A01"' \
 		'rgui_border_light_color = "0xFFFA7C08"'
 	do
-		cfg_has_exact "$_cfg" "$_need" || return 0
+		cfg_has_exact "$_cfg" "$_need" || return 1
 	done
-	[ "$(cfg_theme_count "$_cfg")" = 1 ] || return 0
+	[ "$(cfg_theme_count "$_cfg")" = 1 ] || return 1
 	if ! cfg_has_exact "$_cfg" 'rgui_menu_color_theme = "custom"' \
 		&& ! cfg_has_exact "$_cfg" 'rgui_menu_color_theme = "0"'; then
+		return 1
+	fi
+	return 0
+}
+
+# The user cfg lives on exFAT. A temp on /tmp and mv across that
+# boundary copies and can drop the original if the copy fails.
+# Write the replacement beside the cfg, check it, then rename.
+cfg_sync_file() {
+	if sync -f "$1" 2>/dev/null; then
 		return 0
 	fi
-	_tmp=$(mktemp)
-	_placed=0
+	sync 2>/dev/null || true
+}
+
+cfg_verify_rewrite() {
+	_orig=$1
+	_tmp=$2
+	_migrate=$3
+	_add_theme=$4
+	_add_save=$5
+	_add_load=$6
+	_add_quit=$7
+	[ -s "$_tmp" ] || return 1
+	if [ "$_migrate" = 1 ]; then
+		if grep -qxF 'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"' "$_tmp"; then
+			return 1
+		fi
+		grep -qxF "$ZLYME_RGUI_CLASSIC_ORANGE" "$_tmp" || return 1
+	fi
+	if [ "$_add_theme" = 1 ]; then
+		grep -qxF "$ZLYME_RGUI_CLASSIC_ORANGE" "$_tmp" || return 1
+	fi
+	if [ "$_add_save" = 1 ]; then
+		grep -qxF 'savestate_auto_save = "true"' "$_tmp" || return 1
+	fi
+	if [ "$_add_load" = 1 ]; then
+		grep -qxF 'savestate_auto_load = "true"' "$_tmp" || return 1
+	fi
+	if [ "$_add_quit" = 1 ]; then
+		grep -qxF 'quit_on_close_content = "2"' "$_tmp" || return 1
+	fi
 	while IFS= read -r _line || [ -n "$_line" ]; do
-		case "$_line" in
-			'rgui_menu_color_theme = "custom"'|'rgui_menu_color_theme = "0"')
-				if [ "$_placed" -eq 0 ]; then
-					printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE"
-					_placed=1
-				fi
-				;;
-			'rgui_theme_preset = "/usr/share/retroarch/assets/rgui/zlyme.cfg"'|\
-			'rgui_entry_normal_color = "0xFFF2F3F5"'|\
-			'rgui_entry_hover_color = "0xFFFA7C08"'|\
-			'rgui_title_color = "0xFFFA7C08"'|\
-			'rgui_bg_dark_color = "0xFF050608"'|\
-			'rgui_bg_light_color = "0xFF050608"'|\
-			'rgui_border_dark_color = "0xFFEC2A01"'|\
-			'rgui_border_light_color = "0xFFFA7C08"')
-				;;
-			*)
-				printf '%s\n' "$_line"
-				;;
+		[ -n "$_line" ] || continue
+		if [ "$_migrate" = 1 ] && cfg_line_is_zlyme_theme "$_line"; then
+			continue
+		fi
+		grep -qxF "$_line" "$_tmp" || return 1
+	done < "$_orig"
+	return 0
+}
+
+# ZLYME_RA_MIGRATE_FAULT is a host-test seam. It is ignored unless
+# ZLYME_RA_DRY_RUN is set, so a stray variable cannot skip a real write.
+cfg_migrate_fault() {
+	_fault=
+	if [ -n "${ZLYME_RA_DRY_RUN:-}" ]; then
+		case "${ZLYME_RA_MIGRATE_FAULT:-}" in
+			write|rename) _fault=$ZLYME_RA_MIGRATE_FAULT ;;
 		esac
-	done < "$_cfg" > "$_tmp"
-	mv "$_tmp" "$_cfg"
+	fi
+	printf '%s\n' "$_fault"
+}
+
+cfg_replace() {
+	_cfg=$1
+	_migrate=$2
+	_add_theme=$3
+	_add_save=$4
+	_add_load=$5
+	_add_quit=$6
+	_dir=$(dirname "$_cfg")
+	_tmp=$(mktemp "$_dir/retroarch.cfg.XXXXXX") || return 0
+	_fault=$(cfg_migrate_fault)
+	if [ "$_fault" = write ]; then
+		printf '%s\n' partial > "$_tmp"
+	else
+		_placed=0
+		while IFS= read -r _line || [ -n "$_line" ]; do
+			if [ "$_migrate" = 1 ] && cfg_line_is_zlyme_theme "$_line"; then
+				case "$_line" in
+					'rgui_menu_color_theme = "custom"'|'rgui_menu_color_theme = "0"')
+						if [ "$_placed" -eq 0 ]; then
+							printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE"
+							_placed=1
+						fi
+						;;
+				esac
+				continue
+			fi
+			printf '%s\n' "$_line"
+		done < "$_cfg" > "$_tmp"
+		if [ "$_add_theme" = 1 ]; then
+			printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE" >> "$_tmp"
+		fi
+		if [ "$_add_save" = 1 ]; then
+			printf '%s\n' 'savestate_auto_save = "true"' >> "$_tmp"
+		fi
+		if [ "$_add_load" = 1 ]; then
+			printf '%s\n' 'savestate_auto_load = "true"' >> "$_tmp"
+		fi
+		if [ "$_add_quit" = 1 ]; then
+			printf '%s\n' 'quit_on_close_content = "2"' >> "$_tmp"
+		fi
+	fi
+	if ! cfg_verify_rewrite "$_cfg" "$_tmp" "$_migrate" "$_add_theme" \
+		"$_add_save" "$_add_load" "$_add_quit"; then
+		rm -f "$_tmp"
+		return 0
+	fi
+	cfg_sync_file "$_tmp"
+	if [ "$_fault" = rename ]; then
+		rm -f "$_tmp"
+		return 0
+	fi
+	if ! mv -f "$_tmp" "$_cfg"; then
+		rm -f "$_tmp"
+	fi
+}
+
+# Theme, automatic savestates, and quit-on-close are user-cfg keys.
+# --appendconfig would override an explicit false on every launch.
+# RetroArch 1.22.2 defaults both savestate bools to false
+# (config.def.h). quit_on_close_content 2 is QUIT_ON_CLOSE_CONTENT_CLI
+# (menu/menu_defines.h): Close Content quits only when this process was
+# started with a core or content argument. Tools → RetroArch starts
+# with neither, so Close Content returns to the menu.
+# A cfg that already has each key, and lacks the old theme signature,
+# is left byte-for-byte.
+settle_user_cfg() {
+	_cfg=$1
+	_fresh=$2
+	[ -f "$_cfg" ] || return 0
+	_migrate=0
+	if zlyme_theme_needs_migration "$_cfg"; then
+		_migrate=1
+	fi
+	_add_theme=0
+	if [ "$_fresh" = 1 ] && [ "$(cfg_theme_count "$_cfg")" = 0 ]; then
+		_add_theme=1
+	fi
+	if [ "$_migrate" = 1 ]; then
+		_add_theme=0
+	fi
+	_add_save=0
+	_add_load=0
+	_add_quit=0
+	cfg_has_key "$_cfg" savestate_auto_save || _add_save=1
+	cfg_has_key "$_cfg" savestate_auto_load || _add_load=1
+	cfg_has_key "$_cfg" quit_on_close_content || _add_quit=1
+	if [ "$_migrate" = 0 ] && [ "$_add_theme" = 0 ] \
+		&& [ "$_add_save" = 0 ] && [ "$_add_load" = 0 ] \
+		&& [ "$_add_quit" = 0 ]; then
+		return 0
+	fi
+	cfg_replace "$_cfg" "$_migrate" "$_add_theme" \
+		"$_add_save" "$_add_load" "$_add_quit"
 }
 
 mkdir -p "$CFGDIR" "$CFGDIR/assets"
 _ra_fresh=0
 if [ ! -s "$CFG" ]; then
 	rm -f "$CFG"
-	[ -f "$ETC" ] && cp "$ETC" "$CFG"
-	_ra_fresh=1
+	_new=$(mktemp "$CFGDIR/retroarch.cfg.XXXXXX") || _new=
+	if [ -n "$_new" ]; then
+		if [ -f "$ETC" ]; then
+			cat "$ETC" > "$_new"
+		else
+			: > "$_new"
+		fi
+		cfg_sync_file "$_new"
+		if mv -f "$_new" "$CFG"; then
+			_ra_fresh=1
+		else
+			rm -f "$_new"
+		fi
+	fi
 fi
-# Theme is not part of --appendconfig. Those files used to force the
-# Zlyme preset on every launch, which hid a theme saved in this cfg.
-migrate_zlyme_rgui_theme "$CFG"
-if [ "$_ra_fresh" = 1 ] && [ -f "$CFG" ] && [ "$(cfg_theme_count "$CFG")" = 0 ]; then
-	printf '%s\n' "$ZLYME_RGUI_CLASSIC_ORANGE" >> "$CFG"
-fi
+settle_user_cfg "$CFG" "$_ra_fresh"
 unset _ra_fresh
 
 # Cores read system_directory (/storage/Bios). MinUI launchers also
@@ -291,21 +457,147 @@ if [ -z "$_ra_tag" ] && [ -n "$_ra_rom" ]; then
 fi
 if [ -n "$_ra_tag" ]; then
 	mkdir -p "${SAVES_PATH:-/storage/Saves}/$_ra_tag"
-	RA_SAVES=/tmp/zlyme-ra-saves.cfg
+	RA_SAVES=${ZLYME_RA_SAVES:-/tmp/zlyme-ra-saves.cfg}
 	{
 		printf 'savefile_directory = "%s/%s"\n' "${SAVES_PATH:-/storage/Saves}" "$_ra_tag"
 		printf 'savestate_directory = "%s/%s"\n' "${SAVES_PATH:-/storage/Saves}" "$_ra_tag"
 		printf 'system_directory = "%s"\n' "${BIOS_PATH:-/storage/Bios}"
 	} > "$RA_SAVES"
 fi
-if [ -n "${ZLYME_EMU_CORE:-}" ] && [ "$1" = "-L" ] && [ -n "$2" ]; then
-	_core_dir=$(dirname "$2")
-	_core_hit=$_core_dir/${ZLYME_EMU_CORE}_libretro.so
-	if [ -f "$_core_hit" ]; then
-		shift 2
-		set -- -L "$_core_hit" "$@"
+
+# Packaged cores stay in /usr/lib/libretro. User cores stay in
+# $CFGDIR/cores. RetroArch 1.22.2 scans one libretro_directory and
+# lists a non-directory whose name ends in .so. A symlink is stat'd
+# (DT_LNK), so a link to a regular file is listed under the link's
+# own name. The links live on tmpfs. The .so files are not copied,
+# and no symlink is written to exFAT. Each ra-run rebuilds the view.
+# A running RetroArch is not refreshed.
+RA_USER_CORES=${ZLYME_RA_USER_CORES:-$CFGDIR/cores}
+RA_SYS_CORES=${ZLYME_RA_SYSTEM_CORES:-/usr/lib/libretro}
+RA_VIEW=/tmp/zlyme-ra-cores
+RA_CORES_CFG=${ZLYME_RA_CORES_CFG:-/tmp/zlyme-ra-cores.cfg}
+RA_VIEW_OK=0
+
+# A single *_libretro.so component. This only stops a name that would
+# select a different path. It does not decide whether the file can load.
+core_name_ok() {
+	case "$1" in
+		''|.*|*/*|*'..'*) return 1 ;;
+	esac
+	case "$1" in
+		*_libretro.so) return 0 ;;
+	esac
+	return 1
+}
+
+# Longest mount covering $1. Refuse anything that is not tmpfs.
+ra_path_tmpfs() {
+	awk -v p="$1" '
+		BEGIN { best = 0; type = "" }
+		{
+			n = length($2)
+			if (index(p, $2) != 1) next
+			if (n != length(p) && substr(p, n + 1, 1) != "/") next
+			if (n > best) { best = n; type = $3 }
+		}
+		END { exit (type == "tmpfs") ? 0 : 1 }
+	' /proc/mounts
+}
+
+# Fixed path. A symlink or another owner's directory is left untouched.
+# Cleanup unlinks only *_libretro.so symlinks in this directory.
+ra_view_prepare() {
+	if [ -L "$RA_VIEW" ]; then
+		return 1
 	fi
-	unset _core_dir _core_hit
+	if [ -e "$RA_VIEW" ]; then
+		[ -d "$RA_VIEW" ] || return 1
+		_own=$(stat -c %u "$RA_VIEW" 2>/dev/null) || return 1
+		[ "$_own" = "$(id -u)" ] || return 1
+		ra_path_tmpfs "$RA_VIEW" || return 1
+		for _ent in "$RA_VIEW"/*; do
+			[ -L "$_ent" ] || continue
+			core_name_ok "$(basename "$_ent")" || continue
+			rm -f "$_ent"
+		done
+		return 0
+	fi
+	ra_path_tmpfs /tmp || return 1
+	mkdir -p "$RA_VIEW" || return 1
+	if [ -L "$RA_VIEW" ] || [ ! -d "$RA_VIEW" ]; then
+		return 1
+	fi
+	_own=$(stat -c %u "$RA_VIEW" 2>/dev/null) || return 1
+	[ "$_own" = "$(id -u)" ] || return 1
+	ra_path_tmpfs "$RA_VIEW" || return 1
+	return 0
+}
+
+ra_view_add() {
+	_src=$1
+	[ -f "$_src" ] || return 0
+	_bn=$(basename "$_src")
+	core_name_ok "$_bn" || return 0
+	_dest=$RA_VIEW/$_bn
+	if [ -L "$_dest" ]; then
+		rm -f "$_dest"
+	elif [ -e "$_dest" ]; then
+		return 0
+	fi
+	ln -s "$_src" "$_dest"
+}
+
+if ra_view_prepare; then
+	if [ -d "$RA_SYS_CORES" ] && [ ! -L "$RA_SYS_CORES" ]; then
+		for _so in "$RA_SYS_CORES"/*_libretro.so; do
+			ra_view_add "$_so"
+		done
+	fi
+	if [ -d "$RA_USER_CORES" ] && [ ! -L "$RA_USER_CORES" ]; then
+		for _so in "$RA_USER_CORES"/*_libretro.so; do
+			ra_view_add "$_so"
+		done
+	fi
+	if [ -d "$RA_SYS_CORES" ] || [ -d "$RA_USER_CORES" ]; then
+		printf 'libretro_directory = "%s"\n' "$RA_VIEW" > "$RA_CORES_CFG"
+		RA_VIEW_OK=1
+	fi
+fi
+unset _so _bn _src _dest _own _ent
+
+if [ "${1:-}" = "-L" ] && [ -n "${2:-}" ]; then
+	_req=$2
+	_dir=$(dirname "$_req")
+	_base=$(basename "$_req")
+	if [ -n "${ZLYME_EMU_CORE:-}" ]; then
+		_alt=${ZLYME_EMU_CORE}_libretro.so
+		if core_name_ok "$_alt"; then
+			_base=$_alt
+		fi
+	fi
+	# Knulli installs mupen64plus-next; NextUI asked for the underscore name.
+	_alias=
+	case "$_base" in
+		mupen64plus_next_libretro.so) _alias=mupen64plus-next_libretro.so ;;
+		mupen64plus-next_libretro.so) _alias=mupen64plus_next_libretro.so ;;
+	esac
+	_pick=
+	if [ "$RA_VIEW_OK" = 1 ] && [ -L "$RA_VIEW/$_base" ]; then
+		_pick=$RA_VIEW/$_base
+	elif [ "$RA_VIEW_OK" = 1 ] && [ -n "$_alias" ] && [ -L "$RA_VIEW/$_alias" ]; then
+		_pick=$RA_VIEW/$_alias
+	elif [ "$RA_VIEW_OK" != 1 ] && core_name_ok "$_base" && [ -f "$RA_USER_CORES/$_base" ]; then
+		_pick=$RA_USER_CORES/$_base
+	elif [ "$RA_VIEW_OK" != 1 ] && [ -f "$_dir/$_base" ]; then
+		_pick=$_dir/$_base
+	elif [ "$RA_VIEW_OK" != 1 ] && [ -n "$_alias" ] && [ -f "$_dir/$_alias" ]; then
+		_pick=$_dir/$_alias
+	else
+		_pick=$_req
+	fi
+	shift 2
+	set -- -L "$_pick" "$@"
+	unset _req _dir _base _alt _alias _pick
 fi
 
 AC=/usr/share/retroarch/autoconfig
@@ -350,9 +642,19 @@ if [ -n "${_ra_rom:-}" ] && [ -x /usr/sbin/zlyme-overlay ]; then
 	fi
 	unset _ov
 fi
+# Last, so this directory wins over /etc and a saved user path.
+if [ "$RA_VIEW_OK" = 1 ] && [ -s "${RA_CORES_CFG:-}" ]; then
+	APPEND="$APPEND|$RA_CORES_CFG"
+fi
 
 if [ -n "$ZLYME_RA_DRY_RUN" ]; then
 	echo "APPEND=$APPEND"
+	if [ "$RA_VIEW_OK" = 1 ]; then
+		echo "LIBRETRO_DIRECTORY=$RA_VIEW"
+	fi
+	if [ "${1:-}" = "-L" ] && [ -n "${2:-}" ]; then
+		echo "CORE=$2"
+	fi
 	exit 0
 fi
 
@@ -366,26 +668,10 @@ fi
 
 /usr/bin/zlyme-drm-release
 
-# MENU/Home (SDL GUIDE) opens RGUI; MENU+Start is zlyme-pak-hotkey.
-# Knulli installs mupen64plus-next_libretro.so; NextUI used underscore.
-if [ "$1" = "-L" ] && [ -n "$2" ] && [ ! -f "$2" ]; then
-	_core_dir=$(dirname "$2")
-	_core_bn=$(basename "$2")
-	_core_hit=
-	case "$_core_bn" in
-		mupen64plus_next_libretro.so)
-			_core_hit=$_core_dir/mupen64plus-next_libretro.so
-			;;
-		mupen64plus-next_libretro.so)
-			_core_hit=$_core_dir/mupen64plus_next_libretro.so
-			;;
-	esac
-	if [ -n "$_core_hit" ] && [ -f "$_core_hit" ]; then
-		shift 2
-		set -- -L "$_core_hit" "$@"
-	fi
-	unset _core_dir _core_bn _core_hit
-fi
+# MENU/Home (SDL GUIDE) opens RGUI. MENU+START is zlyme-pak-hotkey,
+# which SIGTERMs the process group and then SIGKILLs it. RetroArch
+# 1.22.2's Unix handler does not turn one SIGTERM into a quit, so that
+# chord does not run retroarch_main_quit. Quit from the menu does.
 if [ -n "$ZLYME_PAK_LOG" ]; then
 	mkdir -p "$(dirname "$ZLYME_PAK_LOG")"
 	exec retroarch -v --log-file "$ZLYME_PAK_LOG" --appendconfig "$APPEND" "$@"

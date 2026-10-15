@@ -393,6 +393,13 @@ rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Artwork Scraper.pak"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Cheat Downloader.pak"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/Weston.pak"
 rm -rf "${TARGET_DIR}/usr/share/nextui/paks/Tools/ScrapeGoat.pak"
+# Phase 13B1 stopped installing the Zlyme RGUI palette. Buildroot does
+# not delete a file whose install line is gone, so an incremental
+# target would still pack these three. Leave every other RetroArch
+# asset in place.
+rm -f "${TARGET_DIR}/usr/share/retroarch/rgui-theme.cfg"
+rm -f "${TARGET_DIR}/usr/share/retroarch/assets/rgui/zlyme.cfg"
+rm -f "${TARGET_DIR}/usr/share/zlyme/retroarch/rgui-theme.cfg"
 
 # nextui.mk hashes the PAK tree when calibrate.elf is installed.
 # Target finalize strips that ELF afterward, so recompute the stamp

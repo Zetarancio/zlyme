@@ -24,6 +24,63 @@ if [ -f "$CFG" ] && grep -Eq '^maple_sdl_joystick_[01] = [01]$' "$CFG"; then
 		-e '/^maple_sdl_joystick_0 = 0$/d' \
 		-e '/^maple_sdl_joystick_1 = 1$/d' "$CFG"
 fi
+# Add Flycast's own resume keys when they are absent. An explicit yes
+# or no stays. The temp file is in the cfg directory: that file is on
+# exFAT, and a cross-filesystem mv can drop the original.
+fly_ensure_resume() {
+	_cfg=$1
+	[ -f "$_cfg" ] || return 0
+	_need_save=0
+	_need_load=0
+	grep -q '^Dreamcast.AutoSaveState =' "$_cfg" || _need_save=1
+	grep -q '^Dreamcast.AutoLoadState =' "$_cfg" || _need_load=1
+	if [ "$_need_save" = 0 ] && [ "$_need_load" = 0 ]; then
+		return 0
+	fi
+	_dir=$(dirname "$_cfg")
+	_tmp=$(mktemp "$_dir/emu.cfg.XXXXXX") || return 0
+	_wrote=0
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		printf '%s\n' "$_line"
+		if [ "$_line" = "[config]" ] && [ "$_wrote" = 0 ]; then
+			if [ "$_need_save" = 1 ]; then
+				printf '%s\n' 'Dreamcast.AutoSaveState = yes'
+			fi
+			if [ "$_need_load" = 1 ]; then
+				printf '%s\n' 'Dreamcast.AutoLoadState = yes'
+			fi
+			_wrote=1
+		fi
+	done < "$_cfg" > "$_tmp"
+	if [ "$_wrote" = 0 ]; then
+		printf '%s\n' '[config]' >> "$_tmp"
+		if [ "$_need_save" = 1 ]; then
+			printf '%s\n' 'Dreamcast.AutoSaveState = yes' >> "$_tmp"
+		fi
+		if [ "$_need_load" = 1 ]; then
+			printf '%s\n' 'Dreamcast.AutoLoadState = yes' >> "$_tmp"
+		fi
+	fi
+	if [ ! -s "$_tmp" ]; then
+		rm -f "$_tmp"
+		return 0
+	fi
+	grep -q '^Dreamcast.AutoSaveState =' "$_tmp" || { rm -f "$_tmp"; return 0; }
+	grep -q '^Dreamcast.AutoLoadState =' "$_tmp" || { rm -f "$_tmp"; return 0; }
+	while IFS= read -r _line || [ -n "$_line" ]; do
+		[ -n "$_line" ] || continue
+		grep -qxF "$_line" "$_tmp" || { rm -f "$_tmp"; return 0; }
+	done < "$_cfg"
+	if sync -f "$_tmp" 2>/dev/null; then
+		:
+	else
+		sync 2>/dev/null || true
+	fi
+	if ! mv -f "$_tmp" "$_cfg"; then
+		rm -f "$_tmp"
+	fi
+}
+fly_ensure_resume "$CFG"
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 mkdir -p "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast"
 for f in dc_boot.bin dc_flash.bin; do
@@ -33,9 +90,17 @@ for f in dc_boot.bin dc_flash.bin; do
 		break
 	done
 done
+# exec replaces this shell, so an EXIT trap would not run. The bind
+# stays up while Flycast exits, which is when it writes its autosave.
+# pak-launch is outside the process group and unmounts the recorded
+# path after wait, including when MENU+START has killed the group.
 if [ -d "$SAVES_PATH/$EMU_TAG" ]; then
-	mount --bind "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast" 2>/dev/null || true
-	trap 'umount "$XDG_DATA_HOME/flycast" 2>/dev/null' EXIT
+	if mount --bind "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast"; then
+		_fly_bind=/tmp/zlyme-flycast-bind
+		rm -f "$_fly_bind"
+		printf '%s\n' "$XDG_DATA_HOME/flycast" > "$_fly_bind"
+		unset _fly_bind
+	fi
 fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
