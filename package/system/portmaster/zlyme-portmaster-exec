@@ -3,9 +3,9 @@
 #
 # Pass every command through unchanged, except mount and umount.
 # A mount is recorded under /run/zlyme-portmaster/owned-mounts only when
-# it increases the mount count at its target. A remount is not owned.
-# A matching successful umount removes that target. nextui-session
-# unmounts only the recorded paths after the port exits or is killed.
+# it adds one new mountinfo id at its target. A remount is not owned.
+# A successful umount drops that id when it is gone. nextui-session
+# unmounts a recorded mount only while that id is still the top mount.
 # /tmp/weston is still the WestonPack lifecycle PortMaster launchers
 # already share. This is not a sudo replacement and it does not
 # intercept wp_weston, westonwrap.sh, or other graphics calls.
@@ -76,14 +76,33 @@ mount_count() {
 		"${ZLYME_PM_MOUNTS:-/proc/mounts}"
 }
 
-pm_note_mount() {
-	pm_load || return 0
-	pm_register "$1" || true
+# Ids present before a mount. pm_commit records the one id that appeared.
+pm_watch() {
+	pm_load || return 1
+	_pm_ids=$(mktemp) || return 1
+	if ! pm_ids_at "$1" > "$_pm_ids"; then
+		: > "$_pm_ids"
+	fi
+}
+
+pm_commit() {
+	if [ -n "${_pm_ids:-}" ] && [ -f "${_pm_ids}" ]; then
+		pm_register_new "$1" "$_pm_ids" || true
+		rm -f "$_pm_ids"
+	fi
+	_pm_ids=
+}
+
+pm_watch_clear() {
+	if [ -n "${_pm_ids:-}" ]; then
+		rm -f "$_pm_ids"
+	fi
+	_pm_ids=
 }
 
 pm_note_umount() {
 	pm_load || return 0
-	pm_unregister_one "$1" || true
+	pm_release_gone "$1" || true
 }
 
 # Same names gpudriver treats as the Mali stack. Empty means libmali.
@@ -321,10 +340,23 @@ prepare_panfrost_wrapper() {
 	fi
 	chmod 0755 "$tmp"
 	mv -f "$tmp" "$STAGED"
+	_wrap_before=
+	if pm_load; then
+		_wrap_before=$(mktemp) || _wrap_before=
+		if [ -n "$_wrap_before" ]; then
+			pm_ids_at "$WRAP" > "$_wrap_before" || : > "$_wrap_before"
+		fi
+	fi
 	if ! command mount --bind "$STAGED" "$WRAP"; then
+		rm -f "$_wrap_before"
 		fail_closed "could not bind $STAGED over $WRAP"
 	fi
-	pm_note_mount "$WRAP"
+	if [ -n "$_wrap_before" ]; then
+		pm_register_new "$WRAP" "$_wrap_before" || true
+		rm -f "$_wrap_before"
+	else
+		log "no mount-id snapshot for $WRAP; leaving it unrecorded"
+	fi
 	if [ "$(mount_count "$WRAP")" -ne 1 ]; then
 		fail_closed "westonwrap bind is not a single mount"
 	fi
@@ -343,27 +375,36 @@ case "$cmd" in
 	mount)
 		if weston_mount_dest "$@"; then
 			before=0
+			pm_watch_clear
 			if pm_load; then
 				before=$(mount_count "$WESTON")
+				pm_watch "$WESTON" || true
 			fi
 			command mount "$@"
 			st=$?
 			if [ "$st" -ne 0 ]; then
+				pm_watch_clear
 				exit "$st"
 			fi
 			after=$(mount_count "$WESTON")
 			# A remount leaves the count unchanged and is not owned.
 			if [ "$after" -le "$before" ]; then
+				pm_watch_clear
 				exit 0
 			fi
 			# BusyBox mount stacks a second mount on the same directory.
 			# Peel that one layer instead of hiding the runtime underneath.
 			if [ "$after" -gt 1 ]; then
 				command umount "$WESTON" || log "could not unmount stacked $WESTON"
+				pm_watch_clear
 				log "refusing to stack $WESTON"
 				exit 1
 			fi
-			pm_note_mount "$WESTON"
+			if [ -n "${_pm_ids:-}" ]; then
+				pm_commit "$WESTON"
+			else
+				log "no mount-id snapshot for $WESTON; leaving it unrecorded"
+			fi
 			if gpu_is_mali; then
 				exit 0
 			fi
@@ -372,10 +413,12 @@ case "$cmd" in
 		fi
 		dest=
 		before=0
+		pm_watch_clear
 		if pm_load; then
 			dest=$(pm_mount_dest "$@") || dest=
 			if [ -n "$dest" ]; then
 				before=$(mount_count "$dest")
+				pm_watch "$dest" || true
 			fi
 		fi
 		command mount "$@"
@@ -384,8 +427,16 @@ case "$cmd" in
 			after=$(mount_count "$dest")
 			# One successful mount owns one new layer. A remount does not.
 			if [ "$after" -gt "$before" ]; then
-				pm_note_mount "$dest"
+				if [ -n "${_pm_ids:-}" ]; then
+					pm_commit "$dest"
+				else
+					log "no mount-id snapshot for $dest; leaving it unrecorded"
+				fi
+			else
+				pm_watch_clear
 			fi
+		else
+			pm_watch_clear
 		fi
 		exit "$st"
 		;;

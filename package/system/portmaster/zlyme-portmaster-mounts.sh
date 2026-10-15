@@ -1,14 +1,15 @@
 # Mounts created by one PortMaster launch.
 #
-# zlyme-portmaster-exec appends a target only when mount succeeds and
-# the number of mounts at that target increases by one layer. A remount
-# does not. A matching successful umount removes one line. nextui-session runs
-# zlyme-portmaster-cleanup outside the pak process group, and that
-# cleanup unmounts paths this file can prove the launch owns.
-# That proof is a recorded wrapper mount. A layer that merely
-# appears under /storage is not proof: the mount table cannot tell
-# a port's direct mount from one another program created. Library
-# roots stay mounted.
+# zlyme-portmaster-exec records a mount only when its mount command
+# adds exactly one new /proc/self/mountinfo id at the target. The
+# registry line is that id, a tab, and the path. A remount does not
+# add an id. A successful umount drops a line only when that id is
+# gone. nextui-session runs zlyme-portmaster-cleanup outside the pak
+# process group. Cleanup unmounts a line only when its id is still the
+# top mount at that path. A missing id is dropped and nothing is
+# unmounted. A covered id, an unreadable mount table, or a line with
+# no id is left mounted and reported. A layer that merely appears
+# under /storage is not owned. Library roots stay mounted.
 # Sourced, not executed.
 
 pm_mounts_file() {
@@ -19,10 +20,8 @@ pm_registry() {
 	printf '%s\n' "${ZLYME_PM_REGISTRY:-/run/zlyme-portmaster/owned-mounts}"
 }
 
-# One launch writes this file and the matching cleanup deletes it.
-# Cleanup does not choose mounts from its contents.
-pm_snapshot_file() {
-	printf '%s\n' "${ZLYME_PM_SNAPSHOT:-/run/zlyme-portmaster/storage-before}"
+pm_mountinfo_file() {
+	printf '%s\n' "${ZLYME_PM_MOUNTINFO:-/proc/self/mountinfo}"
 }
 
 pm_load_decode() {
@@ -68,34 +67,199 @@ pm_norm() {
 	printf '%s\n' "$p"
 }
 
-pm_register() {
-	path=$(pm_norm "$1") || return 0
-	if pm_protected "$path"; then
-		return 0
-	fi
-	pm_load_decode || return 0
-	reg=$(pm_registry)
-	mkdir -p "$(dirname "$reg")" || return 0
-	printf '%s\n' "$path" >> "$reg"
+# Ids at one path, oldest first. The last line is the top mount.
+# Field 5 of mountinfo is the mountpoint; optional fields follow it.
+pm_ids_at() {
+	_ia_path=$(pm_norm "$1") || return 1
+	_ia_info=$(pm_mountinfo_file)
+	[ -r "$_ia_info" ] || return 1
+	ZLYME_MOUNTINFO_WANT=$_ia_path awk '
+function decode(s,    out, i, n, chunk, a, b, c, oct) {
+	out = ""
+	n = length(s)
+	i = 1
+	while (i <= n) {
+		if (substr(s, i, 1) == "\\" && i + 3 <= n) {
+			chunk = substr(s, i + 1, 3)
+			if (chunk ~ /^[0-7][0-7][0-7]$/) {
+				a = index("01234567", substr(chunk, 1, 1)) - 1
+				b = index("01234567", substr(chunk, 2, 1)) - 1
+				c = index("01234567", substr(chunk, 3, 1)) - 1
+				oct = a * 64 + b * 8 + c
+				out = out sprintf("%c", oct)
+				i += 4
+				continue
+			}
+		}
+		out = out substr(s, i, 1)
+		i++
+	}
+	return out
+}
+NF < 5 || $1 !~ /^[0-9]+$/ { next }
+{
+	if (decode($5) == ENVIRON["ZLYME_MOUNTINFO_WANT"])
+		print $1
+}
+' "$_ia_info"
 }
 
-# Drop one matching line. A second registration of the same path stays
-# until a second successful umount.
-pm_unregister_one() {
-	path=$(pm_norm "$1") || return 0
-	reg=$(pm_registry)
-	[ -f "$reg" ] || return 0
-	tmp=$(mktemp "${reg}.XXXXXX") || return 0
-	removed=0
-	while IFS= read -r line || [ -n "$line" ]; do
-		if [ "$removed" = 0 ] && [ "$line" = "$path" ]; then
-			removed=1
+pm_entry_path() {
+	_ep_line=$1
+	_ep_tab=$(printf '\t')
+	case "$_ep_line" in
+		*"$_ep_tab"*)
+			printf '%s\n' "${_ep_line#*"$_ep_tab"}"
+			;;
+		*)
+			printf '%s\n' "$_ep_line"
+			;;
+	esac
+}
+
+pm_entry_id() {
+	_ei_line=$1
+	_ei_tab=$(printf '\t')
+	case "$_ei_line" in
+		*"$_ei_tab"*)
+			_ei_id=${_ei_line%%"$_ei_tab"*}
+			;;
+		*)
+			return 1
+			;;
+	esac
+	case "$_ei_id" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	printf '%s\n' "$_ei_id"
+}
+
+pm_store_id() {
+	_si_id=$1
+	_si_path=$(pm_norm "$2") || return 0
+	case "$_si_id" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	if pm_protected "$_si_path"; then
+		return 0
+	fi
+	_si_reg=$(pm_registry)
+	mkdir -p "$(dirname "$_si_reg")" || return 0
+	printf '%s\t%s\n' "$_si_id" "$_si_path" >> "$_si_reg"
+}
+
+# $2 is the id list captured before the mount. Exactly one new id is
+# recorded. Anything else stays mounted and unrecorded.
+pm_register_new() {
+	_rn_path=$(pm_norm "$1") || return 0
+	_rn_before=$2
+	if [ -z "$_rn_before" ] || [ ! -f "$_rn_before" ]; then
+		echo "zlyme-portmaster-exec: no mount-id snapshot for $_rn_path; leaving it unrecorded" >&2
+		return 0
+	fi
+	_rn_after=$(mktemp) || return 0
+	if ! pm_ids_at "$_rn_path" > "$_rn_after"; then
+		echo "zlyme-portmaster-exec: cannot read mountinfo for $_rn_path; leaving it unrecorded" >&2
+		rm -f "$_rn_after"
+		return 0
+	fi
+	_rn_new=$(mktemp) || {
+		rm -f "$_rn_after"
+		return 0
+	}
+	# An empty before-file still has to count as the first file. NR==FNR
+	# does not, and would hide the new id.
+	awk -v before="$_rn_before" '
+		FILENAME == before { seen[$0] = 1; next }
+		$0 ~ /^[0-9]+$/ && !seen[$0] { print }
+	' "$_rn_before" "$_rn_after" > "$_rn_new"
+	rm -f "$_rn_after"
+	_rn_n=0
+	_rn_id=
+	while IFS= read -r _rn_one || [ -n "$_rn_one" ]; do
+		[ -n "$_rn_one" ] || continue
+		_rn_n=$((_rn_n + 1))
+		_rn_id=$_rn_one
+	done < "$_rn_new"
+	rm -f "$_rn_new"
+	if [ "$_rn_n" -eq 1 ]; then
+		pm_store_id "$_rn_id" "$_rn_path"
+		return 0
+	fi
+	echo "zlyme-portmaster-exec: mount at $_rn_path did not add one mount id; leaving it unrecorded" >&2
+}
+
+pm_drop_exact() {
+	_de_want=$1
+	_de_reg=$(pm_registry)
+	[ -f "$_de_reg" ] || return 0
+	_de_tmp=$(mktemp "${_de_reg}.XXXXXX") || return 0
+	_de_removed=0
+	while IFS= read -r _de_line || [ -n "$_de_line" ]; do
+		if [ "$_de_removed" = 0 ] && [ "$_de_line" = "$_de_want" ]; then
+			_de_removed=1
 			continue
 		fi
-		[ -n "$line" ] || continue
-		printf '%s\n' "$line"
-	done < "$reg" > "$tmp"
-	mv -f "$tmp" "$reg"
+		[ -n "$_de_line" ] || continue
+		printf '%s\n' "$_de_line"
+	done < "$_de_reg" > "$_de_tmp"
+	mv -f "$_de_tmp" "$_de_reg"
+}
+
+# Drop registry lines for this path whose ids are no longer mounted.
+# A line for a different path, or an id that is still present, stays.
+# An unreadable mount table drops nothing.
+pm_release_gone() {
+	_rg_path=$(pm_norm "$1") || return 0
+	_rg_reg=$(pm_registry)
+	[ -f "$_rg_reg" ] || return 0
+	_rg_ids=$(mktemp) || return 0
+	if ! pm_ids_at "$_rg_path" > "$_rg_ids"; then
+		echo "zlyme-portmaster-exec: cannot read mountinfo for $_rg_path; leaving its registry lines" >&2
+		rm -f "$_rg_ids"
+		return 0
+	fi
+	_rg_tmp=$(mktemp "${_rg_reg}.XXXXXX") || {
+		rm -f "$_rg_ids"
+		return 0
+	}
+	_rg_tab=$(printf '\t')
+	while IFS= read -r _rg_line || [ -n "$_rg_line" ]; do
+		[ -n "$_rg_line" ] || continue
+		case "$_rg_line" in
+			*"$_rg_tab"*)
+				_rg_id=${_rg_line%%"$_rg_tab"*}
+				_rg_lp=${_rg_line#*"$_rg_tab"}
+				;;
+			*)
+				printf '%s\n' "$_rg_line"
+				continue
+				;;
+		esac
+		if [ "$_rg_lp" = "$_rg_path" ] && ! grep -qxF -- "$_rg_id" "$_rg_ids"; then
+			continue
+		fi
+		printf '%s\n' "$_rg_line"
+	done < "$_rg_reg" > "$_rg_tmp"
+	mv -f "$_rg_tmp" "$_rg_reg"
+	rm -f "$_rg_ids"
+}
+
+# 0 when the id is still mounted, or when that cannot be shown.
+pm_id_still() {
+	_is_id=$1
+	_is_path=$2
+	_is_tmp=$(mktemp) || return 0
+	if ! pm_ids_at "$_is_path" > "$_is_tmp"; then
+		rm -f "$_is_tmp"
+		return 0
+	fi
+	if grep -qxF -- "$_is_id" "$_is_tmp"; then
+		rm -f "$_is_tmp"
+		return 0
+	fi
+	rm -f "$_is_tmp"
+	return 1
 }
 
 # Last real operand. Values of -o and -t are not operands, so
@@ -138,96 +302,90 @@ pm_umount_target() {
 	printf '%s\n' "$dest"
 }
 
-# Paths strictly under /storage, one decoded line per layer.
-# /storage itself, a library root, and every other mount stay out.
-pm_storage_nested() {
-	pm_load_decode || return 1
-	_sn_out=$1
-	_sn_tmp=$(mktemp) || return 1
-	if ! mounts_targets "$(pm_mounts_file)" > "$_sn_tmp"; then
-		rm -f "$_sn_tmp"
-		return 1
-	fi
-	: > "$_sn_out"
-	while IFS= read -r _sn_target || [ -n "$_sn_target" ]; do
-		[ -n "$_sn_target" ] || continue
-		case "$_sn_target" in
-			/storage/*) ;;
-			*) continue ;;
-		esac
-		if pm_protected "$_sn_target"; then
-			continue
-		fi
-		printf '%s\n' "$_sn_target"
-	done < "$_sn_tmp" >> "$_sn_out"
-	rm -f "$_sn_tmp"
-}
-
-# Written after the pre-launch cleanup and before the port starts.
-# The previous file is removed first, so a failed write cannot leave
-# an older launch's list in place.
-pm_snapshot_storage() {
-	_ss_file=$(pm_snapshot_file)
-	_ss_dir=$(dirname "$_ss_file")
-	mkdir -p "$_ss_dir" || return 1
-	rm -f "$_ss_file" || return 1
-	_ss_tmp=$(mktemp "$_ss_dir/storage-before.XXXXXX") || return 1
-	if ! pm_storage_nested "$_ss_tmp"; then
-		rm -f "$_ss_tmp"
-		return 1
-	fi
-	if ! mv -f "$_ss_tmp" "$_ss_file"; then
-		rm -f "$_ss_tmp" "$_ss_file"
-		return 1
-	fi
-}
-
-# Deletes the one-launch file. Does not read it and does not register
-# any path. A second call is a no-op.
-pm_consume_snapshot() {
-	_cs_file=$(pm_snapshot_file)
-	rm -f "$_cs_file"
-}
-
-# Deepest target first. A path that is already gone is dropped.
-# A failed umount stays registered. A protected path is never unmounted.
+# Deepest path first, then the higher mount id. A protected path is
+# never unmounted. A missing id is dropped. Anything that is not proven
+# to be the top mount stays mounted, and its registry line stays.
 pm_cleanup_owned() {
 	pm_load_decode || return 1
-	reg=$(pm_registry)
-	[ -f "$reg" ] || return 0
-	snap=$(mktemp) || return 1
-	ranked=$(mktemp) || {
-		rm -f "$snap"
+	_co_reg=$(pm_registry)
+	[ -f "$_co_reg" ] || return 0
+	_co_info=$(pm_mountinfo_file)
+	_co_snap=$(mktemp) || return 1
+	_co_ranked=$(mktemp) || {
+		rm -f "$_co_snap"
 		return 1
 	}
-	cp -f "$reg" "$snap"
-	while IFS= read -r line || [ -n "$line" ]; do
-		[ -n "$line" ] || continue
-		printf '%08d %s\n' "${#line}" "$line"
-	done < "$snap" > "$ranked"
-	sort -nr -o "$ranked" "$ranked"
-	rc=0
-	while IFS= read -r rec || [ -n "$rec" ]; do
-		[ -n "$rec" ] || continue
-		path=${rec#???????? }
-		path=${path# }
-		[ -n "$path" ] || continue
-		if pm_protected "$path"; then
-			echo "zlyme-portmaster-cleanup: refusing $path" >&2
-			pm_unregister_one "$path"
+	cp -f "$_co_reg" "$_co_snap"
+	while IFS= read -r _co_line || [ -n "$_co_line" ]; do
+		[ -n "$_co_line" ] || continue
+		_co_path=$(pm_entry_path "$_co_line")
+		_co_id=0
+		if _co_got=$(pm_entry_id "$_co_line"); then
+			_co_id=$_co_got
+		fi
+		printf '%08d%010d %s\n' "${#_co_path}" "$_co_id" "$_co_line"
+	done < "$_co_snap" > "$_co_ranked"
+	sort -nr -o "$_co_ranked" "$_co_ranked"
+	_co_rc=0
+	while IFS= read -r _co_rec || [ -n "$_co_rec" ]; do
+		[ -n "$_co_rec" ] || continue
+		_co_line=${_co_rec#* }
+		_co_path=$(pm_entry_path "$_co_line")
+		[ -n "$_co_path" ] || continue
+		if pm_protected "$_co_path"; then
+			echo "zlyme-portmaster-cleanup: refusing $_co_path" >&2
+			pm_drop_exact "$_co_line"
 			continue
 		fi
-		if ! mounts_has "$(pm_mounts_file)" "$path"; then
-			pm_unregister_one "$path"
+		if ! _co_id=$(pm_entry_id "$_co_line"); then
+			echo "zlyme-portmaster-cleanup: ambiguous registry entry: $_co_line" >&2
+			_co_rc=1
 			continue
 		fi
-		if command umount "$path" 2>/dev/null; then
-			pm_unregister_one "$path"
+		if [ ! -r "$_co_info" ]; then
+			echo "zlyme-portmaster-cleanup: cannot read mountinfo; leaving $_co_path" >&2
+			_co_rc=1
+			continue
+		fi
+		_co_ids=$(mktemp) || {
+			_co_rc=1
+			continue
+		}
+		if ! pm_ids_at "$_co_path" > "$_co_ids"; then
+			echo "zlyme-portmaster-cleanup: cannot read mountinfo; leaving $_co_path" >&2
+			rm -f "$_co_ids"
+			_co_rc=1
+			continue
+		fi
+		if ! grep -qxF -- "$_co_id" "$_co_ids"; then
+			echo "zlyme-portmaster-cleanup: mount id $_co_id at $_co_path is gone" >&2
+			rm -f "$_co_ids"
+			pm_drop_exact "$_co_line"
+			continue
+		fi
+		_co_top=
+		while IFS= read -r _co_one || [ -n "$_co_one" ]; do
+			[ -n "$_co_one" ] || continue
+			_co_top=$_co_one
+		done < "$_co_ids"
+		rm -f "$_co_ids"
+		if [ "$_co_id" != "$_co_top" ]; then
+			echo "zlyme-portmaster-cleanup: mount id $_co_id at $_co_path is covered; leaving it" >&2
+			_co_rc=1
+			continue
+		fi
+		if command umount "$_co_path" 2>/dev/null; then
+			if pm_id_still "$_co_id" "$_co_path"; then
+				echo "zlyme-portmaster-cleanup: umount left mount id $_co_id at $_co_path" >&2
+				_co_rc=1
+			else
+				pm_drop_exact "$_co_line"
+			fi
 		else
-			echo "zlyme-portmaster-cleanup: umount $path failed" >&2
-			rc=1
+			echo "zlyme-portmaster-cleanup: umount $_co_path failed" >&2
+			_co_rc=1
 		fi
-	done < "$ranked"
-	rm -f "$snap" "$ranked"
-	return "$rc"
+	done < "$_co_ranked"
+	rm -f "$_co_snap" "$_co_ranked"
+	return "$_co_rc"
 }

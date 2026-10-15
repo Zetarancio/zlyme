@@ -20,8 +20,9 @@ finish() {
 trap finish EXIT
 
 export ZLYME_PM_MOUNTS="$work/mounts"
+export ZLYME_PM_MOUNTINFO="$work/mountinfo"
+export ZLYME_FAKE_MOUNT_SEQ="$work/mountseq"
 export ZLYME_PM_REGISTRY="$work/owned"
-export ZLYME_PM_SNAPSHOT="$work/before"
 export ZLYME_LIBRARIES_FILE="$work/libraries"
 export ZLYME_MOUNTS_LIB="$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh"
 export ZLYME_LIBRARY_SH="$LIB"
@@ -69,6 +70,9 @@ for arg in "$@"; do
 			continue
 			;;
 	esac
+	if [ "$n" -ge 1 ]; then
+		src=$dest
+	fi
 	dest=$arg
 	n=$((n + 1))
 done
@@ -76,6 +80,7 @@ if [ "$remount" -eq 1 ] || [ "$n" -lt 2 ]; then
 	exit 0
 fi
 [ -n "$dest" ] || exit 1
+src=${src:-/dev/fake}
 enc=$(printf '%s' "$dest" | awk '
 	BEGIN { ORS = "" }
 	{
@@ -89,7 +94,27 @@ enc=$(printf '%s' "$dest" | awk '
 		}
 	}
 ')
-printf '/dev/fake %s fake rw 0 0\n' "$enc" >> "$ZLYME_PM_MOUNTS"
+srcenc=$(printf '%s' "$src" | awk '
+	BEGIN { ORS = "" }
+	{
+		for (i = 1; i <= length($0); i++) {
+			c = substr($0, i, 1)
+			if (c == " ") printf "\\040"
+			else if (c == "\t") printf "\\011"
+			else if (c == "\\") printf "\\134"
+			else if (c == "\n") printf "\\012"
+			else printf "%s", c
+		}
+	}
+')
+seq=${ZLYME_FAKE_MOUNT_SEQ:?}
+if [ ! -s "$seq" ]; then
+	printf '%s\n' 1 > "$seq"
+fi
+id=$(cat "$seq")
+printf '%s\n' "$((id + 1))" > "$seq"
+printf '%s %s fake rw 0 0\n' "$srcenc" "$enc" >> "$ZLYME_PM_MOUNTS"
+printf '%s 1 0:1 / %s rw - fake %s rw\n' "$id" "$enc" "$srcenc" >> "$ZLYME_PM_MOUNTINFO"
 EOF
 
 cat > "$work/bin/umount" << 'EOF'
@@ -109,36 +134,90 @@ if [ "${ZLYME_FAKE_UMOUNT_FAIL:-0}" = 1 ]; then
 	exit 1
 fi
 [ -n "$target" ] || exit 1
-tmp=$(mktemp)
-removed=0
-while IFS= read -r line || [ -n "$line" ]; do
-	[ -n "$line" ] || continue
-	field=$(printf '%s\n' "$line" | awk 'NF >= 2 { print $2; exit }')
-	if [ "$removed" -eq 0 ] && [ -n "$field" ] \
-		&& [ "$(mounts_decode "$field")" = "$target" ]; then
-		removed=1
-		continue
+
+# Drop the last matching line. umount(path) removes the top mount.
+drop_last_field() {
+	file=$1
+	fieldn=$2
+	[ -f "$file" ] || return 1
+	tmp=$(mktemp)
+	n=0
+	last=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		n=$((n + 1))
+		printf '%s\n' "$line" >> "$tmp"
+		got=$(printf '%s\n' "$line" | awk -v n="$fieldn" 'NF >= n { print $n; exit }')
+		if [ -n "$got" ] && [ "$(mounts_decode "$got")" = "$target" ]; then
+			last=$n
+		fi
+	done < "$file"
+	if [ "$last" -eq 0 ]; then
+		rm -f "$tmp"
+		return 1
 	fi
-	printf '%s\n' "$line"
-done < "$ZLYME_PM_MOUNTS" > "$tmp"
-mv -f "$tmp" "$ZLYME_PM_MOUNTS"
-[ "$removed" -eq 1 ]
+	out=$(mktemp)
+	i=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		i=$((i + 1))
+		if [ "$i" -eq "$last" ]; then
+			continue
+		fi
+		printf '%s\n' "$line"
+	done < "$tmp" > "$out"
+	mv -f "$out" "$file"
+	rm -f "$tmp"
+}
+drop_last_field "$ZLYME_PM_MOUNTS" 2
+st=$?
+if [ -f "${ZLYME_PM_MOUNTINFO:-}" ]; then
+	drop_last_field "$ZLYME_PM_MOUNTINFO" 5 || true
+fi
+[ "$st" -eq 0 ]
 EOF
 chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
 
 reset() {
 	: > "$ZLYME_PM_MOUNTS"
-	rm -f "$ZLYME_PM_REGISTRY" "$ZLYME_PM_SNAPSHOT"
+	: > "$ZLYME_PM_MOUNTINFO"
+	printf '%s\n' 1 > "$ZLYME_FAKE_MOUNT_SEQ"
+	rm -f "$ZLYME_PM_REGISTRY"
 	: > "$ZLYME_FAKE_UMOUNT_LOG"
 	ZLYME_FAKE_MOUNT_FAIL=0
 	ZLYME_FAKE_UMOUNT_FAIL=0
 }
 
 reg_exact() {
-	if [ ! -f "$ZLYME_PM_REGISTRY" ]; then
-		return 1
-	fi
-	grep -Fxq -- "$1" "$ZLYME_PM_REGISTRY"
+	[ -f "$ZLYME_PM_REGISTRY" ] || return 1
+	_tab=$(printf '\t')
+	while IFS= read -r line || [ -n "$line" ]; do
+		[ -n "$line" ] || continue
+		case "$line" in
+			*"$_tab"*)
+				[ "${line#*"$_tab"}" = "$1" ] && return 0
+				;;
+			*)
+				[ "$line" = "$1" ] && return 0
+				;;
+		esac
+	done < "$ZLYME_PM_REGISTRY"
+	return 1
+}
+
+reg_id() {
+	[ -f "$ZLYME_PM_REGISTRY" ] || return 1
+	_tab=$(printf '\t')
+	while IFS= read -r line || [ -n "$line" ]; do
+		[ -n "$line" ] || continue
+		case "$line" in
+			*"$_tab"*)
+				if [ "${line#*"$_tab"}" = "$1" ]; then
+					printf '%s\n' "${line%%"$_tab"*}"
+					return 0
+				fi
+				;;
+		esac
+	done < "$ZLYME_PM_REGISTRY"
+	return 1
 }
 
 fail() {
@@ -149,12 +228,15 @@ fail() {
 # The session sources pak-launch.sh, which cleans up after the pak wait returns.
 LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 awk '
-	/portmaster_mark/ { if (!mark) mark = NR }
-	/spawn_pak "/ { if (!spawn) spawn = NR }
+	/^portmaster_cleanup\(\)/ { next }
+	/portmaster_cleanup/ {
+		if (!spawn) pre = 1
+		if (seen) post = 1
+	}
+	/spawn_pak "/ { if (!spawn) spawn = 1 }
 	/wait "\$_pak_pid"/ { seen = 1 }
-	seen && /portmaster_cleanup/ { found = 1 }
-	END { exit (found && mark && spawn && mark < spawn) ? 0 : 1 }
-' "$LAUNCH" || fail "session does not snapshot before the pak and clean up after it"
+	END { exit (pre && post && spawn) ? 0 : 1 }
+' "$LAUNCH" || fail "session does not clean up before and after the pak"
 grep -q 'launch_with_reload' "$SESSION" || fail "session does not run the pak helper"
 
 reset
@@ -173,6 +255,55 @@ grep -Fxq /var/port/left "$ZLYME_FAKE_UMOUNT_LOG" || fail "cleanup did not unmou
 if grep -Fxq /var/port/left "$ZLYME_PM_MOUNTS"; then
 	fail "mount table still has the target"
 fi
+
+# Source A is registered, then removed outside the wrapper. Source B
+# is mounted at the same path. Cleanup must not unmount B.
+reset
+"$EXEC" mount --bind /src/a /var/port/repl || fail "replacement setup failed"
+reg_exact /var/port/repl || fail "replacement mount was not registered"
+owned=$(reg_id /var/port/repl) || fail "replacement registry has no mount id"
+case "$owned" in
+	''|*[!0-9]*) fail "replacement id is not numeric: ${owned:-empty}" ;;
+esac
+grep -q "^${owned} " "$ZLYME_PM_MOUNTINFO" \
+	|| fail "registered id is not in mountinfo"
+# shellcheck disable=SC1090
+. "$ZLYME_MOUNTS_LIB"
+strip_target() {
+	file=$1
+	fieldn=$2
+	want=$3
+	[ -f "$file" ] || return 0
+	tmp=$(mktemp)
+	while IFS= read -r line || [ -n "$line" ]; do
+		[ -n "$line" ] || continue
+		got=$(printf '%s\n' "$line" | awk -v n="$fieldn" 'NF >= n { print $n; exit }')
+		if [ -n "$got" ] && [ "$(mounts_decode "$got")" = "$want" ]; then
+			continue
+		fi
+		printf '%s\n' "$line"
+	done < "$file" > "$tmp"
+	mv -f "$tmp" "$file"
+}
+strip_target "$ZLYME_PM_MOUNTS" 2 /var/port/repl
+strip_target "$ZLYME_PM_MOUNTINFO" 5 /var/port/repl
+if grep -q "^${owned} " "$ZLYME_PM_MOUNTINFO"; then
+	fail "bypass did not remove source A"
+fi
+printf '%s\n' 'B /var/port/repl fake rw 0 0' >> "$ZLYME_PM_MOUNTS"
+printf '%s\n' '9000 1 0:9 / /var/port/repl rw - fake B rw' >> "$ZLYME_PM_MOUNTINFO"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+"$CLEAN" || fail "dropping a replaced mount failed"
+grep -F -q 'B /var/port/repl ' "$ZLYME_PM_MOUNTS" \
+	|| fail "replacement source B was unmounted"
+if grep -Fxq /var/port/repl "$ZLYME_FAKE_UMOUNT_LOG"; then
+	fail "cleanup unmounted the replacement path"
+fi
+if reg_exact /var/port/repl; then
+	fail "replacement path stayed registered"
+fi
+grep -q '^9000 ' "$ZLYME_PM_MOUNTINFO" \
+	|| fail "replacement mountinfo id was removed"
 
 reset
 "$EXEC" mount --bind /src "/var/port/game dir" || fail "parent mount failed"
@@ -336,6 +467,8 @@ if [ -f "$ZLYME_PM_REGISTRY" ] && [ -s "$ZLYME_PM_REGISTRY" ]; then
 fi
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/stack)" -eq 1 ] \
 	|| fail "cleanup removed more than the owned layer"
+grep -F -q '/dev/old /var/port/stack ' "$ZLYME_PM_MOUNTS" \
+	|| fail "stacked cleanup removed the unrelated layer"
 
 if grep -q 'pm_adopt' \
 	"$CLEAN" \
@@ -351,29 +484,27 @@ base_storage() {
 		> "$ZLYME_PM_MOUNTS"
 }
 
-snapshot_gone() {
-	if [ -e "$ZLYME_PM_SNAPSHOT" ]; then
-		fail "$1"
-	fi
-}
-
 not_unmounted() {
 	if grep -Fxq -- "$1" "$ZLYME_FAKE_UMOUNT_LOG"; then
 		fail "$1 was unmounted"
 	fi
 }
 
+if grep -E -q 'pm_snapshot|pm_consume_snapshot|pm_storage_nested|portmaster_mark|storage-before' \
+	"$CLEAN" \
+	"$EXEC" \
+	"$ROOT/package/system/portmaster/zlyme-portmaster-mounts.sh" \
+	"$LAUNCH"; then
+	fail "snapshot ownership code is still present"
+fi
+
 # Port A records one wrapper mount and exits. MENU+START uses this
 # same cleanup: the port does not umount its own mount.
 reset
 base_storage
 "$CLEAN" || fail "port A pre-cleanup failed"
-"$CLEAN" snapshot || fail "port A snapshot failed"
-grep -Fxq /storage/.config/kept "$ZLYME_PM_SNAPSHOT" \
-	|| fail "snapshot missed the pre-existing mount"
 "$EXEC" mount --bind /src /storage/.config/porta || fail "port A mount failed"
 "$CLEAN" || fail "port A post-cleanup failed"
-snapshot_gone "port A snapshot survived cleanup"
 if grep -F -q ' /storage/.config/porta ' "$ZLYME_PM_MOUNTS"; then
 	fail "port A mount stayed"
 fi
@@ -385,11 +516,10 @@ not_unmounted /mnt/sd2
 not_unmounted /storage/.config/kept
 
 # An unrelated service mounts between launches. Port B's pre-cleanup
-# must leave it. The consumed snapshot cannot select it.
+# must leave it.
 printf '%s\n' 'other /storage/.config/other ext4 rw 0 0' >> "$ZLYME_PM_MOUNTS"
 : > "$ZLYME_FAKE_UMOUNT_LOG"
 "$CLEAN" || fail "port B pre-cleanup failed"
-snapshot_gone "port B pre-cleanup left a snapshot"
 grep -F -q ' /storage/.config/other ' "$ZLYME_PM_MOUNTS" \
 	|| fail "unrelated mount between launches was removed"
 not_unmounted /storage/.config/other
@@ -436,10 +566,8 @@ if [ -r "$work/usb-run/reaper.pid" ]; then
 fi
 
 # Port B then records its own mount. The unrelated one stays.
-"$CLEAN" snapshot || fail "port B snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/portb || fail "port B mount failed"
 "$CLEAN" || fail "port B post-cleanup failed"
-snapshot_gone "port B snapshot survived cleanup"
 if grep -F -q ' /storage/.config/portb ' "$ZLYME_PM_MOUNTS"; then
 	fail "port B mount stayed"
 fi
@@ -451,55 +579,18 @@ not_unmounted /storage/.config/other
 not_unmounted /storage/.config/other
 not_unmounted /storage/.config/kept
 not_unmounted /mnt/sd2
-snapshot_gone "idempotent cleanup recreated a snapshot"
-
-# A failed snapshot removes any older file and does not select mounts.
-reset
-base_storage
-"$CLEAN" snapshot || fail "baseline snapshot failed"
-printf '%s\n' '/storage/.config/old-baseline' > "$ZLYME_PM_SNAPSHOT"
-rm -f "$ZLYME_PM_MOUNTS"
-if "$CLEAN" snapshot; then
-	fail "snapshot succeeded without a mount table"
-fi
-snapshot_gone "failed snapshot left the previous file"
-printf '%s\n' \
-	'/dev/mmcblk0p3 /storage exfat rw 0 0' \
-	'later /storage/.config/later ext4 rw 0 0' \
-	> "$ZLYME_PM_MOUNTS"
-: > "$ZLYME_FAKE_UMOUNT_LOG"
-"$CLEAN" || fail "cleanup after a failed snapshot failed"
-grep -F -q ' /storage/.config/later ' "$ZLYME_PM_MOUNTS" \
-	|| fail "failed snapshot still selected a mount"
-not_unmounted /storage/.config/later
-
-# Cleanup interrupted before it could delete the snapshot. The next
-# pre-cleanup deletes that file and leaves the mount that appeared later.
-reset
-base_storage
-"$CLEAN" snapshot || fail "interrupted snapshot failed"
-printf '%s\n' 'gap /storage/.config/gap ext4 rw 0 0' >> "$ZLYME_PM_MOUNTS"
-[ -f "$ZLYME_PM_SNAPSHOT" ] || fail "interrupted launch lost its snapshot early"
-: > "$ZLYME_FAKE_UMOUNT_LOG"
-"$CLEAN" || fail "cleanup of an interrupted snapshot failed"
-snapshot_gone "interrupted snapshot remained"
-grep -F -q ' /storage/.config/gap ' "$ZLYME_PM_MOUNTS" \
-	|| fail "interrupted snapshot selected a later mount"
-not_unmounted /storage/.config/gap
 
 # An unrelated mount created while the port is open stays. A direct
 # mount is the same shape, so it stays too. The recorded mount goes.
 reset
 base_storage
 "$CLEAN" || fail "game pre-cleanup failed"
-"$CLEAN" snapshot || fail "game snapshot failed"
 printf '%s\n' \
 	'live /storage/.config/nextui/my355/godot ext4 rw 0 0' \
 	'live /storage/.config/game\040dir ext4 rw 0 0' \
 	>> "$ZLYME_PM_MOUNTS"
 "$EXEC" mount --bind /src /storage/.config/played || fail "played mount failed"
 "$CLEAN" || fail "game post-cleanup failed"
-snapshot_gone "game snapshot survived"
 if grep -F -q ' /storage/.config/played ' "$ZLYME_PM_MOUNTS"; then
 	fail "recorded mount stayed after the game"
 fi
@@ -515,20 +606,19 @@ printf '%s\n' \
 	'/dev/mmcblk0p3 /storage exfat rw 0 0' \
 	'base /storage/.config/stack ext4 rw 0 0' \
 	> "$ZLYME_PM_MOUNTS"
-"$CLEAN" snapshot || fail "stack snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/stack || fail "stack mount failed"
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /storage/.config/stack)" -eq 2 ] \
 	|| fail "stacked storage mount did not add one layer"
 "$CLEAN" || fail "stack cleanup failed"
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /storage/.config/stack)" -eq 1 ] \
 	|| fail "stack cleanup removed the unrelated layer"
-snapshot_gone "stack snapshot survived"
+grep -F -q 'base /storage/.config/stack ' "$ZLYME_PM_MOUNTS" \
+	|| fail "stack cleanup removed the base layer"
 
 # The same target, used by port A, then by an unrelated service, then
 # by port B as one more layer.
 reset
 base_storage
-"$CLEAN" snapshot || fail "reuse snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/reuse || fail "reuse mount failed"
 "$CLEAN" || fail "reuse post-cleanup failed"
 if grep -F -q ' /storage/.config/reuse ' "$ZLYME_PM_MOUNTS"; then
@@ -540,20 +630,18 @@ printf '%s\n' 'again /storage/.config/reuse ext4 rw 0 0' >> "$ZLYME_PM_MOUNTS"
 grep -F -q ' /storage/.config/reuse ' "$ZLYME_PM_MOUNTS" \
 	|| fail "reused target was removed before port B"
 not_unmounted /storage/.config/reuse
-"$CLEAN" snapshot || fail "reuse second snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/reuse || fail "reuse second mount failed"
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /storage/.config/reuse)" -eq 2 ] \
 	|| fail "port B did not stack on the reused target"
 "$CLEAN" || fail "reuse second cleanup failed"
 [ "$(mounts_count "$ZLYME_PM_MOUNTS" /storage/.config/reuse)" -eq 1 ] \
 	|| fail "port B removed the unrelated layer at the reused target"
-snapshot_gone "reuse snapshot survived"
+grep -F -q 'again /storage/.config/reuse ' "$ZLYME_PM_MOUNTS" \
+	|| fail "port B removed the unrelated source"
 
 # A busy recorded mount stays registered. The next cleanup retries it.
-# The snapshot is already gone, so the retry does not depend on it.
 reset
 base_storage
-"$CLEAN" snapshot || fail "busy snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/busy || fail "busy mount failed"
 ZLYME_FAKE_UMOUNT_FAIL=1
 if "$CLEAN"; then
@@ -562,7 +650,6 @@ fi
 grep -F -q ' /storage/.config/busy ' "$ZLYME_PM_MOUNTS" \
 	|| fail "busy mount was detached"
 reg_exact /storage/.config/busy || fail "busy mount left the registry"
-snapshot_gone "busy cleanup left a snapshot"
 ZLYME_FAKE_UMOUNT_FAIL=0
 "$CLEAN" || fail "busy retry failed"
 if grep -F -q ' /storage/.config/busy ' "$ZLYME_PM_MOUNTS"; then
@@ -582,7 +669,6 @@ printf '%s\n' \
 	'roms /storage/Roms ext4 rw 0 0' \
 	> "$ZLYME_PM_MOUNTS"
 printf '%s\n' /storage/Roms /mnt/sd2 > "$ZLYME_PM_REGISTRY"
-"$CLEAN" snapshot || fail "library snapshot failed"
 "$EXEC" mount --bind /src /storage/.config/ownedlib || fail "library-case mount failed"
 : > "$ZLYME_FAKE_UMOUNT_LOG"
 "$CLEAN" || fail "library cleanup failed"
@@ -593,8 +679,117 @@ not_unmounted /mnt/sd2
 if grep -F -q ' /storage/.config/ownedlib ' "$ZLYME_PM_MOUNTS"; then
 	fail "recorded mount under a library case stayed"
 fi
-snapshot_gone "library snapshot survived"
 printf '%s\n' /storage "/mnt/media/USB Games" > "$ZLYME_LIBRARIES_FILE"
+
+# Two wrapper layers at one path. Both ids are released, top first.
+reset
+"$EXEC" mount --bind /src/low /var/port/layers || fail "lower layer failed"
+"$EXEC" mount --bind /src/high /var/port/layers || fail "upper layer failed"
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/layers)" -eq 2 ] \
+	|| fail "two owned layers were not stacked"
+"$CLEAN" || fail "two owned layers were not released"
+[ "$(mounts_count "$ZLYME_PM_MOUNTS" /var/port/layers)" -eq 0 ] \
+	|| fail "an owned layer stayed"
+if reg_exact /var/port/layers; then
+	fail "owned layers stayed registered"
+fi
+
+# The wrapper umounts the top mount. If that top is not the recorded
+# id, the recorded mount stays registered.
+reset
+"$EXEC" mount --bind /src/owned /var/port/cover2 || fail "covered owner failed"
+owned_cover=$(reg_id /var/port/cover2) || fail "covered owner has no id"
+printf '%s\n' 'B /var/port/cover2 fake rw 0 0' >> "$ZLYME_PM_MOUNTS"
+printf '%s\n' '9100 1 0:91 / /var/port/cover2 rw - fake B rw' >> "$ZLYME_PM_MOUNTINFO"
+"$EXEC" umount /var/port/cover2 || fail "umount of the covering mount failed"
+grep -F -q '/src/owned /var/port/cover2 ' "$ZLYME_PM_MOUNTS" \
+	|| fail "wrapper umount removed the recorded layer"
+if grep -F -q 'B /var/port/cover2 ' "$ZLYME_PM_MOUNTS"; then
+	fail "wrapper umount left the covering layer"
+fi
+[ "$(reg_id /var/port/cover2)" = "$owned_cover" ] \
+	|| fail "wrapper umount dropped the still-mounted id"
+"$CLEAN" || fail "cleanup did not release the uncovered owner"
+if grep -F -q '/src/owned /var/port/cover2 ' "$ZLYME_PM_MOUNTS"; then
+	fail "uncovered owner stayed mounted"
+fi
+
+# A later mount covering the recorded id is left alone, including on
+# a second cleanup.
+reset
+"$EXEC" mount --bind /src/owned /var/port/cover || fail "cover owner failed"
+printf '%s\n' 'cover /var/port/cover fake rw 0 0' >> "$ZLYME_PM_MOUNTS"
+printf '%s\n' '8000 1 0:8 / /var/port/cover rw - fake cover rw' >> "$ZLYME_PM_MOUNTINFO"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN"; then
+	fail "covered cleanup reported success"
+fi
+grep -F -q '/src/owned /var/port/cover ' "$ZLYME_PM_MOUNTS" \
+	|| fail "covered cleanup removed the owned layer"
+grep -F -q 'cover /var/port/cover ' "$ZLYME_PM_MOUNTS" \
+	|| fail "covered cleanup removed the top layer"
+reg_exact /var/port/cover || fail "covered id left the registry"
+not_unmounted /var/port/cover
+if "$CLEAN"; then
+	fail "repeated covered cleanup reported success"
+fi
+grep -F -q 'cover /var/port/cover ' "$ZLYME_PM_MOUNTS" \
+	|| fail "repeated cleanup removed the top layer"
+reg_exact /var/port/cover || fail "repeated cleanup dropped the covered id"
+
+# A registry line with no mount id is not unmounted.
+reset
+printf '%s\n' /var/port/amb > "$ZLYME_PM_REGISTRY"
+printf '%s\n' 'x /var/port/amb fake rw 0 0' >> "$ZLYME_PM_MOUNTS"
+printf '%s\n' '3 1 0:3 / /var/port/amb rw - fake x rw' >> "$ZLYME_PM_MOUNTINFO"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN" 2>"$work/amb.err"; then
+	fail "ambiguous cleanup reported success"
+fi
+grep -q 'ambiguous registry entry' "$work/amb.err" \
+	|| fail "ambiguous entry was not reported"
+grep -F -q 'x /var/port/amb ' "$ZLYME_PM_MOUNTS" \
+	|| fail "ambiguous cleanup unmounted the path"
+reg_exact /var/port/amb || fail "ambiguous entry was dropped"
+not_unmounted /var/port/amb
+if "$CLEAN" 2>"$work/amb2.err"; then
+	fail "repeated ambiguous cleanup reported success"
+fi
+grep -F -q 'x /var/port/amb ' "$ZLYME_PM_MOUNTS" \
+	|| fail "repeated ambiguous cleanup unmounted the path"
+
+# The recorded id is already gone. The path now has no mount. Cleanup
+# drops the line and does not call umount.
+reset
+"$EXEC" mount --bind /src/a /var/port/gone || fail "gone setup failed"
+strip_target "$ZLYME_PM_MOUNTS" 2 /var/port/gone
+strip_target "$ZLYME_PM_MOUNTINFO" 5 /var/port/gone
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+"$CLEAN" || fail "dropping a missing id failed"
+not_unmounted /var/port/gone
+if reg_exact /var/port/gone; then
+	fail "missing id stayed registered"
+fi
+"$CLEAN" || fail "repeated cleanup of a missing id failed"
+
+# Mountinfo cannot be read. The recorded mount stays mounted.
+reset
+"$EXEC" mount --bind /src/a /var/port/blind || fail "blind setup failed"
+rm -f "$ZLYME_PM_MOUNTINFO"
+: > "$ZLYME_FAKE_UMOUNT_LOG"
+if "$CLEAN"; then
+	fail "unreadable mountinfo reported success"
+fi
+grep -F -q '/src/a /var/port/blind ' "$ZLYME_PM_MOUNTS" \
+	|| fail "unreadable mountinfo unmounted the path"
+reg_exact /var/port/blind || fail "unreadable mountinfo dropped the entry"
+not_unmounted /var/port/blind
+if "$CLEAN"; then
+	fail "repeated unreadable cleanup reported success"
+fi
+grep -F -q '/src/a /var/port/blind ' "$ZLYME_PM_MOUNTS" \
+	|| fail "repeated unreadable cleanup unmounted the path"
+
 
 if [ -s "$ZLYME_PYTHON_LOG" ]; then
 	fail "mount helper invoked python3"

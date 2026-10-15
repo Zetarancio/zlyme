@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — PortMaster mount identity
+
+`zlyme-portmaster-cleanup` unmounts a recorded mount only when that mountinfo id is still the top mount at the recorded path. Replacing the filesystem at the same path, or covering it, leaves the other mount in place. A registry line with no id is reported and kept. The unused `/run/zlyme-portmaster/storage-before` file is removed. A mount the wrapper never recorded still stays, and USB File Transfer still refuses the primary storage while it remains. The host test used a fake mount table. This was not run on a Flip.
+
 ## 2026-10-15 — About Syncthing parser
 
 NextUI `3f4120cc15a3b6041534b1da972f80bc06eaeb3c` asks `zlyme-syncthing-gui` when About opens. Redraws use that copy. An XML comment is not a Syncthing username or password. The host test compiled the label functions and ran them against the helper. The page was not opened on a Flip.

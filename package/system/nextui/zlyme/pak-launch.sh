@@ -261,19 +261,11 @@ exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 
 # PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack.
 # MENU+START can kill that process group. This session is outside it.
+# Recorded wrapper mounts are what that cleanup releases.
 portmaster_cleanup() {
 	_bin=${ZLYME_PORTMASTER_CLEANUP:-/usr/sbin/zlyme-portmaster-cleanup}
 	[ -x "$_bin" ] || return 0
 	"$_bin" || true
-}
-
-# One-launch record, written after pre-launch cleanup and before the
-# port starts. Post-exit cleanup deletes it. Recorded wrapper mounts
-# are what that cleanup releases.
-portmaster_mark() {
-	_bin=${ZLYME_PORTMASTER_CLEANUP:-/usr/sbin/zlyme-portmaster-cleanup}
-	[ -x "$_bin" ] || return 0
-	"$_bin" snapshot || echo "zlyme-portmaster: storage snapshot failed" >&2
 }
 
 # WINE.pak execs zlyme-weston-run, which stays in this pak group.
@@ -339,7 +331,6 @@ run_pak_cmd() {
 	launch_skip_bt "$_exe" && skip_bt=1
 	if launch_is_ports "$_exe"; then
 		portmaster_cleanup
-		portmaster_mark
 	fi
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup

@@ -39,7 +39,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
-- Leaving a PortMaster game releases a filesystem that game mounted through Zlyme. A filesystem mounted another way stays mounted. USB File Transfer still will not start while some other filesystem remains mounted inside storage. The screen says that, instead of a cut-off storage error.
+- Leaving a PortMaster game releases a filesystem that game mounted through Zlyme. A filesystem mounted another way stays mounted, including one put at the same place after the game's own mount is already gone. USB File Transfer still will not start while some other filesystem remains mounted inside storage. The screen says that, instead of a cut-off storage error.
 - Tools → PortMaster writes its transcript to a temporary file when System logs is off. It no longer writes that file onto the card. An error on screen still comes from that transcript. With System logs on, the transcript is stored with the other tool logs.
 
 ## [zlyme44.2] - 2026-10-11
