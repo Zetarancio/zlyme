@@ -218,7 +218,7 @@ A new setup writes a savestate when you leave from the RetroArch menu, and loads
 
 MENU+START stops the session immediately. Leave from the RetroArch menu when you want the automatic savestate written.
 
-A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. Resetting the RetroArch configuration installs the stock file, including Classic Orange.
+A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. Resetting the RetroArch configuration installs the stock file, including Classic Orange. The menu is RGUI. On this RetroArch the text stays small, and the scale settings do not enlarge it.
 
 The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. That first copy is about 213 MiB and happens before the list appears. The time that copy takes was not measured. A reboot without an update leaves a core you replaced. An update puts the image's file back for every included filename, including when that file did not change. A core the image does not include stays, including one you added and one left from an older image. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
 

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Documentation and source review
+
+The canonical docs now describe the current suspend helper, RetroArch's stock file and writable cores, and the open RGUI and one-directory PortMaster GUI limits. Phase 13 is not closed. No image was built. A mount the wrapper never recorded can still block USB File Transfer. The read-only check is in `docs/OPERATIONS.md`. Flycast's save bind and Wine's `dosdevices` tmpfs are still released by path after their own checks. They were not given mount ids in this pass. This was not run on a Flip.
+
 ## 2026-10-15 — Obsolete configuration
 
 `ra-perf.cfg` was not installed by a recipe and nothing read it. It is removed. `/etc/retroarch.cfg` stays because RetroArch 1.22.2 installs its default there and uses that path as the skeleton when the user file is missing. The overlay file has no settings. The stock file remains `/usr/share/zlyme/retroarch/retroarch.cfg`. AetherSX2 1.0.0's help has no folder argument, so the launcher still rewrites the BIOS, savestate, and memory-card lines. The other lines stay. This was a source check. It was not run on a Flip.

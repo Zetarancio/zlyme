@@ -146,7 +146,7 @@ Reference: [docs/research/usb-mtp-phase12d.md](research/usb-mtp-phase12d.md), [d
 
 Phase 13 is not closed. It stays on `zlyme44.3-phase-12` for the same eventual `zlyme44.3` release. Nothing here is on the installed E32 image. The maintainer has not asked for a Phase 13 hardware run yet. 13E6 is that later candidate.
 
-13A, the rest of 13B, 13C2, and 13D are host-tested. B6 and C1 are outstanding limitations. They are not implemented, and they are separate from Phase 13E release-readiness. Phase 13B is not complete because of B6. Phase 13 as a whole is not closed. Whether that final scope is accepted waits on the maintainer. Phase 12's hardware campaign stays closed. 13E has not started. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
+13A, the rest of 13B, 13C2, and 13D are host-tested. B6 and C1 are outstanding limitations. They are not implemented, and they are separate from Phase 13E release-readiness. Phase 13B is not complete because of B6. Phase 13 as a whole is not closed. Whether that final scope is accepted waits on the maintainer. Phase 12's hardware campaign stays closed. 13E1, 13E2, and 13E3 are host-tested. 13E4 is source-checked. 13E5 is source-checked. 13E6 is a source review. No Phase 13 image has been built. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
 
 The earlier 13E list, E1 through E4, is in the archive. The milestones below replace it.
 
@@ -244,7 +244,7 @@ Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A 
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. 13E1, 13E2, and 13E3 are host-tested. 13E4 is source-checked. 13E5 and 13E6 have not started.
+13E is the last integration pass for `zlyme44.3`. 13E1, 13E2, and 13E3 are host-tested. 13E4 and 13E5 are source-checked. 13E6 is a source review. No image has been built. Phase 13 is not closed.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -278,7 +278,7 @@ Status: Source-checked. `ra-perf.cfg` was not installed by a recipe and nothing 
 
 Objective: make `docs/ARCHITECTURE.md`, `docs/MAINTENANCE.md`, `docs/OPERATIONS.md`, `docs/DEVELOPMENT.md`, `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md`, `docs/USER_GUIDE.md`, `docs/LOGBOOK.md`, and `CHANGELOG.md` agree with current behavior. Link to evidence. Do not paste it twice. Dated logbook entries stay as they were written. The changelog stays short and user-facing.
 
-Status: Planned.
+Status: Source-checked. The canonical docs match this tree for `zlyme44.3`, the NextUI pin, suspend and lid ownership, RetroArch provisioning, core synchronization, arcade BIOS lookup, PortMaster cleanup, USB File Transfer, Samba, Syncthing, About, the open RGUI limit, and PortMaster-GUI's one ports directory. Dated logbook entries were left as written. This was not a Flip test.
 
 #### 13E6. Source review and acceptance
 
@@ -286,7 +286,7 @@ Objective: review Phase 12 and 13 for ownership, persistent data, cleanup, first
 
 Do not reopen an accepted hardware campaign without a concrete regression. B6 stays a documented limit unless a bounded fix is approved separately. C1 stays a documented limit. Do not add an unsafe ports union.
 
-Status: Planned. No image, OTA, or release is part of the planning record.
+Status: Source-reviewed. The host checks for these paths were run on this branch. No image, OTA, or release was built. The local candidate, and a Flip check of a port mount that still blocks USB File Transfer, remain. B6 and C1 stay open. A mount the wrapper never recorded can still block that tool.
 
 ## Phase 14. PortMaster compatibility
 
