@@ -409,6 +409,12 @@ if br2_selected BR2_PACKAGE_NEXTUI; then
 	sh "$paks_ver" \
 		"${TARGET_DIR}/usr/share/nextui/paks" \
 		"${TARGET_DIR}/usr/share/nextui/paks-version.txt"
+	core_sync="$(cd "$(dirname "$0")/../../package/system/nextui/zlyme" && pwd)/zlyme-core-sync"
+	if [ -d "${TARGET_DIR}/usr/lib/libretro" ]; then
+		sh "$core_sync" stamp \
+			"${TARGET_DIR}/usr/lib/libretro" \
+			"${TARGET_DIR}/usr/share/zlyme/retroarch/cores.stamp"
+	fi
 fi
 
 exit "${fail}"

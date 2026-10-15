@@ -13,44 +13,14 @@ export USERDATA_PATH XDG_CONFIG_HOME
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
 export HOME
-SEED=
-for s in /usr/share/zlyme/emu-defaults/ppsspp.ini /storage/.config/zlyme/emu-defaults/ppsspp.ini; do
-	[ -f "$s" ] && SEED=$s && break
-done
+# The stock ini is also copied by zlyme-stock-seed. An existing ini stays.
+SEED=/usr/share/zlyme/emu-defaults/ppsspp.ini
 INI="$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM/ppsspp.ini"
 mkdir -p "$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM" \
 	"$SAVES_PATH/PSP/SAVEDATA" "$SAVES_PATH/PSP/PPSSPP_STATE" \
 	"$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" "$XDG_CONFIG_HOME/ppsspp/PSP/PPSSPP_STATE"
-if [ -n "$SEED" ] && [ ! -e "$INI" ]; then
+if [ -f "$SEED" ] && [ ! -s "$INI" ]; then
 	cp "$SEED" "$INI"
-fi
-# One-time: an ini created before the xb360 map has no ControlMapping.
-# A file that already has that section is a user map and stays.
-if [ -f "$INI" ] && ! grep -q '^\[ControlMapping\]' "$INI"; then
-	cat >> "$INI" <<'EOF'
-# zlyme-pad-abi=xb360
-[ControlMapping]
-Up = 10-19
-Down = 10-20
-Left = 10-21
-Right = 10-22
-Circle = 10-190
-Cross = 10-189
-Square = 10-191
-Triangle = 10-188
-Start = 10-197
-Select = 10-196
-L = 10-193
-R = 10-192
-An.Up = 10-4003
-An.Down = 10-4002
-An.Left = 10-4001
-An.Right = 10-4000
-RightAn.Up = 10-4007
-RightAn.Down = 10-4006
-RightAn.Left = 10-4005
-RightAn.Right = 10-4004
-EOF
 fi
 if [ -d "$SAVES_PATH/PSP/SAVEDATA" ]; then
 	mount --bind "$SAVES_PATH/PSP/SAVEDATA" "$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" 2>/dev/null || true

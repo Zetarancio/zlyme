@@ -1,0 +1,111 @@
+#!/bin/sh
+# Copy Zlyme's stock emulator configuration when the writable file is
+# missing or zero bytes. An existing non-empty file stays.
+# zlyme-stock-seed reset-ra replaces the RetroArch main configuration.
+# Saves, savestates, BIOS files, and core libraries are not touched.
+
+set -eu
+
+STORAGE=${ZLYME_STOCK_ROOT:-/storage}
+SHARE=${ZLYME_STOCK_SHARE:-/usr/share/zlyme}
+MODE=${1:-seed}
+
+sync_file() {
+	if sync -f "$1" 2>/dev/null; then
+		return 0
+	fi
+	sync 2>/dev/null || true
+}
+
+# $1 source, $2 destination, $3 replace (1) or missing-only (0).
+install_cfg() {
+	_src=$1
+	_dest=$2
+	_replace=$3
+	[ -f "$_src" ] || return 0
+	if [ "$_replace" != 1 ] && [ -s "$_dest" ]; then
+		return 0
+	fi
+	_dir=$(dirname "$_dest")
+	mkdir -p "$_dir"
+	_tmp=$(mktemp "$_dir/.zlyme-stock.XXXXXX") || return 1
+	if ! cp "$_src" "$_tmp"; then
+		rm -f "$_tmp"
+		return 1
+	fi
+	sync_file "$_tmp"
+	if ! mv -f "$_tmp" "$_dest"; then
+		rm -f "$_tmp"
+		return 1
+	fi
+}
+
+seed_tree() {
+	tree_src=$1
+	tree_dest=$2
+	[ -d "$tree_src" ] || return 0
+	for folder in "$tree_src"/*; do
+		[ -d "$folder" ] || continue
+		folder_name=${folder##*/}
+		mkdir -p "$tree_dest/$folder_name"
+		for opt in "$folder"/*; do
+			[ -f "$opt" ] || continue
+			install_cfg "$opt" "$tree_dest/$folder_name/${opt##*/}" 0
+		done
+	done
+}
+
+platform_name() {
+	_plat=my355
+	_conf=${ZLYME_DEVICE_CONF-/usr/share/zlyme/device.conf}
+	if [ -n "$_conf" ] && [ -f "$_conf" ]; then
+		# shellcheck disable=SC1090
+		. "$_conf"
+		_plat=${ZLYME_NEXTUI_PLATFORM:-my355}
+	fi
+	printf '%s\n' "$_plat"
+}
+
+seed_ra() {
+	_replace=$1
+	install_cfg "$SHARE/retroarch/retroarch.cfg" \
+		"$STORAGE/.config/retroarch/retroarch.cfg" "$_replace"
+}
+
+seed_options() {
+	seed_tree "$SHARE/retroarch/config" \
+		"$STORAGE/.config/retroarch/config"
+}
+
+seed_standalones() {
+	_plat=$(platform_name)
+	install_cfg "$SHARE/emu-defaults/flycast/emu.cfg" \
+		"$STORAGE/.config/flycast/emu.cfg" 0
+	install_cfg "$SHARE/emu-defaults/flycast/emu.cfg" \
+		"$STORAGE/.config/nextui/$_plat/.config/flycast/emu.cfg" 0
+	install_cfg "$SHARE/emu-defaults/ppsspp.ini" \
+		"$STORAGE/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" 0
+	_drastic=${ZLYME_DRASTIC_SEED:-/usr/share/drastic/config/drastic.cfg}
+	install_cfg "$_drastic" "$STORAGE/.config/drastic/drastic.cfg" 0
+}
+
+case "$MODE" in
+	seed)
+		seed_ra 0
+		seed_options
+		seed_standalones
+		;;
+	reset-ra)
+		seed_ra 1
+		;;
+	options)
+		seed_options
+		;;
+	standalones)
+		seed_standalones
+		;;
+	*)
+		echo "usage: $0 [seed|reset-ra|options|standalones]" >&2
+		exit 2
+		;;
+esac

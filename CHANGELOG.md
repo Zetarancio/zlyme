@@ -9,17 +9,17 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Added
 
 - Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list.
-- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is.
+- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is. A JPEG is stored as a PNG.
 - Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed.
 - The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver and turns on Mesa's experimental Vulkan setting for programs launched afterwards. One orange frame was shown on a Flip. That is not a claim that games render, and PPSSPP on Panfrost still does not attach the display. The Mali driver remains the Vulkan path PPSSPP can use.
 
 ### Changed
 
-- RetroArch writes a savestate when you quit from its menu and loads it the next time that game starts. A choice you already saved stays. Hardcore RetroAchievements leaves that state unloaded. MENU+START still leaves immediately. Closing a game from the quick menu returns to the list. In Tools → RetroArch, closing the game stays in RetroArch until you quit.
-- A libretro core in `/storage/.config/retroarch/cores/` replaces an included core with the same filename, and a new filename is listed with the included cores. Removing that file brings the included core back the next time RetroArch starts. The file is a native program and has to come from a source you trust. An incompatible file fails when RetroArch loads it. The online core installer stays off.
-- Dreamcast writes a savestate when you quit Flycast and loads it the next time. A Flycast setting you already chose stays. MENU+START does not write that savestate.
-- RetroArch's menu uses Classic Orange on a new setup. A theme you already saved stays. Zlyme's old menu colors are replaced when they are still the original set.
-- FinalBurn Neo looks for a BIOS archive in `Bios/fbneo/`, then `Bios/FBNEO/`, then `Bios/`. A game archive with the same filename is the one that runs. MAME's BIOS folders stay in their existing order.
+- RetroArch writes a savestate when you quit from its menu and loads it the next time that game starts, on a new configuration. A configuration you already saved stays, including across an update. Resetting the RetroArch configuration installs the stock file again. Hardcore RetroAchievements leaves that state unloaded. MENU+START still leaves immediately. Closing a game from the quick menu returns to the list. In Tools → RetroArch, closing the game stays in RetroArch until you quit.
+- Included libretro cores are copied to `/storage/.config/retroarch/cores/`. An update replaces a core whose filename the new image includes. A core the image does not include stays. Replacing a copied core lasts until the next update that includes that filename. The file is a native program and has to come from a source you trust. An incompatible file fails when RetroArch loads it. The online core installer stays off.
+- Dreamcast writes a savestate when you quit Flycast and loads it the next time, on a new Flycast configuration. A Flycast configuration you already saved stays. MENU+START does not write that savestate.
+- RetroArch's menu uses Classic Orange on a new setup. A theme you already saved stays. Resetting the RetroArch configuration installs Classic Orange again.
+- FinalBurn Neo looks for a BIOS archive in the game folder, then `Bios/fbneo/`, then `Bios/`. The names are case-sensitive. MAME 2003-Plus reads ROM and BIOS zips from the game folder. Samples use `Bios/mame2003-plus/`.
 - The boot splash and README lockup use the new circle-above-word mark (slime loop). Update and resize progress use the stars loop instead of the galaxy clip.
 - The battery sample is every 10 seconds. At 10% or below, the red LED stays on and flashes about once a minute. Two 0% readings in a row, with the charger offline, shut the Flip down. That shutdown has not been tried on a Flip.
 - SSH stays on. Until you set a root password, the password is still empty. A password you set is kept on the card.

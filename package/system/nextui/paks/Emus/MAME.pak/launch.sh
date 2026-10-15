@@ -9,7 +9,4 @@ mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG" \
 HOME="$USERDATA_PATH"
 cd "$HOME"
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
-if command -v zlyme-arcade-stage >/dev/null 2>&1; then
-	ROM=$(zlyme-arcade-stage "$EMU_TAG" "$ROM")
-fi
 exec ra-run -L "$CORES_PATH/${EMU_EXE}_libretro.so" "$ROM"

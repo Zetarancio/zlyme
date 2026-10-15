@@ -253,17 +253,43 @@ do_recents() {
 do_ra_cores() {
 	d=$STORAGE/.config/retroarch/config
 	n=0
+	miss=0
 	if [ -d "$d" ]; then
 		n=$(find "$d" -type f | wc -l | tr -d ' ')
-		miss=0
 		if [ "$DRY" = 0 ]; then
 			rm -rf -- "$d" || miss=1
 		fi
-		printf '%s\n' "$n"
-		[ "$miss" = 0 ] || return 1
-		return 0
+	fi
+	if [ "$DRY" = 0 ] && [ "$miss" = 0 ]; then
+		stock_seed options || miss=1
 	fi
 	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
+}
+
+do_ra_cfg() {
+	f=$STORAGE/.config/retroarch/retroarch.cfg
+	n=0
+	[ -e "$f" ] && n=1
+	miss=0
+	if [ "$DRY" = 0 ]; then
+		bin=${ZLYME_STOCK_SEED:-/usr/sbin/zlyme-stock-seed}
+		if [ ! -f "$bin" ]; then
+			miss=1
+		else
+			stock_seed reset-ra || miss=1
+		fi
+	fi
+	printf '%s\n' "$n"
+	[ "$miss" = 0 ] || return 1
+}
+
+# Missing stock files are copied again. A missing seed tool leaves the
+# delete in place so a host run without the image still reports it.
+stock_seed() {
+	bin=${ZLYME_STOCK_SEED:-/usr/sbin/zlyme-stock-seed}
+	[ -f "$bin" ] || return 0
+	ZLYME_STOCK_ROOT=$STORAGE sh "$bin" "$1"
 }
 
 # Settings only. User carts, saves, prefixes, and soundfonts are not listed.
@@ -297,6 +323,9 @@ do_standalones() {
 	miss=0
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
 		remove_listed /tmp/zlyme-sa.list || miss=1
+	fi
+	if [ "$DRY" = 0 ] && [ "$miss" = 0 ]; then
+		stock_seed standalones || miss=1
 	fi
 	printf '%s\n' "$n"
 	if [ "$n" -gt 0 ]; then
@@ -472,10 +501,11 @@ case "$ACTION" in
 	orphan-media) n=$(do_orphan_media) || st=$?; echo "COUNT=$n"; echo "orphan boxart" ;;
 	recents) n=$(do_recents) || st=$?; echo "COUNT=$n"; echo "recents" ;;
 	ra-cores) n=$(do_ra_cores) || st=$?; echo "COUNT=$n"; echo "RetroArch core options" ;;
+	ra-cfg) n=$(do_ra_cfg) || st=$?; echo "COUNT=$n"; echo "RetroArch configuration" ;;
 	standalones) n=$(do_standalones) || st=$?; echo "COUNT=$n" ;;
 	ra-rom-cfg) n=$(do_ra_rom_cfg) || st=$?; echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
 	*)
-		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|standalones|ra-rom-cfg|rom PATH|rom-apply PLAN} [--dry-run]" >&2
+		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|ra-cfg|standalones|ra-rom-cfg|rom PATH|rom-apply PLAN} [--dry-run]" >&2
 		exit 1
 		;;
 esac

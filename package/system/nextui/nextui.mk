@@ -3,7 +3,8 @@
 # nextui
 #
 # Zetarancio/NextUI at an exact commit. Branch zlyme is workflow only.
-# Cores stay /usr/lib/libretro; emu paks exec RetroArch (ra-run).
+# Image cores are /usr/lib/libretro. zlyme-core-sync copies them into
+# the writable core directory. Emu paks exec RetroArch (ra-run).
 #
 # NextUI: https://github.com/Zetarancio/NextUI
 # Upstream LoveRetro/NextUI pin is the fetched UPSTREAM file.
@@ -163,12 +164,14 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/rom-exts.txt
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/ra-run.sh \
 		$(TARGET_DIR)/usr/bin/ra-run
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-stock-seed \
+		$(TARGET_DIR)/usr/sbin/zlyme-stock-seed
+	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/zlyme-core-sync \
+		$(TARGET_DIR)/usr/sbin/zlyme-core-sync
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-input.sh \
 		$(TARGET_DIR)/usr/share/zlyme/pak-input.sh
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/drm-release.py \
 		$(TARGET_DIR)/usr/bin/zlyme-drm-release
-	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/zlyme/arcade-stage.sh \
-		$(TARGET_DIR)/usr/bin/zlyme-arcade-stage
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-log.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/pak-log.sh
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/pak-launch.sh \

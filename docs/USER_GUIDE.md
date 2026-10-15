@@ -54,8 +54,8 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 | MSX                     | blueMSX (libretro)                          | `Roms/MSX (MSX)/`                                 | `.mx1` `.mx2` `.dsk` `.rom` `.cas` `.zip` `.7z`                              | none to add (`Machines/` `Databases/` ship in the image)                                    |
 | Odyssey 2               | O2EM (libretro)                             | `Roms/Odyssey 2 (O2)/`                            | `.bin` `.zip` `.7z`                                                          | `o2rom.bin`                                                                                 |
 | Vectrex                 | vecx (libretro)                             | `Roms/Vectrex (VEC)/`                             | `.vec` `.bin` `.gam` `.zip` `.7z`                                            | —                                                                                           |
-| Neo Geo (AES/MVS)       | FinalBurn Neo (libretro)                    | `Roms/FBNeo (FBNEO)/`                             | `.zip` `.7z`                                                                 | `neogeo.zip` in `Bios/`, `Bios/fbneo/`, or `Bios/FBNEO/`                                    |
-| Arcade                  | MAME 2003-Plus (libretro)                   | `Roms/MAME (MAME)/`                               | `.zip` `.7z`                                                                 | BIOS zips in `Bios/`, `Bios/MAME/`, or `Bios/mame2003-plus/`                                |
+| Neo Geo (AES/MVS)       | FinalBurn Neo (libretro)                    | `Roms/FBNeo (FBNEO)/`                             | `.zip` `.7z`                                                                 | `neogeo.zip` in the game folder, `Bios/fbneo/`, or `Bios/`                                 |
+| Arcade                  | MAME 2003-Plus (libretro)                   | `Roms/MAME (MAME)/`                               | `.zip` `.7z`                                                                 | ROM and BIOS zips in the game folder. Samples in `Bios/mame2003-plus/samples/`             |
 | Neo Geo CD              | NeoCD (libretro)                            | `Roms/Neo Geo CD (NEOCD)/`                        | `.cue` `.iso` `.chd`                                                         | `neocd/neocd.bin`, `neocd/uni-bioscd.rom`, or `neocd/neocd_z.rom` (`Bios/` root also works) |
 | Neo Geo Pocket          | Beetle NGP (libretro)                       | `Roms/Neo Geo Pocket (NGP)/`                      | `.ngp` `.ngc` `.zip` `.7z`                                                   | —                                                                                           |
 | WonderSwan              | Beetle WonderSwan (libretro)                | `Roms/WonderSwan (WS)/`                           | `.ws` `.wsc` `.zip` `.7z`                                                    | —                                                                                           |
@@ -94,7 +94,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 
 - **PSP:** PPSSPP renders with OpenGL. Vulkan is available when the Mali driver is active and you pick it in PPSSPP. Panfrost turns on Mesa's experimental Vulkan driver. PPSSPP on that driver does not attach the display, so a PSP game was not shown that way.
-- **Dreamcast:** Flycast writes a savestate when you quit and loads it the next time that game starts. A savestate setting you already chose in Flycast stays. Hardcore achievements, when that mode is on, leave the savestate unloaded. MENU+START does not write that savestate.
+- **Dreamcast:** a new Flycast setup writes a savestate when you quit and loads it the next time that game starts. A Flycast configuration you already have is left as it is, including a setup that does not resume. Hardcore achievements, when that mode is on, leave the savestate unloaded. MENU+START does not write that savestate.
 
 
 
@@ -139,7 +139,8 @@ Seeing the Flip on the computer is not proof that a copy worked. On 2026-10-14 o
 - Put BIOS files in `Bios/` on any mounted library. The [systems table](#systems-and-emulators) lists the names and subfolders.
 - When a game starts, Zlyme combines the `Bios/` folders of every mounted library. If the same file exists on more than one card, the copy on the card that holds the game wins.
 - A file in a one-level subfolder, such as `Bios/PS/scph5501.bin`, is also found at the `Bios/` root, unless a root file already has that name.
-- FinalBurn Neo uses a BIOS archive from `Bios/fbneo/` when that file is there, then `Bios/FBNEO/`, then `Bios/`. A game archive with the same filename is the one that runs. MAME still uses its own folder order.
+- FinalBurn Neo looks in the game's folder first, then `Bios/fbneo/`, then `Bios/`. The names are case-sensitive. A folder named `FBNEO` is not searched. A file in the game folder with the same name is the one that runs.
+- MAME 2003-Plus reads ROM and BIOS zips from the game's folder. It does not open those zips from `Bios/`. Samples and artwork use `Bios/mame2003-plus/` when that core's system-subfolder option is on, which is the usual setting.
 
 
 
@@ -213,13 +214,13 @@ Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu retu
 
 A game opened from the list uses the same menu. A confirms and B goes back. The buttons a game uses, and a controller remap you saved, stay as they are. Closing the game from the Quick Menu returns to the list.
 
-A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Turning automatic save or automatic load off in RetroArch keeps that choice. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
+A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Zlyme copies that stock configuration when RetroArch does not already have one. A configuration you already have is not changed by launching a game or by an update. Turning automatic save or automatic load off in RetroArch keeps that choice. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
 
 MENU+START stops the session immediately. Leave from the RetroArch menu when you want the automatic savestate written.
 
-A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. The previous Zlyme colors are replaced when every one of them is still the original color.
+A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. Resetting the RetroArch configuration installs the stock file, including Classic Orange.
 
-A core you put in `/storage/.config/retroarch/cores/` replaces an included core with the same filename. A new filename is listed with the included cores. Removing the file brings the included core back the next time RetroArch starts. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
+The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. An update replaces a core whose filename the new image includes. A core the image does not include stays, including one you added and one left from an older image. You can replace a copied core. That replacement stays until an update whose image includes the same filename, which installs the image's file again. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
 
 ## Settings
 
@@ -256,8 +257,10 @@ Besides its game options, this page holds cleanup actions. Each one counts what 
 - **Orphan saves / states**: saves whose ROM is missing from that same card.
 - **Orphan boxart**: artwork whose ROM is missing.
 - **Clear Recents**: the Recently Played list.
-- **Reset RetroArch core options** and **Orphan per-ROM RetroArch configs**.
-- **Reset standalone settings**: games and saves are kept.
+- **Reset RetroArch core options** removes per-core option files and restores the stock option files. It does not remove core libraries, saves, or the main RetroArch configuration.
+- **Reset RetroArch configuration** restores the main RetroArch configuration from the stock file. It does not remove core options, core libraries, saves, or BIOS files. The pinned Settings menu does not show this row yet. The action is `zlyme-game-cleanup ra-cfg`.
+- **Orphan per-ROM RetroArch configs**.
+- **Reset standalone settings**: removes standalone emulator settings, then restores the stock files Zlyme ships. Games and saves are kept. DraStic, PPSSPP, and Flycast have stock files. Dolphin and AetherSX2 write their first settings the next time they start. AetherSX2 updates its BIOS and save folders to the active library on each launch. The other lines in that file stay. GZDoom, native PICO-8, and the programs with no stock file are not given an invented configuration.
 - **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
 
 
@@ -310,7 +313,7 @@ ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by K
 PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 
 - Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card. PortMaster's own list shows the ports on that library. A port on another card stays in that card's Ports list.
-- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is. A JPEG is used when it can be turned into a PNG.
+- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is. A JPEG is stored as a PNG.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
 - Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.

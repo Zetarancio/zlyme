@@ -1,0 +1,149 @@
+#!/bin/sh
+# Copy packaged libretro cores into the writable core directory.
+# /usr/lib/libretro is the image source. The writable directory is
+# /storage/.config/retroarch/cores. A name the image does not ship
+# stays. The stamp is the shipped set, not ZLYME_VERSION.
+#
+# zlyme-core-sync
+# zlyme-core-sync stamp SOURCE STAMPFILE
+
+set -eu
+
+sync_file() {
+	if sync -f "$1" 2>/dev/null; then
+		return 0
+	fi
+	sync 2>/dev/null || true
+}
+
+core_id() {
+	_src=$1
+	_list=$(mktemp)
+	_manifest=$(mktemp)
+	trap 'rm -f "$_list" "$_manifest"' EXIT
+	if [ -d "$_src" ]; then
+		find "$_src" -maxdepth 1 -type f -name '*_libretro.so' -print \
+			| LC_ALL=C sort > "$_list"
+	else
+		: > "$_list"
+	fi
+	while IFS= read -r _f; do
+		[ -n "$_f" ] || continue
+		_sum=$(sha256sum "$_f" | awk '{print $1}')
+		printf '%s %s\n' "${_f##*/}" "$_sum"
+	done < "$_list" > "$_manifest"
+	sha256sum "$_manifest" | awk '{print $1}'
+	rm -f "$_list" "$_manifest"
+	trap - EXIT
+}
+
+if [ "${1:-}" = stamp ]; then
+	[ "$#" -eq 3 ] || {
+		echo "usage: $0 stamp SOURCE STAMPFILE" >&2
+		exit 2
+	}
+	_id=$(core_id "$2")
+	_dir=$(dirname "$3")
+	mkdir -p "$_dir"
+	_tmp=$(mktemp "$_dir/.cores.stamp.XXXXXX")
+	printf '%s\n' "$_id" > "$_tmp"
+	sync_file "$_tmp"
+	mv -f "$_tmp" "$3"
+	exit 0
+fi
+
+[ "$#" -eq 0 ] || {
+	echo "usage: $0 [stamp SOURCE STAMPFILE]" >&2
+	exit 2
+}
+
+SRC=${ZLYME_CORE_SRC:-/usr/lib/libretro}
+DST=${ZLYME_CORE_DST:-/storage/.config/retroarch/cores}
+STAMP_SRC=${ZLYME_CORE_STAMP:-/usr/share/zlyme/retroarch/cores.stamp}
+STAMP_DST=$DST/.zlyme-core-set
+
+if [ -f "$STAMP_SRC" ]; then
+	id=$(awk 'NR==1 { print; exit }' "$STAMP_SRC")
+else
+	id=$(core_id "$SRC")
+fi
+[ -n "$id" ] || exit 1
+
+mkdir -p "$DST"
+if [ -f "$STAMP_DST" ] && [ "$(awk 'NR==1 { print; exit }' "$STAMP_DST")" = "$id" ]; then
+	exit 0
+fi
+if [ ! -d "$SRC" ]; then
+	echo "zlyme-core-sync: missing $SRC" >&2
+	exit 1
+fi
+
+need=0
+list=$(mktemp)
+trap 'rm -f "$list"' EXIT
+if [ -d "$SRC" ]; then
+	find "$SRC" -maxdepth 1 -type f -name '*_libretro.so' -print \
+		| LC_ALL=C sort > "$list"
+else
+	: > "$list"
+fi
+
+while IFS= read -r src; do
+	[ -n "$src" ] || continue
+	bn=${src##*/}
+	dest=$DST/$bn
+	if [ -f "$dest" ] && [ ! -L "$dest" ] && cmp -s "$src" "$dest"; then
+		continue
+	fi
+	size=$(wc -c < "$src" | tr -d ' ')
+	need=$((need + size))
+done < "$list"
+
+if [ -n "${ZLYME_CORE_TEST:-}" ]; then
+	avail=${ZLYME_CORE_AVAIL:-}
+else
+	avail=
+fi
+if [ -z "$avail" ]; then
+	avail=$(df -P "$DST" | awk 'NR==2 { print $4 * 1024 }')
+fi
+if [ "$need" -gt 0 ] && [ "$avail" -lt "$need" ]; then
+	echo "zlyme-core-sync: need $need bytes, $avail free" >&2
+	exit 1
+fi
+
+n=0
+while IFS= read -r src; do
+	[ -n "$src" ] || continue
+	bn=${src##*/}
+	dest=$DST/$bn
+	if [ -f "$dest" ] && [ ! -L "$dest" ] && cmp -s "$src" "$dest"; then
+		continue
+	fi
+	if [ -n "${ZLYME_CORE_TEST:-}" ] && [ "${ZLYME_CORE_FAIL:-}" = "$bn" ]; then
+		echo "zlyme-core-sync: copy failed: $bn" >&2
+		exit 1
+	fi
+	tmp=$(mktemp "$DST/.zlyme-core.XXXXXX") || exit 1
+	if ! cp "$src" "$tmp"; then
+		rm -f "$tmp"
+		echo "zlyme-core-sync: copy failed: $bn" >&2
+		exit 1
+	fi
+	sync_file "$tmp"
+	if ! mv -f "$tmp" "$dest"; then
+		rm -f "$tmp"
+		echo "zlyme-core-sync: rename failed: $bn" >&2
+		exit 1
+	fi
+	n=$((n + 1))
+	if [ -n "${ZLYME_CORE_TEST:-}" ] && [ "${ZLYME_CORE_STOP_AFTER:-}" = "$n" ]; then
+		echo "zlyme-core-sync: stopped after $n" >&2
+		exit 1
+	fi
+done < "$list"
+
+tmp=$(mktemp "$DST/.zlyme-core.XXXXXX") || exit 1
+printf '%s\n' "$id" > "$tmp"
+sync_file "$tmp"
+mv -f "$tmp" "$STAMP_DST"

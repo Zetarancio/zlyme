@@ -24,6 +24,12 @@ start() {
 		return 0
 	fi
 	printf "Starting NextUI: "
+	if [ -x /usr/sbin/zlyme-stock-seed ]; then
+		/usr/sbin/zlyme-stock-seed || echo "stock configuration seed failed"
+	fi
+	if [ -x /usr/sbin/zlyme-core-sync ]; then
+		/usr/sbin/zlyme-core-sync || echo "libretro core sync failed"
+	fi
 	mkdir -p /storage/.config/zlyme /tmp
 	# Logs off: the wrapper output stays in tmpfs. Logs on: one file in
 	# the current boot generation. Do not append the legacy card log.

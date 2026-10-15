@@ -35,6 +35,11 @@ art_pick() {
 	return 1
 }
 
+art_png_ok() {
+	_sig=$(od -An -tx1 -N8 "$1" 2>/dev/null | tr -d ' \n')
+	[ "$_sig" = "89504e470d0a1a0a" ]
+}
+
 art_json_has() {
 	python3 - "$1" "$2" << 'PY'
 import json
@@ -118,8 +123,10 @@ art_publish_one() {
 		*.jpg|*.jpeg)
 			_ff=${ZLYME_PM_ART_FFMPEG:-ffmpeg}
 			if command -v "$_ff" >/dev/null 2>&1; then
-				if "$_ff" -nostdin -y -loglevel error -i "$_src" -f image2 "$_tmp"; then
-					_ok=1
+				if "$_ff" -nostdin -y -loglevel error -i "$_src" -c:v png -f image2 "$_tmp"; then
+					if art_png_ok "$_tmp"; then
+						_ok=1
+					fi
 				fi
 			fi
 			;;

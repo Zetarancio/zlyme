@@ -9,7 +9,7 @@ The Miyoo Flip (`my355`) remains the only supported device.
 
 ## Active summary
 
-Phases 0–12 are closed. Phase 13A is host-tested. The Phase 13 table names which later items are host-tested, blocked, or still planned. Phase 13 continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`.
+Phases 0–12 are closed. Phase 13A is host-tested. The Phase 13 table names which later items are host-tested, blocked, or still planned. Phase 13 continues on `zlyme44.3-phase-12` and shares the eventual `zlyme44.3` release with Phase 12. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release exists. The published stable release is still `zlyme44.2`. On 2026-10-15 the maintainer replaced the B2, B5, and B8 requirements. The earlier host tests of those three items do not validate the replacement.
 
 | Phase | Closed result | Where the detail stayed |
 |-------|----------------|-------------------------|
@@ -26,7 +26,7 @@ Phases 0–12 are closed. Phase 13A is host-tested. The Phase 13 table names whi
 | 10 | Documentation closure. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published on its own. | [Section 10](#10--documentation-maintainability-and-cross-repository-knowledge) |
 | 11 | Published `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. | [Section 11](#11--zlyme442-user-facing-reliability-and-compatibility) |
 | 12 | Development closed on 2026-10-14, with the limits below. | [Phase 12 closure](#phase-12-closure-2026-10-14) |
-| 13 | 13A, 13B1, B2, B5, B7, and 13C2 host-tested on 2026-10-15. B6 and 13C1 blocked. 13D–13E planned. | [Phase 13](#phase-13) |
+| 13 | 13A, 13B1, B2, B5, B7, B8, and 13C2 host-tested. B6 and 13C1 blocked. 13D–13E planned. | [Phase 13](#phase-13) |
 
 Accepted for Phase 12, on the installed E32 development image: ordinary MTP, including a second start with the cable left in place; one PortMaster port on the second card returned to NextUI; charging and upper-port host use by maintainer report. One orange frame was presented twice with experimental PanVK. The maintainer requires no further Phase 12 hardware test.
 
@@ -1321,7 +1321,7 @@ Integration, usability, and compatibility. Opened 2026-10-15 on `zlyme44.3-phase
 
 The order is 13A, then 13B, then 13C, then 13D, then 13E. 13E records behavior that the earlier sections have already implemented. An item stays Planned until its source is on this branch. Host-tested means a host check passed. That is not a Flip result. Maintainer-accepted is a later decision. Blocked means the item stopped on the limit named in that item. The maintainer has not asked for a Phase 13 hardware test. Source review, host regression, and the existing device record are the evidence. Credits for B7, B8, D1, and D2 belong in those commit messages.
 
-Phase 13B1 (B1, B3, B4, and B8) is host-tested in source and is not on that image. B2, B5, and B7 are host-tested in source and are not on that image. B6 is blocked on the pinned RGUI font. Phase 13B is not complete. Phase 13C1 is blocked on PortMaster's single ports directory. Phase 13C2 is host-tested in source and is not on that image. Phase 13D and 13E are not started.
+Phase 13B1 (B1, B3, and B4) is host-tested in source and is not on that image. B2, B5, B7, and B8 are host-tested in source and are not on that image. The B2, B5, and B8 host tests from earlier on 2026-10-15 do not validate the revised policy. B6 is blocked on the pinned RGUI font. Phase 13B is not complete. Phase 13C1 is blocked on PortMaster's single ports directory. Phase 13C2 is host-tested in source, including the PNG signature, and is not on that image. Phase 13D and 13E are not started.
 
 #### Phase 13A — Build reliability and small corrections
 
@@ -1415,43 +1415,35 @@ Status: Host-tested.
 
 RetroArch 1.22.2 keeps menu OK on RetroPad A when `input_menu_swap_ok_cancel_buttons` is false (`menu/menu_driver.c`). The SDL2 Xbox autoconfig maps button 0 to RetroPad A and button 1 to RetroPad B. InputPlumber names the Flip's east button A and emits Xbox South, which SDL reports as button 0. NextUI confirms on that button. Those autoconfig numbers stay. DraStic's UI select is button 1024 and its UI exit is 1025, the same pair as its A and B game buttons. PPSSPP's default button preference is Cross, and the seed maps Cross to SDL A and Circle to SDL B. AetherSX2's first-run pad maps Cross to SDL A. Dolphin's first-run GameCube A is Xbox South. Flycast's seed does not set face buttons. None of those programs has a separate menu confirm setting that disagrees with its game map, so the game bindings were left as they are.
 
-##### B2. Automatic save and resume
+##### B2. Stock emulator configuration
 
-Objective: RetroArch sets `savestate_auto_save` and `savestate_auto_load`. Ordinary exit gives RetroArch a chance to write that state. MENU+START still reaches SIGKILL after SIGTERM. A Hardcore RetroAchievements session keeps that program's restriction. A standalone emulator gets native automatic save and resume only where that emulator already supports it.
+Objective: a supported emulator that can use a configuration ships one stock file. That file is copied to its writable path when the file is missing. After that, the user owns it. No launcher adds, migrates, or overrides preferences in an existing file. An explicit reset replaces the file with the stock file on the current image. A settings reset does not delete saves, savestates, BIOS files, or core libraries.
 
-Implementation owner: the RetroArch config layers and the narrow exit path for a RetroArch session. Standalone support is per emulator.
+Implementation owner: `zlyme-stock-seed`, run when storage is up and from the matching reset action. `ra-run` and the standalone launchers do not rewrite an existing configuration.
 
-Dependencies: existing save paths and config precedence. The pak hotkey in `zlyme-pak-hotkey.c` remains the emergency stop.
+Dependencies: each program's existing writable path. Saves, ROM folders, and `/storage/.config/retroarch/cores` stay out of these resets. MENU+START in `zlyme-pak-hotkey.c` stays the emergency stop.
 
-Acceptance criteria: the settings are in the shipped config, a normal menu exit can flush state, and the document names the MENU+START limit and every standalone that has no automatic save. Manual saves stay. Unsupported savestate support is not invented.
+Acceptance criteria: a missing file becomes the stock file. An existing file is byte-for-byte unchanged by a launch, a later boot, and an update. Reset installs the current stock file and leaves saves, states, BIOS, and cores in place. The RetroArch stock file contains `savestate_auto_save = "true"`, `savestate_auto_load = "true"`, `quit_on_close_content = "2"`, and `rgui_menu_color_theme = "2"`. The Flycast stock file contains `Dreamcast.AutoSaveState` and `Dreamcast.AutoLoadState`. No obsolete custom RGUI preset remains. Session parameters for the ROM's save path, pad routing, and NextUI achievements are not written into the user file.
 
-Status: Host-tested.
+Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-`ra-run` writes `savestate_auto_save = "true"` and `savestate_auto_load = "true"` into the user cfg when those keys are absent. RetroArch 1.22.2 defaults both to false in `config.def.h`. The keys are not in `/etc/retroarch.cfg` or `ra-perf.cfg`, so a saved `false` stays. Save RAM (`savefile_directory`) and savestates (`savestate_directory`) both follow `SAVES_PATH` and the system tag, so the same ROM basename on two cards keeps two directories.
+On 2026-10-15 an earlier implementation inserted missing RetroArch and Flycast keys at launch and rewrote a user file that still had the original Zlyme theme. That implementation is superseded.
 
-`retroarch_main_quit` and core unload both call `command_event_save_auto_state` when automatic save is on. `runloop.c` skips automatic load, and the entry-state load, when `cheevos_enable` and `cheevos_hardcore_mode_enable` are both true. `ra-run` still appends hardcore from `minuisettings.txt` on that launch. Host checks cover the cfg keys and that append. They do not show a Flip writing a savestate.
+The RetroArch stock file is `/usr/share/zlyme/retroarch/retroarch.cfg`. Its writable copy is `/storage/.config/retroarch/retroarch.cfg`. `zlyme-game-cleanup ra-cfg` replaces that copy. Reset RetroArch core options is the separate `ra-cores` action and deletes `retroarch/config` only. Reset standalone settings deletes the standalone files listed by that action, then the seed restores the stock files Zlyme actually ships. Reset Settings and Factory Reset stay the existing `zlyme-reset` actions. The pinned NextUI settings menu does not yet have a row for the main RetroArch file. The local fork checkout is not that pin, so the row was not added there.
 
-`frontend/drivers/platform_unix.c` installs one handler for SIGINT and SIGTERM. The first signal only increments a counter, except on the Dingux build this image does not use. `RUNLOOP_TIME_TO_EXIT` does not read that counter. A second signal calls `exit(1)`. `zlyme-pak-hotkey` sends one SIGTERM to the pak process group and SIGKILL 1.5 seconds later. That path does not call `retroarch_main_quit`. Quit and Close Content from the RetroArch menu do.
+`ra-run` may append only session values: achievement fields from NextUI's settings file, `savefile_directory`, `savestate_directory`, and `system_directory` for the ROM's card, the SDL2 driver, joypad autoconfig directory, and player index 0, and a selected content overlay. It does not append the theme, automatic savestate, quit-on-close, video, or audio preferences. `/etc/retroarch.cfg` and `ra-perf.cfg` are not a second copy of those preferences and are not appended.
 
-Flycast `5aa091f` (v2.7) has `Dreamcast.AutoSaveState` and `Dreamcast.AutoLoadState` in the `config` section, default false. `unloadGame` writes the state. `dc_loadstate` returns immediately when achievements hardcore is on. The first-run seed sets both to yes. A cfg that already has a value keeps it. A missing key is added beside the cfg, then renamed into place.
+Flycast's stock file stays `/usr/share/zlyme/emu-defaults/flycast/emu.cfg`, with both automatic state keys set to yes. `DC.pak` does not edit an existing cfg. It still bind-mounts the card save directory and execs Flycast. `pak-launch` still unmounts the recorded path after `wait`. A busy mount keeps the record.
 
-`DC.pak` bind-mounts the card save directory for the life of Flycast and then execs it, so Flycast can finish that autosave before it exits. The exec replaces the launcher shell, so an EXIT trap does not unmount. The launcher writes the mount path to `/tmp/zlyme-flycast-bind`. `pak-launch` is outside the process group and unmounts that path after `wait` returns. MENU+START kills the group before `unloadGame`, so that stop does not write the automatic state. The mount is released after the group is gone. The recorded path has to be a mount ending in `/flycast`. A path with `..`, a path that is not a mount, and a busy mount are left alone. A busy mount keeps the record so a later session can retry.
+Other programs, from their launchers and the pinned source where it was read:
 
-Other standalone programs, from their shipped launchers and the pinned source where it was read:
+- PPSSPP 1.19.3 has a stock ini, including its pad map. It can load a state and has no save-on-exit setting. The launcher does not append a pad map to an existing ini.
+- DraStic is a closed binary. Its shipped cfg is copied when missing. It has no automatic save-on-exit key. The launcher does not rewrite button numbers in an existing cfg.
+- AetherSX2 is a prebuilt binary. The launcher writes the first ini. On later launches it updates only the BIOS, savestate, and memory-card paths so they follow the active library. No automatic save or load key was verified. Other lines are left as the user saved them.
+- Dolphin writes its first ini and GameCube pad map when those files are missing. Memory cards are bind-mounted. Automatic savestate resume is unsupported.
+- ScummVM uses `--savepath`. GZDoom uses `-savedir` and its own in-game autosave. OpenBOR uses `OPENBOR_SAVES_DIR`. Amiberry, Hypseus, native PICO-8, Wine, and Ports have no Zlyme stock template. None was invented.
 
-- PPSSPP 1.19.3 has `AutoLoadSaveState` and skips that load in hardcore. It has no save-on-exit setting. Needs separate integration. Turning on the load alone would resume a manual state.
-- DraStic's shipped cfg has savestate slots and a backup directory. It has no automatic save-on-exit key, and the binary is closed. Needs separate integration.
-- AetherSX2's first-run ini sets savestate and memory-card folders. No automatic save or load key was verified for that prebuilt binary. Needs separate integration.
-- Dolphin's memory-card and Wii NAND directories are already bind-mounted onto the card's Saves tree. The shipped ini has no savestate-on-exit setting, and nogui does not load a state at launch. Memory cards are already handled. Automatic savestate resume is unsupported.
-- ScummVM is already handled: `--savepath` is the card's `Saves/SCUMMVM`. There is no global savestate on exit.
-- GZDoom g4.14.2 is launched with `-savedir`. Its own autosave during play is left as the engine ships it. Loading the newest save at startup is not wired, because one save directory is shared across WADs. Needs separate integration.
-- OpenBOR is already handled: `OPENBOR_SAVES_DIR` is the card's save directory. Saves stay per game script.
-- Amiberry 7.1.0 is started with the ROM and no state-file setting. Needs separate integration.
-- Hypseus has no savestate path in its launcher. Unsupported.
-- Native PICO-8 is the user's own binary. fake-08 goes through RetroArch, so B2 covers that core. The native binary needs separate integration.
-- Wine and Ports are not emulator savestate sessions.
-
-MENU+START remains the emergency stop for every one of these. None of them gained a kill-time savestate.
+`retroarch_main_quit` still writes the automatic state when the stock key is true. Hardcore still skips the automatic load inside RetroArch. One SIGTERM from MENU+START still does not call that quit.
 
 ##### B3. Remove the broken custom Zlyme RGUI theme
 
@@ -1465,7 +1457,7 @@ Acceptance criteria: no Zlyme theme is installed or forced, Classic Orange is th
 
 Status: Host-tested.
 
-`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The config value is `"2"`. Upstream's default is Classic Green, so the new user cfg sets 2 itself. `/etc/retroarch.cfg`, `ra-perf.cfg`, and `ra-run` no longer append a theme. A saved theme stays. A user cfg that still has the original Zlyme preset path and the original six colors, with the theme still `custom` or `0`, is rewritten to 2 once. The replacement is written in the cfg's directory and renamed over the original after the new file checks out. A failed write or rename leaves the original. A changed color is left alone. `board/my355/post-build.sh` removes `/usr/share/retroarch/rgui-theme.cfg`, `/usr/share/retroarch/assets/rgui/zlyme.cfg`, and `/usr/share/zlyme/retroarch/rgui-theme.cfg` from the target so an incremental output tree cannot pack them. Other RetroArch assets stay.
+`rgui_menu_color_theme` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`. `RGUI_THEME_CLASSIC_ORANGE` is 2. The menu labels that value "Classic Orange". The stock configuration sets `"2"`. Upstream's default is Classic Green. `ra-run` does not append a theme. The same-day B2 revision stopped rewriting an existing file, including one that still has the old Zlyme theme. That file stays until the RetroArch configuration reset installs the stock file. `board/my355/post-build.sh` removes the three retired theme files from the target. Other RetroArch assets stay.
 
 ##### B4. Standalone RetroArch tool
 
@@ -1481,25 +1473,23 @@ Status: Host-tested.
 
 The pak is `package/system/nextui/paks/Tools/RetroArch.pak/launch.sh`. It execs `ra-run` with no arguments. The clock profile is `play`, the same profile as the other Tools paks.
 
-##### B5. User-installed libretro cores
+##### B5. Persistent libretro cores
 
-Objective: a compatible core placed in `/storage/.config/retroarch/cores/` can be found and loaded. System cores stay in `/usr/lib/libretro`. The read-only squashfs stays read-only.
+Objective: packaged cores are copied into `/storage/.config/retroarch/cores/` when that set is first installed, and again when the shipped set changes. An update overwrites a file whose basename the new image ships. A core the image does not ship stays, including a core the user installed and a core from an older image. A hand-replaced copy of a shipped name survives launch and reboot. The next image that still ships that name restores the image's file.
 
-Implementation owner: the RetroArch core path configuration and the launcher that selects a core.
+Implementation owner: `zlyme-core-sync`, from the frontend start, before NextUI. `ra-run` resolves a launcher core by filename. It does not copy cores and it does not build a directory of links.
 
-Dependencies: the exFAT config tree. Online core download stays off.
+Dependencies: `/usr/lib/libretro` on the read-only root, and the exFAT config tree. Cards mount `rw,noatime`, without `noexec`. Online core download stays off.
 
-Acceptance criteria: the documented precedence is deterministic, a present user core loads, a missing user core does not replace a working system core, and no launcher points every system at an absent file.
+Acceptance criteria: an empty writable directory receives the packaged set. A reboot with the same set copies nothing. An update replaces one changed shipped core, adds a new shipped core, and leaves a removed name and a user-only name. A same-name replacement is overwritten by that update. A failed or interrupted copy leaves the previous file and does not record success. A launcher uses the writable file, and the packaged file when the writable one is absent. Resetting core options does not delete core binaries.
 
-Status: Host-tested.
+Status: Host-tested. The 2026-10-15 host test of `/tmp/zlyme-ra-cores` does not validate this policy.
 
-`ra-run` keeps `/usr/lib/libretro` immutable. A user file belongs in `/storage/.config/retroarch/cores/`. Neither directory is copied. Cards mount `rw,noatime` from `zlyme-storage`, without `noexec`, so the kernel allows executing a file there. exFAT does not store symlinks. RetroArch 1.22.2 scans one `libretro_directory` and lists a non-directory whose name ends in `.so`. A symlink is not treated as a directory: `DT_LNK` is followed with `stat`, and a link to a regular file is kept under the link's own name.
+On 2026-10-15 an earlier implementation rebuilt a tmpfs symlink directory on every RetroArch launch. That directory is not part of this policy. Cores are real files in the writable directory. The stock `libretro_directory` is that directory. A launcher may still pass `/usr/lib/libretro/<name>_libretro.so`. `ra-run` loads the same filename from the writable directory, then the packaged file. `ZLYME_EMU_CORE` and the mupen64plus dash and underscore names still select by filename. Zlyme does not read the ELF header and does not delete the core directory. The online updater stays off.
 
-Each RetroArch launch rebuilds `/tmp/zlyme-ra-cores` on tmpfs. The directory holds symbolic links, packaged `*_libretro.so` names first, then user files of that same pattern. A user file with the same name replaces that link. A user-only name is added. Removing the user file restores the packaged link on the next launch. A running RetroArch is not refreshed. The directory is appended last. `config_save_on_exit` can copy the temporary path into the user cfg. The next `ra-run` creates the directory again before RetroArch starts. The link lives on tmpfs. Its target can be a regular file on exFAT. No symlink is written to the card.
+The copy identity is a stamp of the shipped core bytes, not `ZLYME_VERSION`. Each file is written to a temporary name in the same directory and renamed into place. The stamp is recorded only after every shipped file that needed a copy has been renamed. A name the image does not ship is not removed.
 
-A launcher `-L` uses that same directory. `ZLYME_EMU_CORE` selects that core's name in the view. The mupen64plus dash and underscore names still resolve to whichever spelling is present. The filename check only rejects a name that is not a single `*_libretro.so` component, so a path cannot be selected by accident. Zlyme does not read the ELF header. An incompatible user file fails when RetroArch loads it. The file is a native library and runs with the frontend's access to the card. It has to come from a source the user trusts. The online updater stays off (`--disable-update_cores`, `menu_show_core_updater = "false"`). User cores are not copied into `/usr`. Reset RetroArch core options deletes `retroarch/config`, not `retroarch/cores`.
-
-The view path is fixed. It is refused when it is a symlink, is not a directory, is not on tmpfs, or is owned by another user. Nothing in that directory is deleted in those cases. When the directory is accepted, cleanup unlinks only the `*_libretro.so` symlinks directly inside it. A regular file and a subdirectory stay. An earlier draft of this item checked the ELF header and could recursively delete an environment-selected directory. That check is not in this implementation.
+The local Buildroot output measured on 2026-10-15 had 35 packaged `*_libretro.so` files, 222958480 bytes, about 213 MiB. The first boot copies that set onto the card. A later boot with the same stamp does not. An update copies the shipped files whose bytes differ.
 
 ##### B6. Readable RetroArch menu
 
@@ -1527,23 +1517,25 @@ Acceptance criteria: closing content from a NextUI launch returns to NextUI and 
 
 Status: Host-tested.
 
-`quit_on_close_content` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`: 0 disabled, 1 enabled, 2 CLI. `ra-run` writes `"2"` when the user cfg has no `quit_on_close_content` line. It does not append the key. `should_quit_on_close` quits when the value is CLI and the process was started with a core or content argument. A game pak runs `ra-run -L <core> <rom>`, so Close Content quits. That quit calls `retroarch_main_quit`, which writes the automatic savestate when B2's key is true. Tools → RetroArch runs `ra-run` with no arguments, so Close Content unloads the core and stays in the menu. Unload also writes the automatic savestate. Quit RetroArch from that menu returns to NextUI through the same quit path.
+`quit_on_close_content` is an unsigned enum in RetroArch 1.22.2 `menu/menu_defines.h`: 0 disabled, 1 enabled, 2 CLI. The stock configuration sets `"2"`. `ra-run` does not write or append the key. A saved value stays. `should_quit_on_close` quits when the value is CLI and the process was started with a core or content argument. A game pak runs `ra-run -L <core> <rom>`, so Close Content quits. That quit calls `retroarch_main_quit`, which writes the automatic savestate when B2's key is true. Tools → RetroArch runs `ra-run` with no arguments, so Close Content unloads the core and stays in the menu. Unload also writes the automatic savestate. Quit RetroArch from that menu returns to NextUI through the same quit path.
 
 MENU+START is unchanged in `zlyme-pak-hotkey.c`. One SIGTERM does not enter that quit path on this pin, and SIGKILL follows 1.5 seconds later. The credit for this quit behavior is in the implementation commit. The README and changelog do not carry it.
 
-##### B8. FBNeo BIOS precedence
+##### B8. Native arcade BIOS lookup
 
-Objective: FBNeo searches BIOS archives in `Bios/fbneo/`, then `Bios/FBNEO/`, then `Bios/`. The game archive stays ahead of those directories. MAME's own order stays. The credit in the commit message is Icy_Mammoth1805.
+Objective: FinalBurn Neo and MAME 2003-Plus use the archive lookup in their pinned cores. Zlyme does not stage BIOS archives beside the game.
 
-Implementation owner: the FBNeo BIOS search used by the Zlyme launcher.
+Implementation owner: none. `zlyme-arcade-stage` is removed. The cores already search.
 
-Dependencies: the existing multi-card BIOS union. MAME configuration is out of this item.
+Dependencies: the existing BIOS directory the launcher passes as RetroArch's system directory. That cross-card resolution stays. No new staging layer replaces the one that was removed.
 
-Acceptance criteria: host checks cover the three directories, a name that exists in more than one of them, and a MAME search that still uses MAME's order. The README does not carry the credit.
+Acceptance criteria: the stage program, its install rule, and its launcher calls are gone. The user guide states the native paths, their order, and the case-sensitive names. It does not say Zlyme links a BIOS zip next to the game archive.
 
-Status: Host-tested.
+Status: Host-tested. The 2026-10-15 host test of `zlyme-arcade-stage` does not validate this policy. That stage is superseded.
 
-`zlyme-arcade-stage` links the game archive first. For tag `FBNEO` it then links `Bios/fbneo/`, `Bios/FBNEO/`, and `Bios/`. A BIOS that exists only under a MAME folder is still linked after those three. Tag `MAME` keeps the previous directory order.
+FBNeo `ae41c16` `locate_archive()` searches, in order and with the path's own case: the game's directory, then `system/fbneo/`, then the system directory, then configured custom ROM directories. It also looks in `arcade/` and `consoles/` under the game directory and under `system/fbneo/`. It does not search `system/FBNEO/`. The previous uppercase fallback existed only because the stage linked that directory. A game archive in the ROM directory is found before the system copies, so the same filename in the ROM directory is the one that runs.
+
+MAME 2003-Plus `5da0428` opens ROM and parent archives only from the content directory. `osd_get_path` for `FILETYPE_ROM` copies `libretro_content_path`, and `osd_get_path_count` returns 1. It does not open those zips from `Bios/`, `Bios/MAME/`, or `Bios/mame2003-plus/`. Samples and artwork use `system/mame2003-plus/` when the core option `mame2003-plus_core_sys_subfolder` is enabled, which is its default. A BIOS zip that was found only because the stage linked it next to the game is not found after the stage is removed. No replacement was added. The credit for the old stage stays in that earlier commit. The README does not carry it.
 
 #### Phase 13C — PortMaster integration
 
@@ -1573,7 +1565,7 @@ Acceptance criteria: a host check maps a real PortMaster image layout to the Nex
 
 Status: Host-tested.
 
-`portmaster-launch` runs `zlyme-portmaster-art` after pugwash returns. The helper reads `/storage` and `/run/zlyme/libraries`. For each `Roms/Ports (PORTS)/*.sh` it looks for `cover.png`, then `screenshot.png`, then a JPEG of those names, in a directory with the launcher's stem or in the `port.json` whose `items` list names that script. It copies a PNG, or ffmpeg's PNG for a JPEG, to `.media/<stem>.png` on that same card. An existing file stays. A missing image, a symlink, and the `PortMaster` directory are skipped. A second run does not rewrite a file it already published. The selected library flag is not changed. Host checks cover both cards, a shared port name, a launcher whose folder name differs, a hand-picked image, and a JPEG with and without ffmpeg. This was not run on a Flip.
+`portmaster-launch` runs `zlyme-portmaster-art` after pugwash returns. The helper reads `/storage` and `/run/zlyme/libraries`. For each `Roms/Ports (PORTS)/*.sh` it looks for `cover.png`, then `screenshot.png`, then a JPEG of those names, in a directory with the launcher's stem or in the `port.json` whose `items` list names that script. It copies a PNG. A JPEG is encoded with an explicit PNG encoder and published only when the output starts with the PNG signature. `-f image2` alone can leave JPEG bytes in the `.png` name. A host check reads the PNG signature, including a JPEG that ffmpeg encoded. An existing file stays. A missing image, a symlink, and the `PortMaster` directory are skipped. A second run does not rewrite a file it already published. The selected library flag is not changed. This was not run on a Flip.
 
 #### Phase 13D — Network and power policy
 

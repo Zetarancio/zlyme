@@ -67,12 +67,22 @@ printf '%s\n' "$sd2" > "$flag"
 
 cat > "$work/bin/ffmpeg" << 'EOF'
 #!/bin/sh
+png=0
+prev=
 out=
 while [ $# -gt 0 ]; do
+	if [ "$prev" = "-c:v" ] && [ "$1" = png ]; then
+		png=1
+	fi
+	prev=$1
 	out=$1
 	shift
 done
-printf '%s\n' converted > "$out"
+if [ "$png" = 1 ]; then
+	printf '\211PNG\r\n\032\n' > "$out"
+else
+	printf '\377\330\377' > "$out"
+fi
 EOF
 chmod 0755 "$work/bin/ffmpeg"
 
@@ -120,8 +130,21 @@ ZLYME_PM_ART_ROOTS=$work/roots \
 ZLYME_PM_ART_ROOTS=$work/roots \
 	ZLYME_PM_ART_FFMPEG=$work/bin/ffmpeg \
 	sh "$ART"
-[ "$(cat "$ports1/.media/Jpeg.png")" = converted ] \
-	|| fail "ffmpeg output was not published"
+sig=$(od -An -tx1 -N8 "$ports1/.media/Jpeg.png" | tr -d ' \n')
+[ "$sig" = "89504e470d0a1a0a" ] || fail "ffmpeg output was not a PNG ($sig)"
 [ "$(cat "$ports1/Jpeg/cover.jpg")" = jpeg-src ] || fail "the JPEG source was rewritten"
+
+if command -v ffmpeg >/dev/null 2>&1; then
+	rm -rf "$ports1/Real" "$ports1/.media/Real.png"
+	mkdir -p "$ports1/Real"
+	printf '%s\n' '#!/bin/sh' > "$ports1/Real.sh"
+	ffmpeg -nostdin -y -loglevel error -f lavfi -i color=c=red:s=8x8 \
+		-frames:v 1 "$ports1/Real/cover.jpg"
+	ZLYME_PM_ART_ROOTS=$work/roots sh "$ART"
+	sig=$(od -An -tx1 -N8 "$ports1/.media/Real.png" | tr -d ' \n')
+	[ "$sig" = "89504e470d0a1a0a" ] || fail "real ffmpeg did not write a PNG ($sig)"
+	jpeg=$(od -An -tx1 -N3 "$ports1/Real/cover.jpg" | tr -d ' \n')
+	[ "$jpeg" = "ffd8ff" ] || fail "the real source was not a JPEG ($jpeg)"
+fi
 
 echo "portmaster art ok"
