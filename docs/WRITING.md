@@ -33,11 +33,27 @@ The canonical technical docs are listed in `AGENTS.md`. They are calmer and more
 
 ## Research and history
 
-`docs/research/`, `docs/LOGBOOK.md`, `docs/ROADMAP.md` and `docs/archive/` record what was tried, measured and decided. Don't rewrite a failure out of them. When a later phase supersedes an early statement, add a short dated status note that links to the current document. Leave the old text in place.
+`docs/research/`, `docs/LOGBOOK.md`, and `docs/archive/` record what was tried, measured, and decided. `docs/ROADMAP.md` is the short sequencing map. How to write it is below. Don't rewrite a failure out of a historical file. When a later phase supersedes an early statement, add a short dated status note that links to the current document. Leave the old text in place.
+
+## Roadmap
+
+`docs/ROADMAP.md` is non-normative. Current architecture stays in `docs/ARCHITECTURE.md` and the other owning technical documents. The roadmap answers five questions:
+
+- Where are we?
+- What has been completed?
+- What is next?
+- What blocks progress?
+- What evidence or reference closes a phase?
+
+It does not answer what happened on every test attempt, which files changed in every small commit, every intermediate design that was rejected, or which command was run while debugging. Minor cosmetic adjustments are not milestones. A rejected approach is one line: `REJECTED`, a short reason, and a research link when one exists.
+
+A closed phase keeps a concise summary: the objective, the status, important dependencies, remaining work, significant blockers, and the closure date and reference. Long planning, test transcripts, and superseded investigations move to `docs/archive/` or `docs/research/`, or stay in `docs/LOGBOOK.md` when that is already where they live. Link to that material. Do not copy it back.
+
+A gate has to match the risk. A source-only change does not automatically need a hardware test. Hardware-facing changes, destruction of persistent data, boot changes, and filesystem-integrity risks may need stronger evidence. Do not add an acceptance check for a risk that was imagined. A feature the maintainer already accepted does not become incomplete because a redundant check was not repeated. Do not claim a hardware result that did not happen.
 
 ## Changelog and release notes
 
-`CHANGELOG.md` is for people upgrading. ROADMAP and LOGBOOK remain the engineering history.
+`CHANGELOG.md` is for people upgrading. The roadmap names the phase. `docs/LOGBOOK.md` and `docs/archive/` keep the engineering history.
 
 - The format follows Keep a Changelog: newest release first, ISO dates (`YYYY-MM-DD`), and an `Unreleased` section kept up to date during development. Use Added, Changed, Fixed, Removed and Known limitations, and leave out empty categories.
 - Zlyme does not use Semantic Versioning. `zlymeNN` is a baseline. `zlymeNN.M` is a point release on the same major. Release and delta policy is in `docs/MAINTENANCE.md`.

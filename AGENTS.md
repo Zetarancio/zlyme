@@ -59,7 +59,7 @@ For README, user-guide, changelog, release-note, or other prose work also read:
 
 - `docs/WRITING.md`
 
-`docs/WRITING.md` owns prose style and the README and changelog rules. `CONTRIBUTING.md` is the entry point for human contributors. This file stays the operating contract.
+`docs/WRITING.md` owns prose style, the README and changelog rules, and how `docs/ROADMAP.md` is written. `CONTRIBUTING.md` is the entry point for human contributors. This file stays the operating contract.
 
 For live-device and recovery work also read:
 
@@ -69,7 +69,7 @@ For sequencing project work, read:
 
 - `docs/ROADMAP.md`
 
-`ROADMAP.md` is non-normative: it records phase sequencing and phase acceptance history, not current architecture. Do not implement a later roadmap phase unless the active task asks for it.
+`ROADMAP.md` is non-normative: it records where the work is, what is closed, what is next, and what blocks it. It is not the current architecture. How to write it is in `docs/WRITING.md`. Do not implement a later roadmap phase unless the active task asks for it.
 
 Architecture documents state what the system is and why. This file states how changes should be made.
 
@@ -136,7 +136,7 @@ Do not perform drive-by refactors.
 
 Do not rename, reformat, reorganize, or modernize unrelated code while implementing another feature.
 
-Prefer one conceptual reason per commit.
+Prefer one conceptual reason per commit. One implementation session may contain several commits. Syncthing authentication, the About credentials screen, a PortMaster lifecycle correction, RetroArch dead-file cleanup, and a roadmap restructuring are separate commits when they are separate changes. Keep the tests with the code they verify, and keep the documentation of that change with it. Do not combine unrelated subsystems because they were handled in the same session. Do not make a separate commit for every trivial edit. Before each commit, review the changed paths, the conceptual scope, accidental unrelated changes, and the tests and documentation that belong with that change. This applies to Phase 13 and Phase 14 the same way it applies to any other change.
 
 Do not introduce an abstraction until it either:
 - removes a current source of duplication/error, or

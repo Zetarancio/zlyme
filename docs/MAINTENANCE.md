@@ -14,7 +14,7 @@ This is the maintainer index. The documents below own the detail. This page says
 | Which source is the hardware authority | `docs/UPSTREAMS.md` |
 | Pinned Buildroot, Linux, U-Boot, BL31; compiler `-O2` pins | `docs/DEVELOPMENT.md` |
 | Governor CPU floors (SpruceOS-derived) | `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md` |
-| How docs, the README, and the changelog are written | `docs/WRITING.md` |
+| How docs, the README, the changelog, and the roadmap are written | `docs/WRITING.md` |
 | How a person starts contributing | `CONTRIBUTING.md` |
 | What changed in each release, for users | `CHANGELOG.md` |
 | Which phase is active | `docs/ROADMAP.md` |
@@ -54,7 +54,23 @@ ZcrapeGoat is not a patch stack and not a submodule. `package/system/zcrapegoat/
 
 ## NextUI fork
 
-`Zetarancio/NextUI` is the fork. `main` on that fork stays the separate upstream and general-development line. Zlyme's `main` pins one immutable commit, `NEXTUI_VERSION` in `package/system/nextui/nextui.mk`, and that commit has to be reachable from the fork's `zlyme` branch. Do not point Buildroot at a moving branch, and do not move the pin without a review. A Zlyme development branch may pin a matching NextUI development branch while the work is in progress. Before that pin lands on Zlyme `main`, the commit has to be on NextUI `zlyme` first. Review LoveRetro changes deliberately. Do not rebase the fork onto upstream HEAD to look current. Keep other-platform source in the fork. Hardware equivalence is required when runtime behavior changes, not for a documentation-only pin note.
+`Zetarancio/NextUI` is the fork. `main` on that fork stays the separate upstream and general-development line. Zlyme's `main` pins one immutable commit, `NEXTUI_VERSION` in `package/system/nextui/nextui.mk`, and that commit has to be reachable from the fork's `zlyme` branch. Do not point Buildroot at a moving branch, and do not move the pin without a review. A Zlyme development branch may pin a matching NextUI development branch while the work is in progress. Before that pin lands on Zlyme `main`, the commit has to be on NextUI `zlyme` first. Review LoveRetro changes deliberately. Do not rebase the fork onto upstream HEAD to look current. Keep other-platform source in the fork. Hardware equivalence is required when runtime behavior changes, not for a documentation-only pin note. Never merge a Zlyme change into NextUI `main` to make a pin reachable.
+
+### Integrating a phase onto main
+
+This is the checklist for the current Phase 13 branch and for a later phase that used the same pin rule. Building a candidate is not publishing a release. Nothing in this list publishes one.
+
+1. Finish and accept the phase implementation.
+2. Finish the local validation that phase requires.
+3. Confirm the exact NextUI development pin that Zlyme will keep.
+4. Integrate that commit into NextUI `zlyme` first.
+5. Verify the pinned SHA is reachable from NextUI `zlyme`.
+6. Review the Zlyme changes and merge the phase branch into Zlyme `main` with the repository's normal fast-forward or reviewed merge. Do not force the history.
+7. Verify `main` pins that immutable SHA and does not pin a branch name.
+8. Dispatch a remote clean Build from Zlyme `main`. Leave `publish_release` false.
+9. Review the remote build result. A failed build is fixed before that `main` is the baseline for the next phase.
+
+Phase 14 starts only after this sequence, on a new Zlyme branch from the accepted `main`. Create a matching NextUI development branch only if Phase 14 changes NextUI.
 
 ## Releases
 

@@ -21,7 +21,7 @@ For anything larger than a fix (a new subsystem, a different kernel patch, swapp
 ## Fork, branch, pull request
 
 1. Fork `Zetarancio/zlyme` and branch off `main`.
-2. Keep one idea per branch, and one reason per commit. Don't tidy unrelated code on the way past.
+2. Keep one idea per branch, and one reason per commit. Don't tidy unrelated code on the way past. `AGENTS.md` has the review to do before each commit.
 3. Open a pull request that says what changed, why, and how you checked it.
 
 `./build.sh --config zlyme_my355_defconfig` builds the product image. You rarely need a full image to check an edit. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) has the package-level rebuilds and the tests under `scripts/tests/`. Run the narrowest check that covers your change, and say which one you ran.
