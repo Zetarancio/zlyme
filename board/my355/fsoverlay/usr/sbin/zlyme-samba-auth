@@ -1,0 +1,387 @@
+#!/bin/sh
+# Samba account for the storage share.
+#
+# The live passdb stays on tmpfs (/tmp/samba-lib, or a bind over
+# /var/lib/samba). exFAT cannot store the mode bits or locks that
+# database needs. /storage/.config/zlyme/samba.account is an smbpasswd
+# export of the NT hash, imported into tmpfs at start. It is not a
+# live database and it is not a plaintext password.
+#
+# set reads the new password on stdin. It is not an argument.
+# A missing account file creates zlyme / zlyme. A file that is present
+# is kept, including across reboot and update. A corrupt file fails
+# closed and does not start a guest share.
+
+set -u
+
+user=zlyme
+uid=980
+gid=980
+
+cfg=${ZLYME_CFG:-}
+if [ -z "$cfg" ] && [ -r "${ZLYME_CONF:-/etc/zlyme.conf}" ]; then
+	# shellcheck disable=SC1090
+	. "${ZLYME_CONF:-/etc/zlyme.conf}"
+	cfg=${ZLYME_CFG:-}
+fi
+cfg=${cfg:-/storage/.config}
+store=$cfg/zlyme/samba.account
+runtime=${ZLYME_SAMBA_RUNTIME:-/tmp/samba-lib}
+conf=${ZLYME_SAMBA_CONF:-/etc/samba/smb.conf}
+smbpasswd_bin=${ZLYME_SMB_PASSWD:-smbpasswd}
+pdbedit_bin=${ZLYME_PDBEDIT:-pdbedit}
+no_mount=${ZLYME_SAMBA_NO_MOUNT:-0}
+passwd_src=${ZLYME_SAMBA_PASSWD_SRC:-/etc/passwd}
+group_src=${ZLYME_SAMBA_GROUP_SRC:-/etc/group}
+secret_file=
+
+cleanup() {
+	if [ -n "${secret_file:-}" ]; then
+		rm -f "$secret_file"
+		secret_file=
+	fi
+}
+trap cleanup EXIT
+
+fail() {
+	printf '%s\n' "Samba authentication failed" >&2
+	exit 1
+}
+
+reject() {
+	printf '%s\n' rejected >&2
+	exit 1
+}
+
+# No NUL, no CR, at most one trailing LF, 1..256 bytes after that LF
+# is removed. An empty password is rejected by the caller.
+normalize_secret() {
+	in=$1
+	dest=$2
+	n=$(wc -c < "$in" | tr -d ' ')
+	nonul=$(tr -d '\000' < "$in" | wc -c | tr -d ' ')
+	[ "$n" = "$nonul" ] || return 1
+	nocr=$(tr -d '\r' < "$in" | wc -c | tr -d ' ')
+	[ "$n" = "$nocr" ] || return 1
+	nonl=$(tr -d '\n' < "$in" | wc -c | tr -d ' ')
+	nl=$((n - nonl))
+	if [ "$nl" -eq 0 ]; then
+		[ "$n" -le 256 ] || return 1
+		cp "$in" "$dest"
+		return 0
+	fi
+	if [ "$nl" -eq 1 ]; then
+		[ "$n" -le 257 ] || return 1
+		last=$(tail -c 1 "$in" | tr -d '\n' | wc -c | tr -d ' ')
+		[ "$last" -eq 0 ] || return 1
+		if [ "$n" -eq 1 ]; then
+			: > "$dest"
+		else
+			head -c "$((n - 1))" "$in" > "$dest"
+		fi
+		return 0
+	fi
+	return 1
+}
+
+check_conf() {
+	[ -f "$conf" ] || return 1
+	awk '
+		BEGIN { sec=0; map=0; net=0; gokno=0; bad=0 }
+		/^[[:space:]]*[#;]/ { next }
+		{
+			line=$0
+			sub(/\r$/, "", line)
+			sub(/[[:space:]]*[#;].*$/, "", line)
+			low=tolower(line)
+		}
+		low ~ /^[[:space:]]*security[[:space:]]*=[[:space:]]*user[[:space:]]*$/ { sec=1 }
+		low ~ /^[[:space:]]*map to guest[[:space:]]*=[[:space:]]*never[[:space:]]*$/ { map=1 }
+		low ~ /^[[:space:]]*disable netbios[[:space:]]*=[[:space:]]*yes[[:space:]]*$/ { net=1 }
+		low ~ /^[[:space:]]*guest ok[[:space:]]*=[[:space:]]*no[[:space:]]*$/ { gokno=1 }
+		low ~ /^[[:space:]]*guest ok[[:space:]]*=[[:space:]]*yes/ { bad=1 }
+		low ~ /^[[:space:]]*public[[:space:]]*=[[:space:]]*yes/ { bad=1 }
+		low ~ /^[[:space:]]*map to guest[[:space:]]*=/ &&
+			low !~ /^[[:space:]]*map to guest[[:space:]]*=[[:space:]]*never[[:space:]]*$/ { bad=1 }
+		END { exit (sec && map && net && gokno && !bad) ? 0 : 1 }
+	' "$conf"
+}
+
+private_dir() {
+	awk '
+		BEGIN { p="" }
+		/^[[:space:]]*[#;]/ { next }
+		{
+			line=$0
+			sub(/\r$/, "", line)
+			sub(/[[:space:]]*[#;].*$/, "", line)
+			low=tolower(line)
+		}
+		low ~ /^[[:space:]]*private dir[[:space:]]*=/ {
+			sub(/^[^=]*=[[:space:]]*/, "", line)
+			sub(/[[:space:]]*$/, "", line)
+			p=line
+		}
+		END { if (p=="") exit 1; print p }
+	' "$1"
+}
+
+private_dir_ok() {
+	case "$1" in
+		/storage|/storage/*|/mnt/SDCARD|/mnt/SDCARD/*)
+			return 1 ;;
+		/mnt/sd2|/mnt/sd2/*|/mnt/media|/mnt/media/*)
+			return 1 ;;
+		/*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+mounted_on() {
+	[ -r /proc/mounts ] || return 1
+	awk -v t="$1" '$2==t { found=1 } END { exit found?0:1 }' /proc/mounts
+}
+
+ensure_runtime() {
+	mkdir -p "$runtime/private" || return 1
+	chmod 0700 "$runtime" "$runtime/private" || return 1
+	if [ "$no_mount" = 1 ]; then
+		return 0
+	fi
+	if [ -L /var/lib/samba ]; then
+		dest=$(readlink /var/lib/samba) || return 1
+		case "$dest" in
+			/tmp/samba-lib) ;;
+			*) return 1 ;;
+		esac
+		mkdir -p /tmp/samba-lib/private || return 1
+		chmod 0700 /tmp/samba-lib /tmp/samba-lib/private || return 1
+		return 0
+	fi
+	if [ -d /var/lib/samba ]; then
+		if ! mountpoint -q /var/lib/samba; then
+			mount --bind "$runtime" /var/lib/samba || return 1
+		fi
+		mkdir -p /var/lib/samba/private || return 1
+		chmod 0700 /var/lib/samba/private || return 1
+		return 0
+	fi
+	return 1
+}
+
+has_name() {
+	file=$1
+	name=$2
+	[ -f "$file" ] || return 1
+	awk -F: -v k="$name" '$1==k { found=1 } END { exit found?0:1 }' "$file"
+}
+
+id_taken() {
+	file=$1
+	field=$2
+	id=$3
+	name=$4
+	awk -F: -v f="$field" -v id="$id" -v name="$name" \
+		'$1!=name && $f==id { found=1 } END { exit found?0:1 }' "$file"
+}
+
+append_account() {
+	file=$1
+	name=$2
+	line=$3
+	field=$4
+	id=$5
+	if has_name "$file" "$name"; then
+		return 0
+	fi
+	if id_taken "$file" "$field" "$id" "$name"; then
+		return 1
+	fi
+	printf '%s\n' "$line" >> "$file"
+}
+
+install_account_file() {
+	src=$1
+	dest=$2
+	target=$3
+	name=$4
+	line=$5
+	field=$6
+	id=$7
+	if [ "$no_mount" != 1 ] && mounted_on "$target"; then
+		return 0
+	fi
+	if [ ! -f "$dest" ]; then
+		cp "$src" "$dest" || return 1
+	fi
+	append_account "$dest" "$name" "$line" "$field" "$id" || return 1
+	if [ "$no_mount" = 1 ]; then
+		return 0
+	fi
+	mount --bind "$dest" "$target"
+}
+
+ensure_unix() {
+	mkdir -p "$runtime" || return 1
+	install_account_file "$passwd_src" "$runtime/passwd" /etc/passwd \
+		"$user" "$user:x:$uid:$gid:Samba:/var/empty:/bin/false" 3 "$uid" || return 1
+	install_account_file "$group_src" "$runtime/group" /etc/group \
+		"$user" "$user:x:$gid:" 3 "$gid" || return 1
+	# The shell is not a login shell. Do not write a shadow password.
+	if [ -f "$runtime/passwd" ]; then
+		awk -F: -v u="$user" '
+			$1==u && $7!="/bin/false" { bad=1 }
+			$1==u && $3=="0" { bad=1 }
+			END { exit bad?1:0 }
+		' "$runtime/passwd" || return 1
+	fi
+	return 0
+}
+
+account_valid() {
+	[ -f "$1" ] || return 1
+	[ -s "$1" ] || return 1
+	awk -F: -v u="$user" '
+		/^[[:space:]]*#/ { next }
+		/^[[:space:]]*$/ { next }
+		{
+			if ($1==u && $4 ~ /^[0-9A-Fa-f]{32}$/) n++
+			else bad=1
+		}
+		END { exit (n==1 && !bad) ? 0 : 1 }
+	' "$1"
+}
+
+live_user() {
+	"$pdbedit_bin" -s "$conf" -L 2>/dev/null | awk -F: -v u="$user" \
+		'$1==u { found=1 } END { exit found?0:1 }'
+}
+
+feed_password() {
+	mode=$1
+	file=$2
+	if [ "$mode" = add ]; then
+		set -- -c "$conf" -a -s -- "$user"
+	else
+		set -- -c "$conf" -s -- "$user"
+	fi
+	{
+		cat "$file" || exit 1
+		printf '\n' || exit 1
+		cat "$file" || exit 1
+		printf '\n' || exit 1
+	} | "$smbpasswd_bin" "$@"
+}
+
+export_account() {
+	tmp=$store.new.$$
+	mkdir -p "$(dirname "$store")" || return 1
+	rm -f "$tmp"
+	"$pdbedit_bin" -s "$conf" -e "smbpasswd:$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	account_valid "$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	mv -f "$tmp" "$store" || {
+		rm -f "$tmp"
+		return 1
+	}
+}
+
+import_account() {
+	account_valid "$store" || return 1
+	"$pdbedit_bin" -s "$conf" -i "smbpasswd:$store"
+}
+
+prepare_db() {
+	check_conf || return 1
+	priv=$(private_dir "$conf") || return 1
+	private_dir_ok "$priv" || return 1
+	command -v "$smbpasswd_bin" >/dev/null 2>&1 || return 1
+	command -v "$pdbedit_bin" >/dev/null 2>&1 || return 1
+	ensure_runtime || return 1
+	ensure_unix || return 1
+	if live_user; then
+		if [ ! -f "$store" ]; then
+			export_account || return 1
+		fi
+		return 0
+	fi
+	if [ -e "$store" ]; then
+		import_account || return 1
+		live_user || return 1
+		return 0
+	fi
+	return 2
+}
+
+cmd_prepare() {
+	prepare_db
+	st=$?
+	if [ "$st" -eq 0 ]; then
+		return 0
+	fi
+	if [ "$st" -ne 2 ]; then
+		fail
+	fi
+	secret_file=$(mktemp "${TMPDIR:-/tmp}/zlyme-samba.XXXXXX") || fail
+	chmod 0600 "$secret_file" || fail
+	# The initial password is the published account name.
+	printf '%s' "$user" > "$secret_file" || fail
+	feed_password add "$secret_file" || fail
+	rm -f "$secret_file"
+	secret_file=
+	export_account || fail
+}
+
+cmd_set() {
+	raw=$(mktemp "${TMPDIR:-/tmp}/zlyme-samba.XXXXXX") || reject
+	norm=$(mktemp "${TMPDIR:-/tmp}/zlyme-samba.XXXXXX") || {
+		rm -f "$raw"
+		reject
+	}
+	chmod 0600 "$raw" "$norm" || {
+		rm -f "$raw" "$norm"
+		reject
+	}
+	dd if=/dev/stdin of="$raw" bs=258 count=1 >/dev/null 2>&1 || {
+		rm -f "$raw" "$norm"
+		reject
+	}
+	if ! normalize_secret "$raw" "$norm"; then
+		rm -f "$raw" "$norm"
+		reject
+	fi
+	rm -f "$raw"
+	if [ ! -s "$norm" ]; then
+		rm -f "$norm"
+		reject
+	fi
+	secret_file=$norm
+	prepare_db
+	st=$?
+	if [ "$st" -eq 1 ]; then
+		fail
+	fi
+	if [ "$st" -eq 0 ]; then
+		feed_password change "$secret_file" || fail
+	else
+		feed_password add "$secret_file" || fail
+	fi
+	export_account || fail
+	rm -f "$secret_file"
+	secret_file=
+	printf '%s\n' "Samba password updated"
+}
+
+case "${1:-}" in
+	prepare) cmd_prepare ;;
+	set) cmd_set ;;
+	*)
+		printf '%s\n' "usage: zlyme-samba-auth {prepare|set}" >&2
+		exit 1
+		;;
+esac

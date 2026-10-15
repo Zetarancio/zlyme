@@ -93,8 +93,8 @@ shopt -u nullglob
 
 rm -rf "${TARGET_DIR}/var/lib/bluetooth"
 ln -sfn /run/bluetooth "${TARGET_DIR}/var/lib/bluetooth"
-# Samba private/msg.sock needs unix 0700; ZLYME is exFAT. tmpfs is enough
-# for a guest share (no persisted secrets).
+# Samba's live private directory needs unix 0700. tmpfs holds it.
+# The password hash export is on /storage and is imported at start.
 rm -rf "${TARGET_DIR}/var/lib/samba"
 ln -sfn /tmp/samba-lib "${TARGET_DIR}/var/lib/samba"
 
