@@ -10,7 +10,7 @@ fail() {
 }
 
 readme=$(grep 'zlyme_slime_loop.gif' "$ROOT/README.md")
-printf '%s\n' "$readme" | grep -q 'width="444"' || fail "README width is not 444: $readme"
+printf '%s\n' "$readme" | grep -q 'width="333"' || fail "README width is not 333: $readme"
 printf '%s\n' "$readme" | grep -q 'width="887"' && fail "README still uses 887"
 gif=$ROOT/package/system/nextui/res/branding/zlyme_slime_loop.gif
 head -c 6 "$gif" | grep -q '^GIF8' || fail "README GIF is not a GIF"

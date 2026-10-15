@@ -111,6 +111,7 @@ The community tools below were adapted to Zlyme's paths, controls and bundled bi
 - **Overlays**: community bezels, one game folder at a time. The same system on another card is a separate choice. [NextUI Overlays](https://github.com/zolek86/NextUI-Overlays) v0.1.1 by zolek86; the bezels come from the [NextUI community overlays](https://github.com/LoveRetro/nextui-community-overlays).
 - **Moonlight**: stream a PC game to the Flip. The menu is [nextui-moonlight-pak](https://github.com/richieszemeredi/nextui-moonlight-pak) by Richie Szemeredi; the streamer is [moonlight-embedded](https://github.com/moonlight-stream/moonlight-embedded).
 - **PortMaster**: install game ports. From [PortMaster-GUI](https://github.com/PortsMaster/PortMaster-GUI) by Jacob. Install location and colours: [user guide](docs/USER_GUIDE.md#portmaster).
+- **USB File Transfer**: a Tools pak that copies files over MTP on the lower USB-C port. It can share the main card and other storage that is already available. [User guide](docs/USER_GUIDE.md#usb-file-transfer).
 - **Files**: a file browser, [vtree](https://github.com/MustardOS/vtree) from MustardOS. Hidden files show until you turn that off.
 - **Music Player**: [nextui-music-player](https://github.com/nborodikhin/nextui-music-player) v1.17.0 by nborodikhin. Local music in `/storage/Music`, podcasts in `/storage/Podcasts`, and online radio. The optional YouTube helpers download only when you ask. Zlyme updates the player; it doesn't update itself.
 
