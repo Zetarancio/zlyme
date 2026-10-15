@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Obsolete configuration
+
+`ra-perf.cfg` was not installed by a recipe and nothing read it. It is removed. `/etc/retroarch.cfg` stays because RetroArch 1.22.2 installs its default there and uses that path as the skeleton when the user file is missing. The overlay file has no settings. The stock file remains `/usr/share/zlyme/retroarch/retroarch.cfg`. AetherSX2 1.0.0's help has no folder argument, so the launcher still rewrites the BIOS, savestate, and memory-card lines. The other lines stay. This was a source check. It was not run on a Flip.
+
 ## 2026-10-15 — PortMaster mount identity
 
 `zlyme-portmaster-cleanup` unmounts a recorded mount only when that mountinfo id is still the top mount at the recorded path. Replacing the filesystem at the same path, or covering it, leaves the other mount in place. A registry line with no id is reported and kept. The unused `/run/zlyme-portmaster/storage-before` file is removed. A mount the wrapper never recorded still stays, and USB File Transfer still refuses the primary storage while it remains. The host test used a fake mount table. This was not run on a Flip.

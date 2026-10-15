@@ -244,7 +244,7 @@ Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A 
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. 13E1, 13E2, and 13E3 are host-tested. 13E4 onward has not started.
+13E is the last integration pass for `zlyme44.3`. 13E1, 13E2, and 13E3 are host-tested. 13E4 is source-checked. 13E5 and 13E6 have not started.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -272,7 +272,7 @@ Status: Host-tested. NextUI `3f4120cc` reads the rows when About opens and keeps
 
 Objective: remove Phase 12 and 13 scaffolding that is proven unused, and leave the one stock RetroArch configuration. Candidates include `board/my355/fsoverlay/etc/retroarch.cfg`, `ra-perf.cfg`, retired RGUI theme files, obsolete launcher references, the removed arcade stage, and temporary core mechanisms. Read the pinned RetroArch fallback before deleting `/etc/retroarch.cfg`. Review AetherSX2's edits of existing INI paths against the user-owned configuration rule, and keep ROM and card paths working. Do not delete a file because it only looks unused.
 
-Status: Planned.
+Status: Source-checked. `ra-perf.cfg` was not installed by a recipe and nothing read it, so it is removed. `/etc/retroarch.cfg` stays. RetroArch 1.22.2 installs its default file there and, when the user file is missing, copies that path as the skeleton. The overlay file has no settings. The stock file is `/usr/share/zlyme/retroarch/retroarch.cfg`. `zlyme-stock-seed` copies it when the user file is missing or empty, and when Reset RetroArch configuration runs. `ra-run` does not write the user file. Retired RGUI theme files stay deleted by `board/my355/post-build.sh`. `zlyme-arcade-stage` stays removed. AetherSX2 1.0.0's help has no folder argument, so the launcher still rewrites the BIOS, savestate, and memory-card lines to the active library. The other lines stay. This was not run on a Flip.
 
 #### 13E5. Documentation coherence
 

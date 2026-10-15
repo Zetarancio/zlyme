@@ -14,7 +14,6 @@ RA=$ROOT/package/system/nextui/zlyme/ra-run.sh
 LAUNCH=$ROOT/package/system/nextui/paks/Tools/RetroArch.pak/launch.sh
 ETC=$ROOT/board/my355/fsoverlay/etc/retroarch.cfg
 SEED=$ROOT/board/my355/fsoverlay/usr/share/zlyme/retroarch/retroarch.cfg
-PERF=$ROOT/board/my355/fsoverlay/usr/share/zlyme/emu-defaults/ra-perf.cfg
 PAD=$ROOT/package/emulators/retroarch/zlyme/autoconfig/sdl2/Microsoft\ X-Box\ 360\ pad.cfg
 MK=$ROOT/package/emulators/retroarch/retroarch.mk
 
@@ -29,19 +28,19 @@ if grep -q 'input_menu_swap_ok_cancel_buttons = "true"' "$SEED"; then
 	fail "menu swap is true in the stock configuration"
 fi
 if grep -q 'input_menu_swap_ok_cancel_buttons\|savestate_auto_\|quit_on_close_content\|rgui_menu_color_theme' \
-	"$ETC" "$PERF"; then
-	fail "a retired append file still sets a user preference"
+	"$ETC"; then
+	fail "the system skeleton still sets a user preference"
 fi
 
-if grep -q '^rgui_menu_color_theme ' "$ETC" "$PERF"; then
-	fail "an append config still sets the theme"
+if grep -q '^rgui_menu_color_theme ' "$ETC"; then
+	fail "the system skeleton still sets the theme"
 fi
 seed_theme=$(grep '^rgui_menu_color_theme ' "$SEED")
 [ "$seed_theme" = 'rgui_menu_color_theme = "2"' ] || fail "seed theme is $seed_theme"
-if grep -q 'rgui_menu_color_theme = "Classic Orange"' "$ETC" "$SEED" "$PERF" "$RA"; then
+if grep -q 'rgui_menu_color_theme = "Classic Orange"' "$ETC" "$SEED" "$RA"; then
 	fail "Classic Orange was written as a config value"
 fi
-if grep -q 'rgui_menu_color_theme = "custom"' "$ETC" "$SEED" "$PERF"; then
+if grep -q 'rgui_menu_color_theme = "custom"' "$ETC" "$SEED"; then
 	fail "shipped config still forces the Zlyme theme"
 fi
 if grep -q 'rgui-theme.cfg' "$RA" "$MK"; then
@@ -53,12 +52,13 @@ fi
 for gone in \
 	"$ROOT/package/emulators/retroarch/zlyme/rgui-theme.cfg" \
 	"$ROOT/package/emulators/retroarch/zlyme/assets-rgui-zlyme.cfg" \
-	"$ROOT/board/my355/fsoverlay/usr/share/zlyme/retroarch/rgui-theme.cfg"
+	"$ROOT/board/my355/fsoverlay/usr/share/zlyme/retroarch/rgui-theme.cfg" \
+	"$ROOT/board/my355/fsoverlay/usr/share/zlyme/emu-defaults/ra-perf.cfg"
 do
 	[ ! -e "$gone" ] || fail "theme file still exists: $gone"
 done
 if grep -R -q 'menu_rgui_internal_upscale_level\|menu_scale_factor' \
-	"$ETC" "$SEED" "$PERF" "$RA"; then
+	"$ETC" "$SEED" "$RA"; then
 	fail "an unsupported RGUI scale key was added"
 fi
 

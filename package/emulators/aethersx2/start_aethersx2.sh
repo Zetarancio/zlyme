@@ -136,8 +136,9 @@ Type = None
 EOF
 fi
 
-# The prebuilt binary has no session file. These three paths follow the
-# active library. Other lines in the ini are left as the user saved them.
+# The prebuilt 1.0.0 binary's help has no folder argument. -bios starts
+# the system menu. These three paths follow the active library. Other
+# lines in the ini are left as the user saved them.
 if [ -f "$INI" ]; then
 	sed -i \
 		-e "s|^Bios = .*|Bios = $BIOS/PS2|" \
