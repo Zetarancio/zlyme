@@ -21,12 +21,13 @@ The Miyoo Flip is the only device Zlyme supports. The tree is laid out so anothe
 Zlyme isn't a generic RK3566 image with a frontend dropped on top. Mainline Linux doesn't know much about this handheld, so Zlyme carries the Flip support itself:
 
 - **The gamepad.** `miyoo-flip-gamepad` is Zlyme's own out-of-tree driver for the Flip's controls: the analog sticks on the UART, the GPIO buttons, stick calibration and deadzone, and force-feedback rumble.
-- **Deep suspend.** The BL31 suspend integration the Flip needs, including switching its `vdd_logic` rail off while asleep. Press power and it really sleeps, then wakes with your game where you left it. The lid is a separate path: close it while a game runs and the screen blanks and the radios stop, but it doesn't deep-suspend. Use the power button for that.
+- **Deep suspend.** The BL31 suspend integration the Flip needs, including switching its `vdd_logic` rail off while asleep. Press power, or close the lid, and it sleeps, then wakes with your game where you left it. Opening the lid wakes it.
+- **Panel refresh.** Settings → System → Display → Panel refresh offers 60 Hz, 50 Hz, and 40 Hz. They are Zlyme's timings for this panel: a stock-derived 60 Hz mode, plus slower 50 Hz and 40 Hz modes when you want a different pace or a less frequent refresh. 60 Hz is the default.
 - **DDR scaling.** The selected mainline kernel has no RK3566/RK3568 DDR frequency driver, so Zlyme carries the external `rk3568_dmc` module. Memory clocks drop for light games and come back up for heavy ones.
 - **Wi-Fi and Bluetooth.** They share one RTL8733BU chip, and powering it isn't just a userspace toggle. The radio driver is a pinned third-party `8733bu`. Zlyme adds its own `rtl8733bu-power` module for the chip's power and rfkill, and the kernel carries the Bluetooth support patch for it.
 - **The off-state drain.** The Flip's RK817 power chip used to keep draining the battery with the device off under mainline. Zlyme fixes that. A small drain while it's off is still normal.
 
-Wi-Fi, Bluetooth audio and controllers, HDMI, sleep, the lid, the sticks, rumble, the headphone jack, USB OTG and both SD slots all work. Two GPU drivers ship: Mali (the default, with Vulkan) and Panfrost (no Vulkan). Per-system CPU frequency floors are adapted from [SpruceOS](https://spruceui.github.io/) Miyoo Flip tuning onto Zlyme's mainline frequency table; the governor, core count and memory clocks are Zlyme's own.
+Wi-Fi, Bluetooth audio and controllers, HDMI, sleep, the lid, the sticks, rumble, the headphone jack, USB OTG and both SD slots all work. Two GPU drivers ship: Mali (the default Vulkan path) and Panfrost. Panfrost can also load Mesa's experimental Vulkan driver. PPSSPP still uses Mali for Vulkan. Per-system CPU frequency floors are adapted from [SpruceOS](https://spruceui.github.io/) Miyoo Flip tuning onto Zlyme's mainline frequency table; the governor, core count and memory clocks are Zlyme's own.
 
 The gory details, register by register, live in the [Miyoo Flip hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering).
 
@@ -92,7 +93,7 @@ Builds you make yourself produce full updates only. What an update does to paks 
 - **MENU+Vol** = brightness
 - **MENU+Y** = emulator / governor for the highlighted console, folder or ROM. On a ROM it also offers Delete game.
 - **Power** = deep sleep
-- **Close lid** = disable screen and wifi/bluetooth. That is not deep sleep.
+- **Close lid** = sleep, the same as a short press of power. Opening the lid wakes the Flip.
 
 **In a pak / game**
 
@@ -104,6 +105,8 @@ Speaker and headphones switch by themselves. Bluetooth audio follows the headset
 ## Settings and Tools
 
 **Settings** is part of Zlyme's NextUI fork and opens from Tools. It is the first entry there. Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone and **Update** are in there. On a restricted network, Settings → Network → Proxy can send online services through an HTTP or SOCKS proxy. That is not a VPN. Hardware switches (GPU, ZRAM, USB OTG, HDMI, the second SD slot, system logs, CPU undervolt) sit under System → Advanced. Undervolt stays off unless you turn it on. Logs are off until you enable System → Advanced → System logs; then they go to `/storage/.logs`. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
+
+- **RetroArch**: Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list. Games you start from a library still use their own launchers. [User guide](docs/USER_GUIDE.md#retroarch).
 
 The community tools below were adapted to Zlyme's paths, controls and bundled binaries.
 
