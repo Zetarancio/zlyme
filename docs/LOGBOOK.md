@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — About Syncthing parser
+
+NextUI `3f4120cc15a3b6041534b1da972f80bc06eaeb3c` asks `zlyme-syncthing-gui` when About opens. Redraws use that copy. An XML comment is not a Syncthing username or password. The host test compiled the label functions and ran them against the helper. The page was not opened on a Flip.
+
 ## 2026-10-15 — Syncthing GUI parser
 
 `S75syncthing` asks `zlyme-syncthing-gui` whether the parsed `config.xml` has authentication. The helper uses Python's ElementTree. Syncthing 2.0.13 enables authentication for LDAP, or for a nonempty user and password. An XML comment is ignored. More than one `gui`, `user`, `password`, or `authMode` element refuses startup. A host build of the pinned source logged in on `127.0.0.1` with the generated bcrypt password, and the same binary served a commented GUI section on loopback without authentication. The init script refused that file. This was not run on a Flip.

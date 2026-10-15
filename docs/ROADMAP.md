@@ -174,7 +174,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `620a64ce`, which adds the About credential rows. None of those commits is on NextUI `zlyme` yet.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `3f4120cc`. About reads Syncthing through `zlyme-syncthing-gui`. None of those commits is on NextUI `zlyme` yet.
 
 ##### B3. RGUI theme
 
@@ -266,7 +266,7 @@ Status: Host-tested. A new home is created with `syncthing generate` before the 
 
 Objective: Settings → About shows, in order, SSH account, SSH password, Samba account, Samba password, Syncthing account, Syncthing password, then IP. Read them when About opens. Do not run the helpers on every redraw. Show the real usernames. Show `zlyme` as a password only when that default is still in force. After the user changes a Samba or Syncthing password, show that it was changed or that it cannot be read. Do not show a hash. Do not keep a second plaintext copy for this screen. Labels have to fit the Flip. About does not edit Samba or Syncthing passwords.
 
-Status: Host-tested. NextUI `620a64ce` reads the rows when About opens and keeps them for redraws. SSH still shows the live password. Samba shows `zlyme` only when the NT hash is still the initial password, `(changed)` when it is another valid hash, and `(unavailable)` otherwise. Syncthing shows the GUI user. Its password is `(set)` when the file holds a bcrypt hash, and `(unavailable)` otherwise. The page does not show that hash and does not start Syncthing to check it. The host test compiled the label functions. The page was not opened on a Flip.
+Status: Host-tested. NextUI `3f4120cc` reads the rows when About opens and keeps them for redraws. SSH still shows the live password. Samba shows `zlyme` only when the NT hash is still the initial password, `(changed)` when it is another valid hash, and `(unavailable)` otherwise. Syncthing asks `zlyme-syncthing-gui`, the same parser the init script uses. The account is the GUI user. The password is `(set)` when the parsed value is a bcrypt hash, and `(unavailable)` otherwise. An XML comment is not a username or a password. The page does not show the hash and does not start Syncthing to check it. The host test compiled the label functions and ran them against that helper. The page was not opened on a Flip.
 
 #### 13E4. Obsolete configuration
 
