@@ -26,7 +26,7 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [inputplumber.md](inputplumber.md) | 4, 2026-09-14 to 2026-09-28 | The superseded Switch Pro study, InputPlumber packaging, latency, the NextUI handoff, and the application cutover. |
 | [kernel-patch-audit-phase5.md](kernel-patch-audit-phase5.md) | 5, 2026-09-28 | Second reduction pass, RK817 gauge patches, `SYS_CAN_SD`, and the 16-patch correction. |
 | [deep-suspend-phase6.md](deep-suspend-phase6.md) | 6, 2026-09-28 to 2026-09-29 | RK3568 BL31 deep suspend against the BSP and stock firmware, 6B to 6D results, `vdd_logic` off, and the RK817 `005` disposition. |
-| (none) | 7, 2026-09-29 to 2026-09-30 | Phase 7 DMC work has no research file. Its evidence is `package/drivers/rk3568-dmc/README.md`, [docs/LOGBOOK.md](../LOGBOOK.md), and ROADMAP section 7. |
+| (none) | 7, 2026-09-29 to 2026-09-30 | Phase 7 DMC work has no research file. Its evidence is `package/drivers/rk3568-dmc/README.md`, [docs/LOGBOOK.md](../LOGBOOK.md), and [docs/archive/roadmap-2026-10-15.md](../archive/roadmap-2026-10-15.md). |
 | [frontend-source-phase8.md](frontend-source-phase8.md) | 8, 2026-09-30 | NextUI delta and fork, the pinned fetch, minui helper vendoring, read-only ZLYMEBOOT, the `/storage` unmount, and the frontend profile. |
 | [product-phase9.md](product-phase9.md) | 9, 2026-09-30 to 2026-10-04 | gpSP pin, Spruce CPU floors, Settings, multi-library BIOS and saves, ZcrapeGoat, incremental OTA, and per-image acceptance. |
 | [maintenance-phase10.md](maintenance-phase10.md) | 10, from 2026-09-30 | Planning outline. The procedure is [docs/MAINTENANCE.md](../MAINTENANCE.md). |

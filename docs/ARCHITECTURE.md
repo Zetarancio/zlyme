@@ -702,7 +702,7 @@ The hardware wiki owns the BL31 suspend interface, the meaning of each mask bit,
 - In mem suspend the DTS turns off `vdd_logic` (RK817 DCDC1), `vdd_gpu`, `vcc_3v3`, `vdda_0v9`, `vccio_acodec`, `vcc_1v8`, `vcc1v8_dvp`, `vcc2v8_dvp`, BOOST, `otg_switch`, `vdd_cpu` (RK8600), `vcc5v0_host`, and `vcc3v3_lcd0_n`. `vcc_ddr`, `vcca1v8_pmu`, `vdda0v9_pmu`, `vccio_sd` (at 3.3 V), and `vcc3v3_pmu` stay on. The SD card power switches have no suspend state.
 - Wake sources are the RK817 power key, the volume keys, and lid open. Lid close does not wake.
 
-The Phase 6 hardware acceptance record is in `docs/ROADMAP.md`.
+The Phase 6 hardware acceptance record is in `docs/archive/roadmap-2026-10-15.md` and `docs/research/deep-suspend-phase6.md`.
 
 ### DDR frequency scaling (DMC)
 
@@ -712,7 +712,7 @@ There is no `modules-load.d` entry or init script for it. It loads from the `roc
 
 Runtime policy belongs to `zlyme-governor`. The `smart` and `idle` profiles hold DMC at `powersave` 324 MHz. The `play` and `heavy` profiles use `simple_ondemand` from 528 to 1056 MHz. After resume, `zlyme-radios resume` reopens the DMC range once and restores the previous profile.
 
-The Phase 7 hardware acceptance record is in `docs/ROADMAP.md`.
+The Phase 7 hardware acceptance record is in `docs/archive/roadmap-2026-10-15.md`.
 
 ## Kernel extension policy
 
