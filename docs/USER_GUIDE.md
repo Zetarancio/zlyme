@@ -327,6 +327,10 @@ PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 
 
 
+## Files
+
+Tools → Files is the file browser. Hidden files are shown until you turn that off, and a theme or hidden-file setting you already chose stays. The controller shortcuts are the [vtree gamepad controls](https://github.com/MustardOS/vtree#gamepad-controls).
+
 ## Logs
 
 Logs are off by default. Turn on Settings → System → Advanced → System logs, and Zlyme writes `/storage/.logs`:
