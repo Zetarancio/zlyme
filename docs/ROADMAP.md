@@ -792,6 +792,8 @@ The shipped ABI is `compatible = "rockchip,pm-rk3568"`, `sleep-mode-config = 0x5
 
 Phase 6C covered the normal NextUI path and the in-game path. Display, audio, the built-in pad, and the virtual Xbox 360 pad returned. `/storage` stayed usable. Wi-Fi and SSH returned. DMC devfreq stayed present. `mali_kbase` stayed loaded. No filesystem corruption and no Oops, panic, or hung task attributable to deep suspend was observed. An SSH suspend that slept twice was a userspace artifact: it bypassed `PWR_sleepNow()`, so `pwr.resume_tick` was never armed. It was not a BL31 failure, a kernel retry, or a firmware wake failure. The `xHC error in resume, USBSTS 0x401, Reinit` line recovered with the USB radio. Lid policy was not given a separate deep-suspend test and is unchanged.
 
+2026-10-15: Phase 13D points lid close at that same mem helper in userspace. Phase 6 did not measure lid-open wake, and this note does not add that measurement.
+
 `CONFIG_ROCKCHIP_PM_CONFIG=y` stays built-in. The per-suspend `.prepare` path is part of the firmware configuration, and that built-in driver is what the hardware test ran. The module question is closed: keep built-in. Successful `dev_info` lines at probe and suspend stay. They are low-frequency ABI diagnostics. Changing their level would be a new kernel runtime, so it is not part of this closure.
 
 DFI `1010` stays applied. Deep suspend did not show a fatal DFI or DMC resume failure. Dynamic DMC scaling is Phase 7, so `1010` is kept through Phase 6 and re-evaluated with the DMC module lifecycle in Phase 7. The deferred ROCKNIX GPU power-domain change was not imported. No GPU resume failure required it.
@@ -1429,7 +1431,7 @@ Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion doe
 
 On 2026-10-15 an earlier implementation inserted missing RetroArch and Flycast keys at launch and rewrote a user file that still had the original Zlyme theme. That implementation is superseded.
 
-The RetroArch stock file is `/usr/share/zlyme/retroarch/retroarch.cfg`. Its writable copy is `/storage/.config/retroarch/retroarch.cfg`. Settings → Game → Reset RetroArch configuration calls `zlyme-game-cleanup ra-cfg` and replaces that copy. Reset RetroArch core options is the separate `ra-cores` action and deletes `retroarch/config` only. Reset standalone settings deletes the standalone files listed by that action, then the seed restores the stock files Zlyme actually ships. Reset Settings and Factory Reset stay the existing `zlyme-reset` actions. The settings row is on NextUI `2d95d33f`, which this development branch pins. That commit is on NextUI `zlyme44.3-phase-12`. It is not on NextUI `zlyme` yet.
+The RetroArch stock file is `/usr/share/zlyme/retroarch/retroarch.cfg`. Its writable copy is `/storage/.config/retroarch/retroarch.cfg`. Settings → Game → Reset RetroArch configuration calls `zlyme-game-cleanup ra-cfg` and replaces that copy. Reset RetroArch core options is the separate `ra-cores` action and deletes `retroarch/config` only. Reset standalone settings deletes the standalone files listed by that action, then the seed restores the stock files Zlyme actually ships. Reset Settings and Factory Reset stay the existing `zlyme-reset` actions. The settings row landed on NextUI `2d95d33f`. This development branch pins `7cb6ecaa`, which is that commit plus lid-close mem. Both are on NextUI `zlyme44.3-phase-12`. Neither is on NextUI `zlyme` yet.
 
 `ra-run` may append only session values: achievement fields from NextUI's settings file, `savefile_directory`, `savestate_directory`, and `system_directory` for the ROM's card, the SDL2 driver, joypad autoconfig directory, and player index 0, and a selected content overlay. It does not append the theme, automatic savestate, quit-on-close, `config_save_on_exit`, video, or audio preferences. `/etc/retroarch.cfg` and `ra-perf.cfg` are not a second copy of those preferences and are not appended.
 
@@ -1583,7 +1585,9 @@ Dependencies: Samba's private files have to live where exFAT's missing Unix perm
 
 Acceptance criteria: guest access is gone, the development account works in the host configuration check, a changed password is what the next start uses, service stop and restart still succeed, and the user guide matches that behavior.
 
-Status: Planned.
+Status: Host-tested.
+
+`zlyme-samba-auth` adds a Unix account `zlyme` with shell `/bin/false` and uid 980, and a Samba account of the same name. The first password is `zlyme`, written to `smbpasswd` on stdin. A changed password is an smbpasswd NT-hash export at `/storage/.config/zlyme/samba.account`. The live passdb stays on tmpfs (`/tmp/samba-lib`). A later start, a restart, a wiped runtime, and a kept export all import that hash. They do not write the public password back. A missing export creates the initial account. A corrupt export refuses to start `smbd` and does not turn guest access on. `smb.conf` sets `map to guest = Never`, `guest ok = no`, `disable netbios = yes`, and `server min protocol = SMB2`. `S70samba` starts only `smbd`, and only when Samba is enabled. The change command is `zlyme-samba-auth set`. `scripts/tests/test_phase13d_samba.sh` stubs `smbpasswd` and `pdbedit`. It does not include a Windows client. The share path is still `/storage`, with `force user = root` after the account has authenticated.
 
 ##### D2. Lid-close deep suspend
 
@@ -1595,7 +1599,9 @@ Dependencies: the power-button deep sleep path, the resume guard, wake handling,
 
 Acceptance criteria: one close requests one deep suspend in both ownership cases, a second close does not stack another request, and power-button sleep still uses the same helper. Source review is the check. No suspend hardware run is part of this item.
 
-Status: Planned.
+Status: Host-tested.
+
+NextUI `7cb6ecaa` handles a lid-close edge with `PWR_sleepNow`. The screen timeout still calls `PWR_sleep`. `zlyme-keylidmon` uses the same governor, radio, and suspend sequence for a lid close as for the power button, and only after NextUI has been on screen and has exited. A second close while that period is already asleep does not request mem again. The one-second resume guard drops a lid edge and a power edge. A failed suspend does not retry on the queued close. Boot, before the frontend has appeared, does not treat a closed lid as a pak. The suspend helper still does not write the RTC wake alarm. The hall node is unchanged: `wakeup-source` and `wakeup-event-action = <EV_ACT_DEASSERTED>`. `scripts/tests/test_phase13d_lid.sh` drives the decision with mocked events. Phase 6 measured power-button mem suspend. It did not measure lid-open wake. This item does not add that measurement. The NextUI sources were not compiled into an image.
 
 #### Phase 13E — Documentation and final integration
 

@@ -294,7 +294,7 @@ Mounted libraries are the lines in `/run/zlyme/libraries`. A USB library is `/mn
 
 User media is not configuration. Music and podcasts stay `/storage/Music` and `/storage/Podcasts`. Installed cheats stay `/storage/Cheats`. ZcrapeGoat state stays `/storage/.config/ZcrapeGoat`.
 
-Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs.
+Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's live private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs. The NT hash export is `/storage/.config/zlyme/samba.account`. That file is not the live database.
 
 Diagnostic logs are off by default. With the Settings `logs` flag on, `zlyme-logs` keeps five boot generations under `/storage/.logs`, `pak-log.sh` keeps three launches per PAK, and the initramfs writes a boot dmesg. With logs off, the session log stays in `/tmp`. Two files reach the card on every boot regardless of that flag: `rc.late` copies `/tmp/boot-timing` to `/storage/.config/zlyme/boot-timing` and `/tmp/nextui.txt` to `/storage/.config/nextui/my355/logs/nextui.txt` six times, 5 s apart, so a hung panel still leaves evidence after the card is pulled.
 
@@ -458,9 +458,10 @@ Frontend and emulator launch code should consume normal Linux input/SDL interfac
 NextUI owns sleep while `nextui.elf` is on screen. `zlyme-keylidmon` owns it while a pak owns the screen. Both use the same suspend helper and radio ordering.
 
 - NextUI, power press: `PWR_sleepNow` mutes audio, turns the backlight off, sends `SIGSTOP` to `zlyme-keylidmon`, sets CPU powersave, syncs, runs `zlyme-radios pre`, then runs the suspend helper. Holding power for 1 s powers off instead.
-- NextUI, lid close or screen timeout: `PWR_sleep` is hybrid sleep, with the screen and radios off while it waits for a wake input. After the suspend timeout it enters the same mem suspend, unless the device is charging or USB keep-awake applies.
-- Pak on screen, power press: `zlyme-keylidmon` runs `zlyme-radios pre`, the suspend helper, then `zlyme-radios resume`, and ignores the wake press for 1 s.
-- Pak on screen, lid close: `zlyme-keylidmon` stops the radios and blanks the screen until the lid opens. It does not enter mem suspend.
+- NextUI, lid close: `PWR_sleepNow`, the same mem path as a short power press. A second close while the lid stays shut does not stack another request. The one-second resume guard drops a lid edge as well as a power edge.
+- NextUI, screen timeout: `PWR_sleep` is hybrid sleep, with the screen and radios off while it waits for a wake input. After the suspend timeout it enters the same mem suspend, unless the device is charging or USB keep-awake applies.
+- Pak on screen, power press: `zlyme-keylidmon` runs `zlyme-governor idle`, `zlyme-radios pre`, the suspend helper, then `zlyme-governor resume` and `zlyme-radios resume`, and ignores the wake press for 1 s.
+- Pak on screen, lid close: the same mem sequence as the power press. A close while that period is already asleep does not request mem again. Opening the lid clears the period. The hall node is unchanged. Lid-open wake has not been measured on a Flip.
 
 The suspend helper is `package/system/nextui/zlyme/suspend`, installed as `/usr/share/nextui/bin/suspend`. Published `zlyme44` clears any RTC wake alarm, then programs a relative alarm of 86400 s before it syncs and writes `mem` to `/sys/power/state`. That timer is software policy left over from the 2026-09-13 timed-suspend test (`083e8061c47354325e7356966541642bb3062cfe`). No Miyoo Flip hardware limit of 24 hours is documented, and a full 24-hour suspend was not part of hardware acceptance. Normal wake sources (power button, volume keys, lid open) are separate. Published `zlyme44.2` does not read, clear, or program `/sys/class/rtc/rtc0/wakealarm`. An alarm programmed on purpose is preserved. RTC support stays in the kernel, and an RTC wake remains a valid hardware wake source. That helper was device-accepted in the unpublished `zlyme44.1` source at `6a398b311310246ef6a5515ed72805c6f58d787d` and shipped in `zlyme44.2`. The acceptance record is in `docs/MAINTENANCE.md`.
 

@@ -222,6 +222,10 @@ A new RetroArch setup uses the Classic Orange menu. A theme you already saved is
 
 The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. That first copy is about 213 MiB and happens before the list appears. The time that copy takes was not measured. A reboot without an update leaves a core you replaced. An update puts the image's file back for every included filename, including when that file did not change. A core the image does not include stays, including one you added and one left from an older image. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
 
+## Power
+
+A short press of the power button sleeps. Holding it for about a second turns the Flip off. Closing the lid sleeps the same way, in the list and during a game. The lid switch is set to wake when it opens. That wake has not been tried on a Flip. The power button still wakes the Flip. A press in the first second after wake is ignored. The screen timeout is separate: the screen and the radios turn off, and a deeper sleep waits until that timeout, unless the Flip is charging.
+
 ## Settings
 
 Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with its own controls, such as the keyboard, the color picker, release notes, or a joystick test, shows those controls instead. When you leave Settings after a change that needs a restart, it offers to restart. A shutdown or restart already chosen from Recovery skips that question.
@@ -231,7 +235,7 @@ Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with it
 - **WiFi**: the radio on or off, diagnostics, and the network list. **Country** sets the two-letter code for regional channel rules. Use the country where the device is being used. The row appears only when the Wi-Fi driver supports it.
 - **Bluetooth**: pair HID controllers and headsets.
 - **SSH**: OpenSSH with SFTP. On a fresh install the account is root and the password is empty. SSH stays on with that empty password. **SSH Password** sets or changes it, and **Clear SSH password** removes it, without a reboot. About shows the password as it is currently set.
-- **Samba**: a file share of `/storage`.
+- **Samba**: off until you turn it on. It shares `/storage`, including settings. Windows may not list the Flip under Network. The address is Settings → About → IP, which is the Wi-Fi address when the Flip is on Wi-Fi. In File Explorer's address bar, type `\\` and that address, then `\storage`. `\\192.168.1.123\storage` is only an example of the shape. The username is `zlyme`. The first password is `zlyme`. Change that password. SSH in from a computer and run `zlyme-samba-auth set`, type the new password, and press Enter. It is not shown. The new password stays on the card across a reboot and an update. Reset Settings turns Samba off and leaves the password.
 - **Syncthing**: a web UI on port 8384.
 
 SSH, Samba, and Syncthing apply immediately.

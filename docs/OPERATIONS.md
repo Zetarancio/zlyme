@@ -98,7 +98,7 @@ Application and system configuration on the OS card lives under:
 
 Examples are `/storage/.config/zlyme` (policy, including whether Samba is enabled), `/storage/.config/syncthing`, and `/storage/.config/<application>`. A NextUI-owned subtree is used only where NextUI actually owns that state.
 
-Per-library user content stays on that library: `Roms`, `Saves`, and `Bios`. User media such as `/storage/Music`, `/storage/Podcasts`, and the Cheats directory is content, not configuration. Transient data belongs in `/run` or `/tmp`. Samba's private database stays `/tmp/samba-lib` because exFAT has no POSIX mode bits. Logs are described below.
+Per-library user content stays on that library: `Roms`, `Saves`, and `Bios`. User media such as `/storage/Music`, `/storage/Podcasts`, and the Cheats directory is content, not configuration. Transient data belongs in `/run` or `/tmp`. Samba's live private database stays `/tmp/samba-lib` because exFAT has no POSIX mode bits. The NT hash export is `/storage/.config/zlyme/samba.account`. Logs are described below.
 
 `/storage` is SD card 1. A card in the second SD slot (`sdmmc1`, `mmc@fe2c0000`) is mounted at `/mnt/sd2` and shown as SD card 2, including when the card is blank. USB disks are mounted at `/mnt/media/<name>` and shown as `USB: <name>`. `<name>` is the volume label with spaces and ordinary punctuation kept. `/` and control characters are replaced with `-`, so the mount cannot leave `/mnt/media`. An empty result, `.`, or `..` uses the kernel device name. A second disk that would reuse the same path is mounted at `/mnt/media/<name>-<device>` and is not stacked on the first. `/run/zlyme/libraries` lists that decoded path. Slot identity does not depend on a `Roms` directory already being present.
 
