@@ -1,0 +1,208 @@
+3d9e28e250b7f854da7b9fcf686a6cc3a08eab0de07bacc3791c27a9e0a3f578  ## 2026-10-15 — Roadmap shortened
+37775846d30eb6356a6f6bd4b376344ada7263d191c0004338d7982727ba76fe  ## 2026-10-14 — Roadmap index, Phase 3C log moved
+f67340f87cfebc2a66780fce3c69cbb6e58db740a432334948ac54e28d627170  ## 2026-10-14 — Phase 12 closed after the correction
+0114080587de5bfacbe25a40db16297a1a34c5e11c1a4d68f0e9e567532570bc  ## 2026-10-14 — Phase 12 closed for development
+a9ea60f30650ddfe099fc5bceb3413d47908e159e4acc5aaae7535e9b399508f  ## 2026-10-13 — Phase 12D Linux 7.2.10 host build
+8c89f59271d4c294e3520f63f11da4ef9b3d2593d49c653ca5fa1af075caeb1e  ## 2026-10-13 — Phase 12D documentation and kernel preflight
+44f2c79e006b0f2cf5cedac94fbb576227db4200b48b1fa06ac73ec8f2530c20  ## 2026-10-12 — USB enumeration failed on both staged tests
+7f53a270df2b63f884a98ea06b6dc98dc0a049ce28cc2920ce20fa2e7fcd3d2c  ## 2026-10-12 — Phase 12C MTP, then ext4
+1979298f97c0f6a4b697245286a763b2c034383173b09bd3910a74f52ee313a9  ## 2026-10-12 — Phase 12B2 kernel test drivers
+d66c435f431ad96a8ee8a2f6220368838bf22b18636db87b4e26f4a92749b6ac  ## 2026-10-11 — Phase 12B1 Buildroot 2026.08
+86de44e6cafa8eef00ae86ccedbe072e445cb5dd89e67019f5cf03ce35ca3c58  ## 2026-10-11 — Phase 12A
+340107f7158ce591a082a62b9867321e2b3d0eb37feb148dcd16ad19dcc39c56  ## 2026-10-11 — Phase 12 preflight
+45c4a86132f50967db20839d4da0b8fb083c9ec29de5b141102f585da94f0251  ## 2026-10-11 — zlyme44.2 published
+0973e7b21763e3c2e1e0d5b4b1aab2bc6c1961af11ac2c1fa12214015da5b0d6  ## 2026-10-11 — zlyme44.2 hardware-accepted
+16695d3c358515bdb80f14bd20dd3ebc06cd5e342d7f69d7faf12f9d056c1148  ## 2026-10-06 — Phase 10 closed, zlyme44.1 device-accepted
+269d20ed415e03c8b141e74840a78b64fd24fbd189d6ebe11847e8fbd858fe33  ## 2026-10-04 — Phase 10 final review corrections
+144b25337e98bb5d5767f16f3124261bca363376ae2231584e5fea4a0040c63c  ## 2026-10-04 — Hardware wiki synchronized to zlyme44
+0af652e1f7154972092440ea112be511e61ffd4dfdf420c195a5778c3d6c37d5  ## 2026-10-04 — zlyme44 is the first stable release
+de716bba8738df02551932ddd6f71901a5a539f19d4eab07068e66692c1246f7  ## 2026-10-04 — Phase 10 full-history documentation audit
+ae43acdfc4ebb715a3fd71b210b90418f2761a9b573a001730b40fa16f520c00  ## 2026-10-04 — Phase 9 accepted, Phase 10 started
+035149855ac82f99afa645f8f578b150c68f257e66a5876a901517b3f1d2c831  ## 2026-09-30 — Phase 9 is planned, not started
+bccbe6bd071116a3f8b74c9cf4aaaf122cfa100cef046b4bbc4f392488b0b72c  ## 2026-09-30 — Phase 8 closed
+9e155441e06f81bdf8532b99e5ef06504e6a395d720deb6a6994b73c8c9ae42f  ## 2026-09-30 — Build-only branding stays out of the rootfs
+615e9ac5bbacc599dc805a91b95a6f4b8ba01b5dec699f2de9e4e57b56c4d02a  ## 2026-09-30 — Phase 8 audit finds no runtime change
+70e694a10fa346749d46eb5db9ae37a1f84ca06bcedb9db9cad02c9a680e0a8f  ## 2026-09-30 — Phase 8 frontend migration is hardware-equivalent
+d5cf46d4fc42d173e6b5f5d34a45d5b35319f73bdcc289bb4b6ddd59298402d4  ## 2026-09-30 — Phase 8 migration image built, not yet installed
+421ae824bb3ea98cd6a94077876e845daad4b9630b51f7c30b6318d8da083fa2  ## 2026-09-30 — MinUI helpers are vendored at the current tags
+50a556d86d18a41f9fd8e4b8ca9d30d38bcea38b1d326ba3bc31a7000aefd032  ## 2026-09-30 — NextUI repository is a GitHub fork
+0c1816fde6175aaec2dcfad5efac85ca44f5f32c1724279cd901f03bcfd88c94  ## 2026-09-30 — NextUI is fetched from the Zlyme fork
+e730ab1ec5116ec7faf375bb722b5c296ed88081a1f3779f0704af9fccdba6cd  ## 2026-09-30 — Phase 8A2 primary storage unmount accepted
+ba2c887dfabf2bf6fbabdfb4e560fea0286c038331fdb62b162c7e3218b3ecf1  ## 2026-09-30 — Phase 8A ZLYMEBOOT accepted, storage shutdown next
+d7fa87532cef1d0ba27bf82eaf8d478c210b03baa1cb3a74885ccc2f1b0ad0dc  ## 2026-09-30 — Phase 7 complete
+7e7b2911125a00c35881b82bccc46fe845503d1a06d6fdb272f7cb6ea8cf195b  ## 2026-09-30 — Phase 7C DMC hardening image built
+00e0c25b58551499b590c2b81ec1aa954276f37f5763502d62b9e436ee696055  ## 2026-09-30 — Phase 7B external DMC module accepted
+b169dba5d4cf05726ea5350072b43c130b8dd3464efa93ae223b824b6ccef01c  ## 2026-09-30 — Phase 7B external DMC image built
+b3c1dd761c7488a9acb9714d105672cac53a90ee50b538777bda1ddee42c43c0  ## 2026-09-30 — Phase 7A DMC module accepted
+f4a0704230b9064be4aed3f9268630e77ede3401fc425c9e08d146b0adadc451  ## 2026-09-29 — Phase 7A DMC module image built
+e5549ccfb928668f3f6b7e5e5433d97f5ed0dc5ebb3fc1d9444a3e1ed2bb4b53  ## 2026-09-29 — Phase 6 closed
+343c3ce66f1468c2e7030b36c6e9eefc3c905b89af2015c0c3a85dc65d1f40b2  ## 2026-09-29 — RK817 sleep-gauge evaluation closed
+649e7a61930c494cb8bb825edfc87b93343155740aba1862a8fe5dec492ebb34  ## 2026-09-29 — RK817 sleep-gauge patch left unapplied
+5b3791b086bb6313f7a4319c939bfe7b442582f7e0ff76d36c6690b16529aad5  ## 2026-09-29 — Phase 6D accepted
+978d31d25a282fbbd044c90692245444c752d27897ecf276642d4fe2e8a48e21  ## 2026-09-28 — Phase 6D vdd_logic-off image built
+f99bb8480dee747ffede8810916c8759410b27ae276e922b10992e8aebf18ce7  ## 2026-09-28 — Phase 6C normal suspend path passed
+c6c05f876787de8748f8f1438a9a59e0e5ad61b145cda484d67952bab08781ad  ## 2026-09-28 — Phase 6B suspend firmware driver built
+18e591e973a4bd50957a6427448be3eac7ba2ffd23275ea24d9c5ad5c066a4ac  ## 2026-09-28 — Phase 6A deep-suspend research
+036e34304ec87065d16e036f0b185f26ba651de418e7ef7ca3d5ddb88afc283e  ## 2026-09-28 — post-Phase-5 correction image accepted
+37c17b596ec4930dcd21e8bc8ec4daa7f0c2b61333bc45250934f64e6b7fbe6f  ## 2026-09-28 — post-Phase-5 kernel dispositions corrected
+f7928a3f6f214f8e005f36a2656e89241f43177001493bc1d87d7b98bd27e0e6  ## 2026-09-28 — Phase 5 complete
+7f2ec59a1323c797949d7ee44a6fc05b72b307e40faf05b6ec8ddce9abd6d726  ## 2026-09-28 — Phase 5D redundant kernel patches dropped
+276662aa6592c25d875a1199322c207c58fb4f7d1b38492ed988625f75568fb0  ## 2026-09-28 — RK817 overnight off did reseed from PWRON_VOL
+1988efd22763b845d2934fdfed9e51c0e3b8b9fa9966110fc50cd8655de86841  ## 2026-09-28 — RK817 long power-off did not set OFF_CNT
+7ae98e01e6b5b20a7b9de3563ac42e96b1721e160fefe17426b6a2e047cd8712  ## 2026-09-28 — Phase 5A accepted; RK817 gauge read only
+50f930f312109336cb8efd4a62c7b6be50e01be735c7a7d53c863e4ac4fe11a8  ## 2026-09-28 — Phase 5A dead kernel delta removed
+6062132e234388be7b6271da9545212a67f510a383bc75a758a174f20589a78d  ## 2026-09-28 — Phase 5 kernel-patch research started
+04cfb882ae6513d19aeefbeab45495b8dd348bc1fdf2c1dcf81d377aa7289fd1  ## 2026-09-28 — Phase 4D and Phase 4 complete
+37e493315f3315f7aee1894169c4d1fdfcc8df487dfdaaf23599cea6ed1bddb5  ## 2026-09-28 — PPSSPP presents through SDL
+ebb617f48b7475b7bafea99df6ae46c22e4c5b3d517974cbf0ff671dd1560753  ## 2026-09-27 — Phase 4D build and packed-image correction
+9a46cd05e30a3d58331a97832d6b9b35c468c560c79b2dfbd63182bb98c62bd2  ## 2026-09-26 — Phase 4D application maps
+6c8a0b7c58308e351ff7e31cd66212cbb24842fdc7d819370eed46fff033f4cf  ## 2026-09-26 — Phase 4D Splore launch
+83b0a57a1d0ae69d1a21118f6e460d0e0b3bc2296a821cc9677d75167d593ce4  ## 2026-09-26 — Phase 4D RetroArch live, physical-pad banner
+2b9a178d1330614a3ca65a282b4c8fd18fa4fd01083d516fc968a40e56d4b1da  ## 2026-09-26 — Phase 4D started
+e469193bd6c17bb8edf745b14893df392233363216b3c22195645b2880b62994  ## 2026-09-26 — Phase 4C complete
+7623924e4d87f8a8f8c81e752707529d9faa827394b81bb99ebb57cf68cac12e  ## 2026-09-26 — Phase 4C MENU tap on the 7486688 image
+53f4ed410c492d5692d838cc44791b944089bd979d8323d816e0a0166868ff57  ## 2026-09-26 — Phase 4C live checkpoint
+ebeb4dfdcda455844d53b67262b71f08cf54a19ff69ece7a4e8aea57eb5817d0  ## 2026-09-26 — Phase 4C implementation checkpoint
+1cb3216148821c76a5a07d521827298f2d89fa54c4841ab8f69fdc9132763958  ## 2026-09-26 — Phase 4B final audit
+00c17cc664c43bb6bd29474d99fb048fcb09f88a6e382a93b7b0c0611f7fe0c7  ## 2026-09-26 — Phase 4B complete
+abec54ce108a45d5c73962b9da53c9e3445ecf062b6acdde0f3db94517177de7  ## 2026-09-26 — Phase 4B D-pad map and latency
+8fe5c55b5aefa1d5c323b93204c496eb0d663e71d3f7122e9e2d5413bd9df979  ## 2026-09-26 — Phase 4B device check
+ce7d020858dc1a903ba2c75d85c8e807fff312e2a54680e74b45de0a0a5bcb5c  ## 2026-09-25 — Phase 4B InputPlumber service
+4b5680988369dd113c29375fb3e7f5041d21991d60f4357fd5983070d42e7507  ## 2026-09-25 — Phase 4A InputPlumber package
+c204e530c44d8254df15cdac217b0d7b3dc54040212de44b621e025cef827bf8  ## 2026-09-25 — Phase 4 InputPlumber architecture
+ee9fa59fb6826ff9e82aa9ab1d05ad42bfe699e8c63f925f93f0d3822db3d56e  ## 2026-09-25 — Phase 3D and Phase 3 closure
+c607755ab114c04bd31f983d9985d1d5a825b2b839441566504557f23a8908ed  ## 2026-09-25 — Phase 3C3 rumble closure
+bc24df246a17e9e361d7ea79188ace9f6f70961161e93c26c53bdc88609b4aad  ## 2026-09-24 — initramfs grep applet
+bd2a5c21abc04c7fea194284b9da7d34a48c3e315b8610463eba62251eb05f65  ## 2026-09-24 — Phase 3C2a calibration range invariant
+8aa7a9e727d2d8c0a2c221bce8091f7b86ae7e358b82d6469ad86a3eff6ea5bb  ## 2026-09-24 — Phase 3C2a gamepad calibration
+177894d3a14e395c4069e0f80d65a60b582b34195158cc30db3beb8807bce88c  ## 2026-09-23 — Phase 3C1 gamepad input power audit
+de58a4be2e0b9877e0ed13ec95d868ec6cde1381dc94a554b7d8a8fc563e6a45  ## 2026-09-23 — Phase 3B gamepad tracer
+e3109d748b00e397137549e4af7f210367f8621ea3aa1c96932a69b2bf37956d  ## 2026-09-23 — Phase 3A gamepad research
+4404fee1c036a39a9af2b99da9f4baff19aaf55df2b7acd15245bf40b9b72a2f  ## 2026-09-23 — Phase 2C OTP candidate
+c4f8777aaaec42409a77f441f46d964d6545c0da5c5ee096118a0fc1f35bee17  ## 2026-09-23 — Phase 2C inert initramfs warning patch
+72d2a8b92609a748ddf12547f245a05137091fde9f27e78e39c7ca9c1761a433  ## 2026-09-23 — Phase 2C Group 3 perf Rust target patch
+46abdbcd90eacdd7b64b2f9d68e40a1bb1606b03a0a782712ad171c582406d82  ## 2026-09-23 — Phase 2C Group 2B foreign driver patches
+2cd071a3c14f71840f136a2211beea203b089c269d78dbb2c779171e246bc122  ## 2026-09-23 — Phase 2C Group 2A unused non-my355 patches
+ce1546b7760241d475ee949d64aaa458a14bfc6d681ccbb24f35afad48e8fde9  ## 2026-09-23 — Phase 2C Group 1 foreign DTS patches
+3ea634fd01f44c23107827b4c873f97fbc59bf935838d84e9409909d8b19cd8e  ## 2026-09-23 — Phase 2B kernel patch classification
+fd5d6ef23b95ed169313995643471744af6998943b10f20afa2c68cf05bc11dd  ## 2026-09-23 — Phase 2A kernel evidence
+d05998f0c95c19a29f22d451defbba7455f8ef172220db48a5a73638676ba062  ## 2026-09-23 — Phase 1 Weston compatibility
+6774999771d1a1d2f25bbf229aad454a2699a0ed548dbbef915b3308456b15a8  ## 2026-09-22 — Wine graphical smoke on native Weston
+5ba92fc746c7c6dc076ea17b0a522fdaded604120750f729438561a97738a482  ## 2026-09-22 — PortMaster ESUDO prefix for the Panfrost Weston path
+75d822e3e623792185b568d8ba776c13e51f544cf32af8631cae5ef5cbb4014b  ## 2026-09-22 — Phase 1 Weston tracer built, not yet run on the Flip
+7fff0a3fc962c9dd15f242b1ca32247373b1029285df541a980af28a4f516e8a  ## 2026-09-22 — Weston tracer corrections after the first Flip run
+df995549f979961760cac47efc94d95fbd41a0411135d0b93c1eaeb66c2434ab  ## 2026-09-22 — PortMaster WestonPack cleanup is owned by the session
+786ab1cdb5628546f5d1cac53c3bf5ae0331121d031a74019001a6872afade40  ## 2026-09-22 — PortMaster runtime store for unmodified ports
+f2382ec934725a4176d1c80ecec6f69d78e144eb5d8770ce265672c042ed72fd  ## 2026-09-22 — NextUI GLES context on Panfrost
+71e1475cdbf5227386955ed49d94c0903cf75b571fc5047ec1d9d400efb7e481  ## 2026-09-22 — Phase 0 smoke on the etched card
+808619cc8aa94f26105aab07dc8a52ab76a68e97ee9b7a3b1ac3787f441f4249  ## 2026-09-20 — image rebuild, BASEOS first-flip cuts
+29a7b80ddd7d28fe9cdee1fd63b82da5d1182827ec0b9ea330d6bed63f26b017  ## 2026-09-20 — per-card libraries, live Flip
+c137fdd987c8dd7137a77a52e70b5863e178c57be0d958de044fffde30a14cb1  ## 2026-09-19 — RA A/B and zlyme RGUI in the RetroArch package
+e98a31087953a0965cfedeea852770c372a442c280308a631ba0c4a2ee2da9ed  ## 2026-09-19 — NOTES in git, serial dumps dropped
+f42bc7b21f6cebce3d3dec7255586d759f44a571015dfbcf22bf6e12f0c6489a  ## 2026-09-19 — README: Update is Settings, not a Tools pak
+71a03e413ccba7f20667d141dee1dea5639c73ab80fbf1b9ac760f48da874108  ## 2026-09-19 — Settings → Update
+368291e9bc3c79b9fdc088437907e815a211163ed1c4e116fc0801d0270c2ee2  ## 2026-09-18 — paks, logs, PS2/GC/Wii, live Flip
+ba4742408be986af7fd9253e647f4e000d5438ba221ac6fcd6fb72f8c5fdc5fd  ## 2026-09-18 — splash on FAT, OTA anims, WiFi rows, PortMaster Zlyme
+b9eaab61dcd9ed6204b0ea2ba4bf3a832d363fea6d544803deddf606b73b242d  ## 2026-09-18 — close the live-boot pile
+9f3abf3669cf562470eeea0812f60c716f7af8a2881a13aee46a716dc0da9801  ## 2026-09-17 — animated boot splash
+2042f76d3c3be210cfe2f29a496255ecb88732b43ef1f7b8678f09a6ecc07ef6  ## 2026-09-17 — slime loop splash and README
+0a28403e0bed470b27f1731159ea97c85f75acdc859d085525d8e692477207ee  ## 2026-09-17 — live OTA, then S18 yanked the list
+439977f27f1b98fab485d96b10e804f8d5164f5b235d9f9f57712e342e71b427  ## 2026-09-16 — emu paks for compiled cores
+f3e38c225740d117f39e1b67395ea705e001a0c1c5f936b63f421d6c81c057cc  ## 2026-09-16 — zlyme39 first flip 7.6 s
+d7506881fe24883e7c2fbb9d3d86172d650a2fabd8a9b047365c9dc19bc104cf  ## 2026-09-16 — zlyme38 first-frame (now in c46fafb)
+576fc6339b22d741eec0d2afa3298053de582594a5e3172faca2586019fcc74f  ## 2026-09-16 — OTA hung on "applying settings after OS swap"
+af07d8cd1e67c20bc7ed618364c0feafcfdbe5402d83fda38d77f003ec772899  ## 2026-09-16 — zlyme38 first-frame (uncommitted)
+a7ce1df1d5e556c6a388961e2de5ab7069f31e49967e49497847a6a2691231c0  ## 2026-09-16 — zlyme37 live, first flip 14.0 s
+fdf8e770a7330b91a40cb2b5ddeb36bcf930a3e083db94005adebc2048558a60  ## 2026-09-16 — zlyme36 Etcher: splash forever
+fe47cbb22b38c3e135f07cc9f93511ddb343a090a6439874a2ea4d98cc96f087  ## 2026-09-16 — mergerfs dest was the .roms_base bind
+3fccd42f0a3406acc1da27e7c41604ef9e3471e098910e1b0c0ea6956d905097  ## 2026-09-16 — First-frame cuts (zlyme35, building)
+251d1b53a04a6b0f6c0879e35a48cddd7e8faaab178ce85acf08dd9d7dfb42f9  ## 2026-09-16 — First-frame boot + GHA dispatch-only
+5885a1ec03c79afabe849117a4b56771ff5505f7bd71da69cb319af63cdd7f2d  ## 2026-09-15 — Splore wget, N64 hyphen, RA sdl2 (zlyme33)
+a43129204b5a6f10705ebd594a5221692ab2d88c80d34c69f19eb7e093258905  ## 2026-09-15 — keymon, lid, governors (zlyme31)
+599133de2d78821b6a21e457266da005d83bba8463530becc3e4d663a7953ee6  ## 2026-09-15 — Device QA: audio matrix, BT pads, faster boot
+c26a70954b7ce17f55fbc16b3136ec251d487bcb5334b712db120d7cc9b6db26  ## 2026-09-14 — Split commits + GHA 6h stages
+81e9d6e9a35c4bbe9ea664e0f23f6a137e1c93b1ca0059e75ce3fb0dd29d5304  ## 2026-09-14 — Device UI test (no serial), zlyme29 live, GHA Docker
+3eb029249531b93875d817ce2041ab445966214e1b179ea4e953722d7f8f43ee  ## 2026-09-14 — GitHub remotes
+569856f480e39d1773315facf209fbc1d32609017f9af8da133e36869a4aa616  ## 2026-09-14 — zlyme27 tree on main (udev MENU, RPG, Settings)
+eaf86c7daba835c57029af370b7c78567d4fdf334a35d7c77f5e326724dea8b7  ## 2026-09-14 — branding v4, fb0 blank, README m3u
+dd0f020a02a97aa520bb758f4e8e9b3e39cc14b7b9dc79337555bbc8f0fcd2ed  ## 2026-09-13 — First-boot resize reboot works without partprobe
+2d12a049f8d2464fec9c8da5398ad5e020c23c6e0d0fd1d8529170ce487b56cd  ## 2026-09-13 — First-boot serial: not a partition name
+41acedc3d380755eab6e065cfb38911aa27e91c23e31b994c549080f687556a1  ## 2026-09-13 — Serial field test: BT audio, DMC, contrast, RTC mem
+5373aa3541dee657c6ae160f5cdd6a6ad88506c58a23d4c709904d2dd55ce33b  ## 2026-09-13 — zlyme26 image (BT sink, radios pre/resume, DMC poke)
+57be9b832563cf3c8f45c4deffca4fe50a5f20a2b17774d2ee07df9299859fa4  ## 2026-09-13 — S13resize FAT1 smash (again), Knulli method
+63abe62cdce6d00dc85bdec8a96ae59495441eceeddea251fabe0cd8f55cfc14  ## 2026-09-13 — Stage 8 Flip polish (zlyme23)
+2cbbe5bfbfce9b737607fa8469bf07762e24e23ac9a78377f67a5613cd7020a9  ## 2026-09-13 — Plan closed (zlyme22)
+02845e9986c97818de14d380f3ed214820f489b8369542b3d8de0a31a81f45ff  ## 2026-09-13 — zlyme24/25 field test: OTA, resize, Ports
+55cb989b9669cceab255d832699634e636b4b4aff2dc417f65b07215290ce919  ## 2026-09-12 night — Casad, DHCP, Overlays
+05cce176069df2f5b021de5559534812558ef219136073be4748452328c43d87  ## 2026-09-12 night — OTA tar proven
+2176b0f2daaa3dc1bb7a082804d9fda4b375adf1240847ceb9aa84e380db5f1d  ## 2026-09-12 night — Tools paks on serial
+22709d1fa0fa4b16876a7829fca14c715fa020161ab3a04317b72778b6a822d0  ## 2026-09-12 night — licenses, Splore, 3-partition boot
+27ddce550dbafab652e04f99790a1d0bb8c92dcb618d7ed398125d846d167193  ## 2026-09-12 late — 1300M ZLYMEBOOT, OTA on ZLYME
+643c4e0e9f497cefbb45e6f315ccdf5f6004b46242bc0f99606f4e7466594ea4  ## 2026-09-12 — S13resize wiped FAT1
+2c74d0b78bc14b3f7804b5b8a7dc0678a0d23512ad43ae163d38a1aa96aeba10  ## 2026-09-12 evening — libmali default, RA MENU, BT abort, OTA almost
+e196d5500cf620c82577ef3327ff80174db4e445e8aa34cb5a1a5f1a03fbebc4  ## 2026-09-12 — overnight unattended (zlyme15-shaped), then ABI and seeds
+d9b7b209e95629bb99af033e2123d2df77955e38b127e9e0ca7c517bb082282d  ## 2026-09-12 — zlyme12 on device: Settings abort, LEDs off, RA cannot quit
+f1d052719793a9e881027a1fa536ab41775cdc6e102ca3ce6270ae2f86b96873  ## 2026-09-12 — Flashed zlyme9: keyboard lie, boot still slow, scraper hang
+fe732d66b7cee439198e325111714cd2a74dcf28b6e76cdf249b1f8b17ce0917  ## 2026-09-12 — zlyme13 on the Flip, then the tool paks
+6017ad240fdc7470f519df148aba94fe9a315c37dfe8f7d7637ca6a7e8f97417  ## 2026-09-12 — Apostrophe, not a keyboard shim
+6427a85ba94a411d493ca87e7b36058188afd44692127b6399cf89d0dcd6bf92  ## 2026-09-12 — PortMaster is python, not minui-portmaster
+0f63fc66394cddbbd4c19c19219b2f3a1622222b8ca332be2130a10f1db9e375  ## 2026-09-12 — eudev, storage, LEDs, joypad cal
+7db8935ff711386675f0415f0e32a24d2bd31d534231b300b138385654f9ef60  ## 2026-09-12 — no 1.2s after Tools; retry DRM in NextUI
+21cf90e154b8727b871aa98e652dea482176b27c920531e80c406ea1efcb0490  ## 2026-09-11 — Fast boot, sleep, eudev, dual card
+1f4e6cbaad144561143669f168056d5470cef37514ac982eb93a64cb2f309fb9  ## 2026-09-11 — Reflash worked; WiFi UI and SSH still broken on device
+4b3e29696f71030b35cee3f0f733ae94fc66aaf772a9be1055139351d93add11  ## 2026-09-11 — ROCKNIX library card → NextUI names (second slot)
+5a5c11ceff06e3411937e6f0ba2c1b1b740cf545c68cc2828715d96ed1684eac  ## 2026-09-11 — Storage was 64MB full (WiFi, settings, sleep)
+7ebf8ee870ef84a36dc161b304efd8aef4107ab5e7e43e249ee24af7144b02f9  ## 2026-09-11 — Drop libretro-mame2015
+ad88ff977740cad1785f180fe528aecdcf3eda30857e2e6e030286ba11bf2596  ## 2026-09-11 — Drop b2/daphne/fbalpha2012; add ROCKNIX standalones
+45d4206d580e7a56d69f69c6b53bd4a08d9dec5b23942fb7067bd0a45780bb4f  ## 2026-09-11 — Rebrand (Zlyme / my355)
+29d1f51f1c7664e94856c75ed775a87dfc31d92c4f14576cf67a89962d9bd29f  ## 2026-09-11 — Remaining RK3566 emus, refresh, undervolt
+70946da5f3a072acd505c365bc2febd52f29996b11b8224ec96c8b04ddbb8e39  ## 2026-09-11 — Zlyme / my355
+99dac913c9eaaa277c9bf2c0f3704c80e871321ed585c92144e4c36f4692d1ea  ## 2026-09-11 — NextUI GLES2 headers vs GLES3 video
+191dcfe1db950925650473deceecde03c8a75cfdbdac31ca9b6214a12b2fa699  ## 2026-09-11 — build.sh writes output/build.log
+be98e9958f9fcabd31a17fb679fb1462238fa3ac54dbb76efcc9c4c8976a3902  ## 2026-09-11 — syncthing doubled Go import path
+61176a7ee2971c21b6dedf19751dfb25e9af8faed3bb88d09c103b15ce5f63c7  ## 2026-09-11 — zlyme_defconfig image built
+497d964a60265fae2f7f8789caee8a7f993d32b1bf4151a547c47fb8f517f748  ## 2026-09-11 — NextUI flashing was a NULL-font segfault
+992258ee87307fa861a861e89a5df307002d087da52b7f0bfa41b82c32d78922  ## 2026-09-11 — Tools paks are toggles, not submenus
+f9bde15c0b89e6222bbe9bb4509fe927f108b8ae4844ba7b86d76b14bcaeedef  ## 2026-09-11 — NextUI "closes" after Settings: missing zone.tab
+1aca0b48a19a78598187710ad4337605acfb24a7e5a2d96f481dc2d355326000  ## 2026-09-11 — NextUI font change broke the UI
+12c99abc817cf703cb8d941316f7e96d69128adf88c975d2cf3e9680a562ad63  ## 2026-09-11 — NextUI maintenance belongs in PLAN.md §8
+d2b1901543ae111dacefe5020ad3356d7c9adece0254c11bd79efd8e9d789642  ## 2026-09-11 — Settings "save" was last.txt + a newline
+152948f38714eb9c7f66abfaf0c2b2ee949d334ca885159e99227e406c49d9b9  ## 2026-09-10 — Stage 1 done, booted on hardware
+a4c92c30a43fd245f88dfd551a36389cadedc130dbef43cbc97baa118abafd02  ## 2026-09-10 — Stage 2 starting
+13548ef3bc510b62e6106b56789c2b5290f03f6210ad4cadde0ca12e6279c60d  ## 2026-09-10 — Stage 2 booted on hardware, and it works
+70f322f7069b84cd813900a8225d947081cf79c6ab7c501787a9c3f5cfdf1dee  ## 2026-09-10 — Stage 3 started, and a correction
+03196493f60adf636e957578b0576afbaf6ff66bea8762052ef946aeee0b0957  ## 2026-09-10 — Stage 4 started, Stage 5 researched
+04b26a4c7e915d5263cf2d7039e39e98f5788fd0f139435173d5e17effff019a  ## 2026-09-10 — Stage 5 packaged from my355
+7f933a05b65cf9aa9693eefe3e2ed249ac35414d67722319b1e14b22b04eac17  ## 2026-09-10 — Stages 4–7 packaged (unattended)
+6db9181a78db0038a9ec7273a981e9311e4c9165d30147ba0f687fbb36c7a45c  ## 2026-09-10 — zlyme_defconfig build in progress
+bcbb3b025edc195ea10c1dd43e507a184be8077ba82f4d3f11c2111d73dfd8b5  ## 2026-09-10 — Frontend source is NextUI, not archived MinUI
+c707d640b07f84f4a0db64c14674b13fe83bd6fadc8aeef6ad2d75c26f2969c4  ## 2026-09-10 — samba4 died: host-python3 has no `_ssl`
+11cc7f0315fd6966baab59f06948bdbea66ee61fc1cff820b4d07b503acbc708  ## 2026-09-10 — samba4 built; libretro-81 died on evmapy keys
+f9c2db2fe0d4fd1a5ca5d55a9958e060c6cae066c764a170cee3a14aeae0066b  ## 2026-09-10 — beetle-pcfx died on host x86 SSE
+7213e2391265f053f999cfbc6ed7c531e91790da682c2422b7825aff41d86d76  ## 2026-09-10 — beetle-saturn linked `-lGL`
+2fc35da8bb8360d033c0aae65b41253090b52f636d471e68bea62766c1d5075a  ## 2026-09-10 — ecwolf git submodules 401 on Bitbucket
+95605dce5e32409b247d314dff01e015a00df4dd3484cc6c8afd85560b24be94  ## 2026-09-10 — fake08 GCC13 patch already upstream
+cf8c8d3ce74e1f67daa7dacda7034318ec51e95d8520118a016cd939e22fa460  ## 2026-09-10 — fbalpha2012 vs GCC 14 zlib pointers
+c75afbbc24ce443c1f76c2aac63adc7ae464a863a4ede36729566182428cca9e  ## 2026-09-10 — hatari patches assume Batocera + libcapsimage
+5dcd51d4811083eb5ceada6afed4d0123123f424f22579714f23e00b6a495a95  ## 2026-09-10 — drop harvested board makefile patches
+a2efe8247a1322b522f188ec23cdb756492ae201bdc5b6e4053008edec4e3f28  ## 2026-09-10 — mame2003-plus GCC 14 pointers
+fbf2d3d8e9eb651e33cb4ed5af98af1e50513f1ba71ee1d5a3a7ecf64238671d  ## 2026-09-10 — melonDS DS embed race
+c6b58264a0ee062448925b2d66edb47206bc90ad2b5a44d934aad33295180206  ## 2026-09-10 — old melonDS unix = host x86_64
+3422e04794cbadeac9ced85bcec0293437bbb58f8d825ac825b9b3d3ef447ef1  ## 2026-09-10 — mupen64plus-next gcc-fix already upstream
+c585aa623b0a484ccd577f7e58c7559a050a8215534a8281cf6ff635d874ee72  ## 2026-09-10 — opera no-cd patch drifted
+05044abb929c60ad014ac40832597136864c85ea33b7e8c70998bd40e49d5c42  ## 2026-09-10 — parallel-n64 host x86 SSE
+acf35f04644918667561487e2dbfe0c96e6b86adcb0ca10f8665740cc6a1a36d  ## 2026-09-10 — pc88 GCC 14 wchar pointers
+6bc57436fb5fda823e92428f6c91a193a5de26c82414ecfe58c3d1d0d7da4cb6  ## 2026-09-10 — pc98 GCC 14 IO callback pointers
+fa52c5c6e84cdadb1ec27f609929173cb6ad690791c97bb186946ab9cabab43a  ## 2026-09-10 — picodrive leftover patch list
+e514c671c379bb063018d1efba53109c16c29b4a3d2bd71f47be2e124bf98fad  ## 2026-09-10 — picodrive GCC 14 vram pointers
+33c9cf4e51935d6d62bfc49a0e6e1586a93e20f2b09cb042b564058ef73e3836  ## 2026-09-10 — prboom c99 hides POSIX
+cbc0b0f2fa9b45ccddbd2c67f6b0b7554214a5e4124a71858982588425e944c3  ## 2026-09-10 — puae isoc99 hunk drifted
+0484345f3cf9cb76819aa82d1a1170a261244d90c5003cce260c108e1d941fe9  ## 2026-09-10 — puae isoc99 patch hides C99
+1300776ec0669862efa6b25d8217155138be3fcd316bd5eb1ee2217551769c08  ## 2026-09-10 — puae GCC 14 softfloat pointers
+b684de2169dbc82cb61968ea343b9d6c98201ecbb2a31d5960e7b1d2df44d845  ## 2026-09-10 — px68k c99 hides POSIX
+1a8e44f3998af42e49cbed1994ed646bd233dc0c81a0850355b424c38f53b1d4  ## 2026-09-10 — stella2014 unix arm64 = Windows
+fbdd589234969c85b6c9d5992539bd066c37b872eecc1250c16e4c810e3b23a7  ## 2026-09-10 — wasm4 minifb wants X11
+e0fcdd44de92cc07fb6b3d0e6762a973c559e2bf22eabc72a81a3b0d97f5020d  ## 2026-09-10 — yabasanshiro unix = desktop GL
+61ccc3433dc0860ee5450e048b9182c78b583ca173e09f39342f7bbb6e4bae22  ## 2026-09-10 — yabasanshiro missing SH2DynShowSttaics proto
+1c9d52d52495e0938f1a69ffd95c1c6cad1703835d745cfb645462b1fdf8c060  ## 2026-09-10 — PPSSPP SDL2_ttf cmake target missing
+05e8c0f8286031dc943c71785737fb9237a0a6d63e8834e1209efeff3ba1f0d9  ## 2026-09-10 — minui.hash still named the old MinUI tarball

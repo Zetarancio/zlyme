@@ -817,6 +817,18 @@ pak, and the systems table is the one you edited.
 
 ---
 
+## 2026-09-19 — Settings → Update
+
+Tools `Update.pak` is gone. One Settings row above About talks to
+GitHub (`github-release.py`), shows a short build date, downloads
+with a progress bar, and only queues `/storage/.update/zlyme-my355-update.tar`
+after sha256 matches. Incomplete files stay `*.tar.part`. Failed apply
+still goes to `.update/failed/`; the next download deletes that leftover.
+`PWR_powerOff(1)` from Settings is a fake reboot (panel off, NextUI
+respawns). A after queue calls `zlyme-halt reboot` instead. Session
+honors `/tmp/reboot` after a pak, and never recopies `Update.pak` from
+an old squashfs.
+
 ## 2026-09-18 — paks, logs, PS2/GC/Wii, live Flip
 
 Etchered zlyme40. About → System logs (off by default) writes
@@ -1518,6 +1530,51 @@ Tools paks started; Update.pak still wants a real GitHub repo in
 
 ---
 
+## 2026-09-13 — zlyme24/25 field test: OTA, resize, Ports
+
+Unattended rebuild to **zlyme24**, then **zlyme25** (bash + `/roms`
+symlinks + S13 unlabeled fallback). No second `build.sh` on the same
+tree; no `linux-reconfigure` on the 25 pass.
+
+**OTA.** `scp` of
+`zlyme-my355-20260913-599ac2c10583-dirty.tar` (579M,
+`42df3846…`) onto `/storage/.update/zlyme-my355-update.tar`. Python
+`http.server` has no Range; `curl --max-time 300` died at 40M. scp ran
+~130 KB/s for about an hour. Reboot: `S18` extract, initramfs
+`zlyme committed`, u-boot still `Retrieving file: /Image`. Live
+`ae652648…-zlyme25`. Storage and Wi-Fi survived (no GPT rewrite).
+Host SSH `root@192.168.1.62`; after a `mkfs` of `ZLYME` drop
+known_hosts (`accept-new`).
+
+**Resize.** Two shrink-to-32MB cycles with `/boot` kept mounted.
+`Resizing storage: OK`, `#autoresize=true`, p3 57G. FAT-proof reboot
+after each grow still loads `/Image` (no `Invalid FAT entry`). Live
+`mkfs.exfat` while the old superblock is busy fails; a reboot with
+no `/storage` mount formats cleanly. `dd` of the first sector of p3
+strips `LABEL=ZLYME` and S13 used to no-op — now falls back to
+`mmcblk0p3`.
+
+**Ports.** Library card folder is `Roms/Ports (PORTS)/`. Squashfs
+`/roms/ports` and `/opt/system/Tools/PortMaster` point there.
+`Gravity Defied.sh` via PORTS.pak + image `bash`: `gravity_defied` +
+`gptokeyb`, Performance 0123, DMC `simple_ondemand` 1056M. No `/opt`
+tmpfs hack.
+
+**ROMs / Stage 8.** GB (gambatte) with session env. PSP `.chd` had
+already booted on 23. zram 384MiB lz4. `zlyme-bcsh` 0. IRQ `dw-mci`
+and `ehci_hcd:usbN` on fd880000 → CPU0. 8733bu LPS 0/0. `bluetoothctl
+scan on` starts; a nearby device appeared. Overlays `curl` is on the
+image.
+
+**Samba.** Stock `S70` `mkdir` on squashfs `/var/lib/samba` then
+`msg.sock` `chmod 0700` fails on exFAT. Fix: `/tmp/samba-lib` + bind
+(and post-build symlink). Live `smbd: OK`, share `storage` listed,
+stop clears the pid. Syncthing start/stop needs `killall` (forks).
+Those overlay fixes are in the tree; next squashfs OTA ships them.
+Defaults stay off.
+
+GitHub Releases still `OWNER/REPO`. Do not commit `TODO.md` or `DEVLOGS/`.
+
 ## 2026-09-12 night — Casad, DHCP, Overlays
 
 After OTA, `zlyme-wifi connect` reached `COMPLETED` but left
@@ -1819,6 +1876,89 @@ NextUI never came back. Now it stops at the first ROM per folder.
 
 ---
 
+## 2026-09-12 — zlyme13 on the Flip, then the tool paks
+
+Flashed **zlyme13**. NextUI stays up. Autocal ran. Files.pak A/B was
+the SDL south-face vs Nintendo layout; shipped a Nintendo
+`gamecontrollerdb.txt` for `retrogame_joypad`. RetroArch MENU
+quit is `ra-run --appendconfig` plus overlay cfg (hotkey = button
+10). Settings double-free and LED `local` vars were real. Halt
+now unmounts bind-mounted paks before squashfs goes busy.
+
+Grabbed the four tool failures into `DEVLOGS/` (do not reset
+to “fix” a freeze until the dump is on disk):
+
+- **Artwork Scraper** — bundled `minui-list` SIGSEGV then hang
+  holding DRM. Upstream Flip build is keyboard scancodes.
+- **Moonlight.pak** — Apostrophe inits, then `hrtimer_nanosleep`.
+  Same keyboard assumption; no pair/config.
+- **ScrapeGoat** — “No internet / Continue A” and A does nothing.
+  Wifi was actually `DISCONNECTED` (169.254); Continue was input.
+- **PortMaster** — pugwash → loguru → `sysconfig.get_path` →
+  `ValueError: bad marshal data` on the host-written 3.14
+  `_sysconfigdata_*.pyc`. No `_ssl` / `sqlite3` on the image
+  either (python3 was configured before those kconfig flags).
+
+## 2026-09-12 — Apostrophe, not a keyboard shim
+
+Stock Apostrophe documents Flip buttons as HID scancodes.
+Zlyme’s rocknix joypad only emits joystick `BTN_*`. Do not add
+a uinput translator; patch the paks.
+
+Vendored https://github.com/Helaas/Apostrophe (MIT, Kevin
+Vranken) at `package/system/nextui/apostrophe/` with LICENSE and
+CREDITS. `apostrophe.h` maps my355 to NextUI `JOY_*` (A=1 B=0,
+D-pad 13–16) and keeps `SDL_JOYBUTTON*` on Flip.
+
+Rebuilt into the Tools paks (credits/licenses in each pak):
+
+- ScrapeGoat v2.3.0 — same ScreenScraper developer tokens as
+  the upstream 2.3.0 binary, dynamically linked to image curl.
+- Moonlight.pak UI — Apostrophe v1.2.0; streamer stays
+  `/usr/bin/moonlight`.
+- Artwork Scraper `minui-list` / `minui-presenter` — not
+  Apostrophe; rebuilt against this tree’s my355 `api.c` +
+  `InitSettings` fallback.
+
+## 2026-09-12 — PortMaster is python, not minui-portmaster
+
+https://github.com/ben16w/minui-portmaster is TrimUI-only
+(`tg5040`, `/usr/trimui/lib`). Flip keeps PortMaster-GUI
+pugwash (MIT, Jacob / PortsMaster).
+
+The image python3 must actually be *rebuilt* with
+`PYTHON3_SSL`, `PYTHON3_SQLITE`, `PY_PYC`, plus
+`ca-certificates`. Finalize hook copies the sysconfig `.py` and
+deletes the bad `.pyc`. post-build fails the image if `_ssl`,
+`_sqlite3`, or the CA bundle is missing. `python3-dirclean` is
+required on the next image; `.config` already had the flags
+while `config.log` still had `--disable-sqlite3` and
+`py_cv_module__ssl=n/a`.
+
+## 2026-09-12 — eudev, storage, LEDs, joypad cal
+
+Switched `/dev` to eudev (drop libudev-zero next to it). Storage
+scripts bind sd2/OTG, halt unmounts. `zlyme-led` matches ROCKNIX
+`ledcontrol` verbs; `ledcontrol` is a symlink. Joypad patches
+0002/0003: DTS deadzone plus sysfs `miyoo_cal_*` restored by
+S26 / Autocal.
+
+Image pin for this drop is **zlyme14**.
+
+## 2026-09-12 — no 1.2s after Tools; retry DRM in NextUI
+
+B on Overlays / Artwork Scraper left NextUI on the launching
+"-". `nextui.elf` was respawning while kmsdrm master was still
+held; `SDL_CreateRenderer` came back with a pointer that could
+not make textures (`Parameter 'renderer' is invalid`).
+
+Do not sleep 1.2s in `nextui-session` to paper over that.
+`PLAT_initVideo` now retries window/renderer/GL/layer textures
+until they actually work (25ms only while contended). Session
+still treats minui-list B/menu as 0/2/3, not a pak fail.
+Overlays and Artwork Scraper keep writing `/storage` to
+`/tmp/last.txt` so the next menu is not the `.pak` folder.
+
 ## 2026-09-11 — Fast boot, sleep, eudev, dual card
 
 NextUI starts at **S28** (after storage, panel, ALSA). **S90minui** only
@@ -2004,6 +2144,135 @@ build driver, my355 board, radios, system services, RetroArch, NextUI.
 ---
 
 ---
+
+## 2026-09-11 — NextUI GLES2 headers vs GLES3 video
+
+`generic_video.c` uses program binaries and VAOs. We had swapped
+`SDL_opengl.h` for GLES2 only. Include `GLES3/gl3.h` too.
+Link `-lGLESv2 -lEGL` (SDL2 does not pull them in).
+
+## 2026-09-11 — build.sh writes output/build.log
+
+Full image builds (and non-menuconfig make targets) tee into
+`output/build.log`, overwritten at the start of the run.
+`less +F output/build.log` is the watch path.
+
+## 2026-09-11 — syncthing doubled Go import path
+
+`golang-package` prepends `GOMOD` to `BUILD_TARGETS`. We had the
+full module path already, so `go build` looked for
+`…/syncthing/github.com/syncthing/syncthing/cmd/syncthing`.
+Target is now `cmd/syncthing`.
+
+## 2026-09-11 — zlyme_defconfig image built
+
+`output/images/zlyme.img` assembled (idbloader, u-boot, boot
+vfat, squashfs root, exFAT storage). NextUI, cores, PPSSPP,
+PortMaster, Syncthing, box64 are in this tree.
+
+## 2026-09-11 — NextUI flashing was a NULL-font segfault
+
+Serial: kernel and init are fine (`Starting NextUI: OK`).
+`nextui.elf` reached GLES (`opengles2`), opened
+`retrogame_joypad`, then `Segmentation fault`. `minui-session`
+restarts it immediately — that is the flashing panel.
+`nextui.txt` grew to ~5000 lines in two minutes.
+
+Cause: NextUI's default UI font is `font1.ttf` (OG = `font2.ttf`)
+under `/storage/.system/res`. We only seeded MinUI's
+`BPreplayBold-unhinted.otf`. `TTF_OpenFont` failed, first list
+draw called `TTF_RenderUTF8_Blended(NULL)` and died.
+
+Live fix: copied BPreplay to `font1.ttf` / `font2.ttf` on the
+card and restarted `S90minui`. `nextui.elf` stayed up.
+
+Package fix: `minui.mk` installs those aliases into the seed;
+`minui-session` copies them if a card already has BPreplay but
+not `font1.ttf`.
+
+Still noisy, not fatal: no `zone.tab` (timezone 320 / Berlin),
+no `gametimectl.elf`. Add tzdata and a stub later.
+
+## 2026-09-11 — Tools paks are toggles, not submenus
+
+The flashing "-" is NextUI's launch hint: it writes
+`/tmp/next` and exits, `minui-session` runs the pak, then
+NextUI comes back. Serial `next.txt` showed the actions
+actually ran (Wi-Fi off, SSH off, Syncthing on, Autocal
+message, PortMaster missing files).
+
+Only **Settings.pak** is a real UI (`settings.elf`). The rest
+are one-shot Zlyme actions that were supposed to toast via
+`show.elf "msg" 2`. We never shipped `show.elf`, so the panel
+never showed the result.
+
+Added `package/system/nextui/zlyme/show.c` (MinUI toast API),
+built into minui, and live-installed to
+`/storage/.system/my355/bin/show.elf`. On-card launch.sh now
+points at it.
+
+Sleep/wake works: hybrid sleep → suspend to RAM → resume,
+audio re-inited on `rk817_ext`.
+
+## 2026-09-11 — NextUI "closes" after Settings: missing zone.tab
+
+Not missing PNGs. `assets@2x.png`, fonts, and scanline grids
+are on the card. The bounce was `settings.elf` aborting:
+
+`menu.hpp:253 Assertion 'valueIdx >= 0' failed`
+
+CFG default timezone is index 320 (Europe/Berlin). There is
+no `/usr/share/zoneinfo/zone.tab`, so the tz list is empty
+and Settings dies. `minui-session` then restarts NextUI.
+`/tmp/last.txt` still pointed at `Settings.pak`, so the next
+start restored into that folder and once segfaulted.
+
+Live: overlayfs on `/usr/share`, installed `zone.tab`, reset
+last.txt to `/storage`. Settings.pak now writes last.txt back
+to `/storage` before exec.
+
+Package: seed `zone.tab`, session overlay fallback, timezone
+NULL-safe in apply-userspace, skip empty tz list.
+
+## 2026-09-11 — NextUI font change broke the UI
+
+`font=0` (OG) is `font2.ttf`. We had aliased both faces to
+MinUI's 169 KB BPreplay. Official NextUI `font1.ttf` (Next)
+is 3.6 MB; `font2.ttf` is BPreplay. Switching fonts with the
+wrong atlas/icons and a dummy Next face made Settings look
+broken.
+
+Harvested `.system/res` from
+`NextUI-6.14.0-rc.2+my355-base.zip` / `MinUI.zip` into
+`package/system/minui/res` (real fonts, updated atlas,
+Games/Tools/Recents/Collections icons, palettes). Session
+now always refreshes stock res from the seed. Do not
+overwrite those fonts with BPreplay aliases.
+
+## 2026-09-11 — NextUI maintenance belongs in PLAN.md §8
+
+Rewrote section 8 in plain language so Stage 5 is followable:
+Zlyme is the OS, NextUI is the menu. Tools paks that duplicate
+Settings (Wi-Fi, Bluetooth) go away. SSH/GPU stay Tools until
+we add Settings pages. Pak Store waits. No NextUI fork.
+The save/"-" bounce is the next bug, not a new architecture.
+
+## 2026-09-11 — Settings "save" was last.txt + a newline
+
+Serial back. nextui.elf was dying ~once a second (2243
+segfaults in nextui.txt). Settings *did* write
+`minuisettings.txt`. After Settings (or any Tool) we wrote
+`/storage\n` to `/tmp/last.txt`. NextUI's `getFile` keeps that
+newline; `loadLast` then walks the path until `strrchr` is
+NULL. That is the "-" loop.
+
+Fixed: write `/storage` with no newline (`minui-session`,
+Settings.pak). Live on the device: last.txt rewritten, scripts
+patched, session bind-mounted, nextui PID stable.
+
+Still noisy: no tzdata files (`Europe/Budapest`), no
+`gametimectl.elf`. Timezone in Settings cannot actually apply
+until we ship zoneinfo.
 
 ## 2026-09-10 — Stage 1 done, booted on hardware
 
@@ -2824,273 +3093,4 @@ Disable that find_package so PPSSPP uses pkg-config.
 
 The .hash file listed `minui-dbf89435…`. NextUI pin `6db3c783`
 then failed the hash check. Updated the sha256.
-
-## 2026-09-11 — NextUI GLES2 headers vs GLES3 video
-
-`generic_video.c` uses program binaries and VAOs. We had swapped
-`SDL_opengl.h` for GLES2 only. Include `GLES3/gl3.h` too.
-Link `-lGLESv2 -lEGL` (SDL2 does not pull them in).
-
-## 2026-09-11 — build.sh writes output/build.log
-
-Full image builds (and non-menuconfig make targets) tee into
-`output/build.log`, overwritten at the start of the run.
-`less +F output/build.log` is the watch path.
-
-## 2026-09-11 — syncthing doubled Go import path
-
-`golang-package` prepends `GOMOD` to `BUILD_TARGETS`. We had the
-full module path already, so `go build` looked for
-`…/syncthing/github.com/syncthing/syncthing/cmd/syncthing`.
-Target is now `cmd/syncthing`.
-
-## 2026-09-11 — zlyme_defconfig image built
-
-`output/images/zlyme.img` assembled (idbloader, u-boot, boot
-vfat, squashfs root, exFAT storage). NextUI, cores, PPSSPP,
-PortMaster, Syncthing, box64 are in this tree.
-
-## 2026-09-11 — NextUI flashing was a NULL-font segfault
-
-Serial: kernel and init are fine (`Starting NextUI: OK`).
-`nextui.elf` reached GLES (`opengles2`), opened
-`retrogame_joypad`, then `Segmentation fault`. `minui-session`
-restarts it immediately — that is the flashing panel.
-`nextui.txt` grew to ~5000 lines in two minutes.
-
-Cause: NextUI's default UI font is `font1.ttf` (OG = `font2.ttf`)
-under `/storage/.system/res`. We only seeded MinUI's
-`BPreplayBold-unhinted.otf`. `TTF_OpenFont` failed, first list
-draw called `TTF_RenderUTF8_Blended(NULL)` and died.
-
-Live fix: copied BPreplay to `font1.ttf` / `font2.ttf` on the
-card and restarted `S90minui`. `nextui.elf` stayed up.
-
-Package fix: `minui.mk` installs those aliases into the seed;
-`minui-session` copies them if a card already has BPreplay but
-not `font1.ttf`.
-
-Still noisy, not fatal: no `zone.tab` (timezone 320 / Berlin),
-no `gametimectl.elf`. Add tzdata and a stub later.
-
-## 2026-09-11 — Tools paks are toggles, not submenus
-
-The flashing "-" is NextUI's launch hint: it writes
-`/tmp/next` and exits, `minui-session` runs the pak, then
-NextUI comes back. Serial `next.txt` showed the actions
-actually ran (Wi-Fi off, SSH off, Syncthing on, Autocal
-message, PortMaster missing files).
-
-Only **Settings.pak** is a real UI (`settings.elf`). The rest
-are one-shot Zlyme actions that were supposed to toast via
-`show.elf "msg" 2`. We never shipped `show.elf`, so the panel
-never showed the result.
-
-Added `package/system/nextui/zlyme/show.c` (MinUI toast API),
-built into minui, and live-installed to
-`/storage/.system/my355/bin/show.elf`. On-card launch.sh now
-points at it.
-
-Sleep/wake works: hybrid sleep → suspend to RAM → resume,
-audio re-inited on `rk817_ext`.
-
-## 2026-09-11 — NextUI "closes" after Settings: missing zone.tab
-
-Not missing PNGs. `assets@2x.png`, fonts, and scanline grids
-are on the card. The bounce was `settings.elf` aborting:
-
-`menu.hpp:253 Assertion 'valueIdx >= 0' failed`
-
-CFG default timezone is index 320 (Europe/Berlin). There is
-no `/usr/share/zoneinfo/zone.tab`, so the tz list is empty
-and Settings dies. `minui-session` then restarts NextUI.
-`/tmp/last.txt` still pointed at `Settings.pak`, so the next
-start restored into that folder and once segfaulted.
-
-Live: overlayfs on `/usr/share`, installed `zone.tab`, reset
-last.txt to `/storage`. Settings.pak now writes last.txt back
-to `/storage` before exec.
-
-Package: seed `zone.tab`, session overlay fallback, timezone
-NULL-safe in apply-userspace, skip empty tz list.
-
-## 2026-09-11 — NextUI font change broke the UI
-
-`font=0` (OG) is `font2.ttf`. We had aliased both faces to
-MinUI's 169 KB BPreplay. Official NextUI `font1.ttf` (Next)
-is 3.6 MB; `font2.ttf` is BPreplay. Switching fonts with the
-wrong atlas/icons and a dummy Next face made Settings look
-broken.
-
-Harvested `.system/res` from
-`NextUI-6.14.0-rc.2+my355-base.zip` / `MinUI.zip` into
-`package/system/minui/res` (real fonts, updated atlas,
-Games/Tools/Recents/Collections icons, palettes). Session
-now always refreshes stock res from the seed. Do not
-overwrite those fonts with BPreplay aliases.
-
-## 2026-09-11 — NextUI maintenance belongs in PLAN.md §8
-
-Rewrote section 8 in plain language so Stage 5 is followable:
-Zlyme is the OS, NextUI is the menu. Tools paks that duplicate
-Settings (Wi-Fi, Bluetooth) go away. SSH/GPU stay Tools until
-we add Settings pages. Pak Store waits. No NextUI fork.
-The save/"-" bounce is the next bug, not a new architecture.
-
-## 2026-09-11 — Settings "save" was last.txt + a newline
-
-Serial back. nextui.elf was dying ~once a second (2243
-segfaults in nextui.txt). Settings *did* write
-`minuisettings.txt`. After Settings (or any Tool) we wrote
-`/storage\n` to `/tmp/last.txt`. NextUI's `getFile` keeps that
-newline; `loadLast` then walks the path until `strrchr` is
-NULL. That is the "-" loop.
-
-Fixed: write `/storage` with no newline (`minui-session`,
-Settings.pak). Live on the device: last.txt rewritten, scripts
-patched, session bind-mounted, nextui PID stable.
-
-Still noisy: no tzdata files (`Europe/Budapest`), no
-`gametimectl.elf`. Timezone in Settings cannot actually apply
-until we ship zoneinfo.
-
-## 2026-09-12 — zlyme13 on the Flip, then the tool paks
-
-Flashed **zlyme13**. NextUI stays up. Autocal ran. Files.pak A/B was
-the SDL south-face vs Nintendo layout; shipped a Nintendo
-`gamecontrollerdb.txt` for `retrogame_joypad`. RetroArch MENU
-quit is `ra-run --appendconfig` plus overlay cfg (hotkey = button
-10). Settings double-free and LED `local` vars were real. Halt
-now unmounts bind-mounted paks before squashfs goes busy.
-
-Grabbed the four tool failures into `DEVLOGS/` (do not reset
-to “fix” a freeze until the dump is on disk):
-
-- **Artwork Scraper** — bundled `minui-list` SIGSEGV then hang
-  holding DRM. Upstream Flip build is keyboard scancodes.
-- **Moonlight.pak** — Apostrophe inits, then `hrtimer_nanosleep`.
-  Same keyboard assumption; no pair/config.
-- **ScrapeGoat** — “No internet / Continue A” and A does nothing.
-  Wifi was actually `DISCONNECTED` (169.254); Continue was input.
-- **PortMaster** — pugwash → loguru → `sysconfig.get_path` →
-  `ValueError: bad marshal data` on the host-written 3.14
-  `_sysconfigdata_*.pyc`. No `_ssl` / `sqlite3` on the image
-  either (python3 was configured before those kconfig flags).
-
-## 2026-09-12 — Apostrophe, not a keyboard shim
-
-Stock Apostrophe documents Flip buttons as HID scancodes.
-Zlyme’s rocknix joypad only emits joystick `BTN_*`. Do not add
-a uinput translator; patch the paks.
-
-Vendored https://github.com/Helaas/Apostrophe (MIT, Kevin
-Vranken) at `package/system/nextui/apostrophe/` with LICENSE and
-CREDITS. `apostrophe.h` maps my355 to NextUI `JOY_*` (A=1 B=0,
-D-pad 13–16) and keeps `SDL_JOYBUTTON*` on Flip.
-
-Rebuilt into the Tools paks (credits/licenses in each pak):
-
-- ScrapeGoat v2.3.0 — same ScreenScraper developer tokens as
-  the upstream 2.3.0 binary, dynamically linked to image curl.
-- Moonlight.pak UI — Apostrophe v1.2.0; streamer stays
-  `/usr/bin/moonlight`.
-- Artwork Scraper `minui-list` / `minui-presenter` — not
-  Apostrophe; rebuilt against this tree’s my355 `api.c` +
-  `InitSettings` fallback.
-
-## 2026-09-12 — PortMaster is python, not minui-portmaster
-
-https://github.com/ben16w/minui-portmaster is TrimUI-only
-(`tg5040`, `/usr/trimui/lib`). Flip keeps PortMaster-GUI
-pugwash (MIT, Jacob / PortsMaster).
-
-The image python3 must actually be *rebuilt* with
-`PYTHON3_SSL`, `PYTHON3_SQLITE`, `PY_PYC`, plus
-`ca-certificates`. Finalize hook copies the sysconfig `.py` and
-deletes the bad `.pyc`. post-build fails the image if `_ssl`,
-`_sqlite3`, or the CA bundle is missing. `python3-dirclean` is
-required on the next image; `.config` already had the flags
-while `config.log` still had `--disable-sqlite3` and
-`py_cv_module__ssl=n/a`.
-
-## 2026-09-12 — eudev, storage, LEDs, joypad cal
-
-Switched `/dev` to eudev (drop libudev-zero next to it). Storage
-scripts bind sd2/OTG, halt unmounts. `zlyme-led` matches ROCKNIX
-`ledcontrol` verbs; `ledcontrol` is a symlink. Joypad patches
-0002/0003: DTS deadzone plus sysfs `miyoo_cal_*` restored by
-S26 / Autocal.
-
-Image pin for this drop is **zlyme14**.
-
-## 2026-09-12 — no 1.2s after Tools; retry DRM in NextUI
-
-B on Overlays / Artwork Scraper left NextUI on the launching
-"-". `nextui.elf` was respawning while kmsdrm master was still
-held; `SDL_CreateRenderer` came back with a pointer that could
-not make textures (`Parameter 'renderer' is invalid`).
-
-Do not sleep 1.2s in `nextui-session` to paper over that.
-`PLAT_initVideo` now retries window/renderer/GL/layer textures
-until they actually work (25ms only while contended). Session
-still treats minui-list B/menu as 0/2/3, not a pak fail.
-Overlays and Artwork Scraper keep writing `/storage` to
-`/tmp/last.txt` so the next menu is not the `.pak` folder.
-
-## 2026-09-13 — zlyme24/25 field test: OTA, resize, Ports
-
-Unattended rebuild to **zlyme24**, then **zlyme25** (bash + `/roms`
-symlinks + S13 unlabeled fallback). No second `build.sh` on the same
-tree; no `linux-reconfigure` on the 25 pass.
-
-**OTA.** `scp` of
-`zlyme-my355-20260913-599ac2c10583-dirty.tar` (579M,
-`42df3846…`) onto `/storage/.update/zlyme-my355-update.tar`. Python
-`http.server` has no Range; `curl --max-time 300` died at 40M. scp ran
-~130 KB/s for about an hour. Reboot: `S18` extract, initramfs
-`zlyme committed`, u-boot still `Retrieving file: /Image`. Live
-`ae652648…-zlyme25`. Storage and Wi-Fi survived (no GPT rewrite).
-Host SSH `root@192.168.1.62`; after a `mkfs` of `ZLYME` drop
-known_hosts (`accept-new`).
-
-**Resize.** Two shrink-to-32MB cycles with `/boot` kept mounted.
-`Resizing storage: OK`, `#autoresize=true`, p3 57G. FAT-proof reboot
-after each grow still loads `/Image` (no `Invalid FAT entry`). Live
-`mkfs.exfat` while the old superblock is busy fails; a reboot with
-no `/storage` mount formats cleanly. `dd` of the first sector of p3
-strips `LABEL=ZLYME` and S13 used to no-op — now falls back to
-`mmcblk0p3`.
-
-**Ports.** Library card folder is `Roms/Ports (PORTS)/`. Squashfs
-`/roms/ports` and `/opt/system/Tools/PortMaster` point there.
-`Gravity Defied.sh` via PORTS.pak + image `bash`: `gravity_defied` +
-`gptokeyb`, Performance 0123, DMC `simple_ondemand` 1056M. No `/opt`
-tmpfs hack.
-
-**ROMs / Stage 8.** GB (gambatte) with session env. PSP `.chd` had
-already booted on 23. zram 384MiB lz4. `zlyme-bcsh` 0. IRQ `dw-mci`
-and `ehci_hcd:usbN` on fd880000 → CPU0. 8733bu LPS 0/0. `bluetoothctl
-scan on` starts; a nearby device appeared. Overlays `curl` is on the
-image.
-
-**Samba.** Stock `S70` `mkdir` on squashfs `/var/lib/samba` then
-`msg.sock` `chmod 0700` fails on exFAT. Fix: `/tmp/samba-lib` + bind
-(and post-build symlink). Live `smbd: OK`, share `storage` listed,
-stop clears the pid. Syncthing start/stop needs `killall` (forks).
-Those overlay fixes are in the tree; next squashfs OTA ships them.
-Defaults stay off.
-
-GitHub Releases still `OWNER/REPO`. Do not commit `TODO.md` or `DEVLOGS/`.
-
-## 2026-09-19 — Settings → Update
-
-Tools `Update.pak` is gone. One Settings row above About talks to
-GitHub (`github-release.py`), shows a short build date, downloads
-with a progress bar, and only queues `/storage/.update/zlyme-my355-update.tar`
-after sha256 matches. Incomplete files stay `*.tar.part`. Failed apply
-still goes to `.update/failed/`; the next download deletes that leftover.
-`PWR_powerOff(1)` from Settings is a fake reboot (panel off, NextUI
-respawns). A after queue calls `zlyme-halt reboot` instead. Session
-honors `/tmp/reboot` after a pak, and never recopies `Update.pak` from
-an old squashfs.
 
