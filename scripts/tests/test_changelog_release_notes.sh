@@ -109,8 +109,8 @@ printf '%s\n' "$real" | grep -q 'compare/zlyme-' \
 point=$(notes "$ROOT/CHANGELOG.md" zlyme44.2)
 printf '%s\n' "$point" | head -n 1 | grep -Fx '## [zlyme44.2] - 2026-10-11' >/dev/null \
 	|| fail "real zlyme44.2 heading mismatch"
-printf '%s\n' "$point" | grep -q '9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3' \
-	|| fail "real zlyme44.2 entry dropped the runtime SHA"
+printf '%s\n' "$point" | grep -q 'does not touch the preloader' \
+	|| fail "real zlyme44.2 entry dropped the preloader warning"
 printf '%s\n' "$point" | grep -q 'built from `337ccbce' \
 	&& fail "real zlyme44.2 notes included the baseline"
 printf '%s\n' "$point" | grep -q 'Nothing is queued' \
