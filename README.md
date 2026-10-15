@@ -192,6 +192,8 @@ The paks on the card are yours to poke at. You don't need to rebuild the OS to t
 
 Stock copies live on the OS card in `Tools/my355/` and `Emus/my355/`. Each system is a pair: `Emus/my355/TAG.pak/launch.sh` launches the games in `Roms/Pretty Name (TAG)/`, and gets the ROM path as its argument. A tool is just `Tools/my355/My Tool.pak/launch.sh`; it shows up under Tools once the list restarts. The existing paks are the examples (the libretro ones are a few lines around `ra-run -L …`).
 
+Included libretro cores are copied to `/storage/.config/retroarch/cores/`. You can put your own `*_libretro.so` files there without rebuilding Zlyme. A core the image does not ship stays across an update. A reboot without an update leaves a core you replaced, including one that uses a shipped name. An update puts the image's file back for every name it ships. A core is a native program and has to come from a source you trust. The [user guide](docs/USER_GUIDE.md#retroarch) has the rest.
+
 So copy a pak and break it. Change the launcher, swap the core, point it at another binary, write a new tool, add a system nobody asked for. An update only replaces pak **names that exist in the image**. Edit `GBA.pak` and the next update puts the stock one back. Copy it to `GBA2.pak` and it survives, but its games have to live in `Roms/… (GBA2)/`. Factory Reset restores the stock names too.
 
 Stock NextUI paks from elsewhere usually need their paths, controls or binaries adapted before they run here. Some will just work; plenty won't. The [user guide](docs/USER_GUIDE.md#custom-paks) has the details.
