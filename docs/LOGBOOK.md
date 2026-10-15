@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Port artwork stays a JPEG
+
+NextUI's SDL2_image 2.8.12 is built with JPEG loading, so a game thumbnail can be a `.jpg` or `.jpeg` when the `.png` is absent. `zlyme-portmaster-art` copies those bytes and no longer converts them. The earlier note the same week describes why the image ffmpeg could not do that conversion. Pico-8 cartridge labels are unchanged. This was not run on a Flip.
+
 ## 2026-10-15 — Installed candidate, Samba, and port artwork
 
 The local candidate from `b39435147fc7c3e29beddccd0da6949d0f1209d0` was installed. `/boot/zlyme` SHA-256 `0e4bcd35163629bf27bd67e5f6564e52655e43a49bf64d6c4fc73bbbe6ab93b4` matches that build's squashfs. SSH accepted a changed password and About showed it. Syncthing accepted a GUI password change and About did not show it. One lid close entered sleep and the following lid open woke the device. Repeated PortMaster to MTP cycles showed no error. The earlier intermittent nested mount was not reproduced.

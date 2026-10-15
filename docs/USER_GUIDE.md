@@ -114,7 +114,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 ### Box art
 
-Box art is NextUI's `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist, with `.png`. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
+Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist. A `.jpg` or `.jpeg` with that name is used when the PNG is not there. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
 
 ## USB file transfer
 
@@ -319,7 +319,7 @@ ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by K
 PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 
 - Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card. PortMaster's own list shows the ports on that library. A port on another card stays in that card's Ports list.
-- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. The picture is named for the launcher, even when the port's folder uses another name. Artwork you already chose stays. A port with no image is left as it is. A JPEG is stored as a PNG.
+- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. The picture is named for the launcher, even when the port's folder uses another name. Artwork you already chose stays. A port with no image is left as it is. A JPEG stays a JPEG.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
 - Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.

@@ -2,9 +2,9 @@
 # After PortMaster exits, publish one NextUI image per launcher.
 # PortMaster 2026.06.23-0015 stores cover.png, cover.jpg, screenshot.png,
 # and screenshot.jpg in the port directory. NextUI reads
-# Roms/Ports (PORTS)/.media/<launcher stem>.png on that same card.
-# An existing image stays. A JPEG is published by zlyme-portmaster-artpng.
-# The image ffmpeg has no swscale, so it cannot do this conversion.
+# Roms/Ports (PORTS)/.media/<launcher stem>.png, then .jpg, then .jpeg,
+# on that same card. An existing image of any of those names stays.
+# A JPEG is copied as .jpg. Nothing is re-encoded.
 # The card is exFAT, so this copies bytes and does not
 # create a symlink. It does not move a port or change the selected library.
 
@@ -34,11 +34,6 @@ art_pick() {
 		fi
 	done
 	return 1
-}
-
-art_png_ok() {
-	_sig=$(od -An -tx1 -N8 "$1" 2>/dev/null | tr -d ' \n')
-	[ "$_sig" = "89504e470d0a1a0a" ]
 }
 
 art_json_has() {
@@ -103,42 +98,37 @@ art_publish_one() {
 		.*|*/*) return 0 ;;
 	esac
 	_media=$_ports/.media
-	_dest=$_media/$_stem.png
-	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
-		return 0
-	fi
+	for _ext in png jpg jpeg; do
+		if [ -e "$_media/$_stem.$_ext" ] || [ -L "$_media/$_stem.$_ext" ]; then
+			return 0
+		fi
+	done
 	_dir=$(art_dir_for "$_ports" "$_base" "$_stem") || return 0
 	_src=$(art_pick "$_dir") || return 0
-	mkdir -p "$_media" || return 0
-	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
-		return 0
-	fi
-	_tmp=$(mktemp "$_media/.zlyme-art.XXXXXX") || return 0
-	_ok=0
 	case "$_src" in
-		*.png)
-			if cp "$_src" "$_tmp"; then
-				_ok=1
-			fi
-			;;
-		*.jpg|*.jpeg)
-			_conv=${ZLYME_PM_ART_JPEG:-/usr/sbin/zlyme-portmaster-artpng}
-			if [ -x "$_conv" ] && "$_conv" "$_src" "$_tmp"; then
-				if art_png_ok "$_tmp"; then
-					_ok=1
-				fi
-			fi
-			;;
+		*.png) _ext=png ;;
+		*.jpg|*.jpeg) _ext=jpg ;;
+		*) return 0 ;;
 	esac
-	if [ "$_ok" != 1 ] || [ ! -s "$_tmp" ]; then
+	_dest=$_media/$_stem.$_ext
+	mkdir -p "$_media" || return 0
+	for _have in png jpg jpeg; do
+		if [ -e "$_media/$_stem.$_have" ] || [ -L "$_media/$_stem.$_have" ]; then
+			return 0
+		fi
+	done
+	_tmp=$(mktemp "$_media/.zlyme-art.XXXXXX") || return 0
+	if ! cp "$_src" "$_tmp" || [ ! -s "$_tmp" ]; then
 		rm -f "$_tmp"
 		printf '%s\n' "zlyme-portmaster-art: $_base: could not publish ${_src##*/}" >&2
 		return 0
 	fi
-	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
-		rm -f "$_tmp"
-		return 0
-	fi
+	for _have in png jpg jpeg; do
+		if [ -e "$_media/$_stem.$_have" ] || [ -L "$_media/$_stem.$_have" ]; then
+			rm -f "$_tmp"
+			return 0
+		fi
+	done
 	mv "$_tmp" "$_dest"
 }
 

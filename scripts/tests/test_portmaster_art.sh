@@ -65,13 +65,16 @@ printf '%s\n' "$sd1" "$sd2" "$work/sd3" > "$work/roots"
 flag=$work/portmaster-root
 printf '%s\n' "$sd2" > "$flag"
 
-gcc -std=c11 -Wall -Wextra -Werror -O2 -o "$work/bin/artpng" \
-	"$ROOT/package/system/portmaster/zlyme-portmaster-artpng.c" -ljpeg -lpng \
-	|| fail "the JPEG converter did not compile"
-command -v ffmpeg >/dev/null 2>&1 || fail "the host has no ffmpeg to make a JPEG fixture"
+if grep -q 'zlyme-portmaster-artpng' "$ART"; then
+	fail "the helper still converts"
+fi
+if grep -q 'zlyme-portmaster-artpng.c' "$MK"; then
+	fail "the recipe still compiles the converter"
+fi
+grep -q 'rm -f .*/usr/sbin/zlyme-portmaster-artpng' "$MK" \
+	|| fail "a rebuild would leave the converter binary"
 
 ZLYME_PM_ART_ROOTS=$work/roots \
-	ZLYME_PM_ART_JPEG=$work/bin/artpng \
 	sh "$ART"
 [ "$(cat "$ports1/.media/A Key(s) Path.png")" = cover1 ] \
 	|| fail "cover did not win over screenshot"
@@ -95,24 +98,48 @@ cmp -s "$ports1/.media/A Key(s) Path.png" "$ports2/.media/A Key(s) Path.png" \
 
 before=$(stat -c %Y "$ports1/.media/A Key(s) Path.png")
 ZLYME_PM_ART_ROOTS=$work/roots \
-	ZLYME_PM_ART_JPEG=$work/bin/artpng \
 	sh "$ART"
 after=$(stat -c %Y "$ports1/.media/A Key(s) Path.png")
 [ "$before" = "$after" ] || fail "a second launch rewrote published artwork"
 
-# A JPEG the converter cannot read stays unpublished, with one diagnostic.
-rm -rf "$ports1/Jpeg" "$ports1/.media/Jpeg.png"
+# A JPEG is copied as .jpg. A file that is not a JPEG is still only copied.
 mkdir -p "$ports1/Jpeg"
-printf '%s\n' jpeg-src > "$ports1/Jpeg/cover.jpg"
+printf '%s\n' 'not-a-jpeg' > "$ports1/Jpeg/cover.jpg"
 printf '%s\n' '#!/bin/sh' > "$ports1/Jpeg.sh"
 ZLYME_PM_ART_ROOTS=$work/roots \
-	ZLYME_PM_ART_JPEG=$work/missing-artpng \
-	sh "$ART" >"$work/jpeg-miss.out" 2>"$work/jpeg-miss.err"
-[ ! -e "$ports1/.media/Jpeg.png" ] || fail "a JPEG was published without a converter"
-grep -q 'Jpeg.sh: could not publish cover.jpg' "$work/jpeg-miss.err" \
-	|| fail "a failed JPEG was silent"
+	sh "$ART" >"$work/jpeg-bad.out" 2>"$work/jpeg-bad.err"
+[ "$(cat "$ports1/.media/Jpeg.jpg")" = not-a-jpeg ] || fail "a JPEG was re-encoded"
+[ ! -e "$ports1/.media/Jpeg.png" ] || fail "a JPEG was also stored as a PNG"
 [ -z "$(find "$ports1/.media" -name '.zlyme-art.*' -print)" ] \
-	|| fail "a failed JPEG left a temporary file"
+	|| fail "a copied JPEG left a temporary file"
+
+# Existing user JPEG art is left alone, including a .jpeg name.
+mkdir -p "$ports1/UserJpg" "$ports1/UserJpeg"
+printf '%s\n' source-jpg > "$ports1/UserJpg/cover.jpg"
+printf '%s\n' source-jpeg > "$ports1/UserJpeg/cover.jpeg"
+printf '%s\n' '#!/bin/sh' > "$ports1/UserJpg.sh"
+printf '%s\n' '#!/bin/sh' > "$ports1/UserJpeg.sh"
+mkdir -p "$ports1/.media"
+printf '%s\n' custom-jpg > "$ports1/.media/UserJpg.jpg"
+printf '%s\n' custom-jpeg > "$ports1/.media/UserJpeg.jpeg"
+ZLYME_PM_ART_ROOTS=$work/roots \
+	sh "$ART"
+[ "$(cat "$ports1/.media/UserJpg.jpg")" = custom-jpg ] || fail "user jpg was replaced"
+[ "$(cat "$ports1/.media/UserJpeg.jpeg")" = custom-jpeg ] || fail "user jpeg was replaced"
+[ ! -e "$ports1/.media/UserJpg.png" ] || fail "user jpg gained a png"
+[ ! -e "$ports1/.media/UserJpeg.png" ] || fail "user jpeg gained a png"
+[ ! -e "$ports1/.media/UserJpeg.jpg" ] || fail "user jpeg gained a jpg"
+
+# cover.jpeg is published as .jpg when the user has no art yet.
+mkdir -p "$ports1/FromJpeg"
+printf '%s\n' from-jpeg > "$ports1/FromJpeg/cover.jpeg"
+printf '%s\n' '#!/bin/sh' > "$ports1/FromJpeg.sh"
+
+# PNG wins over a JPEG in the same port, and the JPEG is not also copied.
+mkdir -p "$ports1/Case Diff"
+printf '%s\n' cover-wins > "$ports1/Case Diff/cover.png"
+printf '%s\n' jpeg-loses > "$ports1/Case Diff/screenshot.jpg"
+printf '%s\n' '#!/bin/sh' > "$ports1/Case Diff.sh"
 
 # The installed port layout: launcher case differs from the directory,
 # and the only image is screenshot.jpg.
@@ -121,34 +148,25 @@ cat > "$ports2/abombniball/port.json" << 'EOF'
 {"items": ["Abombniball.sh", "abombniball/"], "attr": {"title": "Abombniball"}}
 EOF
 printf '%s\n' '#!/bin/sh' > "$ports2/Abombniball.sh"
-ffmpeg -nostdin -y -loglevel error -f lavfi -i color=c=blue:s=8x8 \
-	-frames:v 1 "$ports2/abombniball/screenshot.jpg"
-# cover.png in a different directory name wins over a JPEG.
-mkdir -p "$ports1/Case Diff"
-printf '%s\n' cover-wins > "$ports1/Case Diff/cover.png"
-printf '%s\n' '#!/bin/sh' > "$ports1/Case Diff.sh"
-ffmpeg -nostdin -y -loglevel error -f lavfi -i color=c=green:s=4x4 \
-	-frames:v 1 "$ports1/Case Diff/screenshot.jpg"
-# Wait: stem "Case Diff" matches the directory, so cover.png is found
-# without port.json. The differing-name case is Abombniball.
+printf '\377\330\377shot' > "$ports2/abombniball/screenshot.jpg"
 
 ZLYME_PM_ART_ROOTS=$work/roots \
-	ZLYME_PM_ART_JPEG=$work/bin/artpng \
 	sh "$ART" >"$work/jpeg.out" 2>"$work/jpeg.err"
-sig=$(od -An -tx1 -N8 "$ports2/.media/Abombniball.png" | tr -d ' \n')
-[ "$sig" = "89504e470d0a1a0a" ] || fail "screenshot.jpg was not published as the launcher name ($sig)"
+cmp -s "$ports2/.media/Abombniball.jpg" "$ports2/abombniball/screenshot.jpg" \
+	|| fail "screenshot.jpg was not copied as the launcher name"
+[ ! -e "$ports2/.media/Abombniball.png" ] || fail "a JPEG was converted to PNG"
+[ ! -e "$ports2/.media/abombniball.jpg" ] || fail "artwork used the directory name"
 [ "$(cat "$ports1/.media/Case Diff.png")" = cover-wins ] \
 	|| fail "cover.png did not win over screenshot.jpg"
-jpeg=$(od -An -tx1 -N3 "$ports2/abombniball/screenshot.jpg" | tr -d ' \n')
-[ "$jpeg" = "ffd8ff" ] || fail "the JPEG source was rewritten ($jpeg)"
-[ ! -e "$ports2/.media/abombniball.png" ] || fail "artwork used the directory name instead of the launcher"
-grep -q 'Abombniball.sh' "$work/jpeg.err" && fail "a published JPEG was reported as a failure"
+[ ! -e "$ports1/.media/Case Diff.jpg" ] || fail "the losing JPEG was also copied"
+[ "$(cat "$ports1/.media/FromJpeg.jpg")" = from-jpeg ] \
+	|| fail "cover.jpeg was not copied as .jpg"
+grep -q 'Abombniball.sh' "$work/jpeg.err" && fail "a copied JPEG was reported as a failure"
 
-before=$(stat -c %Y "$ports2/.media/Abombniball.png")
+before=$(stat -c %Y "$ports2/.media/Abombniball.jpg")
 ZLYME_PM_ART_ROOTS=$work/roots \
-	ZLYME_PM_ART_JPEG=$work/bin/artpng \
 	sh "$ART" >"$work/again.out" 2>"$work/again.err"
-after=$(stat -c %Y "$ports2/.media/Abombniball.png")
+after=$(stat -c %Y "$ports2/.media/Abombniball.jpg")
 [ "$before" = "$after" ] || fail "a second import rewrote published artwork"
 
 echo "portmaster art ok"

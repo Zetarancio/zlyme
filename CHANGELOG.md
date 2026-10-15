@@ -36,7 +36,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
-- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays.
+- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. A JPEG stays a JPEG. Artwork you already chose stays.
 - Leaving a PortMaster game removes a filesystem that game mounted through Zlyme when that filesystem is still the one at its path. Anything else mounted inside storage stays, and USB File Transfer will not start while it does.
 - With System logs off, PortMaster keeps its transcript off the card. An error on screen still comes from that transcript.
 

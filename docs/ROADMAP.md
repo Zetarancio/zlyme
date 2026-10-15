@@ -178,7 +178,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `e06814c9`. The installed candidate still has `3f4120cc`. About reads Syncthing through `zlyme-syncthing-gui`. None of those commits is on NextUI `zlyme` yet.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `9931d99e`. The installed candidate still has `3f4120cc`. About reads Syncthing through `zlyme-syncthing-gui`. None of those commits is on NextUI `zlyme` yet.
 
 ##### B3. RGUI theme
 
@@ -230,7 +230,7 @@ REJECTED — a union or a symlink farm. A removal or extract can hit the wrong c
 
 Objective: after an install, publish suitable art as `.media/<launcher>.png` on that port's card. Art the user already chose stays.
 
-Status: The installed candidate skipped a JPEG. On SD2, `Abombniball.sh` had no `.media` image. Its directory is `abombniball`, `port.json` names the launcher, and the picture is `screenshot.jpg`. That image's ffmpeg has no swscale, so the conversion failed and the helper still returned success. `zlyme-portmaster-artpng` publishes the PNG with libjpeg and libpng, named for the launcher. A `cover.png` is still copied as it is, and artwork already chosen stays. That converter is not on the installed image.
+Status: PortMaster copies a cover or screenshot onto the same card, named for the launcher. A JPEG stays a JPEG. NextUI prefers `.png` and reads `.jpg` or `.jpeg` when the PNG is absent. The installed candidate did not show `Abombniball.sh`, whose only picture is `screenshot.jpg`. This copy is not on that image.
 
 ### Phase 13D. Samba and lid suspend
 

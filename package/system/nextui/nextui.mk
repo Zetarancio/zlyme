@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = e06814c9bb1f93172d8c942dfb47bd801344e477
+NEXTUI_VERSION = 9931d99ebbcda2359bd8fcb03c2de11dcfe453ec
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -83,13 +83,16 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/launch_queue.o $(@D)/workspace/all/nextui/launch_queue.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(@D)/workspace/all/nextui \
+		-o $(@D)/zlyme_thumbpath.o $(@D)/workspace/all/nextui/zlyme_thumbpath.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-I$(@D)/workspace/all/nextui \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/nextui.o $(@D)/workspace/all/nextui/nextui.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/zlyme_prefs.o $(NEXTUI_PKGDIR)/zlyme/zlyme_prefs.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
-		$(@D)/nextui.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
+		$(@D)/nextui.o $(@D)/zlyme_thumbpath.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
 		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/zlyme_prefs.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
