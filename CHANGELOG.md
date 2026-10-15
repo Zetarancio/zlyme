@@ -16,6 +16,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
+- Settings → About shows the SSH, Samba, and Syncthing account and password status, then the IP address. It reads them when you open the page. The Samba password is shown only while it is still the first password. Syncthing's password is shown as set, not as the saved hash.
 - Syncthing stays off until Settings → Network → Syncthing is on. The first time it starts, the web UI username is `zlyme` and the password is `zlyme`. Change it in Syncthing's own page. A login you already set stays. If that saved login is missing or damaged, Syncthing stays off instead of opening the page. The recovery command is in the user guide.
 - Samba stays off until Settings → Network → Samba is on. The share is `/storage`. The username is `zlyme` and the first password is `zlyme`. Change it over SSH with `zlyme-samba-auth set`. The new password stays across a reboot and an update. If that saved password is damaged, Samba stays off until you set a new one with the same command. It does not go back to `zlyme` on its own. In Windows File Explorer, use `\\` and the address from Settings → About → IP, then `\storage`. The Flip may not appear under Network.
 - Closing the lid sleeps the same way as a short press of the power button, in the list and during a game. If the lid opens while the Flip is waking and that open is missed, the next close still sleeps. Waking by opening the lid has not been tried on a Flip.

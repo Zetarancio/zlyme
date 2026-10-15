@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — About credentials
+
+Settings → About in NextUI `620a64cead96d7934c3edf369199d147a5550a65` reads SSH, Samba, and Syncthing when the page opens. Redraws use that copy. Samba shows `zlyme` only when the NT hash is still the initial password. Syncthing shows the GUI user and `(set)` for a bcrypt hash. The hash is not displayed, and Syncthing is not started to check it. The label functions were compiled on the host. The page was not opened on a Flip.
+
 ## 2026-10-15 — Syncthing GUI login
 
 `S75syncthing` calls Syncthing 2.0.13 `generate` only when `/storage/.config/syncthing/config.xml` is absent. The GUI user is `zlyme`. The password `zlyme` is passed on stdin and stored as bcrypt. An existing file is not given to `generate`. If it has no GUI user and bcrypt password, and it is not LDAP, the listener on `0.0.0.0:8384` stays down. A host build of the pinned source verified the hash and a `127.0.0.1` login. This was not run on a Flip.

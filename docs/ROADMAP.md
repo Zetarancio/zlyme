@@ -174,7 +174,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. This branch pins `7cb6ecaa`, which is that commit plus lid-close mem. Neither is on NextUI `zlyme` yet.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `620a64ce`, which adds the About credential rows. None of those commits is on NextUI `zlyme` yet.
 
 ##### B3. RGUI theme
 
@@ -244,7 +244,7 @@ Status: Host-tested. NextUI `7cb6ecaa` and `zlyme-keylidmon` share that path. A 
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. 13E1 and 13E2 are host-tested. 13E3 onward has not started.
+13E is the last integration pass for `zlyme44.3`. 13E1, 13E2, and 13E3 are host-tested. 13E4 onward has not started.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -266,7 +266,7 @@ Status: Host-tested. A new home is created with `syncthing generate` before the 
 
 Objective: Settings → About shows, in order, SSH account, SSH password, Samba account, Samba password, Syncthing account, Syncthing password, then IP. Read them when About opens. Do not run the helpers on every redraw. Show the real usernames. Show `zlyme` as a password only when that default is still in force. After the user changes a Samba or Syncthing password, show that it was changed or that it cannot be read. Do not show a hash. Do not keep a second plaintext copy for this screen. Labels have to fit the Flip. About does not edit Samba or Syncthing passwords.
 
-Status: Planned. The SSH password is already available to About.
+Status: Host-tested. NextUI `620a64ce` reads the rows when About opens and keeps them for redraws. SSH still shows the live password. Samba shows `zlyme` only when the NT hash is still the initial password, `(changed)` when it is another valid hash, and `(unavailable)` otherwise. Syncthing shows the GUI user. Its password is `(set)` when the file holds a bcrypt hash, and `(unavailable)` otherwise. The page does not show that hash and does not start Syncthing to check it. The host test compiled the label functions. The page was not opened on a Flip.
 
 #### 13E4. Obsolete configuration
 
