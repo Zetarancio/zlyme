@@ -135,6 +135,14 @@ while true; do
 	cd "$root" || exit 1
 done
 
+# pugwash has returned, so an install's files are on the selected card.
+# This does not change that card, and a failure here keeps pugwash's status.
+_art=${ZLYME_PM_ART:-/usr/sbin/zlyme-portmaster-art}
+if [ -x "$_art" ]; then
+	"$_art" || true
+fi
+unset _art
+
 if [ "$st" -ne 0 ]; then
 	echo "portmaster exit $st" >>"$log"
 	tail -n 8 "$log"

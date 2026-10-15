@@ -37,6 +37,8 @@ define PORTMASTER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/portmaster
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-cleanup \
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-cleanup
+	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-art \
+		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-art
 	$(INSTALL) -D -m 0755 $(PORTMASTER_PKGDIR)/zlyme-portmaster-exec \
 		$(TARGET_DIR)/usr/sbin/zlyme-portmaster-exec
 	$(INSTALL) -D -m 0644 $(PORTMASTER_PKGDIR)/zlyme-portmaster-mounts.sh \

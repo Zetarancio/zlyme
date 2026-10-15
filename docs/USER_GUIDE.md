@@ -309,7 +309,8 @@ ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by K
 
 PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
 
-- Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card.
+- Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card. PortMaster's own list shows the ports on that library. A port on another card stays in that card's Ports list.
+- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is. A JPEG is used when it can be turned into a PNG.
 - The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
 - A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
 - Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.

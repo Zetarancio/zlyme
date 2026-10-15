@@ -9,6 +9,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Added
 
 - Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list.
+- Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. Artwork you already chose stays. A port with no image is left as it is.
 - Tools → USB File Transfer is in the development image. It shares storage on the lower USB-C port and leaves the cards mounted. See Changed.
 - The product image builds Mesa's PanVK driver next to the existing Mali library. Selecting Panfrost loads that kernel driver and turns on Mesa's experimental Vulkan setting for programs launched afterwards. One orange frame was shown on a Flip. That is not a claim that games render, and PPSSPP on Panfrost still does not attach the display. The Mali driver remains the Vulkan path PPSSPP can use.
 

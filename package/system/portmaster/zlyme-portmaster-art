@@ -1,0 +1,160 @@
+#!/bin/sh
+# After PortMaster exits, publish one NextUI image per launcher.
+# PortMaster 2026.06.23-0015 stores cover.png, cover.jpg, screenshot.png,
+# and screenshot.jpg in the port directory. NextUI reads
+# Roms/Ports (PORTS)/.media/<launcher stem>.png on that same card.
+# An existing image stays. A JPEG is published only when ffmpeg can
+# write a PNG. The card is exFAT, so this copies bytes and does not
+# create a symlink. It does not move a port or change the selected library.
+
+set -eu
+
+art_roots() {
+	if [ -n "${ZLYME_PM_ART_ROOTS:-}" ]; then
+		if [ -f "$ZLYME_PM_ART_ROOTS" ]; then
+			cat "$ZLYME_PM_ART_ROOTS"
+		fi
+		return 0
+	fi
+	printf '%s\n' "${ZLYME_PM_STORAGE:-/storage}"
+	_libs=${ZLYME_LIBRARIES_FILE:-/run/zlyme/libraries}
+	if [ -f "$_libs" ]; then
+		cat "$_libs"
+	fi
+}
+
+art_pick() {
+	_dir=$1
+	for _name in cover.png screenshot.png cover.jpg cover.jpeg screenshot.jpg screenshot.jpeg; do
+		_img=$_dir/$_name
+		if [ -f "$_img" ] && [ ! -L "$_img" ]; then
+			printf '%s\n' "$_img"
+			return 0
+		fi
+	done
+	return 1
+}
+
+art_json_has() {
+	python3 - "$1" "$2" << 'PY'
+import json
+import sys
+path, script = sys.argv[1], sys.argv[2]
+try:
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+except (OSError, UnicodeError, json.JSONDecodeError):
+    raise SystemExit(1)
+items = data.get("items")
+if not isinstance(items, list) or script not in items:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
+}
+
+art_dir_for() {
+	_ports=$1
+	_script=$2
+	_stem=$3
+	if [ -d "$_ports/$_stem" ] && [ ! -L "$_ports/$_stem" ]; then
+		if art_pick "$_ports/$_stem" >/dev/null 2>&1; then
+			printf '%s\n' "$_ports/$_stem"
+			return 0
+		fi
+	fi
+	_dir=$(
+		find "$_ports" -mindepth 2 -maxdepth 2 -name port.json -type f 2>/dev/null |
+			LC_ALL=C sort |
+			while IFS= read -r _json; do
+				[ -n "$_json" ] || continue
+				[ -L "$_json" ] && continue
+				_pdir=$(dirname "$_json")
+				[ -L "$_pdir" ] && continue
+				case "$(basename "$_pdir")" in
+					PortMaster) continue ;;
+				esac
+				art_json_has "$_json" "$_script" || continue
+				if art_pick "$_pdir" >/dev/null 2>&1; then
+					printf '%s\n' "$_pdir"
+					break
+				fi
+			done
+	)
+	[ -n "$_dir" ] || return 1
+	printf '%s\n' "$_dir"
+}
+
+art_publish_one() {
+	_ports=$1
+	_script_path=$2
+	_base=$(basename "$_script_path")
+	case "$_base" in
+		PortMaster.sh) return 0 ;;
+	esac
+	_stem=${_base%.sh}
+	[ -n "$_stem" ] || return 0
+	case "$_stem" in
+		.*|*/*) return 0 ;;
+	esac
+	_media=$_ports/.media
+	_dest=$_media/$_stem.png
+	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
+		return 0
+	fi
+	_dir=$(art_dir_for "$_ports" "$_base" "$_stem") || return 0
+	_src=$(art_pick "$_dir") || return 0
+	mkdir -p "$_media" || return 0
+	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
+		return 0
+	fi
+	_tmp=$(mktemp "$_media/.zlyme-art.XXXXXX") || return 0
+	_ok=0
+	case "$_src" in
+		*.png)
+			if cp "$_src" "$_tmp"; then
+				_ok=1
+			fi
+			;;
+		*.jpg|*.jpeg)
+			_ff=${ZLYME_PM_ART_FFMPEG:-ffmpeg}
+			if command -v "$_ff" >/dev/null 2>&1; then
+				if "$_ff" -nostdin -y -loglevel error -i "$_src" -f image2 "$_tmp"; then
+					_ok=1
+				fi
+			fi
+			;;
+	esac
+	if [ "$_ok" != 1 ] || [ ! -s "$_tmp" ]; then
+		rm -f "$_tmp"
+		return 0
+	fi
+	if [ -e "$_dest" ] || [ -L "$_dest" ]; then
+		rm -f "$_tmp"
+		return 0
+	fi
+	mv "$_tmp" "$_dest"
+}
+
+art_publish_root() {
+	_root=$1
+	case "$_root" in
+		/*) ;;
+		*) return 0 ;;
+	esac
+	case "$_root" in
+		*..*) return 0 ;;
+	esac
+	_ports="$_root/Roms/Ports (PORTS)"
+	[ -d "$_ports" ] || return 0
+	[ -L "$_ports" ] && return 0
+	for _script_path in "$_ports"/*.sh; do
+		[ -f "$_script_path" ] || continue
+		[ -L "$_script_path" ] && continue
+		art_publish_one "$_ports" "$_script_path" || true
+	done
+}
+
+art_roots | while IFS= read -r _root; do
+	[ -n "$_root" ] || continue
+	art_publish_root "$_root" || true
+done
