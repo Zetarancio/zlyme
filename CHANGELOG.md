@@ -8,7 +8,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Added
 
-- Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list, and closing a game from inside it stays in RetroArch.
+- Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list, and closing a game from inside it stays in RetroArch. Closing a game you started from the list returns to the list.
 - Settings → Game → Reset RetroArch configuration restores the stock RetroArch file. Core options, cores, saves, and BIOS stay.
 - Tools → USB File Transfer shares the data card as SDCARD1, a mounted second card as SDCARD2, and a USB stick that is already mounted as OTG, on the lower USB-C port. Details are in the [user guide](docs/USER_GUIDE.md#usb-file-transfer).
 - Panfrost can load Mesa's experimental Vulkan driver. PPSSPP still uses the Mali driver.
@@ -17,7 +17,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - Settings → About shows the SSH, Samba, and Syncthing account and password status, then the IP address. A Samba password you changed, and the Syncthing password, are not shown.
 - Syncthing stays off until you turn it on. The first web login is username `zlyme` and password `zlyme`. Change it in Syncthing's own page. A login you already set stays. Recovery is in the [user guide](docs/USER_GUIDE.md#network).
-- Samba stays off until you turn it on. It shares `/storage` as `zlyme`, and the first password is `zlyme`. Change it under Settings → Network → Samba Password. An empty entry leaves the saved password. The [user guide](docs/USER_GUIDE.md#network) has the Windows address.
+- Samba stays off until you turn it on. It shares `/storage` as `zlyme`, and the first password is `zlyme`. Change it under Settings → Network → Samba Password. An empty entry leaves the saved password. If Samba cannot start, the switch goes back off. The [user guide](docs/USER_GUIDE.md#network) has the Windows address.
 - Closing the lid sleeps the same way as a short press of the power button, in the list and during a game. Opening the lid wakes the Flip.
 - On a new RetroArch configuration, quitting from the menu writes a savestate and the next launch loads it. A configuration you already saved stays. Hardcore RetroAchievements leaves that state unloaded, and MENU+START still leaves immediately.
 - Included libretro cores are copied to the card once, about 213 MiB, before the list appears. A reboot leaves a core you replaced. An update replaces each included file. A core the image does not include stays. The file is a native program and has to come from a source you trust.
@@ -39,6 +39,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Leaving PortMaster adds a port's cover or screenshot as that port's artwork on the same card. A JPEG stays a JPEG. Artwork you already chose stays.
 - Leaving a PortMaster game removes a filesystem that game mounted through Zlyme when that filesystem is still the one at its path. Anything else mounted inside storage stays, and USB File Transfer will not start while it does.
 - With System logs off, PortMaster keeps its transcript off the card. An error on screen still comes from that transcript.
+
+Thanks to Icy_Mammoth1805 for the RetroArch menu-quit, Samba, lid-sleep, and arcade BIOS suggestions.
 
 ## [zlyme44.2] - 2026-10-11
 

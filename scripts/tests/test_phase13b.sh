@@ -377,9 +377,11 @@ sum=$(sha256sum "$gif" | awk '{print $1}')
 [ "$sum" = "7d6e7534f4ee965ab266ec6e04bf7be3b5bb4dd175e03b6745c6a8c2cc7f960c" ] \
 	|| fail "README GIF hash changed"
 
-if grep -q 'Icy_Mammoth1805' "$ROOT/README.md" "$ROOT/CHANGELOG.md"; then
-	fail "the FBNeo credit landed in the README or changelog"
+if grep -q 'Icy_Mammoth1805' "$ROOT/README.md"; then
+	fail "the suggestion credit landed in the README"
 fi
+grep -q 'Icy_Mammoth1805' "$ROOT/CHANGELOG.md" \
+	|| fail "the suggestion credit left the changelog"
 
 b2=$(awk '
 	/^##### B2\. / { on = 1; next }
