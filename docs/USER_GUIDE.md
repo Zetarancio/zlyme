@@ -214,13 +214,13 @@ Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu retu
 
 A game opened from the list uses the same menu. A confirms and B goes back. The buttons a game uses, and a controller remap you saved, stay as they are. Closing the game from the Quick Menu returns to the list.
 
-A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Zlyme copies that stock configuration when RetroArch does not already have one. A configuration you already have is not changed by launching a game or by an update. Turning automatic save or automatic load off in RetroArch keeps that choice. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
+A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Zlyme copies that stock configuration when RetroArch does not already have one. A configuration you already have is not changed by launching a game or by an update. Quitting does not write that session's save folder back into the configuration. Saving the configuration from RetroArch's own menu does write the settings that are running, including that game's save folder. Turning automatic save or automatic load off in RetroArch keeps that choice until you use Reset RetroArch configuration. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
 
 MENU+START stops the session immediately. Leave from the RetroArch menu when you want the automatic savestate written.
 
 A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. Resetting the RetroArch configuration installs the stock file, including Classic Orange.
 
-The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. An update replaces a core whose filename the new image includes. A core the image does not include stays, including one you added and one left from an older image. You can replace a copied core. That replacement stays until an update whose image includes the same filename, which installs the image's file again. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
+The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. That first copy is about 213 MiB and happens before the list appears. The time that copy takes was not measured. A reboot without an update leaves a core you replaced. An update puts the image's file back for every included filename, including when that file did not change. A core the image does not include stays, including one you added and one left from an older image. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
 
 ## Settings
 
@@ -251,16 +251,16 @@ Update, ZcrapeGoat, PortMaster, and other tools and games launched from the list
 
 ### Game
 
-Besides its game options, this page holds cleanup actions. Each one counts what it would remove and asks before deleting.
+Besides its game options, this page holds cleanup actions. Each one asks before it changes anything.
 
 - **Clean junk**: desktop metadata and trash folders.
 - **Orphan saves / states**: saves whose ROM is missing from that same card.
 - **Orphan boxart**: artwork whose ROM is missing.
 - **Clear Recents**: the Recently Played list.
 - **Reset RetroArch core options** removes per-core option files and restores the stock option files. It does not remove core libraries, saves, or the main RetroArch configuration.
-- **Reset RetroArch configuration** restores the main RetroArch configuration from the stock file. It does not remove core options, core libraries, saves, or BIOS files. The pinned Settings menu does not show this row yet. The action is `zlyme-game-cleanup ra-cfg`.
+- **Reset RetroArch configuration** restores the main RetroArch configuration from the stock file. It does not remove core options, core libraries, saves, or BIOS files.
 - **Orphan per-ROM RetroArch configs**.
-- **Reset standalone settings**: removes standalone emulator settings, then restores the stock files Zlyme ships. Games and saves are kept. DraStic, PPSSPP, and Flycast have stock files. Dolphin and AetherSX2 write their first settings the next time they start. AetherSX2 updates its BIOS and save folders to the active library on each launch. The other lines in that file stay. GZDoom, native PICO-8, and the programs with no stock file are not given an invented configuration.
+- **Reset standalone settings**: removes standalone emulator settings, then restores the stock files Zlyme ships. Games and saves are kept. DraStic, PPSSPP, and Flycast have stock files. Dolphin and AetherSX2 write their first settings the next time they start. AetherSX2 updates its BIOS and save folders to the active library on each launch. The other lines in that file stay. GZDoom's settings file is removed. Its soundfonts, FM banks, and autoexec stay, and it is not given a stock configuration. Native PICO-8 and the programs with no stock file are not given an invented configuration.
 - **Reset PortMaster**: removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
 
 
