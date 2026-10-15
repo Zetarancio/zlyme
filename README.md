@@ -1,14 +1,18 @@
 <p align="center">
-  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="444">
+  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="333">
 </p>
 
-**Low latency. High viscosity.**
+<p align="center">
+  <strong>“Low latency. High viscosity.”</strong>
+</p>
 
 Zlyme is a custom OS for the **Miyoo Flip**, built with Buildroot on a mainline Linux kernel. It's engineered to ooze, cultured for speed. Hardware facts come from this device, and emulator recipes are harvested where they already exist. Every emulator and tool is pinned to a revision that's known to work here, not whatever upstream published last night. The set is curated so it fits the Flip, instead of shipping a hundred cores nobody on this board will use.
 
 The frontend is Zlyme's fork of [NextUI](https://github.com/LoveRetro/NextUI) (itself from [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman)). No desktop, and no compositor sitting in the background: the menu and the games draw straight to the screen. Wine gets its own Weston for as long as it runs, and a PortMaster port that needs X11 brings PortMaster's WestonPack. When the app closes, they're gone. It boots fast and gets out of the way.
 
-“It’s not buttery smooth. It’s slime-smooth.”
+<p align="center">
+  <strong>“It’s not buttery smooth. It’s slime-smooth.”</strong>
+</p>
 
 The Miyoo Flip is the only device Zlyme supports. The tree is laid out so another handheld could be ported one day, but nobody is promising one.
 
