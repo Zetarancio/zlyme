@@ -319,6 +319,23 @@ if grep -F "$secret" "$work/bad.out" "$work/bad.err" "$work/bad-start.out" "$wor
 	fail "failure path logged the password"
 fi
 
+# No live account: the typed password replaces the damaged export.
+# It is not the public password.
+: > "$ZLYME_SAMBA_LOG.argv"
+: > "$ZLYME_SAMBA_LOG.stdin"
+recover=recovered-secret
+printf '%s\n' "$recover" | "$auth" set >"$work/recover.out" 2>"$work/recover.err"
+grep -q 'Samba password updated' "$work/recover.out" || fail "recovery set failed"
+hr=$(hash_of "$store")
+[ "${#hr}" -eq 32 ] || fail "recovery export is not a hash"
+[ "$hr" != "$h0" ] || fail "recovery used the public password"
+[ "$(cat "$store")" != 'not-a-database' ] || fail "recovery left the damaged export"
+if grep -F "$recover" "$work/recover.out" "$work/recover.err" "$ZLYME_SAMBA_LOG.argv" "$store"; then
+	fail "recovery leaked the password"
+fi
+grep -q 'smbpasswd .* -a ' "$ZLYME_SAMBA_LOG.argv" || fail "recovery without a live account did not create one"
+tail -n 1 "$ZLYME_SAMBA_LOG.stdin" | grep -qx "$recover" || fail "recovery did not use the typed password"
+
 # A changed password left on the card is what the next image imports.
 rm -rf "$ZLYME_SAMBA_RUNTIME"
 mkdir -p "$ZLYME_SAMBA_RUNTIME" "$ZLYME_CFG/zlyme"
@@ -330,5 +347,46 @@ if grep -q 'smbpasswd .* -a ' "$ZLYME_SAMBA_LOG.argv"; then
 fi
 [ "$(hash_of "$store")" = "$h1" ] || fail "OTA replaced the export"
 grep -q "$h1" "$ZLYME_SAMBA_RUNTIME/private/nt.hash" || fail "OTA import mismatch"
+
+# Corrupt export while the tmpfs account is already loaded.
+printf '%s\n' 'not-a-database' > "$store"
+live=$(cat "$ZLYME_SAMBA_RUNTIME/private/nt.hash")
+: > "$ZLYME_SAMBA_LOG.argv"
+: > "$ZLYME_SAMBA_LOG.ssd"
+if "$auth" prepare >"$work/live-bad.out" 2>"$work/live-bad.err"; then
+	fail "corrupt export was accepted because a live account exists"
+fi
+[ "$(cat "$store")" = 'not-a-database' ] || fail "live account rewrote the damaged export"
+[ "$(cat "$ZLYME_SAMBA_RUNTIME/private/nt.hash")" = "$live" ] || fail "failed prepare changed the live hash"
+if grep -q 'smbpasswd' "$ZLYME_SAMBA_LOG.argv"; then
+	fail "live corrupt path rewrote the password"
+fi
+if ZLYME_SAMBA_WANT=1 "$init" restart >"$work/live-bad-start.out" 2>"$work/live-bad-start.err"; then
+	fail "restart started Samba with a damaged export"
+fi
+if grep -q -- '-S ' "$ZLYME_SAMBA_LOG.ssd"; then
+	fail "smbd started from a live account with a damaged export"
+fi
+
+: > "$ZLYME_SAMBA_LOG.argv"
+: > "$ZLYME_SAMBA_LOG.stdin"
+: > "$ZLYME_SAMBA_LOG.ssd"
+recover2=another-secret
+printf '%s\n' "$recover2" | "$auth" set >"$work/live-recover.out" 2>"$work/live-recover.err"
+hr2=$(hash_of "$store")
+[ "$hr2" != "$h0" ] || fail "live recovery used the public password"
+[ "$hr2" != "$h1" ] || fail "live recovery kept the old hash"
+grep -q "$hr2" "$ZLYME_SAMBA_RUNTIME/private/nt.hash" || fail "live recovery did not update the account"
+if grep -q 'smbpasswd .* -a ' "$ZLYME_SAMBA_LOG.argv"; then
+	fail "live recovery created a new default account"
+fi
+if grep -F "$recover2" "$work/live-recover.out" "$work/live-recover.err" "$ZLYME_SAMBA_LOG.argv" "$store"; then
+	fail "live recovery leaked the password"
+fi
+"$auth" prepare >"$work/live-ok.out" 2>"$work/live-ok.err"
+[ "$(hash_of "$store")" = "$hr2" ] || fail "prepare after recovery replaced the password"
+ZLYME_SAMBA_WANT=1 "$init" restart >"$work/live-restart.out" 2>"$work/live-restart.err"
+grep -q -- '-S -q --exec /usr/sbin/smbd' "$ZLYME_SAMBA_LOG.ssd" || fail "restart after recovery did not start smbd"
+[ "$(hash_of "$store")" = "$hr2" ] || fail "restart after recovery replaced the password"
 
 echo "phase 13D samba auth ok"

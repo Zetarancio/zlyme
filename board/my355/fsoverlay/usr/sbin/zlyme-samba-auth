@@ -304,6 +304,12 @@ prepare_db() {
 	command -v "$pdbedit_bin" >/dev/null 2>&1 || return 1
 	ensure_runtime || return 1
 	ensure_unix || return 1
+	# A live tmpfs account does not make a damaged export acceptable.
+	# 3 means the file is present and unusable. Callers must not replace
+	# it with the public password.
+	if [ -e "$store" ] && ! account_valid "$store"; then
+		return 3
+	fi
 	if live_user; then
 		if [ ! -f "$store" ]; then
 			export_account || return 1
@@ -363,13 +369,23 @@ cmd_set() {
 	secret_file=$norm
 	prepare_db
 	st=$?
+	# 3 is a damaged export. The password just read replaces it.
+	# Any other failure leaves that file alone.
 	if [ "$st" -eq 1 ]; then
 		fail
 	fi
 	if [ "$st" -eq 0 ]; then
 		feed_password change "$secret_file" || fail
-	else
+	elif [ "$st" -eq 3 ]; then
+		if live_user; then
+			feed_password change "$secret_file" || fail
+		else
+			feed_password add "$secret_file" || fail
+		fi
+	elif [ "$st" -eq 2 ]; then
 		feed_password add "$secret_file" || fail
+	else
+		fail
 	fi
 	export_account || fail
 	rm -f "$secret_file"
