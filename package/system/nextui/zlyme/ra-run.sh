@@ -7,8 +7,11 @@
 #
 # --appendconfig is session data only: NextUI achievements, the ROM
 # card's save and BIOS directories, SDL2 pad routing, and a content
-# overlay. Theme, automatic savestates, and quit-on-close stay in the
-# user file, so a saved value is the one RetroArch uses.
+# overlay. Theme, automatic savestates, quit-on-close, and
+# config_save_on_exit stay in the user file. The stock file sets
+# config_save_on_exit false so a quit does not write those session
+# values back. Save Current Configuration still writes the running
+# settings, including the session paths.
 
 CFGDIR="${XDG_CONFIG_HOME:-/storage/.config}/retroarch"
 MINUI_RA=${ZLYME_RA_MINUI:-/tmp/zlyme-minui-ra.cfg}

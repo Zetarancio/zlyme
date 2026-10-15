@@ -268,9 +268,9 @@ do_ra_cores() {
 }
 
 do_ra_cfg() {
-	f=$STORAGE/.config/retroarch/retroarch.cfg
-	n=0
-	[ -e "$f" ] && n=1
+	# The settings menu treats a count of 0 as nothing to do. Restoring
+	# the stock file is still the action when the copy is missing.
+	n=1
 	miss=0
 	if [ "$DRY" = 0 ]; then
 		bin=${ZLYME_STOCK_SEED:-/usr/sbin/zlyme-stock-seed}
@@ -293,6 +293,9 @@ stock_seed() {
 }
 
 # Settings only. User carts, saves, prefixes, and soundfonts are not listed.
+# GZDoom g4.14.2 writes $HOME/.config/gzdoom/gzdoom.ini. DOOM.pak sets
+# HOME to the storage root. Soundfonts, FM banks, and autoexec.cfg in
+# that directory are not the settings file.
 standalone_targets() {
 	plat=my355
 	conf=${ZLYME_DEVICE_CONF-/usr/share/zlyme/device.conf}

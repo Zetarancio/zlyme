@@ -61,6 +61,10 @@ SRC=${ZLYME_CORE_SRC:-/usr/lib/libretro}
 DST=${ZLYME_CORE_DST:-/storage/.config/retroarch/cores}
 STAMP_SRC=${ZLYME_CORE_STAMP:-/usr/share/zlyme/retroarch/cores.stamp}
 STAMP_DST=$DST/.zlyme-core-set
+# Set by initramfs after it copies a new squashfs. An ordinary reboot
+# does not create it. A matching core stamp is not an image identity:
+# the same cores can ship inside a new image.
+REFRESH=${ZLYME_CORE_REFRESH:-/storage/.config/zlyme/os-image-new}
 
 if [ -f "$STAMP_SRC" ]; then
 	id=$(awk 'NR==1 { print; exit }' "$STAMP_SRC")
@@ -70,7 +74,10 @@ fi
 [ -n "$id" ] || exit 1
 
 mkdir -p "$DST"
-if [ -f "$STAMP_DST" ] && [ "$(awk 'NR==1 { print; exit }' "$STAMP_DST")" = "$id" ]; then
+refresh=0
+[ -f "$REFRESH" ] && refresh=1
+if [ "$refresh" = 0 ] && [ -f "$STAMP_DST" ] && \
+	[ "$(awk 'NR==1 { print; exit }' "$STAMP_DST")" = "$id" ]; then
 	exit 0
 fi
 if [ ! -d "$SRC" ]; then
@@ -146,4 +153,9 @@ done < "$list"
 tmp=$(mktemp "$DST/.zlyme-core.XXXXXX") || exit 1
 printf '%s\n' "$id" > "$tmp"
 sync_file "$tmp"
-mv -f "$tmp" "$STAMP_DST"
+if ! mv -f "$tmp" "$STAMP_DST"; then
+	rm -f "$tmp"
+	echo "zlyme-core-sync: stamp rename failed" >&2
+	exit 1
+fi
+rm -f "$REFRESH"

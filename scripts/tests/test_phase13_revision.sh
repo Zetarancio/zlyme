@@ -22,6 +22,7 @@ for key in \
 	'savestate_auto_save = "true"' \
 	'savestate_auto_load = "true"' \
 	'quit_on_close_content = "2"' \
+	'config_save_on_exit = "false"' \
 	'libretro_directory = "/storage/.config/retroarch/cores"' \
 	'menu_show_core_updater = "false"'
 do
@@ -32,6 +33,9 @@ if grep -q 'rgui-theme.cfg\|rgui_theme_preset' "$STOCK" "$RA"; then
 fi
 grep -q -- '--disable-update_cores' "$ROOT/package/emulators/retroarch/retroarch.mk" \
 	|| fail "core updater build is enabled"
+if grep -E -q 'config_save_on_exit[[:space:]]*=' "$RA"; then
+	fail "ra-run forces config_save_on_exit"
+fi
 if grep -q 'settle_user_cfg\|cfg_replace\|zlyme-ra-cores' "$RA"; then
 	fail "ra-run still migrates a configuration or builds a core view"
 fi
@@ -99,8 +103,8 @@ cmp -s "$work/ra-user" "$work/card/.config/retroarch/retroarch.cfg" \
 core=$(printf '%s\n' "$out" | awk -F= '/^CORE=/ { print substr($0, index($0, "=") + 1) }')
 [ "$core" = "$work/sys/mgba_libretro.so" ] || fail "packaged fallback was $core"
 grep -q "$work/saves/GB" "$work/ra-saves.cfg" || fail "session save path was not appended"
-if grep -q 'savestate_auto_save\|quit_on_close_content\|rgui_menu_color_theme' \
-	"$work/ra-saves.cfg" "$work/minui.cfg"; then
+if grep -q 'savestate_auto_save\|quit_on_close_content\|rgui_menu_color_theme\|config_save_on_exit' \
+	"$work/ra-saves.cfg" "$work/minui.cfg" /tmp/zlyme-ra-ac.cfg; then
 	fail "a session file forced a user preference"
 fi
 append=$(printf '%s\n' "$out" | awk -F= '/^APPEND=/ { print substr($0, index($0, "=") + 1) }')
@@ -192,6 +196,8 @@ ZLYME_STOCK_SEED=$SEED \
 src=$work/cores-src
 dst=$work/cores-dst
 stamp=$work/cores.stamp
+refresh=$work/no-image
+export ZLYME_CORE_REFRESH=$refresh
 mkdir -p "$src"
 printf '%s\n' one > "$src/a_libretro.so"
 printf '%s\n' two > "$src/b_libretro.so"
@@ -213,6 +219,18 @@ ZLYME_CORE_SRC=$src ZLYME_CORE_DST=$dst ZLYME_CORE_STAMP=$stamp \
 	|| fail "a reboot overwrote a hand-replaced core"
 [ "$(cat "$dst/custom_libretro.so")" = user-only ] \
 	|| fail "a reboot removed a user-only core"
+# A new image with the same core bytes still restores shipped names.
+: > "$work/image-new"
+printf '%s\n' replaced > "$dst/a_libretro.so"
+ZLYME_CORE_REFRESH=$work/image-new \
+	ZLYME_CORE_SRC=$src ZLYME_CORE_DST=$dst ZLYME_CORE_STAMP=$stamp \
+	sh "$SYNC"
+[ "$(cat "$dst/a_libretro.so")" = one ] \
+	|| fail "a new image left a replaced shipped core"
+[ "$(cat "$dst/custom_libretro.so")" = user-only ] \
+	|| fail "a new image removed a user-only core"
+[ ! -e "$work/image-new" ] || fail "a finished image refresh left its marker"
+export ZLYME_CORE_REFRESH=$refresh
 printf '%s\n' one-new > "$src/a_libretro.so"
 printf '%s\n' three > "$src/c_libretro.so"
 rm -f "$src/b_libretro.so"
@@ -234,6 +252,18 @@ fi
 [ "$(cat "$dst/a_libretro.so")" = good ] || fail "a failed copy destroyed the working core"
 [ "$(cat "$dst/.zlyme-core-set")" = "$old_stamp" ] \
 	|| fail "a failed copy recorded the new stamp"
+: > "$work/image-fail"
+printf '%s\n' good > "$dst/a_libretro.so"
+if ZLYME_CORE_TEST=1 ZLYME_CORE_FAIL=a_libretro.so \
+	ZLYME_CORE_REFRESH=$work/image-fail \
+	ZLYME_CORE_SRC=$src ZLYME_CORE_DST=$dst ZLYME_CORE_STAMP=$stamp \
+	sh "$SYNC"; then
+	fail "a failed image refresh was reported as success"
+fi
+[ "$(cat "$dst/a_libretro.so")" = good ] \
+	|| fail "a failed image refresh destroyed the working core"
+[ -f "$work/image-fail" ] || fail "a failed image refresh cleared its marker"
+export ZLYME_CORE_REFRESH=$refresh
 printf '%s\n' "$(cat "$stamp")" > "$dst/.zlyme-core-set"
 rm -f "$dst/c_libretro.so"
 printf '%s\n' stale > "$stamp"
@@ -259,5 +289,10 @@ if ZLYME_CORE_TEST=1 ZLYME_CORE_AVAIL=0 \
 	fail "a copy without free space was reported as success"
 fi
 [ ! -e "$dst/c_libretro.so" ] || fail "a copy without free space created the core"
+
+INIT=$ROOT/package/boot/zlyme-initramfs/init
+grep -q '/storage_root/.config/zlyme/os-image-new' "$INIT" \
+	|| fail "initramfs does not mark a committed image"
+grep -q 'os-image-new' "$SYNC" || fail "core sync ignores the image marker"
 
 echo "phase 13 revision ok"

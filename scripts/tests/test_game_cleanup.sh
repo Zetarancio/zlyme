@@ -61,8 +61,8 @@ mkdir -p "$pico/carts" "$pico/cdata" "$pico/bbs" "$pico/data" "$pico/config" \
 	"$os/.config/ppsspp/PSP/SYSTEM" \
 	"$os/.config/ppsspp/PSP/SAVEDATA" \
 	"$os/.config/ppsspp/PSP/PPSSPP_STATE" \
-	"$os/.config/nextui/shared/configs/gzdoom/soundfonts" \
-	"$os/.config/nextui/shared/configs/gzdoom/fm_banks" \
+	"$os/.config/gzdoom/soundfonts" \
+	"$os/.config/gzdoom/fm_banks" \
 	"$os/.config/flycast" \
 	"$os/.config/nextui/my355/.local/share/flycast" \
 	"$os/.config/dolphin-emu" \
@@ -83,10 +83,10 @@ printf 'unclear\n' >"$os/.config/nextui/my355/wine/keep"
 printf 'sav\n' >"$os/.config/ppsspp/PSP/SAVEDATA/GAME"
 printf 'state\n' >"$os/.config/ppsspp/PSP/PPSSPP_STATE/slot"
 printf 'ini\n' >"$os/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
-printf 'sf\n' >"$os/.config/nextui/shared/configs/gzdoom/soundfonts/user.sf2"
-printf 'fm\n' >"$os/.config/nextui/shared/configs/gzdoom/fm_banks/user.opn"
-printf 'ini\n' >"$os/.config/nextui/shared/configs/gzdoom/gzdoom.ini"
-printf 'exec\n' >"$os/.config/nextui/shared/configs/gzdoom/autoexec.cfg"
+printf 'sf\n' >"$os/.config/gzdoom/soundfonts/user.sf2"
+printf 'fm\n' >"$os/.config/gzdoom/fm_banks/user.opn"
+printf 'ini\n' >"$os/.config/gzdoom/gzdoom.ini"
+printf 'exec\n' >"$os/.config/gzdoom/autoexec.cfg"
 printf 'cfg\n' >"$os/.config/flycast/emu.cfg"
 printf 'vmu\n' >"$os/.config/nextui/my355/.local/share/flycast/vmu.bin"
 printf 'ini\n' >"$os/.config/dolphin-emu/Dolphin.ini"
@@ -114,10 +114,10 @@ test -f "$os/.config/nextui/my355/wine/keep"
 test -f "$os/.config/ppsspp/PSP/SAVEDATA/GAME"
 test -f "$os/.config/ppsspp/PSP/PPSSPP_STATE/slot"
 test ! -e "$os/.config/ppsspp/PSP/SYSTEM"
-test -f "$os/.config/nextui/shared/configs/gzdoom/soundfonts/user.sf2"
-test -f "$os/.config/nextui/shared/configs/gzdoom/fm_banks/user.opn"
-test -f "$os/.config/nextui/shared/configs/gzdoom/autoexec.cfg"
-test ! -e "$os/.config/nextui/shared/configs/gzdoom/gzdoom.ini"
+test -f "$os/.config/gzdoom/soundfonts/user.sf2"
+test -f "$os/.config/gzdoom/fm_banks/user.opn"
+test -f "$os/.config/gzdoom/autoexec.cfg"
+test ! -e "$os/.config/gzdoom/gzdoom.ini"
 test ! -e "$os/.config/flycast"
 test -f "$os/.config/nextui/my355/.local/share/flycast/vmu.bin"
 test ! -e "$os/.config/dolphin-emu"

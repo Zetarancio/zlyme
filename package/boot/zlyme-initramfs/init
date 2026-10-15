@@ -158,6 +158,14 @@ commit_update() {
 		return 1
 	fi
 	sync
+	# The core-set hash can match the previous image. This marker is the
+	# installed-image signal. core-sync removes it only after a full copy.
+	if mkdir -p /storage_root/.config/zlyme && \
+		: > /storage_root/.config/zlyme/os-image-new; then
+		sync
+	else
+		log "could not mark the new image for core refresh"
+	fi
 	if [ -x /storage_root/.update/pending/post-update.sh ]; then
 		log "running post-update.sh"
 		/storage_root/.update/pending/post-update.sh || log "post-update.sh failed (ignored)"
