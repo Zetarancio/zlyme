@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Installed candidate, Samba, and port artwork
+
+The local candidate from `b39435147fc7c3e29beddccd0da6949d0f1209d0` was installed. `/boot/zlyme` SHA-256 `0e4bcd35163629bf27bd67e5f6564e52655e43a49bf64d6c4fc73bbbe6ab93b4` matches that build's squashfs. SSH accepted a changed password and About showed it. Syncthing accepted a GUI password change and About did not show it. One lid close entered sleep and the following lid open woke the device. Repeated PortMaster to MTP cycles showed no error. The earlier intermittent nested mount was not reproduced.
+
+Samba was enabled on that image and `smbd` was not running. Samba 4.24.6 writes uid 0 into the smbpasswd export, and `pdbedit -i` then exits 0 without adding the user. `smbd` also exits when `/var/run/samba` is missing. A temporary `smbd` on port 44445, using the target binaries and a temporary account, accepted `zlyme` and rejected a guest client. Port 445 was left closed. The live account file was not modified.
+
+`Abombniball.sh` on the second card has no `.media` image. The directory is `abombniball`, `port.json` names the launcher, and the picture is `screenshot.jpg`. That image's ffmpeg has no swscale, so the conversion failed and the helper still returned success. `zlyme-portmaster-artpng` converts the JPEG with libjpeg and libpng. These corrections are not on the installed image. B6 and C1 stay unimplemented and are excluded from Phase 13.
+
 ## 2026-10-15 — NextUI settings link
 
 The pinned NextUI commit calls `zlyme_about_samba_password` and `zlyme_about_syncthing_read` from `settings.cpp`. Those functions are in `aboutcreds.cpp`. `nextui.mk` compiles `settings.elf` from an explicit source list and did not include that file, so the product link failed. The list now includes it. This was a host link failure, not a Flip test.

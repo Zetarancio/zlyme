@@ -367,7 +367,7 @@ fi
 readme=$(head -n 3 "$ROOT/README.md")
 expected=$(cat << 'EOF'
 <p align="center">
-  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="444">
+  <img src="package/system/nextui/res/branding/zlyme_slime_loop.gif" alt="Zlyme" width="333">
 </p>
 EOF
 )
@@ -415,9 +415,10 @@ b6=$(awk '
 	on && /^##### / { exit }
 	on { print }
 ' "$ROOT/docs/ROADMAP.md")
-printf '%s\n' "$b6" | grep -q 'Status: Blocked' || fail "B6 is not blocked"
+printf '%s\n' "$b6" | grep -q 'Excluded from Phase 13' || fail "B6 is not excluded"
+printf '%s\n' "$b6" | grep -q 'Not implemented' || fail "B6 is marked implemented"
 printf '%s\n' "$b6" | grep -q '320×240' || fail "B6 lost the RGUI limit"
-grep -q 'Phase 13B is not complete' "$ROOT/docs/ROADMAP.md" \
-	|| fail "Phase 13B was marked complete"
+grep -q 'does not block closure of Phase 13B' "$ROOT/docs/ROADMAP.md" \
+	|| fail "B6 still blocks Phase 13B"
 
 echo "phase 13b ok"
