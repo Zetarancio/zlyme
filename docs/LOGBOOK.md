@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-15 — Syncthing GUI parser
+
+`S75syncthing` asks `zlyme-syncthing-gui` whether the parsed `config.xml` has authentication. The helper uses Python's ElementTree. Syncthing 2.0.13 enables authentication for LDAP, or for a nonempty user and password. An XML comment is ignored. More than one `gui`, `user`, `password`, or `authMode` element refuses startup. A host build of the pinned source logged in on `127.0.0.1` with the generated bcrypt password, and the same binary served a commented GUI section on loopback without authentication. The init script refused that file. This was not run on a Flip.
+
 ## 2026-10-15 — PortMaster mount ownership
 
 `zlyme-portmaster-cleanup` releases a mount only when `zlyme-portmaster-exec` recorded it. `/run/zlyme-portmaster/storage-before` belongs to one launch and is deleted at cleanup. It is not an ownership list. A mount created between launches, or while the port is open, stays mounted. A direct `mount` outside the wrapper stays for the same reason. USB File Transfer still refuses the primary storage while that mount remains. Host tests use a fake mount table. This was not run on a Flip.

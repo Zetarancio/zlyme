@@ -7,8 +7,10 @@
 # starts. The GUI user is zlyme and the password is zlyme, stored as
 # Syncthing's bcrypt hash. The password is passed on stdin
 # (--gui-password=-), not as an argument. An existing config.xml is
-# not passed to generate. If that file has no GUI user and bcrypt
-# password, and it is not LDAP, the listener stays down.
+# not passed to generate. zlyme-syncthing-gui parses the file with
+# ElementTree. LDAP, or a nonempty user and password, is authentication.
+# A comment, a second copy of those elements, or a broken document is
+# not. The listener stays down in that case.
 
 if [ -r "${ZLYME_CONF:-/etc/zlyme.conf}" ]; then
 	# shellcheck disable=SC1090
@@ -17,39 +19,14 @@ fi
 
 HOME_DIR="${ZLYME_CFG:-/storage/.config}/syncthing"
 SYNCTHING=${ZLYME_SYNCTHING:-/usr/bin/syncthing}
+GUI=${ZLYME_SYNCTHING_GUI:-/usr/sbin/zlyme-syncthing-gui}
 CFG="$HOME_DIR/config.xml"
 
-# 0 when the GUI will require authentication. LDAP counts. A static
-# password has to be a bcrypt hash, the form SetPassword writes.
+# 0 when the parsed GUI will require authentication.
 gui_ready() {
 	[ -f "$1" ] || return 1
-	awk '
-		BEGIN { in_gui = 0; user = ""; pass = ""; mode = "" }
-		/<gui[ >]/ { in_gui = 1 }
-		in_gui && /<\/gui>/ { in_gui = 0 }
-		in_gui && match($0, /<user>[^<]*<\/user>/) {
-			s = substr($0, RSTART, RLENGTH)
-			gsub(/<\/?user>/, "", s)
-			user = s
-		}
-		in_gui && match($0, /<password>[^<]*<\/password>/) {
-			s = substr($0, RSTART, RLENGTH)
-			gsub(/<\/?password>/, "", s)
-			pass = s
-		}
-		in_gui && match($0, /<authMode>[^<]*<\/authMode>/) {
-			s = substr($0, RSTART, RLENGTH)
-			gsub(/<\/?authMode>/, "", s)
-			mode = s
-		}
-		END {
-			if (mode == "ldap") exit 0
-			if (user == "") exit 1
-			if (pass !~ /^\$2[aby]\$[0-9]+\$/) exit 1
-			if (length(pass) < 59) exit 1
-			exit 0
-		}
-	' "$1"
+	[ -x "$GUI" ] || return 1
+	"$GUI" ready "$1"
 }
 
 provision_new() {
@@ -74,7 +51,7 @@ start() {
 		fi
 	fi
 	if ! gui_ready "$CFG"; then
-		echo "Syncthing: GUI authentication is missing or not a supported hash"
+		echo "Syncthing: GUI authentication is missing"
 		echo "Syncthing: not starting"
 		echo "Syncthing: set a login with: syncthing --home=$HOME_DIR generate --gui-user=<user> --gui-password=- --no-port-probing"
 		return 1

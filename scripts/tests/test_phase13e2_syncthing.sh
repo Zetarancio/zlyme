@@ -6,6 +6,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 INIT=$ROOT/board/my355/fsoverlay/etc/init.d/S75syncthing
+GUI=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-syncthing-gui
 SRC=$ROOT/output/build/syncthing-2.0.13
 REAL=${ZLYME_SYNCTHING_REAL:-/tmp/zlyme-syncthing-host/syncthing}
 CTL=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl
@@ -19,6 +20,10 @@ fail() {
 [ -d "$SRC/vendor/golang.org/x/crypto/bcrypt" ] || fail "vendored bcrypt is missing"
 grep -q 'samba|syncthing) echo off' "$CTL" || fail "syncthing is not off by default"
 grep -q -- '--gui-password=-' "$INIT" || fail "password is not read from stdin"
+[ -x "$GUI" ] || fail "GUI parser is missing"
+if grep -q 'awk' "$INIT"; then
+	fail "init still scans config.xml with awk"
+fi
 if grep -q -- '--gui-password=zlyme' "$INIT"; then
 	fail "initial password is passed in argv"
 fi
@@ -27,19 +32,42 @@ if grep -q 'cert.pem\|key.pem\|apikey' "$ROOT/package/system/syncthing/syncthing
 fi
 
 work=$(mktemp -d)
-checker=$SRC/cmd/zlyme-bcrypt-check
 serve_pid=
+src_dirs=$(find "$SRC" -type d | wc -l)
 cleanup() {
 	if [ -n "$serve_pid" ]; then
 		kill "$serve_pid" 2>/dev/null || true
 		wait "$serve_pid" 2>/dev/null || true
 	fi
-	rm -rf "$checker" "$work"
+	rm -rf "$work"
 }
 trap cleanup EXIT
+if [ -e "$SRC/cmd/zlyme-bcrypt-check" ]; then
+	fail "pinned source already contains cmd/zlyme-bcrypt-check"
+fi
 
-mkdir -p "$checker"
-cat > "$checker/main.go" << 'EOF'
+# Isolated module. The pinned tree is not a build directory and is not deleted.
+mod=$work/mod
+crypto=$mod/xcrypto
+mkdir -p "$crypto/bcrypt" "$crypto/blowfish"
+cp "$SRC/vendor/golang.org/x/crypto/bcrypt/"*.go "$crypto/bcrypt/"
+cp "$SRC/vendor/golang.org/x/crypto/blowfish/"*.go "$crypto/blowfish/"
+rm -f "$crypto/bcrypt/"*_test.go "$crypto/blowfish/"*_test.go
+cat > "$crypto/go.mod" << 'EOF'
+module golang.org/x/crypto
+
+go 1.24.0
+EOF
+cat > "$mod/go.mod" << 'EOF'
+module zlyme.local/bcryptcheck
+
+go 1.24.0
+
+require golang.org/x/crypto v0.44.0
+
+replace golang.org/x/crypto => ./xcrypto
+EOF
+cat > "$mod/main.go" << 'EOF'
 package main
 
 import (
@@ -66,8 +94,8 @@ func main() {
 }
 EOF
 (
-	cd "$SRC"
-	go build -mod=vendor -o "$work/bcrypt-check" ./cmd/zlyme-bcrypt-check
+	cd "$mod"
+	GOSUMDB=off GOPROXY=off go build -o "$work/bcrypt-check" .
 )
 
 mkdir -p "$work/bin" "$work/cfg"
@@ -114,6 +142,7 @@ daemon_log=$work/daemon.log
 argv_log=$work/argv.log
 export ZLYME_SYNCTHING_DAEMON_LOG="$daemon_log"
 export ZLYME_SYNCTHING_ARGV_LOG="$argv_log"
+export ZLYME_SYNCTHING_GUI="$GUI"
 : > "$daemon_log"
 : > "$argv_log"
 
@@ -283,6 +312,199 @@ fi
 cmp -s "$work/before.xml" "$cfg" || fail "corrupt configuration was replaced"
 [ ! -s "$daemon_log" ] || fail "corrupt configuration launched the listener"
 
+# A comment can contain a gui element that looks authenticated. The
+# parsed document has no user and no password. Startup refuses it.
+# About reports the same parse.
+comment_body() {
+	cat << 'EOF'
+<configuration version="50">
+  <!--
+  <gui enabled="true" tls="false">
+    <user>zlyme</user>
+    <password>$2a$10$DEz.z2B2OovL1pa.dQl4bOTttxkPtRpq3timKQXpfpLDdcwxLCFyW</password>
+    <authMode>ldap</authMode>
+  </gui>
+  -->
+  <gui enabled="true" tls="false">
+    <address>127.0.0.1:8384</address>
+  </gui>
+</configuration>
+EOF
+}
+
+expect_about() {
+	_got=$("$GUI" about "$1")
+	_want=$2
+	[ "$_got" = "$_want" ] || fail "about $(printf '%s' "$1" | wc -c) bytes: [$_got]"
+}
+
+comment_body > "$cfg"
+cp -a "$cfg" "$work/before.xml"
+: > "$daemon_log"
+: > "$argv_log"
+if "$INIT" start; then
+	fail "commented credentials started"
+fi
+cmp -s "$work/before.xml" "$cfg" || fail "commented credentials rewrote the config"
+[ ! -s "$daemon_log" ] || fail "commented credentials launched the listener"
+if grep -q generate "$argv_log"; then
+	fail "commented credentials ran generate"
+fi
+expect_about "$cfg" "$(printf '%s\n' '(unavailable)' '(unavailable)')"
+if "$GUI" ready "$cfg"; then
+	fail "commented credentials passed the parser"
+fi
+
+# Two gui elements. One is authenticated. The document is ambiguous.
+cat > "$cfg" << 'EOF'
+<configuration>
+  <gui>
+    <user>zlyme</user>
+    <password>$2a$10$DEz.z2B2OovL1pa.dQl4bOTttxkPtRpq3timKQXpfpLDdcwxLCFyW</password>
+  </gui>
+  <gui>
+    <address>127.0.0.1:8384</address>
+  </gui>
+</configuration>
+EOF
+cp -a "$cfg" "$work/before.xml"
+: > "$daemon_log"
+: > "$argv_log"
+if "$INIT" start; then
+	fail "duplicated gui started"
+fi
+cmp -s "$work/before.xml" "$cfg" || fail "duplicated gui rewrote the config"
+[ ! -s "$daemon_log" ] || fail "duplicated gui launched the listener"
+expect_about "$cfg" "$(printf '%s\n' '(unavailable)' '(unavailable)')"
+
+cat > "$cfg" << 'EOF'
+<configuration>
+  <gui>
+    <user>zlyme</user>
+    <user>other</user>
+    <password>$2a$10$DEz.z2B2OovL1pa.dQl4bOTttxkPtRpq3timKQXpfpLDdcwxLCFyW</password>
+  </gui>
+</configuration>
+EOF
+if "$GUI" ready "$cfg"; then
+	fail "duplicated user passed the parser"
+fi
+
+printf '%s\n' '<configuration><gui><user>zlyme</user>' > "$cfg"
+cp -a "$cfg" "$work/before.xml"
+: > "$daemon_log"
+: > "$argv_log"
+if "$INIT" start; then
+	fail "malformed configuration started"
+fi
+cmp -s "$work/before.xml" "$cfg" || fail "malformed configuration was replaced"
+[ ! -s "$daemon_log" ] || fail "malformed configuration launched the listener"
+
+# LDAP is authentication with no local password. A comment is not.
+cat > "$cfg" << 'EOF'
+<configuration>
+  <gui enabled="true">
+    <authMode>ldap</authMode>
+  </gui>
+</configuration>
+EOF
+cp -a "$cfg" "$work/before.xml"
+: > "$daemon_log"
+: > "$argv_log"
+"$INIT" start || fail "LDAP configuration did not start"
+cmp -s "$work/before.xml" "$cfg" || fail "LDAP configuration was rewritten"
+grep -q '0.0.0.0:8384' "$daemon_log" || fail "LDAP configuration did not request the listener"
+if grep -q generate "$argv_log"; then
+	fail "LDAP configuration ran generate"
+fi
+
+cat > "$cfg" << 'EOF'
+<configuration>
+  <!-- <authMode>ldap</authMode> -->
+  <gui enabled="true">
+    <address>127.0.0.1:8384</address>
+  </gui>
+</configuration>
+EOF
+if "$GUI" ready "$cfg"; then
+	fail "LDAP inside a comment passed the parser"
+fi
+
+# A nonempty plaintext password enables auth in Syncthing 2.0.13.
+# About does not print it.
+cat > "$cfg" << 'EOF'
+<configuration>
+  <gui>
+    <user>zlyme</user>
+    <password>zlyme</password>
+  </gui>
+</configuration>
+EOF
+"$GUI" ready "$cfg" || fail "plaintext password was treated as disabled auth"
+expect_about "$cfg" "$(printf '%s\n' 'zlyme' '(unavailable)')"
+
+# The pinned binary, on loopback, treats the commented document as
+# unauthenticated. The init script above refused that document.
+open_home=$(mktemp -d)
+printf '%s\n' zlyme | "$REAL" --home="$open_home" generate \
+	--gui-user=zlyme --gui-password=- --no-port-probing >/dev/null
+python3 - "$open_home/config.xml" << 'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+start = text.find("<gui")
+end = text.find("</gui>")
+if start < 0 or end < 0:
+    raise SystemExit("generated config has no gui element")
+end += len("</gui>")
+repl = """<!--
+<gui enabled="true" tls="false">
+    <user>zlyme</user>
+    <password>$2a$10$DEz.z2B2OovL1pa.dQl4bOTttxkPtRpq3timKQXpfpLDdcwxLCFyW</password>
+</gui>
+-->
+<gui enabled="true" tls="false">
+    <address>127.0.0.1:8384</address>
+</gui>"""
+path.write_text(text[:start] + repl + text[end:])
+PY
+if "$GUI" ready "$open_home/config.xml"; then
+	fail "spliced commented config passed the parser"
+fi
+open_port=18485
+"$REAL" --home="$open_home" serve --no-upgrade --no-browser \
+	--gui-address="127.0.0.1:$open_port" >"$work/open.log" 2>&1 &
+serve_pid=$!
+open_ready=0
+i=0
+while [ "$i" -lt 40 ]; do
+	if grep -q 'GUI and API listening' "$work/open.log"; then
+		open_ready=1
+		break
+	fi
+	i=$((i + 1))
+	sleep 0.25
+done
+[ "$open_ready" = 1 ] || fail "open listener did not report ready: $(cat "$work/open.log")"
+# Auth disabled still requires the CSRF cookie on /rest. No password is sent.
+open_jar=$work/open-cookies
+open_page=$(curl -s -c "$open_jar" -o /dev/null -w '%{http_code}' \
+	"http://127.0.0.1:$open_port/")
+[ "$open_page" = 200 ] || fail "unauthenticated GUI returned $open_page"
+open_short=$(awk '$6 ~ /^CSRF-Token-/ { sub(/^CSRF-Token-/, "", $6); print $6; exit }' "$open_jar")
+open_token=$(awk -v id="$open_short" '$6 == "CSRF-Token-" id { print $7; exit }' "$open_jar")
+if [ -z "$open_short" ] || [ -z "$open_token" ]; then
+	fail "unauthenticated GUI did not set a CSRF cookie"
+fi
+open_code=$(curl -s -b "$open_jar" -o /dev/null -w '%{http_code}' \
+	-H "X-CSRF-Token-$open_short: $open_token" \
+	"http://127.0.0.1:$open_port/rest/system/status")
+[ "$open_code" = 200 ] || fail "unauthenticated status returned $open_code"
+kill "$serve_pid" 2>/dev/null || true
+wait "$serve_pid" 2>/dev/null || true
+serve_pid=
+rm -rf "$open_home"
+
 # Generate failure on a genuinely new home does not start the listener.
 rm -rf "$work/cfg/syncthing"
 cat > "$work/bin/syncthing" << 'EOF'
@@ -343,5 +565,9 @@ kill "$serve_pid" 2>/dev/null || true
 wait "$serve_pid" 2>/dev/null || true
 serve_pid=
 rm -rf "$home"
+
+now=$(find "$SRC" -type d | wc -l)
+[ "$now" = "$src_dirs" ] || fail "pinned source tree changed: [$src_dirs] then [$now]"
+[ ! -e "$SRC/cmd/zlyme-bcrypt-check" ] || fail "test wrote into the pinned source"
 
 echo "syncthing auth ok"
