@@ -127,6 +127,34 @@ static void test_busy_transition(void)
 	expect("one transition", p.mem_requests, 1);
 }
 
+static void test_observed_open(void)
+{
+	struct zlyme_lid_policy p = {0};
+	int before;
+
+	service(&p, ZLYME_LID_EV_MENU, 0, 1);
+	service(&p, ZLYME_LID_EV_PAK, 0, 1);
+	service(&p, ZLYME_LID_EV_CLOSE, 0, 1);
+	expect("close once", p.mem_requests, 1);
+	expect("asleep after close", p.asleep, 1);
+
+	/* Switch reads open. No EV_OPEN was queued. */
+	zlyme_lid_observe(&p, 0);
+	expect("observed open clears asleep", p.asleep, 0);
+	expect("observed open is not mem", p.mem_requests, 1);
+	before = p.mem_requests;
+	service(&p, ZLYME_LID_EV_CLOSE, 0, 1);
+	expect("close after observed open", p.mem_requests, before + 1);
+	service(&p, ZLYME_LID_EV_CLOSE, 0, 1);
+	expect("one new request", p.mem_requests, before + 1);
+
+	zlyme_lid_observe(&p, 1);
+	service(&p, ZLYME_LID_EV_CLOSE, 0, 1);
+	expect("observed closed does not stack", p.mem_requests, before + 1);
+	zlyme_lid_observe(&p, -1);
+	expect("unreadable switch keeps asleep", p.asleep, 1);
+}
+
 static void test_boot_lid(void)
 {
 	struct zlyme_lid_policy p = {0};
@@ -144,6 +172,7 @@ int main(void)
 	test_power();
 	test_guard_and_failure();
 	test_busy_transition();
+	test_observed_open();
 	test_boot_lid();
 
 	expect("radio pre", radios_pre, radios_resume);

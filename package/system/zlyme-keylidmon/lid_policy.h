@@ -11,7 +11,9 @@
  *
  * A close while already suspended for this closed period is ignored.
  * The resume guard drops both a lid edge and a power edge. Opening
- * the lid clears that period. Power is still an explicit mem request
+ * the lid clears that period. A switch sample that reads open is the
+ * same transition, so a missed open event does not stick the period.
+ * Power is still an explicit mem request
  * while the pak owns the screen, including when the lid is closed.
  * Failure still counts as the one request for this closed period so
  * a queued close cannot spin.
@@ -85,6 +87,21 @@ static inline int zlyme_lid_apply(struct zlyme_lid_policy *p, int ev, int guard)
 			p->lid_requests++;
 	}
 	return want;
+}
+
+/*
+ * closed is 1, 0, or -1 when the switch could not be read.
+ * Open uses the same path as an open event. Closed only records the
+ * switch and does not start a new asleep period.
+ */
+static inline void zlyme_lid_observe(struct zlyme_lid_policy *p, int closed)
+{
+	if (closed < 0)
+		return;
+	if (closed == 0)
+		zlyme_lid_apply(p, ZLYME_LID_EV_OPEN, 0);
+	else
+		p->lid_closed = 1;
 }
 
 /*

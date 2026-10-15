@@ -20,6 +20,10 @@ if grep -n 'kill(' "$keylid"; then
 	echo "keylidmon terminates a process" >&2
 	exit 1
 fi
+if ! grep -q 'zlyme_lid_observe(&lid_policy, hall_switch_closed' "$keylid"; then
+	echo "owner sync does not reconcile the hall switch" >&2
+	exit 1
+fi
 
 awk '
 	/do_mem_sleep/ { fn = 1 }

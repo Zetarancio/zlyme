@@ -193,10 +193,7 @@ static void maybe_lid(int ev)
 
 static void sync_owner(int hall_fd, int menu)
 {
-	int closed = hall_switch_closed(hall_fd);
-
-	if (closed >= 0)
-		lid_policy.lid_closed = closed;
+	zlyme_lid_observe(&lid_policy, hall_switch_closed(hall_fd));
 	maybe_lid(menu ? ZLYME_LID_EV_MENU : ZLYME_LID_EV_PAK);
 }
 
