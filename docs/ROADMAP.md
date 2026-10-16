@@ -293,60 +293,90 @@ Do not reopen an accepted hardware campaign without a concrete regression. B6 st
 
 Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortMaster JPEG artwork passed there. The earlier candidate `b39435147fc7` had been installed and checked: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles passed, and Samba did not listen. B6 and C1 are excluded. A mount the wrapper never recorded can still block USB File Transfer. Within-session cable removal is not a new gate. Published `zlyme44.3` is tag `zlyme-38828679802` from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`. The later README commit `8b4218aa` is not that firmware.
 
-## Phase 14. PortMaster compatibility
+## Phase 14. PortMaster compatibility and zlyme44.4
 
-Phase 14 starts only after Phase 13 is accepted and the integration checklist in `docs/MAINTENANCE.md` has put that result on `main`. It then starts on a new branch. Its aim is the broadest practical match with official PortMaster on the Miyoo Flip. It does not claim that every port runs. Research notes belong in `docs/research/`, not here.
+Phase 14 is open on `zlyme44.4-phase-14`. `ZLYME_VERSION` stays `zlyme44.3` until the release is prepared. The aim is the broadest practical PortMaster match on the Miyoo Flip, plus the OS-quality items below. It does not claim that every port runs. A `zlyme44.4` release waits for acceptance. Research notes belong in `docs/research/`, not here. Hardware checks are one pass at the end, except where a destructive risk appears earlier. The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md).
 
 ### 14A. Capability baseline
 
-Audit upstream PortMaster requirements, what this CFW reports, architecture tags, kernel features, graphics, input, runtimes, storage, display limits, and the Phase 13 logs of ports that failed. Write the exact support and the missing pieces. Do not advertise a capability the image does not have.
+Compare official PortMaster, the pinned `2026.06.23-0015` seed, upstream `2026.10.03-1041` or a newer stable tag if one exists when the update is reviewed, and the relevant ROCKNIX, KNULLI, and Batocera packaging. Record implemented, missing, partial, and hardware-limited. Do not copy another distribution's claim into Zlyme.
 
-Status: Planned.
+Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `zlyme` is mapped to `PlatformROCKNIX`.
 
 ### 14B. ARMHF userspace
 
-Find what AArch64 plus 32-bit ARM actually requires: the kernel compat config, the EABI and hard-float ABI, the dynamic linker, glibc, a multilib toolchain or a separate root, packaging, licenses, size, and PortMaster's runtimes.
+Ship a real 32-bit ARM hard-float userspace, not only a loader name. Prefer a separate Buildroot ARMHF target in the KNULLI style (`knulli-rk3566_armhf_libs`). Use an ARM EABI hard-float toolchain and matching glibc. Do not import another distribution's binaries. Do not set `DEVICE_HAS_ARMHF=Y` until a dynamically linked ARMHF program runs and its libraries resolve.
 
-Do not set `DEVICE_HAS_ARMHF=Y` until those 32-bit binaries run.
-
-Status: Planned.
+Status: Planned. This tree has no ARMHF root or `ld-linux-armhf`.
 
 ### 14C. Box86 and Box64
 
-Keep the Box64 path that exists. Compare native Box86 with the ARMHF userspace and with the runtimes PortMaster expects. Do not duplicate the Wine integration or break current Box64 users.
+Keep the working Box64 and Wine path. Compare native Box86 with Box64's BOX32 against what PortMaster runs. Pick one combination. Do not enable both to raise a count.
 
-Status: Planned.
+Status: Planned. Box64 is selected for Wine. No Box86 package is in the tree.
 
-### 14D. GL4ES and graphics
+### 14D. Graphics and SDL3
 
-Evaluate OpenGL ES, GL4ES, SDL 1.2, SDL 2, SDL 3, KMS/DRM, WestonPack, Xwayland, the libmali and Panfrost choice, and the Vulkan limits. Keep graphics application-scoped. Do not add a permanent compositor.
+Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing SDL2, KMS/DRM, and application-scoped WestonPack. Do not add a permanent compositor or system Xwayland. Report Vulkan as experimental PanVK, not as a Mali replacement.
 
-Status: Planned.
+Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
+
+Status: Planned. The stub is still installed.
 
 ### 14E. GPTK and input
 
-Audit gptokeyb, gptokeyb2, `.gptk` files, PortMaster `control.txt`, the InputPlumber `xb360` map, gamepad enumeration, keyboard and mouse emulation, and EXIT hotkeys. Shards of God is one regression case.
+Audit gptokeyb, gptokeyb2, `.gptk`, `control.txt`, and the SDL controller map. InputPlumber keeps the virtual Xbox pad. Do not add a second grabber. MENU+START, MENU, suspend, and return to NextUI stay. Host-test the mapping before a device pass.
 
 Status: Planned.
 
 ### 14F. Shared runtimes
 
-Audit runtime download and install, squashfs mount and teardown, AArch64 and ARMHF discovery, SDL, OpenAL, PulseAudio where a port requires it, Mono, `taskset`, and `/usr/lib/compat`. Do not preinstall a large runtime without a demonstrated need.
+Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. ALSA and BlueALSA stay the audio path. Do not add a resident PulseAudio. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
 
-Status: Planned.
+Status: Planned. Theora compat is implemented. The rest is not.
 
 ### 14G. Named ports
 
-Use the maintainer's logs. The cases are Shards of God, LISA The Painful, Rakuen, Steel Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers, and Mina the Hollower. Separate an OS bug, a missing dependency, a port packaging problem, missing commercial data, and a real GPU or hardware limit.
+The recorded cases are Shards of God, LISA The Painful, Rakuen, Steel Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers, and Mina the Hollower. They are background for missing infrastructure. Individual game debugging is not part of Phase 14, and running each one is not a closure requirement.
 
 `systemctl` was reported missing.
 
-REJECTED — a fake `systemctl`, until the commands those ports actually run are known.
+REJECTED — a fake `systemctl`.
 
-Status: Planned.
+Status: Deferred as per-game work. The rejection stands.
 
 ### 14H. Acceptance
 
-Build a small matrix of CPU and ABI, graphics, and input categories. Say what the hardware cannot do. Do not claim every PortMaster game works. Do not ship a third-party runtime until its license and provenance are checked.
+One late hardware pass: boot and controls, Wi-Fi off and on with one enabled network service, HDMI 720p and return to the panel, one native port and one compatibility runtime, then a clean return to NextUI with no leaked mount. Host and build checks cover the rest. Say what was not run.
+
+Status: Planned. No `zlyme44.4` release in this phase until that acceptance.
+
+### 14I. PortMaster platform
+
+Add a small `PlatformZlyme` instead of mapping `zlyme` to `PlatformROCKNIX`. Keep `CFW_NAME=Zlyme`, the selected library, artwork import, and user-installed ports. Do not replace a PortMaster tree the user already updated. Review upstream `2026.10.03-1041` or newer before changing the pin.
+
+Status: Planned. The current prepare step still requires the ROCKNIX mapping.
+
+### 14J. Orphan game preferences
+
+Settings → Game removes per-ROM governor and emulator rows in `/storage/.config/nextui/shared/zlyme-prefs.txt` whose ROM is gone. Folder and system rows stay. A missing card does not count as a missing ROM. Host tests are the gate.
+
+Status: In progress on this branch.
+
+### 14K. Network services follow Wi-Fi
+
+SSH, Samba, and Syncthing start only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three and keeps their settings. The Settings row must not look active while Wi-Fi is off. No extra daemon, and the first frame does not wait.
 
 Status: Planned.
+
+### 14L. ArtBook defaults
+
+Ship a verified subset of ArtBook NextUI system and root artwork as the default when the user has no image. Do not overwrite `.media` or backgrounds on update. Do not ship Theme Manager unchanged. The license check is in the research note. Splash branding stays as it is.
+
+Status: Planned. Redistribution is not yet verified.
+
+### 14M. HDMI 720p
+
+Prefer 1280×720 at 60 Hz on HDMI when the display lists that mode, and an EDID mode otherwise. The panel stays 640×480 at the selected refresh. Modesetting belongs to the DRM client. A write to a read-only sysfs `modes` file is not that. Drop the manual cycle if the automatic choice replaces it. No DTS change for this item.
+
+Status: Planned. The current `S16display` path still writes the connector `mode` file.
