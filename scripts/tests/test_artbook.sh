@@ -34,6 +34,16 @@ if grep -q 'artbook/system/' "$ROOT/package/system/nextui/nextui.mk"; then
 fi
 grep -q 'branches:' "$ROOT/.github/workflows/docker-image.yml" || fail "docker publish is not branch limited"
 grep -q "github.ref == 'refs/heads/main'" "$ROOT/.github/workflows/docker-image.yml" || fail "manual docker dispatch can publish latest"
+test -f "$PKG/ARTWORK_GENERATION_PROMPT.md" || fail "artwork prompt missing"
+grep -q '^PAK_NAME:' "$PKG/ARTWORK_GENERATION_PROMPT.md" || fail "prompt has no PAK_NAME field"
+grep -q '^PAK_DESCRIPTION:' "$PKG/ARTWORK_GENERATION_PROMPT.md" || fail "prompt has no PAK_DESCRIPTION field"
+grep -q 'viewBox="0 0 453 1080"' "$PKG/resources/system-art-mask.svg" || fail "mask viewBox changed"
+grep -q 'CC BY-NC-SA' "$PKG/resources/README.md" || fail "mask license missing"
+if grep -n '/storage' "$PKG/compose.py" "$PKG/zlyme-artbook.mk"; then
+	fail "artwork build mentions /storage"
+fi
+grep -q "rm -rf \$(TARGET_DIR)/usr/share/nextui/artbook/system" "$PKG/zlyme-artbook.mk" || fail "install keeps stale system art"
+grep -q "rm -rf \$(TARGET_DIR)/usr/share/nextui/artbook/tools" "$PKG/zlyme-artbook.mk" || fail "install keeps stale tool art"
 
 python3 - "$ROOT/package/system/nextui/rom-dirs.txt" "$PKG/systems.txt" "$PKG/tools" "$PAKS" << 'PY'
 import re, sys
@@ -102,7 +112,10 @@ upstream=$(find "$work" -maxdepth 1 -type d -name 'art-book-next-es-de-*' | head
 [ -n "$upstream" ] || fail "archive layout changed"
 
 sheets=${ZLYME_ARTBOOK_SHEETS:-$work/sheets}
-mkdir -p "$sheets"
+mkdir -p "$sheets" "$work/once/system" "$work/once/tools"
+tmp_before=$(find /tmp -maxdepth 1 -type d -name 'zlyme-artbook-*' | sort)
+echo stale > "$work/once/system/(GONE).png"
+echo stale > "$work/once/tools/Obsolete Tool.png"
 /usr/bin/python3 "$PKG/compose.py" \
 	--upstream "$upstream" \
 	--out "$work/once" \
@@ -125,6 +138,52 @@ if ! cmp -s "$work/once/tools/Files.png" "$work/twice/tools/Files.png"; then
 fi
 if ! cmp -s "$work/once/system/(GB).png" "$work/twice/system/(GB).png"; then
 	fail "system output is not deterministic"
+fi
+test ! -e "$work/once/system/(GONE).png" || fail "removed system art survived"
+test ! -e "$work/once/tools/Obsolete Tool.png" || fail "removed tool art survived"
+tmp_after=$(find /tmp -maxdepth 1 -type d -name 'zlyme-artbook-*' | sort)
+if [ "$tmp_before" != "$tmp_after" ]; then
+	fail "temporary directory leaked"
+fi
+
+fix=$work/fixture
+mkdir -p "$fix/paks" "$fix/tools" "$fix/out/tools" "$fix/out/system"
+cp -a "$PKG/tools/Files.pak" "$fix/tools/"
+cp -a "$PAKS/Files.pak" "$fix/paks/"
+printf 'GB gb GAME BOY\n' > "$fix/map.txt"
+echo old > "$fix/out/tools/Music Player.png"
+echo old > "$fix/out/system/(GONE).png"
+/usr/bin/python3 "$PKG/compose.py" \
+	--upstream "$upstream" \
+	--out "$fix/out" \
+	--map "$fix/map.txt" \
+	--tools "$fix/tools" \
+	--paks "$fix/paks" \
+	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--rsvg /usr/bin/rsvg-convert
+test ! -e "$fix/out/tools/Music Player.png" || fail "renamed tool survived a rebuild"
+test ! -e "$fix/out/system/(GONE).png" || fail "renamed system survived a rebuild"
+test -f "$fix/out/tools/Files.png" || fail "remaining tool was not rendered"
+test -f "$fix/out/system/(GB).png" || fail "remaining system was not rendered"
+tmp_after=$(find /tmp -maxdepth 1 -type d -name 'zlyme-artbook-*' | sort)
+if [ "$tmp_before" != "$tmp_after" ]; then
+	fail "temporary directory leaked after a fixture rebuild"
+fi
+printf 'NOPE nope NOPE\n' > "$work/bad-map.txt"
+if /usr/bin/python3 "$PKG/compose.py" \
+	--upstream "$upstream" \
+	--out "$work/bad-out" \
+	--map "$work/bad-map.txt" \
+	--tools "$PKG/tools" \
+	--paks "$PAKS" \
+	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--rsvg /usr/bin/rsvg-convert
+then
+	fail "a missing system picture was accepted"
+fi
+tmp_after=$(find /tmp -maxdepth 1 -type d -name 'zlyme-artbook-*' | sort)
+if [ "$tmp_before" != "$tmp_after" ]; then
+	fail "temporary directory leaked after a failed render"
 fi
 
 /usr/bin/python3 - "$PKG/compose.py" "$work" "$PKG" "$PAKS" << 'PY'
@@ -158,6 +217,35 @@ except SystemExit as exc:
         raise SystemExit("extra background was not named: " + str(exc))
 else:
     raise SystemExit("unknown tool background was accepted")
+from PIL import Image
+mask = compose.load_alpha_mask(pkg / "resources" / "system-art-alpha.png")
+compose.validate_mask(mask)
+rect = Image.new("RGBA", mask.size, (0, 0, 0, 255))
+if compose.respects_mask(rect, mask):
+    raise SystemExit("a black rectangle matched the silhouette")
+clipped = compose.apply_canonical_mask(rect, mask)
+if not compose.respects_mask(clipped, mask):
+    raise SystemExit("normalized art still leaves the silhouette")
+if clipped.getpixel((0, 0))[3] != 0:
+    raise SystemExit("exterior pixel stayed opaque")
+if clipped.getpixel((200, 0)) != (0, 0, 0, 255):
+    raise SystemExit("interior pixel was changed")
+painted = Image.new("RGBA", mask.size, (10, 20, 30, 255))
+painted.putpixel((200, 40), (7, 8, 9, 200))
+again = compose.apply_canonical_mask(painted, mask)
+if again.getpixel((200, 40)) != (7, 8, 9, 200):
+    raise SystemExit("interior artwork was rewritten")
+if again.getpixel((0, 0))[3] != 0:
+    raise SystemExit("upper exterior stayed opaque")
+stage = work / "stage-src"
+dest = work / "stage-dest"
+stage.mkdir()
+dest.mkdir()
+(stage / "Files.png").write_text("new")
+(dest / "Music Player.png").write_text("old")
+compose.publish_tree(stage, dest)
+if (dest / "Music Player.png").exists() or (dest / "Files.png").read_text() != "new":
+    raise SystemExit("publish left a stale file")
 print("drop-in checks ok")
 PY
 
@@ -178,6 +266,14 @@ for line in roms.read_text().splitlines():
     if not line or line.startswith("#"):
         continue
     tags.append(re.search(r"\(([^)]+)\)$", line).group(1))
+expected = ["(%s).png" % tag for tag in tags]
+got = sorted(p.name for p in (art / "system").iterdir())
+if got != sorted(expected):
+    sys.exit("system inventory %s" % (set(got) ^ set(expected)))
+tool_names = sorted(p.name[:-4] + ".png" for p in paks.iterdir() if p.name.endswith(".pak"))
+got_tools = sorted(p.name for p in (art / "tools").iterdir())
+if got_tools != tool_names:
+    sys.exit("tool inventory %s" % (set(got_tools) ^ set(tool_names)))
 for tag in tags:
     image = compose.load_rgba(art / "system" / ("(%s).png" % tag))
     if image.size != (640, 480) or image.mode != "RGBA":

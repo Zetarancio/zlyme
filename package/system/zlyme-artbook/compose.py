@@ -2,20 +2,22 @@
 """Compose transparent Zlyme Art Book overlays on the build host.
 
 System strips come from the pinned Art Book Next archive. Tool pictures
-come from tools/<Name>.pak/background.png. The logo is the pak name,
-with a black contour and a 16px black shadow at 50% opacity. Artwork
-stays in the right half so scrolling names stay clear.
+come from tools/<Name>.pak/background.png. A 454x1080 tool picture is
+clipped to the canonical alpha. The logo is the pak name, with a black
+contour and a 16px black shadow at 50% opacity. Artwork stays in the
+right half so scrolling names stay clear.
 """
 
 from __future__ import annotations
 
 import argparse
 import html
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageFilter
 
 WIDTH = 640
 HEIGHT = 480
@@ -24,6 +26,7 @@ LOGO_MAX_W = 291
 SHADOW = 16
 OUTLINE = 2
 REGION_W = WIDTH - SAFE_X
+MASK_SIZE = (454, 1080)
 
 
 def fail(msg: str) -> None:
@@ -37,6 +40,68 @@ def load_rgba(path: Path) -> Image.Image:
     except Exception as exc:
         fail("cannot read %s (%s)" % (path, exc))
     return image.convert("RGBA")
+
+
+def load_alpha_mask(path: Path) -> Image.Image:
+    try:
+        image = Image.open(path)
+        image.load()
+    except Exception as exc:
+        fail("cannot read mask %s (%s)" % (path, exc))
+    if image.size != MASK_SIZE:
+        fail("canonical mask is %s, not %dx%d" % (image.size, MASK_SIZE[0], MASK_SIZE[1]))
+    if image.mode == "L":
+        return image
+    if image.mode == "RGBA":
+        return image.getchannel("A")
+    fail("canonical mask must be L or RGBA")
+
+
+def silhouette_edges(alpha: Image.Image):
+    pixels = alpha.load()
+    width, height = alpha.size
+
+    def first(y: int):
+        for x in range(width):
+            if pixels[x, y]:
+                return x
+        return None
+
+    return first(0), first(height // 2), first(height - 1)
+
+
+def validate_mask(mask: Image.Image) -> None:
+    """The mask is a parallelogram, not a rectangle."""
+    if mask.mode != "L" or mask.size != MASK_SIZE:
+        fail("canonical mask has the wrong mode or size")
+    top, mid, bottom = silhouette_edges(mask)
+    if top is None or not 100 <= top <= 130:
+        fail("mask top edge is not the Art Book diagonal")
+    if bottom != 0:
+        fail("mask bottom edge does not reach x=0")
+    if mid is None or not bottom < mid < top:
+        fail("mask is not a diagonal parallelogram")
+
+
+def respects_mask(image: Image.Image, mask: Image.Image) -> bool:
+    """True when every visible pixel is inside the silhouette."""
+    if image.size != mask.size or image.mode != "RGBA" or mask.mode != "L":
+        return False
+    src = image.getchannel("A")
+    outside = ImageChops.subtract(src, mask)
+    return outside.getextrema() == (0, 0)
+
+
+def apply_canonical_mask(image: Image.Image, mask: Image.Image) -> Image.Image:
+    """Clip alpha to the silhouette. Interior color and interior alpha stay."""
+    if image.size != mask.size:
+        fail(
+            "tool background must be %dx%d, got %dx%d"
+            % (mask.size[0], mask.size[1], image.size[0], image.size[1])
+        )
+    bands = list(image.convert("RGBA").split())
+    bands[3] = ImageChops.darker(bands[3], mask)
+    return Image.merge("RGBA", bands)
 
 
 def fit(image: Image.Image, max_w: int, max_h: int) -> Image.Image:
@@ -179,9 +244,19 @@ def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: P
     return canvas
 
 
-def compose_tool(background: Path, label: str, font: Path, rsvg: str, work: Path) -> Image.Image:
+def compose_tool(
+    background: Path,
+    label: str,
+    font: Path,
+    rsvg: str,
+    work: Path,
+    mask: Image.Image | None = None,
+) -> Image.Image:
+    art = load_rgba(background)
+    if mask is not None:
+        art = apply_canonical_mask(art, mask)
     canvas = blank()
-    place_art(canvas, load_rgba(background))
+    place_art(canvas, art)
     logo = wordmark(label, font, rsvg, work)
     place(canvas, logo, y=HEIGHT - logo.height - 24)
     return canvas
@@ -221,6 +296,19 @@ def check_tools(tools: Path, paks: Path) -> list[Path]:
     return found
 
 
+def publish_tree(stage: Path, dest: Path) -> None:
+    """Replace dest with a finished stage. An old filename does not remain."""
+    parent = dest.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    incoming = parent / (".%s.incoming" % dest.name)
+    if incoming.exists():
+        shutil.rmtree(incoming)
+    shutil.copytree(stage, incoming)
+    if dest.exists():
+        shutil.rmtree(dest)
+    incoming.rename(dest)
+
+
 def contact(images: list[tuple[str, Image.Image]], dest: Path, light: bool) -> None:
     columns = 6
     tw, th = 160, 120
@@ -250,36 +338,45 @@ def main() -> None:
     logo_dir = args.upstream / "_inc" / "systems" / "logos"
     if not art_dir.is_dir() or not logo_dir.is_dir():
         fail("upstream artwork is missing")
+    mask_path = Path(__file__).resolve().parent / "resources" / "system-art-alpha.png"
+    mask = load_alpha_mask(mask_path)
+    validate_mask(mask)
     folders = check_tools(args.tools, args.paks)
-    work = Path(tempfile.mkdtemp(prefix="zlyme-artbook-"))
-    systems = []
-    for tag, stem, label in load_map(args.map):
-        if stem is None:
-            custom = args.tools / "custom" / tag / "background.png"
-            if not custom.is_file():
-                fail("missing custom background for " + tag)
-            image = compose_tool(custom, label, args.font, args.rsvg, work)
-        else:
-            image = compose_system(
-                art_dir / ("%s.png" % stem),
-                logo_dir / ("%s.svg" % stem),
-                args.font,
-                args.rsvg,
-                work,
-            )
-        save_png(image, args.out / "system" / ("(%s).png" % tag))
-        systems.append((tag, image))
-    tools = []
-    for folder in folders:
-        label = folder.name[:-4]
-        image = compose_tool(folder / "background.png", label, args.font, args.rsvg, work)
-        save_png(image, args.out / "tools" / ("%s.png" % label))
-        tools.append((label, image))
-    if args.contact:
-        contact(systems, args.contact / "systems-light.png", True)
-        contact(systems, args.contact / "systems-dark.png", False)
-        contact(tools, args.contact / "tools-light.png", True)
-        contact(tools, args.contact / "tools-dark.png", False)
+    with tempfile.TemporaryDirectory(prefix="zlyme-artbook-") as tmp:
+        work = Path(tmp)
+        stage_system = work / "system"
+        stage_tools = work / "tools"
+        systems = []
+        for tag, stem, label in load_map(args.map):
+            if stem is None:
+                custom = args.tools / "custom" / tag / "background.png"
+                if not custom.is_file():
+                    fail("missing custom background for " + tag)
+                image = compose_tool(custom, label, args.font, args.rsvg, work)
+            else:
+                image = compose_system(
+                    art_dir / ("%s.png" % stem),
+                    logo_dir / ("%s.svg" % stem),
+                    args.font,
+                    args.rsvg,
+                    work,
+                )
+            save_png(image, stage_system / ("(%s).png" % tag))
+            systems.append((tag, image))
+        tools = []
+        for folder in folders:
+            label = folder.name[:-4]
+            image = compose_tool(folder / "background.png", label, args.font, args.rsvg, work, mask)
+            save_png(image, stage_tools / ("%s.png" % label))
+            tools.append((label, image))
+        # Both stages are complete. Replacing now drops a renamed or removed entry.
+        publish_tree(stage_system, args.out / "system")
+        publish_tree(stage_tools, args.out / "tools")
+        if args.contact:
+            contact(systems, args.contact / "systems-light.png", True)
+            contact(systems, args.contact / "systems-dark.png", False)
+            contact(tools, args.contact / "tools-light.png", True)
+            contact(tools, args.contact / "tools-dark.png", False)
     print("systems", len(systems), "tools", len(tools))
 
 

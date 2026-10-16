@@ -29,7 +29,12 @@ define ZLYME_ARTBOOK_BUILD_CMDS
 		--rsvg /usr/bin/rsvg-convert
 endef
 
+# These two directories are the firmware defaults in the image staging
+# tree. A renamed or removed picture must not survive an incremental
+# rebuild. A person's own pictures are not in this tree.
 define ZLYME_ARTBOOK_INSTALL_TARGET_CMDS
+	rm -rf $(TARGET_DIR)/usr/share/nextui/artbook/system
+	rm -rf $(TARGET_DIR)/usr/share/nextui/artbook/tools
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/system
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/tools
 	$(INSTALL) -D -m 0644 $(ZLYME_ARTBOOK_PKGDIR)/NOTICE.md \
@@ -39,3 +44,20 @@ define ZLYME_ARTBOOK_INSTALL_TARGET_CMDS
 endef
 
 $(eval $(generic-package))
+
+# The downloaded archive does not contain the compositor or the tool
+# pictures. Paths here contain spaces, so this hashes them instead of
+# listing them as make prerequisites. The build stamp is remade only
+# when that hash changes.
+.PHONY: zlyme-artbook-local-inputs-check
+$(BUILD_DIR)/zlyme-artbook.local-inputs: zlyme-artbook-local-inputs-check
+	mkdir -p $(dir $@)
+	{ \
+		find $(ZLYME_ARTBOOK_PKGDIR) -type f ! -name '.*' -print0 \
+			| LC_ALL=C sort -z | xargs -0 sha256sum; \
+		find $(BR2_EXTERNAL_ZLYME_PATH)/package/system/nextui/paks/Tools \
+			-mindepth 1 -maxdepth 1 -type d -printf '%f\n' | LC_ALL=C sort; \
+	} | sha256sum | cut -d' ' -f1 > $@.new
+	if ! cmp -s $@.new $@; then mv $@.new $@; else rm -f $@.new; fi
+
+$(ZLYME_ARTBOOK_TARGET_BUILD): $(BUILD_DIR)/zlyme-artbook.local-inputs
