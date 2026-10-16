@@ -84,5 +84,35 @@ grep -q 'USB/gone.gb' "$prefs" && fail "missing USB rom was kept"
 stamp=$(stat -c %Y "$prefs")
 run orphan-prefs --dry-run >/dev/null
 [ "$(stat -c %Y "$prefs")" = "$stamp" ] || fail "dry-run touched a clean file"
+run orphan-prefs >/dev/null
+[ "$(stat -c %Y "$prefs")" = "$stamp" ] || fail "a clean cleanup rewrote the file"
+
+# The replacement is created beside the preference file.
+mkdir -p "$work/notmp"
+printf 'rom\tGB\tnested/also-gone.gb\tidle\t\n' >> "$prefs"
+TMPDIR=$work/notmp run orphan-prefs >/dev/null
+grep -q 'also-gone.gb' "$prefs" && fail "cleanup depended on TMPDIR"
+find "$work/notmp" -type f | grep -q . && fail "cleanup wrote through TMPDIR"
+
+# A failed rename leaves the previous file in place.
+printf 'rom\tGB\tnested/later.gb\tidle\t\n' >> "$prefs"
+before=$(cat "$prefs")
+cat > "$work/mv" <<'EOF'
+#!/bin/sh
+last=
+for arg in "$@"; do
+	last=$arg
+done
+if [ "${ZLYME_MV_FAIL:-0}" = 1 ] && [ "$last" = "${ZLYME_PREFS_FILE:-}" ]; then
+	exit 1
+fi
+exec /usr/bin/mv "$@"
+EOF
+chmod 755 "$work/mv"
+if ZLYME_MV_FAIL=1 PATH="$work:$PATH" run orphan-prefs >/dev/null; then
+	fail "preference rename failure was ignored"
+fi
+[ "$(cat "$prefs")" = "$before" ] || fail "failed rename replaced preferences"
+grep -q 'later.gb' "$prefs" || fail "failed rename dropped the new row"
 
 echo "orphan prefs ok"

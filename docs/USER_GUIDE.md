@@ -108,7 +108,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 - Settings → System → Storage → Create game folders asks for a library (SD card 1, SD card 2, or USB). It creates the missing ROM, BIOS, and save folders there. It does not delete ROMs.
 - Settings → System → Storage → Eject library card unmounts the second SD or USB disk before you pull it. It appears only while one is mounted. Do not eject while a game from that card is running.
 - Settings → System → Storage → Format removable storage erases a second SD or USB disk as exFAT or ext4. The main card cannot be selected. All data on the chosen disk is lost.
-- To remove one game, hold MENU and press Y on it, then choose Delete game. That removes the ROM and its matching saves.
+- To remove one game, hold MENU and press Y on it, then choose Delete game. That removes the ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A choice for a whole folder or a whole system stays. A game with the same name on another card stays. If the delete fails, the game is still in the list.
 
 
 

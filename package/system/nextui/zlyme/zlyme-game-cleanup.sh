@@ -394,92 +394,8 @@ rom_library() {
 	esac
 }
 
-plan_rom() {
-	rom=$1
-	plan=$2
-	[ -n "$rom" ] || return 1
-	case "$rom" in
-		/*) ;;
-		*) echo "rom path must be absolute" >&2; return 1 ;;
-	esac
-	[ -f "$rom" ] || return 1
-	lib=$(rom_library "$rom") || return 1
-	case "$rom" in
-		"$lib"/*) ;;
-		*) return 1 ;;
-	esac
-	: > "$plan" || return 1
-	printf '%s\n' "$rom" >> "$plan"
-	stem=$(basename "$rom")
-	stem=${stem%.*}
-	stem2=${stem%.*}
-	sroot=$lib
-	libsh=${ZLYME_LIBRARY_SH:-/usr/share/nextui/bin/zlyme-library.sh}
-	if [ -r "$libsh" ]; then
-		# shellcheck disable=SC1090
-		. "$libsh"
-		tag=$(basename "$(dirname "$rom")")
-		case "$tag" in
-			*'('*')')
-				tag=${tag##*(}
-				tag=${tag%%)*}
-				;;
-		esac
-		sroot=$(zlyme_save_root "$rom" "$tag")
-	fi
-	if [ -d "$sroot/Saves" ]; then
-		find "$sroot/Saves" -type f 2>/dev/null |
-		while IFS= read -r f; do
-			b=$(basename "$f")
-			is_save_name "$b" || continue
-			s1=${b%.*}
-			s2=${s1%.*}
-			if [ "$s1" = "$stem" ] || [ "$s1" = "$stem2" ] || \
-				[ "$s2" = "$stem" ] || [ "$s2" = "$stem2" ]; then
-				printf '%s\n' "$f"
-			fi
-		done >> "$plan"
-	fi
-	parent=$(dirname "$rom")
-	if [ -d "$parent/.media" ]; then
-		for img in "$parent/.media/$stem".* "$parent/.media/$stem2".*; do
-			[ -f "$img" ] || continue
-			printf '%s\n' "$img"
-		done >> "$plan"
-	fi
-	case "$(basename "$rom")" in
-		*[Ss]plore*)
-			marker=$STORAGE/.config/nextui/shared/Pico-8-native/splore-installed
-			[ -f "$marker" ] && printf '%s\n' "$marker" >> "$plan"
-			;;
-	esac
-	sort -u "$plan" -o "$plan"
-}
-
-apply_plan() {
-	list=$1
-	miss=0
-	while IFS= read -r f; do
-		[ -n "$f" ] || continue
-		case "$f" in
-			/*) ;;
-			*) miss=1; continue ;;
-		esac
-		[ -e "$f" ] || continue
-		if [ ! -f "$f" ]; then
-			miss=1
-			continue
-		fi
-		rm -f -- "$f" || miss=1
-	done < "$list"
-	recent=${ZLYME_RECENT_FILE:-$STORAGE/.config/nextui/shared/.minui/recent.txt}
-	if [ -f "$recent" ]; then
-		tmp=$(mktemp) || return 1
-		grep -Fvx -f "$list" "$recent" > "$tmp" || true
-		mv -f "$tmp" "$recent" || miss=1
-	fi
-	return "$miss"
-}
+# Delete Game builds its own file list from the selected ROM.
+# It does not read a plan another process could replace.
 
 prefs_path() {
 	printf '%s\n' "${ZLYME_PREFS_FILE:-$STORAGE/.config/nextui/shared/zlyme-prefs.txt}"
@@ -612,24 +528,63 @@ dir_under_console() {
 	return 1
 }
 
+# Hold the same lock NextUI uses, then rename a temp file in the
+# destination directory. A temp on /tmp is a different filesystem.
+prefs_hold() {
+	_ph_dir=$1
+	if ! command -v flock >/dev/null 2>&1; then
+		return 0
+	fi
+	# shellcheck disable=SC3023
+	exec 7>>"$_ph_dir/.zlyme-prefs.lock" || return 1
+	flock 7 || return 1
+}
+
+same_fs_replace() {
+	_sr_dest=$1
+	_sr_tmp=$2
+	if command -v dd >/dev/null 2>&1; then
+		dd if="$_sr_tmp" of="$_sr_tmp" conv=notrunc,fsync status=none 2>/dev/null || true
+	fi
+	if ! mv -f "$_sr_tmp" "$_sr_dest"; then
+		rm -f "$_sr_tmp"
+		return 1
+	fi
+	return 0
+}
+
+rewrite_prefs() {
+	_rw_file=$1
+	_rw_body=$2
+	_rw_dir=$(dirname "$_rw_file")
+	mkdir -p "$_rw_dir" || return 1
+	prefs_hold "$_rw_dir" || return 1
+	_rw_tmp=$(mktemp "$_rw_dir/.zlyme-prefs.XXXXXX") || return 1
+	cat "$_rw_body" > "$_rw_tmp" || {
+		rm -f "$_rw_tmp"
+		return 1
+	}
+	same_fs_replace "$_rw_file" "$_rw_tmp"
+}
+
 do_orphan_prefs() {
 	file=$(prefs_path)
 	[ -f "$file" ] || {
 		printf '%s\n' 0
 		return 0
 	}
-	tmp=$(mktemp "${TMPDIR:-/tmp}/zlyme-prefs.XXXXXX") || return 1
+	body=$(mktemp) || return 1
 	n=0
 	while IFS= read -r line || [ -n "$line" ]; do
 		case "$line" in
 			''|'#'*)
-				printf '%s\n' "$line" >> "$tmp"
+				printf '%s\n' "$line" >> "$body"
 				continue
 				;;
 		esac
 		fields=$(printf '%s' "$line" | awk -F '\t' '{ print NF }')
 		if [ "$fields" -lt 4 ]; then
-			printf '%s\n' "$line" >> "$tmp"
+			printf '%s\n' "$line" >> "$body"
 			continue
 		fi
 		kind=${line%%	*}
@@ -640,7 +595,7 @@ do_orphan_prefs() {
 		case "$kind" in
 			rom) ;;
 			*)
-				printf '%s\n' "$line" >> "$tmp"
+				printf '%s\n' "$line" >> "$body"
 				continue
 				;;
 		esac
@@ -648,33 +603,337 @@ do_orphan_prefs() {
 			n=$((n + 1))
 			continue
 		fi
-		printf '%s\n' "$line" >> "$tmp"
+		printf '%s\n' "$line" >> "$body"
 	done < "$file"
 	printf '%s\n' "$n"
 	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
-		mv -f "$tmp" "$file" || return 1
-	else
-		rm -f "$tmp"
+		rewrite_prefs "$file" "$body" || {
+			rm -f "$body"
+			return 1
+		}
 	fi
+	rm -f "$body"
+}
+
+path_parts_safe() {
+	_pp=$1
+	case "$_pp" in
+		/*) ;;
+		*) return 1 ;;
+	esac
+	case "$_pp" in
+		*'//'*) return 1 ;;
+	esac
+	_pp_rest=${_pp#/}
+	while [ -n "$_pp_rest" ]; do
+		_pp_part=${_pp_rest%%/*}
+		[ "$_pp_part" = . ] && return 1
+		[ "$_pp_part" = .. ] && return 1
+		[ "$_pp_rest" = "$_pp_part" ] && break
+		_pp_rest=${_pp_rest#*/}
+	done
+	return 0
+}
+
+path_walk_file() {
+	_pw_root=$1
+	_pw_full=$2
+	_pw_cur=$_pw_root
+	_pw_rest=${_pw_full#"$_pw_root"/}
+	while [ -n "$_pw_rest" ]; do
+		_pw_part=${_pw_rest%%/*}
+		_pw_cur="$_pw_cur/$_pw_part"
+		[ -L "$_pw_cur" ] && return 1
+		[ "$_pw_rest" = "$_pw_part" ] && break
+		_pw_rest=${_pw_rest#*/}
+	done
+	[ -f "$_pw_cur" ] || return 1
+	[ -L "$_pw_cur" ] && return 1
+	return 0
+}
+
+file_mark() {
+	_fm_in=$(ls -id "$1" 2>/dev/null | awk '{ print $1 }') || return 1
+	_fm_sz=$(wc -c < "$1" | tr -d ' ') || return 1
+	[ -n "$_fm_in" ] || return 1
+	printf '%s:%s\n' "$_fm_in" "$_fm_sz"
+}
+
+# ROM_TAG and ROM_REL match editprefs_open: tag from the console folder,
+# relative path under it, SD2 or removable badge when that library is one.
+rom_scope() {
+	_rs_rom=$1
+	_rs_lib=$2
+	case "$_rs_rom" in
+		"$_rs_lib"/Roms/*) _rs_roms=$_rs_lib/Roms ;;
+		"$_rs_lib"/roms/*) _rs_roms=$_rs_lib/roms ;;
+		*) return 1 ;;
+	esac
+	case "$_rs_rom" in
+		*/.media/*|*/.config/*) return 1 ;;
+	esac
+	_rs_rest=${_rs_rom#"$_rs_roms"/}
+	_rs_console=${_rs_rest%%/*}
+	[ "$_rs_console" != "$_rs_rest" ] || return 1
+	ROM_TAG=$(tag_of_console "$_rs_console") || return 1
+	_rs_inner=${_rs_rest#*/}
+	ROM_BADGE=
+	_rs_sd2=${ZLYME_SD2_ROOT:-/mnt/sd2}
+	_rs_media=${ZLYME_MEDIA_ROOT:-/mnt/media}
+	if [ "$_rs_lib" = "$_rs_sd2" ]; then
+		ROM_BADGE=SD2
+	else
+		case "$_rs_lib" in
+			"$_rs_media"/*) ROM_BADGE=$(basename "$_rs_lib") ;;
+		esac
+	fi
+	if [ -n "$ROM_BADGE" ]; then
+		ROM_REL=$ROM_BADGE/$_rs_inner
+	else
+		ROM_REL=$_rs_inner
+	fi
+	return 0
+}
+
+art_is_shared() {
+	_as_dir=$1
+	_as_stem=$2
+	_as_self=$3
+	_as_list=$(mktemp) || return 1
+	find "$_as_dir" -maxdepth 1 -type f ! -name '.*' > "$_as_list" 2>/dev/null || true
+	_as_yes=0
+	while IFS= read -r _as_f; do
+		[ "$_as_f" = "$_as_self" ] && continue
+		_as_b=$(basename "$_as_f")
+		_as_s=${_as_b%.*}
+		if [ "$_as_s" = "$_as_stem" ]; then
+			_as_yes=1
+			break
+		fi
+	done < "$_as_list"
+	rm -f "$_as_list"
+	[ "$_as_yes" = 1 ]
+}
+
+drop_rom_pref() {
+	_dp_tag=$1
+	_dp_rel=$2
+	_dp_file=$(prefs_path)
+	[ -f "$_dp_file" ] || return 0
+	_dp_body=$(mktemp) || return 1
+	while IFS= read -r _dp_line || [ -n "$_dp_line" ]; do
+		case "$_dp_line" in
+			''|'#'*)
+				printf '%s\n' "$_dp_line" >> "$_dp_body"
+				continue
+				;;
+		esac
+		_dp_nf=$(printf '%s' "$_dp_line" | awk -F '\t' '{ print NF }')
+		if [ "$_dp_nf" -lt 4 ]; then
+			printf '%s\n' "$_dp_line" >> "$_dp_body"
+			continue
+		fi
+		_dp_kind=${_dp_line%%	*}
+		_dp_rest=${_dp_line#*	}
+		_dp_rowtag=${_dp_rest%%	*}
+		_dp_rest=${_dp_rest#*	}
+		_dp_rowrel=${_dp_rest%%	*}
+		if [ "$_dp_kind" = rom ] && \
+			[ "$(fold_text "$_dp_rowtag")" = "$(fold_text "$_dp_tag")" ] && \
+			[ "$_dp_rowrel" = "$_dp_rel" ]; then
+			continue
+		fi
+		printf '%s\n' "$_dp_line" >> "$_dp_body"
+	done < "$_dp_file"
+	rewrite_prefs "$_dp_file" "$_dp_body" || {
+		rm -f "$_dp_body"
+		return 1
+	}
+	rm -f "$_dp_body"
+}
+
+drop_recent() {
+	_rc_rom=$1
+	_rc_file=${ZLYME_RECENT_FILE:-$STORAGE/.config/nextui/shared/.minui/recent.txt}
+	[ -f "$_rc_file" ] || return 0
+	_rc_short=
+	case "$_rc_rom" in
+		"$STORAGE"/*) _rc_short=${_rc_rom#"$STORAGE"} ;;
+	esac
+	_rc_dir=$(dirname "$_rc_file")
+	mkdir -p "$_rc_dir" || return 1
+	_rc_tmp=$(mktemp "$_rc_dir/.zlyme-recent.XXXXXX") || return 1
+	while IFS= read -r _rc_line || [ -n "$_rc_line" ]; do
+		_rc_path=${_rc_line%%	*}
+		[ "$_rc_path" = "$_rc_rom" ] && continue
+		[ -n "$_rc_short" ] && [ "$_rc_path" = "$_rc_short" ] && continue
+		printf '%s\n' "$_rc_line" >> "$_rc_tmp"
+	done < "$_rc_file"
+	same_fs_replace "$_rc_file" "$_rc_tmp"
+}
+
+delete_allowed() {
+	_da_f=$1
+	_da_rom=$2
+	_da_lib=$3
+	_da_sroot=$4
+	_da_parent=$5
+	_da_stem=$6
+	_da_marker=$7
+	[ -f "$_da_f" ] || return 1
+	[ -L "$_da_f" ] && return 1
+	[ "$_da_f" = "$_da_rom" ] && return 0
+	[ -n "$_da_marker" ] && [ "$_da_f" = "$_da_marker" ] && return 0
+	case "$_da_f" in
+		"$_da_lib"/Saves/*|"$_da_lib"/saves/*) return 0 ;;
+		"$_da_sroot"/Saves/*|"$_da_sroot"/saves/*) return 0 ;;
+		"$_da_parent"/.media/*)
+			_da_base=$(basename "$_da_f")
+			case "$_da_base" in
+				"$_da_stem".png|"$_da_stem".jpg|"$_da_stem".jpeg) return 0 ;;
+			esac
+			return 1
+			;;
+	esac
+	return 1
+}
+
+delete_rom() {
+	_del=$1
+	path_parts_safe "$_del" || {
+		echo "zlyme-game-cleanup: not a game file" >&2
+		return 1
+	}
+	_del_lib=$(rom_library "$_del") || {
+		echo "zlyme-game-cleanup: not a game file" >&2
+		return 1
+	}
+	lib_is_present "$_del_lib" || {
+		echo "zlyme-game-cleanup: library is not available" >&2
+		return 1
+	}
+	path_walk_file "$_del_lib" "$_del" || {
+		echo "zlyme-game-cleanup: not a game file" >&2
+		return 1
+	}
+	rom_scope "$_del" "$_del_lib" || {
+		echo "zlyme-game-cleanup: not a game file" >&2
+		return 1
+	}
+	_del_mark=$(file_mark "$_del") || return 1
+	_del_stem=$(basename "$_del")
+	_del_stem=${_del_stem%.*}
+	_del_stem2=${_del_stem%.*}
+	_del_parent=$(dirname "$_del")
+	_del_list=$(mktemp) || return 1
+	printf '%s\n' "$_del" >> "$_del_list"
+	_del_sroot=$_del_lib
+	_del_libsh=${ZLYME_LIBRARY_SH:-/usr/share/nextui/bin/zlyme-library.sh}
+	if [ -r "$_del_libsh" ]; then
+		# shellcheck disable=SC1090
+		. "$_del_libsh"
+		_del_sroot=$(zlyme_save_root "$_del" "$ROM_TAG") || _del_sroot=$_del_lib
+	fi
+	if [ -d "$_del_sroot/Saves" ]; then
+		find "$_del_sroot/Saves" -type f 2>/dev/null |
+		while IFS= read -r _del_f; do
+			_del_b=$(basename "$_del_f")
+			is_save_name "$_del_b" || continue
+			_del_s1=${_del_b%.*}
+			_del_s2=${_del_s1%.*}
+			if [ "$_del_s1" = "$_del_stem" ] || [ "$_del_s1" = "$_del_stem2" ] || \
+				[ "$_del_s2" = "$_del_stem" ] || [ "$_del_s2" = "$_del_stem2" ]; then
+				printf '%s\n' "$_del_f"
+			fi
+		done >> "$_del_list"
+	fi
+	if [ -d "$_del_parent/.media" ] && ! art_is_shared "$_del_parent" "$_del_stem" "$_del"; then
+		for _del_ext in png jpg jpeg; do
+			_del_img="$_del_parent/.media/$_del_stem.$_del_ext"
+			[ -f "$_del_img" ] && [ ! -L "$_del_img" ] && printf '%s\n' "$_del_img"
+		done >> "$_del_list"
+	fi
+	_del_marker=
+	case "$(basename "$_del")" in
+		*[Ss]plore*)
+			_del_marker=$STORAGE/.config/nextui/shared/Pico-8-native/splore-installed
+			[ -f "$_del_marker" ] && [ ! -L "$_del_marker" ] && printf '%s\n' "$_del_marker" >> "$_del_list"
+			;;
+	esac
+	sort -u "$_del_list" -o "$_del_list"
+	_del_n=$(wc -l < "$_del_list" | tr -d ' ')
+	echo "COUNT=$_del_n"
+	cat "$_del_list"
+	if [ "$DRY" = 1 ]; then
+		rm -f "$_del_list"
+		return 0
+	fi
+	_del_now=$(file_mark "$_del") || {
+		rm -f "$_del_list"
+		return 1
+	}
+	if [ "$_del_now" != "$_del_mark" ]; then
+		echo "zlyme-game-cleanup: game changed" >&2
+		rm -f "$_del_list"
+		return 1
+	fi
+	drop_rom_pref "$ROM_TAG" "$ROM_REL" || {
+		rm -f "$_del_list"
+		return 1
+	}
+	drop_recent "$_del" || {
+		rm -f "$_del_list"
+		return 1
+	}
+	_del_now=$(file_mark "$_del") || {
+		rm -f "$_del_list"
+		return 1
+	}
+	if [ "$_del_now" != "$_del_mark" ]; then
+		echo "zlyme-game-cleanup: game changed" >&2
+		rm -f "$_del_list"
+		return 1
+	fi
+	while IFS= read -r _del_f; do
+		[ -n "$_del_f" ] || continue
+		[ "$_del_f" = "$_del" ] && continue
+		delete_allowed "$_del_f" "$_del" "$_del_lib" "$_del_sroot" "$_del_parent" "$_del_stem" "$_del_marker" || {
+			echo "zlyme-game-cleanup: refused $_del_f" >&2
+			rm -f "$_del_list"
+			return 1
+		}
+		rm -f -- "$_del_f" || {
+			rm -f "$_del_list"
+			return 1
+		}
+	done < "$_del_list"
+	_del_now=$(file_mark "$_del") || {
+		rm -f "$_del_list"
+		return 1
+	}
+	if [ "$_del_now" != "$_del_mark" ]; then
+		echo "zlyme-game-cleanup: game changed" >&2
+		rm -f "$_del_list"
+		return 1
+	fi
+	rm -f -- "$_del" || {
+		rm -f "$_del_list"
+		return 1
+	}
+	rm -f "$_del_list"
+	return 0
 }
 
 st=0
 case "$ACTION" in
 	rom)
-		plan=${ZLYME_ROM_PLAN:-/tmp/zlyme-rom.plan}
-		plan_rom "$ROM_PATH" "$plan" || exit 1
-		n=$(wc -l < "$plan" | tr -d ' ')
-		echo "COUNT=$n"
-		cat "$plan"
-		if [ "$DRY" = 0 ]; then
-			apply_plan "$plan" || exit 1
-		fi
+		[ -n "$ROM_PATH" ] || exit 1
+		delete_rom "$ROM_PATH" || exit 1
 		exit 0
 		;;
 	rom-apply)
-		[ -f "${2:-}" ] || exit 1
-		apply_plan "$2" || exit 1
-		exit 0
+		echo "zlyme-game-cleanup: rom-apply is not used" >&2
+		exit 1
 		;;
 	junk) n=$(do_junk) || st=$?; echo "COUNT=$n"; echo "junk files" ;;
 	orphan-saves) n=$(do_orphan_saves) || st=$?; echo "COUNT=$n"; echo "orphan saves" ;;
@@ -686,7 +945,7 @@ case "$ACTION" in
 	ra-rom-cfg) n=$(do_ra_rom_cfg) || st=$?; echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
 	orphan-prefs) n=$(do_orphan_prefs) || st=$?; echo "COUNT=$n"; echo "orphan game preferences" ;;
 	*)
-		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|ra-cfg|standalones|ra-rom-cfg|orphan-prefs|rom PATH|rom-apply PLAN} [--dry-run]" >&2
+		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|ra-cfg|standalones|ra-rom-cfg|orphan-prefs|rom PATH} [--dry-run]" >&2
 		exit 1
 		;;
 esac

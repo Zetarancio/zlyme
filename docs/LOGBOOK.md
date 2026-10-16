@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — delete game and preference replace
+
+Host tests only. Delete game rebuilds its file list from the selected ROM. It removes that ROM, matching saves, `.png` / `.jpg` / `.jpeg` artwork, the exact per-ROM preference, and the Recently Played line. A folder or system row stays, and a same-named ROM on the other card stays. A symlink, a config path, and a path outside the libraries are refused. Preference replacement is a rename in the destination directory. A failed rename leaves the previous file. NextUI reloads the file after that rewrite, and a failed in-memory save does not replace it. This was not run on a Flip.
+
 ## 2026-10-16 — orphan preferences and Wi-Fi service gate
 
 Host tests only. `zlyme-game-cleanup orphan-prefs` drops a per-ROM governor or emulator row when that ROM is gone, and keeps folder, system, malformed, and absent-card rows. `zlyme-net-services` starts SSH, Samba, and Syncthing only when Wi-Fi is on and that service is enabled. A direct init start with Wi-Fi off does not launch the daemon. The Syncthing 2.0.13 host binary was not present, so `test_phase13e2_syncthing.sh` did not run. This was not run on a Flip.

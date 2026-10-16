@@ -3,9 +3,12 @@
 #endif
 #include "zlyme_prefs.h"
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "defines.h"
@@ -27,6 +30,9 @@ typedef struct {
 static Pref prefs[PREFS_MAX];
 static int prefs_n;
 static int prefs_loaded;
+static time_t prefs_mtime;
+static off_t prefs_size = -1;
+static int prefs_lock_fd = -1;
 
 static void trim_field(char *s)
 {
@@ -38,6 +44,81 @@ static void trim_field(char *s)
 		s[--n] = '\0';
 }
 
+static const char *prefs_path(void)
+{
+	const char *env = getenv("ZLYME_PREFS_FILE");
+	if (env && env[0])
+		return env;
+	return PREFS_FILE;
+}
+
+static int prefs_dir(char *buf, size_t n)
+{
+	const char *path = prefs_path();
+	const char *slash = strrchr(path, '/');
+	size_t len;
+
+	if (!slash || slash == path) {
+		if (n < 2)
+			return -1;
+		memcpy(buf, ".", 2);
+		return 0;
+	}
+	len = (size_t)(slash - path);
+	if (len + 1 > n)
+		return -1;
+	memcpy(buf, path, len);
+	buf[len] = '\0';
+	return 0;
+}
+
+static void prefs_note_stat(void)
+{
+	struct stat st;
+
+	if (stat(prefs_path(), &st) == 0) {
+		prefs_mtime = st.st_mtime;
+		prefs_size = st.st_size;
+	} else {
+		prefs_mtime = 0;
+		prefs_size = -1;
+	}
+}
+
+static int prefs_lock(void)
+{
+	char dir[MAX_PATH];
+	char path[MAX_PATH];
+	int fd;
+
+	if (prefs_lock_fd >= 0)
+		return 0;
+	if (prefs_dir(dir, sizeof(dir)) != 0)
+		return -1;
+	if (mkdir(dir, 0755) != 0 && errno != EEXIST)
+		return -1;
+	if (snprintf(path, sizeof(path), "%s/.zlyme-prefs.lock", dir) >= (int)sizeof(path))
+		return -1;
+	fd = open(path, O_CREAT | O_RDWR, 0644);
+	if (fd < 0)
+		return -1;
+	if (flock(fd, LOCK_EX) != 0) {
+		close(fd);
+		return -1;
+	}
+	prefs_lock_fd = fd;
+	return 0;
+}
+
+static void prefs_unlock(void)
+{
+	if (prefs_lock_fd < 0)
+		return;
+	flock(prefs_lock_fd, LOCK_UN);
+	close(prefs_lock_fd);
+	prefs_lock_fd = -1;
+}
+
 void prefsReload(void)
 {
 	FILE *f;
@@ -45,9 +126,11 @@ void prefsReload(void)
 
 	prefs_n = 0;
 	prefs_loaded = 1;
-	f = fopen(PREFS_FILE, "r");
-	if (!f)
+	f = fopen(prefs_path(), "r");
+	if (!f) {
+		prefs_note_stat();
 		return;
+	}
 	while (fgets(line, sizeof(line), f) && prefs_n < PREFS_MAX) {
 		char *kind, *tag, *rel, *gov, *emu, *p;
 		trim_field(line);
@@ -84,32 +167,99 @@ void prefsReload(void)
 		prefs_n++;
 	}
 	fclose(f);
+	prefs_note_stat();
 }
 
 static void prefsEnsure(void)
 {
-	if (!prefs_loaded)
-		prefsReload();
+	struct stat st;
+	const char *path = prefs_path();
+
+	if (prefs_loaded && stat(path, &st) == 0 &&
+	    st.st_mtime == prefs_mtime && st.st_size == prefs_size)
+		return;
+	if (prefs_loaded && stat(path, &st) != 0 && prefs_size < 0)
+		return;
+	prefsReload();
+}
+
+/* Write the in-memory rows. The caller holds the lock and has already
+ * reloaded, so this must not read the file again. */
+static int prefs_write(void)
+{
+	char dir[MAX_PATH];
+	char tmp[MAX_PATH];
+	FILE *f;
+	int fd, i, dirfd;
+
+	if (prefs_dir(dir, sizeof(dir)) != 0)
+		return -1;
+	if (mkdir(dir, 0755) != 0 && errno != EEXIST)
+		return -1;
+	if (snprintf(tmp, sizeof(tmp), "%s/.zlyme-prefs.XXXXXX", dir) >= (int)sizeof(tmp))
+		return -1;
+	fd = mkstemp(tmp);
+	if (fd < 0)
+		return -1;
+	f = fdopen(fd, "w");
+	if (!f) {
+		close(fd);
+		unlink(tmp);
+		return -1;
+	}
+	for (i = 0; i < prefs_n; i++) {
+		if (fprintf(f, "%s\t%s\t%s\t%s\t%s\n",
+			prefs[i].kind, prefs[i].tag, prefs[i].rel,
+			prefs[i].governor, prefs[i].emu) < 0) {
+			fclose(f);
+			unlink(tmp);
+			return -1;
+		}
+	}
+	if (fflush(f) != 0) {
+		fclose(f);
+		unlink(tmp);
+		return -1;
+	}
+	if (fsync(fileno(f)) != 0 && errno != EINVAL && errno != ENOTSUP) {
+		fclose(f);
+		unlink(tmp);
+		return -1;
+	}
+	if (fclose(f) != 0) {
+		unlink(tmp);
+		return -1;
+	}
+	if (rename(tmp, prefs_path()) != 0) {
+		unlink(tmp);
+		return -1;
+	}
+	dirfd = open(dir, O_RDONLY | O_DIRECTORY);
+	if (dirfd >= 0) {
+		if (fsync(dirfd) != 0 && errno != EINVAL && errno != ENOTSUP) {
+			close(dirfd);
+			return -1;
+		}
+		close(dirfd);
+	}
+	prefs_note_stat();
+	return 0;
 }
 
 void prefsSave(void)
 {
-	FILE *f;
-	int i;
-	char dir[MAX_PATH];
+	int owned = 0;
 
-	prefsEnsure();
-	snprintf(dir, sizeof(dir), "%s", SHARED_USERDATA_PATH);
-	mkdir(dir, 0755);
-	f = fopen(PREFS_FILE, "w");
-	if (!f)
-		return;
-	for (i = 0; i < prefs_n; i++) {
-		fprintf(f, "%s\t%s\t%s\t%s\t%s\n",
-			prefs[i].kind, prefs[i].tag, prefs[i].rel,
-			prefs[i].governor, prefs[i].emu);
+	if (prefs_lock_fd < 0) {
+		if (prefs_lock() != 0)
+			return;
+		owned = 1;
+		prefsReload();
 	}
-	fclose(f);
+	if (prefs_write() != 0)
+		prefs_loaded = 0;
+	if (owned)
+		prefs_unlock();
 }
 
 static int kind_rank(const char *kind)
@@ -207,7 +357,6 @@ void prefsSet(const char *kind, const char *tag, const char *rel, const char *go
 {
 	int i;
 
-	prefsEnsure();
 	if (!kind || !tag)
 		return;
 	if (!rel)
@@ -216,6 +365,9 @@ void prefsSet(const char *kind, const char *tag, const char *rel, const char *go
 		gov = "";
 	if (!emu)
 		emu = "";
+	if (prefs_lock() != 0)
+		return;
+	prefsReload();
 	for (i = 0; i < prefs_n; i++) {
 		if (strcmp(prefs[i].kind, kind) == 0 &&
 		    strcasecmp(prefs[i].tag, tag) == 0 &&
@@ -223,11 +375,14 @@ void prefsSet(const char *kind, const char *tag, const char *rel, const char *go
 			snprintf(prefs[i].governor, sizeof(prefs[i].governor), "%s", gov);
 			snprintf(prefs[i].emu, sizeof(prefs[i].emu), "%s", emu);
 			prefsSave();
+			prefs_unlock();
 			return;
 		}
 	}
-	if (prefs_n >= PREFS_MAX)
+	if (prefs_n >= PREFS_MAX) {
+		prefs_unlock();
 		return;
+	}
 	snprintf(prefs[prefs_n].kind, sizeof(prefs[prefs_n].kind), "%s", kind);
 	snprintf(prefs[prefs_n].tag, sizeof(prefs[prefs_n].tag), "%s", tag);
 	snprintf(prefs[prefs_n].rel, sizeof(prefs[prefs_n].rel), "%s", rel);
@@ -235,17 +390,20 @@ void prefsSet(const char *kind, const char *tag, const char *rel, const char *go
 	snprintf(prefs[prefs_n].emu, sizeof(prefs[prefs_n].emu), "%s", emu);
 	prefs_n++;
 	prefsSave();
+	prefs_unlock();
 }
 
 void prefsClear(const char *kind, const char *tag, const char *rel)
 {
 	int i;
 
-	prefsEnsure();
 	if (!kind || !tag)
 		return;
 	if (!rel)
 		rel = "";
+	if (prefs_lock() != 0)
+		return;
+	prefsReload();
 	for (i = 0; i < prefs_n; i++) {
 		if (strcmp(prefs[i].kind, kind) == 0 &&
 		    strcasecmp(prefs[i].tag, tag) == 0 &&
@@ -253,9 +411,11 @@ void prefsClear(const char *kind, const char *tag, const char *rel)
 			prefs[i] = prefs[prefs_n - 1];
 			prefs_n--;
 			prefsSave();
+			prefs_unlock();
 			return;
 		}
 	}
+	prefs_unlock();
 }
 
 int prefsAlts(const char *tag, char alts[][32], int max)

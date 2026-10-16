@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `b4465d1d` for the orphan-preference row and the Wi-Fi service descriptions. About reads Syncthing through `zlyme-syncthing-gui`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `0e6d9e6e` for the delete-game row. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -361,7 +361,7 @@ Status: Planned. The current prepare step still requires the ROCKNIX mapping.
 
 Settings → Game removes per-ROM governor and emulator rows in `/storage/.config/nextui/shared/zlyme-prefs.txt` whose ROM is gone. Folder and system rows stay. A missing card does not count as a missing ROM. Host tests are the gate.
 
-Status: Host-tested. The cleanup is `zlyme-game-cleanup orphan-prefs`. A missing second card does not drop its rows. An unplugged USB volume whose name is only a path prefix is kept when that folder is not on a card that is in. Not a hardware test.
+Status: Host-tested. The cleanup is `zlyme-game-cleanup orphan-prefs`. The replacement file is created in the preference directory and the previous file stays if that rename fails. A missing second card does not drop its rows. An unplugged USB volume whose name is only a path prefix is kept when that folder is not on a card that is in. Not a hardware test.
 
 ### 14K. Network services follow Wi-Fi
 
@@ -380,3 +380,9 @@ Status: Planned. Redistribution is not yet verified.
 Prefer 1280×720 at 60 Hz on HDMI when the display lists that mode, and an EDID mode otherwise. The panel stays 640×480 at the selected refresh. Modesetting belongs to the DRM client. A write to a read-only sysfs `modes` file is not that. Drop the manual cycle if the automatic choice replaces it. No DTS change for this item.
 
 Status: Planned. The current `S16display` path still writes the connector `mode` file.
+
+### 14N. Delete Game cleanup
+
+Settings → Delete game removes that ROM, its matching saves, its `.png` / `.jpg` / `.jpeg` artwork, its exact per-ROM governor and emulator row, and its Recently Played entry. Folder and system rows stay. A same-named ROM on another card stays. Shared artwork stays while another file in that folder still uses it. The action derives the file list from the ROM again and refuses a path that is not a regular file in a mounted library. Host tests are the gate.
+
+Status: Host-tested. Not a hardware test.
