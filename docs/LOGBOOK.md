@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Art Book Next wallpapers
+
+Host render only. `gen.py` composes 114 PNGs, 3,984,556 bytes, from Art Book Next `d772d071` artwork strips and logos. rsvg-convert 2.63.2 and Pillow write them. `--check` reproduced the same bytes. Pico-8 and fake-08 share `pico8`. RPG Maker XP, Tools, Collections, and Recently Played are DejaVu wordmarks. The Timothy Bueno pack is no longer installed. Not shown on a Flip.
+
 ## 2026-10-16 — preference lock and fsync
 
 Host tests only. Preference updates now stop when `flock` is missing or returns an error, and when `python3` cannot fsync the temporary file. Linux 7.2 `exfat_dir_operations` uses `exfat_file_fsync`, so a directory fsync on that volume flushes the block device. `EINVAL` is only the VFS result when a filesystem has no `fsync` operation, and that does not reject a rename that already happened. A directory `EIO` is reported after the rename, matching `zlyme_prefs.c`. Not run on a Flip.

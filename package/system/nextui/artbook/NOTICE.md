@@ -1,44 +1,30 @@
-# Art Book NextUI wallpapers
+# Art Book wallpapers
 
-These images are the system and list wallpapers from Art Book NextUI, resized from 1024×768 to 640×480 for the Miyoo Flip panel.
+These 640×480 images are composed for NextUI from Art Book Next, the original ES-DE theme.
 
-Source: https://github.com/timbueno/ArtBookNextUI.theme
-Commit: `f5fe9929148748d0d5039b993c4815818fbb921a`
-Author: Timothy Bueno
+Source: https://github.com/anthonycaccese/art-book-next-es-de
+Commit: `d772d07109701d9bd7c9fda305bfef6601105ab8`
+Author: Anthony Caccese
+
+The pictures are the original artwork set, `_inc/systems/artwork`, and the logos in `_inc/systems/logos`. Noir, outline, circuit, and screenshot variants are not used. `package/system/nextui/artbook/gen.py` places each strip on the right of a black 640×480 frame and the white logo on that strip. The list image is the logo alone, near the bottom, so the names stay readable. rsvg-convert 2.63.2 rasterizes the logos. Pillow composites them. The Flip does not convert images.
 
 License: Creative Commons Attribution-NonCommercial-ShareAlike 2.0
 https://creativecommons.org/licenses/by-nc-sa/2.0/
 
-You may share and adapt these images if you credit Timothy Bueno and the people named below, use them non-commercially, and keep the same license on adaptations. This is not an MIT or public-domain grant.
+You may share and adapt these images if you credit Anthony Caccese and the people named below, use them non-commercially, and keep the same license on adaptations. This is not an MIT or public-domain grant. Zlyme's MIT license does not apply to these images.
 
-The theme is based on Art Book Next for ES-DE by Anthony Caccese:
-https://github.com/anthonycaccese/art-book-next-es-de
-Commit recorded for that tree: `d772d07109701d9bd7c9fda305bfef6601105ab8`
-
-Credits published with Art Book NextUI:
+Credits published with Art Book Next:
 
 - Anthony Caccese, Art Book Next
 - Dan Patrick, system logos later adapted for EmulationStation
 - Eduardo Tunni, ChangaOne (not shipped here)
-- Vernon Adams, Oxygen (not shipped here)
-- @nautipuss, auto-collection genre backgrounds
-- FontAwesome, metadata icons (not shipped here)
-- tenlevels, with f8less, Noir system artwork, inspired by Epic Noir by chicuelo
-- Joppa Fallston, Outline system artwork, inspired by denizonm
-- theUnBurn, some system artwork
+- @nautipuss, auto-collection genre backgrounds (not shipped here)
+- Phosphor Icons, metadata icons (not shipped here)
+- tenlevels, with f8less, Noir system artwork (not shipped here)
+- Joppa Fallston, Outline system artwork (not shipped here)
+- theUnBurn, some system artwork in the theme
 - GenoCL, multi-artwork system view
 
-These Zlyme tags use that theme's picture for the same platform, under Zlyme's tag name:
+Pico-8 and fake-08 both use the `pico8` picture. They are the same platform. RPG Maker XP has no file in this commit. Tools, Collections, and Recently Played are not ES-DE systems. Those four labels are set in DejaVu Sans Bold. The font is Bitstream Vera, with DejaVu changes in the public domain. `src/fonts/LICENSE` is that notice. The font is not installed on the Flip.
 
-| Zlyme tag | Art Book file | Platform |
-| --- | --- | --- |
-| MS | SMS | Sega Master System |
-| NGP | NGPC | Neo Geo Pocket, including Color carts in the same folder |
-| FBNEO | FBN | FinalBurn Neo |
-| A26 | ATARI | Atari 2600 |
-| INTV | INTELLIVISION | Intellivision |
-| WS | WSC | WonderSwan, including Color carts in the same folder |
-
-Fonts, boot images, and the Figma file from that repository are not included. Zlyme's splash, colors, and UI font stay Zlyme's.
-
-The ES-DE repository does not publish a GitHub license file. These wallpapers are shipped under the license Timothy Bueno states for Art Book NextUI, with the credits above.
+The repository does not publish a GitHub LICENSE file. These wallpapers are shipped under the license Anthony Caccese states in the README, with the credits above.

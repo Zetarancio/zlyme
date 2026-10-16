@@ -7,8 +7,8 @@ Recorded 2026-10-16. Theme Manager is not shipped. Art Book wallpapers are a sep
 | Tree | Commit | What it is |
 |---|---|---|
 | [Leviathanium/NextUI-Theme-Manager](https://github.com/Leviathanium/NextUI-Theme-Manager) `1.5.1` | `5a42fbf7d621f36a7bf87c5656daf4a2b86e1acd` | Go tool. Release 2025-09-16. Apache-2.0. `HEAD` of the default branch is this release commit. Later tags `v1.0` through `v3.0` also exist and are not this line. |
-| [timbueno/ArtBookNextUI.theme](https://github.com/timbueno/ArtBookNextUI.theme) | `f5fe9929148748d0d5039b993c4815818fbb921a` | NextUI theme package. 2025-05-04. This is `HEAD`. No GitHub license API file. The README states CC BY-NC-SA 2.0. |
-| [anthonycaccese/art-book-next-es-de](https://github.com/anthonycaccese/art-book-next-es-de) | `d772d07109701d9bd7c9fda305bfef6601105ab8` | ES-DE theme the NextUI pack is based on. 2026-02-07. No GitHub license file. |
+| [anthonycaccese/art-book-next-es-de](https://github.com/anthonycaccese/art-book-next-es-de) | `d772d07109701d9bd7c9fda305bfef6601105ab8` | Installed wallpaper source. Original artwork and logos. 2026-02-07. No GitHub license file. README states CC BY-NC-SA 2.0. |
+| [timbueno/ArtBookNextUI.theme](https://github.com/timbueno/ArtBookNextUI.theme) | `f5fe9929148748d0d5039b993c4815818fbb921a` | Retired NextUI conversion. 2025-05-04. No longer installed. |
 
 ## Theme Manager 1.5.1
 
@@ -42,8 +42,10 @@ That is a later tool. It is not required to show Art Book backgrounds.
 
 ## Art Book images
 
-`f5fe992` still contains `Wallpapers/SystemWallpapers/(TAG).png` and `Wallpapers/ListWallpapers/(TAG)-list.png`, plus Tools, Collections, Recently Played, and Root. The commit message mentions removing a system-wallpaper folder; the files above are present at that commit. They are 1024×768 PNG.
+Zlyme's installed wallpapers are composed from Art Book Next `d772d07109701d9bd7c9fda305bfef6601105ab8`, not from the Timothy Bueno pack. That commit's `_inc/systems/artwork` has 213 RGBA strips, mostly 454×1080. `_inc/systems/logos` has the matching SVGs. `theme.xml` draws the strip in a carousel (`staticImage` from `artworkSource`) and the logo at `systemViewLogoPos`. For the original style, `colors.xml` sets `artworkSource` to `_inc/systems/artwork` and the logo position to `0.5 0.5`. The system background is `#000000`. The list background is `#222222`.
 
-The README license is CC BY-NC-SA 2.0. Credit Timothy Bueno, and the contributors named in that README, including Anthony Caccese. Fonts and boot bitmaps in the same repository are not part of the wallpaper set and are not used for Zlyme's splash.
+`gen.py` keeps the strip's aspect ratio, anchors it to the right, and puts the logo on the strip so NextUI's names stay on the black left side. The list image is only the logo, near the bottom. Pico-8 and fake-08 share `pico8`. RPG Maker XP, Tools, Collections, and Recently Played have no file in that commit. Those four are DejaVu Sans Bold wordmarks. The font is not installed.
 
-Zlyme tags and Art Book filenames are not the same list. A tag ships only when the file is `(TAG).png`. `FBNEO`, `MS`, `A26`, and `NGP` do not match `FBN`, `SMS`, `ATARI`, and `NGPC`, so those systems keep the normal fallback.
+The README license is CC BY-NC-SA 2.0. There is no GitHub LICENSE file. Credit Anthony Caccese and the names in `package/system/nextui/artbook/NOTICE.md`. Dan Patrick's logos were modified for the theme's SVG support and are part of that license statement. Noir, outline, circuit, screenshot art, fonts, and genre backgrounds are not shipped.
+
+Timothy Bueno's NextUI pack `f5fe9929148748d0d5039b993c4815818fbb921a` was the previous source. It is a partial conversion of the same theme to 1024×768 wallpapers and does not cover every Zlyme tag. Those files are no longer in the package. The README license on that pack is also CC BY-NC-SA 2.0.

@@ -373,7 +373,7 @@ Status: Host-tested. `zlyme-net-services apply` is the boot, Wi-Fi, and per-serv
 
 Ship a verified subset of ArtBook NextUI system and root artwork as the default when the user has no image. Do not overwrite `.media` or backgrounds on update. Do not ship Theme Manager unchanged. The license check is in the research note. Splash branding stays as it is.
 
-Status: Partial. Direct Art Book names plus MS, NGP, FBNEO, A26, INTV, and WS are installed at 640×480. User `.media` and `/storage/bg.png` win. These tags still have no pair: 32X, LYNX, A5200, A78, A800, ST, MSX, O2, SG1000, SGX, VEC, MAME, 3DO, NEOCD, SATURN, DOOM, TIC, FLASH, EASYRPG, MKXPZ, SCUMMVM, OPENBOR, DAPHNE, WINE, PS2, GC, WII. Theme Manager is not shipped. Not a hardware test.
+Status: Host-tested. All 54 system tags, plus Tools, Collections, and Recently Played, have a 640×480 pair composed from Art Book Next `d772d071`. User `.media` and `/storage/bg.png` win. RPG Maker XP and the three section labels are wordmarks. Theme Manager is not shipped. Not a hardware test.
 
 ### 14M. HDMI 720p
 

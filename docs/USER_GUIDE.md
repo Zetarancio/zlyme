@@ -116,7 +116,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist. A `.jpg` or `.jpeg` with that name is used when the PNG is not there. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
 
-A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. If none of those exist, Zlyme shows an Art Book wallpaper for that system's tag, and for Tools, Collections, and Recently Played. Your images are not replaced. A system with no Art Book picture keeps the plain background. Settings → Appearance → Use folder background for ROMs starts on. Turning it off keeps the plain background. The pictures are CC BY-NC-SA 2.0; the credit is in the image under `artbook/NOTICE.md`.
+A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. If none of those exist, Zlyme shows an Art Book wallpaper for every included system, and for Tools, Collections, and Recently Played. Your images are not replaced. A folder that is not one of those keeps the plain background. Settings → Appearance → Use folder background for ROMs starts on. Turning it off keeps the plain background. The pictures are CC BY-NC-SA 2.0; the credit is in the image under `artbook/NOTICE.md`.
 
 ## USB file transfer
 

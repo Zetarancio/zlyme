@@ -150,8 +150,13 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/nextui-session \
 		$(TARGET_DIR)/usr/sbin/nextui-session
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
-	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook
-	cp -a $(NEXTUI_PKGDIR)/artbook/. $(TARGET_DIR)/usr/share/nextui/artbook/
+	# gen.py writes system/ and list/. Sources stay in the package tree.
+	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/system
+	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/list
+	cp -a $(NEXTUI_PKGDIR)/artbook/system/. $(TARGET_DIR)/usr/share/nextui/artbook/system/
+	cp -a $(NEXTUI_PKGDIR)/artbook/list/. $(TARGET_DIR)/usr/share/nextui/artbook/list/
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/artbook/NOTICE.md \
+		$(TARGET_DIR)/usr/share/nextui/artbook/NOTICE.md
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
 	# branding/ is splash and README source. The rasterizer reads the
