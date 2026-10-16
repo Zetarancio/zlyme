@@ -355,7 +355,7 @@ Status: Planned. No `zlyme44.4` release in this phase until that acceptance.
 
 Add a small `PlatformZlyme` instead of mapping `zlyme` to `PlatformROCKNIX`. Keep `CFW_NAME=Zlyme`, the selected library, artwork import, and user-installed ports. Do not replace a PortMaster tree the user already updated. Review upstream `2026.10.03-1041` or newer before changing the pin.
 
-Status: Host-tested. `PlatformZlyme` subclasses `PlatformBase`. Prepare rewrites an older `PlatformROCKNIX` mapping and leaves user runtimes in place. The pin stays `2026.06.23-0015`. Not a hardware test.
+Status: Host-verified. The patched `platform.py` from `2026.06.23-0015` imports, `HM_PLATFORMS['zlyme']` is `PlatformZlyme(PlatformBase)`, and `ES_NAME` stays unset. `first_run`, `portmaster_install`, and `portmaster_post_install` create no files. At that pin, `harbourmaster` never reads `ES_NAME`. Prepare still rewrites an older `PlatformROCKNIX` mapping. Not a hardware test.
 
 ### 14J. Orphan game preferences
 

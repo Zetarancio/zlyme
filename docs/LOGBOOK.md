@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — PlatformZlyme import
+
+Host only. The patched `platform.py` from tag `2026.06.23-0015` (git `273977234f901d0658b1d0f7ff8f5bf2f840e25d`) imports with stubbed `loguru` and `utility`. `HM_PLATFORMS['zlyme']` is `PlatformZlyme(PlatformBase)`. `ES_NAME` is unset. The three install hooks created no files. `harbourmaster` at that tag assigns `ES_NAME` and does not read it. No code change. Not run on a Flip.
+
 ## 2026-10-16 — Art Book Next wallpapers
 
 Host render only. `gen.py` composes 114 PNGs, 3,984,556 bytes, from Art Book Next `d772d071` artwork strips and logos. rsvg-convert 2.63.2 and Pillow write them. `--check` reproduced the same bytes. Pico-8 and fake-08 share `pico8`. RPG Maker XP, Tools, Collections, and Recently Played are DejaVu wordmarks. The Timothy Bueno pack is no longer installed. Not shown on a Flip.

@@ -8,7 +8,7 @@ GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release
 | --- | --- | --- |
 | PortMaster seed and persistent install | Implemented | The image ships the zip. A user update on the selected library is kept. |
 | `CFW_NAME=Zlyme` | Implemented | `zlyme-portmaster-prepare` requires that export. |
-| Platform class | Implemented | Prepare inserts `class PlatformZlyme(PlatformBase)` and maps `'zlyme'` to it. An older `'zlyme': PlatformROCKNIX` line is rewritten. The class does not set `ES_NAME` and does not copy `/usr/config/PortMaster`. |
+| Platform class | Host-verified | Prepare inserts `class PlatformZlyme(PlatformBase)` and maps `'zlyme'` to it. The patched `platform.py` from this pin imports. `first_run`, `portmaster_install`, and `portmaster_post_install` create no files. `ES_NAME` stays unset. In this pin's `harbourmaster` tree, `ES_NAME` is only assigned, never read. An older `'zlyme': PlatformROCKNIX` line is rewritten. |
 | Selected library and artwork | Implemented | `zlyme-portmaster-root` and `zlyme-portmaster-art`. JPEG is copied, not converted. |
 | Mount teardown | Implemented | `zlyme-portmaster-cleanup` unmounts a recorded mount only while its id is the visible one. MTP still refuses a nested mount. |
 | AArch64 ports | Partial | The userspace is AArch64. Which ports run was not remeasured here. |
