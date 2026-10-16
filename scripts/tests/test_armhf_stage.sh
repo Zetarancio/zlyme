@@ -70,22 +70,38 @@ for path in (root / "usr/lib/zlyme-armhf").iterdir():
 print("staged elfs ok")
 PY
 
-# A 64-bit file in the private directory must be refused.
+# A second stage replaces the private directory and drops a stale file.
+printf 'stale\n' > "$work/root/usr/lib/zlyme-armhf/libstale.so.1"
+ZLYME_ARMHF_SYSROOT=$SYSROOT "$STAGE" "$work/root"
+[ ! -e "$work/root/usr/lib/zlyme-armhf/libstale.so.1" ] || fail "stale ARMHF file survived"
+again=$(sha256sum "$work/root/lib/libc.so.6")
+[ "$before" = "$again" ] || fail "repeated staging changed AArch64 libc"
+find "$work/root" -name '.armhf-stage.*' | grep -q . && fail "staging directory was left behind"
+
+# A 64-bit file is rejected before anything is published.
 bad=$work/bad-sys/usr/lib/zlyme-armhf
-mkdir -p "$bad" "$work/bad-sys/lib"
+mkdir -p "$bad" "$work/bad-sys/lib" "$work/bad-dest/usr/lib/zlyme-armhf" "$work/bad-dest/lib"
 cp -a "$SYSROOT/lib/ld-linux-armhf.so.3" "$work/bad-sys/lib/"
 cp -a "$SYSROOT/usr/lib/zlyme-armhf/." "$bad/"
-python3 - "$bad/libevil.so.1" << 'PY'
+python3 - "$bad/libevil.so.1" "$work/bad-dest/lib/libc.so.6" << 'PY'
 import sys
 header = bytearray(64)
 header[0:4] = b"\x7fELF"
 header[4] = 2
 header[18] = 0xB7
 open(sys.argv[1], "wb").write(header)
+open(sys.argv[2], "wb").write(header + b"keep")
 PY
+printf 'keepme\n' > "$work/bad-dest/usr/lib/zlyme-armhf/libkeep.so.1"
+kept=$(sha256sum "$work/bad-dest/lib/libc.so.6")
 if out=$(ZLYME_ARMHF_SYSROOT=$work/bad-sys "$STAGE" "$work/bad-dest" 2>&1); then
 	fail "an ELF64 file in the private directory was installed"
 fi
 printf '%s\n' "$out" | grep -q 'ELF64' || fail "ELF64 was not the reported reason: $out"
+[ "$(cat "$work/bad-dest/usr/lib/zlyme-armhf/libkeep.so.1")" = "keepme" ] \
+	|| fail "rejected runtime still changed the destination"
+[ "$(sha256sum "$work/bad-dest/lib/libc.so.6")" = "$kept" ] \
+	|| fail "rejected runtime changed AArch64 libc"
+find "$work/bad-dest" -name '.armhf-stage.*' | grep -q . && fail "failed stage left a directory"
 
 echo "armhf stage ok"

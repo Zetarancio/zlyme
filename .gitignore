@@ -15,6 +15,7 @@ storage.sh
 
 /buildroot/
 /output/
+/output-armhf/
 /dl/
 
 # Optional local ScreenScraper developer credentials for zcrapegoat.
