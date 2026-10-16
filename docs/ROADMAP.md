@@ -307,13 +307,13 @@ Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `z
 
 Ship a real 32-bit ARM hard-float userspace, not only a loader name. Prefer a separate Buildroot ARMHF target in the KNULLI style (`knulli-rk3566_armhf_libs`). Use an ARM EABI hard-float toolchain and matching glibc. Do not import another distribution's binaries. Do not set `DEVICE_HAS_ARMHF=Y` until a dynamically linked ARMHF program runs and its libraries resolve.
 
-Status: Staging is host-tested and is not in the product image. `stage-runtime.sh` checks the whole runtime in a private tree, then publishes it. A rejected file leaves the destination unchanged, including an existing `/lib/libc.so.6`. `scripts/build-armhf-sysroot.sh` builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf`. That output is not wired into the AArch64 image. The probe has no RPATH. PortMaster's launch script and `control.txt` still put `/usr/lib` and `/usr/lib/compat` on `LD_LIBRARY_PATH` before the loader's private directory. qemu-arm is not installed (`extra/qemu-user` 11.1.2-1, and sudo needs a password), so the probe was not executed. `DEVICE_HAS_ARMHF` is not set.
+Status: Host-tested through qemu-user, and installed into the product target tree. `output-armhf` is built by `scripts/build-armhf-sysroot.sh`. `zlyme-armhf-runtime` checks its manifest and copies the loader and `/usr/lib/zlyme-armhf/` into the AArch64 root. A stale or missing manifest fails the package. The minimal image does not select it. A disposable Debian container with qemu-user 10.0.13 ran the probe: ELF32 ARM hard-float, interpreter `/lib/ld-linux-armhf.so.3`, `libc.so.6` from the private directory, output `armhf 32 0.3`. With `LD_LIBRARY_PATH=/usr/lib` the loader tries the AArch64 `libc.so.6` and then uses the private one. `DEVICE_HAS_ARMHF` stays `N` until a Flip runs an ARMHF program. A full image was not built.
 
 ### 14C. Box86 and Box64
 
 Keep the working Box64 and Wine path. Compare native Box86 with Box64's BOX32 against what PortMaster runs. Pick one combination. Do not enable both to raise a count.
 
-Status: Planned. Box64 is selected for Wine. No Box86 package is in the tree.
+Status: Deferred. The pinned Box64 `2f130fab` (v0.4.4) marks `BOX32` experimental and says not to use it. Its README still points 32-bit Windows programs at Box86 or at a WOW64 build. Zlyme's Wine is the WOW64 build on this Box64 with `BOX32=OFF`. Buildroot 2026.08 has no Box86 package. A native Box86 would be an ARMHF program on top of the private glibc, and it needs a Flip result before it can replace anything. `BOX32` stays off. Box86 is not added.
 
 ### 14D. Graphics and SDL3
 
@@ -327,13 +327,13 @@ Status: Built on the host toolchain. SDL 3.4.12 with KMSDRM, OpenGL ES, and Wayl
 
 Audit gptokeyb, gptokeyb2, `.gptk`, `control.txt`, and the SDL controller map. InputPlumber keeps the virtual Xbox pad. Do not add a second grabber. MENU+START, MENU, suspend, and return to NextUI stay. Host-test the mapping before a device pass.
 
-Status: Planned.
+Status: Audited. The PortMaster seed ships AArch64 `gptokeyb` and `gptokeyb2`, plus ARMHF copies. `control.txt` points `GPTOKEYB` and `GPTOKEYB2` at the unsuffixed AArch64 binaries in the PortMaster tree. InputPlumber remains the virtual Xbox pad. No second grabber is added. A missing `.gptk` mapping is a per-port Flip check.
 
 ### 14F. Shared runtimes
 
 Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. ALSA and BlueALSA stay the audio path. Do not add a resident PulseAudio. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
 
-Status: Planned. Theora compat is implemented. The rest is not.
+Status: Audited. The seed's `runtimes/` directory contains LÖVE 11.5 for AArch64 and x86_64. `libs/` is empty. Other engines stay catalogue downloads. `libgl_default.txt` prepends a port's own GL4ES directory. Zlyme does not ship GL4ES or OpenAL. ALSA and BlueALSA stay. Squashfs mount and cleanup stay in `zlyme-portmaster-exec` and `zlyme-portmaster-cleanup`. `/usr/lib/compat` remains the Theora 1.1 decoder.
 
 ### 14G. Named ports
 

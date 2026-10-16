@@ -87,6 +87,8 @@ Any other make target is passed through to Buildroot. `--clean` deletes the buil
 
 Paths come from the environment: `ZLYME_BUILDROOT`, `ZLYME_OUTPUT`, `ZLYME_DL`, `ZLYME_CCACHE`, and `ZLYME_DEFCONFIG`. The defaults are `./buildroot`, `./output`, `./dl`, `./.ccache`, and the minimal defconfig.
 
+`scripts/build-armhf-sysroot.sh` builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf` and writes `zlyme-armhf-runtime.manifest`. That tree is not the Flip image. A product build that selects `zlyme-armhf-runtime` reads it at `/zlyme/armhf` and fails if the manifest is missing or does not match the tree. It does not start the ARMHF build. `--clean` still refuses a directory whose name is not `output`, so it does not delete `output-armhf`.
+
 Do not run two builds against the same output tree simultaneously.
 
 ## Source fingerprints

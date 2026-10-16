@@ -1,0 +1,11 @@
+config BR2_PACKAGE_ZLYME_ARMHF_RUNTIME
+	bool "zlyme-armhf-runtime"
+	depends on BR2_aarch64
+	help
+	  ARM EABI hard-float loader and private glibc for 32-bit
+	  programs. The files come from a sysroot already built with
+	  configs/zlyme_my355_armhf_defconfig. This package does not
+	  start that build. AArch64 libc is left in place.
+
+comment "zlyme-armhf-runtime is installed into the AArch64 system"
+	depends on !BR2_aarch64

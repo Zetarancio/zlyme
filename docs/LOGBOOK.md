@@ -19,6 +19,18 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ARMHF runtime in the product tree
+
+`scripts/build-armhf-sysroot.sh` resolves the repository root and builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf`. A clean tree failed while linking `libgcc_s.so` because `crti.o` and `-lc` follow glibc's private `--libdir`. `external.mk` now symlinks the unversioned linker inputs back into the staging `usr/lib`. Versioned shared objects stay in `/usr/lib/zlyme-armhf`. After `target-finalize`, that directory holds glibc, `libgcc_s`, and `libatomic`, and `/lib` holds `ld-linux-armhf.so.3`.
+
+`stage-runtime.sh` checks the copied tree before either rename. A bad ELF, a bad interpreter, a missing dependency, an escaping symlink, and a destination symlink leave the previous private files and the AArch64 libc in place. An injected failure while publishing the library directory, the loader, or the final check restores both paths. A `TERM` during the pause after the library rename does the same.
+
+qemu-user 10.0.13 came from a disposable `debian:trixie-slim` container, not from the host package and not from the production image. The probe is ELF32 ARM hard-float, interpreter `/lib/ld-linux-armhf.so.3`, `NEEDED` `libc.so.6`. With `LD_LIBRARY_PATH` unset, the loader trace opens `/usr/lib/zlyme-armhf/libc.so.6` and the probe prints `armhf 32 0.3`. With `LD_LIBRARY_PATH=/usr/lib` and an ELF64 decoy at `/usr/lib/libc.so.6`, the trace tries the decoy and then inits the private libc. The output is the same. This is qemu-user. It was not run on a Flip.
+
+`zlyme-armhf-runtime` is selected in `zlyme_my355_defconfig`. A dirclean install into `output/target` kept the AArch64 `libc.so.6` hash `39380b39982f2b691c072dd62bd4e6d56d812e32e9f3021b00847c185cba5419` and `ld-linux-aarch64.so.1` hash `73eac4e987fc5917b4a3ef8c5ae0a6533ab579b2f421c0d9e9f99890f8d82c07`. The minimal defconfig does not select the package. `control.txt` sets `DEVICE_HAS_ARMHF=N` after `device_info.txt`. A full image was not built.
+
+Pinned Box64 `2f130fab` marks `BOX32` experimental. It stays off. Box86 is not packaged. The PortMaster seed's `gptokeyb` binaries used by `control.txt` are AArch64. The seed's only bundled runtime is LÖVE 11.5 for AArch64 and x86_64. GL4ES stays a per-port directory. No second gamepad grabber was added.
+
 ## 2026-10-16 — ARMHF stage check
 
 `stage-runtime.sh` copied the private runtime into a fake root. A stand-in ELF64 `/lib/libc.so.6` was unchanged, and an ELF64 file offered as an ARMHF library was refused. The probe has no RPATH. Its interpreter is `/lib/ld-linux-armhf.so.3` and its only `NEEDED` entry is `libc.so.6`. PortMaster's launch script still puts `/usr/lib` on `LD_LIBRARY_PATH` ahead of the loader's private directory. qemu-arm is not installed. The product image does not contain this runtime. `DEVICE_HAS_ARMHF` is not set.

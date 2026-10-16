@@ -27,11 +27,21 @@ done
 if grep -q 'BR2_PACKAGE_ZLYME_ARMHF_PROBE' "$PROD"; then
 	fail "product image selects the armhf probe"
 fi
-if grep -R -n 'ld-linux-armhf.so.3' "$ROOT/board" "$ROOT/package" --exclude='*.mk' --exclude='probe.c' >/dev/null 2>&1; then
-	# The probe package must not ship a fake loader. A mention in a
-	# comment is still a fail so the path stays a real glibc file.
-	fail "a loader path is named outside the ARMHF toolchain"
+MIN=$ROOT/configs/zlyme_my355_minimal_defconfig
+if grep -q 'BR2_PACKAGE_ZLYME_ARMHF_RUNTIME' "$MIN"; then
+	fail "minimal image selects the armhf runtime"
 fi
+if find "$ROOT/board" "$ROOT/package" -name 'ld-linux-armhf.so.3' | grep -q .; then
+	fail "an ARMHF loader binary is stored in the tree"
+fi
+hits=$(grep -R -s -l 'ld-linux-armhf.so.3' "$ROOT/board" "$ROOT/package" || true)
+for hit in $hits; do
+	case "$hit" in
+		"$ROOT/package/system/zlyme-armhf-runtime/"* | \
+		"$ROOT/package/system/zlyme-armhf-probe/"*) ;;
+		*) fail "loader path is named in $hit" ;;
+	esac
+done
 if grep -q -- '-static' "$ROOT/package/system/zlyme-armhf-probe/zlyme-armhf-probe.mk"; then
 	fail "probe is linked static"
 fi

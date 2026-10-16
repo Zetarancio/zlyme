@@ -21,6 +21,28 @@ GLIBC_CONF_ENV += \
 	libc_cv_rtlddir=/lib
 GLIBC_CONF_OPTS += --libdir=/usr/lib/zlyme-armhf
 
+# --libdir puts crti.o, the libc.so linker script, and the static
+# archives in the private directory. gcc-final looks for those in the
+# sysroot's /usr/lib, so a clean build fails with "cannot find -lc".
+# Symlink the unversioned linker inputs back. Versioned shared objects
+# stay where the loader searches, and this staging directory is not the
+# target rootfs.
+define ZLYME_ARMHF_GLIBC_LINKER_LINKS
+	src="$(STAGING_DIR)/usr/lib/zlyme-armhf"; \
+	dst="$(STAGING_DIR)/usr/lib"; \
+	mkdir -p "$$dst"; \
+	for file in "$$src"/*; do \
+		[ -e "$$file" ] || continue; \
+		[ -d "$$file" ] && continue; \
+		base=$$(basename "$$file"); \
+		case "$$base" in \
+			*.so.[0-9]*) continue ;; \
+		esac; \
+		ln -sfn "zlyme-armhf/$$base" "$$dst/$$base"; \
+	done
+endef
+GLIBC_POST_INSTALL_STAGING_HOOKS += ZLYME_ARMHF_GLIBC_LINKER_LINKS
+
 # glibc's shared objects land in the private directory. libgcc and
 # libatomic are still installed in /lib by the compiler. Move those
 # into the private directory so the loader can see them. If a name is

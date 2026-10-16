@@ -44,6 +44,8 @@ The project's own upstream is the version and source authority. Active KNULLI an
 
 Keep Zlyme's direct KMS, input, audio, and storage contracts. Build the package by itself before a full image. Hardware smoke is for a runtime change, not for a comment or a pin that does not change behavior. Procedure: `docs/UPSTREAMS.md`. Build mechanics: `docs/DEVELOPMENT.md`.
 
+The ARMHF runtime is a separate Buildroot tree. `scripts/build-armhf-sysroot.sh` builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf` and writes `zlyme-armhf-runtime.manifest`. The product defconfig selects `zlyme-armhf-runtime`, which installs the loader and `/usr/lib/zlyme-armhf/` from that manifest. A product build without a matching manifest fails. The minimal defconfig does not select the package. `control.txt` keeps `DEVICE_HAS_ARMHF=N` until a Flip runs an ARMHF program. The build commands are in `docs/DEVELOPMENT.md`. The layout is in `docs/ARCHITECTURE.md`.
+
 A Buildroot release bump changes `BUILDROOT_VERSION` in `build.sh` and the pinned baseline in `docs/DEVELOPMENT.md`. Linux and U-Boot stay on their own pins. The product image's PanVK selection is a build choice. Mali-G52 Vulkan with that driver needs `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1`. `zlyme-gpu-env.sh` exports that only when the saved GPU choice is exactly `panfrost`. One orange frame was presented twice on a Flip. PanVK stays experimental. PPSSPP on Panfrost does not acquire the DRM display. The closure note is in `docs/ROADMAP.md`. The session record is `docs/archive/roadmap-2026-10-15.md`.
 
 ## Vendored helpers

@@ -158,7 +158,21 @@ build_container() {
 
 # Host gcc is still --prefix=/flip/output/host, so the same output tree is
 # also mounted at /flip/output. Do not byte-replace those paths in ELFs.
+#
+# The product build reads the ARMHF runtime from /zlyme/armhf. That mount
+# is the repository's output-armhf directory, and it is read-only. It is
+# not added while this command is itself building that directory.
 in_container() {
+    local -a armhf_mount=()
+    local armhf_src armhf_real out_real
+    armhf_src="${ZLYME_ARMHF_OUTPUT:-${REPO}/output-armhf}"
+    if [ -d "${armhf_src}" ]; then
+        armhf_real="$(realpath -m "${armhf_src}")"
+        out_real="$(realpath -m "${ZLYME_OUTPUT}")"
+        if [ "${armhf_real}" != "${out_real}" ]; then
+            armhf_mount+=(-v "${armhf_real}:/zlyme/armhf:ro")
+        fi
+    fi
     "${DOCKER[@]}" run --rm -i ${TTY_FLAG} --privileged \
         --user "$(id -u):$(id -g)" \
         -e HOME=/tmp \
@@ -174,6 +188,7 @@ in_container() {
         -v "${ZLYME_OUTPUT}:/flip/output" \
         -v "${ZLYME_DL}:/zlyme/dl" \
         -v "${ZLYME_CCACHE}:/zlyme/ccache" \
+        "${armhf_mount[@]}" \
         -w /zlyme/buildroot \
         "${IMAGE}" "$@"
 }

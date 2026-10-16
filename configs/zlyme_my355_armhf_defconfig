@@ -3,9 +3,10 @@
 # the 32-bit tune is cortex-a53: ARMv8-A AArch32, NEON, and FP-ARMv8,
 # which the RK3566 runs. Do not point this file at output/.
 # external.mk gives this glibc slibdir and libdir /usr/lib/zlyme-armhf
-# and leaves the loader at /lib/ld-linux-armhf.so.3.
-# package/system/zlyme-armhf-runtime/stage-runtime.sh copies that
-# layout into a root. It is not selected in the product image.
+# and leaves the loader at /lib/ld-linux-armhf.so.3. It also symlinks
+# the toolchain's crt and unversioned libc.so into the sysroot usr/lib.
+# zlyme-armhf-runtime copies the loader and the private directory into
+# the AArch64 image. The minimal image does not select that package.
 BR2_arm=y
 BR2_cortex_a53=y
 BR2_ARM_EABIHF=y

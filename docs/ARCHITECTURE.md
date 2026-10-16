@@ -549,6 +549,10 @@ A missing live path, or a path that is not a real PortMaster directory, is insta
 
 PortMaster `control.txt` sets `clibs=/usr/lib/compat` and `get_controls` prepends that directory to `LD_LIBRARY_PATH`. Runtime wrappers then prepend their own library directory. The system dynamic linker does not search `/usr/lib/compat`. `portmaster-theora-compat` installs the libtheora 1.1.1 decoder there (`libtheoradec.so.1`) because LÖVE 11.5 was built against that SONAME. The system libtheora remains 1.2 (`libtheoradec.so.2`).
 
+`nextui-session` exports `LD_LIBRARY_PATH=/storage/.config/zlyme/lib:/usr/lib`. `portmaster-launch` starts the PortMaster GUI and prepends `/usr/share/nextui/lib:/usr/lib`. `PORTS.pak/launch.sh` starts one port and does not set `LD_LIBRARY_PATH`, so the port inherits the session value. A port that calls `get_controls` then has `/usr/lib/compat` in front of that. `zlyme-portmaster-exec` does not change the variable. The Weston wrapper it can install prepends that runtime's `lib_aarch64` for the AArch64 Weston path.
+
+`zlyme-armhf-runtime` installs `/lib/ld-linux-armhf.so.3` and `/usr/lib/zlyme-armhf/` into the product rootfs. The bytes come from `output-armhf`, built by `scripts/build-armhf-sysroot.sh` from `configs/zlyme_my355_armhf_defconfig`. glibc's `libdir` and `slibdir` are the private directory, and `rtlddir` is `/lib`, so the loader's built-in search path is `/usr/lib/zlyme-armhf/`. AArch64 `libc.so.6` and `ld-linux-aarch64.so.1` stay where they are. The recipe reads `/zlyme/armhf/zlyme-armhf-runtime.manifest`, checks the hashes and the defconfig, and fails if the tree is missing, stale, or AArch64. It does not start a second Buildroot. The minimal image does not select the package. Kernel `CONFIG_COMPAT` and `CONFIG_COMPAT_BINFMT_ELF` are already enabled. `control.txt` sets `DEVICE_HAS_ARMHF=N` after `device_info.txt`, because that file treats the loader's presence as the capability bit. The bit stays off until an ARMHF program has run on a Flip.
+
 ## 12. Emulator model
 
 Zlyme deliberately ships a curated set.
