@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `9931d99e`. About reads Syncthing through `zlyme-syncthing-gui`. That pin is fast-forwarded onto NextUI `zlyme` before it is the pin on Zlyme `main`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `f2f481bc` for the orphan-preference row. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -361,7 +361,7 @@ Status: Planned. The current prepare step still requires the ROCKNIX mapping.
 
 Settings → Game removes per-ROM governor and emulator rows in `/storage/.config/nextui/shared/zlyme-prefs.txt` whose ROM is gone. Folder and system rows stay. A missing card does not count as a missing ROM. Host tests are the gate.
 
-Status: In progress on this branch.
+Status: Host-tested. The cleanup is `zlyme-game-cleanup orphan-prefs`. A missing second card does not drop its rows. An unplugged USB volume whose name is only a path prefix is kept when that folder is not on a card that is in. Not a hardware test.
 
 ### 14K. Network services follow Wi-Fi
 

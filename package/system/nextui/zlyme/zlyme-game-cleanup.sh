@@ -481,6 +481,183 @@ apply_plan() {
 	return "$miss"
 }
 
+prefs_path() {
+	printf '%s\n' "${ZLYME_PREFS_FILE:-$STORAGE/.config/nextui/shared/zlyme-prefs.txt}"
+}
+
+lib_is_present() {
+	_lp_root=$1
+	[ -n "$_lp_root" ] || return 1
+	[ -d "$_lp_root" ] || return 1
+	if [ ! -f "$LIBRARIES" ]; then
+		[ "$_lp_root" = "$STORAGE" ]
+		return
+	fi
+	while IFS= read -r _lp_row || [ -n "$_lp_row" ]; do
+		_lp_row=$(printf '%s' "$_lp_row" | tr -d '\r')
+		[ "$_lp_row" = "$_lp_root" ] && return 0
+	done < "$LIBRARIES"
+	return 1
+}
+
+fold_text() {
+	printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+tag_of_console() {
+	base=$(basename "$1")
+	case "$base" in
+		*'('*) ;;
+		*) return 1 ;;
+	esac
+	t=${base##*(}
+	t=${t%%)*}
+	[ -n "$t" ] || return 1
+	printf '%s\n' "$t"
+}
+
+rom_file_here() {
+	_rf_root=$1
+	_rf_tag=$2
+	_rf_inner=$3
+	case "$_rf_inner" in
+		""|*..*|//*|*/) return 1 ;;
+	esac
+	for _rf_roms in "$_rf_root/Roms" "$_rf_root/roms"; do
+		[ -d "$_rf_roms" ] || continue
+		for _rf_dir in "$_rf_roms"/*; do
+			[ -d "$_rf_dir" ] || continue
+			_rf_got=$(tag_of_console "$_rf_dir") || continue
+			[ "$(fold_text "$_rf_got")" = "$(fold_text "$_rf_tag")" ] || continue
+			[ -f "$_rf_dir/$_rf_inner" ] && return 0
+		done
+	done
+	return 1
+}
+
+# 0 when the per-ROM row should be removed.
+rom_pref_is_orphan() {
+	tag=$1
+	rel=$2
+	[ -n "$tag" ] || return 1
+	[ -n "$rel" ] || return 1
+	badge=
+	inner=$rel
+	case "$rel" in
+		SD2/*)
+			badge=SD2
+			inner=${rel#SD2/}
+			;;
+		*/*)
+			first=${rel%%/*}
+			media=${ZLYME_MEDIA_ROOT:-/mnt/media}/$first
+			if lib_is_present "$media" || { [ ! -f "$LIBRARIES" ] && [ -d "$media" ]; }; then
+				badge=$first
+				inner=${rel#*/}
+			fi
+			;;
+	esac
+	undecided=0
+	found=0
+	if lib_is_present "$STORAGE"; then
+		rom_file_here "$STORAGE" "$tag" "$rel" && found=1
+	else
+		undecided=1
+	fi
+	if [ "$badge" = SD2 ]; then
+		root=${ZLYME_SD2_ROOT:-/mnt/sd2}
+		if lib_is_present "$root"; then
+			rom_file_here "$root" "$tag" "$inner" && found=1
+		else
+			undecided=1
+		fi
+	elif [ -n "$badge" ]; then
+		root=${ZLYME_MEDIA_ROOT:-/mnt/media}/$badge
+		if lib_is_present "$root"; then
+			rom_file_here "$root" "$tag" "$inner" && found=1
+		else
+			undecided=1
+		fi
+	fi
+	# A missing parent folder on every present card can be an unplugged
+	# volume whose name is the first path component. SD2 is already
+	# undecided above when that card is out.
+	if [ "$found" = 0 ] && [ -z "$badge" ]; then
+		case "$rel" in
+			*/*)
+				top=${rel%%/*}
+				if ! rom_file_here "$STORAGE" "$tag" "$top" && \
+					! dir_under_console "$STORAGE" "$tag" "$top"; then
+					undecided=1
+				fi
+				;;
+		esac
+	fi
+	[ "$found" = 0 ] && [ "$undecided" = 0 ]
+}
+
+dir_under_console() {
+	_du_root=$1
+	_du_tag=$2
+	_du_name=$3
+	for _du_roms in "$_du_root/Roms" "$_du_root/roms"; do
+		[ -d "$_du_roms" ] || continue
+		for _du_dir in "$_du_roms"/*; do
+			[ -d "$_du_dir" ] || continue
+			_du_got=$(tag_of_console "$_du_dir") || continue
+			[ "$(fold_text "$_du_got")" = "$(fold_text "$_du_tag")" ] || continue
+			[ -d "$_du_dir/$_du_name" ] && return 0
+		done
+	done
+	return 1
+}
+
+do_orphan_prefs() {
+	file=$(prefs_path)
+	[ -f "$file" ] || {
+		printf '%s\n' 0
+		return 0
+	}
+	tmp=$(mktemp "${TMPDIR:-/tmp}/zlyme-prefs.XXXXXX") || return 1
+	n=0
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			''|'#'*)
+				printf '%s\n' "$line" >> "$tmp"
+				continue
+				;;
+		esac
+		fields=$(printf '%s' "$line" | awk -F '\t' '{ print NF }')
+		if [ "$fields" -lt 4 ]; then
+			printf '%s\n' "$line" >> "$tmp"
+			continue
+		fi
+		kind=${line%%	*}
+		rest=${line#*	}
+		tag=${rest%%	*}
+		rest=${rest#*	}
+		rel=${rest%%	*}
+		case "$kind" in
+			rom) ;;
+			*)
+				printf '%s\n' "$line" >> "$tmp"
+				continue
+				;;
+		esac
+		if rom_pref_is_orphan "$tag" "$rel"; then
+			n=$((n + 1))
+			continue
+		fi
+		printf '%s\n' "$line" >> "$tmp"
+	done < "$file"
+	printf '%s\n' "$n"
+	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
+		mv -f "$tmp" "$file" || return 1
+	else
+		rm -f "$tmp"
+	fi
+}
+
 st=0
 case "$ACTION" in
 	rom)
@@ -507,8 +684,9 @@ case "$ACTION" in
 	ra-cfg) n=$(do_ra_cfg) || st=$?; echo "COUNT=$n"; echo "RetroArch configuration" ;;
 	standalones) n=$(do_standalones) || st=$?; echo "COUNT=$n" ;;
 	ra-rom-cfg) n=$(do_ra_rom_cfg) || st=$?; echo "COUNT=$n"; echo "per-ROM RetroArch configs" ;;
+	orphan-prefs) n=$(do_orphan_prefs) || st=$?; echo "COUNT=$n"; echo "orphan game preferences" ;;
 	*)
-		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|ra-cfg|standalones|ra-rom-cfg|rom PATH|rom-apply PLAN} [--dry-run]" >&2
+		echo "usage: $0 {junk|orphan-saves|orphan-media|recents|ra-cores|ra-cfg|standalones|ra-rom-cfg|orphan-prefs|rom PATH|rom-apply PLAN} [--dry-run]" >&2
 		exit 1
 		;;
 esac

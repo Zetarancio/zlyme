@@ -6,6 +6,10 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
+### Added
+
+- Settings → Game → Orphan game preferences removes a per-ROM governor or emulator choice when that ROM is gone. A folder or system choice stays. A choice for the second card stays while that card is out.
+
 ## [zlyme44.3] - 2026-10-16
 
 ### Added

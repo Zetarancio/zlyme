@@ -262,6 +262,7 @@ Besides its game options, this page holds cleanup actions. Each one asks before 
 - **Clean junk**: desktop metadata and trash folders.
 - **Orphan saves / states**: saves whose ROM is missing from that same card.
 - **Orphan boxart**: artwork whose ROM is missing.
+- **Orphan game preferences**: per-ROM governor and emulator choices whose ROM is missing. A choice for a whole folder or a whole system stays. A choice for the second card stays while that card is out.
 - **Clear Recents**: the Recently Played list.
 - **Reset RetroArch core options** removes per-core option files and restores the stock option files. It does not remove core libraries, saves, or the main RetroArch configuration.
 - **Reset RetroArch configuration** restores the main RetroArch configuration from the stock file. It does not remove core options, core libraries, saves, or BIOS files.
