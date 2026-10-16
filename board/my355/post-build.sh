@@ -351,17 +351,17 @@ if ! br2_selected BR2_PACKAGE_GPUDRIVER && ! br2_selected BR2_PACKAGE_LIBMALI; t
 	fi
 fi
 
-# Fluidsynth 2.4 saw SDL3 cmake files in staging (Qt leftover) and
-# DT_NEEDED libSDL3.so.0. We do not ship SDL3. A tiny SONAME stub is
-# enough; MIDI still goes through ALSA.
-if [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-gcc" ]; then
-	stub="$(cd "$(dirname "$0")" && pwd)/sdl3-stub.c"
-	map="$(cd "$(dirname "$0")" && pwd)/sdl3-stub.map"
-	if [ -f "$stub" ] && [ -f "$map" ]; then
-		"${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-gcc" -shared -fPIC \
-			-o "${TARGET_DIR}/usr/lib/libSDL3.so.0" \
-			-Wl,-soname,libSDL3.so.0 -Wl,--version-script="$map" \
-			"$stub"
+# The image links the Buildroot SDL3 library. Do not replace it with a stub.
+if [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" ]; then
+	sdl3lib="${TARGET_DIR}/usr/lib/libSDL3.so.0"
+	if [ ! -e "${sdl3lib}" ]; then
+		echo "post-build: ${sdl3lib} is missing" >&2
+		exit 1
+	fi
+	# SDL3 versions the symbol (SDL_Init@@SDL3_0.0.0). The old stub did not.
+	if ! "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" -D "${sdl3lib}" | grep -Eq ' SDL_Init(@@|$)'; then
+		echo "post-build: ${sdl3lib} does not export SDL_Init" >&2
+		exit 1
 	fi
 fi
 

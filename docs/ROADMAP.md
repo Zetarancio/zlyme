@@ -321,7 +321,7 @@ Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing 
 
 Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
 
-Status: Planned. The stub is still installed.
+Status: Built on the host toolchain. SDL 3.4.12 with KMSDRM, OpenGL ES, and Wayland. The stub is not installed. A Flip has not opened an SDL3 window.
 
 ### 14E. GPTK and input
 

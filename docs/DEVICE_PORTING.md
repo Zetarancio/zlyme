@@ -60,7 +60,7 @@ board/<device>/
 └── make-update-tar.sh
 ```
 
-`board/my355` also has `extlinux.conf`, `zlyme-boot.conf`, `image-date.sh`, `assert-input-rootfs.sh`, `pre-update.sh`, `post-update.sh`, and the `sdl3-stub` sources. `build.sh` sources `board/my355/image-date.sh` by that literal path.
+`board/my355` also has `extlinux.conf`, `zlyme-boot.conf`, `image-date.sh`, `assert-input-rootfs.sh`, `pre-update.sh`, and `post-update.sh`. `build.sh` sources `board/my355/image-date.sh` by that literal path. SDL3 comes from Buildroot. `post-build.sh` rejects a `libSDL3.so.0` that does not export `SDL_Init`.
 
 Not all devices must use the same bootloader/image layout.
 

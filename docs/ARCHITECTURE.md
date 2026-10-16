@@ -91,7 +91,7 @@ board/<device>/
 └── make-update-tar.sh       device update artifact
 ```
 
-`board/my355` provides all of these. It also holds `zlyme-boot.conf` (boot flags on ZLYMEBOOT), the OTA hooks `pre-update.sh` and `post-update.sh`, and build helpers (`image-date.sh`, `assert-input-rootfs.sh`, `sdl3-stub.c` and `.map`).
+`board/my355` provides all of these. It also holds `zlyme-boot.conf` (boot flags on ZLYMEBOOT), the OTA hooks `pre-update.sh` and `post-update.sh`, and build helpers (`image-date.sh`, `assert-input-rootfs.sh`). SDL3 is Buildroot's package. `post-build.sh` checks that `libSDL3.so.0` exports `SDL_Init` and does not replace that library.
 
 Not every future board must have every file, but the board owns these responsibilities.
 
