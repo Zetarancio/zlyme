@@ -1,0 +1,9 @@
+Files
+Moonlight
+Music Player
+Overlays
+PortMaster
+RetroArch
+Settings
+USB File Transfer
+ZcrapeGoat

@@ -76,11 +76,11 @@ Phase 14 starts only after this sequence, on a new Zlyme branch from the accepte
 
 ## Default system artwork
 
-A supported system in `package/system/nextui/rom-dirs.txt` needs both `package/system/nextui/artbook/system/(TAG).png` and `package/system/nextui/artbook/list/(TAG)-list.png`. Add or rename a system only with those two files.
+Every system in `package/system/nextui/rom-dirs.txt` and every built-in Tool pak under `package/system/nextui/paks/Tools` needs a transparent 640×480 artwork image. Add or rename one only together with that image.
 
-The canonical source is Art Book Next, `anthonycaccese/art-book-next-es-de`, the original artwork in `_inc/systems/artwork` and the logos in `_inc/systems/logos`. `package/system/nextui/artbook/gen.py` maps the Zlyme tag, checks `src/SHA256SUMS`, and writes the 640×480 files. Do not point a tag at an unrelated system's picture, and do not leave the pair missing. User `.media` images and `/storage/bg.png` stay in front of these files. An update must not copy the stock images over them.
+`package/system/zlyme-artbook` downloads Art Book Next at the commit in its `.mk` and `.hash`. The host composes `system/(TAG).png` from `_inc/systems/artwork` and `_inc/systems/logos`. A system with no upstream picture, and every Tool, uses a drawing in `tools/`. Do not vendor the upstream image set. Do not ship a ROM-list wallpaper. The logo, including its contour and shadow, stays at most 291 pixels wide and in the right half of the frame, clear of the scrolling name.
 
-Record the source and license in `package/system/nextui/artbook/NOTICE.md`. The Art Book set is CC BY-NC-SA 2.0. Provenance for the pin is in `docs/UPSTREAMS.md`.
+User `.media` images and `/storage/bg.png` stay in front. An update must not copy stock images over them. The license is CC BY-NC-SA 2.0. Provenance is in `docs/UPSTREAMS.md` and `package/system/zlyme-artbook/NOTICE.md`.
 
 ## Releases
 

@@ -257,6 +257,7 @@ BR2_PACKAGE_JPEG=y
 BR2_PACKAGE_SDL2_IMAGE=y
 BR2_PACKAGE_SDL2_TTF=y
 BR2_PACKAGE_NEXTUI=y
+BR2_PACKAGE_ZLYME_ARTBOOK=y
 # Starts after the first frame with auto_manage=false. zlyme-input sets ManageAllDevices.
 BR2_PACKAGE_INPUTPLUMBER=y
 BR2_PACKAGE_ZLYME_INPUT=y

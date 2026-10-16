@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `efedf8a6` for the delete-game row, the Wi-Fi service switches, and the Art Book fallback. About reads Syncthing through `zlyme-syncthing-gui`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `be39118a` for the delete-game row, the Wi-Fi service switches, and transparent Art Book overlays. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -373,7 +373,7 @@ Status: Host-tested. `zlyme-net-services apply` is the boot, Wi-Fi, and per-serv
 
 Ship a verified subset of ArtBook NextUI system and root artwork as the default when the user has no image. Do not overwrite `.media` or backgrounds on update. Do not ship Theme Manager unchanged. The license check is in the research note. Splash branding stays as it is.
 
-Status: Host-tested. All 54 system tags, plus Tools, Collections, and Recently Played, have a 640×480 pair composed from Art Book Next `d772d071`. User `.media` and `/storage/bg.png` win. RPG Maker XP and the three section labels are wordmarks. Theme Manager is not shipped. Not a hardware test.
+Status: Host-tested. `zlyme-artbook` downloads Art Book Next `d772d071` and composes a transparent 640×480 overlay for each of the 54 systems, plus one image for each built-in Tool. Logos stay in the right half, at most 291 pixels wide. ROM lists do not get a bundled wallpaper. User `.media` and `/storage/bg.png` win. Not a hardware test.
 
 ### 14M. HDMI 720p
 

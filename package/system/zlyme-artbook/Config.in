@@ -1,0 +1,5 @@
+config BR2_PACKAGE_ZLYME_ARTBOOK
+	bool "zlyme-artbook"
+	help
+	  Transparent system and Tool artwork composed on the build
+	  host from Art Book Next. Nothing is fetched on the Flip.

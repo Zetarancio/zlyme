@@ -22,13 +22,13 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = efedf8a62121bd071c2257352f4b6beda2ac1706
+NEXTUI_VERSION = be39118ac00fd85e639e828e34b82a8bb9d51bf4
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
-NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl
+NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl zlyme-artbook
 
 # Workspace directory from the selected device (Config.in). my355 today.
 NEXTUI_PLATFORM = $(call qstrip,$(BR2_PACKAGE_NEXTUI_PLATFORM))
@@ -150,13 +150,6 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/nextui-session \
 		$(TARGET_DIR)/usr/sbin/nextui-session
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
-	# gen.py writes system/ and list/. Sources stay in the package tree.
-	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/system
-	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/list
-	cp -a $(NEXTUI_PKGDIR)/artbook/system/. $(TARGET_DIR)/usr/share/nextui/artbook/system/
-	cp -a $(NEXTUI_PKGDIR)/artbook/list/. $(TARGET_DIR)/usr/share/nextui/artbook/list/
-	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/artbook/NOTICE.md \
-		$(TARGET_DIR)/usr/share/nextui/artbook/NOTICE.md
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
 	# branding/ is splash and README source. The rasterizer reads the

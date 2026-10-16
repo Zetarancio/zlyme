@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — transparent Art Book package
+
+`zlyme-artbook` downloads Art Book Next `d772d071` (archive SHA-256 `430110584bafa614b7a3f4af1891c675e58de60e6658e3758d0724554f77ebd3`) and composes 54 system overlays plus 9 tool images. They are 640×480 RGBA. Content stays at x≥320. Logos are capped at 291 pixels including a 2px contour and a 16px 50% black shadow. No list wallpaper is generated. NextUI `be39118a` blends that alpha over the theme color and clears the picture inside a ROM list. The upstream image set is not vendored. Not shown on a Flip.
+
 ## 2026-10-16 — ARMHF defconfig
 
 `olddefconfig` for `zlyme_my355_armhf_defconfig` in `/tmp/zlyme-armhf-out` kept ARM, cortex-a53, EABIHF, `neon-fp-armv8`, hard float, and glibc. `BR2_cortex_a55` cannot be selected for 32-bit in Buildroot 2026.08. Linux and U-Boot stayed off. BusyBox stayed off. The product output tree was not reconfigured. The probe was not linked in this note. Kernel `CONFIG_COMPAT_BINFMT_ELF` is already set. Not run on a Flip.
