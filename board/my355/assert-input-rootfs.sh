@@ -3,9 +3,82 @@
 # Buildroot packages can keep old compiled objects after a source edit.
 set -euo pipefail
 
+repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+
+# The tree is an unsquashfs destination or a fixture. It must contain
+# exactly the finished system and Tool PNGs plus NOTICE.md.
+check_artbook() {
+	local tree=$1
+	/usr/bin/python3 - "$tree" "$repo" << 'PY'
+import re
+import struct
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+repo = Path(sys.argv[2])
+base = root / "usr/share/nextui/artbook"
+if not base.is_dir():
+    sys.exit("artbook directory missing")
+if (base / "list").exists() or (base / "resources").exists():
+    sys.exit("artbook install contains source or list wallpaper")
+notice = base / "NOTICE.md"
+pkg_notice = repo / "package/system/zlyme-artbook/NOTICE.md"
+if not notice.is_file() or notice.read_bytes() != pkg_notice.read_bytes():
+    sys.exit("NOTICE.md is not the package notice")
+
+def tags():
+    found = []
+    for line in (repo / "package/system/nextui/rom-dirs.txt").read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = re.search(r"\(([^)]+)\)$", line)
+        if not match:
+            sys.exit("rom-dirs line has no tag: " + line)
+        found.append(match.group(1))
+    return found
+
+def tools():
+    paks = repo / "package/system/nextui/paks/Tools"
+    return sorted(path.name[:-4] for path in paks.iterdir() if path.name.endswith(".pak"))
+
+expected = {"system/(%s).png" % tag for tag in tags()}
+expected.update("tools/%s.png" % name for name in tools())
+found = set()
+for path in base.rglob("*"):
+    if path.is_dir():
+        continue
+    rel = path.relative_to(base).as_posix()
+    if rel == "NOTICE.md":
+        continue
+    if rel.endswith(".svg") or "background.png" in rel:
+        sys.exit("source asset installed: " + rel)
+    found.add(rel)
+if found != expected:
+    sys.exit("artbook inventory mismatch: " + " ".join(sorted(found ^ expected)))
+
+def png_ok(path):
+    data = path.read_bytes()
+    if len(data) < 26 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        return False
+    width, height, depth, color = struct.unpack(">IIBB", data[16:26])
+    return width == 640 and height == 480 and depth == 8 and color == 6
+
+for rel in sorted(expected):
+    if not png_ok(base / rel):
+        sys.exit("not a 640x480 RGBA PNG: " + rel)
+print("artbook rootfs", len(tags()), len(tools()))
+PY
+}
+
+if [ "${1:-}" = --check-artbook ]; then
+	check_artbook "${2:?expected an artbook tree}"
+	exit 0
+fi
+
 image=${1:?expected rootfs.squashfs}
 host=${HOST_DIR:?HOST_DIR is required}
-repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -80,5 +153,13 @@ for binary in zlyme-pak-hotkey zlyme-keylidmon; do
 		exit 1
 	fi
 done
+
+if ! "$host/bin/unsquashfs" -no-progress -d "$tmp/artbook" "$image" \
+	usr/share/nextui/artbook >/dev/null
+then
+	echo "input-rootfs: artbook is missing from the squashfs" >&2
+	exit 1
+fi
+check_artbook "$tmp/artbook"
 
 echo "input-rootfs: packed application input path verified"

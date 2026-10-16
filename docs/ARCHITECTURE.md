@@ -517,6 +517,8 @@ workspace/my355/
 
 `nextui.mk` builds the platform named by `BR2_PACKAGE_NEXTUI_PLATFORM`, so platform selection is part of the selected device configuration. `nextui-session` still hardcodes `my355` (section 4).
 
+NextUI selects `zlyme-artbook`. That package runs only on the build host. It installs the finished system and Tool PNGs at `/usr/share/nextui/artbook` in the root squashfs. The full card image stores that squashfs as `zlyme` on the boot partition, and the normal OTA carries the same `zlyme` member. The Flip does not download an artwork pack. User `.media` images and `/storage/bg.png` stay on the card. The minimal image does not build NextUI, so it does not install these files. `board/my355/assert-input-rootfs.sh` checks the packed list when NextUI is in the image.
+
 ### Frontend source and Settings
 
 Frontend behavior comes from the `Zetarancio/NextUI` fork at the exact commit pinned by `NEXTUI_VERSION` in `package/system/nextui/nextui.mk`. The fork records its LoveRetro base in `UPSTREAM`. `nextui.elf`, `settings.elf`, the `PWR_*` sleep path, the my355 platform code, and the Settings menus (GPU, Joysticks, update, reset) live in that fork, not in this repository. The Zlyme side is `package/system/nextui/`: `nextui-session`, the `zlyme/` helpers, and the stock PAKs. A frontend change is a fork commit plus a pin change. `docs/MAINTENANCE.md` describes that workflow.

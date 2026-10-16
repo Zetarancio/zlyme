@@ -1,6 +1,7 @@
 config BR2_PACKAGE_NEXTUI
 	bool "nextui"
 	depends on BR2_PACKAGE_HAS_LIBGLES
+	select BR2_PACKAGE_ZLYME_ARTBOOK
 	select BR2_PACKAGE_SDL2
 	select BR2_PACKAGE_SDL2_IMAGE
 	select BR2_PACKAGE_SDL2_TTF
@@ -18,7 +19,9 @@ config BR2_PACKAGE_NEXTUI
 	  Zetarancio/NextUI at the commit in nextui.mk. The platform
 	  directory comes from BR2_PACKAGE_NEXTUI_PLATFORM (my355 on
 	  the Miyoo Flip). SDCARD_PATH is /storage. Stock CFW skeleton
-	  is not used.
+	  is not used. System and Tool artwork is part of this
+	  firmware. zlyme-artbook composes it on the build host and
+	  installs the finished PNGs. The Flip does not download them.
 
 	  NextUI: https://github.com/Zetarancio/NextUI
 	  Originally MinUI by Shaun Inman: https://github.com/shauninman/MinUI
