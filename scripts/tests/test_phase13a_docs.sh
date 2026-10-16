@@ -26,8 +26,14 @@ printf '%s\n' "$unreleased" | grep -q 'Panfrost'"'"'s experimental Vulkan driver
 	&& fail "Unreleased still has the PanVK chronology"
 printf '%s\n' "$unreleased" | grep -q 'Known limitations' \
 	&& fail "Unreleased still has a Known limitations heading"
-printf '%s\n' "$unreleased" | grep -q 'SDCARD1' || fail "Unreleased omits the MTP names"
-printf '%s\n' "$unreleased" | grep -q 'basic-data' || fail "Unreleased omits the partition type"
+rel43=$(awk '
+	/^## \[zlyme44\.3\]/ { on = 1; next }
+	on && /^## \[/ { exit }
+	on { print }
+' "$ROOT/CHANGELOG.md")
+printf '%s\n' "$rel43" | grep -q 'SDCARD1' || fail "zlyme44.3 omits the MTP names"
+printf '%s\n' "$rel43" | grep -q 'basic-data' || fail "zlyme44.3 omits the partition type"
+printf '%s\n' "$rel43" | grep -q '](docs/' && fail "zlyme44.3 uses a relative guide link"
 
 grep -q '7951a37668e3' "$ROOT/docs/ROADMAP.md" \
 	|| fail "roadmap lost the MTP archive"

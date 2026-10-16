@@ -117,5 +117,14 @@ printf '%s\n' "$point" | grep -q 'Nothing is queued' \
 	&& fail "real zlyme44.2 notes included Unreleased"
 printf '%s\n' "$point" | grep -q 'compare/zlyme-' \
 	&& fail "real zlyme44.2 notes included the compare footer"
+rel43=$(notes "$ROOT/CHANGELOG.md" zlyme44.3)
+printf '%s\n' "$rel43" | head -n 1 | grep -Fx '## [zlyme44.3] - 2026-10-16' >/dev/null \
+	|| fail "real zlyme44.3 heading mismatch"
+printf '%s\n' "$rel43" | grep -q '## \[Unreleased\]' && fail "real zlyme44.3 included Unreleased"
+printf '%s\n' "$rel43" | grep -q '](docs/' && fail "real zlyme44.3 uses a relative guide link"
+printf '%s\n' "$rel43" | grep -q 'https://github.com/Zetarancio/zlyme/blob/main/docs/USER_GUIDE.md#usb-file-transfer' \
+	|| fail "real zlyme44.3 USB guide link is missing"
+printf '%s\n' "$rel43" | grep -q 'Icy_Mammoth1805' \
+	|| fail "real zlyme44.3 dropped the suggestion credit"
 
 echo "changelog release notes ok"

@@ -57,7 +57,8 @@ A gate has to match the risk. A source-only change does not automatically need a
 
 - Describe the result a person can see. One sentence is the usual entry. A second sentence is for an instruction, a warning, or compatibility.
 - Group related work into one change. Do not describe the same feature under more than one heading.
-- Leave out paths, hashes, commit IDs, package internals, and rejected experiments unless a person using Zlyme needs them. A longer procedure belongs in `docs/USER_GUIDE.md`, with a link from the entry.
+- Leave out paths, hashes, commit IDs, package internals, and rejected experiments unless a person using Zlyme needs them. A longer procedure belongs in the user guide.
+- Write the entry in GitHub Flavored Markdown. Headings, lists, and links have to stay readable when the section is copied into a GitHub Release. Use an absolute `https://github.com/Zetarancio/zlyme/blob/main/...` link for a guide page. A repository-relative link does not resolve there. Do not use HTML in place of Markdown, a branch URL, or a code fence around the release section.
 - Do not record which hardware tests were or were not run. Do not describe a feature that has not been shown to work. A limitation a person can hit stays in the entry, in plain language.
 - Newest release first, ISO dates (`YYYY-MM-DD`), and an `Unreleased` section for work that is not in a release. Headings are Added, Changed, Deprecated, Removed, Fixed, Security, and Known limitations. Leave out empty headings.
 - Zlyme does not use Semantic Versioning. `zlymeNN` is a baseline. `zlymeNN.M` is a point release on the same major. Release and delta policy is in `docs/MAINTENANCE.md`.
