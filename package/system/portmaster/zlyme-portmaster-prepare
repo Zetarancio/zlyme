@@ -197,8 +197,14 @@ if "('miyoo flip*', 'miyoo-flip')" not in hw:
     errors.append("Miyoo Flip hardware identity")
 if '"Miyoo Flip"' not in hw or '"device": "miyoo-flip"' not in hw or '"Zlyme"' not in hw:
     errors.append("Miyoo Flip device entry")
-if not re.search(r"'zlyme'\s*:\s*PlatformROCKNIX\b", plat):
+if "class PlatformZlyme(PlatformBase):" not in plat:
+    errors.append("PlatformZlyme class")
+if re.search(r"class PlatformZlyme\s*\(\s*Platform(?:ROCKNIX|JELOS)\b", plat):
+    errors.append("PlatformZlyme inherits JELOS")
+if not re.search(r"'zlyme'\s*:\s*PlatformZlyme\b", plat):
     errors.append("zlyme platform mapping")
+if re.search(r"'zlyme'\s*:\s*PlatformROCKNIX\b", plat):
+    errors.append("zlyme still maps to ROCKNIX")
 scheme = theme.get("#schemes", {}).get("Zlyme")
 pallet = scheme.get("#pallet", {}) if isinstance(scheme, dict) else {}
 if pallet.get("list_unselectable", [None])[:3] != [250, 124, 8]:

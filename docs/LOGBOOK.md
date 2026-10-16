@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — PlatformZlyme
+
+Host tests only. `patch-hardware.py` inserts `class PlatformZlyme(PlatformBase)` and maps `zlyme` to it. `PlatformJELOS.portmaster_install` copies `/usr/config/PortMaster` and `PlatformROCKNIX` sets `ES_NAME` to `weston`; the new class does neither. A tree that already contains `'zlyme': PlatformROCKNIX` is rewritten. A second prepare does not rewrite an unchanged file. The pin stays `2026.06.23-0015`. The patched upstream `platform.py` from that tag was checked on the host. Not run on a Flip.
+
 ## 2026-10-16 — Art Book coverage rule
 
 Host check only. `scripts/tests/test_artbook.sh` now requires `system/(TAG).png` and `list/(TAG)-list.png` for every folder in `rom-dirs.txt`. Six tags reuse the Art Book picture of the same platform: MS from SMS, NGP from NGPC, FBNEO from FBN, A26 from ATARI, INTV from INTELLIVISION, WS from WSC. Twenty-seven tags still have no pair, and the test exits 2 and names them. `CFG_DEFAULT_ROMSUSEFOLDERBACKGROUND` is true and no shipped file writes `romfolderbg=0`. No new artwork was drawn. Not shown on a Flip.

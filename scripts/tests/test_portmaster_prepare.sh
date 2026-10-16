@@ -101,7 +101,11 @@ test -x "$live/runtimes/love_11.5/love.aarch64"
 grep -q 'export CFW_NAME=Zlyme' "$live/control.txt"
 grep -q 'mod_Zlyme' "$live/mod_Zlyme.txt" || test -f "$live/mod_Zlyme.txt"
 grep -q 'Miyoo Flip' "$live/pylibs/harbourmaster/hardware.py"
-grep -q "'zlyme':" "$live/pylibs/harbourmaster/platform.py"
+grep -q "class PlatformZlyme(PlatformBase):" "$live/pylibs/harbourmaster/platform.py"
+grep -q "'zlyme':     PlatformZlyme," "$live/pylibs/harbourmaster/platform.py"
+if grep -q "'zlyme':     PlatformROCKNIX," "$live/pylibs/harbourmaster/platform.py"; then
+	fail "fresh tree still maps zlyme to ROCKNIX"
+fi
 python3 - "$live/pylibs/default_theme/theme.json" << 'PY'
 import json, sys
 data = json.load(open(sys.argv[1]))
@@ -323,6 +327,68 @@ import json, sys
 data = json.load(open(sys.argv[1]))
 assert "Zlyme" in data["#schemes"]
 PY
+
+# A live tree that still maps zlyme to PlatformROCKNIX is migrated.
+# User runtimes stay.
+python3 - "$live/pylibs/harbourmaster/platform.py" << 'PY'
+import sys
+open(sys.argv[1], "w").write(
+    "class PlatformBase():\n"
+    "    pass\n"
+    "\n"
+    "class PlatformROCKNIX(PlatformJELOS):\n"
+    "    ES_NAME = 'weston'\n"
+    "\n"
+    "HM_PLATFORMS = {\n"
+    "    'rocknix':   PlatformROCKNIX,\n"
+    "    'zlyme':     PlatformROCKNIX,\n"
+    "}\n"
+)
+PY
+"$PREPARE"
+python3 - "$live/pylibs/harbourmaster/platform.py" "$live/libs/keep.squashfs" << 'PY'
+import pathlib, sys
+text = pathlib.Path(sys.argv[1]).read_text()
+assert "class PlatformBase" in text
+assert text.index("class PlatformBase") < text.index("class PlatformZlyme(PlatformBase):")
+assert text.index("class PlatformZlyme(PlatformBase):") < text.index("HM_PLATFORMS")
+assert "'zlyme':     PlatformZlyme," in text
+assert "'zlyme':     PlatformROCKNIX," not in text
+assert "ES_NAME = 'weston'" in text
+assert pathlib.Path(sys.argv[2]).read_text() == "keep-runtime\n"
+PY
+cp -f "$live/pylibs/harbourmaster/platform.py" "$work/good-platform.py"
+
+# A PlatformZlyme that subclasses JELOS is rejected and the live file stays.
+python3 - "$live/pylibs/harbourmaster/platform.py" << 'PY'
+import sys
+open(sys.argv[1], "w").write(
+    "class PlatformZlyme(PlatformJELOS):\n"
+    "    pass\n"
+    "\n"
+    "HM_PLATFORMS = {\n"
+    "    'rocknix':   PlatformROCKNIX,\n"
+    "    'zlyme':     PlatformZlyme,\n"
+    "}\n"
+)
+PY
+if "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "JELOS subclass was accepted"
+fi
+grep -q 'could not be applied' "$work/err"
+grep -q 'class PlatformZlyme(PlatformJELOS):' "$live/pylibs/harbourmaster/platform.py"
+
+# A missing platform.py does not replace the other live files.
+rm -f "$live/pylibs/harbourmaster/platform.py"
+saved_hw=$(sha256sum "$live/pylibs/harbourmaster/hardware.py")
+if "$PREPARE" >"$work/out" 2>"$work/err"; then
+	fail "missing platform.py was accepted"
+fi
+grep -q 'could not be applied' "$work/err"
+test ! -e "$live/pylibs/harbourmaster/platform.py"
+test "$(sha256sum "$live/pylibs/harbourmaster/hardware.py")" = "$saved_hw"
+grep -q 'keep-runtime' "$live/libs/keep.squashfs"
+cp -f "$work/good-platform.py" "$live/pylibs/harbourmaster/platform.py"
 
 # A second prepare of an unchanged tree does not rewrite integration files.
 hw=$live/pylibs/harbourmaster/hardware.py

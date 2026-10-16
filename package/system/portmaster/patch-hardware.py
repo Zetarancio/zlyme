@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Map DTB 'Miyoo Flip' so PortMaster does not report CFW/Device unknown.
+"""Map DTB 'Miyoo Flip' and register PlatformZlyme.
 
 Both files are proven in memory. Neither is replaced unless the Miyoo
-Flip identity and the zlyme platform mapping are both present in the
-result. A tree that no longer has the ROCKNIX anchor fails closed.
+Flip identity and a PlatformZlyme(PlatformBase) mapping are both present
+in the result. A tree that no longer has the ROCKNIX anchor, and does
+not already map zlyme to PlatformZlyme, fails closed.
 """
 from __future__ import annotations
 
@@ -20,8 +21,16 @@ DEVICES = (
     f'{{"device": "{DEVICE}", "manufacturer": "Miyoo", "cfw": ["Zlyme", "ROCKNIX"]}},'
 )
 ROCKNIX_ANCHOR = "'rocknix':   PlatformROCKNIX,"
-ZLYME_LINE = "    'zlyme':     PlatformROCKNIX,"
-ZLYME_MAP = re.compile(r"'zlyme'\s*:\s*PlatformROCKNIX\b")
+ZLYME_LINE = "    'zlyme':     PlatformZlyme,"
+ZLYME_MAP = re.compile(r"'zlyme'\s*:\s*PlatformZlyme\b")
+OLD_MAP = re.compile(r"('zlyme'\s*:\s*)PlatformROCKNIX\b")
+CLASS_MARK = "class PlatformZlyme(PlatformBase):"
+CLASS_BLOCK = (
+    "class PlatformZlyme(PlatformBase):\n"
+    '    """Zlyme uses NextUI and BusyBox. It does not copy JELOS PortMaster files."""\n'
+)
+PLATFORMS_MARK = "HM_PLATFORMS = {"
+BAD_CLASS = re.compile(r"class PlatformZlyme\s*\(")
 
 
 def fail(msg: str) -> None:
@@ -70,18 +79,41 @@ def patched_hardware(text: str) -> str | None:
     return text
 
 
-def patched_platform(text: str) -> str | None:
-    if ZLYME_MAP.search(text):
+def with_class(text: str) -> str | None:
+    if CLASS_MARK in text:
         return text
-    if ROCKNIX_ANCHOR not in text:
+    if BAD_CLASS.search(text):
+        fail("PlatformZlyme does not subclass PlatformBase")
+        return None
+    if PLATFORMS_MARK in text:
+        return text.replace(PLATFORMS_MARK, CLASS_BLOCK + "\n" + PLATFORMS_MARK, 1)
+    if "class PlatformBase" in text or "class PlatformROCKNIX" in text:
+        fail("platform class layout changed")
+        return None
+    # The prepare fixture is only the platform dict line.
+    return CLASS_BLOCK + text
+
+
+def patched_platform(text: str) -> str | None:
+    text = with_class(text)
+    if text is None:
+        return None
+    if ZLYME_MAP.search(text):
+        if OLD_MAP.search(text):
+            fail("zlyme is mapped twice")
+            return None
+    elif OLD_MAP.search(text):
+        text = OLD_MAP.sub(r"\1PlatformZlyme", text, count=1)
+    elif ROCKNIX_ANCHOR not in text:
         fail("missing zlyme platform anchor")
         return None
-    text = text.replace(
-        ROCKNIX_ANCHOR,
-        ROCKNIX_ANCHOR + "\n" + ZLYME_LINE,
-        1,
-    )
-    if not ZLYME_MAP.search(text):
+    else:
+        text = text.replace(ROCKNIX_ANCHOR, ROCKNIX_ANCHOR + "\n" + ZLYME_LINE, 1)
+    if (
+        CLASS_MARK not in text
+        or not ZLYME_MAP.search(text)
+        or OLD_MAP.search(text)
+    ):
         fail("zlyme platform mapping was not proven")
         return None
     return text

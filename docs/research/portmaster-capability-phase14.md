@@ -2,13 +2,13 @@
 
 This is the opening inventory for Phase 14. It is not an acceptance matrix. Status words are from this tree on 2026-10-16, pin `2026.06.23-0015` in `package/system/portmaster/portmaster.mk`.
 
-GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release: 2026.10.03-1041 (alpha)`. That is not a reason to move the pin. `PlatformZlyme` is still not implemented. `zlyme` is still mapped to `PlatformROCKNIX`. The two changes stay separate, and neither landed in this pass.
+GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release: 2026.10.03-1041 (alpha)`. That is not a reason to move the pin. `2026.07.28-1212` and `2026.10.01-0433` are beta. The latest release whose own text says stable, through 2026-10-16, is `2026.06.23-0015`. Review a newer stable release when one is published. A fix taken from a beta or alpha tag needs a named benefit and a named regression risk, and that fix does not move the pin by itself.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | PortMaster seed and persistent install | Implemented | The image ships the zip. A user update on the selected library is kept. |
 | `CFW_NAME=Zlyme` | Implemented | `zlyme-portmaster-prepare` requires that export. |
-| Platform class | Partial | The same prepare step requires `'zlyme': PlatformROCKNIX`. That inherits ROCKNIX behavior. A `PlatformZlyme` class is not in the tree. |
+| Platform class | Implemented | Prepare inserts `class PlatformZlyme(PlatformBase)` and maps `'zlyme'` to it. An older `'zlyme': PlatformROCKNIX` line is rewritten. The class does not set `ES_NAME` and does not copy `/usr/config/PortMaster`. |
 | Selected library and artwork | Implemented | `zlyme-portmaster-root` and `zlyme-portmaster-art`. JPEG is copied, not converted. |
 | Mount teardown | Implemented | `zlyme-portmaster-cleanup` unmounts a recorded mount only while its id is the visible one. MTP still refuses a nested mount. |
 | AArch64 ports | Partial | The userspace is AArch64. Which ports run was not remeasured here. |

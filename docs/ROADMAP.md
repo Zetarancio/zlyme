@@ -301,7 +301,7 @@ Phase 14 is open on `zlyme44.4-phase-14`. `ZLYME_VERSION` stays `zlyme44.3` unti
 
 Compare official PortMaster, the pinned `2026.06.23-0015` seed, upstream `2026.10.03-1041` or a newer stable tag if one exists when the update is reviewed, and the relevant ROCKNIX, KNULLI, and Batocera packaging. Record implemented, missing, partial, and hardware-limited. Do not copy another distribution's claim into Zlyme.
 
-Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `zlyme` is mapped to `PlatformROCKNIX`.
+Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `zlyme` maps to `PlatformZlyme`.
 
 ### 14B. ARMHF userspace
 
@@ -355,7 +355,7 @@ Status: Planned. No `zlyme44.4` release in this phase until that acceptance.
 
 Add a small `PlatformZlyme` instead of mapping `zlyme` to `PlatformROCKNIX`. Keep `CFW_NAME=Zlyme`, the selected library, artwork import, and user-installed ports. Do not replace a PortMaster tree the user already updated. Review upstream `2026.10.03-1041` or newer before changing the pin.
 
-Status: Planned. The current prepare step still requires the ROCKNIX mapping.
+Status: Host-tested. `PlatformZlyme` subclasses `PlatformBase`. Prepare rewrites an older `PlatformROCKNIX` mapping and leaves user runtimes in place. The pin stays `2026.06.23-0015`. Not a hardware test.
 
 ### 14J. Orphan game preferences
 
