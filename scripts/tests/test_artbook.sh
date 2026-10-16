@@ -313,9 +313,74 @@ print("names ok", logo.width)
 PY
 after=$(sha256sum "$PKG/tools/USB File Transfer.pak/background.png" | awk '{print $1}')
 [ "$before" = "$after" ] || fail "build rewrote a tool background"
+if grep -n 'logo.height - 24' "$PKG/compose.py"; then
+	fail "tool logos still use a separate vertical position"
+fi
+
+/usr/bin/python3 - "$PKG/compose.py" "$work/geom" "$PKG" "$upstream" << 'PY'
+import importlib.util, sys
+from pathlib import Path
+from PIL import Image
+spec = importlib.util.spec_from_file_location("compose", sys.argv[1])
+compose = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(compose)
+out, pkg, upstream = map(Path, sys.argv[2:])
+work = out / "w"
+work.mkdir(parents=True)
+font = pkg / "fonts" / "DejaVuSans-Bold.ttf"
+rsvg = "/usr/bin/rsvg-convert"
+target_x = compose.SAFE_X + compose.REGION_W / 2
+target_y = compose.HEIGHT / 2
+
+def expect(name, mark, light):
+    if mark.width > compose.LOGO_MAX_W or mark.height > compose.HEIGHT:
+        raise SystemExit(name + " does not fit")
+    x, y = compose.logo_origin(mark)
+    cx = x + mark.width / 2
+    cy = y + mark.height / 2
+    if abs(cx - target_x) > 0.5 or abs(cy - target_y) > 0.5:
+        raise SystemExit("%s center %.2f,%.2f" % (name, cx, cy))
+    # The styled box is the logo. Composite it on both themes and keep
+    # that same origin. The background art is not part of this box.
+    for theme in ((16, 16, 18, 255), (236, 232, 224, 255)):
+        canvas = Image.new("RGBA", (compose.WIDTH, compose.HEIGHT), theme)
+        compose.place(canvas, mark)
+        if canvas.getpixel((x, y))[3] == 0 and mark.getpixel((0, 0))[3] != 0:
+            raise SystemExit(name + " was not placed at its origin")
+        if y + mark.height > compose.HEIGHT or x + mark.width > compose.WIDTH:
+            raise SystemExit(name + " is clipped")
+    print("center", name, mark.size, "at", x, y, "light" if light else "dark")
+
+square = Image.new("RGBA", (20, 20), (255, 255, 255, 255))
+styled = compose.styled_logo(square)
+if styled.size != (20 + compose.SHADOW * 2, 20 + compose.SHADOW * 2):
+    raise SystemExit("shadow padding changed")
+# Two pixels outside the white square is the black contour.
+if styled.getpixel((compose.SHADOW - compose.OUTLINE, compose.SHADOW + 10))[:3] != (0, 0, 0):
+    raise SystemExit("contour is not black")
+# Farther out is the 50% shadow, not a second formula.
+shadow = styled.getpixel((1, compose.SHADOW + 10))
+if shadow[3] < 100 or shadow[3] > 140 or shadow[:3] != (0, 0, 0):
+    raise SystemExit("shadow is not 50% black: %s" % (shadow,))
+
+for label in ("Files", "PortMaster", "RetroArch", "USB File Transfer", "ZcrapeGoat"):
+    expect(label, compose.wordmark(label, font, rsvg, work), True)
+logos = upstream / "_inc" / "systems" / "logos"
+wide_name = None
+wide_ratio = 0
+for stem in ("gb", "psx", "genesis", "snes", "nes", "n64"):
+    mark = compose.prepare_system_logo(logos / ("%s.svg" % stem), font, rsvg, work)
+    expect(stem, mark, False)
+    ratio = mark.width / max(1, mark.height)
+    if ratio > wide_ratio:
+        wide_ratio = ratio
+        wide_name = stem
+print("logo geometry ok", "widest", wide_name, round(wide_ratio, 2))
+PY
 
 test -f "$sheets/systems-light.png"
 test -f "$sheets/systems-dark.png"
 test -f "$sheets/tools-light.png"
 test -f "$sheets/tools-dark.png"
+sh "$ROOT/scripts/tests/test_artbook_rootfs.sh"
 echo "artbook ok"

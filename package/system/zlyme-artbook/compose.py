@@ -199,15 +199,23 @@ def wordmark(label: str, font: Path, rsvg: str, work: Path) -> Image.Image:
     fail("logo does not fit the safe frame: %s" % label)
 
 
-def place(canvas: Image.Image, mark: Image.Image, y: int | None = None) -> None:
+def logo_origin(mark: Image.Image) -> tuple[int, int]:
+    """Center the styled logo in the right-hand 320x480 region.
+
+    Systems and tools both use this. The mark's own box includes the
+    contour and the shadow. The background artwork is not part of it.
+    """
     if mark.width > LOGO_MAX_W:
         fail("logo wider than %d" % LOGO_MAX_W)
     x = SAFE_X + (REGION_W - mark.width) // 2
-    if y is None:
-        y = (HEIGHT - mark.height) // 2
+    y = (HEIGHT - mark.height) // 2
     if x < SAFE_X or x + mark.width > WIDTH or y < 0 or y + mark.height > HEIGHT:
         fail("logo leaves the safe frame")
-    canvas.alpha_composite(mark, (x, y))
+    return x, y
+
+
+def place(canvas: Image.Image, mark: Image.Image) -> None:
+    canvas.alpha_composite(mark, logo_origin(mark))
 
 
 def blank() -> Image.Image:
@@ -223,6 +231,16 @@ def place_art(canvas: Image.Image, art: Image.Image) -> None:
     canvas.alpha_composite(fitted, (x, y))
 
 
+def prepare_system_logo(logo_svg: Path, font: Path, rsvg: str, work: Path) -> Image.Image:
+    logo = render_svg(rsvg, logo_svg.read_text(encoding="utf-8").replace(
+        "FONTFILE", font.resolve().as_uri()), 400, 120, work)
+    bbox = logo.getbbox()
+    if bbox:
+        logo = logo.crop(bbox)
+    logo = styled_logo(fit(logo, LOGO_MAX_W - SHADOW * 2, 160))
+    return fit(logo, LOGO_MAX_W, 220)
+
+
 def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: Path) -> Image.Image:
     art = load_rgba(art_png)
     # The strip is tall. Fit by height, then anchor to the right.
@@ -233,14 +251,7 @@ def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: P
     strip = art.resize(size, Image.Resampling.LANCZOS)
     canvas = blank()
     canvas.alpha_composite(strip, (WIDTH - strip.width, (HEIGHT - strip.height) // 2))
-    logo = render_svg(rsvg, logo_svg.read_text(encoding="utf-8").replace(
-        "FONTFILE", font.resolve().as_uri()), 400, 120, work)
-    bbox = logo.getbbox()
-    if bbox:
-        logo = logo.crop(bbox)
-    logo = styled_logo(fit(logo, LOGO_MAX_W - SHADOW * 2, 160))
-    logo = fit(logo, LOGO_MAX_W, 220)
-    place(canvas, logo)
+    place(canvas, prepare_system_logo(logo_svg, font, rsvg, work))
     return canvas
 
 
@@ -258,7 +269,7 @@ def compose_tool(
     canvas = blank()
     place_art(canvas, art)
     logo = wordmark(label, font, rsvg, work)
-    place(canvas, logo, y=HEIGHT - logo.height - 24)
+    place(canvas, logo)
     return canvas
 
 

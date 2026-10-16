@@ -4,7 +4,7 @@ Each built-in Tool pak has one source image:
 
 `tools/<Exact Pak Name>.pak/background.png`
 
-The directory name is the pak basename, including `.pak` and spaces. `Music Player.pak` draws the logo `Music Player`. The compositor adds the black contour and the shadow. It does not modify `background.png`. There is no per-tool logo file. A new pak needs a picture and a directory; the name on the picture comes from the directory.
+The directory name is the pak basename, including `.pak` and spaces. `Music Player.pak` draws the logo `Music Player`. The compositor adds the black contour and the shadow, then centers that whole mark in the right-hand half of the 640×480 frame. System logos use the same center. It does not modify `background.png`. There is no per-tool logo file. A new pak needs a picture and a directory; the name on the picture comes from the directory.
 
 A tool background is a 454×1080 RGBA PNG. The compositor clips its alpha to `resources/system-art-alpha.png`, then scales it into the right-hand 320×480 region without cropping. The rest of the 640×480 frame stays transparent. The result is `tools/<Name>.png` under `/usr/share/nextui/artbook/`.
 
@@ -12,7 +12,9 @@ The mask, the copyable generation prompt, and how to add another picture are in 
 
 A shipped Tool without `background.png` fails the ArtBook build and names that pak. A background whose directory is not a shipped pak fails the same way. A pak a person installed later does not need a stock image.
 
-The nine tool pictures are original illustrations made for these menus. RPG Maker XP is a separate picture under `tools/custom/MKXPZ/`. System artwork is downloaded from Art Book Next and is not stored in this tree. Its license is CC BY-NC-SA 2.0, in `NOTICE.md`.
+The finished PNGs are installed into the squashfs at `/usr/share/nextui/artbook`. NextUI selects this package. The full image and the normal OTA both carry that squashfs. The Flip does not download an artwork pack.
+
+The nine tool pictures are original illustrations made for these menus. RPG Maker XP is a separate picture under `tools/custom/MKXPZ/`. System artwork is downloaded from Art Book Next at build time and is not stored in this tree. Its license is CC BY-NC-SA 2.0, in `NOTICE.md`.
 
 Regenerate inside the build container:
 

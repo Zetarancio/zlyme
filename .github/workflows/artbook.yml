@@ -13,6 +13,8 @@ on:
       - package/system/nextui/rom-dirs.txt
       - Dockerfile
       - scripts/tests/test_artbook.sh
+      - scripts/tests/test_artbook_rootfs.sh
+      - board/my355/assert-input-rootfs.sh
       - .github/workflows/artbook.yml
 
 permissions:
