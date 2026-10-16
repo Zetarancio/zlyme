@@ -72,6 +72,17 @@ run_apply() {
 	"$HELPER" apply
 }
 
+run_named() {
+	ZLYME_CTL_STATE=$work/state \
+	ZLYME_CTL_LOG=$log \
+	ZLYME_NET_LOCK=$work/lock \
+	ZLYME_NET_SSH_INIT=$work/init/ssh \
+	ZLYME_NET_SAMBA_INIT=$work/init/samba \
+	ZLYME_NET_SYNCTHING_INIT=$work/init/syncthing \
+	PATH="$work/bin:$PATH" \
+	"$HELPER" apply "$1"
+}
+
 flag wifi off
 flag ssh on
 flag samba on
@@ -108,9 +119,32 @@ grep -qx 'ssh stop' "$log" || fail "turning wifi off did not stop ssh"
 flag wifi on
 flag samba on
 : > "$log"
-run_apply 1
+if run_apply 1; then
+	fail "samba failure was ignored"
+fi
 grep -qx 'samba start' "$log" || fail "failing samba was not attempted"
 grep -qx 'syncthing start' "$log" || fail "a samba failure stopped syncthing"
+grep -qx 'ssh start' "$log" || fail "a samba failure stopped ssh"
+
+flag wifi off
+flag ssh on
+flag samba on
+flag syncthing on
+: > "$log"
+run_named ssh
+grep -qx 'ssh stop' "$log" || fail "ssh toggle while wifi was off did not stop ssh"
+grep -q 'samba ' "$log" && fail "ssh toggle changed samba"
+grep -q 'syncthing ' "$log" && fail "ssh toggle changed syncthing"
+[ "$(cat "$work/state/ssh")" = on ] || fail "ssh toggle while wifi was off cleared ssh"
+
+flag wifi on
+: > "$log"
+run_named ssh
+run_named ssh
+[ "$(grep -c '^ssh start$' "$log")" = 2 ] || fail "repeat ssh start was not idempotent"
+if "$HELPER" apply nope >/dev/null 2>&1; then
+	fail "unknown service was accepted"
+fi
 
 # Direct init start must not launch the daemon while Wi-Fi is off.
 cat > "$work/bin/smbd" <<'EOF'

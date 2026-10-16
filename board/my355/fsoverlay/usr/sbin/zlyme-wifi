@@ -86,9 +86,12 @@ do_scanlist() {
 
 net_services() {
 	cmd="${ZLYME_NET_SERVICES:-/usr/sbin/zlyme-net-services}"
-	if [ -x "$cmd" ]; then
-		"$cmd" apply || true
+	if [ ! -x "$cmd" ]; then
+		return 0
 	fi
+	# The Wi-Fi flag is already set. A service that cannot start is
+	# reported by that service's own switch, not by undoing Wi-Fi.
+	"$cmd" apply >/dev/null 2>&1 || true
 }
 
 do_enable() {

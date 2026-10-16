@@ -47,6 +47,13 @@ start() {
 		echo "Syncthing: Wi-Fi is off"
 		return 0
 	fi
+	if [ -s /var/run/syncthing.pid ]; then
+		pid=$(cat /var/run/syncthing.pid 2>/dev/null || true)
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			echo "OK"
+			return 0
+		fi
+	fi
 	mkdir -p "$HOME_DIR" 2>/dev/null || true
 	if [ ! -f "$CFG" ]; then
 		if ! provision_new; then
@@ -61,10 +68,13 @@ start() {
 		return 1
 	fi
 	printf "Starting syncthing: "
-	start-stop-daemon -S -q -b -m -p /var/run/syncthing.pid \
+	if ! start-stop-daemon -S -q -b -m -p /var/run/syncthing.pid \
 		--exec "$SYNCTHING" -- \
 		serve --no-upgrade --home="$HOME_DIR" \
-		--gui-address=0.0.0.0:8384
+		--gui-address=0.0.0.0:8384; then
+		echo "FAIL"
+		return 1
+	fi
 	echo "OK"
 }
 

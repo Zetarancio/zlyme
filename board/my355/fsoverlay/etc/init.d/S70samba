@@ -25,6 +25,10 @@ start() {
 		echo "Samba: authentication failed"
 		return 1
 	fi
+	if pidof smbd >/dev/null 2>&1; then
+		echo "OK"
+		return 0
+	fi
 	# smbd creates ncalrpc inside this directory and does not create
 	# the parent. A missing parent makes the process exit immediately.
 	# The log directory is the same class of failure for a daemon start.

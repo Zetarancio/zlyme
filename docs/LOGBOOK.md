@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — network switches share one policy
+
+Host tests only. A Settings switch runs `zlyme-net-services apply` for that service. Wi-Fi off stops it and leaves its flag. A Samba start failure still fails that switch. One failed service does not skip the others. The quick menu reads `zlyme-ctl want wifi`. This was not run on a Flip.
+
 ## 2026-10-16 — delete game and preference replace
 
 Host tests only. Delete game rebuilds its file list from the selected ROM. It removes that ROM, matching saves, `.png` / `.jpg` / `.jpeg` artwork, the exact per-ROM preference, and the Recently Played line. A folder or system row stays, and a same-named ROM on the other card stays. A symlink, a config path, and a path outside the libraries are refused. Preference replacement is a rename in the destination directory. A failed rename leaves the previous file. NextUI reloads the file after that rewrite, and a failed in-memory save does not replace it. This was not run on a Flip.

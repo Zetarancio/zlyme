@@ -604,7 +604,7 @@ S28minui         start nextui-session in the background
 
 Can start after first frame, such as networking, Bluetooth, SSH, time sync, Samba, Syncthing, noncritical udev triggering, and similar services.
 
-After the first-frame gate (section 5), `rc.late` starts these in the background: seedrng, syslogd, klogd, sysctl, zram, LEDs and the `smart` governor profile (`S27led`), udev coldplug for everything except block devices (`S29udevtrigger`), IRQ affinity, network, `zlyme-btsink`, crond, Wi-Fi, and `S49ntp`. `zlyme-net-services` then starts SSH, Samba, and Syncthing only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three. A separate background chain starts D-Bus, InputPlumber, `zlyme-input`, `btusb`, `bluetoothd`, and BlueALSA in that order. After an OTA it also runs `zlyme-update reapply`.
+After the first-frame gate (section 5), `rc.late` starts these in the background: seedrng, syslogd, klogd, sysctl, zram, LEDs and the `smart` governor profile (`S27led`), udev coldplug for everything except block devices (`S29udevtrigger`), IRQ affinity, network, `zlyme-btsink`, crond, Wi-Fi, and `S49ntp`. `zlyme-net-services` then starts SSH, Samba, and Syncthing only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three. Settings and the quick menu call that same helper. The quick menu treats the saved Wi-Fi flag as enabled, whether or not the radio has associated. A separate background chain starts D-Bus, InputPlumber, `zlyme-input`, `btusb`, `bluetoothd`, and BlueALSA in that order. After an OTA it also runs `zlyme-update reapply`.
 
 Because udev coldplug is deferred, modules that load from a Device Tree modalias, such as `rk3568_dmc.ko`, load after the first frame.
 

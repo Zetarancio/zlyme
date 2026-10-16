@@ -10,7 +10,7 @@ SYNC_INIT="${ZLYME_NET_SYNCTHING_INIT:-/etc/init.d/S75syncthing}"
 LOCK="${ZLYME_NET_LOCK:-/tmp/zlyme-net-services.lock}"
 
 usage() {
-	echo "usage: $0 apply|start" >&2
+	echo "usage: $0 apply|start [ssh|samba|syncthing]" >&2
 	exit 1
 }
 
@@ -22,18 +22,27 @@ one() {
 	fi
 	if zlyme-ctl want wifi && zlyme-ctl want "$name"; then
 		"$init" start
-		return 0
+		return $?
 	fi
 	"$init" stop
 }
 
 apply() {
+	only=${1:-}
+	rc=0
 	if ! command -v zlyme-ctl >/dev/null 2>&1; then
 		return 0
 	fi
-	one ssh "$SSH_INIT"
-	one samba "$SAMBA_INIT"
-	one syncthing "$SYNC_INIT"
+	if [ -z "$only" ] || [ "$only" = ssh ]; then
+		one ssh "$SSH_INIT" || rc=1
+	fi
+	if [ -z "$only" ] || [ "$only" = samba ]; then
+		one samba "$SAMBA_INIT" || rc=1
+	fi
+	if [ -z "$only" ] || [ "$only" = syncthing ]; then
+		one syncthing "$SYNC_INIT" || rc=1
+	fi
+	return "$rc"
 }
 
 lock_apply() {
@@ -42,10 +51,15 @@ lock_apply() {
 		exec 9>"$LOCK"
 		flock 9
 	fi
-	apply
+	apply "${1:-}"
 }
 
 case "${1:-}" in
-	apply|start) lock_apply ;;
+	apply|start)
+		case "${2:-}" in
+			""|ssh|samba|syncthing) lock_apply "${2:-}" ;;
+			*) usage ;;
+		esac
+		;;
 	*) usage ;;
 esac
