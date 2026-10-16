@@ -4,6 +4,8 @@
 # which the RK3566 runs. Do not point this file at output/.
 # external.mk gives this glibc slibdir and libdir /usr/lib/zlyme-armhf
 # and leaves the loader at /lib/ld-linux-armhf.so.3.
+# package/system/zlyme-armhf-runtime/stage-runtime.sh copies that
+# layout into a root. It is not selected in the product image.
 BR2_arm=y
 BR2_cortex_a53=y
 BR2_ARM_EABIHF=y

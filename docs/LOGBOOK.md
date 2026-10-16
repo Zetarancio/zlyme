@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ARMHF stage check
+
+`stage-runtime.sh` copied the private runtime into a fake root. A stand-in ELF64 `/lib/libc.so.6` was unchanged, and an ELF64 file offered as an ARMHF library was refused. The probe has no RPATH. Its interpreter is `/lib/ld-linux-armhf.so.3` and its only `NEEDED` entry is `libc.so.6`. PortMaster's launch script still puts `/usr/lib` on `LD_LIBRARY_PATH` ahead of the loader's private directory. qemu-arm is not installed. The product image does not contain this runtime. `DEVICE_HAS_ARMHF` is not set.
+
 ## 2026-10-16 — Centered tool names
 
 System and Tool logos use one placement, centered in the right-hand 320×480 region. The styled box is measured before it is composited. In the pinned container, Game Boy, PSX, Genesis, SNES, NES, and N64 are 291×109 and start at x=334. USB File Transfer is 282×56 and starts at x=339. Files is 131×70 and starts at x=414. `./build.sh --config zlyme_my355_defconfig zlyme-artbook` installed 54 system PNGs, 4,501,361 bytes, and 9 tool PNGs, 832,297 bytes. A second build did not render again. The USB File Transfer source PNG is unchanged. NextUI selects the package. A Kconfig run with the ArtBook line removed from the product defconfig put it back. The minimal defconfig leaves it unset. A full image was not packed. Not shown on a Flip.

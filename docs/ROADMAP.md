@@ -307,7 +307,7 @@ Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `z
 
 Ship a real 32-bit ARM hard-float userspace, not only a loader name. Prefer a separate Buildroot ARMHF target in the KNULLI style (`knulli-rk3566_armhf_libs`). Use an ARM EABI hard-float toolchain and matching glibc. Do not import another distribution's binaries. Do not set `DEVICE_HAS_ARMHF=Y` until a dynamically linked ARMHF program runs and its libraries resolve.
 
-Status: Private library directory built, not installed on the product image. The ARMHF glibc loader still has interpreter `/lib/ld-linux-armhf.so.3`, and its compiled search path is only `/usr/lib/zlyme-armhf/`. `libc.so.6`, `libgcc_s.so.1`, and `libatomic` are in that directory. The product `/lib/libc.so.6` is still the AArch64 library. This is the loader's built-in path, not `LD_LIBRARY_PATH`. qemu-arm is not installed, so the probe was not executed. `DEVICE_HAS_ARMHF` is not set.
+Status: Private runtime can be staged, and it is not in the product image. `package/system/zlyme-armhf-runtime/stage-runtime.sh` copies `/lib/ld-linux-armhf.so.3` and `/usr/lib/zlyme-armhf/` into a destination root. It refuses an ELF64 file and leaves an existing `/lib/libc.so.6` unchanged. The loader's compiled search path is only `/usr/lib/zlyme-armhf/`. The probe has no RPATH. PortMaster's launch script still prepends `/usr/lib` to `LD_LIBRARY_PATH`, which the loader searches before that private directory. qemu-arm is not installed, so that interaction was not executed. The side sysroot is not produced by the AArch64 image build. `DEVICE_HAS_ARMHF` is not set.
 
 ### 14C. Box86 and Box64
 
