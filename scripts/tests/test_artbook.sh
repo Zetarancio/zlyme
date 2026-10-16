@@ -289,7 +289,17 @@ for pak in sorted(p.name for p in paks.iterdir() if p.name.endswith(".pak")):
     box = compose.content_box(image)
     if box[4] < 1000 or box[0] < compose.SAFE_X:
         sys.exit("tool art crosses the name column " + label)
-print("rendered", len(tags), "tools", len(list(paks.glob('*.pak'))))
+special = art / "special"
+names = sorted(p.name for p in special.iterdir()) if special.is_dir() else []
+if names != ["recent.png"]:
+    sys.exit("special inventory %s" % names)
+image = compose.load_rgba(special / "recent.png")
+if image.size != (640, 480) or image.mode != "RGBA":
+    sys.exit("bad recent image")
+box = compose.content_box(image)
+if box[4] < 1000 or box[0] < compose.SAFE_X:
+    sys.exit("recent art crosses the name column")
+print("rendered", len(tags), "tools", len(list(paks.glob('*.pak'))), "special", 1)
 PY
 
 # A long name and a name with markup still fit, and the source file is untouched.
@@ -363,7 +373,7 @@ shadow = styled.getpixel((1, compose.SHADOW + 10))
 if shadow[3] < 100 or shadow[3] > 140 or shadow[:3] != (0, 0, 0):
     raise SystemExit("shadow is not 50% black: %s" % (shadow,))
 
-for label in ("Files", "PortMaster", "RetroArch", "USB File Transfer", "ZcrapeGoat"):
+for label in ("Files", "PortMaster", "RetroArch", "USB File Transfer", "ZcrapeGoat", "Recently Played"):
     expect(label, compose.wordmark(label, font, rsvg, work), True)
 logos = upstream / "_inc" / "systems" / "logos"
 wide_name = None
@@ -382,5 +392,8 @@ test -f "$sheets/systems-light.png"
 test -f "$sheets/systems-dark.png"
 test -f "$sheets/tools-light.png"
 test -f "$sheets/tools-dark.png"
+test -f "$sheets/special-light.png"
+test -f "$sheets/special-dark.png"
+sh "$ROOT/scripts/tests/test_recent_art.sh"
 sh "$ROOT/scripts/tests/test_artbook_rootfs.sh"
 echo "artbook ok"

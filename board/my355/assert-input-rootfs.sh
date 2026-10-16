@@ -11,9 +11,10 @@ check_artbook() {
 	local tree=$1
 	/usr/bin/python3 - "$tree" "$repo" << 'PY'
 import re
-import struct
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 root = Path(sys.argv[1])
 repo = Path(sys.argv[2])
@@ -45,6 +46,7 @@ def tools():
 
 expected = {"system/(%s).png" % tag for tag in tags()}
 expected.update("tools/%s.png" % name for name in tools())
+expected.add("special/recent.png")
 found = set()
 for path in base.rglob("*"):
     if path.is_dir():
@@ -59,16 +61,17 @@ if found != expected:
     sys.exit("artbook inventory mismatch: " + " ".join(sorted(found ^ expected)))
 
 def png_ok(path):
-    data = path.read_bytes()
-    if len(data) < 26 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+    try:
+        image = Image.open(path)
+        image.load()
+    except Exception:
         return False
-    width, height, depth, color = struct.unpack(">IIBB", data[16:26])
-    return width == 640 and height == 480 and depth == 8 and color == 6
+    return image.size == (640, 480) and image.mode == "RGBA"
 
 for rel in sorted(expected):
     if not png_ok(base / rel):
         sys.exit("not a 640x480 RGBA PNG: " + rel)
-print("artbook rootfs", len(tags()), len(tools()))
+print("artbook rootfs", len(tags()), len(tools()), 1)
 PY
 }
 

@@ -56,7 +56,9 @@ paks = repo / "package/system/nextui/paks/Tools"
 for pak in paks.iterdir():
     if pak.name.endswith(".pak"):
         (base / "tools" / (pak.name[:-4] + ".png")).write_bytes(body)
-print("fixture", len(tags), len(list(paks.glob("*.pak"))))
+(base / "special").mkdir()
+(base / "special" / "recent.png").write_bytes(body)
+print("fixture", len(tags), len(list(paks.glob("*.pak"))), 1)
 PY
 
 "$CHECK" --check-artbook "$work/good"
@@ -87,5 +89,12 @@ expect_reject "$work/svg" "source asset"
 cp -a "$work/good" "$work/size"
 printf 'not a png' > "$work/size/usr/share/nextui/artbook/tools/Files.png"
 expect_reject "$work/size" "not a 640x480 RGBA PNG"
+
+# A header-sized prefix used to pass. Pillow has to decode the image.
+cp -a "$work/good" "$work/trunc"
+dd if="$work/good/usr/share/nextui/artbook/tools/Files.png" \
+	of="$work/trunc/usr/share/nextui/artbook/tools/Files.png" \
+	bs=32 count=1 status=none
+expect_reject "$work/trunc" "not a 640x480 RGBA PNG"
 
 echo "artbook rootfs ok"

@@ -118,6 +118,8 @@ Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file 
 
 A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. On the system list, if none of those exist, Zlyme shows a transparent Art Book picture for that system. Inside a game list, Zlyme does not add its own wallpaper. Your images are not replaced. Settings → Appearance → Use folder background for ROMs starts on. Turning it off keeps the plain background. The pictures are CC BY-NC-SA 2.0.
 
+Recently Played uses that same folder picture. The first time the card starts, and only if you do not already have `/storage/Recently Played/.media/bg.png` or `/storage/bg.png`, Zlyme copies a built-in picture there. A picture you add stays. Deleting the built-in one does not put it back. A long name can scroll across this picture. It is not a separate download.
+
 ## USB file transfer
 
 Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service. If another filesystem is mounted inside storage, the tool says so and does not start. Leaving a PortMaster game removes a filesystem that game mounted through Zlyme. A filesystem mounted another way stays until it is unmounted or the Flip restarts, including one mounted later at the same place.

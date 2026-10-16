@@ -89,11 +89,46 @@ seed_standalones() {
 	install_cfg "$_drastic" "$STORAGE/.config/drastic/drastic.cfg" 0
 }
 
+# One copy of the firmware Recently Played picture into the virtual
+# directory NextUI already reads. The marker stops a later boot from
+# putting the stock file back after the person deletes it. A failed
+# copy leaves the marker unset. This does not touch history or bg.png.
+seed_recent() {
+	_marker=$STORAGE/.config/zlyme/recent-art-seeded
+	_dest=$STORAGE/Recently\ Played/.media/bg.png
+	_global=$STORAGE/bg.png
+	_src=${ZLYME_RECENT_ART:-/usr/share/nextui/artbook/special/recent.png}
+	if [ -f "$_marker" ]; then
+		return 0
+	fi
+	mkdir -p "$STORAGE/.config/zlyme" || return 1
+	if [ -f "$_dest" ] || [ -f "$_global" ]; then
+		: > "$_marker" || return 1
+		return 0
+	fi
+	# A minimal image has no picture. Do not record that as finished.
+	[ -f "$_src" ] || return 0
+	_dir=$STORAGE/Recently\ Played/.media
+	mkdir -p "$_dir" || return 1
+	_tmp=$(mktemp "$_dir/.zlyme-stock.XXXXXX") || return 1
+	if ! cp "$_src" "$_tmp"; then
+		rm -f "$_tmp"
+		return 1
+	fi
+	sync_file "$_tmp"
+	if ! mv -f "$_tmp" "$_dest"; then
+		rm -f "$_tmp"
+		return 1
+	fi
+	: > "$_marker" || return 1
+}
+
 case "$MODE" in
 	seed)
 		seed_ra 0
 		seed_options
 		seed_standalones
+		seed_recent
 		;;
 	reset-ra)
 		seed_ra 1

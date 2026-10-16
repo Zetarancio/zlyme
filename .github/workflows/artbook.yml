@@ -14,6 +14,8 @@ on:
       - Dockerfile
       - scripts/tests/test_artbook.sh
       - scripts/tests/test_artbook_rootfs.sh
+      - scripts/tests/test_recent_art.sh
+      - package/system/nextui/zlyme/zlyme-stock-seed
       - board/my355/assert-input-rootfs.sh
       - .github/workflows/artbook.yml
 

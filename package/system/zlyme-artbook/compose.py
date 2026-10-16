@@ -273,6 +273,30 @@ def compose_tool(
     return canvas
 
 
+# Folder name is the wordmark. The file name is the firmware asset.
+# Recently Played is not a Tool pak.
+SPECIALS = (("Recently Played", "recent.png"),)
+
+
+def compose_specials(mask: Image.Image, font: Path, rsvg: str, work: Path, stage: Path):
+    root = Path(__file__).resolve().parent / "special"
+    if not root.is_dir():
+        fail("special artwork directory is missing")
+    found = sorted(path.name for path in root.iterdir() if path.is_dir())
+    wanted = sorted(name for name, _filename in SPECIALS)
+    if found != wanted:
+        fail("special artwork inventory does not match: " + ", ".join(found))
+    images = []
+    for name, filename in SPECIALS:
+        background = root / name / "background.png"
+        if not background.is_file():
+            fail("missing special background for " + name)
+        image = compose_tool(background, name, font, rsvg, work, mask)
+        save_png(image, stage / filename)
+        images.append((name, image))
+    return images
+
+
 def load_map(path: Path):
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -380,15 +404,19 @@ def main() -> None:
             image = compose_tool(folder / "background.png", label, args.font, args.rsvg, work, mask)
             save_png(image, stage_tools / ("%s.png" % label))
             tools.append((label, image))
-        # Both stages are complete. Replacing now drops a renamed or removed entry.
+        specials = compose_specials(mask, args.font, args.rsvg, work, work / "special")
+        # The stages are complete. Replacing now drops a renamed or removed entry.
         publish_tree(stage_system, args.out / "system")
         publish_tree(stage_tools, args.out / "tools")
+        publish_tree(work / "special", args.out / "special")
         if args.contact:
             contact(systems, args.contact / "systems-light.png", True)
             contact(systems, args.contact / "systems-dark.png", False)
             contact(tools, args.contact / "tools-light.png", True)
             contact(tools, args.contact / "tools-dark.png", False)
-    print("systems", len(systems), "tools", len(tools))
+            contact(specials, args.contact / "special-light.png", True)
+            contact(specials, args.contact / "special-dark.png", False)
+    print("systems", len(systems), "tools", len(tools), "special", len(specials))
 
 
 if __name__ == "__main__":

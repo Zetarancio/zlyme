@@ -35,12 +35,15 @@ endef
 define ZLYME_ARTBOOK_INSTALL_TARGET_CMDS
 	rm -rf $(TARGET_DIR)/usr/share/nextui/artbook/system
 	rm -rf $(TARGET_DIR)/usr/share/nextui/artbook/tools
+	rm -rf $(TARGET_DIR)/usr/share/nextui/artbook/special
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/system
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/tools
+	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook/special
 	$(INSTALL) -D -m 0644 $(ZLYME_ARTBOOK_PKGDIR)/NOTICE.md \
 		$(TARGET_DIR)/usr/share/nextui/artbook/NOTICE.md
 	cp -a $(@D)/out/system/. $(TARGET_DIR)/usr/share/nextui/artbook/system/
 	cp -a $(@D)/out/tools/. $(TARGET_DIR)/usr/share/nextui/artbook/tools/
+	cp -a $(@D)/out/special/. $(TARGET_DIR)/usr/share/nextui/artbook/special/
 endef
 
 $(eval $(generic-package))
