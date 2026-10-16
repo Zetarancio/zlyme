@@ -115,4 +115,114 @@ fi
 [ "$(cat "$prefs")" = "$before" ] || fail "failed rename replaced preferences"
 grep -q 'later.gb' "$prefs" || fail "failed rename dropped the new row"
 
+# A PATH that can run the cleanup, minus the tools a case is proving.
+toolpath() {
+	dest=$1
+	shift
+	mkdir -p "$dest"
+	find "$dest" -mindepth 1 -exec rm -f {} +
+	skip=" $* "
+	for cmd in sh mkdir mktemp cat rm mv dirname basename grep find awk sed \
+		cp ln ls stat readlink touch chmod tr wc head python3 flock; do
+		case "$skip" in
+			*" $cmd "*) continue ;;
+		esac
+		src=$(command -v "$cmd") || fail "host has no $cmd"
+		ln -sf "$src" "$dest/$cmd"
+	done
+}
+
+# Missing flock must not write. The row stays.
+printf 'rom\tGB\tnested/no-flock.gb\tidle\t\n' >> "$prefs"
+toolpath "$work/noflock" flock
+if PATH="$work/noflock" run orphan-prefs >/dev/null; then
+	fail "missing flock was accepted"
+fi
+grep -q 'no-flock.gb' "$prefs" || fail "missing flock still rewrote preferences"
+
+# flock that cannot take the lock must not write.
+printf 'rom\tGB\tnested/bad-flock.gb\tidle\t\n' >> "$prefs"
+toolpath "$work/badflock"
+rm -f "$work/badflock/flock"
+cat > "$work/badflock/flock" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod 755 "$work/badflock/flock"
+if PATH="$work/badflock" run orphan-prefs >/dev/null; then
+	fail "failed flock was accepted"
+fi
+grep -q 'bad-flock.gb' "$prefs" || fail "failed flock still rewrote preferences"
+
+# Python is required for the file fsync. Do not rename without it.
+printf 'rom\tGB\tnested/no-py.gb\tidle\t\n' >> "$prefs"
+toolpath "$work/nopy" python3
+if PATH="$work/nopy" run orphan-prefs >/dev/null; then
+	fail "missing python3 was accepted"
+fi
+grep -q 'no-py.gb' "$prefs" || fail "missing python3 still rewrote preferences"
+find "$(dirname "$prefs")" -name '.zlyme-prefs.*' ! -name '.zlyme-prefs.lock' | grep -q . && fail "missing python3 left a temporary preference"
+
+# A file fsync error leaves the previous file and removes the temporary.
+printf 'rom\tGB\tnested/file-eio.gb\tidle\t\n' >> "$prefs"
+mkdir -p "$work/site"
+cat > "$work/site/sitecustomize.py" << 'PY'
+import os
+import stat
+import time
+
+_real = os.fsync
+
+def fsync(fd):
+    mode = os.environ.get("ZLYME_TEST_FSYNC", "")
+    isdir = stat.S_ISDIR(os.fstat(fd).st_mode)
+    if mode == "slow-file" and not isdir:
+        open(os.environ["ZLYME_FSYNC_MARK"], "w").close()
+        time.sleep(0.8)
+    if mode == "file-eio" and not isdir:
+        raise OSError(5, "fsync")
+    if mode == "dir-einval" and isdir:
+        raise OSError(22, "fsync")
+    if mode == "dir-eio" and isdir:
+        raise OSError(5, "fsync")
+    return _real(fd)
+
+os.fsync = fsync
+PY
+if PYTHONPATH="$work/site" ZLYME_TEST_FSYNC=file-eio run orphan-prefs >/dev/null; then
+	fail "file fsync error was accepted"
+fi
+grep -q 'file-eio.gb' "$prefs" || fail "file fsync error still rewrote preferences"
+find "$(dirname "$prefs")" -name '.zlyme-prefs.*' ! -name '.zlyme-prefs.lock' | grep -q . && fail "file fsync error left a temporary preference"
+
+# Linux 7.2 exFAT implements directory fsync. EINVAL is the VFS result
+# when a filesystem has no fsync operation. The renamed file stays.
+printf 'rom\tGB\tnested/dir-einval.gb\tidle\t\n' >> "$prefs"
+PYTHONPATH="$work/site" ZLYME_TEST_FSYNC=dir-einval run orphan-prefs >/dev/null
+grep -q 'dir-einval.gb' "$prefs" && fail "unsupported directory fsync rejected the write"
+
+# A real directory fsync error is reported after the rename. The new file stays.
+printf 'rom\tGB\tnested/dir-eio.gb\tidle\t\n' >> "$prefs"
+if PYTHONPATH="$work/site" ZLYME_TEST_FSYNC=dir-eio run orphan-prefs >/dev/null; then
+	fail "directory fsync EIO was ignored"
+fi
+grep -q 'dir-eio.gb' "$prefs" && fail "directory fsync EIO rolled back a completed rename"
+
+# The lock is held across the file fsync, not only around the rename.
+printf 'rom\tGB\tnested/slow.gb\tidle\t\n' >> "$prefs"
+PYTHONPATH="$work/site" ZLYME_TEST_FSYNC=slow-file ZLYME_FSYNC_MARK="$work/mark" \
+	run orphan-prefs >/dev/null &
+held_pid=$!
+i=0
+while [ ! -f "$work/mark" ] && [ "$i" -lt 50 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
+[ -f "$work/mark" ] || fail "slow fsync did not start"
+if flock -n "$(dirname "$prefs")/.zlyme-prefs.lock" true; then
+	fail "preference lock was not held during the write"
+fi
+wait "$held_pid"
+grep -q 'slow.gb' "$prefs" && fail "locked write did not remove the orphan"
+
 echo "orphan prefs ok"

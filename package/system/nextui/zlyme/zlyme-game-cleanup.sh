@@ -530,6 +530,7 @@ dir_under_console() {
 
 # One exclusive lock for a whole read–modify–write. The caller holds it.
 # fd 7 stays open until prefs_release. Do not call prefs_hold twice.
+# The image check requires BusyBox flock. Without it, do not write.
 prefs_locked=0
 prefs_hold() {
 	_ph_dir=$1
@@ -537,8 +538,7 @@ prefs_hold() {
 		return 0
 	fi
 	if ! command -v flock >/dev/null 2>&1; then
-		prefs_locked=1
-		return 0
+		return 1
 	fi
 	# shellcheck disable=SC3023
 	exec 7>>"$_ph_dir/.zlyme-prefs.lock" || return 1
@@ -553,15 +553,53 @@ prefs_release() {
 	if [ "$prefs_locked" != 1 ]; then
 		return 0
 	fi
-	if command -v flock >/dev/null 2>&1; then
-		flock -u 7 2>/dev/null || true
-		exec 7>&-
-	fi
+	flock -u 7 2>/dev/null || true
+	exec 7>&-
 	prefs_locked=0
 }
 
-# BusyBox 1.38 dd has no conv=fsync. Python is on the image and can
-# fsync one file and its directory. The rename stays on this filesystem.
+# fsync one file or its directory.
+# Linux 7.2 exfat_dir_operations uses exfat_file_fsync, which flushes
+# the block device. EINVAL means the file operations have no fsync
+# (vfs_fsync_range). That is not a failed write. ENOTSUP is the same.
+# A different errno after the rename is a durability failure. The new
+# file stays, matching zlyme_prefs.c.
+fsync_path() {
+	_fs_path=$1
+	_fs_kind=$2
+	python3 - "$_fs_path" "$_fs_kind" << 'PY'
+import errno
+import os
+import sys
+
+path, kind = sys.argv[1], sys.argv[2]
+if kind not in ("file", "dir"):
+    sys.exit(2)
+flags = os.O_RDONLY
+if kind == "dir":
+    flags |= os.O_DIRECTORY
+try:
+    fd = os.open(path, flags)
+except OSError:
+    sys.exit(0 if kind == "dir" else 1)
+allowed = {errno.EINVAL, errno.EOPNOTSUPP}
+enotsup = getattr(errno, "ENOTSUP", None)
+if enotsup is not None:
+    allowed.add(enotsup)
+try:
+    try:
+        os.fsync(fd)
+    except OSError as exc:
+        if exc.errno not in allowed:
+            sys.exit(1)
+finally:
+    os.close(fd)
+sys.exit(0)
+PY
+}
+
+# BusyBox 1.38 dd has no conv=fsync. Python is on the image.
+# The rename stays in this directory, so it stays on this filesystem.
 same_fs_replace() {
 	_sr_dest=$1
 	_sr_tmp=$2
@@ -573,26 +611,19 @@ same_fs_replace() {
 			return 1
 			;;
 	esac
-	if command -v python3 >/dev/null 2>&1; then
-		if ! python3 -c 'import os,sys
-fd=os.open(sys.argv[1], os.O_RDONLY)
-os.fsync(fd)
-os.close(fd)' "$_sr_tmp"; then
-			rm -f "$_sr_tmp"
-			return 1
-		fi
+	if ! command -v python3 >/dev/null 2>&1; then
+		rm -f "$_sr_tmp"
+		return 1
+	fi
+	if ! fsync_path "$_sr_tmp" file; then
+		rm -f "$_sr_tmp"
+		return 1
 	fi
 	if ! mv -f "$_sr_tmp" "$_sr_dest"; then
 		rm -f "$_sr_tmp"
 		return 1
 	fi
-	if command -v python3 >/dev/null 2>&1; then
-		python3 -c 'import os,sys
-fd=os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
-os.fsync(fd)
-os.close(fd)' "$_sr_dir" || true
-	fi
-	return 0
+	fsync_path "$_sr_dir" dir
 }
 
 # Caller holds prefs_hold for this directory.
