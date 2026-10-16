@@ -528,43 +528,124 @@ dir_under_console() {
 	return 1
 }
 
-# Hold the same lock NextUI uses, then rename a temp file in the
-# destination directory. A temp on /tmp is a different filesystem.
+# One exclusive lock for a whole read–modify–write. The caller holds it.
+# fd 7 stays open until prefs_release. Do not call prefs_hold twice.
+prefs_locked=0
 prefs_hold() {
 	_ph_dir=$1
+	if [ "$prefs_locked" = 1 ]; then
+		return 0
+	fi
 	if ! command -v flock >/dev/null 2>&1; then
+		prefs_locked=1
 		return 0
 	fi
 	# shellcheck disable=SC3023
 	exec 7>>"$_ph_dir/.zlyme-prefs.lock" || return 1
-	flock 7 || return 1
+	if ! flock 7; then
+		exec 7>&-
+		return 1
+	fi
+	prefs_locked=1
 }
 
+prefs_release() {
+	if [ "$prefs_locked" != 1 ]; then
+		return 0
+	fi
+	if command -v flock >/dev/null 2>&1; then
+		flock -u 7 2>/dev/null || true
+		exec 7>&-
+	fi
+	prefs_locked=0
+}
+
+# tmp is already in the destination directory. Copy it to a second file
+# there so dd can fsync a completed write, then rename onto the real file.
+# The previous file is removed only by that rename.
 same_fs_replace() {
 	_sr_dest=$1
 	_sr_tmp=$2
-	if command -v dd >/dev/null 2>&1; then
-		dd if="$_sr_tmp" of="$_sr_tmp" conv=notrunc,fsync status=none 2>/dev/null || true
-	fi
-	if ! mv -f "$_sr_tmp" "$_sr_dest"; then
+	_sr_dir=$(dirname "$_sr_dest")
+	case "$_sr_tmp" in
+		"$_sr_dir"/*) ;;
+		*)
+			rm -f "$_sr_tmp"
+			return 1
+			;;
+	esac
+	if ! command -v dd >/dev/null 2>&1; then
 		rm -f "$_sr_tmp"
 		return 1
 	fi
+	_sr_sync=$(mktemp "$_sr_dir/.zlyme-sync.XXXXXX") || {
+		rm -f "$_sr_tmp"
+		return 1
+	}
+	if ! dd if="$_sr_tmp" of="$_sr_sync" conv=fsync status=none; then
+		rm -f "$_sr_tmp" "$_sr_sync"
+		return 1
+	fi
+	rm -f "$_sr_tmp"
+	if ! mv -f "$_sr_sync" "$_sr_dest"; then
+		rm -f "$_sr_sync"
+		return 1
+	fi
+	sync >/dev/null 2>&1 || true
 	return 0
 }
 
+# Caller holds prefs_hold for this directory.
 rewrite_prefs() {
 	_rw_file=$1
 	_rw_body=$2
 	_rw_dir=$(dirname "$_rw_file")
-	mkdir -p "$_rw_dir" || return 1
-	prefs_hold "$_rw_dir" || return 1
 	_rw_tmp=$(mktemp "$_rw_dir/.zlyme-prefs.XXXXXX") || return 1
-	cat "$_rw_body" > "$_rw_tmp" || {
+	if ! cat "$_rw_body" > "$_rw_tmp"; then
 		rm -f "$_rw_tmp"
 		return 1
-	}
+	fi
 	same_fs_replace "$_rw_file" "$_rw_tmp"
+}
+
+# Read one preference file into body. Prints the orphan count.
+# Caller holds the lock when this will be written back.
+filter_orphan_prefs() {
+	_fo_file=$1
+	_fo_body=$2
+	_fo_n=0
+	: > "$_fo_body" || return 1
+	while IFS= read -r _fo_line || [ -n "$_fo_line" ]; do
+		case "$_fo_line" in
+			''|'#'*)
+				printf '%s\n' "$_fo_line" >> "$_fo_body"
+				continue
+				;;
+		esac
+		_fo_fields=$(printf '%s' "$_fo_line" | awk -F '\t' '{ print NF }')
+		if [ "$_fo_fields" -lt 4 ]; then
+			printf '%s\n' "$_fo_line" >> "$_fo_body"
+			continue
+		fi
+		_fo_kind=${_fo_line%%	*}
+		_fo_rest=${_fo_line#*	}
+		_fo_tag=${_fo_rest%%	*}
+		_fo_rest=${_fo_rest#*	}
+		_fo_rel=${_fo_rest%%	*}
+		case "$_fo_kind" in
+			rom) ;;
+			*)
+				printf '%s\n' "$_fo_line" >> "$_fo_body"
+				continue
+				;;
+		esac
+		if rom_pref_is_orphan "$_fo_tag" "$_fo_rel"; then
+			_fo_n=$((_fo_n + 1))
+			continue
+		fi
+		printf '%s\n' "$_fo_line" >> "$_fo_body"
+	done < "$_fo_file"
+	printf '%s\n' "$_fo_n"
 }
 
 do_orphan_prefs() {
@@ -573,46 +654,36 @@ do_orphan_prefs() {
 		printf '%s\n' 0
 		return 0
 	}
-	body=$(mktemp) || return 1
-	n=0
-	while IFS= read -r line || [ -n "$line" ]; do
-		case "$line" in
-			''|'#'*)
-				printf '%s\n' "$line" >> "$body"
-				continue
-				;;
-		esac
-		fields=$(printf '%s' "$line" | awk -F '\t' '{ print NF }')
-		if [ "$fields" -lt 4 ]; then
-			printf '%s\n' "$line" >> "$body"
-			continue
-		fi
-		kind=${line%%	*}
-		rest=${line#*	}
-		tag=${rest%%	*}
-		rest=${rest#*	}
-		rel=${rest%%	*}
-		case "$kind" in
-			rom) ;;
-			*)
-				printf '%s\n' "$line" >> "$body"
-				continue
-				;;
-		esac
-		if rom_pref_is_orphan "$tag" "$rel"; then
-			n=$((n + 1))
-			continue
-		fi
-		printf '%s\n' "$line" >> "$body"
-	done < "$file"
+	if [ "$DRY" = 1 ]; then
+		body=$(mktemp) || return 1
+		n=$(filter_orphan_prefs "$file" "$body") || {
+			rm -f "$body"
+			return 1
+		}
+		rm -f "$body"
+		printf '%s\n' "$n"
+		return 0
+	fi
+	prefs_hold "$(dirname "$file")" || return 1
+	body=$(mktemp) || {
+		prefs_release
+		return 1
+	}
+	n=$(filter_orphan_prefs "$file" "$body") || {
+		rm -f "$body"
+		prefs_release
+		return 1
+	}
 	printf '%s\n' "$n"
-	if [ "$DRY" = 0 ] && [ "$n" -gt 0 ]; then
+	if [ "$n" -gt 0 ]; then
 		rewrite_prefs "$file" "$body" || {
 			rm -f "$body"
+			prefs_release
 			return 1
 		}
 	fi
 	rm -f "$body"
+	prefs_release
 }
 
 path_parts_safe() {
@@ -720,7 +791,12 @@ drop_rom_pref() {
 	_dp_rel=$2
 	_dp_file=$(prefs_path)
 	[ -f "$_dp_file" ] || return 0
-	_dp_body=$(mktemp) || return 1
+	prefs_hold "$(dirname "$_dp_file")" || return 1
+	_dp_body=$(mktemp) || {
+		prefs_release
+		return 1
+	}
+	_dp_hit=0
 	while IFS= read -r _dp_line || [ -n "$_dp_line" ]; do
 		case "$_dp_line" in
 			''|'#'*)
@@ -741,15 +817,57 @@ drop_rom_pref() {
 		if [ "$_dp_kind" = rom ] && \
 			[ "$(fold_text "$_dp_rowtag")" = "$(fold_text "$_dp_tag")" ] && \
 			[ "$_dp_rowrel" = "$_dp_rel" ]; then
+			_dp_hit=1
 			continue
 		fi
 		printf '%s\n' "$_dp_line" >> "$_dp_body"
 	done < "$_dp_file"
+	if [ "$_dp_hit" = 0 ]; then
+		rm -f "$_dp_body"
+		prefs_release
+		return 0
+	fi
 	rewrite_prefs "$_dp_file" "$_dp_body" || {
 		rm -f "$_dp_body"
+		prefs_release
 		return 1
 	}
 	rm -f "$_dp_body"
+	prefs_release
+}
+
+# 0 when another ROM of this tag on the save-root library uses the same stem.
+# A same-named ROM on a different card does not share this card's save file.
+save_stem_taken() {
+	_ss_stem=$1
+	_ss_tag=$2
+	_ss_self=$3
+	_ss_root=$4
+	[ -d "$_ss_root" ] || return 1
+	_ss_yes=0
+	for _ss_roms in "$_ss_root/Roms" "$_ss_root/roms"; do
+		[ -d "$_ss_roms" ] || continue
+		for _ss_dir in "$_ss_roms"/*; do
+			[ -d "$_ss_dir" ] || continue
+			_ss_got=$(tag_of_console "$_ss_dir") || continue
+			[ "$(fold_text "$_ss_got")" = "$(fold_text "$_ss_tag")" ] || continue
+			_ss_files=$(mktemp) || return 1
+			find "$_ss_dir" -type f ! -path '*/.media/*' ! -name '.*' > "$_ss_files" 2>/dev/null || true
+			while IFS= read -r _ss_f; do
+				[ "$_ss_f" = "$_ss_self" ] && continue
+				_ss_b=$(basename "$_ss_f")
+				_ss_s=${_ss_b%.*}
+				if [ "$_ss_s" = "$_ss_stem" ]; then
+					_ss_yes=1
+					break
+				fi
+			done < "$_ss_files"
+			rm -f "$_ss_files"
+			[ "$_ss_yes" = 1 ] && break
+		done
+		[ "$_ss_yes" = 1 ] && break
+	done
+	[ "$_ss_yes" = 1 ]
 }
 
 drop_recent() {
@@ -785,8 +903,7 @@ delete_allowed() {
 	[ "$_da_f" = "$_da_rom" ] && return 0
 	[ -n "$_da_marker" ] && [ "$_da_f" = "$_da_marker" ] && return 0
 	case "$_da_f" in
-		"$_da_lib"/Saves/*|"$_da_lib"/saves/*) return 0 ;;
-		"$_da_sroot"/Saves/*|"$_da_sroot"/saves/*) return 0 ;;
+		"$_da_sroot"/Saves/"$_da_lib"/*) return 0 ;;
 		"$_da_parent"/.media/*)
 			_da_base=$(basename "$_da_f")
 			case "$_da_base" in
@@ -823,7 +940,6 @@ delete_rom() {
 	_del_mark=$(file_mark "$_del") || return 1
 	_del_stem=$(basename "$_del")
 	_del_stem=${_del_stem%.*}
-	_del_stem2=${_del_stem%.*}
 	_del_parent=$(dirname "$_del")
 	_del_list=$(mktemp) || return 1
 	printf '%s\n' "$_del" >> "$_del_list"
@@ -834,15 +950,16 @@ delete_rom() {
 		. "$_del_libsh"
 		_del_sroot=$(zlyme_save_root "$_del" "$ROM_TAG") || _del_sroot=$_del_lib
 	fi
-	if [ -d "$_del_sroot/Saves" ]; then
-		find "$_del_sroot/Saves" -type f 2>/dev/null |
+	# Only this system's save folder. Another system's same basename stays.
+	# A second ROM of this system with the same stem keeps the shared save.
+	if [ -d "$_del_sroot/Saves/$ROM_TAG" ] && ! save_stem_taken "$_del_stem" "$ROM_TAG" "$_del" "$_del_sroot"; then
+		find "$_del_sroot/Saves/$ROM_TAG" -type f 2>/dev/null |
 		while IFS= read -r _del_f; do
 			_del_b=$(basename "$_del_f")
 			is_save_name "$_del_b" || continue
 			_del_s1=${_del_b%.*}
 			_del_s2=${_del_s1%.*}
-			if [ "$_del_s1" = "$_del_stem" ] || [ "$_del_s1" = "$_del_stem2" ] || \
-				[ "$_del_s2" = "$_del_stem" ] || [ "$_del_s2" = "$_del_stem2" ]; then
+			if [ "$_del_s1" = "$_del_stem" ] || [ "$_del_s2" = "$_del_stem" ]; then
 				printf '%s\n' "$_del_f"
 			fi
 		done >> "$_del_list"
@@ -877,6 +994,15 @@ delete_rom() {
 		rm -f "$_del_list"
 		return 1
 	fi
+	while IFS= read -r _del_f; do
+		[ -n "$_del_f" ] || continue
+		[ "$_del_f" = "$_del" ] && continue
+		delete_allowed "$_del_f" "$_del" "$ROM_TAG" "$_del_sroot" "$_del_parent" "$_del_stem" "$_del_marker" || {
+			echo "zlyme-game-cleanup: refused $_del_f" >&2
+			rm -f "$_del_list"
+			return 1
+		}
+	done < "$_del_list"
 	drop_rom_pref "$ROM_TAG" "$ROM_REL" || {
 		rm -f "$_del_list"
 		return 1
@@ -897,7 +1023,7 @@ delete_rom() {
 	while IFS= read -r _del_f; do
 		[ -n "$_del_f" ] || continue
 		[ "$_del_f" = "$_del" ] && continue
-		delete_allowed "$_del_f" "$_del" "$_del_lib" "$_del_sroot" "$_del_parent" "$_del_stem" "$_del_marker" || {
+		delete_allowed "$_del_f" "$_del" "$ROM_TAG" "$_del_sroot" "$_del_parent" "$_del_stem" "$_del_marker" || {
 			echo "zlyme-game-cleanup: refused $_del_f" >&2
 			rm -f "$_del_list"
 			return 1

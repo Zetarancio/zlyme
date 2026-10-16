@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `ce76a9e1` for the delete-game row and the Wi-Fi service switches. About reads Syncthing through `zlyme-syncthing-gui`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `8fa61d55` for the delete-game row and the Wi-Fi service switches. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -385,4 +385,4 @@ Status: Planned. The current `S16display` path still writes the connector `mode`
 
 Settings → Delete game removes that ROM, its matching saves, its `.png` / `.jpg` / `.jpeg` artwork, its exact per-ROM governor and emulator row, and its Recently Played entry. Folder and system rows stay. A same-named ROM on another card stays. Shared artwork stays while another file in that folder still uses it. The action derives the file list from the ROM again and refuses a path that is not a regular file in a mounted library. Host tests are the gate.
 
-Status: Host-tested. Not a hardware test.
+Status: Host-tested. Saves are taken only from that system's folder on the save-root card. A second ROM with the same stem keeps the shared save. Not a hardware test.

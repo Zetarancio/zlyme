@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — delete game save scope and preference lock
+
+Host tests only. The preference lock covers the read and the rewrite. A failed sync leaves the previous file. Delete game reads saves only from that system's folder. A GBA `Mario` save is not a GB or NES `Mario` save. Two ROMs with the same stem keep the shared save. A same-sized preference rewrite is noticed by inode and nanosecond time. A file with more than 256 rows is not rewritten. This was not run on a Flip.
+
 ## 2026-10-16 — network switches share one policy
 
 Host tests only. A Settings switch runs `zlyme-net-services apply` for that service. Wi-Fi off stops it and leaves its flag. A Samba start failure still fails that switch. One failed service does not skip the others. The quick menu reads `zlyme-ctl want wifi`. This was not run on a Flip.

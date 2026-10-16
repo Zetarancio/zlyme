@@ -198,7 +198,7 @@ test ! -e "$marker"
 test ! -e "$splore"
 
 # A failed rename leaves the previous preference file.
-printf 'rom\tGBA\tkeep.gba\tplay\tmgba\n' > "$prefs"
+printf 'rom\tGBA\tkeep.gba\tplay\tmgba\nrom\tGBA\tgone.gba\tidle\tmgba\n' > "$prefs"
 cat > "$work/mv" <<'EOF'
 #!/bin/sh
 last=
@@ -219,5 +219,54 @@ if ZLYME_MV_FAIL=1 PATH="$work:$PATH" "$BIN" rom "$gone" >/dev/null 2>>"$work/er
 fi
 [ "$(cat "$prefs")" = "$before" ] || fail "failed rename replaced preferences"
 test -f "$gone"
+
+# Same basename in three systems. Only the GBA save folder is touched.
+gba="$work/storage/Roms/Game Boy Advance (GBA)"
+gb="$work/storage/Roms/Game Boy (GB)"
+nes="$work/storage/Roms/Nintendo Entertainment System (NES)"
+mkdir -p "$gba" "$gb" "$nes" \
+	"$work/storage/Saves/GBA" "$work/storage/Saves/GB" "$work/storage/Saves/NES" \
+	"$work/sd2/Roms/Game Boy Advance (GBA)" "$work/sd2/Saves/GBA"
+printf 'g' > "$gba/Mario.gba"
+printf 'b' > "$gb/Mario.gb"
+printf 'n' > "$nes/Mario.nes"
+printf 'gba-save' > "$work/storage/Saves/GBA/Mario.srm"
+printf 'slot' > "$work/storage/Saves/GBA/Mario.state.1"
+printf 'gb-save' > "$work/storage/Saves/GB/Mario.srm"
+printf 'nes-save' > "$work/storage/Saves/NES/Mario.srm"
+"$BIN" rom "$gba/Mario.gba" >/dev/null
+test ! -e "$gba/Mario.gba"
+test ! -e "$work/storage/Saves/GBA/Mario.srm"
+test ! -e "$work/storage/Saves/GBA/Mario.state.1"
+test -f "$work/storage/Saves/GB/Mario.srm"
+test -f "$work/storage/Saves/NES/Mario.srm"
+test -f "$gb/Mario.gb"
+test -f "$nes/Mario.nes"
+
+# Same system, two extensions. The shared save stays.
+printf 'g' > "$gba/Mario.gba"
+printf 'c' > "$gba/Mario.gbc"
+printf 'again' > "$work/storage/Saves/GBA/Mario.srm"
+"$BIN" rom "$gba/Mario.gba" >/dev/null
+test ! -e "$gba/Mario.gba"
+test -f "$gba/Mario.gbc"
+test -f "$work/storage/Saves/GBA/Mario.srm"
+
+# Each card has its own ROM and its own save. Only this card's save goes.
+rm -f "$gba/Mario.gbc"
+printf 'g' > "$gba/Mario.gba"
+printf '2' > "$work/sd2/Roms/Game Boy Advance (GBA)/Mario.gba"
+printf 'sd1' > "$work/storage/Saves/GBA/Mario.srm"
+printf 'sd2' > "$work/sd2/Saves/GBA/Mario.srm"
+"$BIN" rom "$gba/Mario.gba" >/dev/null
+test ! -e "$work/storage/Saves/GBA/Mario.srm"
+test -f "$work/sd2/Saves/GBA/Mario.srm"
+test -f "$work/sd2/Roms/Game Boy Advance (GBA)/Mario.gba"
+
+# The other card has the only save and also its own ROM. Do not guess.
+printf 'g' > "$gba/Mario.gba"
+"$BIN" rom "$gba/Mario.gba" >/dev/null
+test -f "$work/sd2/Saves/GBA/Mario.srm"
+test -f "$work/sd2/Roms/Game Boy Advance (GBA)/Mario.gba"
 
 echo "rom delete ok"

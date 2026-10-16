@@ -19,15 +19,18 @@ static void expect(int cond, const char *msg)
 static int contains(const char *path, const char *needle)
 {
 	FILE *f = fopen(path, "r");
-	char buf[4096];
-	size_t n;
+	char buf[512];
 
 	if (!f)
 		return 0;
-	n = fread(buf, 1, sizeof(buf) - 1, f);
+	while (fgets(buf, sizeof(buf), f)) {
+		if (strstr(buf, needle)) {
+			fclose(f);
+			return 1;
+		}
+	}
 	fclose(f);
-	buf[n] = '\0';
-	return strstr(buf, needle) != NULL;
+	return 0;
 }
 
 int main(void)
@@ -67,14 +70,75 @@ int main(void)
 	expect(contains(path, "folder\tGB\tnested"), "folder row was lost on the next save");
 	expect(!contains(path, "keep.gb"), "deleted rom was written back");
 
+	{
+		FILE *in;
+		FILE *out;
+		char buf[8192];
+		char tmp[512];
+		char *hit;
+		size_t n;
+
+		in = fopen(path, "r");
+		if (!in)
+			return 1;
+		n = fread(buf, 1, sizeof(buf), in);
+		fclose(in);
+		hit = NULL;
+		if (n >= 4) {
+			size_t i;
+			for (i = 0; i + 4 <= n; i++) {
+				if (memcmp(buf + i, "idle", 4) == 0) {
+					hit = buf + i;
+					break;
+				}
+			}
+		}
+		expect(hit != NULL, "same-size source has no idle field");
+		if (hit)
+			memcpy(hit, "fast", 4);
+		snprintf(tmp, sizeof(tmp), "%s/swap.txt", dir);
+		out = fopen(tmp, "w");
+		if (!out)
+			return 1;
+		if (fwrite(buf, 1, n, out) != n) {
+			fclose(out);
+			return 1;
+		}
+		if (fclose(out) != 0)
+			return 1;
+		expect(rename(tmp, path) == 0, "same-size rename failed");
+		prefsGetExact("rom", "NES", "new.nes", gov, sizeof(gov), emu, sizeof(emu));
+		expect(strcmp(gov, "fast") == 0, "same-size rewrite stayed cached");
+	}
+
+	{
+		FILE *big;
+		int i;
+		char line[64];
+		big = fopen(path, "w");
+		if (!big)
+			return 1;
+		for (i = 0; i < 257; i++) {
+			snprintf(line, sizeof(line), "rom\tGB\tr%03d.gb\tplay\tm\n", i);
+			fputs(line, big);
+		}
+		if (fclose(big) != 0)
+			return 1;
+		prefsSet("rom", "GB", "extra.gb", "idle", "gambatte");
+		expect(contains(path, "r256.gb"), "overflow save dropped the last row");
+		expect(!contains(path, "extra.gb"), "overflow save wrote a partial file");
+		prefsGetExact("rom", "GB", "r000.gb", gov, sizeof(gov), emu, sizeof(emu));
+		expect(strcmp(gov, "play") == 0, "a cached row failed lookup");
+	}
+
 	if (chmod(dir, 0555) != 0)
 		return 1;
 	prefsSet("rom", "GB", "should-not.gb", "heavy", "mgba");
 	if (chmod(dir, 0755) != 0)
 		return 1;
 	expect(!contains(path, "should-not.gb"), "failed write changed the file");
-	prefsGetExact("rom", "NES", "new.nes", gov, sizeof(gov), emu, sizeof(emu));
-	expect(strcmp(gov, "idle") == 0, "failed write changed the cached row");
+	prefsGetExact("rom", "GB", "r000.gb", gov, sizeof(gov), emu, sizeof(emu));
+	expect(strcmp(gov, "play") == 0, "failed write changed the cached row");
 
 	unlink(path);
 	rmdir(dir);

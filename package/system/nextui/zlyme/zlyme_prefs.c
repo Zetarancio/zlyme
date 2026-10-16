@@ -30,7 +30,11 @@ typedef struct {
 static Pref prefs[PREFS_MAX];
 static int prefs_n;
 static int prefs_loaded;
-static time_t prefs_mtime;
+static int prefs_overflow;
+static dev_t prefs_dev;
+static ino_t prefs_ino;
+static time_t prefs_mtime_sec;
+static long prefs_mtime_nsec;
 static off_t prefs_size = -1;
 static int prefs_lock_fd = -1;
 
@@ -77,12 +81,27 @@ static void prefs_note_stat(void)
 	struct stat st;
 
 	if (stat(prefs_path(), &st) == 0) {
-		prefs_mtime = st.st_mtime;
+		prefs_dev = st.st_dev;
+		prefs_ino = st.st_ino;
+		prefs_mtime_sec = st.st_mtim.tv_sec;
+		prefs_mtime_nsec = st.st_mtim.tv_nsec;
 		prefs_size = st.st_size;
 	} else {
-		prefs_mtime = 0;
+		prefs_dev = 0;
+		prefs_ino = 0;
+		prefs_mtime_sec = 0;
+		prefs_mtime_nsec = 0;
 		prefs_size = -1;
 	}
+}
+
+static int prefs_stat_same(const struct stat *st)
+{
+	return st->st_dev == prefs_dev &&
+		st->st_ino == prefs_ino &&
+		st->st_mtim.tv_sec == prefs_mtime_sec &&
+		st->st_mtim.tv_nsec == prefs_mtime_nsec &&
+		st->st_size == prefs_size;
 }
 
 static int prefs_lock(void)
@@ -126,12 +145,13 @@ void prefsReload(void)
 
 	prefs_n = 0;
 	prefs_loaded = 1;
+	prefs_overflow = 0;
 	f = fopen(prefs_path(), "r");
 	if (!f) {
 		prefs_note_stat();
 		return;
 	}
-	while (fgets(line, sizeof(line), f) && prefs_n < PREFS_MAX) {
+	while (fgets(line, sizeof(line), f)) {
 		char *kind, *tag, *rel, *gov, *emu, *p;
 		trim_field(line);
 		if (!line[0] || line[0] == '#')
@@ -159,6 +179,11 @@ void prefsReload(void)
 		} else {
 			emu = "";
 		}
+		/* A file larger than the cache is left on disk. Saving would drop the rest. */
+		if (prefs_n >= PREFS_MAX) {
+			prefs_overflow = 1;
+			break;
+		}
 		snprintf(prefs[prefs_n].kind, sizeof(prefs[prefs_n].kind), "%s", kind);
 		snprintf(prefs[prefs_n].tag, sizeof(prefs[prefs_n].tag), "%s", tag);
 		snprintf(prefs[prefs_n].rel, sizeof(prefs[prefs_n].rel), "%s", rel);
@@ -175,8 +200,7 @@ static void prefsEnsure(void)
 	struct stat st;
 	const char *path = prefs_path();
 
-	if (prefs_loaded && stat(path, &st) == 0 &&
-	    st.st_mtime == prefs_mtime && st.st_size == prefs_size)
+	if (prefs_loaded && stat(path, &st) == 0 && prefs_stat_same(&st))
 		return;
 	if (prefs_loaded && stat(path, &st) != 0 && prefs_size < 0)
 		return;
@@ -192,6 +216,8 @@ static int prefs_write(void)
 	FILE *f;
 	int fd, i, dirfd;
 
+	if (prefs_overflow)
+		return -1;
 	if (prefs_dir(dir, sizeof(dir)) != 0)
 		return -1;
 	if (mkdir(dir, 0755) != 0 && errno != EEXIST)
