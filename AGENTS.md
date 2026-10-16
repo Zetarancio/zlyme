@@ -282,6 +282,8 @@ Update documentation when changing:
 - package layout;
 - user-visible behavior.
 
+A phase is not closed until the documents that own the changed behavior match the final source. That check is in `docs/WRITING.md`. It is not a second pass over every sentence after every commit.
+
 ## Licensing
 
 Every package and shipped PAK must have its licensing understood.

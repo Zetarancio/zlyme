@@ -65,6 +65,24 @@ A gate has to match the risk. A source-only change does not automatically need a
 - A removal or a change in behavior goes under its own heading and says what users have to do.
 - GitHub release notes use that release's changelog wording. A raw git log or a generated compare link alone is not release notes. The release workflow prints the `## [ZLYME_VERSION]` section and fails if that section is missing or empty. It does not ask GitHub to build notes from the commit list. `Unreleased` is not a release body.
 
+## End of a phase
+
+Documentation coherence is a condition for closing every phase, including a phase that does not publish a release. Feature notes belong with the change. This pass is the last check that the current documents still agree with the code.
+
+Before a phase is called closed:
+
+- Review the source changes and what a person can see.
+- Reconcile `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/MAINTENANCE.md`, `docs/OPERATIONS.md`, `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md`, and `docs/USER_GUIDE.md` with that code.
+- Correct a stale version, pin, release status, or current-state claim that the code now contradicts.
+- Make `docs/ROADMAP.md` say what is implemented, host-tested, hardware-accepted, excluded, deferred, or unproven.
+- Add a short dated `docs/LOGBOOK.md` entry when the evidence is worth keeping. Leave older entries as written.
+- Review `CHANGELOG.md` under the rules above. Record accepted user-visible behavior only.
+- Check documentation links, the documentation contract tests, and a factual claim that a test already locks to source.
+- Keep licenses, attribution, and provenance.
+- Name a remaining limitation. Do not write that support is complete when it is not.
+
+Do not rewrite every document after every commit, copy the same explanation into each file, or invent a test result.
+
 ## AI-assisted documentation
 
 The goal is good documentation that also gives an AI tool enough coherent context to help a contributor, not documentation written for a model. Stable terminology, explicit owners, concrete paths and interfaces, explicit supersession, and evidence kept apart from inference all serve both readers. Don't rely on private chat history. If it matters, it is written down here.

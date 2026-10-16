@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — zlyme44.3 published
+
+GitHub release `zlyme-38828679802` is the stable `zlyme44.3` build from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`. The device acceptance remains the local candidate `ccd99997`. `main` then added README commit `8b4218aa`, which is not in that firmware. NextUI `9931d99e` is on branch `zlyme`. B6 and C1 stay excluded.
+
 ## 2026-10-16 — Phase 13 accepted
 
 The maintainer installed the local candidate from `ccd99997b98dc9015a3ed06a1808ecb2a207f197` and accepted it. Samba login and the Settings password worked. A PortMaster JPEG appeared as that launcher's artwork. No further regression was seen. Earlier checks on `b39435147fc7` still stand: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles. B6 and C1 stay excluded. The unreproduced nested-mount leak is not a release blocker. A public `zlyme44.3` release is a later workflow result.

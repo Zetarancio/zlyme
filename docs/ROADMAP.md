@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed on 2026-10-16. `ZLYME_VERSION` is `zlyme44.3`. The maintainer accepted the local candidate from `ccd99997b98dc9015a3ed06a1808ecb2a207f197`: Samba login and the Settings password worked, PortMaster JPEG artwork appeared, and no further regression was seen. B6 and C1 are excluded and are not implemented. The earlier intermittent PortMaster-to-MTP leak was not reproduced and is not a release blocker. A public `zlyme44.3` release is not recorded until the production workflow publishes it. The published release until then remains `zlyme44.2`. Phase 14 is planned and has not started. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -291,7 +291,7 @@ Objective: review Phase 12 and 13 for ownership, persistent data, cleanup, first
 
 Do not reopen an accepted hardware campaign without a concrete regression. B6 stays a documented limit unless a bounded fix is approved separately. C1 stays a documented limit. Do not add an unsafe ports union.
 
-Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortMaster JPEG artwork passed there. The earlier candidate `b39435147fc7` had been installed and checked: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles passed, and Samba did not listen. B6 and C1 are excluded. A mount the wrapper never recorded can still block USB File Transfer. Within-session cable removal is not a new gate. A public release is a later workflow result, not this acceptance.
+Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortMaster JPEG artwork passed there. The earlier candidate `b39435147fc7` had been installed and checked: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles passed, and Samba did not listen. B6 and C1 are excluded. A mount the wrapper never recorded can still block USB File Transfer. Within-session cable removal is not a new gate. Published `zlyme44.3` is tag `zlyme-38828679802` from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`. The later README commit `8b4218aa` is not that firmware.
 
 ## Phase 14. PortMaster compatibility
 
