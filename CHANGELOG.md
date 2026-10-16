@@ -14,6 +14,10 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Delete game removes that ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A folder or system choice stays. A save for another system stays. A game with the same name on another card stays. If the delete stops early, the game stays in the list.
 - SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was. Turning one on while Wi-Fi is off leaves that switch on and the service stopped.
 
+### Fixed
+
+- Opening a game list no longer puts the previous system's picture back after you have moved on.
+
 ### Changed
 
 - PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.

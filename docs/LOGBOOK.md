@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Stale background load
+
+NextUI `13848ddb` keeps a generation on each background request. A load that finishes after the list has moved on does not install its surface, and the surface is freed. The host test checks that order. The queue counter still includes the task the worker has already taken, so dropping the queue head does not cancel it. Not shown on a Flip.
+
 ## 2026-10-16 — Tool illustrations
 
 The nine Tool backgrounds are the supplied 454×1080 pictures. The package clips them to the shared Art Book alpha and draws the name from the pak. `./build.sh --config zlyme_my355_defconfig zlyme-artbook` installed 54 system PNGs, 4,500,745 bytes, and 9 tool PNGs, 835,314 bytes. With the notice, that directory is 5,337,807 bytes. The previous tool set was 111,091 bytes. USB File Transfer stays at x≥339, and the name fits in 291 pixels. A second build hashed the sources and did not render again. Not shown on a Flip.
