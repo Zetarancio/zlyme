@@ -24,7 +24,7 @@ Product status, kept separate:
 
 - Historical Phase 9 acceptance is runtime `337ccbce2587393463a4b49c551f94e33e318e44` (`zlyme44`). A later documentation commit does not replace that SHA. Its acceptance record is in `docs/research/product-phase9.md` and `docs/archive/roadmap-2026-10-15.md`.
 - Published stable `zlyme44.2` is runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, tag `zlyme-38098037074`. Documentation after that SHA does not replace the published firmware.
-- Development branch `zlyme44.3-phase-12` remains the working branch. Phase 12 is closed after the later 2026-10-14 correction. Phase 13 is open on this branch through 13E. Phase 14 waits for the integration checklist below. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` image or release has been published. The published release is still `zlyme44.2`.
+- Phase 12 and Phase 13 are closed. Phase 13 was accepted on 2026-10-16 on the local candidate `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 are excluded and are not implemented. `ZLYME_VERSION` is `zlyme44.3`. A public `zlyme44.3` release is recorded only after the production workflow publishes it. Until then the published release is `zlyme44.2`. Phase 14 is planned and has not started.
 - The Phase 12D USB experiment transcript is in `docs/research/usb-mtp-phase12d.md`, `docs/LOGBOOK.md`, and `docs/archive/roadmap-2026-10-15.md`. The file-copy baseline from that chain is `zlyme-my355-20261013-7951a37668e3.tar`. Within-session cable recovery was not measured. E30 stays the rollback for that limit. `snps,dis_u2_susphy_quirk` stays. The restarts at about 17:00:49Z on 2026-10-13 and about 01:11:35Z on 2026-10-14 were reported only while USB was connected and are suspected contact instability, not a separate software blocker. Candidate `zlyme-my355-20261014-522e4573010a.tar` was not installed. The 7.2.10 host build record is `docs/research/linux-7.2.10-migration.md`.
 - On 2026-10-14 the maintainer accepts the installed E32 image. Its squashfs is `ac46ac3783ed4d9bcc9bbceed1d6b023c65a878cd50561b11dc119980d06c24c` and its helper is `9fc37d2e9f2f831f194691be3f3ff6de046f8d188fad86a3094bdecb6ee00859`. That image was built before the `zlyme44.3` version change. Ordinary MTP matched, including a second Start with the cable left in place. Within-session cable recovery was not instrumentally verified. E30 stays the rollback for that limit. After the tool was closed, no MTP process remained and Demetria had no `1d6b:0100`. One PortMaster port on `/mnt/sd2` returned to NextUI with its FRT mount gone. Panfrost is the bound GPU. That image does not export the experimental PanVK opt-in. Later source exports it only for an exact `panfrost` choice, after one orange frame was presented twice. `snps,dis_u2_susphy_quirk` stays. Charging and upper-port host use are accepted by maintainer report and were not measured again.
 
@@ -58,7 +58,7 @@ ZcrapeGoat is not a patch stack and not a submodule. `package/system/zcrapegoat/
 
 ### Integrating a phase onto main
 
-This is the checklist for the current Phase 13 branch and for a later phase that used the same pin rule. Building a candidate is not publishing a release. Nothing in this list publishes one.
+This is the checklist for a phase that used the NextUI pin rule. Building a candidate is not publishing a release. A candidate dispatch leaves `publish_release` false. A release the maintainer has accepted uses the same Build workflow with `publish_release` true.
 
 1. Finish and accept the phase implementation.
 2. Finish the local validation that phase requires.
@@ -67,7 +67,7 @@ This is the checklist for the current Phase 13 branch and for a later phase that
 5. Verify the pinned SHA is reachable from NextUI `zlyme`.
 6. Review the Zlyme changes and merge the phase branch into Zlyme `main` with the repository's normal fast-forward or reviewed merge. Do not force the history.
 7. Verify `main` pins that immutable SHA and does not pin a branch name.
-8. Dispatch a remote clean Build from Zlyme `main`. Leave `publish_release` false.
+8. Dispatch one remote clean Build from Zlyme `main`. Leave `publish_release` false for a candidate. Set it true only for a release the maintainer has accepted.
 9. Review the remote build result. A failed build is fixed before that `main` is the baseline for the next phase.
 
 Phase 14 starts only after this sequence, on a new Zlyme branch from the accepted `main`. Create a matching NextUI development branch only if Phase 14 changes NextUI.

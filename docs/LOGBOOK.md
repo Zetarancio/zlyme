@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Phase 13 accepted
+
+The maintainer installed the local candidate from `ccd99997b98dc9015a3ed06a1808ecb2a207f197` and accepted it. Samba login and the Settings password worked. A PortMaster JPEG appeared as that launcher's artwork. No further regression was seen. Earlier checks on `b39435147fc7` still stand: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles. B6 and C1 stay excluded. The unreproduced nested-mount leak is not a release blocker. A public `zlyme44.3` release is a later workflow result.
+
 ## 2026-10-16 — Port artwork stays a JPEG
 
 NextUI's SDL2_image 2.8.12 is built with JPEG loading, so a game thumbnail can be a `.jpg` or `.jpeg` when the `.png` is absent. `zlyme-portmaster-art` copies those bytes and no longer converts them. The earlier note the same week describes why the image ffmpeg could not do that conversion. Pico-8 cartridge labels are unchanged. This was not run on a Flip.

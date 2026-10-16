@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is open on `zlyme44.3-phase-12`. `ZLYME_VERSION` is `zlyme44.3`. No `zlyme44.3` release exists. The published release is `zlyme44.2`, runtime `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`, run `38098037074`. A local candidate from `b39435147fc7c3e29beddccd0da6949d0f1209d0` was installed on one Flip, and its root identity matched. Phase 12's accepted image remains the E32 archive. Samba startup and PortMaster artwork are the remaining corrections, and they are not on that installed image. Phase 14 does not start until Phase 13 is accepted and that branch is on `main`. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed on 2026-10-16. `ZLYME_VERSION` is `zlyme44.3`. The maintainer accepted the local candidate from `ccd99997b98dc9015a3ed06a1808ecb2a207f197`: Samba login and the Settings password worked, PortMaster JPEG artwork appeared, and no further regression was seen. B6 and C1 are excluded and are not implemented. The earlier intermittent PortMaster-to-MTP leak was not reproduced and is not a release blocker. A public `zlyme44.3` release is not recorded until the production workflow publishes it. The published release until then remains `zlyme44.2`. Phase 14 is planned and has not started. The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -27,6 +27,7 @@ Host-tested means a host check passed. It is not a Flip result. Blocked means th
 | 10 | 2026-10-06. Documentation closure. `zlyme44.1` was not published. | [Phase 10](#phase-10-documentation) |
 | 11 | 2026-10-08. Published `zlyme44.2`. | [Phase 11](#phase-11-zlyme442) |
 | 12 | 2026-10-14. Development closed, with the limits below. | [Phase 12](#phase-12-zlyme443-development) |
+| 13 | 2026-10-16. Accepted on `ccd99997`. B6 and C1 excluded. | [Phase 13](#phase-13-compatibility-on-this-branch) |
 
 ## Phase 0. Repository and baseline
 
@@ -148,9 +149,9 @@ Reference: [docs/research/usb-mtp-phase12d.md](research/usb-mtp-phase12d.md), [d
 
 ## Phase 13. Compatibility on this branch
 
-Phase 13 is not closed. It stays on `zlyme44.3-phase-12` for the same eventual `zlyme44.3` release. The local candidate `zlyme-my355-20261015-b39435147fc7.tar`, from `b39435147fc7c3e29beddccd0da6949d0f1209d0`, was installed on one Flip. `/boot/zlyme` SHA-256 is `0e4bcd35163629bf27bd67e5f6564e52655e43a49bf64d6c4fc73bbbe6ab93b4`. On that image, SSH accepted a changed password and About showed it. Syncthing accepted a GUI password change and About did not show it. One lid close entered sleep and the following lid open woke the device. Repeated PortMaster to MTP cycles showed no error. Samba was enabled and did not listen. A newly installed port's JPEG was not published.
+Phase 13 is closed, 2026-10-16. The maintainer accepted the local candidate from `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. On that image, Samba login and the Settings password worked, and a PortMaster JPEG appeared as the launcher's artwork. No further regression was seen. An earlier candidate, `b39435147fc7`, had Samba enabled with no listener and did not publish that JPEG. On that earlier image, SSH accepted a changed password and About showed it, Syncthing accepted a GUI password change and About did not show it, one lid close entered sleep and the following lid open woke the device, and repeated PortMaster to MTP cycles showed no error.
 
-B6 and C1 are excluded from Phase 13. They are not implemented, and they are not closure blockers. The menu text stays small. PortMaster-GUI still has one ports directory. The earlier intermittent PortMaster-to-MTP nested mount was not reproduced, and reproducing it is not a release gate. MTP still refuses a nested mount. Within-session USB cable replug is not a new hardware gate. Phase 12's hardware campaign stays closed. The remaining corrections are Samba startup and port artwork. They are not on the installed image. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
+B6 and C1 are excluded. They are not implemented. The menu text stays small. PortMaster-GUI still has one ports directory. The earlier intermittent PortMaster-to-MTP nested mount was not reproduced and is not a release blocker. MTP still refuses a nested mount. Within-session USB cable replug is not a new hardware gate. A long suspend was not required. Phase 12 stays closed. Credits for B7, B8, D1, and D2 stay in those commit messages, not in the README.
 
 The earlier 13E list, E1 through E4, is in the archive. The milestones below replace it.
 
@@ -178,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `9931d99e`. The installed candidate still has `3f4120cc`. About reads Syncthing through `zlyme-syncthing-gui`. None of those commits is on NextUI `zlyme` yet.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. This branch pins `9931d99e`. About reads Syncthing through `zlyme-syncthing-gui`. That pin is fast-forwarded onto NextUI `zlyme` before it is the pin on Zlyme `main`.
 
 ##### B3. RGUI theme
 
@@ -230,7 +231,7 @@ REJECTED — a union or a symlink farm. A removal or extract can hit the wrong c
 
 Objective: after an install, publish suitable art as `.media/<launcher>.png` on that port's card. Art the user already chose stays.
 
-Status: PortMaster copies a cover or screenshot onto the same card, named for the launcher. A JPEG stays a JPEG. NextUI prefers `.png` and reads `.jpg` or `.jpeg` when the PNG is absent. The installed candidate did not show `Abombniball.sh`, whose only picture is `screenshot.jpg`. This copy is not on that image.
+Status: Accepted on `ccd99997`. PortMaster copies a cover or screenshot onto the same card, named for the launcher. A JPEG stays a JPEG. NextUI prefers `.png` and reads `.jpg` or `.jpeg` when the PNG is absent. The earlier candidate `b39435147fc7` did not show `Abombniball.sh`.
 
 ### Phase 13D. Samba and lid suspend
 
@@ -238,7 +239,7 @@ Status: PortMaster copies a cover or screenshot onto the same card, named for th
 
 Objective: require the `zlyme` account, keep a changed password across reboot and update, and leave guest access off. Samba stays off until Settings enables it.
 
-Status: On the installed candidate, Samba was enabled, the account export existed, and `smbd` was not running. Samba 4.24.6 writes uid 0 into the smbpasswd export, so `pdbedit -i` exits 0 without adding `zlyme`. `smbd` also exits when `/var/run/samba` is missing. The source repair rewrites that uid and creates the runtime directories, then reports failure if `smbd` does not stay up. A damaged account file still does not start `smbd` and does not restore the public password. A temporary listener on port 44445, using the target binaries, accepted `zlyme` and rejected a guest client. Port 445 was not started, and the live account was not changed. This fix is not on the installed image. No NetBIOS, `nmbd`, or WS-Discovery.
+Status: On the installed candidate, Samba was enabled, the account export existed, and `smbd` was not running. Samba 4.24.6 writes uid 0 into the smbpasswd export, so `pdbedit -i` exits 0 without adding `zlyme`. `smbd` also exits when `/var/run/samba` is missing. The source repair rewrites that uid and creates the runtime directories, then reports failure if `smbd` does not stay up. A damaged account file still does not start `smbd` and does not restore the public password. A temporary listener on port 44445, using the target binaries, accepted `zlyme` and rejected a guest client. Port 445 was not started, and the live account was not changed. The maintainer accepted Samba login and the Settings password on `ccd99997`. No NetBIOS, `nmbd`, or WS-Discovery.
 
 ##### D2. Lid-close deep suspend
 
@@ -248,7 +249,7 @@ Status: On the installed candidate, one lid close entered sleep and the followin
 
 ### Phase 13E. Final compatibility
 
-13E is the last integration pass for `zlyme44.3`. The candidate above was installed. Phase 13 is not closed. Samba startup and port artwork remain, and those corrections are not on the installed image.
+13E is the last integration pass for `zlyme44.3`. It is closed with the acceptance of `ccd99997` recorded above.
 
 #### 13E1. PortMaster mounts and MTP
 
@@ -270,7 +271,7 @@ Status: Host-tested. A new home is created with `syncthing generate` before the 
 
 Objective: Settings → About shows, in order, SSH account, SSH password, Samba account, Samba password, Syncthing account, Syncthing password, then IP. Read them when About opens. Do not run the helpers on every redraw. Show the real usernames. Show `zlyme` as a password only when that default is still in force. After the user changes a Samba or Syncthing password, show that it was changed or that it cannot be read. Do not show a hash. Do not keep a second plaintext copy for this screen. Labels have to fit the Flip. About does not edit Samba or Syncthing passwords.
 
-Status: Host-tested. NextUI `3f4120cc` reads the rows when About opens and keeps them for redraws. SSH still shows the live password. Samba shows `zlyme` only when the NT hash is still the initial password, `(changed)` when it is another valid hash, and `(unavailable)` otherwise. Syncthing asks `zlyme-syncthing-gui`, the same parser the init script uses. The account is the GUI user. The password is `(set)` when the parsed value is a bcrypt hash, and `(unavailable)` otherwise. An XML comment is not a username or a password. The page does not show the hash and does not start Syncthing to check it. The host test compiled the label functions and ran them against that helper. About was opened on the installed candidate. It showed the changed SSH password and did not show the Syncthing password. NextUI `e06814c9` adds Settings → Network → Samba Password. That row is not on the installed image.
+Status: Host-tested. NextUI `3f4120cc` reads the rows when About opens and keeps them for redraws. SSH still shows the live password. Samba shows `zlyme` only when the NT hash is still the initial password, `(changed)` when it is another valid hash, and `(unavailable)` otherwise. Syncthing asks `zlyme-syncthing-gui`, the same parser the init script uses. The account is the GUI user. The password is `(set)` when the parsed value is a bcrypt hash, and `(unavailable)` otherwise. An XML comment is not a username or a password. The page does not show the hash and does not start Syncthing to check it. The host test compiled the label functions and ran them against that helper. About was opened on the installed candidate. It showed the changed SSH password and did not show the Syncthing password. NextUI `e06814c9` adds Settings → Network → Samba Password. That row worked on `ccd99997`. The earlier image's NextUI was `3f4120cc`.
 
 #### 13E4. Obsolete configuration
 
@@ -290,7 +291,7 @@ Objective: review Phase 12 and 13 for ownership, persistent data, cleanup, first
 
 Do not reopen an accepted hardware campaign without a concrete regression. B6 stays a documented limit unless a bounded fix is approved separately. C1 stays a documented limit. Do not add an unsafe ports union.
 
-Status: The candidate from `b39435147fc7` was built and installed. `/boot/zlyme` matched that build's squashfs. SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles were observed as recorded above. Samba did not listen, and one new port's JPEG was not published. Those two corrections are in source and are not on the installed image. No release was published. B6 and C1 are excluded. A mount the wrapper never recorded can still block USB File Transfer. Within-session cable removal is not a new gate.
+Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortMaster JPEG artwork passed there. The earlier candidate `b39435147fc7` had been installed and checked: SSH, Syncthing, one lid close and open, and repeated PortMaster to MTP cycles passed, and Samba did not listen. B6 and C1 are excluded. A mount the wrapper never recorded can still block USB File Transfer. Within-session cable removal is not a new gate. A public release is a later workflow result, not this acceptance.
 
 ## Phase 14. PortMaster compatibility
 
