@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Art Book wallpapers
+
+Host tests only. 79 Art Book NextUI wallpapers from `f5fe992` were resized to 640×480 and installed under `/usr/share/nextui/artbook`. User `.media` and `/storage/bg.png` are checked first. The license recorded with the files is CC BY-NC-SA 2.0. Theme Manager was not installed. This was not shown on a Flip.
+
 ## 2026-10-16 — delete game save scope and preference lock
 
 Host tests only. The preference lock covers the read and the rewrite. A failed sync leaves the previous file. Delete game reads saves only from that system's folder. A GBA `Mario` save is not a GB or NES `Mario` save. Two ROMs with the same stem keep the shared save. A same-sized preference rewrite is noticed by inode and nanosecond time. A file with more than 256 rows is not rewritten. This was not run on a Flip.

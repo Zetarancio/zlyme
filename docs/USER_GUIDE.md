@@ -116,6 +116,8 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 
 Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file or playlist. A `.jpg` or `.jpeg` with that name is used when the PNG is not there. A cart downloaded inside Splore is already a PNG label, so that file is the preview when no `.media` image exists.
 
+A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. If none of those exist, Zlyme shows an Art Book wallpaper for that system's tag, and for Tools, Collections, and Recently Played. Your images are not replaced. A system with no Art Book picture keeps the plain background. The pictures are CC BY-NC-SA 2.0; the credit is in the image under `artbook/NOTICE.md`.
+
 ## USB file transfer
 
 Tools → USB File Transfer shares storage over the lower USB-C port, the port you charge with. The upper port stays a USB host. The tool starts only when you confirm it. It is not a background service. If another filesystem is mounted inside storage, the tool says so and does not start. Leaving a PortMaster game removes a filesystem that game mounted through Zlyme. A filesystem mounted another way stays until it is unmounted or the Flip restarts, including one mounted later at the same place.

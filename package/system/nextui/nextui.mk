@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 8fa61d557e69c0c65a139ce622c3701d000a5299
+NEXTUI_VERSION = efedf8a62121bd071c2257352f4b6beda2ac1706
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -86,13 +86,16 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/zlyme_thumbpath.o $(@D)/workspace/all/nextui/zlyme_thumbpath.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(@D)/workspace/all/nextui \
+		-o $(@D)/zlyme_artbook.o $(@D)/workspace/all/nextui/zlyme_artbook.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-I$(@D)/workspace/all/nextui \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/nextui.o $(@D)/workspace/all/nextui/nextui.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(NEXTUI_PKGDIR)/zlyme \
 		-o $(@D)/zlyme_prefs.o $(NEXTUI_PKGDIR)/zlyme/zlyme_prefs.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
-		$(@D)/nextui.o $(@D)/zlyme_thumbpath.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
+		$(@D)/nextui.o $(@D)/zlyme_thumbpath.o $(@D)/zlyme_artbook.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
 		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/zlyme_prefs.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
@@ -147,6 +150,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(NEXTUI_PKGDIR)/nextui-session \
 		$(TARGET_DIR)/usr/sbin/nextui-session
 	ln -sf nextui-session $(TARGET_DIR)/usr/sbin/minui-session
+	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/artbook
+	cp -a $(NEXTUI_PKGDIR)/artbook/. $(TARGET_DIR)/usr/share/nextui/artbook/
 	$(INSTALL) -d $(TARGET_DIR)/usr/share/nextui/res
 	cp -a $(NEXTUI_PKGDIR)/res/. $(TARGET_DIR)/usr/share/nextui/res/
 	# branding/ is splash and README source. The rasterizer reads the

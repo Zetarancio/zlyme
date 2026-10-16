@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `8fa61d55` for the delete-game row and the Wi-Fi service switches. About reads Syncthing through `zlyme-syncthing-gui`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `efedf8a6` for the delete-game row, the Wi-Fi service switches, and the Art Book fallback. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -373,7 +373,7 @@ Status: Host-tested. `zlyme-net-services apply` is the boot, Wi-Fi, and per-serv
 
 Ship a verified subset of ArtBook NextUI system and root artwork as the default when the user has no image. Do not overwrite `.media` or backgrounds on update. Do not ship Theme Manager unchanged. The license check is in the research note. Splash branding stays as it is.
 
-Status: Planned. Redistribution is not yet verified.
+Status: Host-tested. Wallpapers from Art Book NextUI `f5fe992` are installed under `/usr/share/nextui/artbook` at 640×480. User `.media` and `/storage/bg.png` win. Theme Manager is not shipped. Not a hardware test.
 
 ### 14M. HDMI 720p
 
