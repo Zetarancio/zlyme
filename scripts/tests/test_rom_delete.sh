@@ -64,6 +64,9 @@ test -f "$rom"
 test -f "$prefs"
 grep -F "$rom" "$work/out" >/dev/null || fail "dry-run omitted the rom"
 grep -F 'game".sav' "$work/out" >/dev/null || fail "dry-run omitted the save"
+# The save is Saves/GBA/, including the space in "Game Boy Advance".
+# A check that treats the library root as the system tag rejects this file.
+grep -F "$work/storage/Saves/GBA/It's a \"game\".sav" "$work/out" >/dev/null || fail "dry-run omitted the system save path"
 grep -F 'game".png' "$work/out" >/dev/null || fail "dry-run omitted the art"
 if grep -F '/sd2/' "$work/out" >/dev/null; then
 	fail "other card was planned"

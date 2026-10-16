@@ -560,9 +560,8 @@ prefs_release() {
 	prefs_locked=0
 }
 
-# tmp is already in the destination directory. Copy it to a second file
-# there so dd can fsync a completed write, then rename onto the real file.
-# The previous file is removed only by that rename.
+# BusyBox 1.38 dd has no conv=fsync. Python is on the image and can
+# fsync one file and its directory. The rename stays on this filesystem.
 same_fs_replace() {
 	_sr_dest=$1
 	_sr_tmp=$2
@@ -574,24 +573,25 @@ same_fs_replace() {
 			return 1
 			;;
 	esac
-	if ! command -v dd >/dev/null 2>&1; then
+	if command -v python3 >/dev/null 2>&1; then
+		if ! python3 -c 'import os,sys
+fd=os.open(sys.argv[1], os.O_RDONLY)
+os.fsync(fd)
+os.close(fd)' "$_sr_tmp"; then
+			rm -f "$_sr_tmp"
+			return 1
+		fi
+	fi
+	if ! mv -f "$_sr_tmp" "$_sr_dest"; then
 		rm -f "$_sr_tmp"
 		return 1
 	fi
-	_sr_sync=$(mktemp "$_sr_dir/.zlyme-sync.XXXXXX") || {
-		rm -f "$_sr_tmp"
-		return 1
-	}
-	if ! dd if="$_sr_tmp" of="$_sr_sync" conv=fsync status=none; then
-		rm -f "$_sr_tmp" "$_sr_sync"
-		return 1
+	if command -v python3 >/dev/null 2>&1; then
+		python3 -c 'import os,sys
+fd=os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+os.fsync(fd)
+os.close(fd)' "$_sr_dir" || true
 	fi
-	rm -f "$_sr_tmp"
-	if ! mv -f "$_sr_sync" "$_sr_dest"; then
-		rm -f "$_sr_sync"
-		return 1
-	fi
-	sync >/dev/null 2>&1 || true
 	return 0
 }
 
@@ -893,7 +893,7 @@ drop_recent() {
 delete_allowed() {
 	_da_f=$1
 	_da_rom=$2
-	_da_lib=$3
+	_da_tag=$3
 	_da_sroot=$4
 	_da_parent=$5
 	_da_stem=$6
@@ -902,8 +902,9 @@ delete_allowed() {
 	[ -L "$_da_f" ] && return 1
 	[ "$_da_f" = "$_da_rom" ] && return 0
 	[ -n "$_da_marker" ] && [ "$_da_f" = "$_da_marker" ] && return 0
+	# Same directory the planner uses: Saves/<tag>/, not the library root.
 	case "$_da_f" in
-		"$_da_sroot"/Saves/"$_da_lib"/*) return 0 ;;
+		"$_da_sroot"/Saves/"$_da_tag"/*) return 0 ;;
 		"$_da_parent"/.media/*)
 			_da_base=$(basename "$_da_f")
 			case "$_da_base" in
