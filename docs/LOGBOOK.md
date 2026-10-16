@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — preference lock and fsync
+
+Host tests only. Preference updates now stop when `flock` is missing or returns an error, and when `python3` cannot fsync the temporary file. Linux 7.2 `exfat_dir_operations` uses `exfat_file_fsync`, so a directory fsync on that volume flushes the block device. `EINVAL` is only the VFS result when a filesystem has no `fsync` operation, and that does not reject a rename that already happened. A directory `EIO` is reported after the rename, matching `zlyme_prefs.c`. Not run on a Flip.
+
 ## 2026-10-16 — PlatformZlyme
 
 Host tests only. `patch-hardware.py` inserts `class PlatformZlyme(PlatformBase)` and maps `zlyme` to it. `PlatformJELOS.portmaster_install` copies `/usr/config/PortMaster` and `PlatformROCKNIX` sets `ES_NAME` to `weston`; the new class does neither. A tree that already contains `'zlyme': PlatformROCKNIX` is rewritten. A second prepare does not rewrite an unchanged file. The pin stays `2026.06.23-0015`. The patched upstream `platform.py` from that tag was checked on the host. Not run on a Flip.
