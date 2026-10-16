@@ -23,7 +23,7 @@ color2 and color6 must not share a hex: hardware-group icons blit color6
 on a color2 pill.
 
 The looping lockup is `zlyme_slime_loop.gif` (do not edit). Splash is
-every frame, 75% of max-fit, centered on 640×480 `#050608`:
+every frame, 97.5% of max-fit, centered on 640×480 `#050608`:
 `splash.rgb565` (frame 0) in initramfs plus `splash.anim` on FAT
 (33 ms ZLYA, 30 FPS). Stars `zlyme_stars_loop.gif` (do not edit)
 is the same size and place as `progress.rgb565` + `progress.anim` for

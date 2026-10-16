@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Rasterize branding onto 640x480 #050608 (and a 512x512 logo).
 
-Splash and the OTA/resize lockup use the same centered 75% fit so a
-switch does not jump. Sources stay the GIFs in branding/; this script
+Splash and the OTA/resize lockup use the same centered fit, 97.5% of
+the canvas, which is 30% larger than the previous 75% fit. A switch
+does not jump. Sources stay the GIFs in branding/; this script
 never writes those files. `splash.rgb565` is slime frame 0;
 `splash.anim` is every slime frame. Stars go to `progress.*`.
 Charging is a mid-loop still from the stars GIF; NextUI background
@@ -27,7 +28,7 @@ BG = (0x05, 0x06, 0x08, 255)
 W, H = 640, 480
 LOGO = 512
 SCALE_MUL = 0.72
-SPLASH_SCALE = 0.75
+SPLASH_SCALE = 0.75 * 1.30
 Y_CENTER_FRAC = 1.0 / 3.0
 BLACK_CUTOFF = 24
 # Keep every source frame. Do not subsample a 135-frame clip to 48.
