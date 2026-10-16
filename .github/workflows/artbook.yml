@@ -1,0 +1,49 @@
+# ArtBook converter smoke test. It builds this branch's Docker image
+# locally and runs the ArtBook render. It does not push ghcr.io images
+# or a firmware archive.
+
+name: ArtBook
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - package/system/zlyme-artbook/**
+      - package/system/nextui/paks/Tools/**
+      - package/system/nextui/rom-dirs.txt
+      - Dockerfile
+      - scripts/tests/test_artbook.sh
+      - .github/workflows/artbook.yml
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the branch image
+        run: |
+          id=$(sha256sum Dockerfile | awk '{print $1}')
+          docker build --label "zlyme.dockerfile=${id}" -t zlyme-build - < Dockerfile
+      - name: Render ArtBook inside that image
+        run: |
+          mkdir -p dl artbook-sheets
+          docker run --rm \
+            -v "$PWD:/zlyme/src:ro" \
+            -v "$PWD/dl:/dl" \
+            -v "$PWD/artbook-sheets:/sheets" \
+            -w /zlyme/src \
+            -e ZLYME_ARTBOOK_DL=/dl \
+            -e ZLYME_ARTBOOK_SHEETS=/sheets \
+            zlyme-build \
+            sh scripts/tests/test_artbook.sh
+      - name: Upload contact sheets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: artbook-sheets-${{ github.run_id }}
+          path: artbook-sheets
+          if-no-files-found: ignore

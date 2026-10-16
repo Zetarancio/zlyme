@@ -2,8 +2,9 @@
 #
 # zlyme-artbook
 #
-# Downloads one pinned Art Book Next archive, composes the Zlyme
-# overlays on the host, and installs only those PNGs.
+# Downloads one pinned Art Book Next archive and composes the overlays
+# with the build container's Python and rsvg-convert. Those tools are
+# not installed on the Flip.
 #
 ################################################################################
 
@@ -12,18 +13,20 @@ ZLYME_ARTBOOK_SITE = https://github.com/anthonycaccese/art-book-next-es-de/archi
 ZLYME_ARTBOOK_SOURCE = $(ZLYME_ARTBOOK_VERSION).tar.gz
 ZLYME_ARTBOOK_LICENSE = CC-BY-NC-SA-2.0
 ZLYME_ARTBOOK_LICENSE_FILES = README.md
-# host-python3 is already required by Buildroot. host-librsvg 2.50
-# provides rsvg-convert. python-pillow is target-only in 2026.08.
-ZLYME_ARTBOOK_DEPENDENCIES = host-python3 host-librsvg
 
+# Debian python3-pil and librsvg2-bin, pinned in the Dockerfile.
+# Buildroot's Rust SVG package is not used. Its host Python has no Pillow.
 define ZLYME_ARTBOOK_BUILD_CMDS
-	$(HOST_DIR)/bin/python3 $(ZLYME_ARTBOOK_PKGDIR)/compose.py \
+	/usr/bin/python3 -c 'import PIL'
+	/usr/bin/rsvg-convert --version
+	/usr/bin/python3 $(ZLYME_ARTBOOK_PKGDIR)/compose.py \
 		--upstream $(@D) \
 		--out $(@D)/out \
 		--map $(ZLYME_ARTBOOK_PKGDIR)/systems.txt \
 		--tools $(ZLYME_ARTBOOK_PKGDIR)/tools \
+		--paks $(BR2_EXTERNAL_ZLYME_PATH)/package/system/nextui/paks/Tools \
 		--font $(ZLYME_ARTBOOK_PKGDIR)/fonts/DejaVuSans-Bold.ttf \
-		--rsvg $(HOST_DIR)/bin/rsvg-convert
+		--rsvg /usr/bin/rsvg-convert
 endef
 
 define ZLYME_ARTBOOK_INSTALL_TARGET_CMDS

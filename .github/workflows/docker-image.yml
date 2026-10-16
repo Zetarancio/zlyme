@@ -1,12 +1,15 @@
-# Build and push ghcr.io/<owner>/zlyme-build:latest.
-# GHCR repository names must be lowercase. The GitHub owner keeps its
-# real spelling for login; only the image path is lowercased.
+# Build the Zlyme build container.
+# ghcr.io/<owner>/zlyme-build:latest is the production image. Only a
+# push or a manual run on main may publish that tag. A development
+# branch may build the image and must not overwrite it.
 
 name: Docker image
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - Dockerfile
       - .github/workflows/docker-image.yml
@@ -21,19 +24,26 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      - name: Build
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          id=$(sha256sum Dockerfile | awk '{print $1}')
+          docker build --label "zlyme.dockerfile=${id}" -t zlyme-build - < Dockerfile
+          have=$(docker image inspect -f '{{ index .Config.Labels "zlyme.dockerfile" }}' zlyme-build)
+          test "$have" = "$id"
       - uses: docker/login-action@v4
+        if: github.ref == 'refs/heads/main'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
+      - name: Push production latest
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           img="ghcr.io/${owner}/zlyme-build:latest"
-          id=$(sha256sum Dockerfile | awk '{print $1}')
-          docker build --label "zlyme.dockerfile=${id}" -t "$img" - < Dockerfile
-          have=$(docker image inspect -f '{{ index .Config.Labels "zlyme.dockerfile" }}' "$img")
-          test "$have" = "$id"
+          docker tag zlyme-build "$img"
           docker push "$img"

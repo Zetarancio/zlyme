@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ArtBook container build
+
+`./build.sh --config zlyme_my355_defconfig zlyme-artbook` inside the rebuilt `zlyme-build` image. `rsvg-convert` 2.60.0 and Pillow 11.1.0, both from the Dockerfile pins. Buildroot checked the archive SHA-256 and installed 54 system PNGs and 9 tool PNGs under `/usr/share/nextui/artbook`. A second build wrote the same Game Boy and USB File Transfer bytes. `host-librsvg` is not a dependency. Not shown on a Flip.
+
 ## 2026-10-16 — ARMHF probe linked
 
 `zlyme-armhf-probe` in `/tmp/zlyme-armhf-out` is ELF32 ARM, flags `0x5000400` (EABI5, hard-float), `Tag_CPU_arch: v8`, `Tag_FP_arch: FP for ARMv8`, `Tag_ABI_VFP_args: VFP registers`. The interpreter is `/lib/ld-linux-armhf.so.3`. `NEEDED` is `libc.so.6`, and that file plus the loader are in the ARMHF target tree. The compiler is `arm-buildroot-linux-gnueabihf` with `-mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard`. qemu-arm is not installed here. The product root does not contain this loader. Not run on a Flip.

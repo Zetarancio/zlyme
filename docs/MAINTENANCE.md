@@ -78,7 +78,7 @@ Phase 14 starts only after this sequence, on a new Zlyme branch from the accepte
 
 Every system in `package/system/nextui/rom-dirs.txt` and every built-in Tool pak under `package/system/nextui/paks/Tools` needs a transparent 640×480 artwork image. Add or rename one only together with that image.
 
-`package/system/zlyme-artbook` downloads Art Book Next at the commit in its `.mk` and `.hash`. The host composes `system/(TAG).png` from `_inc/systems/artwork` and `_inc/systems/logos`. A system with no upstream picture, and every Tool, uses a drawing in `tools/`. Do not vendor the upstream image set. Do not ship a ROM-list wallpaper. The logo, including its contour and shadow, stays at most 291 pixels wide and in the right half of the frame, clear of the scrolling name.
+`package/system/zlyme-artbook` downloads Art Book Next at the commit in its `.mk` and `.hash`. The build container composes `system/(TAG).png` from `_inc/systems/artwork` and `_inc/systems/logos`. A system with no upstream picture uses `tools/custom/<TAG>/background.png`. Every built-in Tool uses `tools/<Exact Name>.pak/background.png`. The logo text is that pak name without `.pak`. Do not vendor the upstream image set. Do not ship a ROM-list wallpaper. The logo, including its contour and shadow, stays at most 291 pixels wide and in the right half of the frame, clear of the scrolling name. The drop-in steps are in `package/system/zlyme-artbook/README.md`.
 
 User `.media` images and `/storage/bg.png` stay in front. An update must not copy stock images over them. The license is CC BY-NC-SA 2.0. Provenance is in `docs/UPSTREAMS.md` and `package/system/zlyme-artbook/NOTICE.md`.
 
