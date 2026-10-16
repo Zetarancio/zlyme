@@ -8,7 +8,7 @@
 
 Zlyme is a custom OS for the **Miyoo Flip**, built with Buildroot on a mainline Linux kernel. It's engineered to ooze, cultured for speed. Hardware facts come from this device, and emulator recipes are harvested where they already exist. Every emulator and tool is pinned to a revision that's known to work here, not whatever upstream published last night. The set is curated so it fits the Flip, instead of shipping a hundred cores nobody on this board will use.
 
-The frontend is Zlyme's fork of [NextUI](https://github.com/LoveRetro/NextUI) (itself from [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman)). No desktop, and no compositor sitting in the background: the menu and the games draw straight to the screen. Wine gets its own Weston for as long as it runs, and a PortMaster port that needs X11 brings PortMaster's WestonPack. When the app closes, they're gone. It boots fast and gets out of the way.
+The frontend is Zlyme's fork of [NextUI](https://github.com/LoveRetro/NextUI) (itself from [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman)). No desktop, and no compositor sitting in the background: the menu and the games draw straight to the screen.
 
 <p align="center">
   <strong>“It’s not buttery smooth. It’s slime-smooth.”</strong>
@@ -25,9 +25,9 @@ Zlyme isn't a generic RK3566 image with a frontend dropped on top. Mainline Linu
 - **Panel refresh.** Settings → System → Display → Panel refresh offers 60 Hz, 50 Hz, and 40 Hz. They are Zlyme's timings for this panel: a stock-derived 60 Hz mode, plus slower 50 Hz and 40 Hz modes when you want a different pace or a less frequent refresh. 60 Hz is the default.
 - **DDR scaling.** The selected mainline kernel has no RK3566/RK3568 DDR frequency driver, so Zlyme carries the external `rk3568_dmc` module. Memory clocks drop for light games and come back up for heavy ones.
 - **Wi-Fi and Bluetooth.** They share one RTL8733BU chip, and powering it isn't just a userspace toggle. The radio driver is a pinned third-party `8733bu`. Zlyme adds its own `rtl8733bu-power` module for the chip's power and rfkill, and the kernel carries the Bluetooth support patch for it.
-- **The off-state drain.** The Flip's RK817 power chip used to keep draining the battery with the device off under mainline. Zlyme fixes that. A small drain while it's off is still normal.
+- **The off-state drain.** The Flip's RK817 power chip used to keep draining the battery with the device off under mainline. Zlyme fixes that.
 
-Wi-Fi, Bluetooth audio and controllers, HDMI, sleep, the lid, the sticks, rumble, the headphone jack, USB OTG and both SD slots all work. Two GPU drivers ship: Mali (the default Vulkan path) and Panfrost. Panfrost can also load Mesa's experimental Vulkan driver. PPSSPP still uses Mali for Vulkan. Per-system CPU frequency floors are adapted from [SpruceOS](https://spruceui.github.io/) Miyoo Flip tuning onto Zlyme's mainline frequency table; the governor, core count and memory clocks are Zlyme's own.
+Wi-Fi, Bluetooth audio and controllers, HDMI, sleep, the lid, the sticks, rumble, the headphone jack, USB OTG and both SD slots all work. Two GPU drivers ship: Mali (the default Vulkan path) and Panfrost. Panfrost can also load Mesa's experimental Vulkan driver. Per-system CPU frequency floors are courtesy of [SpruceOS](https://spruceui.github.io/) Miyoo Flip tuning onto Zlyme's mainline frequency table; the governor, core count and memory clocks are Zlyme's own.
 
 The gory details, register by register, live in the [Miyoo Flip hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering).
 
@@ -44,11 +44,11 @@ Out of the box the Flip boots stock firmware from internal storage and ignores t
 
 Writing the image does not modify internal NAND. Stock is what consumes `miyoo355_fw.img`. Zlyme does not do that write during boot or during an update. The saved `mtd5-original-<sha256>.img` is this Flip's own preloader backup.
 
-**Settings → System → Advanced → Recovery** can arm MASKROM recovery, disarm it, or restore this unit's stock preloader. Those are advanced writes to internal flash, and each confirmation starts on Cancel. Arming recovery does not reboot straight into MASKROM: a bootable card in the right-hand slot still boots, and with no bootable card there the next power-on enters MASKROM. Disarm puts back the preloader saved when you armed recovery. That is not necessarily the original Miyoo preloader. Restore prefers this unit's own backup. Restart afterwards is a normal reboot. It does not enter MASKROM. Erasing the preloader is not in that menu. The [user guide](docs/USER_GUIDE.md#card-preparation-and-preloader-recovery) walks through the rows. Standalone helpers for a Flip that is still on stock, and the physical MASKROM button, are on the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md).
+**Settings → System → Advanced → Recovery** can arm MASKROM recovery, disarm it, or restore this unit's stock preloader. Those are advanced writes to internal flash, and each confirmation starts on Cancel. Arming recovery does not reboot straight into MASKROM: a bootable card in the right-hand slot still boots, and with no bootable card there the next power-on enters MASKROM. Disarm puts back the preloader saved when you armed recovery. Restore prefers this unit's own backup. Restart afterwards is a normal reboot. It does not enter MASKROM. The [user guide](docs/USER_GUIDE.md#card-preparation-and-preloader-recovery) walks through the rows. Standalone helpers for a Flip that is still on stock, and the physical MASKROM button, are on the [hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering/blob/main/docs/boot-and-flash/preloader-tools.md).
 
 ### 2. Write the OS card with the Zlyme Installer
 
-The [Zlyme Installer](https://github.com/Zetarancio/zlymeOS-Installer) is the easy way. Grab it from that repository's [Releases page](https://github.com/Zetarancio/zlymeOS-Installer/releases), run it, pick your card. It fetches the latest Zlyme release, takes the `zlyme.img`, writes it to the card as a raw disk image, and reminds you about the preloader. There are builds for Windows, macOS and Linux. They aren't code-signed, so your OS will grumble once.
+The [Zlyme Installer](https://github.com/Zetarancio/zlymeOS-Installer) is the easy way. Grab it from that repository's [Releases page](https://github.com/Zetarancio/zlymeOS-Installer/releases), run it, pick your card. It fetches the latest Zlyme release, takes the `zlyme.img`, writes it to the card as a raw disk image, and reminds you about the preloader. There are builds for Windows, macOS and Linux. They aren't code-signed, so your OS may grumble once.
 
 It's a fork of the [SpruceOS Installer](https://github.com/spruceUI/spruceOS-Installer). [SundownerSport](https://github.com/Sundownersport) kindly made the original Zlyme adaptation.
 
@@ -104,19 +104,19 @@ Speaker and headphones switch by themselves. Bluetooth audio follows the headset
 
 ## Settings and Tools
 
-**Settings** is part of Zlyme's NextUI fork and opens from Tools. It is the first entry there. Wi-Fi, Bluetooth, SSH, Samba, Syncthing, backup, joysticks, storage, the time zone and **Update** are in there. On a restricted network, Settings → Network → Proxy can send online services through an HTTP or SOCKS proxy. That is not a VPN. Hardware switches (GPU, ZRAM, USB OTG, HDMI, the second SD slot, system logs, CPU undervolt) sit under System → Advanced. Undervolt stays off unless you turn it on. Logs are off until you enable System → Advanced → System logs; then they go to `/storage/.logs`. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
+**Settings** is part of Zlyme's NextUI fork and opens from Tools. The [user guide](docs/USER_GUIDE.md#settings) goes page by page.
 
 - **RetroArch**: Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list. Games you start from a library still use their own launchers. [User guide](docs/USER_GUIDE.md#retroarch).
 
 The community tools below were adapted to Zlyme's paths, controls and bundled binaries.
 
-- **ZcrapeGoat**: artwork, manuals and metadata from ScreenScraper, and cheats from Libretro. Bring your own ScreenScraper account for art; cheats don't need one. Zlyme's application credentials are built in and never shown. Based on [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) v2.3.0 and [Apostrophe](https://github.com/Helaas/Apostrophe) by Kevin Vranken. Usage: [user guide](docs/USER_GUIDE.md#zcrapegoat).
-- **Overlays**: community bezels, one game folder at a time. The same system on another card is a separate choice. [NextUI Overlays](https://github.com/zolek86/NextUI-Overlays) v0.1.1 by zolek86; the bezels come from the [NextUI community overlays](https://github.com/LoveRetro/nextui-community-overlays).
+- **ZcrapeGoat**: artwork, manuals and metadata from ScreenScraper, and cheats from Libretro. Bring your own ScreenScraper account for art; cheats don't need one. Based on [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) v2.3.0 and [Apostrophe](https://github.com/Helaas/Apostrophe) by Kevin Vranken. Usage: [user guide](docs/USER_GUIDE.md#zcrapegoat).
+- **Overlays**: community bezels, one game folder at a time. [NextUI Overlays](https://github.com/zolek86/NextUI-Overlays) v0.1.1 by zolek86; the bezels come from the [NextUI community overlays](https://github.com/LoveRetro/nextui-community-overlays).
 - **Moonlight**: stream a PC game to the Flip. The menu is [nextui-moonlight-pak](https://github.com/richieszemeredi/nextui-moonlight-pak) by Richie Szemeredi; the streamer is [moonlight-embedded](https://github.com/moonlight-stream/moonlight-embedded).
 - **PortMaster**: install game ports. From [PortMaster-GUI](https://github.com/PortsMaster/PortMaster-GUI) by Jacob. Install location and colours: [user guide](docs/USER_GUIDE.md#portmaster).
 - **USB File Transfer**: a Tools pak that copies files over MTP on the lower USB-C port. It can share the main card and other storage that is already available. [User guide](docs/USER_GUIDE.md#usb-file-transfer).
-- **Files**: a file browser, [vtree](https://github.com/MustardOS/vtree) from MustardOS. Hidden files show until you turn that off. [User guide](docs/USER_GUIDE.md#files).
-- **Music Player**: [nextui-music-player](https://github.com/nborodikhin/nextui-music-player) v1.17.0 by nborodikhin. Local music in `/storage/Music`, podcasts in `/storage/Podcasts`, and online radio. The optional YouTube helpers download only when you ask. Zlyme updates the player; it doesn't update itself.
+- **Files**: a file browser, [vtree](https://github.com/MustardOS/vtree) from MustardOS. [User guide](docs/USER_GUIDE.md#files).
+- **Music Player**: [nextui-music-player](https://github.com/nborodikhin/nextui-music-player) v1.17.0 by nborodikhin. Local music in `/storage/Music`, podcasts in `/storage/Podcasts`, and online radio. The optional YouTube helpers download only when you ask.
 
 ## Systems and emulators
 
@@ -179,11 +179,8 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 | Daphne                  | Hypseus Singe                                        | `Roms/Daphne (DAPHNE)/`                           | `.txt` `.daphne` `.singe`                                                    | —                                                                                           |
 | Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston          | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
 
-- **PSP:** PPSSPP renders with OpenGL, or with Vulkan when you pick it in PPSSPP and the Mali driver is active.
 - **Pico-8:** native PICO-8 is the Raspberry Pi build you bought from Lexaloffle. Zlyme doesn't include or download it. Fake-08 doesn't need it. Setup and Splore: [user guide](docs/USER_GUIDE.md#pico-8-and-splore).
 - **Multi-disc games** use an `.m3u` playlist: [user guide](docs/USER_GUIDE.md#multi-disc-games).
-- **OpenBOR** saves go in the library `Saves/OPENBOR` folder. The engine does not create its runtime folders in the ROM directory.
-- **RPG Maker XP, VX, and Ace** accept a project file, or a `.zip`, `.7z`, or `.mkxpz` with the project at the archive root or in one top folder.
 - **Windows** games use Kron4ek Wine 11.6 WoW64 under Box64 0.4.4. The prefix is `/storage/.config/nextui/my355/wine-prefix`. An update deletes an older `wine-prefix.ext4`.
 
 ## User Systems and Tools and the Right to Experiment
@@ -234,7 +231,6 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - [Sundownersport](https://github.com/Sundownersport) and the community behind [SpruceOS](https://spruceui.github.io/) for their continuing work and support, for the original Zlyme Installer, and for hosting Zlyme's corner of the SpruceOS Discord.
 - The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355).
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
-- Discord user `lazydog` for the Wine compatibility suggestion that prompted the zlyme44.2 WoW64 and prefix rework.
 - A huge debt to the other bigs in the biz [Knulli](https://github.com/knulli-cfw/knulli-linux), [Rocknix](https://github.com/ROCKNIX/distribution) and [Batocera](https://github.com/batocera-linux/).
 
 ## License
