@@ -9,6 +9,43 @@ endif
 # Panfrost does not need LLVM in the GL client.
 MESA3D_CONF_OPTS += -Ddraw-use-llvm=false
 
+# The ARMHF defconfig is a side sysroot. Its glibc must not search the
+# product /lib or /usr/lib, which are AArch64. Unmodified ARMHF binaries
+# keep the interpreter /lib/ld-linux-armhf.so.3, so the loader stays
+# there. libdir and slibdir are the same private directory: glibc's
+# built-in search path is slibdir:libdir when they differ, and that
+# would still include /usr/lib. This is not an LD_LIBRARY_PATH override.
+ifeq ($(BR2_arm),y)
+GLIBC_CONF_ENV += \
+	libc_cv_slibdir=/usr/lib/zlyme-armhf \
+	libc_cv_rtlddir=/lib
+GLIBC_CONF_OPTS += --libdir=/usr/lib/zlyme-armhf
+
+# glibc's shared objects land in the private directory. libgcc and
+# libatomic are still installed in /lib by the compiler. Move those
+# into the private directory so the loader can see them. If a name is
+# already there, the /lib copy is the old layout and is removed.
+define ZLYME_ARMHF_PRIVATE_RUNTIME
+	dest="$(TARGET_DIR)/usr/lib/zlyme-armhf"; \
+	mkdir -p "$$dest"; \
+	for dir in "$(TARGET_DIR)/lib" "$(TARGET_DIR)/usr/lib"; do \
+		[ -d "$$dir" ] || continue; \
+		find "$$dir" -mindepth 1 -maxdepth 1 \
+			! -name 'ld-linux-armhf.so.3' \
+			! -name 'zlyme-armhf' \
+			\( -type f -o -type l \) -print | while IFS= read -r leftover; do \
+			base=$$(basename "$$leftover"); \
+			if [ -e "$$dest/$$base" ]; then \
+				rm -f "$$leftover"; \
+			else \
+				mv "$$leftover" "$$dest/$$base"; \
+			fi; \
+		done; \
+	done
+endef
+TARGET_FINALIZE_HOOKS += ZLYME_ARMHF_PRIVATE_RUNTIME
+endif
+
 # Upstream sdl2.mk always passes --disable-video-vulkan. This file is
 # included after package/*/*.mk, so the filter sees that flag.
 # PPSSPP's Vulkan path needs SDL_CreateWindow(SDL_WINDOW_VULKAN) on

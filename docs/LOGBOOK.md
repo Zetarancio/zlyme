@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ARMHF private library directory
+
+Rebuilt the side glibc with `libdir` and `slibdir` `/usr/lib/zlyme-armhf` and `rtlddir` `/lib`. `trusted-dirs.h` lists only `/usr/lib/zlyme-armhf/`. After target finalize, `/lib` in that sysroot holds `ld-linux-armhf.so.3` and the shared libraries, including `libc.so.6` and `libgcc_s.so.1`, are in the private directory. The product `libc.so.6` is still AArch64. The probe was not run: qemu-arm is not installed. `DEVICE_HAS_ARMHF` is not set.
+
 ## 2026-10-16 — Stale background load
 
 NextUI `13848ddb` keeps a generation on each background request. A load that finishes after the list has moved on does not install its surface, and the surface is freed. The host test checks that order. The queue counter still includes the task the worker has already taken, so dropping the queue head does not cancel it. Not shown on a Flip.

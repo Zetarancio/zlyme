@@ -12,7 +12,7 @@ GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release
 | Selected library and artwork | Implemented | `zlyme-portmaster-root` and `zlyme-portmaster-art`. JPEG is copied, not converted. |
 | Mount teardown | Implemented | `zlyme-portmaster-cleanup` unmounts a recorded mount only while its id is the visible one. MTP still refuses a nested mount. |
 | AArch64 ports | Partial | The userspace is AArch64. Which ports run was not remeasured here. |
-| ARMHF userspace | Sysroot built, not installed | ELF32 ARM hard-float probe, interpreter `/lib/ld-linux-armhf.so.3`. That loader searches `/lib` and `/usr/lib`, so its `libc.so.6` cannot be copied beside the AArch64 glibc. `DEVICE_HAS_ARMHF` is not set. |
+| ARMHF userspace | Private sysroot built, not installed | ELF32 ARM hard-float probe, interpreter `/lib/ld-linux-armhf.so.3`. The rebuilt loader searches only `/usr/lib/zlyme-armhf/`. `libc.so.6` is there, not in `/lib`. qemu-arm was not available. `DEVICE_HAS_ARMHF` is not set. |
 | Box64 and Wine | Implemented | `BR2_PACKAGE_BOX64` is selected for Wine. |
 | Box86 | Missing | No Box86 recipe in `package/`. |
 | SDL2 | Implemented | NextUI and the product image link SDL2. |
