@@ -136,7 +136,7 @@ With logs off, the session log stays in `/tmp`.
 
 `rc.late` starts optional/background work after the frontend first-frame gate.
 
-Do not move Wi-Fi, Bluetooth, SSH, NTP, Samba, Syncthing, broad udev coldplug, or similar work back onto the critical path without measuring the impact and proving a dependency.
+Do not move Wi-Fi, Bluetooth, SSH, NTP, Samba, Syncthing, broad udev coldplug, or similar work back onto the critical path without measuring the impact and proving a dependency. SSH, Samba, and Syncthing stay down while the Wi-Fi flag is off. Their enable flags stay, and they start again when Wi-Fi is turned on.
 
 The OTA apply step is exceptional: when an update is pending, it must not be forked in a way that allows NextUI to appear and then be abruptly rebooted underneath the user.
 

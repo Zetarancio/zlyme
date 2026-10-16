@@ -109,7 +109,11 @@ cat > "$work/bin/zlyme-ctl" << 'EOF'
 set -eu
 case "${1:-}" in
 	want)
-		[ "${ZLYME_WANT_SYNCTHING:-0}" = 1 ]
+		case "${2:-}" in
+			syncthing) [ "${ZLYME_WANT_SYNCTHING:-0}" = 1 ] ;;
+			wifi) [ "${ZLYME_WIFI_WANT:-1}" = 1 ] ;;
+			*) exit 1 ;;
+		esac
 		;;
 	*)
 		exit 0

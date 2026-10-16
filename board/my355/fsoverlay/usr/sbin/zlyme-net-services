@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# SSH, Samba, and Syncthing follow the saved Wi-Fi flag.
+# Each service still has its own flag. Wi-Fi off stops all three
+# and does not clear those flags. Bluetooth is not part of this.
+
+SSH_INIT="${ZLYME_NET_SSH_INIT:-/etc/init.d/S50sshd}"
+SAMBA_INIT="${ZLYME_NET_SAMBA_INIT:-/etc/init.d/S70samba}"
+SYNC_INIT="${ZLYME_NET_SYNCTHING_INIT:-/etc/init.d/S75syncthing}"
+LOCK="${ZLYME_NET_LOCK:-/tmp/zlyme-net-services.lock}"
+
+usage() {
+	echo "usage: $0 apply|start" >&2
+	exit 1
+}
+
+one() {
+	name=$1
+	init=$2
+	if [ ! -x "$init" ]; then
+		return 0
+	fi
+	if zlyme-ctl want wifi && zlyme-ctl want "$name"; then
+		"$init" start
+		return 0
+	fi
+	"$init" stop
+}
+
+apply() {
+	if ! command -v zlyme-ctl >/dev/null 2>&1; then
+		return 0
+	fi
+	one ssh "$SSH_INIT"
+	one samba "$SAMBA_INIT"
+	one syncthing "$SYNC_INIT"
+}
+
+lock_apply() {
+	if command -v flock >/dev/null 2>&1; then
+		# shellcheck disable=SC2094
+		exec 9>"$LOCK"
+		flock 9
+	fi
+	apply
+}
+
+case "${1:-}" in
+	apply|start) lock_apply ;;
+	*) usage ;;
+esac

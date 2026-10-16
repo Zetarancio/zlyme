@@ -141,11 +141,14 @@ EOF
 
 cat > "$work/bin/zlyme-ctl" <<'EOF'
 #!/bin/sh
-if [ "${1:-}" = want ] && [ "${2:-}" = samba ]; then
-	[ "${ZLYME_SAMBA_WANT:-0}" = 1 ]
-	exit $?
+if [ "${1:-}" != want ]; then
+	exit 1
 fi
-exit 1
+case "${2:-}" in
+	samba) [ "${ZLYME_SAMBA_WANT:-0}" = 1 ] ;;
+	wifi) [ "${ZLYME_WIFI_WANT:-1}" = 1 ] ;;
+	*) exit 1 ;;
+esac
 EOF
 
 cat > "$work/bin/start-stop-daemon" <<'EOF'

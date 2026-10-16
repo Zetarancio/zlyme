@@ -4,7 +4,10 @@
 # Host key lives on exFAT and is copied to tmpfs (exFAT has no mode bits;
 # sshd refuses a world-readable HostKey).
 
-. /etc/zlyme.conf
+if [ -r "${ZLYME_CONF:-/etc/zlyme.conf}" ]; then
+	# shellcheck disable=SC1090
+	. "${ZLYME_CONF:-/etc/zlyme.conf}"
+fi
 
 NAME=sshd
 DAEMON=/usr/sbin/sshd
@@ -56,6 +59,10 @@ run_sshd() {
 start() {
 	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want ssh; then
 		echo "SSH: disabled by zlyme-ctl"
+		return 0
+	fi
+	if command -v zlyme-ctl >/dev/null && ! zlyme-ctl want wifi; then
+		echo "SSH: Wi-Fi is off"
 		return 0
 	fi
 	if [ ! -x "$DAEMON" ]; then

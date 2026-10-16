@@ -84,6 +84,13 @@ do_scanlist() {
 	cli scan_results | awk -F '\t' 'NR > 1 && $5 != "" { print $5 }' | sort -u
 }
 
+net_services() {
+	cmd="${ZLYME_NET_SERVICES:-/usr/sbin/zlyme-net-services}"
+	if [ -x "$cmd" ]; then
+		"$cmd" apply || true
+	fi
+}
+
 do_enable() {
 	if command -v zlyme-ctl >/dev/null; then
 		zlyme-ctl set wifi on >/dev/null 2>&1 || true
@@ -93,17 +100,19 @@ do_enable() {
 	elif [ -x "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
 		"$SYSTEM_PATH/etc/wifi/wifi_init.sh" start
 	fi
+	net_services
 	wait_iface || return 0
 }
 
 do_disable() {
+	if command -v zlyme-ctl >/dev/null; then
+		zlyme-ctl set wifi off >/dev/null 2>&1 || true
+	fi
+	net_services
 	if [ -x /etc/init.d/S30wifi ]; then
 		/etc/init.d/S30wifi stop
 	elif [ -x "$SYSTEM_PATH/etc/wifi/wifi_init.sh" ]; then
 		"$SYSTEM_PATH/etc/wifi/wifi_init.sh" stop
-	fi
-	if command -v zlyme-ctl >/dev/null; then
-		zlyme-ctl set wifi off >/dev/null 2>&1 || true
 	fi
 }
 

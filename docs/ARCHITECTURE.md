@@ -251,7 +251,7 @@ Networking, Bluetooth, SSH, Samba, Syncthing, time sync, and similar optional se
 
 `rcS` owns frontend-critical work. `rc.late`, started from `inittab` as `::once:` (added by `post-build.sh`), owns non-critical work after the first-frame gate.
 
-NextUI writes `nextui-first-flip` to `/tmp/boot-timing` after its first flip. `rc.late` polls for that mark every 0.5 s for at most 20 s, so a hung frontend still brings SSH up. It then restores stick calibration and rumble gain, then starts Class B in the background. The first frame therefore comes before calibration and rumble gain are restored. Section 13 lists both classes.
+NextUI writes `nextui-first-flip` to `/tmp/boot-timing` after its first flip. `rc.late` polls for that mark every 0.5 s for at most 20 s, so a hung frontend still brings the late services up. SSH starts there only when Wi-Fi is on. It then restores stick calibration and rumble gain, then starts Class B in the background. The first frame therefore comes before calibration and rumble gain are restored. Section 13 lists both classes.
 
 ## 6. Image and storage model
 
@@ -294,7 +294,7 @@ Mounted libraries are the lines in `/run/zlyme/libraries`. A USB library is `/mn
 
 User media is not configuration. Music and podcasts stay `/storage/Music` and `/storage/Podcasts`. Installed cheats stay `/storage/Cheats`. ZcrapeGoat state stays `/storage/.config/ZcrapeGoat`.
 
-Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's live private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs. The NT hash export is `/storage/.config/zlyme/samba.account`. That file is not the live database. Samba 4.24.6 writes uid 0 into the smbpasswd export. `zlyme-samba-auth` rewrites that field to the unix uid before the file is kept and before import. `S70samba` creates `/var/run/samba` before `smbd`, because `smbd` does not create that parent, and it reports failure if `smbd` does not stay running.
+Transient POSIX-only data belongs under `/run` or `/tmp`. Samba's live private database stays `/tmp/samba-lib` because exFAT cannot store the mode bits that database needs. The NT hash export is `/storage/.config/zlyme/samba.account`. That file is not the live database. Samba 4.24.6 writes uid 0 into the smbpasswd export. `zlyme-samba-auth` rewrites that field to the unix uid before the file is kept and before import. `S70samba` creates `/var/run/samba` before `smbd`, because `smbd` does not create that parent, and it reports failure if `smbd` does not stay running. SSH, Samba, and Syncthing also stay down while the Wi-Fi flag is off. Their own enable flags stay.
 
 Diagnostic logs are off by default. With the Settings `logs` flag on, `zlyme-logs` keeps five boot generations under `/storage/.logs`, `pak-log.sh` keeps three launches per PAK, and the initramfs writes a boot dmesg. With logs off, the session log stays in `/tmp`. Two files reach the card on every boot regardless of that flag: `rc.late` copies `/tmp/boot-timing` to `/storage/.config/zlyme/boot-timing` and `/tmp/nextui.txt` to `/storage/.config/nextui/my355/logs/nextui.txt` six times, 5 s apart, so a hung panel still leaves evidence after the card is pulled.
 
@@ -604,7 +604,7 @@ S28minui         start nextui-session in the background
 
 Can start after first frame, such as networking, Bluetooth, SSH, time sync, Samba, Syncthing, noncritical udev triggering, and similar services.
 
-After the first-frame gate (section 5), `rc.late` starts these in the background: seedrng, syslogd, klogd, sysctl, zram, LEDs and the `smart` governor profile (`S27led`), udev coldplug for everything except block devices (`S29udevtrigger`), IRQ affinity, network, `zlyme-btsink`, crond, sshd, Samba and Syncthing (each off unless enabled), Wi-Fi, and `S49ntp`. A separate background chain starts D-Bus, InputPlumber, `zlyme-input`, `btusb`, `bluetoothd`, and BlueALSA in that order. After an OTA it also runs `zlyme-update reapply`.
+After the first-frame gate (section 5), `rc.late` starts these in the background: seedrng, syslogd, klogd, sysctl, zram, LEDs and the `smart` governor profile (`S27led`), udev coldplug for everything except block devices (`S29udevtrigger`), IRQ affinity, network, `zlyme-btsink`, crond, Wi-Fi, and `S49ntp`. `zlyme-net-services` then starts SSH, Samba, and Syncthing only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three. A separate background chain starts D-Bus, InputPlumber, `zlyme-input`, `btusb`, `bluetoothd`, and BlueALSA in that order. After an OTA it also runs `zlyme-update reapply`.
 
 Because udev coldplug is deferred, modules that load from a Device Tree modalias, such as `rk3568_dmc.ko`, load after the first frame.
 

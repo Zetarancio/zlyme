@@ -9,6 +9,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Added
 
 - Settings → Game → Orphan game preferences removes a per-ROM governor or emulator choice when that ROM is gone. A folder or system choice stays. A choice for the second card stays while that card is out.
+- SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was.
 
 ## [zlyme44.3] - 2026-10-16
 

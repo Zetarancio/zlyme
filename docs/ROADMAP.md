@@ -179,7 +179,7 @@ Objective: ship one stock file, copy it only when the user's file is missing, an
 
 Status: Host-tested. The 2026-10-15 host test of launcher-time key insertion does not validate this policy.
 
-Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `f2f481bc` for the orphan-preference row. About reads Syncthing through `zlyme-syncthing-gui`.
+Dependency: NextUI `2d95d33` added the RetroArch reset row. `7cb6ecaa` added lid-close mem. Published `zlyme44.3` pins `9931d99e`, which is on NextUI `zlyme`. This branch pins `b4465d1d` for the orphan-preference row and the Wi-Fi service descriptions. About reads Syncthing through `zlyme-syncthing-gui`.
 
 ##### B3. RGUI theme
 
@@ -367,7 +367,7 @@ Status: Host-tested. The cleanup is `zlyme-game-cleanup orphan-prefs`. A missing
 
 SSH, Samba, and Syncthing start only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three and keeps their settings. The Settings row must not look active while Wi-Fi is off. No extra daemon, and the first frame does not wait.
 
-Status: Planned.
+Status: Host-tested. `zlyme-net-services` is the boot and toggle path. A direct init start also returns without the daemon while Wi-Fi is off. The Settings switch stays the saved preference. Not a hardware test.
 
 ### 14L. ArtBook defaults
 

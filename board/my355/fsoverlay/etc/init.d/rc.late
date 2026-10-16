@@ -59,9 +59,8 @@ start_bg /etc/init.d/S40network
 start_bg /etc/init.d/S46btsink
 start_bg /etc/init.d/S50avahi-daemon
 start_bg /etc/init.d/S50crond
-start_bg /etc/init.d/S50sshd
-start_bg /etc/init.d/S70samba
-start_bg /etc/init.d/S75syncthing
+# SSH, Samba, and Syncthing start only when Wi-Fi is on and each is enabled.
+start_bg /usr/sbin/zlyme-net-services
 start_bg /etc/init.d/S91smb
 
 start_bg /etc/init.d/S30wifi

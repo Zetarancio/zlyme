@@ -240,7 +240,7 @@ Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with it
 
 Settings → About lists the SSH account and password, the Samba account and password, the Syncthing account and password, and the IP address, in that order. It reads them when you open About. The SSH account is root. The SSH password is the one currently set, or `(empty)`. The Samba account is `zlyme`. The Samba password is `zlyme` only while it is still the first password, `(changed)` after you set another, and `(unavailable)` if that saved password cannot be read. About does not change Samba or Syncthing passwords.
 
-SSH, Samba, and Syncthing apply immediately.
+SSH, Samba, and Syncthing apply immediately. They run only while Wi-Fi is on. Turning Wi-Fi off stops all three and leaves each switch as you set it. Turning Wi-Fi on starts the ones that are on.
 
 ### Proxy
 

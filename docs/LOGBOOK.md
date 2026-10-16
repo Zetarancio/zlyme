@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — orphan preferences and Wi-Fi service gate
+
+Host tests only. `zlyme-game-cleanup orphan-prefs` drops a per-ROM governor or emulator row when that ROM is gone, and keeps folder, system, malformed, and absent-card rows. `zlyme-net-services` starts SSH, Samba, and Syncthing only when Wi-Fi is on and that service is enabled. A direct init start with Wi-Fi off does not launch the daemon. The Syncthing 2.0.13 host binary was not present, so `test_phase13e2_syncthing.sh` did not run. This was not run on a Flip.
+
 ## 2026-10-16 — zlyme44.3 published
 
 GitHub release `zlyme-38828679802` is the stable `zlyme44.3` build from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`. The device acceptance remains the local candidate `ccd99997`. `main` then added README commit `8b4218aa`, which is not in that firmware. NextUI `9931d99e` is on branch `zlyme`. B6 and C1 stay excluded.

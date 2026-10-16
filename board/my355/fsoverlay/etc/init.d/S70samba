@@ -17,6 +17,10 @@ start() {
 		echo "Samba: disabled"
 		return 0
 	fi
+	if ! zlyme-ctl want wifi; then
+		echo "Samba: Wi-Fi is off"
+		return 0
+	fi
 	if ! zlyme-samba-auth prepare; then
 		echo "Samba: authentication failed"
 		return 1

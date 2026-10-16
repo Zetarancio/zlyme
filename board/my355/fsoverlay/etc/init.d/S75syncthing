@@ -43,6 +43,10 @@ start() {
 		echo "Syncthing: disabled"
 		return 0
 	fi
+	if ! zlyme-ctl want wifi; then
+		echo "Syncthing: Wi-Fi is off"
+		return 0
+	fi
 	mkdir -p "$HOME_DIR" 2>/dev/null || true
 	if [ ! -f "$CFG" ]; then
 		if ! provision_new; then
