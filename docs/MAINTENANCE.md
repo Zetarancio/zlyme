@@ -74,6 +74,14 @@ A phase is not closed until the documentation check in `docs/WRITING.md` has bee
 
 Phase 14 starts only after this sequence, on a new Zlyme branch from the accepted `main`. Create a matching NextUI development branch only if Phase 14 changes NextUI.
 
+## Default system artwork
+
+A supported system in `package/system/nextui/rom-dirs.txt` needs both `package/system/nextui/artbook/system/(TAG).png` and `package/system/nextui/artbook/list/(TAG)-list.png`. Add or rename a system only with those two files.
+
+Use Art Book artwork for that platform, resized from the 1024×768 source to 640×480, or new artwork in that style with a recorded right to redistribute it. The filename is Zlyme's tag. Do not point a tag at an unrelated system's picture, and do not leave the pair missing. User `.media` images and `/storage/bg.png` stay in front of these files. An update must not copy the stock images over them.
+
+Record the source and license in `package/system/nextui/artbook/NOTICE.md`. The Art Book set is CC BY-NC-SA 2.0. Provenance for the pin is in `docs/UPSTREAMS.md`.
+
 ## Releases
 
 This section owns the release and delta policy. The code is `scripts/zlyme_release.py` and `scripts/make-release-deltas.py`.

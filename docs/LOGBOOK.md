@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — Art Book coverage rule
+
+Host check only. `scripts/tests/test_artbook.sh` now requires `system/(TAG).png` and `list/(TAG)-list.png` for every folder in `rom-dirs.txt`. Six tags reuse the Art Book picture of the same platform: MS from SMS, NGP from NGPC, FBNEO from FBN, A26 from ATARI, INTV from INTELLIVISION, WS from WSC. Twenty-seven tags still have no pair, and the test exits 2 and names them. `CFG_DEFAULT_ROMSUSEFOLDERBACKGROUND` is true and no shipped file writes `romfolderbg=0`. No new artwork was drawn. Not shown on a Flip.
+
 ## 2026-10-16 — SDL 3.4.12 package build
 
 Host build only. `./build.sh --config zlyme_my355_defconfig sdl3` installed `libSDL3.so.0.4.12` (SONAME `libSDL3.so.0`, 9965376 bytes). CMake cache: `SDL_KMSDRM=ON`, `SDL_OPENGLES=ON`, `SDL_WAYLAND=ON`, `SDL_X11=OFF`, `SDL_OPENGL=OFF`. `nm -D` shows `SDL_Init@@SDL3_0.0.0`. The post-build stub is not compiled over that file. The installed FluidSynth 2.5.7 does not list `libSDL3.so.0` in its dynamic section, so it was not rebuilt. No SDL3 window was opened on a Flip.

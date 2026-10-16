@@ -28,6 +28,17 @@ Credits published with Art Book NextUI:
 - theUnBurn, some system artwork
 - GenoCL, multi-artwork system view
 
+These Zlyme tags use that theme's picture for the same platform, under Zlyme's tag name:
+
+| Zlyme tag | Art Book file | Platform |
+| --- | --- | --- |
+| MS | SMS | Sega Master System |
+| NGP | NGPC | Neo Geo Pocket, including Color carts in the same folder |
+| FBNEO | FBN | FinalBurn Neo |
+| A26 | ATARI | Atari 2600 |
+| INTV | INTELLIVISION | Intellivision |
+| WS | WSC | WonderSwan, including Color carts in the same folder |
+
 Fonts, boot images, and the Figma file from that repository are not included. Zlyme's splash, colors, and UI font stay Zlyme's.
 
 The ES-DE repository does not publish a GitHub license file. These wallpapers are shipped under the license Timothy Bueno states for Art Book NextUI, with the credits above.

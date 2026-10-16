@@ -13,11 +13,37 @@ grep -q 'f5fe9929148748d0d5039b993c4815818fbb921a' "$ART/NOTICE.md" || fail "sou
 grep -q 'Timothy Bueno' "$ART/NOTICE.md" || fail "author credit missing"
 grep -q 'not an MIT' "$ART/NOTICE.md" || fail "license was flattened"
 
+coverage=0
+set +e
 python3 - <<PY
-import os, struct, sys
-root = "$ART"
-n = 0
-for dirpath, _, files in os.walk(root):
+import os, re, struct, sys
+art = "$ART"
+dirs = []
+for line in open("$ROOT/package/system/nextui/rom-dirs.txt"):
+    line = line.strip()
+    if not line or line.startswith("#"):
+        continue
+    m = re.search(r"\(([^)]+)\)$", line)
+    if not m:
+        sys.exit("rom dir has no tag: " + line)
+    dirs.append(m.group(1))
+missing = []
+for tag in dirs:
+    for path in (
+        os.path.join(art, "system", "(%s).png" % tag),
+        os.path.join(art, "list", "(%s)-list.png" % tag),
+    ):
+        if not os.path.isfile(path):
+            missing.append(path)
+        else:
+            data = open(path, "rb").read(24)
+            if data[0] != 0x89 or data[1:4] != b"PNG":
+                sys.exit("not a png: " + path)
+            w, h = struct.unpack(">II", data[16:24])
+            if (w, h) != (640, 480):
+                sys.exit("size %s %dx%d" % (path, w, h))
+# Also check every shipped png, including Tools and Collections.
+for dirpath, _, files in os.walk(art):
     for name in files:
         if not name.endswith(".png"):
             continue
@@ -28,11 +54,18 @@ for dirpath, _, files in os.walk(root):
         w, h = struct.unpack(">II", data[16:24])
         if (w, h) != (640, 480):
             sys.exit("size %s %dx%d" % (path, w, h))
-        n += 1
-if n < 70:
-    sys.exit("too few wallpapers: %d" % n)
-print("pngs", n)
+if missing:
+    print("missing default artwork:", file=sys.stderr)
+    for path in missing:
+        print("  " + os.path.relpath(path, art), file=sys.stderr)
+    sys.exit(2)
+print("tags", len(dirs))
 PY
+coverage=$?
+set -e
+if [ "$coverage" -ne 0 ] && [ "$coverage" -ne 2 ]; then
+	exit "$coverage"
+fi
 
 for need in \
 	"system/(GB).png" "system/(GBA).png" "system/(FC).png" \
@@ -64,4 +97,7 @@ grep -q 'SDCARD_PATH "/bg.png"' "$ui" || fail "user bg.png fallback missing"
 grep -q '/usr/share/nextui/artbook' "$ui" || fail "firmware path missing"
 grep -q 'cp -a $(NEXTUI_PKGDIR)/artbook/' "$ROOT/package/system/nextui/nextui.mk" || fail "package does not install artbook"
 
+if [ "$coverage" -ne 0 ]; then
+	exit "$coverage"
+fi
 echo "artbook ok"

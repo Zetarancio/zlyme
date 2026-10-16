@@ -304,7 +304,7 @@ This two-step workflow is safer than telling an agent to "update everything".
 
 ## Art Book wallpapers
 
-System and list wallpapers from Art Book NextUI commit `f5fe9929148748d0d5039b993c4815818fbb921a`, resized to 640×480. License CC BY-NC-SA 2.0. Credit Timothy Bueno and the names in `package/system/nextui/artbook/NOTICE.md`. Fonts and boot images from that repository are not shipped. Theme Manager is not shipped.
+System and list wallpapers from Art Book NextUI commit `f5fe9929148748d0d5039b993c4815818fbb921a`, resized to 640×480. License CC BY-NC-SA 2.0. Credit Timothy Bueno and the names in `package/system/nextui/artbook/NOTICE.md`. MS, NGP, FBNEO, A26, INTV, and WS are copies of the SMS, NGPC, FBN, ATARI, INTELLIVISION, and WSC pictures, because those files depict the same platform. A new system still needs its own pair. Fonts and boot images from that repository are not shipped. Theme Manager is not shipped.
 
 ## ZcrapeGoat
 

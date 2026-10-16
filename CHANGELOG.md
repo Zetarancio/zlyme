@@ -9,7 +9,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Added
 
 - Settings → Game → Orphan game preferences removes a per-ROM governor or emulator choice when that ROM is gone. A folder or system choice stays. A choice for the second card stays while that card is out.
-- System folders, game lists, Tools, Collections, and Recently Played use Art Book wallpapers when you have not chosen your own image. Your `.media` art and `/storage/bg.png` stay in front. The pictures are CC BY-NC-SA 2.0.
+- System folders, game lists, Tools, Collections, and Recently Played use Art Book wallpapers when you have not chosen your own image. Your `.media` art and `/storage/bg.png` stay in front. The pictures are CC BY-NC-SA 2.0. Master System, Neo Geo Pocket, FinalBurn Neo, Atari 2600, Intellivision, and WonderSwan use the matching Art Book picture. A system that still has no picture keeps the plain background. Settings → Appearance → Use folder background for ROMs starts on, and turning it off keeps that plain background.
 - The firmware includes SDL 3.4.12 with KMS, OpenGL ES, and Wayland. SDL 2 is unchanged. An SDL 3 game is not a promise that every SDL 3 program runs.
 - Delete game removes that ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A folder or system choice stays. A save for another system stays. A game with the same name on another card stays. If the delete stops early, the game stays in the list.
 - SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was. Turning one on while Wi-Fi is off leaves that switch on and the service stopped.
