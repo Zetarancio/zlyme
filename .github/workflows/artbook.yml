@@ -24,6 +24,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout the pinned NextUI
+        run: |
+          ref=$(sed -n 's/^NEXTUI_VERSION = //p' package/system/nextui/nextui.mk)
+          git clone --filter=blob:none --no-checkout https://github.com/Zetarancio/NextUI.git NextUI
+          git -C NextUI fetch --depth 1 origin "$ref"
+          git -C NextUI checkout FETCH_HEAD
       - name: Build the branch image
         run: |
           id=$(sha256sum Dockerfile | awk '{print $1}')
@@ -38,6 +44,7 @@ jobs:
             -w /zlyme/src \
             -e ZLYME_ARTBOOK_DL=/dl \
             -e ZLYME_ARTBOOK_SHEETS=/sheets \
+            -e ZLYME_NEXTUI_SRC=/zlyme/src/NextUI \
             zlyme-build \
             sh scripts/tests/test_artbook.sh
       - name: Upload contact sheets
