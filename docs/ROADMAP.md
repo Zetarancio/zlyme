@@ -307,7 +307,7 @@ Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `z
 
 Ship a real 32-bit ARM hard-float userspace, not only a loader name. Prefer a separate Buildroot ARMHF target in the KNULLI style (`knulli-rk3566_armhf_libs`). Use an ARM EABI hard-float toolchain and matching glibc. Do not import another distribution's binaries. Do not set `DEVICE_HAS_ARMHF=Y` until a dynamically linked ARMHF program runs and its libraries resolve.
 
-Status: Source foundation. `configs/zlyme_my355_armhf_defconfig` is a separate Buildroot tree: ARM, cortex-a53, EABIHF, NEON/FP-ARMv8, glibc, Linux 7.1 headers. Buildroot 2026.08's `BR2_cortex_a55` is AArch64-only, so the 32-bit tune is cortex-a53. The product image does not select it. The kernel already has `CONFIG_COMPAT` and `CONFIG_COMPAT_BINFMT_ELF`. No ARMHF sysroot has been installed into the AArch64 root, and `DEVICE_HAS_ARMHF` is not set. The probe binary has not been built.
+Status: Sysroot built, not installed. `configs/zlyme_my355_armhf_defconfig` produced `zlyme-armhf-probe`: ELF32 ARM, hard-float EABI5, ARMv8-A, FP-ARMv8, NEON, interpreter `/lib/ld-linux-armhf.so.3`, `NEEDED` `libc.so.6` resolved in that sysroot. Buildroot 2026.08's `BR2_cortex_a55` is AArch64-only, so the 32-bit tune is cortex-a53. qemu-arm was not available. The product image does not contain the loader, and `DEVICE_HAS_ARMHF` is not set.
 
 ### 14C. Box86 and Box64
 

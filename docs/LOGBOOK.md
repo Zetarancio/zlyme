@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ARMHF probe linked
+
+`zlyme-armhf-probe` in `/tmp/zlyme-armhf-out` is ELF32 ARM, flags `0x5000400` (EABI5, hard-float), `Tag_CPU_arch: v8`, `Tag_FP_arch: FP for ARMv8`, `Tag_ABI_VFP_args: VFP registers`. The interpreter is `/lib/ld-linux-armhf.so.3`. `NEEDED` is `libc.so.6`, and that file plus the loader are in the ARMHF target tree. The compiler is `arm-buildroot-linux-gnueabihf` with `-mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard`. qemu-arm is not installed here. The product root does not contain this loader. Not run on a Flip.
+
 ## 2026-10-16 — transparent Art Book package
 
 `zlyme-artbook` downloads Art Book Next `d772d071` (archive SHA-256 `430110584bafa614b7a3f4af1891c675e58de60e6658e3758d0724554f77ebd3`) and composes 54 system overlays plus 9 tool images. They are 640×480 RGBA. Content stays at x≥320. Logos are capped at 291 pixels including a 2px contour and a 16px 50% black shadow. No list wallpaper is generated. NextUI `be39118a` blends that alpha over the theme color and clears the picture inside a ROM list. The upstream image set is not vendored. Not shown on a Flip.
