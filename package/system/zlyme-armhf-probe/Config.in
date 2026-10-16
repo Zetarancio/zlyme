@@ -1,0 +1,11 @@
+config BR2_PACKAGE_ZLYME_ARMHF_PROBE
+	bool "zlyme-armhf-probe"
+	depends on BR2_arm
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	help
+	  Small dynamically linked ARM EABI hard-float program. It is
+	  the check that the ARMHF sysroot's loader and glibc match.
+	  It is not installed in the AArch64 system image.
+
+comment "zlyme-armhf-probe needs an ARM glibc toolchain"
+	depends on !BR2_arm || !BR2_TOOLCHAIN_USES_GLIBC

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-16 — ARMHF defconfig
+
+`olddefconfig` for `zlyme_my355_armhf_defconfig` in `/tmp/zlyme-armhf-out` kept ARM, cortex-a53, EABIHF, `neon-fp-armv8`, hard float, and glibc. `BR2_cortex_a55` cannot be selected for 32-bit in Buildroot 2026.08. Linux and U-Boot stayed off. BusyBox stayed off. The product output tree was not reconfigured. The probe was not linked in this note. Kernel `CONFIG_COMPAT_BINFMT_ELF` is already set. Not run on a Flip.
+
 ## 2026-10-16 — PlatformZlyme import
 
 Host only. The patched `platform.py` from tag `2026.06.23-0015` (git `273977234f901d0658b1d0f7ff8f5bf2f840e25d`) imports with stubbed `loguru` and `utility`. `HM_PLATFORMS['zlyme']` is `PlatformZlyme(PlatformBase)`. `ES_NAME` is unset. The three install hooks created no files. `harbourmaster` at that tag assigns `ES_NAME` and does not read it. No code change. Not run on a Flip.
