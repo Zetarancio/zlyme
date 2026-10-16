@@ -206,24 +206,6 @@ Settings → System → Joysticks has:
 
 Printed A and B are fixed: A is the east button and B is the south button. Settings → System → Haptic feedback defaults to on and only turns NextUI's own pulses on or off. Replacement Switch-style sticks have not been tested on hardware.
 
-## RetroArch
-
-Tools → RetroArch opens the RetroArch menu on its own. Quitting that menu returns to the list. Closing a game from inside that menu stays in RetroArch.
-
-A game opened from the list uses the same menu. A confirms and B goes back. The buttons a game uses, and a controller remap you saved, stay as they are. Closing the game from the Quick Menu returns to the list.
-
-A new setup writes a savestate when you leave from the RetroArch menu, and loads it the next time that game starts. The in-game save stays in the Saves folder for the card that holds the game. Zlyme copies that stock configuration when RetroArch does not already have one. A configuration you already have is not changed by launching a game or by an update. Quitting does not write that session's save folder back into the configuration. Saving the configuration from RetroArch's own menu does write the settings that are running, including that game's save folder. Turning automatic save or automatic load off in RetroArch keeps that choice until you use Reset RetroArch configuration. RetroAchievements hardcore mode leaves the automatic savestate unloaded.
-
-MENU+START stops the session immediately. Leave from the RetroArch menu when you want the automatic savestate written.
-
-A new RetroArch setup uses the Classic Orange menu. A theme you already saved is kept. Resetting the RetroArch configuration installs the stock file, including Classic Orange. The menu is RGUI. On this RetroArch the text stays small, and the scale settings do not enlarge it.
-
-The included cores are copied to `/storage/.config/retroarch/cores/` the first time that set is installed. That first copy is about 213 MiB and happens before the list appears. The time that copy takes was not measured. A reboot without an update leaves a core you replaced. An update puts the image's file back for every included filename, including when that file did not change. A core the image does not include stays, including one you added and one left from an older image. The file is a native program and has to come from a source you trust. It can read the card. An incompatible file fails when RetroArch loads it. Reset RetroArch core options does not remove these files. The online core installer stays off.
-
-## Power
-
-A short press of the power button sleeps. Holding it for about a second turns the Flip off. Closing the lid sleeps the same way, in the list and during a game. The lid switch is set to wake when it opens. On one installed candidate, opening the lid woke the Flip after that close. A long sleep was not part of that check. The power button still wakes the Flip. A press in the first second after wake is ignored. The screen timeout is separate: the screen and the radios turn off, and a deeper sleep waits until that timeout, unless the Flip is charging.
-
 ## Settings
 
 Settings opens from Tools. Ordinary pages show B Back and A Okay. A page with its own controls, such as the keyboard, the color picker, release notes, or a joystick test, shows those controls instead. When you leave Settings after a change that needs a restart, it offers to restart. A shutdown or restart already chosen from Recovery skips that question.
@@ -315,14 +297,15 @@ ZcrapeGoat is [ScrapeGoat](https://github.com/Helaas/nextui-scrapegoat-pak) by K
 
 ## PortMaster
 
-PortMaster is [PortMaster](https://github.com/PortsMaster/PortMaster-GUI).
+Open PortMaster from Tools. Browse the list there and install a port. The catalogue, and the fuller instructions, are at [PortMaster](https://portmaster.games/).
 
-- Settings → System → Storage → PortMaster location chooses the library for new installs. Existing ports stay where they are. If that card is not inserted, PortMaster stops instead of using another card. PortMaster's own list shows the ports on that library. A port on another card stays in that card's Ports list.
-- When you leave PortMaster, a cover or screenshot from a port is added as that port's artwork on the same card. The picture is named for the launcher, even when the port's folder uses another name. Artwork you already chose stays. A port with no image is left as it is. A JPEG stays a JPEG.
-- The first launch unpacks PortMaster onto that library. A PortMaster update you install from PortMaster itself stays there when Zlyme is updated.
-- A fresh install uses PortMaster's default theme with the Zlyme color scheme. Selected text uses the Zlyme orange. A theme or scheme you pick later is kept.
-- Settings → Game → Reset PortMaster removes PortMaster and its downloaded runtimes. Installed ports stay. The next launch unpacks PortMaster again. Runtimes that were only in that installation can download again.
-- PortMaster's layout changed in Zlyme 44.2. After the new PortMaster opens, you can delete an older `/storage/PortMaster`. A games card from another layout may also contain `Roms/Ports (PORTS)/PortMaster`. That folder is not used. Delete that PortMaster folder only. Do not delete `Roms/Ports (PORTS)` or the game folders and scripts inside it. Runtimes from the old installation are not carried over. Open PortMaster once so its catalogue can load, then start the port again and let it download the runtime.
+Settings → System → Storage → PortMaster location chooses the library for new installs. A port stays on the library where it was installed, and that card has to be in the Flip.
+
+Some ports need the commercial game's own files. When a port needs a runtime, PortMaster can download it.
+
+Settings → Game → Reset PortMaster resets the installer and its downloaded runtimes. It does not delete the ports you installed.
+
+Zlyme runs PortMaster. That does not mean every port runs on the Flip.
 
 
 
