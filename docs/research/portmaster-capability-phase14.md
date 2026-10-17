@@ -60,6 +60,8 @@ The index preserves the EDID clock. The enumeration slot does not preserve conne
 
 A general review of `apommel/baseos-my355` beyond this display question is still open. It is not a Phase 14 gate. The installer pin stays `e09d37bb0f03c34e564d61bd02164f332d8515a8`.
 
+RetroArch 1.22.2 `drm_get_encoder` only accepts `connector->encoder_id`. A connector plugged in after boot can have that field at 0, and context creation then stops with "Couldn't find DRM encoder." The Zlyme patch, used only in that case, takes the first encoder the connector lists whose `possible_crtcs` mask contains a CRTC that is not already scanning. It does not take the panel CRTC. Plugging or unplugging the cable while RetroArch is already running is a different path and is not patched.
+
 `zlyme-hdmi` is the physical choice. NextUI `ac84bec60689e12ecf4e6c86e3edc1bbf4399e6a` letterboxes from it. After the first present it reads the sysfs connector `mode` file, which is width and height only. Status words below are source and host tests. None of the scanout lines have been read on a Flip.
 
 | Backend | Launch | Video | Status |

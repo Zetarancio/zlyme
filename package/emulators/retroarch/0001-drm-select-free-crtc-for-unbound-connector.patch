@@ -1,0 +1,76 @@
+--- a/gfx/common/drm_common.c
++++ b/gfx/common/drm_common.c
+@@ -138,6 +138,63 @@
+    return num * 1000.0f / den;
+ }
+ 
++/* A connector that is already scanning has encoder_id set. A connector
++ * plugged in after boot often has encoder_id 0. Matching only the bound
++ * encoder then fails and drm_ctx creates no context. Pick an encoder this
++ * connector lists, and a CRTC in its possible_crtcs mask that is not
++ * already scanning. Do not take the panel's CRTC.
++ */
++static int drm_crtc_is_scanning(int fd, uint32_t crtc_id)
++{
++   drmModeCrtc *crtc = drmModeGetCrtc(fd, crtc_id);
++   int scanning;
++
++   if (!crtc)
++      return 1;
++   scanning = crtc->buffer_id != 0 && crtc->mode_valid;
++   drmModeFreeCrtc(crtc);
++   return scanning;
++}
++
++static bool drm_bind_unbound_encoder(int fd)
++{
++   int i, c;
++
++   if (!g_drm_connector || g_drm_connector->encoder_id != 0 || !g_drm_resources)
++      return false;
++
++   for (i = 0; i < g_drm_connector->count_encoders; i++)
++   {
++      drmModeEncoder *enc = drmModeGetEncoder(fd,
++            g_drm_connector->encoders[i]);
++      int chosen = -1;
++
++      if (!enc)
++         continue;
++      for (c = 0; c < g_drm_resources->count_crtcs; c++)
++      {
++         if ((enc->possible_crtcs & (1u << c)) == 0)
++            continue;
++         if (drm_crtc_is_scanning(fd, g_drm_resources->crtcs[c]))
++            continue;
++         chosen = c;
++         break;
++      }
++      if (chosen >= 0)
++      {
++         enc->crtc_id = g_drm_resources->crtcs[chosen];
++         g_drm_encoder = enc;
++         RARCH_LOG("[DRM] Unbound connector %u using encoder %u crtc %u.\n",
++               g_drm_connector->connector_id, enc->encoder_id, enc->crtc_id);
++         return true;
++      }
++      drmModeFreeEncoder(enc);
++   }
++   RARCH_WARN("[DRM] No free CRTC for unbound connector %u.\n",
++         g_drm_connector->connector_id);
++   return false;
++}
++
+ bool drm_get_encoder(int fd)
+ {
+    unsigned i;
+@@ -157,6 +214,9 @@
+    }
+ 
+    if (!g_drm_encoder)
++      drm_bind_unbound_encoder(fd);
++
++   if (!g_drm_encoder)
+    {
+       RARCH_WARN("[DRM] Couldn't find DRM encoder.\n");
+       return false;
