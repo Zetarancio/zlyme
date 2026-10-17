@@ -127,7 +127,7 @@ echo stale > "$work/once/tools/Obsolete Tool.png"
 	--map "$PKG/systems.txt" \
 	--tools "$PKG/tools" \
 	--paks "$PAKS" \
-	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--font "$upstream/_inc/fonts/ChangaOne-Italic.ttf" \
 	--rsvg /usr/bin/rsvg-convert \
 	--contact "$sheets"
 /usr/bin/python3 "$PKG/compose.py" \
@@ -136,7 +136,7 @@ echo stale > "$work/once/tools/Obsolete Tool.png"
 	--map "$PKG/systems.txt" \
 	--tools "$PKG/tools" \
 	--paks "$PAKS" \
-	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--font "$upstream/_inc/fonts/ChangaOne-Italic.ttf" \
 	--rsvg /usr/bin/rsvg-convert
 if ! cmp -s "$work/once/tools/Files.png" "$work/twice/tools/Files.png"; then
 	fail "tool output is not deterministic"
@@ -164,7 +164,7 @@ echo old > "$fix/out/system/(GONE).png"
 	--map "$fix/map.txt" \
 	--tools "$fix/tools" \
 	--paks "$fix/paks" \
-	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--font "$upstream/_inc/fonts/ChangaOne-Italic.ttf" \
 	--rsvg /usr/bin/rsvg-convert
 test ! -e "$fix/out/tools/Music Player.png" || fail "renamed tool survived a rebuild"
 test ! -e "$fix/out/system/(GONE).png" || fail "renamed system survived a rebuild"
@@ -181,7 +181,7 @@ if /usr/bin/python3 "$PKG/compose.py" \
 	--map "$work/bad-map.txt" \
 	--tools "$PKG/tools" \
 	--paks "$PAKS" \
-	--font "$PKG/fonts/DejaVuSans-Bold.ttf" \
+	--font "$upstream/_inc/fonts/ChangaOne-Italic.ttf" \
 	--rsvg /usr/bin/rsvg-convert
 then
 	fail "a missing system picture was accepted"
@@ -311,6 +311,44 @@ if (art / "tools" / "Tools.png").exists():
 print("rendered", len(tags), "tools", len(list(paks.glob('*.pak'))), "special", 2)
 PY
 
+/usr/bin/python3 - "$PKG/compose.py" "$work/once" "$upstream" << 'PY'
+import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("compose", sys.argv[1])
+compose = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(compose)
+out, upstream = map(Path, sys.argv[2:])
+font = upstream / "_inc/fonts/ChangaOne-Italic.ttf"
+name = compose.require_logo_font(font).getname()
+if name != ("Changa One", "Italic"):
+    raise SystemExit("font name %s" % (name,))
+art = upstream / "_inc/systems/artwork/easyrpg.png"
+base = compose.system_canvas(art)
+easy = compose.load_rgba(out / "system/(EASYRPG).png")
+mk = compose.load_rgba(out / "system/(MKXPZ).png")
+if easy.size != base.size or mk.size != base.size:
+    raise SystemExit("shared art size")
+diff = 0
+kept = 0
+for y in range(base.height):
+    for x in range(base.width):
+        b = base.getpixel((x, y))
+        e = easy.getpixel((x, y))
+        m = mk.getpixel((x, y))
+        if e != m:
+            diff += 1
+        if e == b and m == b:
+            kept += 1
+if diff < 100:
+    raise SystemExit("MKXP-Z logo matches EasyRPG")
+if kept < 1000:
+    raise SystemExit("shared artwork was replaced")
+gb = (upstream / "_inc/systems/logos/gb.svg").read_text(encoding="utf-8")
+if "<text" in gb or "FONTFILE" in gb:
+    raise SystemExit("GB logo is not path geometry")
+print("mkxp shared art", diff, "kept", kept, "font", name[0], name[1])
+PY
+
 # A long name and a name with markup still fit, and the source file is untouched.
 before=$(sha256sum "$PKG/tools/USB File Transfer.pak/background.png" | awk '{print $1}')
 /usr/bin/python3 - "$PKG/compose.py" "$work/long" "$PKG" "$upstream" << 'PY'
@@ -322,10 +360,10 @@ spec.loader.exec_module(compose)
 out, pkg, upstream = map(Path, sys.argv[2:])
 work = out / "w"
 work.mkdir(parents=True)
-logo = compose.wordmark("USB File Transfer", pkg / "fonts" / "DejaVuSans-Bold.ttf", "/usr/bin/rsvg-convert", work)
+logo = compose.wordmark("USB File Transfer", upstream / "_inc/fonts/ChangaOne-Italic.ttf", "/usr/bin/rsvg-convert", work)
 if logo.width > compose.LOGO_MAX_W:
     raise SystemExit("long name is wider than 291")
-logo = compose.wordmark("A & B <C>", pkg / "fonts" / "DejaVuSans-Bold.ttf", "/usr/bin/rsvg-convert", work)
+logo = compose.wordmark("A & B <C>", upstream / "_inc/fonts/ChangaOne-Italic.ttf", "/usr/bin/rsvg-convert", work)
 if logo.width > compose.LOGO_MAX_W:
     raise SystemExit("escaped name does not fit")
 print("names ok", logo.width)
@@ -346,7 +384,7 @@ spec.loader.exec_module(compose)
 out, pkg, upstream = map(Path, sys.argv[2:])
 work = out / "w"
 work.mkdir(parents=True)
-font = pkg / "fonts" / "DejaVuSans-Bold.ttf"
+font = upstream / "_inc/fonts/ChangaOne-Italic.ttf"
 rsvg = "/usr/bin/rsvg-convert"
 target_x = compose.SAFE_X + compose.REGION_W / 2
 target_y = compose.HEIGHT / 2

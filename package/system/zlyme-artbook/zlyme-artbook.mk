@@ -25,7 +25,7 @@ define ZLYME_ARTBOOK_BUILD_CMDS
 		--map $(ZLYME_ARTBOOK_PKGDIR)/systems.txt \
 		--tools $(ZLYME_ARTBOOK_PKGDIR)/tools \
 		--paks $(BR2_EXTERNAL_ZLYME_PATH)/package/system/nextui/paks/Tools \
-		--font $(ZLYME_ARTBOOK_PKGDIR)/fonts/DejaVuSans-Bold.ttf \
+		--font $(@D)/_inc/fonts/ChangaOne-Italic.ttf \
 		--rsvg /usr/bin/rsvg-convert
 endef
 

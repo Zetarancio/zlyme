@@ -19,6 +19,6 @@ Credits published with Art Book Next:
 - Dan Patrick, system logos later adapted for EmulationStation
 - theUnBurn, some system artwork in the theme
 
-Pico-8 and fake-08 both use the `pico8` picture. RPG Maker XP has no picture in that commit. Its image is a Zlyme drawing. The nine Tool backgrounds are original illustrations made for Zlyme. `resources/system-art-mask.svg` is that commit's `resources/artwork-masks/system-art-mask.svg`, kept for the silhouette. `resources/system-art-alpha.png` is the alpha of those Tool backgrounds, not an SVG render. Tool wordmarks use DejaVu Sans Bold (Bitstream Vera, DejaVu changes in the public domain). `fonts/LICENSE` is that notice. The font is not installed.
+Pico-8 and fake-08 both use the `pico8` picture. RPG Maker XP uses the same `easyrpg.png` strip as EasyRPG and a separate MKXP-Z wordmark. The nine Tool backgrounds are original illustrations made for Zlyme. `resources/system-art-mask.svg` is that commit's `resources/artwork-masks/system-art-mask.svg`, kept for the silhouette. `resources/system-art-alpha.png` is the alpha of those Tool backgrounds, not an SVG render. Generated wordmarks use Changa One Italic by Eduardo Tunni, the file `_inc/fonts/ChangaOne-Italic.ttf` from that commit, under the SIL Open Font License 1.1. The Reserved Font Name is Changa. The font is used at build time and is not installed. System logos that are path geometry are not redrawn with it.
 
 The upstream repository does not publish a GitHub LICENSE file. These wallpapers follow the license stated in its README.

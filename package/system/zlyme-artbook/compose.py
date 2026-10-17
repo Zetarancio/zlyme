@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 WIDTH = 640
 HEIGHT = 480
@@ -165,11 +165,27 @@ def render_svg(rsvg: str, svg_text_body: str, width: int, height: int, work: Pat
     return load_rgba(png)
 
 
+def require_logo_font(font: Path):
+    """Changa One Italic is Art Book Next's fontLogo. Pillow reads the
+    name table from this file. An SVG @font-face can be ignored.
+    """
+    face = ImageFont.truetype(str(font), 32)
+    if face.getname() != ("Changa One", "Italic"):
+        fail("logo font is %s, expected Changa One Italic" % (face.getname(),))
+    return face
+
+
 def wordmark(label: str, font: Path, rsvg: str, work: Path) -> Image.Image:
-    """Shrink, then wrap on spaces, until the styled logo fits the frame."""
+    """Shrink, then wrap on spaces, until the styled logo fits the frame.
+
+    rsvg is unused. System SVG logos still go through it. These
+    wordmarks are FreeType glyphs from the font file.
+    """
+    del rsvg, work
     words = label.split()
     if not words:
         fail("empty logo")
+    require_logo_font(font)
     layouts = [[label]]
     if len(words) > 1:
         mid = max(1, len(words) // 2)
@@ -177,17 +193,23 @@ def wordmark(label: str, font: Path, rsvg: str, work: Path) -> Image.Image:
     for lines in layouts:
         size = 48
         while size >= 16:
-            tspans = []
-            for index, line in enumerate(lines):
-                dy = 0 if index == 0 else int(size * 1.2)
-                tspans.append('<tspan x="0" dy="%d">%s</tspan>' % (dy, svg_text(line)))
-            body = (
-                '<svg xmlns="http://www.w3.org/2000/svg" width="520" height="220">'
-                '<style>@font-face { font-family: ZlymeWord; src: url("%s"); }</style>'
-                '<text x="0" y="%d" font-family="ZlymeWord" font-size="%d" fill="#ffffff">%s</text>'
-                '</svg>'
-            ) % (font.resolve().as_uri(), size, size, "".join(tspans))
-            rendered = render_svg(rsvg, body, 520, 220, work)
+            face = ImageFont.truetype(str(font), size)
+            boxes = []
+            for line in lines:
+                box = face.getbbox(line)
+                if box is None:
+                    boxes.append((0, 0, 1, size))
+                else:
+                    boxes.append(box)
+            gap = max(1, int(size * 0.2))
+            width = max(box[2] - box[0] for box in boxes) + 2
+            height = sum(box[3] - box[1] for box in boxes) + gap * (len(lines) - 1) + 2
+            rendered = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(rendered)
+            y = 1
+            for line, box in zip(lines, boxes):
+                draw.text((1 - box[0], y - box[1]), line, font=face, fill=(255, 255, 255, 255))
+                y += (box[3] - box[1]) + gap
             bbox = rendered.getbbox()
             if bbox is None:
                 size -= 2
@@ -241,9 +263,9 @@ def prepare_system_logo(logo_svg: Path, font: Path, rsvg: str, work: Path) -> Im
     return fit(logo, LOGO_MAX_W, 220)
 
 
-def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: Path) -> Image.Image:
+def system_canvas(art_png: Path) -> Image.Image:
+    """The artwork strip only. The logo is placed on a copy of this."""
     art = load_rgba(art_png)
-    # The strip is tall. Fit by height, then anchor to the right.
     scale = HEIGHT / art.height
     size = (max(1, int(art.width * scale)), HEIGHT)
     if size[0] > REGION_W:
@@ -251,7 +273,19 @@ def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: P
     strip = art.resize(size, Image.Resampling.LANCZOS)
     canvas = blank()
     canvas.alpha_composite(strip, (WIDTH - strip.width, (HEIGHT - strip.height) // 2))
+    return canvas
+
+
+def compose_system(art_png: Path, logo_svg: Path, font: Path, rsvg: str, work: Path) -> Image.Image:
+    canvas = system_canvas(art_png)
     place(canvas, prepare_system_logo(logo_svg, font, rsvg, work))
+    return canvas
+
+
+def compose_shared_art(art_png: Path, label: str, font: Path, work: Path) -> Image.Image:
+    """Same strip as another system, with a generated wordmark."""
+    canvas = system_canvas(art_png)
+    place(canvas, wordmark(label, font, "", work))
     return canvas
 
 
@@ -306,7 +340,17 @@ def load_map(path: Path):
         parts = line.split(maxsplit=2)
         tag, stem = parts[0], parts[1]
         label = parts[2] if len(parts) > 2 else tag
-        rows.append((tag, None if stem == "-" else stem, label))
+        shared = False
+        if stem == "-":
+            art = None
+        elif stem.startswith("="):
+            art = stem[1:]
+            shared = True
+            if not art or "/" in art or ".." in art:
+                fail("bad shared artwork stem for " + tag)
+        else:
+            art = stem
+        rows.append((tag, art, label, shared))
     return rows
 
 
@@ -382,12 +426,16 @@ def main() -> None:
         stage_system = work / "system"
         stage_tools = work / "tools"
         systems = []
-        for tag, stem, label in load_map(args.map):
+        for tag, stem, label, shared in load_map(args.map):
             if stem is None:
                 custom = args.tools / "custom" / tag / "background.png"
                 if not custom.is_file():
                     fail("missing custom background for " + tag)
                 image = compose_tool(custom, label, args.font, args.rsvg, work)
+            elif shared:
+                image = compose_shared_art(
+                    art_dir / ("%s.png" % stem), label, args.font, work
+                )
             else:
                 image = compose_system(
                     art_dir / ("%s.png" % stem),

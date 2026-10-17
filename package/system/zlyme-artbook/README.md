@@ -18,7 +18,7 @@ The Tools root is not a pak. The compositor reads Art Book Next `_inc/systems/ar
 
 Recently Played is not a pak. Its source is `special/Recently Played/background.png`. The firmware file is `special/recent.png`, with the centered wordmark `Recently Played`. `zlyme-stock-seed` copies that file to `/storage/Recently Played/.media/bg.png` once. NextUI reads it as a folder picture, so a long name is not kept off the artwork.
 
-The nine tool pictures are original illustrations made for these menus. RPG Maker XP is a separate picture under `tools/custom/MKXPZ/`. System artwork is downloaded from Art Book Next at build time and is not stored in this tree. Its license is CC BY-NC-SA 2.0, in `NOTICE.md`.
+The nine tool pictures are original illustrations made for these menus. RPG Maker XP uses the upstream EasyRPG illustration and its own MKXP-Z wordmark. System artwork and the wordmark font are read from Art Book Next at build time and are not stored in this tree. The picture license is CC BY-NC-SA 2.0. The wordmark font is SIL Open Font License 1.1. Both are in `NOTICE.md`.
 
 Regenerate inside the build container:
 

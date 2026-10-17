@@ -1,5 +1,6 @@
 # Zlyme tag, ES-DE artwork stem, optional wordmark.
 # "-" means a vendored custom image in tools/custom/.
+# "=stem" uses that upstream artwork and a generated wordmark.
 GB gb
 GBC gbc
 GBA gba
@@ -46,7 +47,7 @@ FLASH flash
 P8 pico8
 PORTS ports
 EASYRPG easyrpg
-MKXPZ - RPG MAKER
+MKXPZ =easyrpg MKXP-Z
 SCUMMVM scummvm
 OPENBOR openbor
 DAPHNE daphne
