@@ -180,41 +180,159 @@ if [ -x /etc/init.d/S30wifi ]; then
 	fail "host S30wifi is executable; refusing to run zlyme-wifi"
 fi
 unset SYSTEM_PATH || true
+mkdir -p "$work/async"
 cat > "$work/net" <<'EOF'
 #!/bin/sh
+# The reconciler calls this after the flag is saved. A slow or failing
+# pass must not be the Wi-Fi command's wait.
+if [ "${ZLYME_NET_APPLY_FAIL:-0}" = 1 ]; then
+	printf 'apply-fail\n' >> "${ZLYME_CTL_LOG:?}"
+	exit 1
+fi
+sleep "${ZLYME_NET_APPLY_DELAY:-0}"
 printf 'apply\n' >> "${ZLYME_CTL_LOG:?}"
 exit 0
 EOF
 chmod 755 "$work/net"
+
+wait_idle() {
+	i=0
+	while [ -d "$work/async/worker" ] || [ -f "$work/async/dirty" ]; do
+		i=$((i + 1))
+		[ "$i" -lt 80 ] || fail "service reconciler did not finish"
+		sleep 0.05
+	done
+}
+
+wifi_cmd() {
+	IFACE=lo \
+	ZLYME_CTL_STATE=$work/state \
+	ZLYME_CTL_LOG=$log \
+	ZLYME_NET_SERVICES=$work/net \
+	ZLYME_NET_ASYNC_DIR=$work/async \
+	ZLYME_NET_ASYNC_LOG=$work/async.log \
+	ZLYME_NET_APPLY_DELAY=${1:-0} \
+	ZLYME_NET_APPLY_FAIL=${2:-0} \
+	PATH="$work/bin:$PATH" \
+		"$WIFI" "$3"
+}
+
 : > "$log"
-IFACE=lo \
-ZLYME_CTL_STATE=$work/state \
-ZLYME_CTL_LOG=$log \
-ZLYME_NET_SERVICES=$work/net \
-PATH="$work/bin:$PATH" \
-	"$WIFI" enable
+wifi_cmd 0 0 enable
+wait_idle
 [ "$(sed -n '1p' "$log")" = "set wifi on" ] || fail "enable did not set wifi first"
-[ "$(sed -n '2p' "$log")" = "apply" ] || fail "enable did not apply services after the flag"
+grep -qx 'apply' "$log" || fail "enable did not apply services after the flag"
 [ "$(cat "$work/state/wifi")" = on ] || fail "enable left wifi off"
 : > "$log"
+wifi_cmd 0 0 disable
+wait_idle
+[ "$(sed -n '1p' "$log")" = "set wifi off" ] || fail "disable did not clear wifi first"
+grep -qx 'apply' "$log" || fail "disable did not stop services after the flag"
+[ "$(cat "$work/state/wifi")" = off ] || fail "disable left wifi on"
+
+# The command returns while a slow pass is still running.
+: > "$log"
+start=$(date +%s%N)
+wifi_cmd 1 0 enable
+end=$(date +%s%N)
+elapsed=$(( (end - start) / 1000000 ))
+[ "$elapsed" -lt 400 ] || fail "enable waited ${elapsed}ms for services"
+grep -qx 'apply' "$log" && fail "enable did not return before the slow pass"
+wait_idle
+grep -qx 'apply' "$log" || fail "slow pass never ran"
+[ "$(cat "$work/state/wifi")" = on ] || fail "slow enable left wifi off"
+
+# A failing pass does not undo the saved flag.
+: > "$log"
+wifi_cmd 0 1 disable
+status=$?
+wait_idle
+[ "$status" -eq 0 ] || fail "a service failure failed the Wi-Fi command"
+grep -qx 'apply-fail' "$log" || fail "failing pass was not attempted"
+[ "$(cat "$work/state/wifi")" = off ] || fail "failed pass changed the Wi-Fi flag"
+
+# Rapid on/off/on. The worker rereads the flag, so the last pass wins.
+: > "$log"
+wifi_cmd 0.2 0 enable
+wifi_cmd 0.2 0 disable
+wifi_cmd 0.2 0 enable
+[ "$(cat "$work/state/wifi")" = on ] || fail "rapid toggles left wifi off"
+wait_idle
+[ -d "$work/async/worker" ] && fail "reconciler was still running"
+# No new worker appears after the last pass.
+sleep 0.2
+[ -d "$work/async/worker" ] && fail "reconciler restarted with no new request"
+applies=$(grep -c '^apply$' "$log" || true)
+[ "$applies" -ge 1 ] || fail "rapid toggles never reconciled"
+# The flag was on before the worker could be observed finished.
+# Run one more settled pass and require that it saw Wi-Fi on.
+: > "$log"
+wifi_cmd 0 0 enable
+wait_idle
+grep -qx 'apply' "$log" || fail "settled enable did not reconcile"
+[ "$(cat "$work/state/wifi")" = on ] || fail "settled enable left wifi off"
+
+# The real helper rereads the flag under its lock. A worker started by
+# enable must not leave the services up after a following disable.
+cat > "$work/init/ssh" <<EOF
+#!/bin/sh
+sleep 0.25
+printf 'ssh %s\n' "\${1:-}" >> "$log"
+exit 0
+EOF
+cat > "$work/init/samba" <<EOF
+#!/bin/sh
+sleep 0.25
+printf 'samba %s\n' "\${1:-}" >> "$log"
+exit 0
+EOF
+cat > "$work/init/syncthing" <<EOF
+#!/bin/sh
+sleep 0.25
+printf 'syncthing %s\n' "\${1:-}" >> "$log"
+exit 0
+EOF
+chmod 755 "$work/init/ssh" "$work/init/samba" "$work/init/syncthing"
+flag wifi off
+flag ssh on
+flag samba on
+flag syncthing on
+: > "$log"
+rm -rf "$work/async"
+mkdir -p "$work/async"
 IFACE=lo \
 ZLYME_CTL_STATE=$work/state \
 ZLYME_CTL_LOG=$log \
-ZLYME_NET_SERVICES=$work/net \
+ZLYME_NET_SERVICES=$HELPER \
+ZLYME_NET_ASYNC_DIR=$work/async \
+ZLYME_NET_LOCK=$work/real.lock \
+ZLYME_NET_SSH_INIT=$work/init/ssh \
+ZLYME_NET_SAMBA_INIT=$work/init/samba \
+ZLYME_NET_SYNCTHING_INIT=$work/init/syncthing \
+PATH="$work/bin:$PATH" \
+	"$WIFI" enable
+IFACE=lo \
+ZLYME_CTL_STATE=$work/state \
+ZLYME_CTL_LOG=$log \
+ZLYME_NET_SERVICES=$HELPER \
+ZLYME_NET_ASYNC_DIR=$work/async \
+ZLYME_NET_LOCK=$work/real.lock \
+ZLYME_NET_SSH_INIT=$work/init/ssh \
+ZLYME_NET_SAMBA_INIT=$work/init/samba \
+ZLYME_NET_SYNCTHING_INIT=$work/init/syncthing \
 PATH="$work/bin:$PATH" \
 	"$WIFI" disable
-[ "$(sed -n '1p' "$log")" = "set wifi off" ] || fail "disable did not clear wifi first"
-[ "$(sed -n '2p' "$log")" = "apply" ] || fail "disable did not stop services after the flag"
-[ "$(cat "$work/state/wifi")" = off ] || fail "disable left wifi on"
-: > "$log"
-IFACE=lo ZLYME_CTL_STATE=$work/state ZLYME_CTL_LOG=$log ZLYME_NET_SERVICES=$work/net \
-	PATH="$work/bin:$PATH" "$WIFI" enable
-IFACE=lo ZLYME_CTL_STATE=$work/state ZLYME_CTL_LOG=$log ZLYME_NET_SERVICES=$work/net \
-	PATH="$work/bin:$PATH" "$WIFI" disable
-IFACE=lo ZLYME_CTL_STATE=$work/state ZLYME_CTL_LOG=$log ZLYME_NET_SERVICES=$work/net \
-	PATH="$work/bin:$PATH" "$WIFI" enable
-[ "$(cat "$work/state/wifi")" = on ] || fail "repeated toggles left wifi off"
-grep -c '^apply$' "$log" | grep -qx 3 || fail "repeated toggles skipped a service pass"
+[ "$(cat "$work/state/wifi")" = off ] || fail "rapid disable did not save wifi off"
+i=0
+while [ -d "$work/async/worker" ] || [ -f "$work/async/dirty" ]; do
+	i=$((i + 1))
+	[ "$i" -lt 200 ] || fail "real reconciler did not finish"
+	sleep 0.05
+done
+for name in ssh samba syncthing; do
+	last=$(grep "^$name " "$log" | tail -n 1)
+	[ "$last" = "$name stop" ] || fail "final $name action was '$last'"
+done
 
 grep -q 'start_bg /usr/sbin/zlyme-net-services' "$LATE" || fail "rc.late does not apply network services"
 grep -q 'start_bg /etc/init.d/S50sshd' "$LATE" && fail "rc.late still starts ssh directly"

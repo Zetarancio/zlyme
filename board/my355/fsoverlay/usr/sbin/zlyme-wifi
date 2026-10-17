@@ -86,12 +86,35 @@ do_scanlist() {
 
 net_services() {
 	cmd="${ZLYME_NET_SERVICES:-/usr/sbin/zlyme-net-services}"
+	state="${ZLYME_NET_ASYNC_DIR:-/tmp/zlyme-net-async}"
+	log="${ZLYME_NET_ASYNC_LOG:-/tmp/zlyme-net-async.log}"
 	if [ ! -x "$cmd" ]; then
 		return 0
 	fi
-	# The Wi-Fi flag is already set. A service that cannot start is
-	# reported by that service's own switch, not by undoing Wi-Fi.
-	"$cmd" apply >/dev/null 2>&1 || true
+	# The flag is already saved. Do not wait for SSH, Samba, or
+	# Syncthing. One short-lived worker serializes the passes. It
+	# rereads the flag after zlyme-net-services takes its lock.
+	mkdir -p "$state" 2>/dev/null || return 0
+	: > "$state/dirty"
+	if ! mkdir "$state/worker" 2>/dev/null; then
+		return 0
+	fi
+	(
+		trap '' HUP
+		while :; do
+			rm -f "$state/dirty"
+			printf 'reconcile\n' >> "$log"
+			"$cmd" apply >/dev/null 2>&1 || true
+			if [ -f "$state/dirty" ]; then
+				continue
+			fi
+			rmdir "$state/worker" 2>/dev/null || true
+			if [ -f "$state/dirty" ] && mkdir "$state/worker" 2>/dev/null; then
+				continue
+			fi
+			break
+		done
+	) >/dev/null 2>&1 &
 }
 
 do_enable() {
