@@ -22,7 +22,7 @@ The build runs inside the Docker container built from `Dockerfile`. Its base ima
 
 ZcrapeGoat may embed ScreenScraper developer credentials. Local builds read `package/system/zcrapegoat/credentials.local` (gitignored). The official GitHub build reads the Actions secrets `SCREENSCRAPER_DEV_ID` and `SCREENSCRAPER_DEV_PASSWORD`. `build.sh` forwards those environment names into Docker and does not put the values on the command line. Do not commit or log the values. The credential-bearing compile sets `CCACHE_DISABLE=1` so the persistent CI ccache cannot store them. A build with neither source still compiles; the official GitHub build fails closed if either secret is missing.
 
-Buildroot builds the target cross-toolchain. Target software is cross-compiled; do not execute target binaries through QEMU as part of normal compilation.
+Buildroot builds the target cross-toolchain. Target software is cross-compiled. The AArch64 image uses the AArch64 toolchain. The ARMHF runtime uses `configs/zlyme_my355_armhf_defconfig` and `arm-buildroot-linux-gnueabihf-gcc`. qemu-user runs only the small probe in `scripts/tests/test_armhf_qemu.sh`, inside a disposable image named `zlyme-qemu-armhf`. That image is not `zlyme-build`, it is not a package dependency, and nothing from it is installed on the target. Package builds do not start qemu-user or qemu-system.
 
 ## Pinned baseline
 
@@ -87,7 +87,7 @@ Any other make target is passed through to Buildroot. `--clean` deletes the buil
 
 Paths come from the environment: `ZLYME_BUILDROOT`, `ZLYME_OUTPUT`, `ZLYME_DL`, `ZLYME_CCACHE`, and `ZLYME_DEFCONFIG`. The defaults are `./buildroot`, `./output`, `./dl`, `./.ccache`, and the minimal defconfig.
 
-`scripts/build-armhf-sysroot.sh` builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf` and writes `zlyme-armhf-runtime.manifest`. That tree is not the Flip image. A product build that selects `zlyme-armhf-runtime` reads it at `/zlyme/armhf` and fails if the manifest is missing or does not match the tree. It does not start the ARMHF build. `--clean` still refuses a directory whose name is not `output`, so it does not delete `output-armhf`.
+`scripts/build-armhf-sysroot.sh` builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf` and writes `zlyme-armhf-runtime.manifest`. That tree is not the Flip image. A product build that selects `zlyme-armhf-runtime` reads it at `/zlyme/armhf` and fails if the manifest is missing or does not match the tree. It does not start the ARMHF build. The package version is the manifest hash, so a new runtime installs again. A recipe or install-script edit is the local-package fingerprint below, and that dirclean does not rebuild the ARMHF glibc. `--clean` still refuses a directory whose name is not `output`, so it does not delete `output-armhf`.
 
 Do not run two builds against the same output tree simultaneously.
 
@@ -116,6 +116,8 @@ Buildroot copies a local package's source once and does not notice a later edit.
 | `zlyme-usb-transfer` | `package/system/zlyme-usb-transfer` |
 | `zlyme-initramfs` | `package/boot/zlyme-initramfs` |
 | `vtree` | `package/system/vtree` |
+| `zlyme-armhf-runtime` | `package/system/zlyme-armhf-runtime` |
+| `zlyme-armhf-probe` | `package/system/zlyme-armhf-probe` |
 
 When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh. A missing fingerprint file also dircleans that package once, so the first image build after the entry is added installs the current files.
 

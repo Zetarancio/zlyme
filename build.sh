@@ -251,11 +251,13 @@ case "${ACTION}" in
         ;;
 esac
 
-assert_no_raw_device_writes
-mkdir -p "${ZLYME_OUTPUT}" "${ZLYME_DL}" "${ZLYME_CCACHE}"
-fetch_buildroot
-ensure_docker
-build_container
+if [ "${ZLYME_FINGERPRINT_CHECK:-}" != 1 ]; then
+    assert_no_raw_device_writes
+    mkdir -p "${ZLYME_OUTPUT}" "${ZLYME_DL}" "${ZLYME_CCACHE}"
+    fetch_buildroot
+    ensure_docker
+    build_container
+fi
 
 # One UTC date for this invocation. An explicit override must already be
 # YYYY-MM-DD; a bad value stops the build instead of writing a partial stamp.
@@ -299,23 +301,25 @@ start_build_log() {
     fi
 }
 
-recorded_defconfig=""
-if [ -f "${DEFCONFIG_STATE}" ]; then
-    recorded_defconfig="$(tr -d '[:space:]' < "${DEFCONFIG_STATE}")"
-fi
-need_defconfig=0
-if [ ! -f "${ZLYME_OUTPUT}/.config" ] || [ ! -f "${DEFCONFIG_STATE}" ]; then
-    need_defconfig=1
-elif [ "${recorded_defconfig}" != "${ZLYME_DEFCONFIG}" ]; then
-    need_defconfig=1
-elif [ "${CONFIG_SRC}" -nt "${ZLYME_OUTPUT}/.config" ]; then
-    need_defconfig=1
-fi
-if [ "${need_defconfig}" = 1 ]; then
-    say "configuring ${ZLYME_DEFCONFIG}"
-    start_build_log
-    logged_make "${ZLYME_DEFCONFIG}"
-    printf '%s\n' "${ZLYME_DEFCONFIG}" > "${DEFCONFIG_STATE}"
+if [ "${ZLYME_FINGERPRINT_CHECK:-}" != 1 ]; then
+    recorded_defconfig=""
+    if [ -f "${DEFCONFIG_STATE}" ]; then
+        recorded_defconfig="$(tr -d '[:space:]' < "${DEFCONFIG_STATE}")"
+    fi
+    need_defconfig=0
+    if [ ! -f "${ZLYME_OUTPUT}/.config" ] || [ ! -f "${DEFCONFIG_STATE}" ]; then
+        need_defconfig=1
+    elif [ "${recorded_defconfig}" != "${ZLYME_DEFCONFIG}" ]; then
+        need_defconfig=1
+    elif [ "${CONFIG_SRC}" -nt "${ZLYME_OUTPUT}/.config" ]; then
+        need_defconfig=1
+    fi
+    if [ "${need_defconfig}" = 1 ]; then
+        say "configuring ${ZLYME_DEFCONFIG}"
+        start_build_log
+        logged_make "${ZLYME_DEFCONFIG}"
+        printf '%s\n' "${ZLYME_DEFCONFIG}" > "${DEFCONFIG_STATE}"
+    fi
 fi
 
 # Every =y in the defconfig must survive kconfig. Buildroot drops unmet
@@ -353,13 +357,17 @@ refresh_compiled_package() {
     [ ! -f "${state}" ] || old=$(cat "${state}")
     [ "${old}" != "${fingerprint}" ] || return 0
     say "source changed: refreshing ${package}"
-    logged_make "${package}-dirclean"
+    if [ "${ZLYME_FINGERPRINT_CHECK:-}" = 1 ]; then
+        printf '%s\n' "${package}-dirclean" >> "${ZLYME_FINGERPRINT_RECORD:?}"
+    else
+        logged_make "${package}-dirclean"
+    fi
     printf '%s\n' "${fingerprint}" > "${state}"
 }
 
-if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
-    assert_defconfig_survived
-    start_build_log
+# Every SITE_METHOD=local package. A full image build is the only caller.
+# Package-only targets do not refresh. dirclean is that package alone.
+refresh_local_packages() {
     refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
         package/system/nextui package/system/zlyme-input/virtpad.h
     # Helpers link objects built from the NextUI pin in nextui.mk.
@@ -415,6 +423,28 @@ if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
     # when the install commands change, including lang/.
     refresh_compiled_package vtree BR2_PACKAGE_VTREE \
         package/system/vtree
+    # The manifest hash is the package version. This fingerprint is the
+    # recipe and the install scripts. It does not hash output-armhf, so
+    # a recipe edit does not rebuild the ARMHF glibc.
+    refresh_compiled_package zlyme-armhf-runtime BR2_PACKAGE_ZLYME_ARMHF_RUNTIME \
+        package/system/zlyme-armhf-runtime
+    refresh_compiled_package zlyme-armhf-probe BR2_PACKAGE_ZLYME_ARMHF_PROBE \
+        package/system/zlyme-armhf-probe
+}
+
+# Host test: record which packages would be dircleaned. No Docker,
+# no image, no toolchain.
+if [ "${ZLYME_FINGERPRINT_CHECK:-}" = 1 ]; then
+    [ -n "${ZLYME_FINGERPRINT_RECORD:-}" ] || die "ZLYME_FINGERPRINT_RECORD is required"
+    : > "${ZLYME_FINGERPRINT_RECORD}"
+    refresh_local_packages
+    exit 0
+fi
+
+if [ ${#MAKE_ARGS[@]} -eq 0 ]; then
+    assert_defconfig_survived
+    start_build_log
+    refresh_local_packages
     say "building ${ZLYME_DEFCONFIG}"
     logged_make
     say "images in ${ZLYME_OUTPUT}/images"

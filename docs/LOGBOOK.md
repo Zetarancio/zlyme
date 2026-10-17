@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — ARMHF recipe refresh
+
+`zlyme-armhf-runtime` and `zlyme-armhf-probe` are in `refresh_local_packages`. A full image build dircleans the runtime package when its recipe directory changes. The manifest hash remains the package version, so a new sysroot still installs on its own. The fingerprint does not hash `output-armhf`, and the recorded make target is `zlyme-armhf-runtime-dirclean`. A second check with the same tree records nothing. qemu-user stays out of `Dockerfile` and the ARMHF recipes. The probe was not run again.
+
 ## 2026-10-16 — ARMHF runtime in the product tree
 
 `scripts/build-armhf-sysroot.sh` resolves the repository root and builds `configs/zlyme_my355_armhf_defconfig` into `output-armhf`. A clean tree failed while linking `libgcc_s.so` because `crti.o` and `-lc` follow glibc's private `--libdir`. `external.mk` now symlinks the unversioned linker inputs back into the staging `usr/lib`. Versioned shared objects stay in `/usr/lib/zlyme-armhf`. After `target-finalize`, that directory holds glibc, `libgcc_s`, and `libatomic`, and `/lib` holds `ld-linux-armhf.so.3`.
