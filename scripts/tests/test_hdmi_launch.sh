@@ -30,6 +30,7 @@ grep -q 'drm-open' "$work/on.err" && fail "fixture opened DRM"
 printf '%s\n' "$on" | grep -q "ZLYME_HDMI_CONNECTOR_ID=164" || fail "connector id lost"
 printf '%s\n' "$on" | grep -q "ZLYME_HDMI_REFRESH_HZ=59.940" || fail "59.94 was rounded in the policy"
 printf '%s\n' "$on" | grep -q "ZLYME_HDMI_MONITOR=2" || fail "monitor index lost"
+printf '%s\n' "$on" | grep -q "ZLYME_HDMI_SDL_INDEX=1" || fail "59.94 Hz lost its mode index"
 grep -q 'connector_id=164' "$work/mode" || fail "mode file lost the connector"
 
 # Empty list.
@@ -114,4 +115,11 @@ grep -q 'QT_QPA_EGLFS_KMS_CONFIG' "$ROOT/package/emulators/aethersx2/start_aethe
 	|| fail "AetherSX2 has no gated KMS config"
 grep -q '/var/run/drmMode' "$ROOT/package/emulators/dolphin-emu/start_dolphin.sh" \
 	&& fail "Dolphin's launcher writes a raw mode index"
+cc_probe=$ROOT/output/host/bin/aarch64-buildroot-linux-gnu-gcc
+if [ -x "$cc_probe" ]; then
+	"$cc_probe" -Wall -Wextra -Werror \
+		-I"$ROOT/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/SDL2" \
+		-o "$work/sdl-kms-probe" "$ROOT/scripts/tests/sdl_kms_probe.c" -lSDL2 \
+		|| fail "SDL probe did not link"
+fi
 echo "hdmi launch ok"

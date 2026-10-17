@@ -213,6 +213,7 @@ int zlyme_hdmi_pick(const struct zlyme_hdmi_connector *cons, int n,
 	out->connector_id = -1;
 	out->monitor_index = 0;
 	out->vrefresh = 0;
+	out->mode_index = -1;
 	out->name[0] = '\0';
 	if (!cons || n <= 0)
 		return -1;
@@ -247,17 +248,31 @@ int zlyme_hdmi_pick(const struct zlyme_hdmi_connector *cons, int n,
 	out->connector_id = cons[best].connector_id;
 	out->monitor_index = cons[best].monitor_index;
 	out->vrefresh = 0;
+	out->mode_index = -1;
 	for (i = 0; i < cons[best].count; i++) {
 		if (cons[best].modes[i].width == out->choice.width &&
 		    cons[best].modes[i].height == out->choice.height &&
 		    cons[best].modes[i].refresh_mhz == out->choice.refresh_mhz) {
 			out->vrefresh = cons[best].modes[i].vrefresh;
+			out->mode_index = i;
 			break;
 		}
 	}
+	if (out->mode_index < 0)
+		return -1;
 	if (!copy_name(out->name, (int)sizeof(out->name), cons[best].name))
 		return -1;
 	return best;
+}
+
+int zlyme_hdmi_apply_policy(int vulkan, int fullscreen, int matches_desktop,
+			    int matches_policy_size)
+{
+	if (vulkan)
+		return 0;
+	if (!fullscreen || matches_policy_size || matches_desktop)
+		return 1;
+	return 0;
 }
 
 int zlyme_panel_refresh_hz(const char *saved)

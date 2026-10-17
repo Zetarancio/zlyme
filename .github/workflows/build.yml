@@ -134,6 +134,7 @@ jobs:
         with:
           name: zlyme-armhf-runtime
           retention-days: 1
+          include-hidden-files: true
           path: output-armhf-export
           if-no-files-found: error
 

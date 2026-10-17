@@ -165,6 +165,35 @@ int main(void)
 		expect(picked.choice.refresh_mhz == 59940, "same size lost 59.94 Hz");
 		expect(zlyme_hdmi_pick(cons, 0, &picked) < 0, "empty connector list succeeded");
 	}
+	{
+		struct zlyme_hdmi_mode hdmi[] = {
+			mode(1280, 720, 50000, 0),
+			mode(1280, 720, 59940, 0),
+			mode(1280, 720, 60000, 0)
+		};
+		struct zlyme_hdmi_connector cons;
+		struct zlyme_hdmi_output picked;
+
+		memset(&cons, 0, sizeof(cons));
+		cons.hdmia = 1;
+		cons.connected = 1;
+		cons.connector_id = 164;
+		cons.name = "HDMI-A-1";
+		cons.modes = hdmi;
+		cons.count = 3;
+		expect(zlyme_hdmi_pick(&cons, 1, &picked) == 0, "timing list was rejected");
+		expect(picked.choice.refresh_mhz == 60000 && picked.mode_index == 2,
+		       "exact 60 Hz did not keep its mode index");
+		hdmi[2].refresh_mhz = 30000;
+		expect(zlyme_hdmi_pick(&cons, 1, &picked) == 0, "59.94 list was rejected");
+		expect(picked.choice.refresh_mhz == 59940 && picked.mode_index == 1,
+		       "59.94 Hz collapsed onto another 720p index");
+	}
+	expect(zlyme_hdmi_apply_policy(1, 0, 0, 0) == 0, "Vulkan window took the policy");
+	expect(zlyme_hdmi_apply_policy(0, 0, 0, 0) == 1, "windowed client skipped the policy");
+	expect(zlyme_hdmi_apply_policy(0, 1, 0, 1) == 1, "policy size was not kept");
+	expect(zlyme_hdmi_apply_policy(0, 1, 1, 0) == 1, "desktop fullscreen was not the policy");
+	expect(zlyme_hdmi_apply_policy(0, 1, 0, 0) == 0, "explicit other size became 720p");
 
 	if (failed)
 		return 1;

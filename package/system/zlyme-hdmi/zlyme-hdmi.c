@@ -73,6 +73,7 @@ static void print_inactive(void)
 	clear_mode_file();
 	printf("ZLYME_HDMI_ACTIVE=0\n");
 	printf("unset ZLYME_HDMI_SDL_MODE\n");
+	printf("unset ZLYME_HDMI_SDL_INDEX\n");
 	printf("unset ZLYME_HDMI_SDL_CONNECTOR\n");
 	printf("unset ZLYME_HDMI_WIDTH\n");
 	printf("unset ZLYME_HDMI_HEIGHT\n");
@@ -81,6 +82,7 @@ static void print_inactive(void)
 	printf("unset ZLYME_HDMI_VREFRESH\n");
 	printf("unset ZLYME_HDMI_REFRESH_HZ\n");
 	printf("unset ZLYME_HDMI_MONITOR\n");
+	printf("unset ZLYME_HDMI_MODE_INDEX\n");
 	printf("unset ZLYME_HDMI_CONNECTOR_ID\n");
 }
 
@@ -113,6 +115,7 @@ static int write_mode_file(const struct zlyme_hdmi_output *out, int hz)
 	fprintf(fp, "refresh_mhz=%d\n", out->choice.refresh_mhz);
 	fprintf(fp, "vrefresh=%d\n", hz);
 	fprintf(fp, "monitor_index=%d\n", out->monitor_index);
+	fprintf(fp, "mode_index=%d\n", out->mode_index);
 	if (fclose(fp) != 0) {
 		unlink(tmp);
 		return -1;
@@ -139,7 +142,9 @@ static void print_active(const struct zlyme_hdmi_output *out)
 	printf("ZLYME_HDMI_REFRESH_HZ=%d.%03d\n",
 	       out->choice.refresh_mhz / 1000, out->choice.refresh_mhz % 1000);
 	printf("ZLYME_HDMI_MONITOR=%d\n", out->monitor_index);
+	printf("ZLYME_HDMI_MODE_INDEX=%d\n", out->mode_index);
 	printf("ZLYME_HDMI_SDL_CONNECTOR=%d\n", out->connector_id);
+	printf("ZLYME_HDMI_SDL_INDEX=%d\n", out->mode_index);
 	printf("ZLYME_HDMI_SDL_MODE='%dx%d@%d'\n",
 	       out->choice.width, out->choice.height, hz);
 }

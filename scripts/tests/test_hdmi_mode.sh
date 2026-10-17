@@ -38,6 +38,10 @@ grep -q 'drmDropMaster\|drmModeGetResources' "$NEXT/workspace/my355/platform/hdm
 	&& fail "NextUI still opens DRM itself"
 grep -q 'DRM_MODE_CONNECTOR_HDMIA' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
 	|| fail "SDL patch does not require an HDMI-A connector"
-grep -q 'connector_id' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
-	|| fail "SDL patch matches by size alone"
+grep -q 'ZLYME_HDMI_SDL_INDEX' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
+	|| fail "SDL patch does not use the connector mode index"
+grep -q 'window->flags |=' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
+	&& fail "SDL patch sets the fullscreen flag"
+grep -q 'mode->vrefresh' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
+	&& fail "SDL patch still matches integer vrefresh"
 echo "hdmi mode script ok"

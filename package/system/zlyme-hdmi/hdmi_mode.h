@@ -44,8 +44,18 @@ struct zlyme_hdmi_output {
 	int connector_id;
 	int monitor_index;
 	int vrefresh;
+	int mode_index;
 	char name[32];
 };
+
+/* 1 when this client should program the policy's DRM mode.
+ * A window that is not fullscreen takes the policy mode for its first
+ * surface. A fullscreen request for the policy size, or for the desktop
+ * mode entry, takes that same mode so the clock is the one zlyme-hdmi
+ * chose. Any other fullscreen size is the application's request.
+ * A Vulkan window is left alone. */
+int zlyme_hdmi_apply_policy(int vulkan, int fullscreen, int matches_desktop,
+			    int matches_policy_size);
 
 /* clock_khz is the DRM mode clock. 0 when the timing is incomplete. */
 int zlyme_hdmi_refresh_mhz(int clock_khz, int htotal, int vtotal);

@@ -50,7 +50,17 @@ Compared on 2026-10-17:
 - `apommel/baseos-my355` `898590462020`. The simultaneous panel and HDMI path is a mainline U-Boot VOP2 plane assignment, introduced in `72081df41c31` and still described in `docs/decisions.md` and `docs/uboot.md` at that HEAD. `tools/rkbootimg.py` names the masks. The panel gets a real window and HDMI gets another, because the RK3566 mirror windows scan out nothing. Stock disables the panel to use HDMI. That tree does not select 720p for emulators. Zlyme's U-Boot and panel already scan out, so those masks are not copied.
 - `apommel/NextUI` `35d5450ce687` (`fix(my355): align HDMI with h700`), still contained in branch `my355-latest-rebase` at `4eaa1721d0bb`. `GFX_init` sets `hdmi_active` from `card0-HDMI-A-1/status`, and `FIXED_WIDTH`/`FIXED_HEIGHT` become 1280×720. The UI is then drawn at that size. LoveRetro pull 761 is that branch: open, head `4eaa1721d0bb`, merge commit recorded by GitHub as `9e0d96546a85cddf2786548d1b1ed7a24deb61ed`. No newer commit on that branch adds a RetroArch or standalone mode policy. Zlyme does not adopt the 1280×720 UI. Art Book and the menus stay 640×480.
 
-`zlyme-hdmi` is the physical choice. NextUI `8c2e3e44730c3b44f79f6a2149b0f5ed5a0d570e` letterboxes from it and reads the sysfs mode after present. Status words below are source and host tests. None of the scanout lines have been read on a Flip.
+Compared for the SDL adapter, not copied:
+
+- ROCKNIX `distribution` `next` `075a7c303b92c4984aa72e6ce85d5d951c3490c6`, `projects/ROCKNIX/packages/graphics/SDL2/patches/0006-drm-resolution.patch`. It modesets `connector->modes[index]` from `/var/run/drmMode` while adding a display, then hides every other SDL mode.
+- Batocera `batocera.linux` `master` `38fe6e8bcce84c9b815692ec4da5b6b310cc4e6d`, `board/batocera/patches/sdl2/001-drm-resolution.patch` and `002-drm-conn.patch`. The same index file, plus `/var/run/drmConn` to keep one connector enumeration slot.
+- KNULLI `knulli-linux` `knulli-main` `57afa662009641d181f57241bcc480119b131530` carries those two SDL patches at `board/patches/sdl2/` (blobs `a77d6764ff6a` and `09ea189c7e24`) and a RetroArch DRM patch at `package/retroarch/retroarch/008-drm-resolution.patch` (`369b26729e0d`).
+
+The index preserves the EDID clock. The enumeration slot does not preserve connector identity, the file has no gate, and hiding the other SDL modes means an application cannot request a different size. Zlyme keeps one policy command and a small SDL adapter. The adapter uses the connector id and the mode index. It does not set the window's fullscreen flag. A fullscreen request for a different size is left alone. Vulkan windows are skipped. That is the decision. The Batocera stack is not imported. Unmodified SDL cannot see a mode index, so it is not sufficient for 59.94 Hz.
+
+A general review of `apommel/baseos-my355` beyond this display question is still open. It is not a Phase 14 gate. The installer pin stays `e09d37bb0f03c34e564d61bd02164f332d8515a8`.
+
+`zlyme-hdmi` is the physical choice. NextUI `ac84bec60689e12ecf4e6c86e3edc1bbf4399e6a` letterboxes from it. After the first present it reads the sysfs connector `mode` file, which is width and height only. Status words below are source and host tests. None of the scanout lines have been read on a Flip.
 
 | Backend | Launch | Video | Status |
 | --- | --- | --- | --- |
@@ -66,4 +76,6 @@ Compared on 2026-10-17:
 | WestonPack and Wine | `zlyme-weston-run` | Weston DRM, one client | IMPLEMENTED as a temporary `[output]` mode. The compositor is still per launch. Scanout is HARDWARE-PENDING. |
 | SDL3 | no probe | KMSDRM in the library | Not covered. The patch is SDL2. |
 
-`S16display` still sets the panel refresh and still replays `display_mode`. That replay is not the client modeset.
+The mode is the display controller's. Rendering is separate. `zlyme-gpu-env.sh` exports one Vulkan ICD and sets `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER` only when the saved GPU choice is exactly `panfrost`. The HDMI variables do not choose an ICD. libmali GLES and Panfrost GLES are the two OpenGL ES stacks the image can boot; neither has an HDMI scanout observation. libmali Vulkan and PanVK are separate. PanVK stays experimental. PPSSPP's `VK_KHR_display` path is not evidence for either Vulkan stack.
+
+`S16display` still sets the panel refresh and still replays `display_mode`. That replay is not the client modeset. Weston `mode=` and the AetherSX2 EGLFS string use an integer refresh. They do not carry the mode index.
