@@ -131,7 +131,10 @@ static void print_active(const struct zlyme_hdmi_output *out)
 {
 	int hz = sdl_refresh(out);
 
-	write_mode_file(out, hz);
+	if (write_mode_file(out, hz) != 0) {
+		fprintf(stderr, "zlyme-hdmi: mode file was not written\n");
+		clear_mode_file();
+	}
 	printf("ZLYME_HDMI_ACTIVE=1\n");
 	printf("ZLYME_HDMI_CARD=%d\n", out->card);
 	printf("ZLYME_HDMI_CONNECTOR='%s'\n", out->name);
