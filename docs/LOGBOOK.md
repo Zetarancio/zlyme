@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — HDMI export, 720p CRTC, Changa One wordmarks
+
+On the installed candidate, `zlyme-hdmi export` filled the parent shell and a child saw none of the policy variables. With those variables exported by a temporary wrapper, HDMI-A-1 scanned `1280x720` at 74250 kHz (1650×750, 60.000 Hz) on `video_port0`. The panel stayed on `video_port1` at `640x480`, clock 32000 kHz. NextUI logged `ZLYME_HDMI_REQUEST 1280x720 viewport 160,0 960x720`. The sysfs connector `mode` file stayed empty. After the gated process exited, HDMI returned to `1024x768` at 78750 kHz and the normal frontend was running. Both CRTCs were `active=1` with plane framebuffers, so an unbound RetroArch connector has no CRTC that this check can prove free. MKXP-Z now uses the EasyRPG strip and a Changa One Italic wordmark. Tool and Recently Played wordmarks use that font. The font file's name table is Changa One Italic, Eduardo Tunni, SIL Open Font License 1.1.
+
 ## 2026-10-17 — installed candidate, ArtBook stack, Tools root, Settings row
 
 NextUI `97f7bde58e12546a6dd0d67b15d4e091eb5e05f6` is the development pin. The installed squashfs matches the previous candidate. `/boot` is read-only. The HDMI connector lists 1280×720 and `zlyme-hdmi` with the gate set selects that mode. The running session does not have the gate set, and the sysfs `mode` files were empty. Debugfs DRM state was not mounted. A new ArtBook picture was blended onto the previous layer; the folder path now clears that layer first. The Tools root uses upstream `tools.png`. Reset standalone settings appended the dry-run path list to a dialog whose row buffer is 256 bytes. The dialog is now the count. Wi-Fi toggles no longer wait for SSH, Samba, and Syncthing. RetroArch still has no context when an unbound connector has no free CRTC. None of the picture, the reset, or Wi-Fi off was exercised on the Flip.

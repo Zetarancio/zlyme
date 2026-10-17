@@ -66,7 +66,7 @@ RetroArch 1.22.2 `drm_get_encoder` only accepts `connector->encoder_id`. A conne
 
 | Backend | Launch | Video | Status |
 | --- | --- | --- | --- |
-| NextUI and Settings | `nextui.elf`, `settings.elf` | SDL2 KMSDRM | IMPLEMENTED. Letterbox is 960×720 at x=160 on 1280×720. Scanout is HARDWARE-PENDING. |
+| NextUI and Settings | `nextui.elf`, `settings.elf` | SDL2 KMSDRM | The letterbox is 960×720 at x=160 on 1280×720. On `a58a5ab6`, a wrapper that exported the policy produced HDMI-A-1 CRTC `1280x720` at 74250 kHz and the viewport log. The stock session on that image did not export the variables. The sysfs `mode` file stayed empty. |
 | Libretro cores | `ra-run` | RetroArch 1.22.2 KMS/EGL | IMPLEMENTED. Session `video_fullscreen_x/y`, `video_refresh_rate`, and `video_monitor_index`. User `retroarch.cfg` is not written. Aspect settings are not written. Scanout is HARDWARE-PENDING. |
 | PPSSPP OpenGL | `PPSSPPSDL --fullscreen` | SDL2 KMSDRM | IMPLEMENTED through the SDL patch. The game scaler stays PPSSPP's. Scanout is HARDWARE-PENDING. |
 | PPSSPP Vulkan | same binary, `GraphicsBackend = 3` | `VK_KHR_display`, first Vulkan display | HARDWARE-PENDING. The SDL patch does not choose that plane. |
