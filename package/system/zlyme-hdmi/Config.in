@@ -1,0 +1,9 @@
+config BR2_PACKAGE_ZLYME_HDMI
+	bool "zlyme-hdmi"
+	depends on BR2_PACKAGE_LIBDRM
+	help
+	  Read the HDMI-A connector and print the gated 720p policy.
+	  It does not modeset. Launchers apply the result.
+
+comment "zlyme-hdmi needs libdrm"
+	depends on !BR2_PACKAGE_LIBDRM

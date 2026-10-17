@@ -411,6 +411,12 @@ while [ -f "$EXEC_PATH" ]; do
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
 	apply_frontend_governor
+	_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
+	if [ -r "$_hdmi_sh" ]; then
+		# shellcheck disable=SC1090
+		. "$_hdmi_sh"
+		zlyme_hdmi_apply || true
+	fi
 	nextui.elf >> /tmp/nextui.txt 2>&1
 	if [ "$LOGS_ON" = 1 ] && [ -f /tmp/nextui.txt ] && [ -x /usr/sbin/zlyme-logs ]; then
 		_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=

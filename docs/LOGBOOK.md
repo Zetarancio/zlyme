@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — HDMI policy is one gated choice
+
+`zlyme-hdmi` reads HDMI-A modes and prints the choice. `ZLYME_HDMI_720P=1` is required before it opens DRM. NextUI `8c2e3e44` letterboxes from that result and logs `/sys/class/drm/.../mode` after the first present. It does not open DRM. SDL 2.32.10 KMSDRM applies the mode only when the connector id matches an HDMI-A connector. `ra-run` adds a session config and leaves a non-zero user `video_fullscreen_x` alone. Weston and AetherSX2 get a temporary mode file. Dolphin's `/var/run/drmMode` is not written. Host tests printed `hdmi mode ok`, `hdmi mode script ok`, and `hdmi launch ok`. The cross compiler accepted `hdmi_mode.c`, `hdmi_apply.c`, and `zlyme-hdmi.c` with `-Wall -Wextra -Werror`. `sdl2`, `zlyme-hdmi`, and `nextui` rebuilt. Not run on a Flip.
+
 ## 2026-10-17 — HDMI modeset targets the HDMI display
 
 NextUI `caca2da7` still calls `PLAT_hdmi_after_window` from `PLAT_initVideo`, and only when `ZLYME_HDMI_720P=1`. The window now moves onto the SDL display that advertised the chosen mode before `SDL_SetWindowDisplayMode`. A display mismatch restores the previous position and does not letterbox. `SDL_GetWindowDisplayMode` checks SDL's selected size. The CRTC write stays on the next swap. The host test still maps 640×480 to 960×720 at x=160. The cross compiler accepted `hdmi_apply.c` with `-Wall -Wextra -Werror`. Not run on a Flip.

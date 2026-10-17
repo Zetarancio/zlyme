@@ -52,9 +52,34 @@ export XDG_RUNTIME_DIR="$RUN"
 export WAYLAND_DISPLAY="$SOCK"
 export LIBSEAT_BACKEND=builtin
 
-weston --backend=drm-backend.so --shell=kiosk-shell.so \
-	--socket="$SOCK" --idle-time=0 \
-	>"$RUN/weston.log" 2>&1 &
+WESTON_CFG=
+if [ "${ZLYME_HDMI_720P:-}" = 1 ]; then
+	_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
+	if [ -r "$_hdmi_sh" ]; then
+		# shellcheck disable=SC1090
+		. "$_hdmi_sh"
+		zlyme_hdmi_apply || true
+	fi
+	if [ "${ZLYME_HDMI_ACTIVE:-}" = 1 ] && [ -n "${ZLYME_HDMI_CONNECTOR:-}" ]; then
+		WESTON_CFG=$RUN/weston.ini
+		{
+			printf '[output]\n'
+			printf 'name=%s\n' "$ZLYME_HDMI_CONNECTOR"
+			printf 'mode=%sx%s@%s\n' "$ZLYME_HDMI_WIDTH" "$ZLYME_HDMI_HEIGHT" \
+				"$ZLYME_HDMI_VREFRESH"
+		} > "$WESTON_CFG"
+	fi
+fi
+if [ -n "$WESTON_CFG" ]; then
+	weston --backend=drm-backend.so --shell=kiosk-shell.so \
+		--config="$WESTON_CFG" \
+		--socket="$SOCK" --idle-time=0 \
+		>"$RUN/weston.log" 2>&1 &
+else
+	weston --backend=drm-backend.so --shell=kiosk-shell.so \
+		--socket="$SOCK" --idle-time=0 \
+		>"$RUN/weston.log" 2>&1 &
+fi
 WESTON_PID=$!
 
 i=0

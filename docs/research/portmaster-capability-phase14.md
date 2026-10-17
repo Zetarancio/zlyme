@@ -45,4 +45,25 @@ The seed's unsuffixed `gptokeyb` and `gptokeyb2` are AArch64 PIE binaries. `gpto
 
 ## HDMI
 
-NextUI `caca2da7` calls `PLAT_hdmi_after_window` from `PLAT_initVideo`. The window is created at 640×480 on SDL display 0. With `ZLYME_HDMI_720P=1`, the function reads connected HDMI-A connectors on `/dev/dri/card0` and `card1`, moves the window onto the SDL display that lists the chosen mode, then calls `SDL_SetWindowDisplayMode` and `SDL_SetWindowFullscreen`. SDL 2.32.10 KMSDRM stores that mode and applies it with `drmModeSetCrtc` on the next swap. `SDL_GetWindowDisplayMode` checks the width and height SDL selected. It is not a CRTC read. The open does not request master, and it drops master before close if the open acquired one. Refresh is `clock / (htotal * vtotal)` in millihertz. `DRM_MODE_TYPE_PREFERRED` is the preferred flag. SDL keeps one mode per width, height, and integer refresh, so 59.94 Hz and 60 Hz collapse. The 640×480 surface is letterboxed: SDL through `SDL_RenderSetLogicalSize`, GL through `PLAT_hdmi_map_output`. On 1280×720 the viewport is 960×720 at x=160, y=0. A failed placement restores the previous window position and does not letterbox. PortMaster, RetroArch, PPSSPP, and WestonPack still choose their own modes after NextUI releases DRM. HDMI PCM stays `flipsink_hdmi`. The sysfs replay in `S16display` remains. Not observed on a Flip.
+Compared on 2026-10-17:
+
+- `apommel/baseos-my355` `898590462020`. The simultaneous panel and HDMI path is a mainline U-Boot VOP2 plane assignment, introduced in `72081df41c31` and still described in `docs/decisions.md` and `docs/uboot.md` at that HEAD. `tools/rkbootimg.py` names the masks. The panel gets a real window and HDMI gets another, because the RK3566 mirror windows scan out nothing. Stock disables the panel to use HDMI. That tree does not select 720p for emulators. Zlyme's U-Boot and panel already scan out, so those masks are not copied.
+- `apommel/NextUI` `35d5450ce687` (`fix(my355): align HDMI with h700`), still contained in branch `my355-latest-rebase` at `4eaa1721d0bb`. `GFX_init` sets `hdmi_active` from `card0-HDMI-A-1/status`, and `FIXED_WIDTH`/`FIXED_HEIGHT` become 1280×720. The UI is then drawn at that size. LoveRetro pull 761 is that branch: open, head `4eaa1721d0bb`, merge commit recorded by GitHub as `9e0d96546a85cddf2786548d1b1ed7a24deb61ed`. No newer commit on that branch adds a RetroArch or standalone mode policy. Zlyme does not adopt the 1280×720 UI. Art Book and the menus stay 640×480.
+
+`zlyme-hdmi` is the physical choice. NextUI `8c2e3e44730c3b44f79f6a2149b0f5ed5a0d570e` letterboxes from it and reads the sysfs mode after present. Status words below are source and host tests. None of the scanout lines have been read on a Flip.
+
+| Backend | Launch | Video | Status |
+| --- | --- | --- | --- |
+| NextUI and Settings | `nextui.elf`, `settings.elf` | SDL2 KMSDRM | IMPLEMENTED. Letterbox is 960×720 at x=160 on 1280×720. Scanout is HARDWARE-PENDING. |
+| Libretro cores | `ra-run` | RetroArch 1.22.2 KMS/EGL | IMPLEMENTED. Session `video_fullscreen_x/y`, `video_refresh_rate`, and `video_monitor_index`. User `retroarch.cfg` is not written. Aspect settings are not written. Scanout is HARDWARE-PENDING. |
+| PPSSPP OpenGL | `PPSSPPSDL --fullscreen` | SDL2 KMSDRM | IMPLEMENTED through the SDL patch. The game scaler stays PPSSPP's. Scanout is HARDWARE-PENDING. |
+| PPSSPP Vulkan | same binary, `GraphicsBackend = 3` | `VK_KHR_display`, first Vulkan display | HARDWARE-PENDING. The SDL patch does not choose that plane. |
+| Flycast, ScummVM, OpenBOR, DraStic, GZDoom, Amiberry, Hypseus, Moonlight | their launch scripts | SDL2 KMSDRM, dynamic `libSDL2` | IMPLEMENTED through the SDL patch. Scanout is HARDWARE-PENDING. One of these stands in for the SDL2 row on the hardware pass. |
+| Dolphin | `start_dolphin` | EGLDRM, first connected connector | HARDWARE-PENDING. `/var/run/drmMode` indexes that connector. Nothing writes the file. |
+| AetherSX2 | `start_aethersx2` | Qt EGLFS | IMPLEMENTED as a temporary KMS config. Scanout is HARDWARE-PENDING. |
+| PICO-8 and Splore | user `pico8_64` | its own SDL, not shipped | EXTERNAL. The process inherits the SDL variables. A static SDL build will not see the patch. |
+| PortMaster GUI and native ports | `portmaster`, `PORTS.pak` | whatever the port links | The managed environment exports the policy. A port with its own DRM or static SDL is EXTERNAL. |
+| WestonPack and Wine | `zlyme-weston-run` | Weston DRM, one client | IMPLEMENTED as a temporary `[output]` mode. The compositor is still per launch. Scanout is HARDWARE-PENDING. |
+| SDL3 | no probe | KMSDRM in the library | Not covered. The patch is SDL2. |
+
+`S16display` still sets the panel refresh and still replays `display_mode`. That replay is not the client modeset.

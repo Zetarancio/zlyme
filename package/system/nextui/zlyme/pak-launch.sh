@@ -227,6 +227,12 @@ exec_pak() {
 		fi
 	fi
 	launch_apply_proxy
+	_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
+	if [ -r "$_hdmi_sh" ]; then
+		# shellcheck disable=SC1090
+		. "$_hdmi_sh"
+		zlyme_hdmi_apply || true
+	fi
 	_drm=${ZLYME_DRM_RELEASE:-/usr/bin/zlyme-drm-release}
 	if [ -x "$_drm" ]; then
 		"$_drm" || true

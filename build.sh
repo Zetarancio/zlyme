@@ -369,7 +369,8 @@ refresh_compiled_package() {
 # Package-only targets do not refresh. dirclean is that package alone.
 refresh_local_packages() {
     refresh_compiled_package nextui BR2_PACKAGE_NEXTUI \
-        package/system/nextui package/system/zlyme-input/virtpad.h
+        package/system/nextui package/system/zlyme-input/virtpad.h \
+        package/system/zlyme-hdmi
     # Helpers link objects built from the NextUI pin in nextui.mk.
     # Presenter also compiles minui-list's vendored parson.c.
     # Do not fingerprint output/build or the downloaded NextUI tree.
@@ -430,6 +431,8 @@ refresh_local_packages() {
         package/system/zlyme-armhf-runtime
     refresh_compiled_package zlyme-armhf-probe BR2_PACKAGE_ZLYME_ARMHF_PROBE \
         package/system/zlyme-armhf-probe
+    refresh_compiled_package zlyme-hdmi BR2_PACKAGE_ZLYME_HDMI \
+        package/system/zlyme-hdmi
 }
 
 # Host test: record which packages would be dircleaned. No Docker,

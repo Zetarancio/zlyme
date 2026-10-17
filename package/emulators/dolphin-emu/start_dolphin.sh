@@ -19,6 +19,9 @@ if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	. /usr/share/zlyme/pak-input.sh
 fi
 export EGL_PLATFORM="${EGL_PLATFORM:-drm}"
+# Dolphin opens the first connected connector and can index that
+# connector's mode list from a file under /var/run. The panel is first
+# when HDMI is also connected, so that index is not the HDMI policy.
 mkdir -p "$XDG_DATA_HOME/dolphin-emu" "$XDG_CONFIG_HOME/dolphin-emu" \
 	"$XDG_DATA_HOME/dolphin-emu/GC" "$XDG_DATA_HOME/dolphin-emu/Wii" \
 	"${SAVES_PATH:-$SDCARD/Saves}/GC" "${SAVES_PATH:-$SDCARD/Saves}/WII"

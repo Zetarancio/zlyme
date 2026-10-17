@@ -17,9 +17,11 @@ static struct zlyme_hdmi_mode mode(int w, int h, int mhz, int preferred)
 {
 	struct zlyme_hdmi_mode m;
 
+	memset(&m, 0, sizeof(m));
 	m.width = w;
 	m.height = h;
 	m.refresh_mhz = mhz;
+	m.vrefresh = (mhz + 500) / 1000;
 	m.preferred = preferred;
 	return m;
 }
@@ -133,6 +135,36 @@ int main(void)
 	expect(zlyme_panel_refresh_hz("60") == 60, "60 Hz panel refresh");
 	expect(zlyme_panel_refresh_hz("30") == 60, "unknown panel refresh");
 	expect(zlyme_panel_refresh_hz(NULL) == 60, "missing panel refresh");
+
+	{
+		struct zlyme_hdmi_mode dsi[] = { mode(1280, 720, 60000, 1) };
+		struct zlyme_hdmi_mode hdmi[] = { mode(1280, 720, 59940, 0) };
+		struct zlyme_hdmi_connector cons[2];
+		struct zlyme_hdmi_output picked;
+
+		memset(cons, 0, sizeof(cons));
+		cons[0].card = 0;
+		cons[0].connector_id = 179;
+		cons[0].hdmia = 0;
+		cons[0].connected = 1;
+		cons[0].monitor_index = 1;
+		cons[0].name = "DSI-1";
+		cons[0].modes = dsi;
+		cons[0].count = 1;
+		cons[1].card = 0;
+		cons[1].connector_id = 164;
+		cons[1].hdmia = 1;
+		cons[1].connected = 1;
+		cons[1].monitor_index = 2;
+		cons[1].name = "HDMI-A-1";
+		cons[1].modes = hdmi;
+		cons[1].count = 1;
+		expect(zlyme_hdmi_pick(cons, 2, &picked) == 1, "same size picked the panel");
+		expect(picked.connector_id == 164 && picked.monitor_index == 2,
+		       "same size lost the HDMI connector id");
+		expect(picked.choice.refresh_mhz == 59940, "same size lost 59.94 Hz");
+		expect(zlyme_hdmi_pick(cons, 0, &picked) < 0, "empty connector list succeeded");
+	}
 
 	if (failed)
 		return 1;

@@ -1,0 +1,155 @@
+--- a/src/video/kmsdrm/SDL_kmsdrmvideo.c
++++ b/src/video/kmsdrm/SDL_kmsdrmvideo.c
+@@ -1375,6 +1375,82 @@
+     }
+ }
+ 
++
++/* Zlyme: optional HDMI mode. Unset ZLYME_HDMI_720P leaves this path unused.
++ * The connector id has to match, and the connector has to be HDMI-A.
++ * A matching width on the panel is not accepted. */
++static drmModeModeInfo *KMSDRM_ZlymeFindMode(SDL_VideoDisplay *display)
++{
++    const char *gate = SDL_getenv("ZLYME_HDMI_720P");
++    const char *spec = SDL_getenv("ZLYME_HDMI_SDL_MODE");
++    const char *id_text = SDL_getenv("ZLYME_HDMI_SDL_CONNECTOR");
++    SDL_DisplayData *dispdata;
++    int want_id = 0;
++    int want_w = 0;
++    int want_h = 0;
++    int want_hz = 0;
++    int i;
++    int best = -1;
++    int best_delta = 0;
++
++    if (!gate || SDL_strcmp(gate, "1") != 0 || !spec || !id_text)
++        return NULL;
++    if (SDL_sscanf(id_text, "%d", &want_id) != 1 || want_id <= 0)
++        return NULL;
++    if (SDL_sscanf(spec, "%dx%d@%d", &want_w, &want_h, &want_hz) != 3)
++        return NULL;
++    if (want_w <= 0 || want_h <= 0 || want_hz <= 0)
++        return NULL;
++    dispdata = (SDL_DisplayData *)display->driverdata;
++    if (!dispdata || !dispdata->connector)
++        return NULL;
++    if ((int)dispdata->connector->connector_id != want_id)
++        return NULL;
++    if (dispdata->connector->connector_type != DRM_MODE_CONNECTOR_HDMIA)
++        return NULL;
++    for (i = 0; i < dispdata->connector->count_modes; i++) {
++        drmModeModeInfo *mode = &dispdata->connector->modes[i];
++        int delta;
++
++        if ((int)mode->hdisplay != want_w || (int)mode->vdisplay != want_h)
++            continue;
++        delta = (int)mode->vrefresh - want_hz;
++        if (delta < 0)
++            delta = -delta;
++        if (best < 0 || delta < best_delta) {
++            best = i;
++            best_delta = delta;
++        }
++    }
++    if (best < 0)
++        return NULL;
++    return &dispdata->connector->modes[best];
++}
++
++static SDL_VideoDisplay *KMSDRM_ZlymePlace(_THIS, SDL_Window *window)
++{
++    int i;
++    int n = SDL_GetNumVideoDisplays();
++
++    for (i = 0; i < n; i++) {
++        SDL_VideoDisplay *display = &_this->displays[i];
++        drmModeModeInfo *mode = KMSDRM_ZlymeFindMode(display);
++        SDL_Rect bounds;
++
++        if (!mode)
++            continue;
++        SDL_zero(bounds);
++        if (SDL_GetDisplayBounds(i, &bounds) != 0)
++            return NULL;
++        window->x = bounds.x;
++        window->y = bounds.y;
++        window->windowed.x = window->x;
++        window->windowed.y = window->y;
++        return display;
++    }
++    return NULL;
++}
++
+ int KMSDRM_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
+ {
+     /* Set the dispdata->mode to the new mode and leave actual modesetting
+@@ -1384,8 +1460,30 @@
+     SDL_DisplayData *dispdata = (SDL_DisplayData *)display->driverdata;
+     SDL_DisplayModeData *modedata = (SDL_DisplayModeData *)mode->driverdata;
+     drmModeConnector *conn = dispdata->connector;
++    drmModeModeInfo *zlyme_mode = KMSDRM_ZlymeFindMode(display);
+     int i;
+ 
++    /* Desktop fullscreen asks for the current CRTC size. That is not an
++     * application choosing another mode. Use the HDMI policy instead. */
++    if (zlyme_mode &&
++        mode->w == display->desktop_mode.w &&
++        mode->h == display->desktop_mode.h &&
++        ((int)zlyme_mode->hdisplay != mode->w ||
++         (int)zlyme_mode->vdisplay != mode->h)) {
++        for (i = 0; i < display->num_display_modes; i++) {
++            SDL_DisplayMode *cand = &display->display_modes[i];
++
++            if (cand->w == (int)zlyme_mode->hdisplay &&
++                cand->h == (int)zlyme_mode->vdisplay &&
++                cand->refresh_rate == (int)zlyme_mode->vrefresh &&
++                cand->driverdata) {
++                mode = cand;
++                modedata = (SDL_DisplayModeData *)mode->driverdata;
++                break;
++            }
++        }
++    }
++
+     /* Don't do anything if we are in Vulkan mode. */
+     if (viddata->vulkan_mode) {
+         return 0;
+@@ -1488,8 +1586,10 @@
+ {
+     SDL_WindowData *windata = NULL;
+     SDL_VideoData *viddata = (SDL_VideoData *)_this->driverdata;
+-    SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
++    SDL_VideoDisplay *zlyme_display = KMSDRM_ZlymePlace(_this, window);
++    SDL_VideoDisplay *display = zlyme_display ? zlyme_display : SDL_GetDisplayForWindow(window);
+     SDL_DisplayData *dispdata = display->driverdata;
++    drmModeModeInfo *zlyme_mode = zlyme_display ? KMSDRM_ZlymeFindMode(display) : NULL;
+     SDL_bool is_vulkan = window->flags & SDL_WINDOW_VULKAN; /* Is this a VK window? */
+     SDL_bool vulkan_mode = viddata->vulkan_mode;            /* Do we have any Vulkan windows? */
+     NativeDisplayType egl_display;
+@@ -1575,11 +1675,24 @@
+            are considered "windowed" at this point of their life.
+            If a window is fullscreen, SDL internals will call
+            KMSDRM_SetWindowFullscreen() to reconfigure it if necessary. */
+-        mode = KMSDRM_GetClosestDisplayMode(display,
+-                                            window->windowed.w, window->windowed.h, 0);
++        if (zlyme_mode) {
++            mode = zlyme_mode;
++        } else {
++            mode = KMSDRM_GetClosestDisplayMode(display,
++                                                window->windowed.w, window->windowed.h, 0);
++        }
+ 
+         if (mode) {
+             dispdata->fullscreen_mode = *mode;
++            if (zlyme_mode) {
++                window->flags |= SDL_WINDOW_FULLSCREEN;
++                window->fullscreen_mode.w = mode->hdisplay;
++                window->fullscreen_mode.h = mode->vdisplay;
++                window->fullscreen_mode.refresh_rate = mode->vrefresh;
++                SDL_Log("ZLYME_HDMI_SDL: connector %u %dx%d",
++                        dispdata->connector->connector_id,
++                        mode->hdisplay, mode->vdisplay);
++            }
+         } else {
+             dispdata->fullscreen_mode = dispdata->original_mode;
+         }

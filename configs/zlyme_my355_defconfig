@@ -22,7 +22,7 @@ BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_7_1=y
 BR2_CCACHE=y
 
 # Kernel/u-boot patches, in order. Later dirs build on earlier ones.
-BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/10-mainline $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/20-rk3566 $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/30-default $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/uboot/patches"
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/10-mainline $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/20-rk3566 $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/linux/patches/30-default $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/uboot/patches $(BR2_EXTERNAL_ZLYME_PATH)/board/my355/patches"
 
 BR2_TARGET_GENERIC_HOSTNAME="zlyme"
 BR2_TARGET_GENERIC_ISSUE="Zlyme"
@@ -258,6 +258,7 @@ BR2_PACKAGE_SDL2_IMAGE=y
 BR2_PACKAGE_SDL2_TTF=y
 BR2_PACKAGE_NEXTUI=y
 BR2_PACKAGE_ZLYME_ARTBOOK=y
+BR2_PACKAGE_ZLYME_HDMI=y
 # Starts after the first frame with auto_manage=false. zlyme-input sets ManageAllDevices.
 BR2_PACKAGE_INPUTPLUMBER=y
 BR2_PACKAGE_ZLYME_INPUT=y

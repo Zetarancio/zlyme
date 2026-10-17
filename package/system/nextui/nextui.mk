@@ -22,13 +22,13 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = caca2da7a31609394f81cf445a3dc65705784537
+NEXTUI_VERSION = 8c2e3e44730c3b44f79f6a2149b0f5ed5a0d570e
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
-NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl zlyme-artbook
+NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl zlyme-artbook zlyme-hdmi
 
 # Workspace directory from the selected device (Config.in). my355 today.
 NEXTUI_PLATFORM = $(call qstrip,$(BR2_PACKAGE_NEXTUI_PLATFORM))
@@ -39,7 +39,8 @@ endif
 NEXTUI_CFLAGS = $(TARGET_CFLAGS) -std=gnu99 \
 	-DPLATFORM=\"$(NEXTUI_PLATFORM)\" -DUSE_SDL2 -DUSE_GLES \
 	-DGL_GLEXT_PROTOTYPES -DEGL_NO_X11=1 \
-	-I$(STAGING_DIR)/usr/include/libdrm
+	-I$(STAGING_DIR)/usr/include/libdrm \
+	-I$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-hdmi
 NEXTUI_CXXFLAGS = $(TARGET_CXXFLAGS) -std=c++17 \
 	-DPLATFORM=\"$(NEXTUI_PLATFORM)\" -DUSE_SDL2 -DUSE_GLES \
 	-DGL_GLEXT_PROTOTYPES -DEGL_NO_X11=1 \
@@ -80,7 +81,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/platform.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-o $(@D)/hdmi_mode.o \
-		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/hdmi_mode.c
+		$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-hdmi/hdmi_mode.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-o $(@D)/hdmi_apply.o \
 		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/hdmi_apply.c

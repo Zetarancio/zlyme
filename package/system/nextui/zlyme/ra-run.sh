@@ -272,9 +272,47 @@ printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\n' >> "$RA_AC"
 printf 'input_player1_joypad_index = "0"\n' >> "$RA_AC"
 printf 'notification_show_autoconfig = "false"\nnotification_show_autoconfig_fails = "false"\n' >> "$RA_AC"
 
+# Session-only output size. A non-zero video_fullscreen_x in the user
+# file is left alone, and this does not write that file.
+ra_user_mode() {
+	_cfg=$CFGDIR/retroarch.cfg
+	[ -f "$_cfg" ] || return 1
+	awk '
+		/^[[:space:]]*#/ { next }
+		/^[[:space:]]*video_fullscreen_x[[:space:]]*=/ {
+			v=$0
+			sub(/^[^=]*=[[:space:]]*/, "", v)
+			gsub(/["[:space:]]/, "", v)
+			if (v ~ /^[0-9]+$/ && v+0 > 0)
+				found=1
+		}
+		END { exit found ? 0 : 1 }
+	' "$_cfg"
+}
+HDMI_RA=${ZLYME_HDMI_RA_CFG:-/tmp/zlyme-hdmi-ra.cfg}
+rm -f "$HDMI_RA"
+if [ "${ZLYME_HDMI_720P:-}" = 1 ]; then
+	_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
+	if [ -r "$_hdmi_sh" ]; then
+		# shellcheck disable=SC1090
+		. "$_hdmi_sh"
+		zlyme_hdmi_apply || true
+	fi
+	if [ "${ZLYME_HDMI_ACTIVE:-}" = 1 ] && ! ra_user_mode; then
+		{
+			printf 'video_monitor_index = "%s"\n' "${ZLYME_HDMI_MONITOR}"
+			printf 'video_fullscreen = "true"\n'
+			printf 'video_fullscreen_x = "%s"\n' "${ZLYME_HDMI_WIDTH}"
+			printf 'video_fullscreen_y = "%s"\n' "${ZLYME_HDMI_HEIGHT}"
+			printf 'video_refresh_rate = "%s"\n' "${ZLYME_HDMI_REFRESH_HZ}"
+		} > "$HDMI_RA"
+	fi
+fi
+
 # RA 1.22 splits --appendconfig on '|', not comma.
 APPEND=$RA_AC
 [ -s "$MINUI_RA" ] && APPEND="$MINUI_RA|$APPEND"
+[ -s "${HDMI_RA:-}" ] && APPEND="$APPEND|$HDMI_RA"
 [ -s "${RA_SAVES:-}" ] && APPEND="$APPEND|$RA_SAVES"
 if [ -n "${_ra_rom:-}" ] && [ -x /usr/sbin/zlyme-overlay ]; then
 	_ov=$(/usr/sbin/zlyme-overlay for-rom "$_ra_rom" 2>/dev/null || true)

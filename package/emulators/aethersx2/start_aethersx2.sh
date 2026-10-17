@@ -17,6 +17,23 @@ fi
 export HOME="$USERDATA"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-eglfs}"
+_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
+if [ "${ZLYME_HDMI_720P:-}" = 1 ] && [ -r "$_hdmi_sh" ]; then
+	# shellcheck disable=SC1090
+	. "$_hdmi_sh"
+	zlyme_hdmi_apply || true
+	if [ "${ZLYME_HDMI_ACTIVE:-}" = 1 ] && [ -n "${ZLYME_HDMI_CONNECTOR:-}" ]; then
+		_qt=/tmp/zlyme-eglfs.json
+		printf '%s\n' \
+			'{' \
+			'  "outputs": [{' \
+			"    \"name\": \"${ZLYME_HDMI_CONNECTOR}\"," \
+			"    \"mode\": \"${ZLYME_HDMI_WIDTH}x${ZLYME_HDMI_HEIGHT}\"" \
+			'  }]' \
+			'}' > "$_qt"
+		export QT_QPA_EGLFS_KMS_CONFIG="$_qt"
+	fi
+fi
 if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	# shellcheck disable=SC1091
 	. /usr/share/zlyme/pak-input.sh
