@@ -75,11 +75,14 @@ while read -r kind sum mode rel; do
 	[ ! -L "$path" ] || die "$rel is a symlink, manifest says file"
 	got=$(sha256sum "$path" | awk '{print $1}')
 	[ "$got" = "$sum" ] || die "stale $rel"
-	# Artifact download keeps the bytes and drops the mode bit.
-	# The manifest mode is applied after the hash matches, then checked.
-	chmod "$mode" "$path" || die "mode of $rel not applied"
 	now=$(stat -c '%a' "$path")
-	[ "$now" = "$mode" ] || die "mode of $rel changed"
+	if [ "$now" != "$mode" ]; then
+		# Artifact download keeps the bytes and drops the mode bit.
+		# A read-only tree that already matches is left alone.
+		chmod "$mode" "$path" || die "mode of $rel changed"
+		now=$(stat -c '%a' "$path")
+		[ "$now" = "$mode" ] || die "mode of $rel changed"
+	fi
 	printf '%s\n' "$rel" >> "$seen"
 done < "$files"
 while read -r kind link rel; do
