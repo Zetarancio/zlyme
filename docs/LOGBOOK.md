@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — ARMHF tar, PanVK opt-in, HDMI scope
+
+Runs `39031848308` and `39035776085` both built the ARMHF job and then failed the image stage. The first lost the loader's mode. The second stored `libatomic.so` as a regular file. The image job now downloads one tar. `panfrost` in `/storage/.config/zlyme/gpu` stays OpenGL and does not export `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER`. `panvk` is that opt-in. PortMaster `2026.06.23-0015` has no Vulkan capability bit. The HDMI requirement is a new emulator process after the cable is connected, not a modeset while that process is running. The SDL mode-index patch and the RetroArch unbound-encoder check stay. The panel stays active. The installed image is still `a58a5ab6`.
+
 ## 2026-10-17 — HDMI export, 720p CRTC, Changa One wordmarks
 
 On the installed candidate, `zlyme-hdmi export` filled the parent shell and a child saw none of the policy variables. With those variables exported by a temporary wrapper, HDMI-A-1 scanned `1280x720` at 74250 kHz (1650×750, 60.000 Hz) on `video_port0`. The panel stayed on `video_port1` at `640x480`, clock 32000 kHz. NextUI logged `ZLYME_HDMI_REQUEST 1280x720 viewport 160,0 960x720`. The sysfs connector `mode` file stayed empty. After the gated process exited, HDMI returned to `1024x768` at 78750 kHz and the normal frontend was running. Both CRTCs were `active=1` with plane framebuffers, so an unbound RetroArch connector has no CRTC that this check can prove free. MKXP-Z now uses the EasyRPG strip and a Changa One Italic wordmark. Tool and Recently Played wordmarks use that font. The font file's name table is Changa One Italic, Eduardo Tunni, SIL Open Font License 1.1.
