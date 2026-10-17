@@ -202,4 +202,87 @@ if [ "$new_ms" -ge "$old_ms" ]; then
 	exit 1
 fi
 
+# Zero, one, and a path longer than the overlay row. Dry-run keeps the
+# file. The dialog does not receive this list; the script still prints it.
+zero=$work/zero
+mkdir -p "$zero"
+zout=$(ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$zero" \
+	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run)
+zcount=$(printf '%s\n' "$zout" | awk -F= '/^COUNT=/{print $2; exit}')
+[ "$zcount" = 0 ] || {
+	echo "empty standalone count: $zout" >&2
+	exit 1
+}
+
+one=$work/one
+mkdir -p "$one/.config/drastic"
+printf 'cfg\n' >"$one/.config/drastic/drastic.cfg"
+oout=$(ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
+	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run)
+ocount=$(printf '%s\n' "$oout" | awk -F= '/^COUNT=/{print $2; exit}')
+[ "$ocount" = 1 ] || {
+	echo "one standalone count: $oout" >&2
+	exit 1
+}
+test -f "$one/.config/drastic/drastic.cfg"
+ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
+	ZLYME_DEVICE_CONF= "$CLEAN" standalones >/dev/null
+test ! -e "$one/.config/drastic/drastic.cfg"
+
+long=$work
+n=0
+while [ "${#long}" -lt 280 ]; do
+	long=$long/p$n
+	n=$((n + 1))
+done
+mkdir -p "$long/.config/drastic"
+printf 'cfg\n' >"$long/.config/drastic/drastic.cfg"
+lout=$(ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$long" \
+	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run)
+lcount=$(printf '%s\n' "$lout" | awk -F= '/^COUNT=/{print $2; exit}')
+[ "$lcount" = 1 ] || {
+	echo "long standalone count: $lout" >&2
+	exit 1
+}
+llen=$(printf '%s\n' "$lout" | awk 'NR==2 { print length($0) }')
+[ "$llen" -gt 256 ] || {
+	echo "long path was not a long line ($llen)" >&2
+	exit 1
+}
+test -f "$long/.config/drastic/drastic.cfg"
+
+if ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$zero" \
+	ZLYME_DEVICE_CONF= "$CLEAN" not-a-cleanup --dry-run >/dev/null 2>&1; then
+	echo "malformed action was accepted" >&2
+	exit 1
+fi
+
+if [ -d /tmp/zlyme-sa.list ]; then
+	echo "refusing to replace an existing /tmp/zlyme-sa.list directory" >&2
+	exit 1
+fi
+rm -f /tmp/zlyme-sa.list
+mkdir /tmp/zlyme-sa.list
+if ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
+	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run >/dev/null 2>&1; then
+	rmdir /tmp/zlyme-sa.list
+	echo "dry-run succeeded when the list file could not be created" >&2
+	exit 1
+fi
+rmdir /tmp/zlyme-sa.list
+
+ui=${ZLYME_NEXTUI_SRC:-$ROOT/../NextUI}/workspace/all/settings/zlymemenu.cpp
+if grep -n 'strncat(ask, extra' "$ui"; then
+	echo "the reset dialog still appends the path list" >&2
+	exit 1
+fi
+grep -q 'zlyme_cleanup_ask' "$ui" || {
+	echo "the reset dialog is not count-only" >&2
+	exit 1
+}
+cc -std=c11 -Wall -Wextra -Werror \
+	-I"$ROOT/../NextUI/workspace/all/common" \
+	-o "$work/textrow" "$ROOT/scripts/tests/test_textrow.c"
+"$work/textrow" | grep -qx 'text row ok'
+
 echo "game cleanup ok"
