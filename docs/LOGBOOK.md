@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — installed candidate, ArtBook stack, Tools root, Settings row
+
+NextUI `97f7bde58e12546a6dd0d67b15d4e091eb5e05f6` is the development pin. The installed squashfs matches the previous candidate. `/boot` is read-only. The HDMI connector lists 1280×720 and `zlyme-hdmi` with the gate set selects that mode. The running session does not have the gate set, and the sysfs `mode` files were empty. Debugfs DRM state was not mounted. A new ArtBook picture was blended onto the previous layer; the folder path now clears that layer first. The Tools root uses upstream `tools.png`. Reset standalone settings appended the dry-run path list to a dialog whose row buffer is 256 bytes. The dialog is now the count. Wi-Fi toggles no longer wait for SSH, Samba, and Syncthing. RetroArch still has no context when an unbound connector has no free CRTC. None of the picture, the reset, or Wi-Fi off was exercised on the Flip.
+
 ## 2026-10-17 — post-build died on SIGPIPE
 
 `this_module_size` pipes `readelf` into `awk` and exits after the first hit. With `pipefail` that status is 141, and `target-finalize` stopped before the image. The function now ignores that signal. The SDL3 symbol check writes `nm` to a file before `grep`. The candidate image was started again from that point.
