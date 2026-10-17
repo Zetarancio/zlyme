@@ -70,8 +70,15 @@ line2=$(printf '%s\n' "$got" | sed -n '2p')
 line3=$(printf '%s\n' "$got" | sed -n '3p')
 [ "$line1" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost ICD is '$line1'"
 [ "$line2" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panfrost driver files is '$line2'"
-[ "$line3" = 1 ] || fail "panfrost opt-in is '$line3'"
+[ -z "$line3" ] || fail "panfrost GLES opted into PanVK: '$line3'"
 printf '%s\n' "$got" | grep -q mali_icd && fail "panfrost selected the Mali ICD"
+
+printf '%s' panvk > "$work/gpu"
+got=$(read_icd)
+line1=$(printf '%s\n' "$got" | sed -n '1p')
+line3=$(printf '%s\n' "$got" | sed -n '3p')
+[ "$line1" = "$work/icd/panfrost_icd.cortex-a55.json" ] || fail "panvk ICD is '$line1'"
+[ "$line3" = 1 ] || fail "panvk opt-in is '$line3'"
 
 for name in libmali mali mali_kbase; do
 	printf '%s' "$name" > "$work/gpu"
@@ -114,6 +121,10 @@ got=$(read_icd)
 line1=$(printf '%s\n' "$got" | sed -n '1p')
 line3=$(printf '%s\n' "$got" | sed -n '3p')
 [ -z "$line1" ] || fail "missing PanVK ICD still exported '$line1'"
-[ "$line3" = 1 ] || fail "missing PanVK ICD dropped the opt-in"
+[ -z "$line3" ] || fail "panfrost GLES set the opt-in without an ICD"
+printf '%s' panvk > "$work/gpu"
+got=$(read_icd)
+line3=$(printf '%s\n' "$got" | sed -n '3p')
+[ "$line3" = 1 ] || fail "explicit panvk dropped the opt-in"
 
 echo "phase12b1 ok"

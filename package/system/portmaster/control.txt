@@ -79,6 +79,9 @@ export DEVICE_NAME="Miyoo Flip"
 # aarch64 loader check already selected.
 DEVICE_HAS_ARMHF=N
 export DEVICE_HAS_ARMHF
+# PortMaster 2026.06.23-0015 device_info.txt has no Vulkan bit.
+# Do not treat an ICD on disk as that capability.
+unset DEVICE_HAS_VULKAN || true
 : "${DISPLAY_WIDTH:=640}"
 : "${DISPLAY_HEIGHT:=480}"
 export DISPLAY_WIDTH DISPLAY_HEIGHT

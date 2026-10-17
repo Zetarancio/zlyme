@@ -14,16 +14,17 @@ cat > "$work/PortMaster/device_info.txt" << 'EOF'
 DEVICE_ARCH=aarch64
 DEVICE_HAS_ARMHF=Y
 DEVICE_HAS_AARCH64=Y
+DEVICE_HAS_VULKAN=Y
 EOF
 out=$(
 	controlfolder=$work/PortMaster \
 	HM_TOOLS_DIR=$work \
 	HM_PORTS_DIR=$work/ports \
 	SDL_GAMECONTROLLERCONFIG_FILE=/dev/null \
-	bash -c '. "$1"; printf "%s %s %s\n" "$DEVICE_ARCH" "$DEVICE_HAS_ARMHF" "$DEVICE_HAS_AARCH64"' \
+	bash -c '. "$1"; printf "%s %s %s [%s]\n" "$DEVICE_ARCH" "$DEVICE_HAS_ARMHF" "$DEVICE_HAS_AARCH64" "${DEVICE_HAS_VULKAN-}"' \
 		sh "$CONTROL"
 )
-[ "$out" = "aarch64 N Y" ] || fail "capability bits: $out"
+[ "$out" = "aarch64 N Y []" ] || fail "capability bits: $out"
 ldpath=$(
 	controlfolder=$ROOT/package/system/portmaster \
 	HM_TOOLS_DIR=$work \

@@ -7,14 +7,14 @@
 # card0 is rockchip-drm and card1 is the Mali GPU. Forcing
 # MESA_LOADER_DRIVER_OVERRIDE=panfrost makes GBM init fail on that
 # split. Leave the override unset so Mesa pairs kmsro with Panfrost.
-# Mali-G52 is Panfrost arch v7. Mesa 26.1.8 returns
-# VK_ERROR_INCOMPATIBLE_DRIVER for that device unless
-# PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1. Export that only when the
-# saved choice is exactly panfrost. libmali and an unrecognized
-# choice unset it, including a value inherited from the parent.
-# PPSSPP's VK_KHR_display path does not acquire the DRM display,
-# so this export is not a PPSSPP Vulkan result. GLES does not
-# read the variable.
+# Mali-G52 is Panfrost arch v7. Mesa returns
+# VK_ERROR_INCOMPATIBLE_DRIVER unless
+# PAN_I_WANT_A_BROKEN_VULKAN_DRIVER=1. That flag is PanVK, not
+# Panfrost GLES. The saved choice panfrost selects the OpenGL
+# stack and does not export it. The saved choice panvk is the
+# explicit opt-in. libmali, panfrost, and an unrecognized choice
+# unset it, including a value inherited from the parent.
+# GLES does not read the variable.
 
 gpu=""
 if [ -r /storage/.config/zlyme/gpu ]; then
@@ -28,6 +28,9 @@ case "$gpu" in
 		icd=mali
 		;;
 	panfrost)
+		icd=panfrost
+		;;
+	panvk)
 		icd=panfrost
 		panvk_optin=1
 		;;
