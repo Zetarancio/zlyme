@@ -14,6 +14,8 @@ A shipped Tool without `background.png` fails the ArtBook build and names that p
 
 The finished PNGs are installed into the squashfs at `/usr/share/nextui/artbook`. NextUI selects this package. The full image and the normal OTA both carry that squashfs. The Flip does not download an artwork pack.
 
+The Tools root is not a pak. The compositor reads Art Book Next `_inc/systems/artwork/tools.png` and `_inc/systems/logos/tools.svg` at the pinned commit and writes `special/tools.png`. The nine pak pictures stay in `tools/`.
+
 Recently Played is not a pak. Its source is `special/Recently Played/background.png`. The firmware file is `special/recent.png`, with the centered wordmark `Recently Played`. `zlyme-stock-seed` copies that file to `/storage/Recently Played/.media/bg.png` once. NextUI reads it as a folder picture, so a long name is not kept off the artwork.
 
 The nine tool pictures are original illustrations made for these menus. RPG Maker XP is a separate picture under `tools/custom/MKXPZ/`. System artwork is downloaded from Art Book Next at build time and is not stored in this tree. Its license is CC BY-NC-SA 2.0, in `NOTICE.md`.

@@ -58,7 +58,8 @@ for pak in paks.iterdir():
         (base / "tools" / (pak.name[:-4] + ".png")).write_bytes(body)
 (base / "special").mkdir()
 (base / "special" / "recent.png").write_bytes(body)
-print("fixture", len(tags), len(list(paks.glob("*.pak"))), 1)
+(base / "special" / "tools.png").write_bytes(body)
+print("fixture", len(tags), len(list(paks.glob("*.pak"))), 2)
 PY
 
 "$CHECK" --check-artbook "$work/good"
@@ -76,6 +77,10 @@ bad=$work/bad
 cp -a "$work/good" "$bad"
 rm -f "$bad/usr/share/nextui/artbook/system/(GB).png"
 expect_reject "$bad" "inventory mismatch"
+
+cp -a "$work/good" "$work/notools"
+rm -f "$work/notools/usr/share/nextui/artbook/special/tools.png"
+expect_reject "$work/notools" "inventory mismatch"
 
 cp -a "$work/good" "$work/extra"
 mkdir -p "$work/extra/usr/share/nextui/artbook/list"

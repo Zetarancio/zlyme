@@ -405,6 +405,14 @@ def main() -> None:
             save_png(image, stage_tools / ("%s.png" % label))
             tools.append((label, image))
         specials = compose_specials(mask, args.font, args.rsvg, work, work / "special")
+        tools_art = art_dir / "tools.png"
+        tools_logo = logo_dir / "tools.svg"
+        if not tools_art.is_file() or not tools_logo.is_file():
+            fail("upstream tools category art is missing")
+        # The nine pak pictures stay in tools/. This is the root category.
+        category = compose_system(tools_art, tools_logo, args.font, args.rsvg, work)
+        save_png(category, (work / "special") / "tools.png")
+        specials.append(("Tools", category))
         # The stages are complete. Replacing now drops a renamed or removed entry.
         publish_tree(stage_system, args.out / "system")
         publish_tree(stage_tools, args.out / "tools")

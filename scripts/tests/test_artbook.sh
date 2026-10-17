@@ -83,6 +83,11 @@ rm -f /tmp/zlyme-artbook-test
 ui=$NEXT/workspace/all/nextui/nextui.c
 grep -q 'zlyme_system_artbook' "$ui" || fail "system art is not requested"
 grep -q 'zlyme_tool_artbook' "$ui" || fail "tool art is not requested"
+grep -q 'zlyme_artbook_tools_category' "$ui" || fail "the Tools root has no ArtBook path"
+grep -q 'zlyme_show_folder_bg' "$ui" || fail "folder backgrounds are not replaced"
+if grep -n 'GFX_drawOnLayer(folderbgbmp' "$ui"; then
+	fail "a folder background is still blended onto the previous picture"
+fi
 grep -q 'zlyme_art_reserve' "$ui" || fail "names are not kept off the art"
 awk '
 	/\.media\/bg\.png/ { media = NR }
@@ -291,15 +296,19 @@ for pak in sorted(p.name for p in paks.iterdir() if p.name.endswith(".pak")):
         sys.exit("tool art crosses the name column " + label)
 special = art / "special"
 names = sorted(p.name for p in special.iterdir()) if special.is_dir() else []
-if names != ["recent.png"]:
+if names != ["recent.png", "tools.png"]:
     sys.exit("special inventory %s" % names)
-image = compose.load_rgba(special / "recent.png")
-if image.size != (640, 480) or image.mode != "RGBA":
-    sys.exit("bad recent image")
-box = compose.content_box(image)
-if box[4] < 1000 or box[0] < compose.SAFE_X:
-    sys.exit("recent art crosses the name column")
-print("rendered", len(tags), "tools", len(list(paks.glob('*.pak'))), "special", 1)
+for name in names:
+    image = compose.load_rgba(special / name)
+    if image.size != (640, 480) or image.mode != "RGBA":
+        sys.exit("bad special image " + name)
+    box = compose.content_box(image)
+    if box[4] < 1000 or box[0] < compose.SAFE_X:
+        sys.exit("special art crosses the name column " + name)
+# The category picture is not one of the nine pak backgrounds.
+if (art / "tools" / "Tools.png").exists():
+    sys.exit("root Tools art was stored as a pak background")
+print("rendered", len(tags), "tools", len(list(paks.glob('*.pak'))), "special", 2)
 PY
 
 # A long name and a name with markup still fit, and the source file is untouched.

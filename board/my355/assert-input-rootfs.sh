@@ -47,6 +47,7 @@ def tools():
 expected = {"system/(%s).png" % tag for tag in tags()}
 expected.update("tools/%s.png" % name for name in tools())
 expected.add("special/recent.png")
+expected.add("special/tools.png")
 found = set()
 for path in base.rglob("*"):
     if path.is_dir():
@@ -71,7 +72,7 @@ def png_ok(path):
 for rel in sorted(expected):
     if not png_ok(base / rel):
         sys.exit("not a 640x480 RGBA PNG: " + rel)
-print("artbook rootfs", len(tags()), len(tools()), 1)
+print("artbook rootfs", len(tags()), len(tools()), 2)
 PY
 }
 
