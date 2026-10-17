@@ -129,13 +129,18 @@ jobs:
           path: output-armhf-export
           key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
 
+      - name: Pack ARMHF runtime tar
+        run: |
+          set -euo pipefail
+          chmod +x ./scripts/armhf-runtime-pack.sh
+          ./scripts/armhf-runtime-pack.sh output-armhf-export "$GITHUB_WORKSPACE/zlyme-armhf-runtime.tar"
+
       - name: Upload ARMHF runtime
         uses: actions/upload-artifact@v7
         with:
           name: zlyme-armhf-runtime
           retention-days: 1
-          include-hidden-files: true
-          path: output-armhf-export
+          path: zlyme-armhf-runtime.tar
           if-no-files-found: error
 
   stage-a:

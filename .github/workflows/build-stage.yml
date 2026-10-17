@@ -103,12 +103,13 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: zlyme-armhf-runtime
-          path: output-armhf
+          path: armhf-artifact
 
       - name: Check ARMHF runtime
         run: |
           set -euo pipefail
-          ./package/system/zlyme-armhf-runtime/check-manifest.sh output-armhf
+          chmod +x ./scripts/armhf-runtime-unpack.sh
+          ./scripts/armhf-runtime-unpack.sh armhf-artifact/zlyme-armhf-runtime.tar output-armhf
 
       - name: Build image
         id: build

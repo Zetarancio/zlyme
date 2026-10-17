@@ -76,13 +76,7 @@ while read -r kind sum mode rel; do
 	got=$(sha256sum "$path" | awk '{print $1}')
 	[ "$got" = "$sum" ] || die "stale $rel"
 	now=$(stat -c '%a' "$path")
-	if [ "$now" != "$mode" ]; then
-		# Artifact download keeps the bytes and drops the mode bit.
-		# A read-only tree that already matches is left alone.
-		chmod "$mode" "$path" || die "mode of $rel changed"
-		now=$(stat -c '%a' "$path")
-		[ "$now" = "$mode" ] || die "mode of $rel changed"
-	fi
+	[ "$now" = "$mode" ] || die "mode of $rel changed"
 	printf '%s\n' "$rel" >> "$seen"
 done < "$files"
 while read -r kind link rel; do
