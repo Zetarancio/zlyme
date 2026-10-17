@@ -122,7 +122,9 @@ if [ -x "$cc_probe" ]; then
 		-o "$work/sdl-kms-probe" "$ROOT/scripts/tests/sdl_kms_probe.c" -lSDL2 \
 		|| fail "SDL probe did not link"
 fi
-cc -std=c11 -Wall -Wextra -Werror -o "$work/drm-encoder" \
+cc -std=c11 -Wall -Wextra -Werror \
+	-I"$ROOT/package/emulators/retroarch" \
+	-o "$work/drm-encoder" \
 	"$ROOT/scripts/tests/test_drm_encoder.c"
 "$work/drm-encoder" | grep -qx 'drm encoder pick ok'
 grep -q 'possible_crtcs' \

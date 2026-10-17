@@ -46,6 +46,12 @@ RETROARCH_CONF_OPTS = \
 	--disable-update_cores \
 	--disable-update_core_info
 
+define RETROARCH_COPY_OCCUPY
+	$(INSTALL) -D -m 0644 $(RETROARCH_PKGDIR)/zlyme_drm_occupy.h \
+		$(@D)/gfx/common/zlyme_drm_occupy.h
+endef
+RETROARCH_POST_PATCH_HOOKS += RETROARCH_COPY_OCCUPY
+
 define RETROARCH_CONFIGURE_CMDS
 	(cd $(@D); rm -rf config.cache; \
 		$(TARGET_CONFIGURE_OPTS) \

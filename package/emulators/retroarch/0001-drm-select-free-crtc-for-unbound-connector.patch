@@ -1,25 +1,118 @@
 --- a/gfx/common/drm_common.c
 +++ b/gfx/common/drm_common.c
-@@ -138,6 +138,63 @@
+@@ -14,12 +14,14 @@
+  */
+ 
+ #include <compat/strl.h>
++#include <string.h>
+ 
+ #include <retro_miscellaneous.h>
+ 
+ #include "../../verbosity.h"
+ 
+ #include "drm_common.h"
++#include "zlyme_drm_occupy.h"
+ 
+ /* TODO/FIXME - globals */
+ drmEventContext g_drm_evctx;
+@@ -138,6 +140,141 @@
     return num * 1000.0f / den;
  }
  
++
 +/* A connector that is already scanning has encoder_id set. A connector
 + * plugged in after boot often has encoder_id 0. Matching only the bound
 + * encoder then fails and drm_ctx creates no context. Pick an encoder this
-+ * connector lists, and a CRTC in its possible_crtcs mask that is not
-+ * already scanning. Do not take the panel's CRTC.
++ * connector lists. possible_crtcs bit N is resources->crtcs[N].
++ * Do not take a CRTC whose ACTIVE property is set, whose plane has a
++ * framebuffer, or whose legacy CRTC buffer is scanning. If that state
++ * cannot be read, the CRTC is not free.
 + */
++static int drm_prop_value(int fd, uint32_t obj, uint32_t type,
++      const char *name, uint64_t *out)
++{
++   drmModeObjectProperties *props;
++   unsigned i;
++
++   props = drmModeObjectGetProperties(fd, obj, type);
++   if (!props)
++      return -1;
++   for (i = 0; i < props->count_props; i++)
++   {
++      drmModePropertyPtr prop = drmModeGetProperty(fd, props->props[i]);
++      int match = 0;
++
++      if (!prop)
++         continue;
++      match = strcmp(prop->name, name) == 0;
++      if (match)
++         *out = props->prop_values[i];
++      drmModeFreeProperty(prop);
++      if (match)
++      {
++         drmModeFreeObjectProperties(props);
++         return 0;
++      }
++   }
++   drmModeFreeObjectProperties(props);
++   return -1;
++}
++
++static int drm_plane_fb_on_crtc(int fd, uint32_t crtc_id)
++{
++   drmModePlaneRes *res = drmModeGetPlaneResources(fd);
++   uint32_t i;
++   int found = 0;
++
++   if (!res)
++      return -1;
++   for (i = 0; i < res->count_planes; i++)
++   {
++      drmModePlane *plane = drmModeGetPlane(fd, res->planes[i]);
++      uint64_t crtc = 0;
++      uint64_t fb = 0;
++
++      if (!plane)
++      {
++         drmModeFreePlaneResources(res);
++         return -1;
++      }
++      if (drm_prop_value(fd, plane->plane_id, DRM_MODE_OBJECT_PLANE,
++               "CRTC_ID", &crtc) != 0)
++         crtc = plane->crtc_id;
++      if (drm_prop_value(fd, plane->plane_id, DRM_MODE_OBJECT_PLANE,
++               "FB_ID", &fb) != 0)
++         fb = plane->fb_id;
++      if (crtc == crtc_id && fb != 0)
++         found = 1;
++      drmModeFreePlane(plane);
++      if (found)
++         break;
++   }
++   drmModeFreePlaneResources(res);
++   return found;
++}
++
 +static int drm_crtc_is_scanning(int fd, uint32_t crtc_id)
 +{
 +   drmModeCrtc *crtc = drmModeGetCrtc(fd, crtc_id);
-+   int scanning;
++   uint64_t active = 0;
++   unsigned legacy_fb = 0;
++   int legacy_mode = 0;
++   int active_state;
++   int plane_fb;
 +
 +   if (!crtc)
 +      return 1;
-+   scanning = crtc->buffer_id != 0 && crtc->mode_valid;
++   legacy_fb = crtc->buffer_id;
++   legacy_mode = crtc->mode_valid ? 1 : 0;
 +   drmModeFreeCrtc(crtc);
-+   return scanning;
++   if (drm_prop_value(fd, crtc_id, DRM_MODE_OBJECT_CRTC, "ACTIVE", &active) != 0)
++      active_state = -1;
++   else
++      active_state = active ? 1 : 0;
++   plane_fb = drm_plane_fb_on_crtc(fd, crtc_id);
++   return zlyme_crtc_occupied(legacy_fb, legacy_mode, active_state, plane_fb);
 +}
 +
 +static bool drm_bind_unbound_encoder(int fd)
@@ -64,7 +157,7 @@
  bool drm_get_encoder(int fd)
  {
     unsigned i;
-@@ -157,6 +214,9 @@
+@@ -157,6 +294,9 @@
     }
  
     if (!g_drm_encoder)
