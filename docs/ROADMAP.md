@@ -379,7 +379,7 @@ Status: Host-tested. `zlyme-artbook` downloads Art Book Next `d772d071` and comp
 
 Prefer 1280×720 at 60 Hz on HDMI when the display lists that mode, and an EDID mode otherwise. The panel stays 640×480 at the selected refresh. Modesetting belongs to the DRM client. A write to a read-only sysfs `modes` file is not that. Drop the manual cycle if the automatic choice replaces it. No DTS change for this item.
 
-Status: Planned. The current `S16display` path still writes the connector `mode` file.
+Status: Host-tested selection, not applied on the device. `board/my355/hdmi-mode.c` prefers 1280×720 within 0.5 Hz of 60 Hz, then a preferred EDID mode, then the first usable mode. SDL 2.32.10 KMSDRM still modesets the mode closest to NextUI's 640×480 window. The selector is not called from that window, because filling a 1280×720 scanout with the 640×480 surface would stretch it. `S16display` still writes a saved manual mode and still sets the panel to 640×480 at 40, 50, or 60 Hz. No DTS change. Not run on a Flip.
 
 ### 14N. Delete Game cleanup
 

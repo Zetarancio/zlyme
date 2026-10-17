@@ -42,3 +42,7 @@ Pinned Box64 `2f130fab` (v0.4.4) says `BOX32` is experimental and not to be used
 The seed's unsuffixed `gptokeyb` and `gptokeyb2` are AArch64 PIE binaries. `gptokeyb.armhf` and `gptokeyb2.armhf` are ARM EABI hard-float. `control.txt` exports `GPTOKEYB` and `GPTOKEYB2` as the unsuffixed names, through `zlyme-portmaster-exec`. InputPlumber remains the virtual Xbox pad (`0x045e/0x028e`). No second grabber was added.
 
 `runtimes/` in the seed contains LÖVE 11.5 with `libs.aarch64` and `libs.x86_64`. There is no ARMHF LÖVE runtime in that zip. `libs/` is empty. `libgl_default.txt` prepends `gl4es.$DEVICE_ARCH` or `gl4es` from the port directory. GL4ES is not a Zlyme package. OpenAL is not in the seed. Engine squashfs files stay PortMaster downloads. Audio stays ALSA and BlueALSA.
+
+## HDMI
+
+NextUI's modeset is SDL 2.32.10 KMSDRM, not the sysfs `mode` file `S16display` writes. The window is created at 640×480, and KMSDRM picks the closest connector mode. `board/my355/hdmi-mode.c` is the host-tested 720p60 choice. It is not wired into that window. PortMaster, RetroArch, PPSSPP, and WestonPack take DRM after NextUI releases it and keep their own mode selection. HDMI PCM stays `flipsink_hdmi`.

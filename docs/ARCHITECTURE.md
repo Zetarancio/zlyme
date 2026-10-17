@@ -365,6 +365,10 @@ Rockchip display hardware
 
 Zlyme does not run a permanent X11 server, Wayland compositor, or desktop environment.
 
+SDL 2.32.10 KMSDRM is the modeset for NextUI. `KMSDRM_CreateWindow` asks for the connector mode closest to the 640×480 window, then `drmModeSetCrtc` runs from the swap. The frontend surface stays 640×480, and `SDL_RenderCopy` fills the window with that surface. `board/my355/hdmi-mode.c` chooses 1280×720 when that mode is within 0.5 Hz of 60 Hz, otherwise the display's preferred mode, otherwise the first usable mode. NextUI does not call it yet. Applying it would change the CRTC and, without a destination rectangle, stretch the 4:3 surface across a 16:9 mode. That activation waits for a Flip. The internal panel stays 640×480 at the saved 40, 50, or 60 Hz through `S16display`. The saved `display_mode` value and the sysfs replay of that manual cycle stay. A sysfs write is not the modeset.
+
+`GetHDMI` in NextUI's msettings reads HDMI status on card0 and card1. RetroArch, PPSSPP, a native SDL port, and PortMaster's WestonPack each take DRM after NextUI releases it and choose their own mode. Return to NextUI creates the KMSDRM window again. HDMI audio remains the existing `flipsink_hdmi` path.
+
 The boot splash runs on fb0. The initramfs starts it, `S12splash` restarts it from the squashfs, and it stops when `nextui-session` stops it or NextUI takes the panel through KMSDRM. Before every pak, `nextui-session` stops the splash, runs `zlyme-drm-release` to drop DRM master, and starts the pak in its own session.
 
 Applications that cannot use direct KMS may launch an isolated compatibility environment for the duration of that application. Two cases exist.

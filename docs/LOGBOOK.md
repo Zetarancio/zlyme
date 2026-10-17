@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — HDMI 720p choice, not yet applied
+
+`board/my355/hdmi-mode.c` prefers 1280×720 within 0.5 Hz of 60 Hz, then a preferred mode, then the first usable mode. The host test covers an empty list, a broken EDID, 720p60 beside preferred 1080p, 720p at 50 Hz, 59.94 Hz against 60 Hz, a repeated choice, a disconnect, and a failed modeset that keeps the previous choice. SDL 2.32.10 KMSDRM still modesets from NextUI's 640×480 window. The selector is not called there, because filling that scanout with the 640×480 surface would stretch it. `S16display` still applies the panel refresh and still replays `display_mode`. Not run on a Flip.
+
 ## 2026-10-17 — ARMHF recipe refresh
 
 `zlyme-armhf-runtime` and `zlyme-armhf-probe` are in `refresh_local_packages`. A full image build dircleans the runtime package when its recipe directory changes. The manifest hash remains the package version, so a new sysroot still installs on its own. The fingerprint does not hash `output-armhf`, and the recorded make target is `zlyme-armhf-runtime-dirclean`. A second check with the same tree records nothing. qemu-user stays out of `Dockerfile` and the ARMHF recipes. The probe was not run again.
