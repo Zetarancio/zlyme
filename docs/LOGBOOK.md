@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — post-build died on SIGPIPE
+
+`this_module_size` pipes `readelf` into `awk` and exits after the first hit. With `pipefail` that status is 141, and `target-finalize` stopped before the image. The function now ignores that signal. The SDL3 symbol check writes `nm` to a file before `grep`. The candidate image was started again from that point.
+
 ## 2026-10-17 — HDMI mode index, not an integer refresh
 
 ROCKNIX `next` `075a7c30` and Batocera `master` `38fe6e8b` teach SDL to modeset `/var/run/drmMode` and then hide the other modes. KNULLI `knulli-main` `57afa662` carries those two SDL patches. Zlyme keeps the connector id and uses the mode index in that connector's list, so 59.94 Hz is not matched as 60 Hz. NextUI `ac84bec6` records that limit on the scanout log. The SDL patch no longer sets `SDL_WINDOW_FULLSCREEN`. A different fullscreen size is left alone. Vulkan windows are skipped. The sysfs connector `mode` file is width and height only. The GitHub ARMHF artifact upload now includes hidden files, because `check-manifest.sh` reads `.config`. Not run on a Flip.

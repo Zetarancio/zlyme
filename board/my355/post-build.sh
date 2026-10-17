@@ -291,7 +291,9 @@ pm_os_release
 # packages. sizeof(struct module) then disagrees and every OOT .ko fails
 # insmod (no joypad, no WiFi). Compare .gnu.linkonce.this_module to panfrost.
 this_module_size() {
-	readelf -W -S "$1" 2>/dev/null | awk '/gnu.linkonce.this_module/ { print $6; exit }'
+	# awk exits after the first hit. With pipefail that is SIGPIPE in
+	# readelf and status 141, which aborts target-finalize.
+	readelf -W -S "$1" 2>/dev/null | awk '/gnu.linkonce.this_module/ { print $6; exit }' || true
 }
 ref_ko=""
 shopt -s nullglob
@@ -359,10 +361,14 @@ if [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-n
 		exit 1
 	fi
 	# SDL3 versions the symbol (SDL_Init@@SDL3_0.0.0). The old stub did not.
-	if ! "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" -D "${sdl3lib}" | grep -Eq ' SDL_Init(@@|$)'; then
+	sdl3nm=$(mktemp)
+	if ! "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" -D "${sdl3lib}" >"${sdl3nm}" \
+		|| ! grep -Eq ' SDL_Init(@@|$)' "${sdl3nm}"; then
+		rm -f "${sdl3nm}"
 		echo "post-build: ${sdl3lib} does not export SDL_Init" >&2
 		exit 1
 	fi
+	rm -f "${sdl3nm}"
 fi
 
 # Class B after NextUI. Keep generated getty/sysinit; only add ::once.
