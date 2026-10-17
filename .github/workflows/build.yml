@@ -39,7 +39,106 @@ permissions:
   packages: read
 
 jobs:
+  armhf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: justinthelaw/maximize-github-runner-space@v0.12.2
+        continue-on-error: true
+        with:
+          skip-components: docker-engine
+
+      - uses: actions/checkout@v7
+
+      - name: Ensure Docker
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y docker.io
+            sudo chmod 666 /var/run/docker.sock || true
+          fi
+          sudo apt-get install -y zstd ccache
+          docker version
+
+      - name: Restore ARMHF runtime export
+        id: armhf-cache
+        uses: actions/cache/restore@v6
+        continue-on-error: true
+        with:
+          path: output-armhf-export
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+
+      - name: Use cached ARMHF runtime
+        id: cached
+        run: |
+          set -euo pipefail
+          echo "hit=false" >> "$GITHUB_OUTPUT"
+          if [ "${{ steps.armhf-cache.outputs.cache-hit }}" != "true" ]; then
+            exit 0
+          fi
+          if ./package/system/zlyme-armhf-runtime/check-manifest.sh output-armhf-export; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore ARMHF ccache
+        if: steps.cached.outputs.hit != 'true'
+        uses: actions/cache/restore@v6
+        continue-on-error: true
+        with:
+          path: .ccache-armhf
+          key: ccache-armhf-${{ github.run_id }}
+          restore-keys: |
+            ccache-armhf-
+
+      - name: Pull or build zlyme-build
+        if: steps.cached.outputs.hit != 'true'
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          img="ghcr.io/${owner}/zlyme-build:latest"
+          if ! docker pull "$img"; then
+            docker build -t zlyme-build - < Dockerfile
+          else
+            docker tag "$img" zlyme-build
+          fi
+
+      - name: Build ARMHF sysroot
+        if: steps.cached.outputs.hit != 'true'
+        env:
+          ZLYME_CCACHE: ${{ github.workspace }}/.ccache-armhf
+        run: |
+          set -euo pipefail
+          chmod +x ./build.sh ./scripts/build-armhf-sysroot.sh ./scripts/armhf-runtime-export.sh
+          timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh
+          ./scripts/armhf-runtime-export.sh output-armhf-export
+
+      - name: Save ARMHF ccache
+        if: steps.cached.outputs.hit != 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: .ccache-armhf
+          key: ccache-armhf-${{ github.run_id }}
+
+      - name: Save ARMHF runtime export
+        if: steps.cached.outputs.hit != 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: output-armhf-export
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+
+      - name: Upload ARMHF runtime
+        uses: actions/upload-artifact@v7
+        with:
+          name: zlyme-armhf-runtime
+          retention-days: 1
+          path: output-armhf-export
+          if-no-files-found: error
+
   stage-a:
+    needs: armhf
     uses: ./.github/workflows/build-stage.yml
     with:
       stage: a

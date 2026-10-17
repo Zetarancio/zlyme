@@ -99,6 +99,17 @@ jobs:
             docker tag "$img" zlyme-build
           fi
 
+      - name: ARMHF runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: zlyme-armhf-runtime
+          path: output-armhf
+
+      - name: Check ARMHF runtime
+        run: |
+          set -euo pipefail
+          ./package/system/zlyme-armhf-runtime/check-manifest.sh output-armhf
+
       - name: Build image
         id: build
         env:

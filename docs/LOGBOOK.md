@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — GitHub builds the ARMHF runtime first
+
+The `Build` workflow's `armhf` job runs `scripts/build-armhf-sysroot.sh` unless a cached export already passes `check-manifest.sh`. `scripts/armhf-runtime-export.sh` copies the manifest, the defconfig stamp, the Buildroot config, the loader, and `/usr/lib/zlyme-armhf`, then runs that check. The image stages download that tree as `output-armhf` and check it again. A local export of the existing sysroot printed `armhf manifest ok`. No image was built.
+
 ## 2026-10-17 — HDMI policy is one gated choice
 
 `zlyme-hdmi` reads HDMI-A modes and prints the choice. `ZLYME_HDMI_720P=1` is required before it opens DRM. NextUI `8c2e3e44` letterboxes from that result and logs `/sys/class/drm/.../mode` after the first present. It does not open DRM. SDL 2.32.10 KMSDRM applies the mode only when the connector id matches an HDMI-A connector. `ra-run` adds a session config and leaves a non-zero user `video_fullscreen_x` alone. Weston and AetherSX2 get a temporary mode file. Dolphin's `/var/run/drmMode` is not written. Host tests printed `hdmi mode ok`, `hdmi mode script ok`, and `hdmi launch ok`. The cross compiler accepted `hdmi_mode.c`, `hdmi_apply.c`, and `zlyme-hdmi.c` with `-Wall -Wextra -Werror`. `sdl2`, `zlyme-hdmi`, and `nextui` rebuilt. Not run on a Flip.
