@@ -20,10 +20,10 @@ start() {
 		[ "$cur" = "$want" ] && continue
 		printf '%s\n' "$want" > "$c/mode" 2>/dev/null && break
 	done
-	# Replay of the manual Settings cycle. SDL 2.32.10 KMSDRM is the
-	# modeset, when NextUI creates its window. This write stays until
-	# that client applies board/my355/hdmi-mode.c. The saved value stays
-	# so an update does not drop a choice the user already made.
+	# Replay of the manual Settings cycle. It is not the KMS modeset.
+	# NextUI applies 720p only when ZLYME_HDMI_720P=1, through SDL
+	# SetWindowDisplayMode. Until that gate is the normal path, this
+	# write and the saved value stay.
 	if [ -s /storage/.config/zlyme/display_mode ]; then
 		mode=$(tr -d ' \t\r\n' < /storage/.config/zlyme/display_mode)
 		if [ -n "$mode" ]; then

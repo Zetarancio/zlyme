@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 13848ddbeaafc322dbd9f4dfdeefde2ec1ea29d4
+NEXTUI_VERSION = caca2da7a31609394f81cf445a3dc65705784537
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -79,6 +79,12 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/platform.o \
 		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/platform.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-o $(@D)/hdmi_mode.o \
+		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/hdmi_mode.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
+		-o $(@D)/hdmi_apply.o \
+		$(@D)/workspace/$(NEXTUI_PLATFORM)/platform/hdmi_apply.c
+	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 		-I$(@D)/workspace/all/nextui \
 		-o $(@D)/launch_queue.o $(@D)/workspace/all/nextui/launch_queue.c
 	$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
@@ -96,7 +102,7 @@ define NEXTUI_BUILD_CMDS
 		-o $(@D)/zlyme_prefs.o $(NEXTUI_PKGDIR)/zlyme/zlyme_prefs.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/nextui.elf \
 		$(@D)/nextui.o $(@D)/zlyme_thumbpath.o $(@D)/zlyme_artbook.o $(@D)/launch_queue.o $(@D)/scaler.o $(@D)/utils.o $(@D)/config.o \
-		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/zlyme_prefs.o \
+		$(@D)/api.o $(@D)/palette.o $(@D)/platform.o $(@D)/hdmi_mode.o $(@D)/hdmi_apply.o $(@D)/zlyme_prefs.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS)
 	$(foreach src,http ra_auth ra_offline ra_sync ra_event_queue,\
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
@@ -122,7 +128,7 @@ define NEXTUI_BUILD_CMDS
 		$(NEXTUI_PKGDIR)/zlyme/gamepad-ff/ff_gain.c \
 		$(@D)/utils.o $(@D)/api.o $(@D)/config.o $(@D)/scaler.o \
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
-		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o \
+		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o $(@D)/hdmi_mode.o $(@D)/hdmi_apply.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcurl -lcrypto -lstdc++
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/show.elf \
 		$(NEXTUI_PKGDIR)/zlyme/show.c \

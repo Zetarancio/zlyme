@@ -1,4 +1,4 @@
-#include "hdmi-mode.h"
+#include "hdmi_mode.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -79,21 +79,54 @@ int main(void)
 	memset(&active, 0, sizeof(active));
 	list[0] = mode(1280, 720, 60000, 1);
 	zlyme_hdmi_choose(list, 1, &choice);
-	expect(zlyme_hdmi_needs_modeset(&active, &choice), "first 720p60 did not request a modeset");
-	if (zlyme_hdmi_needs_modeset(&active, &choice))
-		active = choice;
+	expect(zlyme_hdmi_commit(1, &choice, &active), "first 720p60 did not commit");
 	zlyme_hdmi_choose(list, 1, &again);
-	expect(!zlyme_hdmi_needs_modeset(&active, &again), "unchanged 720p60 requested another modeset");
+	expect(!zlyme_hdmi_commit(1, &again, &active), "unchanged 720p60 committed again");
 	zlyme_hdmi_choose(NULL, 0, &again);
-	expect(!zlyme_hdmi_needs_modeset(&active, &again), "disconnect requested a modeset");
+	expect(!zlyme_hdmi_commit(1, &again, &active), "disconnect committed a mode");
 	expect(active.width == 1280 && active.refresh_mhz == 60000,
 	       "disconnect cleared the last good mode");
 	list[0] = mode(1920, 1080, 60000, 1);
 	zlyme_hdmi_choose(list, 1, &again);
-	expect(zlyme_hdmi_needs_modeset(&active, &again), "a new mode did not request a modeset");
-	if (0 && zlyme_hdmi_needs_modeset(&active, &again))
-		active = again;
-	expect(active.width == 1280, "a failed modeset replaced the active mode");
+	expect(!zlyme_hdmi_commit(0, &again, &active), "failed modeset reported success");
+	expect(active.width == 1280 && active.refresh_mhz == 60000,
+	       "failed modeset replaced the active mode");
+	expect(zlyme_hdmi_commit(1, &again, &active), "successful modeset did not commit");
+	expect(active.width == 1920, "successful modeset did not stick");
+	expect(!zlyme_hdmi_commit(1, &again, &active), "repeat modeset was not a no-op");
+
+	{
+		struct zlyme_hdmi_mode panel[] = { mode(640, 480, 60000, 1) };
+		struct zlyme_hdmi_mode hdmi[] = {
+			mode(1920, 1080, 60000, 1),
+			mode(1280, 720, 59940, 0)
+		};
+		const struct zlyme_hdmi_mode *lists[] = { panel, hdmi };
+		int counts[] = { 1, 2 };
+		int which = zlyme_hdmi_select_list(lists, counts, 2, &choice);
+
+		expect(which == 1 && choice.width == 1280 && choice.refresh_mhz == 59940,
+		       "panel list was preferred over HDMI 720p59.94");
+	}
+	expect(zlyme_hdmi_refresh_mhz(74176, 1650, 750) == 59940,
+	       "74176 kHz 1650x750 is not 59.94 Hz");
+	expect(zlyme_hdmi_refresh_mhz(74250, 1650, 750) == 60000,
+	       "74250 kHz 1650x750 is not 60 Hz");
+	expect(zlyme_hdmi_refresh_mhz(0, 1650, 750) == 0, "missing clock produced a refresh");
+
+	{
+		struct zlyme_hdmi_rect box;
+
+		zlyme_hdmi_viewport(640, 480, 640, 480, &box);
+		expect(box.x == 0 && box.y == 0 && box.w == 640 && box.h == 480,
+		       "panel viewport is not the full 640x480");
+		zlyme_hdmi_viewport(640, 480, 1280, 720, &box);
+		expect(box.x == 160 && box.y == 0 && box.w == 960 && box.h == 720,
+		       "720p viewport is not centered 960x720");
+		zlyme_hdmi_viewport(640, 480, 1920, 1080, &box);
+		expect(box.x == 240 && box.y == 0 && box.w == 1440 && box.h == 1080,
+		       "1080p viewport is not centered 1440x1080");
+	}
 
 	expect(zlyme_panel_refresh_hz("40") == 40, "40 Hz panel refresh");
 	expect(zlyme_panel_refresh_hz("50") == 50, "50 Hz panel refresh");

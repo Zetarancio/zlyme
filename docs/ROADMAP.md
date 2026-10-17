@@ -349,7 +349,17 @@ Status: Deferred as per-game work. The rejection stands.
 
 One late hardware pass: boot and controls, Wi-Fi off and on with one enabled network service, HDMI 720p and return to the panel, one native port and one compatibility runtime, then a clean return to NextUI with no leaked mount. Host and build checks cover the rest. Say what was not run.
 
-Status: Planned. No `zlyme44.4` release in this phase until that acceptance.
+Status: Planned. No `zlyme44.4` release until this pass. One candidate, then one hardware session. Pass means the observation named here. Anything else stays untested.
+
+- Boot reaches NextUI. MENU+START returns from a game.
+- Wi-Fi off stops SSH, Samba, and Syncthing. Wi-Fi on starts only the services that are enabled.
+- A system without its own picture shows the Art Book overlay. A tool does too. Recently Played shows the seeded picture unless `.media` or the card background already has one.
+- One native PortMaster game starts and returns. `zlyme-portmaster-cleanup` leaves no mount it recorded.
+- `/usr/bin/zlyme-armhf-probe` is not the check. The ARMHF probe is in the side sysroot. On the Flip, an ELF32 hard-float program whose interpreter is `/lib/ld-linux-armhf.so.3` must print a 32-bit result while `libc.so.6` opens from `/usr/lib/zlyme-armhf`. `DEVICE_HAS_ARMHF` stays `N` until that happens.
+- HDMI, with `ZLYME_HDMI_720P=1` only for this check: the log line `ZLYME_HDMI_720P:` names 1280×720 and viewport `160,0 960x720` when `/sys/class/drm/card0-HDMI-A-1/modes` lists that size. Pass also requires `/sys/class/drm/card0-HDMI-A-1/mode` to read `1280x720` and side bars rather than a stretched picture. A listed fallback is a pass only when the log and that `mode` file name the same size. Unplug: NextUI returns, `card0-DSI-1/mode` reads `640x480`, and `/storage/.config/zlyme/display_mode` is unchanged. The saved 40, 50, or 60 Hz is the value `S16display` wrote at boot.
+- No SDL3 window probe is shipped. Skip that row.
+
+The installed image stays `zlyme44.3` until that candidate is built and accepted. HDMI unplug and the ARMHF program are the two checks that can change the display or prove a new userspace. Neither needs to run before the first boot of the candidate.
 
 ### 14I. PortMaster platform
 
@@ -379,7 +389,7 @@ Status: Host-tested. `zlyme-artbook` downloads Art Book Next `d772d071` and comp
 
 Prefer 1280×720 at 60 Hz on HDMI when the display lists that mode, and an EDID mode otherwise. The panel stays 640×480 at the selected refresh. Modesetting belongs to the DRM client. A write to a read-only sysfs `modes` file is not that. Drop the manual cycle if the automatic choice replaces it. No DTS change for this item.
 
-Status: Host-tested selection, not applied on the device. `board/my355/hdmi-mode.c` prefers 1280×720 within 0.5 Hz of 60 Hz, then a preferred EDID mode, then the first usable mode. SDL 2.32.10 KMSDRM still modesets the mode closest to NextUI's 640×480 window. The selector is not called from that window, because filling a 1280×720 scanout with the 640×480 surface would stretch it. `S16display` still writes a saved manual mode and still sets the panel to 640×480 at 40, 50, or 60 Hz. No DTS change. Not run on a Flip.
+Status: In the NextUI binary, host-tested, not device-tested. `PLAT_initVideo` calls `PLAT_hdmi_after_window`. `ZLYME_HDMI_720P=1` is required before it moves the window onto the HDMI SDL display and calls `SDL_SetWindowDisplayMode`. The choice prefers 1280×720 within 0.5 Hz of 60 Hz, using the DRM mode clock, then a preferred mode, then the first usable mode. SDL cannot tell 59.94 Hz from 60 Hz. The SDL and GL outputs use a centered 4:3 viewport. The gate is off in a normal boot, so the scanout stays the previous 640×480 path. `S16display` still replays `display_mode` and still sets the panel refresh. No DTS change.
 
 ### 14N. Delete Game cleanup
 

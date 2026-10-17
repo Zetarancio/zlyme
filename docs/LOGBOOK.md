@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-17 — HDMI modeset targets the HDMI display
+
+NextUI `caca2da7` still calls `PLAT_hdmi_after_window` from `PLAT_initVideo`, and only when `ZLYME_HDMI_720P=1`. The window now moves onto the SDL display that advertised the chosen mode before `SDL_SetWindowDisplayMode`. A display mismatch restores the previous position and does not letterbox. `SDL_GetWindowDisplayMode` checks SDL's selected size. The CRTC write stays on the next swap. The host test still maps 640×480 to 960×720 at x=160. The cross compiler accepted `hdmi_apply.c` with `-Wall -Wextra -Werror`. Not run on a Flip.
+
+## 2026-10-17 — HDMI 720p is behind ZLYME_HDMI_720P
+
+NextUI `511db5eb` links `hdmi_mode.c` and `hdmi_apply.c`. A clean compile of `nextui.c` also needed `top` and `stack` declared before `replace_top_directory`. `PLAT_initVideo` calls `PLAT_hdmi_after_window`. The modeset runs only when `ZLYME_HDMI_720P=1`. It reads HDMI-A modes without taking DRM master, prefers 1280×720 within 0.5 Hz of 60 Hz from the mode clock, and asks SDL 2.32.10 with `SDL_SetWindowDisplayMode`. The host test maps 640×480 onto 1280×720 as 960×720 at x=160, and a failed commit leaves the previous choice. The cross compiler accepted both new files with `-Wall -Wextra -Werror`. A normal boot leaves the variable unset, so the window stays 640×480. `S16display` still sets the panel refresh and still replays `display_mode`. Not run on a Flip.
+
 ## 2026-10-17 — HDMI 720p choice, not yet applied
 
 `board/my355/hdmi-mode.c` prefers 1280×720 within 0.5 Hz of 60 Hz, then a preferred mode, then the first usable mode. The host test covers an empty list, a broken EDID, 720p60 beside preferred 1080p, 720p at 50 Hz, 59.94 Hz against 60 Hz, a repeated choice, a disconnect, and a failed modeset that keeps the previous choice. SDL 2.32.10 KMSDRM still modesets from NextUI's 640×480 window. The selector is not called there, because filling that scanout with the 640×480 surface would stretch it. `S16display` still applies the panel refresh and still replays `display_mode`. Not run on a Flip.
