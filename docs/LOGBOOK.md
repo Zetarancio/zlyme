@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — installed 1cbe3b8 HDMI CRTC
+
+`/boot/zlyme` is `ca8a9e934d7d1b21a09d7fe3c8c352207617fb6bf284e423bee4708c457253a9`, the `zlyme` member of `zlyme-my355-20261017-1cbe3b80aae3.tar`. With `ZLYME_HDMI_720P=1` and the stock session, HDMI-A-1 scanned `1280x720` at 74250 kHz on `video_port0`. NextUI logged viewport `160,0 960x720`. The panel stayed `640x480` at 32000 kHz. PPSSPP's SDL window did the same clock. RetroArch's session file asked for 1280×720 and its log then said `Falling back to mode 0`, and the CRTC stayed `1920x1080` at 148500 kHz. The ungated frontend returned and HDMI went back to `1024x768` at 78750 kHz. GitHub run `39043129060` completed successfully, including the ARMHF tar extract. The sysfs `mode` file was not the proof.
+
 ## 2026-10-17 — ARMHF tar, PanVK opt-in, HDMI scope
 
 Runs `39031848308` and `39035776085` both built the ARMHF job and then failed the image stage. The first lost the loader's mode. The second stored `libatomic.so` as a regular file. The image job now downloads one tar. `panfrost` in `/storage/.config/zlyme/gpu` stays OpenGL and does not export `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER`. `panvk` is that opt-in. PortMaster `2026.06.23-0015` has no Vulkan capability bit. The HDMI requirement is a new emulator process after the cable is connected, not a modeset while that process is running. The SDL mode-index patch and the RetroArch unbound-encoder check stay. The panel stays active. The installed image is still `a58a5ab6`.
