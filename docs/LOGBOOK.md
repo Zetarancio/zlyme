@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Panel marker and PulseAudio readiness
+
+The SDL marker is the line `panel-off`. It does not store a framebuffer id. Linux 7.2.10 `drm_mode_setcrtc` rejects a connector count without a mode and a framebuffer, so the DSI disable uses framebuffer 0, a null connector list, and a null mode, and only when the DSI CRTC is not the HDMI CRTC. The next ungated SDL client opens the DSI display and allocates its own buffer. RetroArch does not take that path. This has not been run on a Flip.
+
+PulseAudio 17 runs as one `--system` instance. The `pulse` user is in `audio`. The socket directory is mode 0700. Anonymous authentication is off. `S21pulse` records `launched` when the process starts and writes `/run/zlyme/pulse/service` only after a later check sees the codec sink. `zlyme-btsink` retries a choice it could not apply, including a new headset address. The first usable boot copies `FlipVolume` into the Pulse volume once. The host has no `pulseaudio` daemon, so the live server check is still pending a Flip.
+
 ## 2026-10-18 — PulseAudio and the panel-off brace
 
 The SDL panel-off call sat after `return 0` in the failed HDMI modeset branch, so it never ran. It now runs only after that modeset returns success. A crash marker stores the DSI mode. The next client programs that CRTC with its own framebuffer. The old helper that reused a saved framebuffer id is gone.

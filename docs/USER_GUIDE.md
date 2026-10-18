@@ -256,7 +256,7 @@ Besides its game options, this page holds cleanup actions. Each one asks before 
 
 ### Sound
 
-Volume is one setting for the speaker, the headphone jack, HDMI, and Bluetooth headphones. Plugging in headphones switches the speaker off without leaving the game. Bluetooth headphones are used when they are connected for audio. A Bluetooth controller does not do that. HDMI sound is used only when the display reports that it can play audio. Pulling the cable returns sound to the speaker or the jack.
+Volume is one setting for the speaker, the headphone jack, HDMI, and Bluetooth headphones. The first boot after this audio change keeps the volume that was already saved on the device. Plugging in headphones switches the speaker off without leaving the game. Bluetooth headphones are used when they are connected for audio. A Bluetooth controller does not do that. HDMI sound is used only when the display reports that it can play audio. Pulling the cable returns sound to the speaker or the jack.
 
 ### System
 

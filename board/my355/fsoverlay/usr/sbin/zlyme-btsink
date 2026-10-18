@@ -1,10 +1,15 @@
 #!/bin/sh
 #
-# Live ALSA sink matrix. A2DP headset wins; else HDMI if the sink has
+# Live sink choice. A2DP headset wins; else HDMI if the sink has
 # audio (ELD SAD); else codec + jack mux. HID pads never change this.
-# Poll so a cable or buds switch without reboot.
+# A failed apply is not remembered, so a server that was down is tried
+# again. A module id from an older server is not treated as the
+# current headset.
 
-. /etc/zlyme.conf 2>/dev/null || true
+# A missing file must not abort the shell. `.` is a special builtin.
+if [ -r /etc/zlyme.conf ]; then
+	. /etc/zlyme.conf
+fi
 
 want_bt() {
 	bluealsa-cli list-pcms 2>/dev/null | grep -q a2dpsrc
@@ -55,24 +60,25 @@ bt_mac() {
 
 apply() {
 	want=$1
+	zlyme-audio pulse-service || return 1
 	case "$want" in
 		bt)
 			mac=$(bt_mac) || mac=
-			[ -n "$mac" ] || return 0
+			[ -n "$mac" ] || return 1
 			zlyme-audio sink-down hdmi || true
-			zlyme-audio sink-up bt "$mac" || return 0
+			zlyme-audio sink-up bt "$mac" || return 1
 			;;
 		hdmi)
 			zlyme-audio sink-down bt || true
-			zlyme-audio sink-up hdmi || return 0
+			zlyme-audio sink-up hdmi || return 1
 			;;
 		*)
 			zlyme-audio sink-down bt || true
 			zlyme-audio sink-down hdmi || true
 			;;
 	esac
-	zlyme-audio set "$want" >/dev/null 2>&1 || return 0
-	zlyme-audio focus "$want" || true
+	zlyme-audio focus "$want" || return 1
+	zlyme-audio remember "$want" || return 1
 }
 
 need() {
@@ -83,20 +89,28 @@ need() {
 	esac
 }
 
+sink_ready() {
+	cur=$1
+	if [ "$cur" = bt ]; then
+		mac=$(bt_mac) || mac=
+		zlyme-audio sink-ok bt "$mac"
+	else
+		zlyme-audio sink-ok "$cur"
+	fi
+}
+
 prev=""
 pending=""
 npending=0
+loops=0
+limit=${ZLYME_BTSINK_LIMIT:-0}
+pause=${ZLYME_BTSINK_SLEEP:-1}
 while :; do
 	cur=$(pick)
+	try=0
 	if [ -z "$prev" ]; then
-		apply "$cur"
-		prev=$cur
-		pending=""
-		npending=0
-	elif [ "$cur" = "$prev" ]; then
-		pending=""
-		npending=0
-	else
+		try=1
+	elif [ "$cur" != "$prev" ]; then
 		if [ "$pending" = "$cur" ]; then
 			npending=$((npending + 1))
 		else
@@ -104,11 +118,28 @@ while :; do
 			npending=1
 		fi
 		if [ "$npending" -ge "$(need "$cur")" ]; then
-			apply "$cur"
+			try=1
+		fi
+	else
+		pending=""
+		npending=0
+		sink_ready "$cur" || try=1
+	fi
+	if [ "$try" = 1 ]; then
+		if apply "$cur"; then
 			prev=$cur
+			pending=""
+			npending=0
+		else
+			# Do not record prev. The next pass tries again.
 			pending=""
 			npending=0
 		fi
 	fi
-	sleep 1
+	loops=$((loops + 1))
+	if [ "$limit" -gt 0 ] && [ "$loops" -ge "$limit" ]; then
+		printf 'prev=%s\n' "$prev"
+		exit 0
+	fi
+	sleep "$pause"
 done

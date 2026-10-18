@@ -1,4 +1,7 @@
 #!/bin/sh
-# Buildroot ships S50pulseaudio. S44pulse is the one server.
-# This file replaces that script so a second daemon is not started.
+# Buildroot's S50pulseaudio starts a second server with
+# --disallow-module-loading. S21pulse is the one system instance.
+# HDMI and Bluetooth sinks are loaded after startup, so that flag
+# does not fit this board. This script stays so the package file is
+# replaced and init does not run it.
 exit 0

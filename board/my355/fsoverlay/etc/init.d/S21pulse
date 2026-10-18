@@ -1,37 +1,107 @@
 #!/bin/sh
-# PulseAudio before the frontend and before zlyme-btsink. Daemonize
-# returns when the process is up. It does not poll.
+# One PulseAudio 17 system instance, as the pulse user Buildroot
+# creates. --system drops to that user with initgroups, so the
+# process is in the audio group and can open the RK817 and talk to
+# BlueALSA on the system bus. It is not a root daemon.
+#
+# Buildroot's own service refuses module loads after startup.
+# This instance does not. zlyme-audio loads the HDMI and
+# Bluetooth sinks later. Pulse logs a warning about that.
+# The warning is the reason those sinks can appear later. There is
+# still one server and no TCP module.
+#
+# The socket inode is mode 0777 because that is what PulseAudio 17
+# does. The directory is mode 0700 and owned by pulse, which is the
+# boundary Pulse's own comment asks for. auth-anonymous is off.
+# Clients authenticate with the pulse-access group or the cookie
+# file in that directory. Root is not in pulse-access. Root reads
+# the cookie. There is no other local user.
+#
+# daemonize is not used. This script returns as soon as the process
+# is launched. A later check, not this script, decides whether the
+# codec sink is actually usable. That check does not delay the
+# frontend.
 
 DAEMON=/usr/bin/pulseaudio
-PIDFILE=/run/zlyme/pulse/pid
-export PULSE_RUNTIME_PATH=/run/zlyme/pulse
-export PULSE_STATE_PATH=/storage/.config/zlyme/pulse
-export PULSE_COOKIE=/storage/.config/zlyme/pulse/cookie
+RUNTIME=/run/zlyme/pulse
+PIDFILE=$RUNTIME/pid
+STATUS=$RUNTIME/service
+
+ready_check() {
+	i=0
+	while [ "$i" -lt 5 ]; do
+		if zlyme-audio pulse-service; then
+			printf '%s\n' ready > "$STATUS"
+			zlyme-audio migrate-volume || printf '%s\n' 'volume migration deferred' >> "$STATUS"
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1
+	done
+	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+		printf '%s\n' 'failed: daemon is up, codec sink is not usable' > "$STATUS"
+	else
+		printf '%s\n' 'failed: daemon exited during startup' > "$STATUS"
+	fi
+	return 0
+}
 
 start() {
-	[ -x "$DAEMON" ] || return 0
-	mkdir -p "$PULSE_RUNTIME_PATH" "$PULSE_STATE_PATH" || return 0
+	[ -x "$DAEMON" ] || {
+		printf '%s\n' 'pulseaudio: /usr/bin/pulseaudio is missing' > /run/zlyme/pulse-missing
+		return 0
+	}
+	if ! id pulse >/dev/null 2>&1; then
+		printf '%s\n' 'pulseaudio: pulse user is missing' > "$STATUS"
+		echo "Starting pulseaudio: FAIL"
+		return 0
+	fi
+	mkdir -p "$RUNTIME" /storage/.config/zlyme || return 0
+	chown pulse:pulse "$RUNTIME" || return 0
+	chmod 0700 "$RUNTIME" || return 0
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
 		echo "Starting pulseaudio: already"
 		return 0
 	fi
-	printf "Starting pulseaudio: "
-	if "$DAEMON" --daemonize=yes --exit-idle-time=-1 \
-		--use-pid-file --fail \
-		--file=/etc/pulse/zlyme.pa \
-		--log-target=syslog; then
-		echo OK
-	else
-		echo FAIL
+	if pidof pulseaudio >/dev/null 2>&1; then
+		echo "Starting pulseaudio: already"
 		return 0
 	fi
+	printf "Starting pulseaudio: "
+	# --fail makes Pulse exit if zlyme.pa cannot load a module.
+	# The background check is what records that. This line does not
+	# say the codec sink is usable.
+	# -n skips system.pa. That file would load udev-detect and a
+	# second native socket. zlyme.pa is the whole startup file.
+	if start-stop-daemon -S -b -m -p "$PIDFILE" --exec "$DAEMON" -- \
+		--system \
+		--daemonize=no \
+		--exit-idle-time=-1 \
+		--use-pid-file=no \
+		--fail \
+		-n \
+		--file=/etc/pulse/zlyme.pa \
+		--log-target=syslog
+	then
+		echo "launched"
+		ready_check &
+	else
+		echo "FAIL"
+		printf '%s\n' 'failed: could not launch' > "$STATUS"
+	fi
+	return 0
 }
 
 stop() {
 	[ -x "$DAEMON" ] || return 0
 	printf "Stopping pulseaudio: "
-	PULSE_RUNTIME_PATH=/run/zlyme/pulse "$DAEMON" --kill >/dev/null 2>&1 || true
-	echo OK
+	"$DAEMON" --kill >/dev/null 2>&1 || true
+	if [ -f "$PIDFILE" ]; then
+		kill "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null || true
+		rm -f "$PIDFILE"
+	fi
+	rm -f "$STATUS"
+	echo "stopped"
 	return 0
 }
 

@@ -7,10 +7,13 @@
 CARD=rk817ext
 STATE="${ZLYME_CFG}/asound.state"
 
-# Open the PCM once so the FlipVolume softvol control exists.
+# Open the softvol device once so the FlipVolume control exists.
+# The default PCM is PulseAudio, and that server is not up yet.
+# flipvol_codec is the named softvol. The open ends before S21pulse
+# takes the hardware device, so the codec sink is not stacked on it.
 prime_softvol() {
-	dd if=/dev/zero bs=4096 count=1 2>/dev/null |
-		aplay -q -t raw -f S16_LE -c 2 -r 48000 -D default >/dev/null 2>&1 || true
+	dd if=/dev/zero bs=32 count=1 2>/dev/null |
+		aplay -q -t raw -f S16_LE -c 2 -r 48000 -D flipvol_codec >/dev/null 2>&1 || true
 }
 
 start() {
@@ -19,6 +22,7 @@ start() {
 		return 0
 	fi
 
+	prime_softvol
 	printf "Restoring mixer state: "
 	if [ -r "$STATE" ]; then
 		if alsactl -f "$STATE" -F restore "$CARD" >/dev/null 2>&1; then
@@ -27,12 +31,10 @@ start() {
 			echo "partial"
 		fi
 	else
-		echo "no saved state -- storing current"
+		amixer -q -c "$CARD" sset FlipVolume 40% 2>/dev/null || true
+		echo "no saved state -- storing 40%"
 		store
 	fi
-	# FlipVolume exists after the first PCM open. Do not hold Class A
-	# for aplay (~0.4 s).
-	prime_softvol &
 
 	return 0
 }
