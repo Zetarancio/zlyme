@@ -168,9 +168,9 @@ Speaker/headphones share the RK817 codec route.
 
 `zlyme-jackd` follows the headphone jack and changes `Playback Mux`.
 
-Every sink uses the one softvol control `FlipVolume`, hosted on `rk817ext`.
+Playback goes through one PulseAudio server. The default ALSA PCM is the Pulse plugin. `FlipVolume` on `rk817ext` is the saved mixer level that the first Pulse boot copies. It is not the level a normal program changes after that.
 
-HDMI and Bluetooth are separate sinks.
+HDMI and Bluetooth are separate Pulse sinks. BlueALSA owns the A2DP transport.
 
 Always use stable ALSA card IDs rather than assuming numeric card order.
 

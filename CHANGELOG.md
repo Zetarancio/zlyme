@@ -18,9 +18,11 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Fixed
 
 - Opening a game list no longer puts the previous system's picture back after you have moved on.
+- Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
 
 ### Changed
 
+- Sound from a game, HDMI, and Bluetooth headphones goes through one volume control. Headphones still switch themselves when the plug goes in. A normal boot leaves the internal screen on. Starting a program with HDMI on turns that screen off until you leave the program.
 - PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.
 
 ## [zlyme44.3] - 2026-10-16

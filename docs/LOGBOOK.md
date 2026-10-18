@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Pulse never started, and a MAC copy ran off the end
+
+`rcS` Class A listed `S20alsa` and `S25jackd` and skipped `S21pulse`. `rc.late` does not start it, and `S50pulseaudio` is a no-op, so the default Pulse PCM had no server. `S21pulse` is now in that whitelist, after the mixer restore and before the jack watcher. Its five-second codec check stays in the background.
+
+`copyScan` used `strncpy` into `char addr[18]` without writing the last byte. `strlen` in `bt_mac_ok` could read past it. Copies now stop on a NUL. Discovery is a session on this Settings connection. `GetManagedObjects` supplies Device1 properties. No second `GetAll` per device. Volume buttons call `zlyme-audio`. This has not been installed.
+
 ## 2026-10-18 — Bluetooth discovery and the panel marker
 
 On the installed image `356d7f5c…` (`d438e74`), Settings was open, `hci0` was powered, and BlueZ `Discovering` was true. Object `/org/bluez/hci0/dev_7D_30_77_6A_D5_A1` existed with an address and no Name, Class, or Icon. `bluetoothctl devices` printed nothing. The scan list is that command, and it then drops a device whose class is not audio or a controller. `PLAT_bluetoothDiscovery` also calls `StartDiscovery` through a `dbus-send` that exits, so BlueZ drops the session, and the code sets `bt_discovering` without reading the adapter. That change is NextUI `faf55f11`. The earlier `cdc208ca` path kept a `bluetoothctl` process. The replacement keeps one Settings D-Bus connection, the pairing agent, for both start and stop. SSH did not change pairing data.

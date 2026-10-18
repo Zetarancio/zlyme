@@ -321,7 +321,7 @@ frontend / PAK / generic service
 zlyme-* semantic command
         |
         v
-board-specific sysfs / ALSA / GPIO / DRM implementation
+board-specific sysfs / ALSA / PulseAudio / GPIO / DRM implementation
 ```
 
 Keep hardware details on the bottom side of that boundary.
