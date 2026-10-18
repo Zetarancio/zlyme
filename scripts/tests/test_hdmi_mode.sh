@@ -36,8 +36,20 @@ grep -q 'SDL_SetWindowFullscreen' "$NEXT/workspace/my355/platform/hdmi_apply.c" 
 	&& fail "NextUI still modesets after the GL resources exist"
 grep -q 'drmDropMaster\|drmModeGetResources' "$NEXT/workspace/my355/platform/hdmi_apply.c" \
 	&& fail "NextUI still opens DRM itself"
-grep -q 'ZLYME_HDMI_PANEL: DSI crtc' "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" \
-	|| fail "panel disable is not behind a successful HDMI modeset"
+python3 - "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" << 'PY'
+import sys
+text = open(sys.argv[1]).read()
+i = text.find("Could not set videomode on CRTC.")
+chunk = text[i:i+600]
+ret = chunk.find("return 0;")
+brace = chunk.find("}", ret)
+q = chunk.find("KMSDRM_ZlymeQuiescePanel")
+if not (0 <= ret < brace < q):
+    raise SystemExit("panel disable is inside the failed modeset branch")
+if "KMSDRM_ZlymeRecoverPanel" not in text:
+    raise SystemExit("crash recovery does not use the next client's framebuffer")
+print("hdmi panel order ok")
+PY
 grep -q 'Could not set videomode on CRTC' "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" \
 	|| fail "panel disable is not tied to the modeset result"
 grep -q 'Atomic cap failed' "$ROOT/package/emulators/retroarch/0001-drm-select-free-crtc-for-unbound-connector.patch" \

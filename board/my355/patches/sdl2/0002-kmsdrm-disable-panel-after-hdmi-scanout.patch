@@ -1,13 +1,12 @@
 --- a/src/video/kmsdrm/SDL_kmsdrmopengles.c
 +++ b/src/video/kmsdrm/SDL_kmsdrmopengles.c
-@@ -86,6 +86,107 @@
+@@ -86,6 +86,172 @@
      return 0;
  }
  
-+/* Saved only after HDMI drmModeSetCrtc succeeds. DestroySurfaces puts
-+ * this CRTC back. A crash leaves /run/zlyme/hdmi-panel-off for the
-+ * next session. The panel is not turned off because the connector
-+ * status says connected. */
++
++/* Panel off only after this process has modeset HDMI. The marker stores
++ * the DSI mode, not a framebuffer a later process may reuse. */
 +static int zlyme_panel_off;
 +static uint32_t zlyme_dsi_crtc, zlyme_dsi_fb, zlyme_dsi_conn;
 +static drmModeModeInfo zlyme_dsi_mode;
@@ -17,13 +16,69 @@
 +    if (!zlyme_panel_off || fd < 0)
 +        return;
 +    if (KMSDRM_drmModeSetCrtc(fd, zlyme_dsi_crtc, zlyme_dsi_fb, 0, 0,
-+                              &zlyme_dsi_conn, 1, &zlyme_dsi_mode) != 0) {
++                              &zlyme_dsi_conn, 1, &zlyme_dsi_mode) != 0)
 +        SDL_Log("ZLYME_HDMI_PANEL: restore failed errno=%d", errno);
-+    } else {
++    else {
 +        SDL_Log("ZLYME_HDMI_PANEL: DSI crtc %u restored", zlyme_dsi_crtc);
 +        unlink("/run/zlyme/hdmi-panel-off");
 +    }
 +    zlyme_panel_off = 0;
++}
++
++static void KMSDRM_ZlymeWriteMarker(drmModeCrtc *crtc, uint32_t conn)
++{
++    FILE *fp = fopen("/run/zlyme/hdmi-panel-off", "w");
++    if (!fp)
++        return;
++    fprintf(fp, "%u %u %u %hu %hu %hu %hu %hu %hu %hu %hu %hu %u %u %u %s\n",
++            crtc->crtc_id, conn,
++            crtc->mode.clock,
++            crtc->mode.hdisplay, crtc->mode.hsync_start,
++            crtc->mode.hsync_end, crtc->mode.htotal, crtc->mode.hskew,
++            crtc->mode.vdisplay, crtc->mode.vsync_start,
++            crtc->mode.vsync_end, crtc->mode.vtotal, crtc->mode.vscan,
++            crtc->mode.vrefresh, crtc->mode.flags, crtc->mode.type,
++            crtc->mode.name);
++    fclose(fp);
++}
++
++static int KMSDRM_ZlymeReadMarker(uint32_t *crtc, uint32_t *conn, drmModeModeInfo *mode)
++{
++    FILE *fp = fopen("/run/zlyme/hdmi-panel-off", "r");
++    unsigned int c, k, clock, vrefresh, flags, type;
++    unsigned int hdisplay, hsync_start, hsync_end, htotal, hskew;
++    unsigned int vdisplay, vsync_start, vsync_end, vtotal, vscan;
++    char name[32];
++    if (!fp)
++        return 0;
++    memset(mode, 0, sizeof(*mode));
++    if (fscanf(fp, "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %31s",
++               &c, &k, &clock,
++               &hdisplay, &hsync_start, &hsync_end, &htotal, &hskew,
++               &vdisplay, &vsync_start, &vsync_end, &vtotal, &vscan,
++               &vrefresh, &flags, &type, name) != 17) {
++        fclose(fp);
++        return 0;
++    }
++    fclose(fp);
++    *crtc = c;
++    *conn = k;
++    mode->clock = clock;
++    mode->hdisplay = hdisplay;
++    mode->hsync_start = hsync_start;
++    mode->hsync_end = hsync_end;
++    mode->htotal = htotal;
++    mode->hskew = hskew;
++    mode->vdisplay = vdisplay;
++    mode->vsync_start = vsync_start;
++    mode->vsync_end = vsync_end;
++    mode->vtotal = vtotal;
++    mode->vscan = vscan;
++    mode->vrefresh = vrefresh;
++    mode->flags = flags;
++    mode->type = type;
++    SDL_strlcpy(mode->name, name, sizeof(mode->name));
++    return 1;
 +}
 +
 +static void KMSDRM_ZlymeQuiescePanel(int fd)
@@ -31,7 +86,8 @@
 +    const char *gate = SDL_getenv("ZLYME_HDMI_720P");
 +    drmModeRes *res;
 +    int i;
-+
++    if (zlyme_panel_off)
++        return;
 +    if (!gate || SDL_strcmp(gate, "1") != 0 || fd < 0)
 +        return;
 +    if (KMSDRM_drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0 ||
@@ -48,8 +104,6 @@
 +        drmModeConnector *conn = KMSDRM_drmModeGetConnector(fd, res->connectors[i]);
 +        drmModeEncoder *enc;
 +        drmModeCrtc *crtc;
-+        FILE *fp;
-+
 +        if (!conn)
 +            continue;
 +        if (conn->connector_type != DRM_MODE_CONNECTOR_DSI || conn->encoder_id == 0) {
@@ -82,19 +136,7 @@
 +            break;
 +        }
 +        zlyme_panel_off = 1;
-+        fp = fopen("/run/zlyme/hdmi-panel-off", "w");
-+        if (fp) {
-+            fprintf(fp, "%u %u %u %u %hu %hu %hu %hu %hu %hu %hu %hu %hu %hu %u %u %u %s\n",
-+                    crtc->crtc_id, crtc->buffer_id, conn->connector_id,
-+                    crtc->mode.clock,
-+                    crtc->mode.hdisplay, crtc->mode.hsync_start,
-+                    crtc->mode.hsync_end, crtc->mode.htotal, crtc->mode.hskew,
-+                    crtc->mode.vdisplay, crtc->mode.vsync_start,
-+                    crtc->mode.vsync_end, crtc->mode.vtotal, crtc->mode.vscan,
-+                    crtc->mode.vrefresh, crtc->mode.flags, crtc->mode.type,
-+                    crtc->mode.name);
-+            fclose(fp);
-+        }
++        KMSDRM_ZlymeWriteMarker(crtc, conn->connector_id);
 +        SDL_Log("ZLYME_HDMI_PANEL: DSI crtc %u disabled after HDMI scanout",
 +                crtc->crtc_id);
 +        KMSDRM_drmModeFreeCrtc(crtc);
@@ -105,18 +147,45 @@
 +    KMSDRM_drmModeFreeResources(res);
 +}
 +
++void KMSDRM_ZlymeRecoverPanel(int fd, uint32_t fb, uint32_t just_conn, int just_type)
++{
++    const char *gate = SDL_getenv("ZLYME_HDMI_720P");
++    uint32_t crtc, conn;
++    drmModeModeInfo mode;
++    if (gate && SDL_strcmp(gate, "1") == 0)
++        return;
++    if (fd < 0 || fb == 0)
++        return;
++    if (!KMSDRM_ZlymeReadMarker(&crtc, &conn, &mode))
++        return;
++    if (just_type == DRM_MODE_CONNECTOR_DSI && just_conn == conn) {
++        unlink("/run/zlyme/hdmi-panel-off");
++        return;
++    }
++    if (KMSDRM_drmModeSetCrtc(fd, crtc, fb, 0, 0, &conn, 1, &mode) != 0)
++        SDL_Log("ZLYME_HDMI_PANEL: recover failed errno=%d", errno);
++    else {
++        SDL_Log("ZLYME_HDMI_PANEL: DSI crtc %u recovered with this client fb", crtc);
++        unlink("/run/zlyme/hdmi-panel-off");
++    }
++}
++
  int KMSDRM_GLES_SwapWindow(_THIS, SDL_Window *window)
  {
      SDL_WindowData *windata = ((SDL_WindowData *)window->driverdata);
-@@ -160,6 +261,8 @@
-         if (ret) {
+@@ -161,6 +327,12 @@
              SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not set videomode on CRTC.");
              return 0;
+         }
 +        if (dispdata->connector->connector_type == DRM_MODE_CONNECTOR_HDMIA)
 +            KMSDRM_ZlymeQuiescePanel(viddata->drm_fd);
-         }
++        else
++            KMSDRM_ZlymeRecoverPanel(viddata->drm_fd, fb_info->fb_id,
++                                     dispdata->connector->connector_id,
++                                     dispdata->connector->connector_type);
      } else {
          /* On subsequent swaps, queue the new front buffer to be flipped during
+            the next vertical blank
 --- a/src/video/kmsdrm/SDL_kmsdrmvideo.c
 +++ b/src/video/kmsdrm/SDL_kmsdrmvideo.c
 @@ -1086,6 +1086,9 @@
