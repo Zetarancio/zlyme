@@ -122,6 +122,13 @@
 +   if (!g_drm_connector || g_drm_connector->encoder_id != 0 || !g_drm_resources)
 +      return false;
 +
++   /* 1.22.2 never sets these. ACTIVE and the primary plane are absent
++    * until it does, so a failed property read marked every CRTC occupied
++    * and an unbound HDMI connector could not take its own disabled CRTC.
++    */
++   drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
++   drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
++
 +   for (i = 0; i < g_drm_connector->count_encoders; i++)
 +   {
 +      drmModeEncoder *enc = drmModeGetEncoder(fd,

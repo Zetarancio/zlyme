@@ -391,6 +391,9 @@ refresh_local_packages() {
         package/system/nextui/nextui.mk
     refresh_compiled_package openbor BR2_PACKAGE_OPENBOR package/emulators/openbor
     refresh_compiled_package ppsspp BR2_PACKAGE_PPSSPP package/emulators/ppsspp
+    # Local patches apply once. A later edit of 0001/0002 must rebuild.
+    refresh_compiled_package retroarch BR2_PACKAGE_RETROARCH \
+        package/emulators/retroarch
     # Every SITE_METHOD=local package. The package directory includes the
     # recipe, so a .mk change dircleans too. Firmware blobs in these
     # directories are the installed bytes, so they count.
