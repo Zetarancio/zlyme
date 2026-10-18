@@ -30,7 +30,7 @@ Product status, kept separate:
 
 ## PulseAudio on a live Flip
 
-`rcS` starts `S21pulse` after `S20alsa` and before `S25jackd`. `rc.late` does not start it. `S50pulseaudio` exits without launching a daemon. `/run/zlyme/pulse/service` says `ready` only after `zlyme-audio pulse-service` sees the `codec` sink. `launched` on the console is not that. A missing file, or a line that begins with `failed:`, means the server or the codec sink did not come up. `zlyme-audio status` is the sink and the 0–100 volume. Rollback is the previous OTA. Do not treat a host test as playback on the Flip.
+`rcS` starts `S21pulse` after `S20alsa` and before `S25jackd`. `rc.late` does not start it. `S50pulseaudio` exits without launching a daemon. The process is the `pulse` user. It is not PulseAudio's `--system` mode, because that mode creates `/var/lib/pulse` on the read-only root and exits. `/run/zlyme/pulse/service` is `launching`, then `alive`, `socket`, and `ready`. `ready` is written only after `zlyme-audio pulse-service` sees the `codec` sink. `launched` on the console is not that. A missing file, or a first line that begins with `failed:`, means the server or the codec sink did not come up. The daemon's own text is `/run/zlyme/pulse/daemon.log`, and `/run/zlyme/pulse/exit` is the process exit status when the launcher recorded it. Do not print the cookie file. `zlyme-audio status` is the sink and the 0–100 volume. Rollback is the previous OTA. Do not treat a host test as playback on the Flip.
 
 ## Kernel and board patches
 

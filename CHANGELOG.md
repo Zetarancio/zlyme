@@ -25,6 +25,10 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Sound from a game, HDMI, and Bluetooth headphones goes through one volume control. Headphones still switch themselves when the plug goes in. A normal boot leaves the internal screen on. Starting a program with HDMI on turns that screen off until you leave the program.
 - PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.
 
+### Known limitations
+
+- Speaker, headphone, and Bluetooth headphone audio have not been confirmed on a Flip.
+
 ## [zlyme44.3] - 2026-10-16
 
 ### Added

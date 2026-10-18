@@ -4,8 +4,8 @@
 # PulseAudio 17 chmod's the socket inode 0777 and says to put it in a
 # directory with real permissions. S21pulse creates
 # /run/zlyme/pulse mode 0700, owned by pulse. Anonymous access is off.
-# System mode also allows the pulse-access group. Root is not in that
-# group; root clients present the cookie in this directory.
+# The pulse-access group may connect. Root is not in that group.
+# Root clients present the cookie in this directory.
 .fail
 
 load-module module-native-protocol-unix auth-anonymous=0 auth-group=pulse-access auth-group-enable=1 auth-cookie=/run/zlyme/pulse/cookie auth-cookie-enabled=1 socket=/run/zlyme/pulse/native

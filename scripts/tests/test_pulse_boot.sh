@@ -11,8 +11,21 @@ fail() { echo "pulse-boot: $*" >&2; exit 1; }
 
 grep -q 'S21pulse' "$RCS" || fail "rcS whitelist omits S21pulse"
 grep -q 'S21pulse' "$LATE" && fail "rc.late also starts PulseAudio"
-grep -q 'ready_check &' "$S21" || fail "readiness check is not backgrounded"
+grep -q 'ready_check "$token" &' "$S21" || fail "readiness check is not backgrounded"
 grep -q 'echo OK' "$S21" && fail "S21pulse marks audio OK at launch"
+grep -q 'zlyme-pulse-launch' "$S21" || fail "S21pulse does not use the launcher"
+grep -q 'daemon.log' "$S21" || fail "S21pulse does not record a daemon log"
+# Comments may name --system. The commands must not pass it.
+if grep -v '^[[:space:]]*#' "$S21" | grep -q -- '--system'; then
+	fail "S21pulse passes --system"
+fi
+launch=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch
+if grep -v '^[[:space:]]*#' "$launch" | grep -q -- '--system'; then
+	fail "launcher passes --system"
+fi
+if grep -v '^[[:space:]]*#' "$S21" | grep -q 'syslog'; then
+	fail "S21pulse still logs to syslog"
+fi
 # The replacement script must not launch the daemon.
 if grep -v '^#' "$S50" | grep -q pulseaudio; then
 	fail "S50pulseaudio still runs pulseaudio"

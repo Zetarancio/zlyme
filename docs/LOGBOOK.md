@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — Pulse system mode exits on the read-only root
+
+`a5483cb` starts `S21pulse` and the process is gone before NextUI. The foreground log is `Failed to create '/var/lib/pulse': Read-only file system`. That is PulseAudio 17 `--system` creating its state directory before it loads `zlyme.pa`. No socket is created, so every client gets connection refused. A process started as `pulse` without `--system`, with runtime state under `/run/zlyme/pulse`, opened `hw:rk817ext,0` and accepted a short stream at 8 percent. Root `pactl` connected with the cookie. The process was stopped. A person has not confirmed the speaker. The boot script on that image is unchanged.
+
 ## 2026-10-18 — Bluetooth page releases its own discovery session
 
 Settings was exporting an Agent1 object on a GDBus connection that nothing iterates, and `RequestDefaultAgent` would replace `zlyme-bluetooth`'s `bluetoothctl` agent. my355 no longer registers that object. Discovery still uses the Settings connection, and it stops when the Bluetooth page closes rather than when Settings is destroyed. Pairing stays the system agent. Not yet installed.

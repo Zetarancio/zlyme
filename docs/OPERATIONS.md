@@ -170,6 +170,8 @@ Speaker/headphones share the RK817 codec route.
 
 Playback goes through one PulseAudio server. The default ALSA PCM is the Pulse plugin. `FlipVolume` on `rk817ext` is the saved mixer level that the first Pulse boot copies. It is not the level a normal program changes after that.
 
+The server runs as `pulse`, with its socket and log under `/run/zlyme/pulse`. `/run/zlyme/pulse/service` is `ready` only when the codec sink is listed. A line that begins with `failed:` is the startup error. The longer text is `/run/zlyme/pulse/daemon.log`. Do not print the cookie file.
+
 HDMI and Bluetooth are separate Pulse sinks. BlueALSA owns the A2DP transport.
 
 Always use stable ALSA card IDs rather than assuming numeric card order.
