@@ -109,7 +109,7 @@ define NEXTUI_BUILD_CMDS
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
 	$(TARGET_CXX) $(NEXTUI_CXXFLAGS) $(NEXTUI_INCLUDES) \
-		-DHAS_BTAGENT $$(pkg-config --cflags gio-2.0) \
+		-DHAS_BTAGENT `pkg-config --cflags gio-2.0` \
 		-I$(NEXTUI_PKGDIR)/zlyme/joystick-cal \
 		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
 		-o $(@D)/settings.elf \
@@ -133,7 +133,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
 		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o $(@D)/hdmi_mode.o $(@D)/hdmi_apply.o \
 		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcurl -lcrypto -lstdc++ \
-		$$(pkg-config --libs gio-2.0)
+		`pkg-config --libs gio-2.0`
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/show.elf \
 		$(NEXTUI_PKGDIR)/zlyme/show.c \
 		$(TARGET_LDFLAGS) -lSDL2 -lSDL2_ttf
