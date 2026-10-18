@@ -11,7 +11,9 @@ src=$work/src
 mkdir -p "$src/target/lib" "$src/target/usr/lib/zlyme-armhf"
 printf '%s\n' zlyme_my355_armhf_defconfig > "$src/.zlyme-defconfig"
 printf '%s\n' 'BR2_arm=y' 'BR2_ARM_EABIHF=y' > "$src/.config"
-printf 'loader\n' > "$src/target/lib/ld-linux-armhf.so.3"
+loader=$ROOT/output-armhf/target/lib/ld-linux-armhf.so.3
+[ -f "$loader" ] || fail "real ARMHF loader is not built"
+cp -a "$loader" "$src/target/lib/ld-linux-armhf.so.3"
 chmod 755 "$src/target/lib/ld-linux-armhf.so.3"
 printf 'libc\n' > "$src/target/usr/lib/zlyme-armhf/libc.so.6"
 printf 'libm\n' > "$src/target/usr/lib/zlyme-armhf/libm.so.6"
@@ -98,4 +100,12 @@ fi
 if "$ROOT/scripts/armhf-runtime-unpack.sh" "$work/link.tar" "$work/link" >/dev/null 2>&1; then
 	fail "escaping symlink was accepted"
 fi
+printf 'notelf\n' > "$src/target/lib/ld-linux-armhf.so.3"
+chmod 755 "$src/target/lib/ld-linux-armhf.so.3"
+ZLYME_ARMHF_OUTPUT=$src "$ROOT/scripts/armhf-runtime-manifest.sh" >/dev/null
+"$ROOT/scripts/armhf-runtime-pack.sh" "$src" "$work/notelf.tar"
+if "$ROOT/scripts/armhf-runtime-unpack.sh" "$work/notelf.tar" "$work/notelf" >/dev/null 2>"$work/notelf.err"; then
+	fail "a non-ELF loader was accepted"
+fi
+grep -q 'loader is not an ELF' "$work/notelf.err" || fail "non-ELF loader was not named: $(cat "$work/notelf.err")"
 echo "armhf tar ok"

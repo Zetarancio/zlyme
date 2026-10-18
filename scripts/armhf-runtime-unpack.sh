@@ -36,9 +36,8 @@ tar -xf "$arc" -C "$dest" || die "extract failed"
 
 loader=$dest/target/lib/ld-linux-armhf.so.3
 magic=$(od -An -t x1 -N 4 "$loader" | tr -d ' \n')
-if [ "$magic" = "7f454c46" ]; then
-	command -v readelf >/dev/null 2>&1 || die "readelf is required for the loader"
-	readelf -h "$loader" | grep -q 'ELF32' || die "loader is not ELF32"
-	readelf -h "$loader" | grep -q 'hard-float' || die "loader is not hard-float"
-fi
+[ "$magic" = "7f454c46" ] || die "loader is not an ELF"
+command -v readelf >/dev/null 2>&1 || die "readelf is required for the loader"
+readelf -h "$loader" | grep -q 'ELF32' || die "loader is not ELF32"
+readelf -h "$loader" | grep -q 'hard-float' || die "loader is not hard-float"
 echo "armhf unpack ok"
