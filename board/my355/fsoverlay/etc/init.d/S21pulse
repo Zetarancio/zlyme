@@ -56,7 +56,14 @@ start() {
 		echo "Starting pulseaudio: FAIL"
 		return 0
 	fi
-	mkdir -p "$RUNTIME" /storage/.config/zlyme || return 0
+	mkdir -p "$RUNTIME" || {
+		echo "Starting pulseaudio: FAIL"
+		return 0
+	}
+	# The cookie and socket live under /run. Volume migration uses
+	# /storage when that card is mounted. A missing card does not
+	# stop the server.
+	mkdir -p /storage/.config/zlyme 2>/dev/null || true
 	chown pulse:pulse "$RUNTIME" || return 0
 	chmod 0700 "$RUNTIME" || return 0
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then

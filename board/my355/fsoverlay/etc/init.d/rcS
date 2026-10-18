@@ -17,11 +17,12 @@ boot_mark() {
 	echo "$_up $*" >> /tmp/boot-timing
 }
 
-# Panel, pad, storage, GPU, ALSA, keylidmon, then the list. S17 is forked
-# (not waited). zlyme-storage mounts SD2/USB and writes /run/zlyme/libraries.
+# Panel, pad, storage, GPU, ALSA, Pulse, jack, keylidmon, then the list.
+# S17 is forked (not waited). S21pulse returns when the process is
+# launched. Its sink check stays in the background.
 is_class_a() {
 	case "$1" in
-		S10udevd|S11modules|S12bootfs|S12splash|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S25jackd|S26keylidmon|S28minui)
+		S10udevd|S11modules|S12bootfs|S12splash|S13resize|S15bootpart|S15gpudriver|S16display|S17sd2|S18zlymeupdate|S20alsa|S21pulse|S25jackd|S26keylidmon|S28minui)
 			return 0
 			;;
 	esac
