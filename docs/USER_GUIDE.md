@@ -118,7 +118,7 @@ Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file 
 
 A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. On the system list, if none of those exist, Zlyme shows a transparent Art Book picture for that system. Inside a game list, Zlyme does not add its own wallpaper. Your images are not replaced. Settings → Appearance → Use folder background for ROMs starts on. Turning it off keeps the plain background. The pictures are CC BY-NC-SA 2.0.
 
-Recently Played uses that same folder picture. The first time the card starts, and only if you do not already have `/storage/Recently Played/.media/bg.png` or `/storage/bg.png`, Zlyme copies a built-in picture there. A picture you add stays. Deleting the built-in one does not put it back. A long name can scroll across this picture. It is not a separate download.
+Recently Played uses that same folder picture. The first time the card starts, and only if you do not already have `/storage/Recently Played/.media/bg.png` or `/storage/bg.png`, Zlyme copies a built-in picture there. A later firmware replaces that file only when it is still a previous built-in picture. A picture you add stays. Deleting the built-in one does not put it back. `/storage/bg.png` is left alone. A long name can scroll across this picture. It is not a separate download.
 
 ## USB file transfer
 

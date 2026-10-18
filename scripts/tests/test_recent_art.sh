@@ -94,4 +94,48 @@ run_seed "$broken"
 [ -f "$broken/Recently Played/.media/bg.png" ] || fail "retry did not copy"
 [ -f "$broken/.config/zlyme/recent-art-seeded" ] || fail "retry did not mark"
 
+# A previous built-in picture, identified by hash, becomes the new one.
+old=$(mktemp -d)
+known=$(mktemp)
+printf 'old-stock\n' > "$old/picture"
+oldhash=$(sha256sum "$old/picture" | awk '{print $1}')
+printf '%s\n' "$oldhash" > "$known"
+mkdir -p "$old/Recently Played/.media" "$old/.config/zlyme"
+cp "$old/picture" "$old/Recently Played/.media/bg.png"
+: > "$old/.config/zlyme/recent-art-seeded"
+printf 'history\n' > "$old/Recently Played/list.txt"
+ZLYME_STOCK_ROOT=$old ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
+	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"
+cmp -s "$SRC" "$old/Recently Played/.media/bg.png" || fail "known stock was not replaced"
+[ "$(cat "$old/Recently Played/list.txt")" = "history" ] || fail "migration changed history"
+
+# The current firmware picture is not rewritten.
+cur=$(mktemp -d)
+mkdir -p "$cur/Recently Played/.media" "$cur/.config/zlyme"
+cp "$SRC" "$cur/Recently Played/.media/bg.png"
+: > "$cur/.config/zlyme/recent-art-seeded"
+before=$(stat -c '%Y' "$cur/Recently Played/.media/bg.png")
+sleep 1
+ZLYME_STOCK_ROOT=$cur ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
+	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"
+cmp -s "$SRC" "$cur/Recently Played/.media/bg.png" || fail "current stock changed"
+after=$(stat -c '%Y' "$cur/Recently Played/.media/bg.png")
+[ "$before" = "$after" ] || fail "current stock was rewritten"
+
+# A copy that cannot be written leaves the old file in place.
+stuck=$(mktemp -d)
+mkdir -p "$stuck/Recently Played/.media" "$stuck/.config/zlyme"
+cp "$old/picture" "$stuck/Recently Played/.media/bg.png"
+: > "$stuck/.config/zlyme/recent-art-seeded"
+chmod a-w "$stuck/Recently Played/.media"
+if ZLYME_STOCK_ROOT=$stuck ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
+	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"; then
+	chmod u+w "$stuck/Recently Played/.media"
+	fail "a blocked replacement was treated as success"
+fi
+chmod u+w "$stuck/Recently Played/.media"
+cmp -s "$old/picture" "$stuck/Recently Played/.media/bg.png" || fail "blocked replacement changed the picture"
+[ -f "$stuck/.config/zlyme/recent-art-seeded" ] || fail "blocked replacement cleared the marker"
+
+rm -rf "$old" "$cur" "$stuck" "$known"
 echo "recent art ok"

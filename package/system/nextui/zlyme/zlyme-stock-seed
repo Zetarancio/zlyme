@@ -91,14 +91,24 @@ seed_standalones() {
 
 # One copy of the firmware Recently Played picture into the virtual
 # directory NextUI already reads. The marker stops a later boot from
-# putting the stock file back after the person deletes it. A failed
-# copy leaves the marker unset. This does not touch history or bg.png.
+# putting the stock file back after the person deletes it. A file
+# whose hash is in the known-stock list is a previous built-in
+# picture and is replaced. Anything else stays. A failed copy leaves
+# the marker unset. This does not touch history or bg.png.
 seed_recent() {
 	_marker=$STORAGE/.config/zlyme/recent-art-seeded
 	_dest=$STORAGE/Recently\ Played/.media/bg.png
 	_global=$STORAGE/bg.png
 	_src=${ZLYME_RECENT_ART:-/usr/share/nextui/artbook/special/recent.png}
+	_known=${ZLYME_RECENT_KNOWN:-$SHARE/recent-stock.sha256}
 	if [ -f "$_marker" ]; then
+		if [ -f "$_dest" ] && [ -f "$_src" ] && [ -f "$_known" ]; then
+			_have=$(sha256sum "$_dest" | awk '{print $1}')
+			_new=$(sha256sum "$_src" | awk '{print $1}')
+			if [ "$_have" != "$_new" ] && grep -qx "$_have" "$_known"; then
+				install_cfg "$_src" "$_dest" 1 || return 1
+			fi
+		fi
 		return 0
 	fi
 	mkdir -p "$STORAGE/.config/zlyme" || return 1

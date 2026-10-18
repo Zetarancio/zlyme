@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Recently Played stock picture, port launches
+
+The card's `/storage/Recently Played/.media/bg.png` is SHA-256 `c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703`, 105368 bytes, the composed picture from before Changa One. The firmware file is `90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda`, 101784 bytes. The seed marker was already set, so the new picture was not copied. `zlyme-stock-seed` now replaces the folder picture only when that hash is listed. USB File Transfer's packed PNG is `7529f983d465efd060c68fc7a5ef33da653b45e84f25e101d30b564afcd7abb5` and matches the host compositor. No `.media` override was on the card.
+
+PortMaster's selected library is `/mnt/sd2`. `libs` has 47 squashfs files, all with a squashfs magic, including `frt_3.3.4.squashfs`. A tar of `libs` and `runtimes` is on that card, outside the PortMaster tree. Through `PORTS.pak/launch.sh`, 2048's RetroArch process used `2048_libretro.so.aarch64` and both CRTCs were active (HDMI `1920x1080p60` at 148500 kHz, panel `640x480p60`). Shards of God reached "Starting game" with the SDL software renderer and ALSA. A Key(s) Path ran `frt_3.3.4` and HDMI scanned `1920x1080p60` with an XR24 plane. Abombniball's aarch64 binary stopped on missing `libpulse-simple.so.0`. Ascent DX and Gravity Defied stopped on `EGL not initialized`. The 720p gate was not set for these launches. The ARMHF loader ran and rejected `abombniball.armhf` because its SDL library is ELFCLASS64. `DEVICE_HAS_ARMHF` stays N.
+
 ## 2026-10-18 — installed 1cbe3b8 HDMI CRTC
 
 `/boot/zlyme` is `ca8a9e934d7d1b21a09d7fe3c8c352207617fb6bf284e423bee4708c457253a9`, the `zlyme` member of `zlyme-my355-20261017-1cbe3b80aae3.tar`. With `ZLYME_HDMI_720P=1` and the stock session, HDMI-A-1 scanned `1280x720` at 74250 kHz on `video_port0`. NextUI logged viewport `160,0 960x720`. The panel stayed `640x480` at 32000 kHz. PPSSPP's SDL window did the same clock. RetroArch's session file asked for 1280×720 and its log then said `Falling back to mode 0`, and the CRTC stayed `1920x1080` at 148500 kHz. The ungated frontend returned and HDMI went back to `1024x768` at 78750 kHz. GitHub run `39043129060` completed successfully, including the ARMHF tar extract. The sysfs `mode` file was not the proof.
