@@ -175,13 +175,16 @@ def require_logo_font(font: Path):
     return face
 
 
-def wordmark(label: str, font: Path, rsvg: str, work: Path) -> Image.Image:
+def wordmark(label: str, font: Path, rsvg: str, work: Path, upper: bool = False) -> Image.Image:
     """Shrink, then wrap on spaces, until the styled logo fits the frame.
 
     rsvg is unused. System SVG logos still go through it. These
-    wordmarks are FreeType glyphs from the font file.
+    wordmarks are FreeType glyphs from the font file. upper is for
+    Tool paks and Recently Played. Shared system labels stay as written.
     """
     del rsvg, work
+    if upper:
+        label = label.upper()
     words = label.split()
     if not words:
         fail("empty logo")
@@ -296,13 +299,14 @@ def compose_tool(
     rsvg: str,
     work: Path,
     mask: Image.Image | None = None,
+    upper: bool = False,
 ) -> Image.Image:
     art = load_rgba(background)
     if mask is not None:
         art = apply_canonical_mask(art, mask)
     canvas = blank()
     place_art(canvas, art)
-    logo = wordmark(label, font, rsvg, work)
+    logo = wordmark(label, font, rsvg, work, upper)
     place(canvas, logo)
     return canvas
 
@@ -325,7 +329,7 @@ def compose_specials(mask: Image.Image, font: Path, rsvg: str, work: Path, stage
         background = root / name / "background.png"
         if not background.is_file():
             fail("missing special background for " + name)
-        image = compose_tool(background, name, font, rsvg, work, mask)
+        image = compose_tool(background, name, font, rsvg, work, mask, True)
         save_png(image, stage / filename)
         images.append((name, image))
     return images
@@ -449,7 +453,7 @@ def main() -> None:
         tools = []
         for folder in folders:
             label = folder.name[:-4]
-            image = compose_tool(folder / "background.png", label, args.font, args.rsvg, work, mask)
+            image = compose_tool(folder / "background.png", label, args.font, args.rsvg, work, mask, True)
             save_png(image, stage_tools / ("%s.png" % label))
             tools.append((label, image))
         specials = compose_specials(mask, args.font, args.rsvg, work, work / "special")

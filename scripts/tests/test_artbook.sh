@@ -144,6 +144,53 @@ fi
 if ! cmp -s "$work/once/system/(GB).png" "$work/twice/system/(GB).png"; then
 	fail "system output is not deterministic"
 fi
+if ! cmp -s "$work/once/system/(MKXPZ).png" "$work/twice/system/(MKXPZ).png"; then
+	fail "shared system art is not deterministic"
+fi
+# System pictures are a separate code path. Two renders of this tree
+# already have to match each other. They are not compared with an older
+# image, because that image was drawn by the build container.
+recent_new=$(sha256sum "$work/once/special/recent.png" | awk '{print $1}')
+case "$recent_new" in
+	90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda|\
+	c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703)
+		fail "uppercase Recently Played matches an older stock hash" ;;
+esac
+grep -qx '90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda' \
+	"$ROOT/board/my355/fsoverlay/usr/share/zlyme/recent-stock.sha256" \
+	|| fail "mixed-case stock hash is not allow-listed"
+grep -qx 'c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703' \
+	"$ROOT/board/my355/fsoverlay/usr/share/zlyme/recent-stock.sha256" \
+	|| fail "DejaVu stock hash is not allow-listed"
+if grep -qx "$recent_new" "$ROOT/board/my355/fsoverlay/usr/share/zlyme/recent-stock.sha256"; then
+	fail "the new Recently Played image is listed as an old one"
+fi
+# Both allow-listed identities become this render. A file that already
+# is this render is left alone.
+mig=$(mktemp -d)
+mkdir -p "$mig/Recently Played/.media" "$mig/.config/zlyme"
+printf 'old-bytes\n' > "$mig/old"
+oldhash=$(sha256sum "$mig/old" | awk '{print $1}')
+printf '%s\n%s\n' "$oldhash" "$recent_new" > "$mig/known"
+cp "$mig/old" "$mig/Recently Played/.media/bg.png"
+: > "$mig/.config/zlyme/recent-art-seeded"
+printf 'history\n' > "$mig/Recently Played/list.txt"
+ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \
+	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$work/once/special/recent.png \
+	ZLYME_RECENT_KNOWN=$mig/known \
+	sh "$ROOT/package/system/nextui/zlyme/zlyme-stock-seed"
+cmp -s "$work/once/special/recent.png" "$mig/Recently Played/.media/bg.png" \
+	|| fail "allow-listed stock was not replaced with the new render"
+[ "$(cat "$mig/Recently Played/list.txt")" = "history" ] || fail "migration changed history"
+before=$(stat -c '%Y' "$mig/Recently Played/.media/bg.png")
+sleep 1
+ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \
+	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$work/once/special/recent.png \
+	ZLYME_RECENT_KNOWN=$mig/known \
+	sh "$ROOT/package/system/nextui/zlyme/zlyme-stock-seed"
+after=$(stat -c '%Y' "$mig/Recently Played/.media/bg.png")
+[ "$before" = "$after" ] || fail "current uppercase render was rewritten"
+rm -rf "$mig"
 test ! -e "$work/once/system/(GONE).png" || fail "removed system art survived"
 test ! -e "$work/once/tools/Obsolete Tool.png" || fail "removed tool art survived"
 tmp_after=$(find /tmp -maxdepth 1 -type d -name 'zlyme-artbook-*' | sort)
@@ -420,8 +467,29 @@ shadow = styled.getpixel((1, compose.SHADOW + 10))
 if shadow[3] < 100 or shadow[3] > 140 or shadow[:3] != (0, 0, 0):
     raise SystemExit("shadow is not 50% black: %s" % (shadow,))
 
+seen = []
+OrigDraw = compose.ImageDraw.Draw
+class RecordingDraw:
+    def __init__(self, image):
+        self.draw = OrigDraw(image)
+    def text(self, xy, text, font=None, fill=None):
+        seen.append(text)
+        return self.draw.text(xy, text, font=font, fill=fill)
+compose.ImageDraw.Draw = RecordingDraw
 for label in ("Files", "PortMaster", "RetroArch", "USB File Transfer", "ZcrapeGoat", "Recently Played"):
-    expect(label, compose.wordmark(label, font, rsvg, work), True)
+    seen.clear()
+    expect(label, compose.wordmark(label, font, rsvg, work, True), True)
+    if not seen or any(line != line.upper() for line in seen):
+        raise SystemExit("FreeType label was not uppercase: %s %s" % (label, seen))
+    joined = " ".join(seen)
+    for word in label.upper().split():
+        if word not in joined:
+            raise SystemExit("missing uppercase word %s in %s" % (word, seen))
+seen.clear()
+compose.wordmark("MKXP-Z", font, rsvg, work, False)
+if seen != ["MKXP-Z"]:
+    raise SystemExit("system wordmark was rewritten: %s" % (seen,))
+compose.ImageDraw.Draw = OrigDraw
 logos = upstream / "_inc" / "systems" / "logos"
 wide_name = None
 wide_ratio = 0
@@ -443,4 +511,7 @@ test -f "$sheets/special-light.png"
 test -f "$sheets/special-dark.png"
 sh "$ROOT/scripts/tests/test_recent_art.sh"
 sh "$ROOT/scripts/tests/test_artbook_rootfs.sh"
+echo "asset sha256"
+sha256sum "$work/once/tools/"*.png "$work/once/special/recent.png" "$work/once/special/tools.png" \
+	"$work/once/system/(GB).png" "$work/once/system/(MKXPZ).png"
 echo "artbook ok"
