@@ -394,6 +394,9 @@ refresh_local_packages() {
     # Local patches apply once. A later edit of 0001/0002 must rebuild.
     refresh_compiled_package retroarch BR2_PACKAGE_RETROARCH \
         package/emulators/retroarch
+    # KMSDRM patches live outside the Buildroot package.
+    refresh_compiled_package sdl2 BR2_PACKAGE_SDL2 \
+        board/my355/patches/sdl2
     # Every SITE_METHOD=local package. The package directory includes the
     # recipe, so a .mk change dircleans too. Firmware blobs in these
     # directories are the installed bytes, so they count.

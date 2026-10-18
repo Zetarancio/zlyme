@@ -7,6 +7,7 @@
 #include <xf86drmMode.h>
 
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -331,8 +332,55 @@ static int load_drm(struct stored_conn *cons, int *ncons)
 	return 0;
 }
 
-int main(void)
+static int restore_panel(void)
 {
+	const char *path = "/run/zlyme/hdmi-panel-off";
+	FILE *fp;
+	unsigned int crtc, fb, conn;
+	drmModeModeInfo mode;
+	int fd, ret;
+	uint32_t conn_id;
+
+	fp = fopen(path, "r");
+	if (!fp)
+		return 0;
+	memset(&mode, 0, sizeof(mode));
+	if (fscanf(fp,
+		   "%u %u %u %u %hu %hu %hu %hu %hu %hu %hu %hu %hu %hu %u %u %u %31s",
+		   &crtc, &fb, &conn,
+		   &mode.clock,
+		   &mode.hdisplay, &mode.hsync_start, &mode.hsync_end, &mode.htotal,
+		   &mode.hskew,
+		   &mode.vdisplay, &mode.vsync_start, &mode.vsync_end, &mode.vtotal,
+		   &mode.vscan, &mode.vrefresh, &mode.flags, &mode.type,
+		   mode.name) != 18) {
+		fclose(fp);
+		fprintf(stderr, "zlyme-hdmi: panel marker is unreadable\n");
+		return 1;
+	}
+	fclose(fp);
+	fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		fprintf(stderr, "zlyme-hdmi: panel restore open failed: %s\n",
+			strerror(errno));
+		return 1;
+	}
+	conn_id = conn;
+	ret = drmModeSetCrtc(fd, crtc, fb, 0, 0, &conn_id, 1, &mode);
+	if (ret != 0)
+		fprintf(stderr, "zlyme-hdmi: panel restore failed: %s\n",
+			strerror(errno));
+	else
+		unlink(path);
+	close(fd);
+	return ret == 0 ? 0 : 1;
+}
+
+int main(int argc, char **argv)
+{
+	if (argc > 1 && strcmp(argv[1], "restore-panel") == 0)
+		return restore_panel();
+
 	struct stored_conn cons[CONN_MAX];
 	struct zlyme_hdmi_connector pubs[CONN_MAX];
 	struct zlyme_hdmi_output out;

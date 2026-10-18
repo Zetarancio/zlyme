@@ -36,6 +36,12 @@ grep -q 'SDL_SetWindowFullscreen' "$NEXT/workspace/my355/platform/hdmi_apply.c" 
 	&& fail "NextUI still modesets after the GL resources exist"
 grep -q 'drmDropMaster\|drmModeGetResources' "$NEXT/workspace/my355/platform/hdmi_apply.c" \
 	&& fail "NextUI still opens DRM itself"
+grep -q 'ZLYME_HDMI_PANEL: DSI crtc' "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" \
+	|| fail "panel disable is not behind a successful HDMI modeset"
+grep -q 'Could not set videomode on CRTC' "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" \
+	|| fail "panel disable is not tied to the modeset result"
+grep -q 'Atomic cap failed' "$ROOT/package/emulators/retroarch/0001-drm-select-free-crtc-for-unbound-connector.patch" \
+	|| fail "RetroArch does not log a failed atomic cap"
 grep -q 'DRM_MODE_CONNECTOR_HDMIA' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \
 	|| fail "SDL patch does not require an HDMI-A connector"
 grep -q 'ZLYME_HDMI_SDL_INDEX' "$ROOT/board/my355/patches/sdl2/0001-kmsdrm-honor-zlyme-hdmi-mode.patch" \

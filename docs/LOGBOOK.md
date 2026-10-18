@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Flip returned, no panic record
+
+The next SSH session was boot id `46be5cec-fa17-4d49-af76-97d1501264f6`, uptime under 15 minutes, squashfs still `356d7f5c…`. pstore was empty. That boot's dmesg had no panic, OOM, or reset line. Wi-Fi was up at `192.168.0.108`. NextUI was the only graphics client. The saved matrix ends during Mina the Hollower, with NUL padding after the START line. LISA's sample is `libpulse-simple.so.0` missing from `falcon_mkxp.bin`. The earlier loss of route is not identified as a kernel panic.
+
 ## 2026-10-18 — d438e74 HDMI and port pass
 
 `/boot/zlyme` is `356d7f5c86063de249847adf61b9faf5712c18d4b241d5766738479e689c3527`. `/boot` is read-only. Kernel, DTB, and preloader hashes match the previous images. Recently Played `.media/bg.png` is `90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda`. The seed marker was still the 2026-10-17 file, and `/storage/bg.png` was absent, so the known-hash replacement is what changed the picture.

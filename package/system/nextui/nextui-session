@@ -411,6 +411,12 @@ while [ -f "$EXEC_PATH" ]; do
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
 	apply_frontend_governor
+	# A gated client that disabled the panel and then died leaves this
+	# marker. Restore before the frontend opens DRM. No marker means
+	# this does not open a device.
+	if [ -f /run/zlyme/hdmi-panel-off ] && [ -x /usr/bin/zlyme-hdmi ]; then
+		/usr/bin/zlyme-hdmi restore-panel || true
+	fi
 	_hdmi_sh=${ZLYME_HDMI_SESSION:-/usr/share/zlyme/hdmi-session.sh}
 	if [ -r "$_hdmi_sh" ]; then
 		# shellcheck disable=SC1090
