@@ -22,13 +22,13 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 97f7bde58e12546a6dd0d67b15d4e091eb5e05f6
+NEXTUI_VERSION = f0b4fa8413b48385b006fdb396da59584d9af14d
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
 NEXTUI_LICENSE_FILES = LICENSE NOTICE
 NEXTUI_INSTALL_STAGING = YES
-NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl zlyme-artbook zlyme-hdmi
+NEXTUI_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng freetype zlib libsamplerate openssl libdrm libcurl libglib2 zlyme-artbook zlyme-hdmi
 
 # Workspace directory from the selected device (Config.in). my355 today.
 NEXTUI_PLATFORM = $(call qstrip,$(BR2_PACKAGE_NEXTUI_PLATFORM))
@@ -109,6 +109,7 @@ define NEXTUI_BUILD_CMDS
 		$(TARGET_CC) $(NEXTUI_CFLAGS) -c $(NEXTUI_INCLUDES) \
 			-o $(@D)/$(src).o $(@D)/workspace/all/common/$(src).c$(sep))
 	$(TARGET_CXX) $(NEXTUI_CXXFLAGS) $(NEXTUI_INCLUDES) \
+		-DHAS_BTAGENT $$(pkg-config --cflags gio-2.0) \
 		-I$(NEXTUI_PKGDIR)/zlyme/joystick-cal \
 		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
 		-o $(@D)/settings.elf \
@@ -119,6 +120,7 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/workspace/all/settings/fnbuttonmenu.cpp \
 		$(@D)/workspace/all/settings/wifimenu.cpp \
 		$(@D)/workspace/all/settings/btmenu.cpp \
+		$(@D)/workspace/all/settings/btagent.cpp \
 		$(@D)/workspace/all/settings/keyboardprompt.cpp \
 		$(@D)/workspace/all/settings/zlymemenu.cpp \
 		$(@D)/workspace/all/settings/aboutcreds.cpp \
@@ -130,7 +132,8 @@ define NEXTUI_BUILD_CMDS
 		$(@D)/utils.o $(@D)/api.o $(@D)/config.o $(@D)/scaler.o \
 		$(@D)/palette.o $(@D)/http.o $(@D)/ra_auth.o $(@D)/ra_offline.o \
 		$(@D)/ra_sync.o $(@D)/ra_event_queue.o $(@D)/platform.o $(@D)/hdmi_mode.o $(@D)/hdmi_apply.o \
-		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcurl -lcrypto -lstdc++
+		$(TARGET_LDFLAGS) $(NEXTUI_LIBS) -lcurl -lcrypto -lstdc++ \
+		$$(pkg-config --libs gio-2.0)
 	$(TARGET_CC) $(TARGET_CFLAGS) -o $(@D)/show.elf \
 		$(NEXTUI_PKGDIR)/zlyme/show.c \
 		$(TARGET_LDFLAGS) -lSDL2 -lSDL2_ttf

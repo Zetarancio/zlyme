@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Bluetooth discovery and the panel marker
+
+On the installed image `356d7f5c…` (`d438e74`), Settings was open, `hci0` was powered, and BlueZ `Discovering` was true. Object `/org/bluez/hci0/dev_7D_30_77_6A_D5_A1` existed with an address and no Name, Class, or Icon. `bluetoothctl devices` printed nothing. The scan list is that command, and it then drops a device whose class is not audio or a controller. `PLAT_bluetoothDiscovery` also calls `StartDiscovery` through a `dbus-send` that exits, so BlueZ drops the session, and the code sets `bt_discovering` without reading the adapter. That change is NextUI `faf55f11`. The earlier `cdc208ca` path kept a `bluetoothctl` process. The replacement keeps one Settings D-Bus connection, the pairing agent, for both start and stop. SSH did not change pairing data.
+
+A DTS timing or `video=HDMI-A-1:1280x720@60` does not delete the other EDID modes. The client still programs the CRTC. The marker is cleared only after a fresh CRTC read shows this process's framebuffer. No DTS edit.
+
 ## 2026-10-18 — Panel marker and PulseAudio readiness
 
 The SDL marker is the line `panel-off`. It does not store a framebuffer id. Linux 7.2.10 `drm_mode_setcrtc` rejects a connector count without a mode and a framebuffer, so the DSI disable uses framebuffer 0, a null connector list, and a null mode, and only when the DSI CRTC is not the HDMI CRTC. The next ungated SDL client opens the DSI display and allocates its own buffer. RetroArch does not take that path. This has not been run on a Flip.
