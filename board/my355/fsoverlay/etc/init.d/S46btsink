@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# ALSA sink matrix (A2DP / HDMI ELD / codec). Runs even if Bluetooth is off
-# so an HDMI cable can move audio without a reboot.
+# Pulse sink choice (A2DP, then HDMI with an audio ELD, then the codec).
+# Runs even if Bluetooth is off so an HDMI cable can move audio without a reboot.
 
 DAEMON=/usr/sbin/zlyme-btsink
 PIDFILE=/var/run/zlyme-btsink.pid

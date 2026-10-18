@@ -178,7 +178,7 @@ Always use stable ALSA card IDs rather than assuming numeric card order.
 
 The Miyoo Flip uses the RTL8733BU USB combo chip: Wi-Fi driver `8733bu`, Bluetooth firmware `rtl8723fu`. `rtl8733bu_power` owns the chip's power and rfkill.
 
-Wi-Fi and Bluetooth share power/firmware interactions. Module/startup ordering is not arbitrary. `btusb` loads only after `8733bu` (`rtl8733bu-combo.conf`). That needs real kmod, because BusyBox modprobe ignores `blacklist` and `softdep`. Both radios start from `rc.late` after the first frame.
+Wi-Fi and Bluetooth share power/firmware interactions. Module/startup ordering is not arbitrary. `btusb` loads only after `8733bu` (`rtl8733bu-combo.conf`). That needs real kmod, because BusyBox modprobe ignores `blacklist` and `softdep`. Both radios start from `rc.late` after the first frame. Pairing answers come from `zlyme-bluetooth agent` (`bluetoothctl --agent=NoInputNoOutput`), started with `bluetoothd`. Settings does not register a second agent. It starts a discovery session when the Bluetooth page is open and releases that session when the page closes.
 
 Do not remove the my355-specific module ordering/blacklist behavior as generic cleanup unless the hardware interaction has been revalidated.
 

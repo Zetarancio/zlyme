@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — Bluetooth page releases its own discovery session
+
+Settings was exporting an Agent1 object on a GDBus connection that nothing iterates, and `RequestDefaultAgent` would replace `zlyme-bluetooth`'s `bluetoothctl` agent. my355 no longer registers that object. Discovery still uses the Settings connection, and it stops when the Bluetooth page closes rather than when Settings is destroyed. Pairing stays the system agent. Not yet installed.
+
 ## 2026-10-18 — Pulse never started, and a MAC copy ran off the end
 
 `rcS` Class A listed `S20alsa` and `S25jackd` and skipped `S21pulse`. `rc.late` does not start it, and `S50pulseaudio` is a no-op, so the default Pulse PCM had no server. `S21pulse` is now in that whitelist, after the mixer restore and before the jack watcher. Its five-second codec check stays in the background.
