@@ -1,9 +1,10 @@
 --- a/gfx/common/drm_common.c
 +++ b/gfx/common/drm_common.c
-@@ -14,12 +14,14 @@
+@@ -14,12 +14,15 @@
   */
  
  #include <compat/strl.h>
++#include <errno.h>
 +#include <string.h>
  
  #include <retro_miscellaneous.h>
@@ -15,7 +16,7 @@
  
  /* TODO/FIXME - globals */
  drmEventContext g_drm_evctx;
-@@ -138,6 +140,148 @@
+@@ -138,6 +141,157 @@
     return num * 1000.0f / den;
  }
  
@@ -125,9 +126,18 @@
 +   /* 1.22.2 never sets these. ACTIVE and the primary plane are absent
 +    * until it does, so a failed property read marked every CRTC occupied
 +    * and an unbound HDMI connector could not take its own disabled CRTC.
++    * A failed cap is not "no free CRTC": the occupancy read would lie.
 +    */
-+   drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
-+   drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
++   if (drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) != 0)
++   {
++      RARCH_ERR("[DRM] Universal planes cap failed: %s.\n", strerror(errno));
++      return false;
++   }
++   if (drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1) != 0)
++   {
++      RARCH_ERR("[DRM] Atomic cap failed: %s.\n", strerror(errno));
++      return false;
++   }
 +
 +   for (i = 0; i < g_drm_connector->count_encoders; i++)
 +   {
@@ -164,7 +174,7 @@
  bool drm_get_encoder(int fd)
  {
     unsigned i;
-@@ -157,6 +301,9 @@
+@@ -157,6 +311,9 @@
     }
  
     if (!g_drm_encoder)
