@@ -397,7 +397,7 @@ print("mkxp shared art", diff, "kept", kept, "font", name[0], name[1])
 PY
 
 # A long name and a name with markup still fit, and the source file is untouched.
-before=$(sha256sum "$PKG/tools/USB File Transfer.pak/background.png" | awk '{print $1}')
+before=$(sha256sum "$PKG/tools/USB Transfer.pak/background.png" | awk '{print $1}')
 /usr/bin/python3 - "$PKG/compose.py" "$work/long" "$PKG" "$upstream" << 'PY'
 import importlib.util, sys, tempfile
 from pathlib import Path
@@ -415,7 +415,7 @@ if logo.width > compose.LOGO_MAX_W:
     raise SystemExit("escaped name does not fit")
 print("names ok", logo.width)
 PY
-after=$(sha256sum "$PKG/tools/USB File Transfer.pak/background.png" | awk '{print $1}')
+after=$(sha256sum "$PKG/tools/USB Transfer.pak/background.png" | awk '{print $1}')
 [ "$before" = "$after" ] || fail "build rewrote a tool background"
 if grep -n 'logo.height - 24' "$PKG/compose.py"; then
 	fail "tool logos still use a separate vertical position"
@@ -476,7 +476,7 @@ class RecordingDraw:
         seen.append(text)
         return self.draw.text(xy, text, font=font, fill=fill)
 compose.ImageDraw.Draw = RecordingDraw
-for label in ("Files", "PortMaster", "RetroArch", "USB File Transfer", "ZcrapeGoat", "Recently Played"):
+for label in ("Files", "PortMaster", "RetroArch", "USB Transfer", "ZcrapeGoat", "Recently Played"):
     seen.clear()
     expect(label, compose.wordmark(label, font, rsvg, work, True), True)
     if not seen or any(line != line.upper() for line in seen):

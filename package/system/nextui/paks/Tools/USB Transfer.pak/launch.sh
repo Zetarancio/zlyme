@@ -94,7 +94,7 @@ present_wait() {
 }
 
 if [ ! -x "$TRANSFER" ]; then
-	present "USB File Transfer is not installed." "OK" "Back"
+	present "USB Transfer is not installed." "OK" "Back"
 	exit 1
 fi
 
@@ -159,7 +159,7 @@ $st
 EOF
 	case "$state" in
 		waiting)
-			present_wait "USB File Transfer
+			present_wait "USB Transfer
 Waiting for a USB data connection."
 			rc=$?
 			if [ "$rc" -eq 124 ]; then
@@ -168,7 +168,7 @@ Waiting for a USB data connection."
 			exit "$rc"
 			;;
 		bound)
-			running="USB File Transfer
+			running="USB Transfer
 Session is open.
 $storage_line"
 			present_stop "$running"

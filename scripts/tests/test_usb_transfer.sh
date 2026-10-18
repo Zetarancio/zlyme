@@ -6,7 +6,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 HELPER=$ROOT/package/system/zlyme-usb-transfer/zlyme-usb-transfer
-PAK="$ROOT/package/system/nextui/paks/Tools/USB File Transfer.pak/launch.sh"
+PAK="$ROOT/package/system/nextui/paks/Tools/USB Transfer.pak/launch.sh"
 
 fail() {
 	printf 'usb transfer: %s\n' "$*" >&2
@@ -1494,4 +1494,47 @@ CONFINE_RESP=$work/bin/jail-umtprd \
 
 kill_responders
 sh "$ROOT/scripts/tests/test_usb_link.sh"
+
+# Old stock folder versus a changed one. The shipped bytes are the
+# zlyme44.3 is 1ce2f56. Those two files are unchanged through 95d086e.
+migrate_old_usb() {
+	hook=$ROOT/board/my355/post-update.sh
+	card=$work/usb-card
+	rm -rf "$card"
+	mkdir -p "$card/Tools/my355/USB Transfer.pak" "$card/Tools/my355/Files.pak"
+	printf '%s\n' new > "$card/Tools/my355/USB Transfer.pak/launch.sh"
+	printf '%s\n' files > "$card/Tools/my355/Files.pak/launch.sh"
+	old="$card/Tools/my355/USB File Transfer.pak"
+	mkdir -p "$old"
+	git -C "$ROOT" show "1ce2f56af1ec91a1087a01b23f741464fc6c34f6:package/system/nextui/paks/Tools/USB File Transfer.pak/launch.sh" > "$old/launch.sh"
+	git -C "$ROOT" show "1ce2f56af1ec91a1087a01b23f741464fc6c34f6:package/system/nextui/paks/Tools/USB File Transfer.pak/LICENSE" > "$old/LICENSE"
+	ZLYME_STORAGE_ROOT=$card sh "$hook"
+	[ ! -e "$old" ] || fail "stock USB File Transfer.pak remained visible"
+	[ "$(cat "$card/Tools/my355/USB Transfer.pak/launch.sh")" = new ] || fail "USB Transfer.pak was replaced"
+	[ "$(cat "$card/Tools/my355/Files.pak/launch.sh")" = files ] || fail "another tool was removed"
+	ZLYME_STORAGE_ROOT=$card sh "$hook"
+	[ "$(cat "$card/Tools/my355/USB Transfer.pak/launch.sh")" = new ] || fail "second run touched the new pak"
+	mkdir -p "$old"
+	printf '%s\n' custom > "$old/launch.sh"
+	printf '%s\n' note > "$old/note.txt"
+	ZLYME_STORAGE_ROOT=$card sh "$hook"
+	[ ! -e "$old" ] || fail "changed pak stayed in Tools"
+	kept="$card/.config/zlyme/retired-paks/USB File Transfer.pak"
+	[ "$(cat "$kept/launch.sh")" = custom ] || fail "changed pak was discarded"
+	[ "$(cat "$kept/note.txt")" = note ] || fail "changed pak lost a file"
+	mkdir -p "$old"
+	printf '%s\n' second > "$old/launch.sh"
+	ZLYME_STORAGE_ROOT=$card sh "$hook"
+	[ "$(cat "$kept/launch.sh")" = custom ] || fail "existing backup was overwritten"
+	[ "$(cat "$card/.config/zlyme/retired-paks/USB File Transfer.pak.2/launch.sh")" = second ] || fail "second backup missing"
+	outside=$work/usb-outside
+	mkdir -p "$outside"
+	printf '%s\n' keep > "$outside/secret"
+	ln -s "$outside" "$old"
+	ZLYME_STORAGE_ROOT=$card sh "$hook"
+	[ "$(cat "$outside/secret")" = keep ] || fail "a symlink outside storage was followed"
+	[ ! -L "$old" ] || fail "symlink pak stayed in Tools"
+}
+migrate_old_usb
+
 printf '%s\n' "usb transfer ok"
