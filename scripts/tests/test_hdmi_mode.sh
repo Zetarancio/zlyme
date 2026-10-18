@@ -46,8 +46,19 @@ brace = chunk.find("}", ret)
 q = chunk.find("KMSDRM_ZlymeQuiescePanel")
 if not (0 <= ret < brace < q):
     raise SystemExit("panel disable is inside the failed modeset branch")
-if "KMSDRM_ZlymeRecoverPanel" not in text:
-    raise SystemExit("crash recovery does not use the next client's framebuffer")
+if "NULL, 0, NULL" not in text:
+    raise SystemExit("DSI disable is not the kernel's empty connector list")
+if "crtc->crtc_id == hdmi_crtc" not in text:
+    raise SystemExit("DSI disable does not require a different CRTC")
+if 'fputs("panel-off\\n"' not in text:
+    raise SystemExit("marker is not the single panel-off line")
+if "mode.name" in text or "fscanf" in text:
+    raise SystemExit("marker still serializes a mode")
+if "KMSDRM_ZlymeRecoverDisplay" not in text:
+    raise SystemExit("the next client does not open the DSI display itself")
+bad = "&conn->connector_id, 1, NULL"
+if bad in text:
+    raise SystemExit("disable still passes a connector without a mode")
 print("hdmi panel order ok")
 PY
 grep -q 'Could not set videomode on CRTC' "$ROOT/board/my355/patches/sdl2/0002-kmsdrm-disable-panel-after-hdmi-scanout.patch" \
