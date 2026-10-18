@@ -1,0 +1,21 @@
+--- a/gfx/drivers_context/drm_ctx.c
++++ b/gfx/drivers_context/drm_ctx.c
+@@ -826,6 +826,18 @@
+       /* Let's exit, since modeswitching will happen while swapping buffers */
+       return true;
+    }
++   /* Session appendconfig sets video_fullscreen_x/y. The caller
++    * still passes 0x0 here, and mode 0 is then the panel or the
++    * connector's first mode. Use the saved fullscreen size. */
++   if ((width == 0 || height == 0) && settings->bools.video_fullscreen
++         && settings->uints.video_fullscreen_x
++         && settings->uints.video_fullscreen_y)
++   {
++      width      = settings->uints.video_fullscreen_x;
++      height     = settings->uints.video_fullscreen_y;
++      fullscreen = true;
++      RARCH_LOG("[KMS] Using fullscreen size %ux%u.\n", width, height);
++   }
+    if ((width == 0 && height == 0) || !fullscreen)
+    {
+       RARCH_WARN("[KMS] Falling back to mode 0 (default).\n");
