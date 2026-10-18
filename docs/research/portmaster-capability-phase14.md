@@ -82,6 +82,36 @@ RetroArch 1.22.2 `drm_get_encoder` only accepts `connector->encoder_id`. A conne
 | WestonPack and Wine | `zlyme-weston-run` | Weston DRM, one client | IMPLEMENTED as a temporary `[output]` mode. The compositor is still per launch. Scanout is HARDWARE-PENDING. |
 | SDL3 | no probe | KMSDRM in the library | Not covered. The patch is SDL2. |
 
-The mode is the display controller's. Rendering is separate. `zlyme-gpu-env.sh` exports one Vulkan ICD and sets `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER` only when the saved GPU choice is exactly `panfrost`. The HDMI variables do not choose an ICD. libmali GLES and Panfrost GLES are the two OpenGL ES stacks the image can boot; neither has an HDMI scanout observation. libmali Vulkan and PanVK are separate. PanVK stays experimental. PPSSPP's `VK_KHR_display` path is not evidence for either Vulkan stack.
+The mode is the display controller's. Rendering is separate. `zlyme-gpu-env.sh` exports one Vulkan ICD and sets `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER` only when the saved GPU choice is exactly `panvk`. The HDMI variables do not choose an ICD. libmali GLES and Panfrost GLES are the two OpenGL ES stacks the image can boot; neither has an HDMI scanout observation. libmali Vulkan and PanVK are separate. PanVK stays experimental. PPSSPP's `VK_KHR_display` path is not evidence for either Vulkan stack.
 
 `S16display` still sets the panel refresh and still replays `display_mode`. That replay is not the client modeset. Weston `mode=` and the AetherSX2 EGLFS string use an integer refresh. They do not carry the mode index.
+
+## Hardware pass on d438e74, 2026-10-18
+
+Installed squashfs `/boot/zlyme` is `356d7f5c86063de249847adf61b9faf5712c18d4b241d5766738479e689c3527`. `/boot` was read-only. Recently Played `.media/bg.png` matched the firmware Changa One PNG `90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda`. There was no `/storage/bg.png`. The seed marker was the earlier empty file, so this was the known-hash replacement.
+
+Logs from the launches are on the second card under `/mnt/sd2/zlyme-hw/`. None of these is a played-through game. HDMI scanout below is the CRTC mode while that process was still up. It is not a 720p pass. Audio status files were empty. No button was pressed.
+
+Gambatte, `GBC.pak`, `ZLYME_HDMI_720P=1`, ROM `SOLASTRA.gb`: FAIL before modeset. Log: connector 56 unbound, `No free CRTC for unbound connector 56`, `Couldn't find a suitable DRM device`. `Using fullscreen size` was not logged. With NextUI stopped, HDMI video port 0 was disabled and the panel CRTC stayed active. The HDMI encoder's `possible_crtcs` is `0x1` (video port 0 only). `ACTIVE` is not in the CRTC property list until `DRM_CLIENT_CAP_ATOMIC`. RetroArch 1.22.2 never sets that cap, and the occupancy check treats an unread property as occupied.
+
+The first port batch left `frt_3.3.4` running, so later "kmsdrm not available" lines in that batch are not engine bugs. The table uses the later batch, after that process was gone. Uptime did not reset during these two batches.
+
+| Launcher | Result | What was observed |
+| --- | --- | --- |
+| `2048.sh` | FAIL | Exited inside the window. HDMI port disabled. No RetroArch process left. Stdout empty. Same class of failure as gambatte, without a retained RetroArch log. |
+| `Abombniball.sh` | FAIL | `libpulse-simple.so.0` missing. GPTK started. No `libpulse` under the port tree, `/usr/lib`, or the PortMaster directory. |
+| `A Key(s) Path.sh` | LAUNCHED | `frt_3.3.4` and GPTK stayed up. HDMI `1920x1080i60`, panel `640x480p60`. |
+| `Ascent DX.sh` | LAUNCHED | `love.aarch64` stayed up. HDMI `1024x768p75`. Log: `Could not restore CRTC`. Not the earlier EGL exit. |
+| `Gravity Defied.sh` | LAUNCHED | Launcher and GPTK still up at 12 s. HDMI `1920x1080i60`. The clean log did not repeat `EGL not initialized`. |
+| `Shards of God.sh` | LAUNCHED | `ags` stayed up and was scanning saves. HDMI `1920x1080i60`. SDL 2.32.10 had initialized on the earlier contaminated run; this run got past that. |
+| `Alien Squatter.sh` | LAUNCHED | `ohrrpgce-game asquatter.rpg -f` stayed up. HDMI `1920x1080i60`. |
+| `Dead Cells.sh` | LAUNCHED | The window caught PortMaster's `utils/patcher` under LÖVE, not `gamedata/deadcells`. No game frame. |
+| `Deltarune.sh` | FAIL | `gmloadernext.aarch64` missing `libavcodec.so.58`. |
+| `Evoland Legendary Edition.sh` | LAUNCHED | Launcher and GPTK still up. HDMI `1920x1080i60`. |
+| `Impostor Factory.sh` | LAUNCHED | `mkxp-freebird.aarch64` stayed up and loaded scripts. HDMI `1920x1080i60`. |
+| `If On A Winter's Night, Four Travelers.sh` | LAUNCHED | Launcher still up. Save bind succeeded. Engine process was not in the sample. HDMI `1920x1080i60`. |
+| `Bowling Cross` | BLOCKED | Directory `bowlingcross` has `gmloader`, `gamedata`, and an apk. There is no `.sh` launcher. None was invented. |
+
+`LISA The Painful.sh`, `Mina the Hollower.sh`, `My Big Sister.sh`, `Nightmare Frames.sh`, `Painted Heart.sh`, `REPOSE.sh`, `Rakuen.sh`, `Skautfold - Shrouded in Sanity.sh`, `SteelAssault.sh`, `Towards the Pantheon - Escaping Eternity.sh`, and `Undertale.sh` were started in a third batch. The route to the Flip dropped while that batch was still restoring NextUI. Their matrix lines are on the card and were not read back. They are not classified here.
+
+Common failures. Missing `libpulse-simple.so.0` is Abombniball's own NEEDED entry. A resident PulseAudio daemon is not the fix. A missing `libavcodec.so.58` is Deltarune's loader, not the system FFmpeg SONAME. Ports that did start picked a mode themselves, often interlaced 1920×1080, because `PORTS.pak` does not apply `ZLYME_HDMI_720P`. That is not the RetroArch 720p result. The ARMHF loader still rejects `abombniball.armhf` on ELFCLASS64 `libSDL_image-1.2.so.0` from `libs.aarch64`. `DEVICE_HAS_ARMHF` stays N.

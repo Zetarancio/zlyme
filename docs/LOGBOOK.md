@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — d438e74 HDMI and port pass
+
+`/boot/zlyme` is `356d7f5c86063de249847adf61b9faf5712c18d4b241d5766738479e689c3527`. `/boot` is read-only. Kernel, DTB, and preloader hashes match the previous images. Recently Played `.media/bg.png` is `90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda`. The seed marker was still the 2026-10-17 file, and `/storage/bg.png` was absent, so the known-hash replacement is what changed the picture.
+
+Gambatte through `GBC.pak` with `ZLYME_HDMI_720P=1` logged connector 56, then `No free CRTC for unbound connector 56` and `Couldn't find a suitable DRM device`. It did not log `Using fullscreen size`. After NextUI released DRM, HDMI video port 0 was disabled and the panel CRTC stayed active. `drmModeObjectGetProperties` on that CRTC does not list `ACTIVE` until `DRM_CLIENT_CAP_ATOMIC`. The occupancy check treats an unread property as occupied, so the only CRTC the HDMI encoder can use (`possible_crtcs` 0x1) was refused. Upstream RetroArch master still has no equivalent unbound-encoder path.
+
+A later port batch lost the route to the Flip before the last launchers were read back. The lines that were saved are in `docs/research/portmaster-capability-phase14.md`. No panic log was retrieved.
+
 ## 2026-10-18 — Recently Played stock picture, port launches
 
 The card's `/storage/Recently Played/.media/bg.png` is SHA-256 `c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703`, 105368 bytes, the composed picture from before Changa One. The firmware file is `90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda`, 101784 bytes. The seed marker was already set, so the new picture was not copied. `zlyme-stock-seed` now replaces the folder picture only when that hash is listed. USB File Transfer's packed PNG is `7529f983d465efd060c68fc7a5ef33da653b45e84f25e101d30b564afcd7abb5` and matches the host compositor. No `.media` override was on the card.
