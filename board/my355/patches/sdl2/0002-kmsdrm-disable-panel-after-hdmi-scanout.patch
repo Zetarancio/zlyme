@@ -1,6 +1,6 @@
 --- a/src/video/kmsdrm/SDL_kmsdrmopengles.c	2026-10-18 21:30:22.468633957 +0200
-+++ b/src/video/kmsdrm/SDL_kmsdrmopengles.c	2026-10-18 21:51:25.155894982 +0200
-@@ -86,6 +86,145 @@
++++ b/src/video/kmsdrm/SDL_kmsdrmopengles.c	2026-10-18 22:39:37.014484337 +0200
+@@ -86,6 +86,158 @@
      return 0;
  }
  
@@ -49,9 +49,8 @@
 +void KMSDRM_ZlymeRestorePanel(int fd)
 +{
 +    (void)fd;
-+    /* The buffer that was scanning the panel belongs to whoever opened
-+     * it. This process does not program that id back. The marker stays
-+     * until an ungated client has modeset DSI with its own buffer. */
++    /* Do not program another client's framebuffer. The next ungated
++     * SDL client modesets DSI with a buffer of its own. */
 +    zlyme_panel_off = 0;
 +}
 +
@@ -133,43 +132,63 @@
 +    KMSDRM_drmModeFreeResources(res);
 +}
 +
-+static void KMSDRM_ZlymeNotePanel(uint32_t original_fb)
++static void KMSDRM_ZlymeNotePanel(int fd, uint32_t crtc_id, uint32_t own_fb)
 +{
-+    /* Unlink only when the panel already had a framebuffer to return to.
-+     * A zero id means the CRTC was off. Keep the marker so the next
-+     * ungated client also opens DSI with a buffer of its own. */
-+    if (original_fb == 0 || !KMSDRM_ZlymeMarkerOn())
++    drmModeCrtc *now;
++
++    /* The cached CRTC from connector open can still say buffer 0 after
++     * this process has modeset DSI. Read the CRTC now and clear the
++     * marker only when it is scanning this process's framebuffer. */
++    if (fd < 0 || crtc_id == 0 || own_fb == 0 || !KMSDRM_ZlymeMarkerOn())
 +        return;
-+    unlink(KMSDRM_ZlymeMarkerPath());
++    now = KMSDRM_drmModeGetCrtc(fd, crtc_id);
++    if (!now)
++        return;
++    if (now->buffer_id == own_fb && now->mode_valid && now->mode.hdisplay > 0)
++        unlink(KMSDRM_ZlymeMarkerPath());
++    KMSDRM_drmModeFreeCrtc(now);
++}
++
++void KMSDRM_ZlymeHoldPanel(void)
++{
++    /* This process cannot leave its framebuffer behind. The next
++     * ungated client still has to open DSI itself. */
++    KMSDRM_ZlymeWriteMarker();
 +}
 +
  int KMSDRM_GLES_SwapWindow(_THIS, SDL_Window *window)
  {
      SDL_WindowData *windata = ((SDL_WindowData *)window->driverdata);
-@@ -161,6 +300,10 @@
+@@ -161,6 +313,11 @@
              SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not set videomode on CRTC.");
              return 0;
          }
 +        if (dispdata->connector->connector_type == DRM_MODE_CONNECTOR_HDMIA)
 +            KMSDRM_ZlymeQuiescePanel(viddata->drm_fd, dispdata->crtc->crtc_id);
 +        else if (dispdata->connector->connector_type == DRM_MODE_CONNECTOR_DSI)
-+            KMSDRM_ZlymeNotePanel(dispdata->crtc->buffer_id);
++            KMSDRM_ZlymeNotePanel(viddata->drm_fd, dispdata->crtc->crtc_id,
++                                  fb_info->fb_id);
      } else {
          /* On subsequent swaps, queue the new front buffer to be flipped during
             the next vertical blank
 --- a/src/video/kmsdrm/SDL_kmsdrmvideo.c	2026-10-18 21:30:23.152335914 +0200
-+++ b/src/video/kmsdrm/SDL_kmsdrmvideo.c	2026-10-18 22:07:24.995278793 +0200
-@@ -1086,6 +1086,9 @@
++++ b/src/video/kmsdrm/SDL_kmsdrmvideo.c	2026-10-18 22:39:26.231748134 +0200
+@@ -1086,6 +1086,14 @@
      SDL_WindowData *windata = (SDL_WindowData *)window->driverdata;
      SDL_DisplayData *dispdata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
      int ret;
 +    void KMSDRM_ZlymeRestorePanel(int fd);
++    void KMSDRM_ZlymeHoldPanel(void);
 +
 +    KMSDRM_ZlymeRestorePanel(viddata->drm_fd);
++    if (dispdata->connector &&
++        dispdata->connector->connector_type == DRM_MODE_CONNECTOR_DSI &&
++        dispdata->crtc && dispdata->crtc->buffer_id == 0)
++        KMSDRM_ZlymeHoldPanel();
  
      /**********************************************/
      /* Wait for last issued pageflip to complete. */
-@@ -1097,12 +1100,12 @@
+@@ -1097,12 +1105,12 @@
      /* original video mode and make it point to the original TTY buffer.   */
      /***********************************************************************/
  
@@ -188,7 +207,7 @@
          ret = KMSDRM_drmModeSetCrtc(viddata->drm_fd, dispdata->crtc->crtc_id,
                                      dispdata->crtc->buffer_id, 0, 0, &dispdata->connector->connector_id, 1,
                                      &dispdata->original_mode);
-@@ -1194,6 +1197,60 @@
+@@ -1194,6 +1202,60 @@
      return mode;
  }
  
@@ -249,7 +268,7 @@
  static SDL_VideoDisplay *KMSDRM_ZlymePlace(_THIS, SDL_Window *window)
  {
      int i;
-@@ -1596,16 +1653,23 @@
+@@ -1596,16 +1658,23 @@
  {
      SDL_WindowData *windata = NULL;
      SDL_VideoData *viddata = (SDL_VideoData *)_this->driverdata;

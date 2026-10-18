@@ -48,6 +48,7 @@ names = [
     "KMSDRM_ZlymeWriteMarker",
     "KMSDRM_ZlymeRestorePanel",
     "KMSDRM_ZlymeNotePanel",
+    "KMSDRM_ZlymeHoldPanel",
     "KMSDRM_ZlymePanelPath",
     "KMSDRM_ZlymePanelMarker",
 ]
@@ -79,6 +80,25 @@ if "fprintf" in gl.split("KMSDRM_GLES_SwapWindow", 1)[0]:
 #include <stdlib.h>
 #include <unistd.h>
 static int zlyme_panel_off;
+typedef struct {
+    uint32_t buffer_id;
+    int mode_valid;
+    struct { uint16_t hdisplay; } mode;
+} drmModeCrtc;
+static drmModeCrtc zlyme_fake;
+static int zlyme_getcrtc_null;
+static drmModeCrtc *KMSDRM_drmModeGetCrtc(int fd, uint32_t id)
+{
+    (void)fd;
+    (void)id;
+    if (zlyme_getcrtc_null)
+        return 0;
+    return &zlyme_fake;
+}
+static void KMSDRM_drmModeFreeCrtc(drmModeCrtc *crtc)
+{
+    (void)crtc;
+}
 #define SDL_strcmp strcmp
 #define SDL_getenv getenv
 #define SDL_Log(...) do { } while (0)
@@ -99,10 +119,28 @@ int main(void) {
     CHECK(KMSDRM_ZlymePanelMarker());
     KMSDRM_ZlymeRestorePanel(3);
     CHECK(KMSDRM_ZlymeMarkerOn());
-    KMSDRM_ZlymeNotePanel(0);
+    zlyme_fake.buffer_id = 0;
+    zlyme_fake.mode_valid = 0;
+    zlyme_fake.mode.hdisplay = 0;
+    KMSDRM_ZlymeNotePanel(3, 54, 9);
     CHECK(KMSDRM_ZlymeMarkerOn());
-    KMSDRM_ZlymeNotePanel(9);
+    zlyme_fake.buffer_id = 8;
+    zlyme_fake.mode_valid = 1;
+    zlyme_fake.mode.hdisplay = 640;
+    KMSDRM_ZlymeNotePanel(3, 54, 9);
+    CHECK(KMSDRM_ZlymeMarkerOn());
+    zlyme_fake.buffer_id = 9;
+    KMSDRM_ZlymeNotePanel(3, 54, 9);
     CHECK(!KMSDRM_ZlymeMarkerOn());
+    KMSDRM_ZlymeWriteMarker();
+    KMSDRM_ZlymeNotePanel(3, 54, 0);
+    CHECK(KMSDRM_ZlymeMarkerOn());
+    zlyme_getcrtc_null = 1;
+    KMSDRM_ZlymeNotePanel(3, 54, 9);
+    CHECK(KMSDRM_ZlymeMarkerOn());
+    zlyme_getcrtc_null = 0;
+    KMSDRM_ZlymeHoldPanel();
+    CHECK(KMSDRM_ZlymeMarkerOn());
     fp = fopen(path, "w"); CHECK(fp); fputs("", fp); fclose(fp);
     CHECK(!KMSDRM_ZlymeMarkerOn());
     fp = fopen(path, "w"); CHECK(fp); fputs("panel-of", fp); fclose(fp);
