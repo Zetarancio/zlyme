@@ -1,3 +1,6 @@
+# Pulse clients and the daemon share this socket. The saved sink is
+# still exported for anything that reads ZLYME_SINK.
+export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-/run/zlyme/pulse}"
 # Restore the saved audio sink for interactive shells.
 #
 # /etc/asound.conf reads ZLYME_SINK when a client opens the default PCM, and an

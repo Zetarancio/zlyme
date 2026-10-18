@@ -20,7 +20,7 @@ GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release
 | GL4ES | Missing | No GL4ES package in this tree. |
 | Theora 1.1 for LÖVE | Implemented | `libtheoradec.so.1` under `/usr/lib/compat`. |
 | gptokeyb | In the PortMaster seed | AArch64 `gptokeyb` and `gptokeyb2`, plus ARMHF copies. `control.txt` uses the AArch64 names. InputPlumber remains the virtual pad. |
-| ALSA / BlueALSA | Implemented | No resident PulseAudio. |
+| ALSA / PulseAudio | Implemented in source, not yet on a Flip | One PulseAudio 17 server. The default ALSA PCM is the Pulse plugin. BlueALSA still owns A2DP and is a Pulse sink. |
 | Fake `systemctl` | Rejected | Still rejected. |
 
 Named ports in the roadmap are not a test list for this phase.
@@ -118,8 +118,10 @@ Common failures. Missing `libpulse-simple.so.0` is Abombniball's own NEEDED entr
 
 The third batch wrote an END line for LISA and a START line for Mina the Hollower, then the matrix file contains NUL padding. Mina's sample is empty. SSH then had no route. The next successful connection was a new boot, id `46be5cec-fa17-4d49-af76-97d1501264f6`, uptime under 15 minutes, pstore empty, and no panic or OOM line in that boot's dmesg. Wi-Fi was associated to `TP-Link_E44F` at `192.168.0.108`. NextUI was running. No `frt` or Weston process and no extra squashfs mount were left. That is a reboot or power loss. It is not a captured kernel panic. The TV turning off was reported by the maintainer and is not in these logs.
 
-## Audio servers, not shipped
+## Audio server
 
-Zlyme stays on ALSA and BlueALSA. Buildroot 2026.08 has `pulseaudio` and `pipewire` plus `pipewire-pulse`. ROCKNIX, KNULLI, and Batocera ship a session sound server. Their trees were not rebuilt here, so the size and RAM figures below are not measurements.
+Buildroot 2026.08 PulseAudio is 17.0. Enabling it selects the BlueZ audio plugin because BlueALSA already selects that plugin. Pulse is built with its BlueZ module available and the Zlyme script does not load it, so BlueALSA remains the only A2DP endpoint owner. PipeWire was not chosen: it would add a second graph beside BlueALSA for the same protocol.
 
-`libpulse-simple.so.0` needs a PulseAudio protocol server. A stub or an ALSA symlink would load and then fail the protocol. PipeWire with `pipewire-pulse` is the same protocol plus a session manager, a larger install, and a second graph beside BlueALSA. An on-demand PulseAudio, started only by a port that needs it and pointed at the ALSA device, is the smaller experiment. It was not built. No boot service was added. Speaker, headphone, HDMI, Bluetooth, volume keys, and suspend behavior of that server are untested. The two confirmed clients are Abombniball and LISA. Other installed binaries were not scanned for `libpipewire`.
+`libpulse.so.0` and `libpulse-simple.so.0` come from that package. They are AArch64. They do not make an ARMHF program able to open them. The server listens on `/run/zlyme/pulse/native` only. `autospawn` is off. Installed size, RSS, and playback latency were not measured before the image build. The codec fragment is 1024 bytes, four fragments, 48 kHz S16 stereo: 5.3 ms and 21.3 ms nominal, not a measured latency.
+
+Abombniball and LISA need `libpulse-simple.so.0`. A launch that gets past the dynamic linker is not an audio pass until a stream is heard. `libavcodec.so.58` for Deltarune is still a port/runtime SONAME, not the system FFmpeg.

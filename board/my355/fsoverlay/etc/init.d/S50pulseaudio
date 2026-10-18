@@ -1,0 +1,4 @@
+#!/bin/sh
+# Buildroot ships S50pulseaudio. S44pulse is the one server.
+# This file replaces that script so a second daemon is not started.
+exit 0

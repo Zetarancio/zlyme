@@ -43,24 +43,36 @@ pick() {
 	fi
 }
 
-reload_clients() {
-	[ -f /tmp/zlyme-keep-emu ] && return 0
-	if pidof nextui.elf >/dev/null 2>&1; then
-		kill -9 $(pidof nextui.elf) 2>/dev/null || true
-		return 0
-	fi
-	touch /tmp/zlyme-sink-reload
-	for p in retroarch PPSSPPSDL flycast drastic moonlight gptokeyb; do
-		killall -9 "$p" 2>/dev/null || true
-	done
+bt_mac() {
+	list=${ZLYME_BLUEALSA_LIST:-}
+	if [ -n "$list" ]; then
+		cat "$list"
+	else
+		bluealsa-cli list-pcms 2>/dev/null
+	fi | sed -n 's/.*dev_\([0-9A-Fa-f][0-9A-Fa-f]_\([0-9A-Fa-f][0-9A-Fa-f]_\)\{4\}[0-9A-Fa-f][0-9A-Fa-f]\).*/\1/p' |
+		head -n 1 | tr _ :
 }
 
 apply() {
 	want=$1
-	now=$(zlyme-audio get 2>/dev/null || echo codec)
-	[ "$now" = "$want" ] && return 0
+	case "$want" in
+		bt)
+			mac=$(bt_mac) || mac=
+			[ -n "$mac" ] || return 0
+			zlyme-audio sink-down hdmi || true
+			zlyme-audio sink-up bt "$mac" || return 0
+			;;
+		hdmi)
+			zlyme-audio sink-down bt || true
+			zlyme-audio sink-up hdmi || return 0
+			;;
+		*)
+			zlyme-audio sink-down bt || true
+			zlyme-audio sink-down hdmi || true
+			;;
+	esac
 	zlyme-audio set "$want" >/dev/null 2>&1 || return 0
-	reload_clients
+	zlyme-audio focus "$want" || true
 }
 
 need() {

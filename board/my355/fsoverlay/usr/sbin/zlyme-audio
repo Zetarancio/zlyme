@@ -10,6 +10,7 @@
 STATE="${ZLYME_CFG}/audio.conf"
 CARD=rk817ext
 VOLCTL=FlipVolume
+export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-/run/zlyme/pulse}"
 
 do_usage() {
 	cat <<EOF
@@ -25,7 +26,7 @@ usage: $(basename "$0") <command>
   export               print a shell assignment: eval \$($(basename "$0") export)
 
 Speaker versus headphones is not selectable: zlyme-jackd follows the jack.
-A sink change applies to audio started afterwards, not to anything already playing.
+A sink change moves streams that are already playing. It does not restart the game.
 EOF
 }
 
@@ -87,13 +88,77 @@ describe() {
 	esac
 }
 
+pulse_ok() {
+	command -v pactl >/dev/null 2>&1 && pactl info >/dev/null 2>&1
+}
+
 volume() {
+	if pulse_ok; then
+		sink=$(current)
+		pactl get-sink-volume "$sink" 2>/dev/null |
+			sed -n 's/.*\/ *\([0-9][0-9]*\)%.*/\1/p' | head -n 1
+		return 0
+	fi
 	amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
 		sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1
 }
 
 set_volume() {
+	if pulse_ok; then
+		for s in codec hdmi bt; do
+			pactl set-sink-volume "$s" "$1%" >/dev/null 2>&1 || true
+		done
+		save ZLYME_VOLUME "$1" || true
+		return 0
+	fi
 	amixer -q -c "$CARD" sset "$VOLCTL" "$1%" 2>/dev/null
+}
+
+# Load or drop an optional sink. The codec sink comes from zlyme.pa.
+# The stored module id is ours; a missing id is not an error.
+sink_up() {
+	name=$1
+	mac=${2:-}
+	idfile=$PULSE_RUNTIME_PATH/module-$name
+	pulse_ok || return 1
+	if [ -r "$idfile" ]; then
+		old=$(cat "$idfile")
+		pactl list short modules 2>/dev/null | awk '{print $1}' | grep -qx "$old" && return 0
+	fi
+	case "$name" in
+		hdmi)
+			mod=$(pactl load-module module-alsa-sink device=hw:HDMI,0 sink_name=hdmi channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024 2>/dev/null) || return 1
+			;;
+		bt)
+			[ -n "$mac" ] || return 1
+			mod=$(pactl load-module module-alsa-sink "device=bluealsa:DEV=${mac},PROFILE=a2dp" sink_name=bt channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024 2>/dev/null) || return 1
+			;;
+		*)
+			return 0
+			;;
+	esac
+	printf '%s\n' "$mod" > "$idfile"
+}
+
+sink_down() {
+	name=$1
+	idfile=$PULSE_RUNTIME_PATH/module-$name
+	[ -r "$idfile" ] || return 0
+	pulse_ok || return 0
+	pactl unload-module "$(cat "$idfile")" >/dev/null 2>&1 || true
+	rm -f "$idfile"
+}
+
+focus() {
+	name=$1
+	pulse_ok || return 0
+	pactl set-default-sink "$name" >/dev/null 2>&1 || return 1
+	pactl list short sink-inputs 2>/dev/null | awk '{print $1}' | while read -r id; do
+		[ -n "$id" ] || continue
+		pactl move-sink-input "$id" "$name" >/dev/null 2>&1 || true
+	done
+	vol=$(saved ZLYME_VOLUME) || vol=""
+	[ -n "$vol" ] && set_volume "$vol"
 }
 
 case "${1:-status}" in
@@ -117,7 +182,8 @@ case "${1:-status}" in
 		case "$sink" in
 			codec|hdmi|bt)
 				save ZLYME_SINK "$sink" || exit 1
-				echo "sink: ${sink} (applies to audio started from now on)"
+				focus "$sink" || true
+				echo "sink: ${sink}"
 				reason=$(why_unavailable "$sink") ||
 					echo "warning: ${reason}" >&2
 				;;
@@ -196,6 +262,21 @@ case "${1:-status}" in
 
 	export)
 		printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(current)"
+		;;
+
+	sink-up)
+		sink_up "$2" "$3" || exit 1
+		;;
+
+	sink-down)
+		sink_down "$2"
+		;;
+
+	focus)
+		case "$2" in
+			codec|hdmi|bt) focus "$2" || exit 1 ;;
+			*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
+		esac
 		;;
 
 	-h|--help|help)

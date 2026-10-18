@@ -331,7 +331,7 @@ Status: Audited. The PortMaster seed ships AArch64 `gptokeyb` and `gptokeyb2`, p
 
 ### 14F. Shared runtimes
 
-Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. ALSA and BlueALSA stay the audio path. Do not add a resident PulseAudio. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
+Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. Native `libpulse` clients need a PulseAudio server. One server is the mixer, ALSA stays the hardware path, and BlueALSA stays the A2DP owner. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
 
 Status: Audited. The seed's `runtimes/` directory contains LÖVE 11.5 for AArch64 and x86_64. `libs/` is empty. Other engines stay catalogue downloads. `libgl_default.txt` prepends a port's own GL4ES directory. Zlyme does not ship GL4ES or OpenAL. ALSA and BlueALSA stay. Squashfs mount and cleanup stay in `zlyme-portmaster-exec` and `zlyme-portmaster-cleanup`. `/usr/lib/compat` remains the Theora 1.1 decoder.
 

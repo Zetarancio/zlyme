@@ -430,18 +430,18 @@ This dual-stack mechanism is a Miyoo Flip/RK3566 implementation detail, not a re
 
 ## 9. Audio
 
-Normal audio is ALSA.
+One PulseAudio server is the mixer. ALSA is the hardware backend. The default PCM is the PulseAudio plugin, so an ordinary ALSA client and a native `libpulse` client share that server. There is no second daemon and no network listener. `autospawn` is off.
 
 For the Miyoo Flip:
 
-- the local codec is the RK817, identified by stable ALSA card ID `rk817ext`. HDMI is a separate card;
-- `/etc/asound.conf` defines three sinks: `flipsink_codec`, `flipsink_hdmi`, and `flipsink_bt`. The default PCM picks one from `$ZLYME_SINK` (default `codec`);
-- codec and HDMI go through `dmix` at 48 kHz S16 so a UI sound can play over an emulator. Bluetooth goes straight to BlueALSA;
-- every sink uses one softvol control, `FlipVolume`, hosted on `rk817ext`, so volume is one setting on every output. `S20alsa` restores `/storage/.config/asound.state`;
-- `zlyme-audio` is the CLI. It stores the selected sink in `/storage/.config/audio.conf`, exports it for the session and paks, and sets `FlipVolume`;
-- speaker/headphone switching is the RK817 `Playback Mux` control. `zlyme-jackd` (Class A) follows the headphone-jack evdev switch and sets it. It is not a user choice;
-- Bluetooth audio uses BlueALSA;
-- `zlyme-btsink` (Class B) picks the sink: an A2DP headset first, then HDMI when its ELD reports audio, then the codec. On a change it kills the frontend or the running emulator so it reopens the default PCM, except while `/tmp/zlyme-keep-emu` exists.
+- the local codec is the RK817, identified by stable ALSA card ID `rk817ext`. HDMI is a separate card. Pulse sink names are `codec`, `hdmi`, and `bt`;
+- `S21pulse` starts the server after ALSA and before NextUI. It daemonizes and returns. It does not poll. `S50pulseaudio` from Buildroot is replaced so it does not start another server;
+- the codec sink is `hw:rk817ext,0`. The HDMI sink is loaded only when the HDMI ELD reports an audio SAD, not because the cable is connected. The Bluetooth sink is `module-alsa-sink` on a BlueALSA A2DP PCM. Pulse's BlueZ module is not loaded. BlueALSA remains the A2DP owner. A HID pad does not create a sink;
+- `zlyme-audio` is the CLI. It stores the selected sink and the volume in `/storage/.config/audio.conf`, sets the PulseAudio default sink, moves streams that are already playing, and sets the same volume on every sink. Flat volumes are off, so the setting does not amplify past 100 percent. `FlipVolume` is no longer in the default path;
+- speaker/headphone switching is still the RK817 `Playback Mux` control. `zlyme-jackd` follows the headphone-jack evdev switch and sets it. Pulse keeps the codec device open. The mux change does not restart a game;
+- `zlyme-btsink` picks the sink: an A2DP headset first, then HDMI when its ELD reports audio, then the codec. A change does not kill NextUI or the emulator.
+
+Earlier images used `dmix` and one `FlipVolume` softvol, and `zlyme-btsink` killed the player so it would reopen the PCM. That graph is not the default anymore. The old `flipsink_*` devices remain for a program that opens them by name. A program that opens `hw:` still bypasses the server.
 
 RK817 mixer names must remain inside the `my355` implementation.
 

@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-18 — PulseAudio and the panel-off brace
+
+The SDL panel-off call sat after `return 0` in the failed HDMI modeset branch, so it never ran. It now runs only after that modeset returns success. A crash marker stores the DSI mode. The next client programs that CRTC with its own framebuffer. The old helper that reused a saved framebuffer id is gone.
+
+PulseAudio 17 is the mixer. The default ALSA PCM is the Pulse plugin. BlueALSA still owns A2DP. `zlyme-btsink` moves streams and no longer kills the player. Speaker versus headphones stays the RK817 mux. Installed size and playback latency are not measured until the image exists. This has not run on a Flip.
+
 ## 2026-10-18 — Flip returned, no panic record
 
 The next SSH session was boot id `46be5cec-fa17-4d49-af76-97d1501264f6`, uptime under 15 minutes, squashfs still `356d7f5c…`. pstore was empty. That boot's dmesg had no panic, OOM, or reset line. Wi-Fi was up at `192.168.0.108`. NextUI was the only graphics client. The saved matrix ends during Mina the Hollower, with NUL padding after the START line. LISA's sample is `libpulse-simple.so.0` missing from `falcon_mkxp.bin`. The earlier loss of route is not identified as a kernel panic.
