@@ -15,7 +15,7 @@
  
  /* TODO/FIXME - globals */
  drmEventContext g_drm_evctx;
-@@ -138,6 +140,141 @@
+@@ -138,6 +140,148 @@
     return num * 1000.0f / den;
  }
  
@@ -164,7 +164,7 @@
  bool drm_get_encoder(int fd)
  {
     unsigned i;
-@@ -157,6 +294,9 @@
+@@ -157,6 +301,9 @@
     }
  
     if (!g_drm_encoder)
