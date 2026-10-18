@@ -123,19 +123,25 @@ after=$(stat -c '%Y' "$cur/Recently Played/.media/bg.png")
 [ "$before" = "$after" ] || fail "current stock was rewritten"
 
 # A copy that cannot be written leaves the old file in place.
+# Root ignores a directory mode, so the failing step is cp itself.
 stuck=$(mktemp -d)
+fakecp=$(mktemp -d)
 mkdir -p "$stuck/Recently Played/.media" "$stuck/.config/zlyme"
 cp "$old/picture" "$stuck/Recently Played/.media/bg.png"
 : > "$stuck/.config/zlyme/recent-art-seeded"
-chmod a-w "$stuck/Recently Played/.media"
-if ZLYME_STOCK_ROOT=$stuck ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
-	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"; then
-	chmod u+w "$stuck/Recently Played/.media"
+cat > "$fakecp/cp" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod 755 "$fakecp/cp"
+if PATH="$fakecp:$PATH" ZLYME_STOCK_ROOT=$stuck ZLYME_STOCK_SHARE=$SHARE \
+	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known \
+	sh "$SEED"; then
 	fail "a blocked replacement was treated as success"
 fi
-chmod u+w "$stuck/Recently Played/.media"
 cmp -s "$old/picture" "$stuck/Recently Played/.media/bg.png" || fail "blocked replacement changed the picture"
 [ -f "$stuck/.config/zlyme/recent-art-seeded" ] || fail "blocked replacement cleared the marker"
+rm -rf "$fakecp"
 
 rm -rf "$old" "$cur" "$stuck" "$known"
 echo "recent art ok"
