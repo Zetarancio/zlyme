@@ -229,6 +229,18 @@ sink_up() {
 	esac
 }
 
+# The boot script loads this once. If that open fails, the server
+# stays up without a codec sink. A later call uses the same arguments.
+codec_up() {
+	pulse_ok || return 1
+	if pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'; then
+		return 0
+	fi
+	pactl load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024 >/dev/null || return 1
+	pactl set-default-sink codec >/dev/null 2>&1 || true
+	return 0
+}
+
 sink_down() {
 	name=$1
 	unload_named "$name"
@@ -392,6 +404,10 @@ case "${1:-status}" in
 
 	pulse-service)
 		pulse_service
+		;;
+
+	codec-up)
+		codec_up
 		;;
 
 	migrate-volume)

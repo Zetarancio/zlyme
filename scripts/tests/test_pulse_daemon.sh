@@ -7,11 +7,11 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 S21=$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse
-LAUNCH=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch
+LAUNCH_SRC=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch
 AUDIO=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio
 fail() { echo "pulse-daemon: $*" >&2; exit 1; }
 
-[ -x "$LAUNCH" ] || fail "launcher is not executable"
+[ -x "$LAUNCH_SRC" ] || fail "launcher is not executable"
 # shellcheck disable=SC1090
 ZLYME_PULSE_LIB=1 . "$S21"
 
@@ -48,6 +48,15 @@ rm -f "$work/reason/exit"
 got=$(pulse_fail_reason)
 want='failed: Failed to load module "module-alsa-sink" (argument: "device=hw:missing,0 sink_name=codec"): initialization failed.'
 [ "$got" = "$want" ] || fail "module reason: $got"
+printf '%s\n' 'E: [pulseaudio] main.c: Sink codec does not exist.' > "$work/reason/daemon.log"
+rm -f "$work/reason/exit"
+got=$(pulse_fail_reason)
+want='failed: Sink codec does not exist.'
+[ "$got" = "$want" ] || fail "sink reason: $got"
+if grep -q '\[:print:\]' "$S21"; then
+	fail "status text uses a BusyBox tr class"
+fi
+grep -q -- '--log-level=info' "$LAUNCH_SRC" || fail "launcher does not keep ALSA open errors"
 # No daemon log at all.
 rm -f "$work/reason/daemon.log" "$work/reason/exit"
 got=$(pulse_fail_reason)
@@ -102,7 +111,7 @@ cookie-file = $runtime/cookie
 EOF
 printf 'ZLYME_CFG=%s\n' "$work/cfg" > "$work/zlyme.conf"
 
-"$LAUNCH" &
+"$LAUNCH_SRC" &
 lpid=$!
 printf '%s\n' "$lpid" > "$runtime/pid"
 i=0
@@ -190,7 +199,7 @@ lpid=
 if pulse_our_daemon; then
 	fail "daemon still running after stop"
 fi
-"$LAUNCH" &
+"$LAUNCH_SRC" &
 lpid=$!
 printf '%s\n' "$lpid" > "$runtime/pid"
 i=0
@@ -231,7 +240,7 @@ EOF
 # has been observed to log the module error and keep running, so an
 # exit is not required. The codec sink must be absent, the log must
 # contain the error, and no server is left behind.
-"$LAUNCH" &
+"$LAUNCH_SRC" &
 lpid=$!
 printf '%s\n' "$lpid" > "$bad/pid"
 i=0

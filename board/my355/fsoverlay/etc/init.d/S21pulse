@@ -62,12 +62,19 @@ pulse_fail_reason() {
 		code=$(tr -cd '0-9' < "$exitf" | head -c 3)
 	fi
 	if [ -f "$log" ]; then
-		line=$(grep '^E:' "$log" 2>/dev/null | tail -n 1 || true)
-		msg=${line#E: }
+		open=$(grep -E 'Error opening PCM|Failed to set hardware parameters' "$log" 2>/dev/null | tail -n 1 || true)
+		if [ -n "$open" ]; then
+			line=$open
+		else
+			line=$(grep '^E:' "$log" 2>/dev/null | tail -n 1 || true)
+		fi
+		# BusyBox tr does not treat a POSIX character class as one.
+		# Keep the ASCII range instead of that class.
+		msg=${line#[EIW]: }
 		case $msg in
 			*.c:*) msg=${msg#*.c: } ;;
 		esac
-		msg=$(printf '%s' "$msg" | tr -cd '[:print:]' | head -c 160)
+		msg=$(printf '%s' "$msg" | tr -cd ' -~' | head -c 160)
 	fi
 	if [ -n "$code" ] && [ -n "$msg" ]; then
 		printf 'failed: exit %s: %s\n' "$code" "$msg"
@@ -181,8 +188,13 @@ ready_check() {
 		if pulse_our_daemon; then
 			if [ -S "$RUNTIME/native" ]; then
 				pulse_set_status socket "$token"
+				# The first module-alsa-sink load can fail while the
+				# PCM node is still settling. The server stays up.
+				# Try the same load again. This does not delay boot.
+				zlyme-audio codec-up >/dev/null 2>&1 || true
 				if zlyme-audio pulse-service; then
 					pulse_set_status ready "$token"
+					pactl set-log-level notice >/dev/null 2>&1 || true
 					if [ "${ZLYME_PULSE_NO_MIGRATE:-}" != 1 ]; then
 						zlyme-audio migrate-volume ||
 							printf '%s\n' 'volume migration deferred' >> "$STATUS"
@@ -203,8 +215,9 @@ ready_check() {
 	if ! pulse_token_ok "$token"; then
 		return 0
 	fi
-	if zlyme-audio pulse-service; then
+	if zlyme-audio codec-up >/dev/null 2>&1 && zlyme-audio pulse-service; then
 		pulse_set_status ready "$token"
+		pactl set-log-level notice >/dev/null 2>&1 || true
 		if [ "${ZLYME_PULSE_NO_MIGRATE:-}" != 1 ]; then
 			zlyme-audio migrate-volume ||
 				printf '%s\n' 'volume migration deferred' >> "$STATUS"

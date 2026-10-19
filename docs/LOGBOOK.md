@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — 95d086e boots a Pulse server with no codec sink
+
+The installed squashfs is `b5fbb943acb183ebd5eb75742841379f766e8c10b445aea5a7a5c335b6080df0`. `S21pulse` is running. The socket accepts `pactl`. The only loaded module is `module-native-protocol-unix`. `daemon.log` says `module-alsa-sink` initialization failed for `hw:rk817ext,0`, then `Sink codec does not exist.` The notice log does not include Pulse's info line for the ALSA error. BusyBox `tr` turned `[:print:]` into the letters of that word, so `/run/zlyme/pulse/service` is `failed: inntit`. Loading the same module on that live server created the `codec` sink. A one-second 440 Hz stream at 8 percent was accepted. The sink was left loaded. The exFAT note that `/storage` was not unmounted cleanly is earlier evidence. It is not a new Phase 14 gate, and the card was not repaired.
+
 ## 2026-10-19 — Pulse system mode exits on the read-only root
 
 `a5483cb` starts `S21pulse` and the process is gone before NextUI. The foreground log is `Failed to create '/var/lib/pulse': Read-only file system`. That is PulseAudio 17 `--system` creating its state directory before it loads `zlyme.pa`. No socket is created, so every client gets connection refused. A process started as `pulse` without `--system`, with runtime state under `/run/zlyme/pulse`, opened `hw:rk817ext,0` and accepted a short stream at 8 percent. Root `pactl` connected with the cookie. The process was stopped. A person has not confirmed the speaker. The boot script on that image is unchanged.

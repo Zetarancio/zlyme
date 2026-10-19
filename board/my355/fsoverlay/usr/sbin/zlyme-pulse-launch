@@ -46,7 +46,7 @@ trap 'if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child";
 	-n \
 	--file="$FILE" \
 	--log-target="file:${LOG}" \
-	--log-level=notice &
+	--log-level=info &
 child=$!
 wait "$child"
 finish $?
