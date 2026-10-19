@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — rk817ext is the ALSA id; the boot lookup still failed
+
+`d1e6368` is installed. Squashfs `29907c520864123f6041f58b3e79b20a01ea5c4e24b05de113cdd95868f7f404`, boot id `ea4746d4-5fb2-4acd-a098-a3395f97a117`. `/proc/asound/card1/id` is `rk817ext`. `aplay -l` shows `card 1: rk817ext [rk817_ext]`. `hw:rk817ext,0` opens for root and for user `pulse`. `hw:rk817_ext,0` returns `Cannot get card index for rk817_ext`. The kernel line `rk817_ext` is the short name, not the card id. `S10udevd` started at 45.14s and `S21pulse` at 46.43s. The daemon log has six `Cannot get card index for rk817ext` lines and no codec sink. ALSA reports that when `snd_ctl_hw_open` fails, including when the node is missing or not group-accessible. One later `pactl load-module` of `hw:rk817ext,0` created sink `codec`. A one-second stream at 8 percent was accepted with `Playback Mux` on `SPK`. The speaker was not confirmed. Headphones were not switched.
+
 ## 2026-10-19 — 95d086e boots a Pulse server with no codec sink
 
 The installed squashfs is `b5fbb943acb183ebd5eb75742841379f766e8c10b445aea5a7a5c335b6080df0`. `S21pulse` is running. The socket accepts `pactl`. The only loaded module is `module-native-protocol-unix`. `daemon.log` says `module-alsa-sink` initialization failed for `hw:rk817ext,0`, then `Sink codec does not exist.` The notice log does not include Pulse's info line for the ALSA error. BusyBox `tr` turned `[:print:]` into the letters of that word, so `/run/zlyme/pulse/service` is `failed: inntit`. Loading the same module on that live server created the `codec` sink. A one-second 440 Hz stream at 8 percent was accepted. The sink was left loaded. The exFAT note that `/storage` was not unmounted cleanly is earlier evidence. It is not a new Phase 14 gate, and the card was not repaired.

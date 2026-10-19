@@ -104,7 +104,9 @@ pending=""
 npending=0
 loops=0
 limit=${ZLYME_BTSINK_LIMIT:-0}
-pause=${ZLYME_BTSINK_SLEEP:-1}
+pause_fast=${ZLYME_BTSINK_SLEEP:-1}
+pause_slow=${ZLYME_BTSINK_SLOW:-5}
+pause=$pause_fast
 while :; do
 	cur=$(pick)
 	try=0
@@ -130,11 +132,19 @@ while :; do
 			prev=$cur
 			pending=""
 			npending=0
+			pause=$pause_fast
 		else
 			# Do not record prev. The next pass tries again.
+			# While the codec sink is missing this used to call
+			# pactl every second, and an info log kept every one.
 			pending=""
 			npending=0
+			pause=$pause_slow
 		fi
+	elif [ "$cur" = codec ]; then
+		pause=$pause_slow
+	else
+		pause=$pause_fast
 	fi
 	loops=$((loops + 1))
 	if [ "$limit" -gt 0 ] && [ "$loops" -ge "$limit" ]; then

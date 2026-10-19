@@ -176,10 +176,29 @@ pulse_stop_ours() {
 	rm -f "$STATUS" "$RUNTIME/native"
 }
 
+pulse_snd_access() {
+	# devtmpfs creates these nodes root:root mode 0600. udev later
+	# sets group audio. Until then snd_ctl_hw_open fails, and
+	# snd_card_get_index reports that as "Cannot get card index".
+	# S21 runs immediately after udev is started. This does not
+	# choose a card index. It only makes an existing node usable
+	# by the pulse user, who is in group audio.
+	for node in /dev/snd/controlC* /dev/snd/pcmC*D*p /dev/snd/pcmC*D*c; do
+		[ -e "$node" ] || continue
+		[ -c "$node" ] || continue
+		chgrp audio "$node" 2>/dev/null || true
+		chmod 0660 "$node" 2>/dev/null || true
+	done
+}
+
 ready_check() {
 	token=$1
 	i=0
-	limit=${ZLYME_PULSE_READY_LIMIT:-5}
+	# udev coldplug is still running when this starts. Five seconds
+	# was not enough on d1e6368: six lookups of the real id rk817ext
+	# failed, and the same id opened later. Thirty seconds stays in
+	# the background and does not hold the first frame.
+	limit=${ZLYME_PULSE_READY_LIMIT:-30}
 	while [ "$i" -lt "$limit" ]; do
 		pulse_paths
 		if ! pulse_token_ok "$token"; then
@@ -188,13 +207,10 @@ ready_check() {
 		if pulse_our_daemon; then
 			if [ -S "$RUNTIME/native" ]; then
 				pulse_set_status socket "$token"
-				# The first module-alsa-sink load can fail while the
-				# PCM node is still settling. The server stays up.
-				# Try the same load again. This does not delay boot.
+				pulse_snd_access
 				zlyme-audio codec-up >/dev/null 2>&1 || true
 				if zlyme-audio pulse-service; then
 					pulse_set_status ready "$token"
-					pactl set-log-level notice >/dev/null 2>&1 || true
 					if [ "${ZLYME_PULSE_NO_MIGRATE:-}" != 1 ]; then
 						zlyme-audio migrate-volume ||
 							printf '%s\n' 'volume migration deferred' >> "$STATUS"
@@ -217,7 +233,6 @@ ready_check() {
 	fi
 	if zlyme-audio codec-up >/dev/null 2>&1 && zlyme-audio pulse-service; then
 		pulse_set_status ready "$token"
-		pactl set-log-level notice >/dev/null 2>&1 || true
 		if [ "${ZLYME_PULSE_NO_MIGRATE:-}" != 1 ]; then
 			zlyme-audio migrate-volume ||
 				printf '%s\n' 'volume migration deferred' >> "$STATUS"

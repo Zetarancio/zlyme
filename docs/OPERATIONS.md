@@ -164,6 +164,8 @@ Local codec ALSA ID:
 rk817ext
 ```
 
+That is the id in `/proc/asound/card1/id`. The kernel short name `rk817_ext` is not an ALSA card id. `hw:rk817_ext,0` does not open.
+
 Speaker/headphones share the RK817 codec route.
 
 `zlyme-jackd` follows the headphone jack and changes `Playback Mux`.
