@@ -455,11 +455,17 @@ PY
 	done
 	sbc=$(find "${TARGET_DIR}/usr/lib" -name '*bluez5*sbc*' -print -quit)
 	[ -n "$sbc" ] || note "PipeWire BlueZ SBC plugin is missing"
-	if [ -x "${TARGET_DIR}/usr/bin/pulseaudio" ]; then
-		note "PulseAudio daemon binary is still installed"
+	# Buildroot still installs the pulseaudio binary when the daemon
+	# option is off. It must not be startable beside PipeWire.
+	if ! br2_selected BR2_PACKAGE_PULSEAUDIO_DAEMON; then
+		rm -f "${TARGET_DIR}/usr/bin/pulseaudio"
 	fi
-	if [ -x "${TARGET_DIR}/usr/bin/bluealsa" ] || [ -x "${TARGET_DIR}/usr/bin/bluealsad" ]; then
-		note "BlueALSA is still installed"
+	if ! br2_selected BR2_PACKAGE_BLUEZ_ALSA; then
+		rm -f "${TARGET_DIR}/usr/bin/bluealsa" \
+			"${TARGET_DIR}/usr/bin/bluealsad" \
+			"${TARGET_DIR}/usr/bin/bluealsa-aplay"
+		rm -f "${TARGET_DIR}"/usr/lib/alsa-lib/libasound_module_ctl_bluealsa.so \
+			"${TARGET_DIR}"/usr/lib/alsa-lib/libasound_module_pcm_bluealsa.so
 	fi
 fi
 
