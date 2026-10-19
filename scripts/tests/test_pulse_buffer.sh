@@ -5,21 +5,18 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fail() { echo "pulse-buffer: $*" >&2; exit 1; }
 
-pa=$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa
 audio=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio
-long='fragments=12 fragment_size=1024'
-short='fragments=4 fragment_size=1024'
-
-n=$(grep -F -c "$long" "$pa" "$audio" | awk -F: '{s+=$2} END {print s}')
-[ "$n" = 3 ] || fail "expected 3 long buffers, got $n"
-grep -q "sink_name=codec .*${long}" "$pa" || fail "boot codec buffer"
-grep -q "sink_name=codec .*${long}" "$audio" || fail "codec-up buffer"
-grep -q "sink_name=hdmi .*${long}" "$audio" || fail "hdmi buffer"
-grep -q "sink_name=bt .*${short}" "$audio" || fail "bluetooth buffer changed"
-if grep -E 'sink_name=(codec|hdmi).*fragments=4' "$pa" "$audio"; then
-	fail "codec or hdmi still uses 4 fragments"
+conf=$ROOT/configs/zlyme_my355_defconfig
+grep -q '^BR2_PACKAGE_PIPEWIRE=y$' "$conf" || fail "pipewire is not selected"
+grep -q '^BR2_PACKAGE_WIREPLUMBER=y$' "$conf" || fail "wireplumber is not selected"
+if grep -q '^BR2_PACKAGE_PULSEAUDIO_DAEMON=y$' "$conf"; then
+	fail "pulse daemon is still selected"
 fi
-# Migration copies the percent. It does not turn that percent into dB.
-grep -q 'set-sink-volume "$s" "$now%"' "$audio" || fail "migration rescales the percent"
-grep -q 'set-sink-volume "$s" "$v%"' "$audio" || fail "volume write is not the saved percent"
+if grep -q '^BR2_PACKAGE_BLUEZ_ALSA=y$' "$conf"; then
+	fail "bluealsa is still selected"
+fi
+grep -q 'pipewire-cubic' "$audio" || fail "volume curve marker missing"
+if grep -q 'load-module module-alsa-sink' "$audio"; then
+	fail "zlyme-audio still loads Pulse sinks"
+fi
 echo "pulse buffer ok"

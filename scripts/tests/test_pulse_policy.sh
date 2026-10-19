@@ -56,52 +56,38 @@ export ZLYME_CONF=$work/zlyme.conf
 : > "$PULSE_LOG"
 AUDIO=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio
 out=$(sh "$AUDIO" export)
-[ "$out" = "ZLYME_SINK=codec; export ZLYME_SINK" ] || fail "export: $out"
+printf '%s\n' "$out" | grep -qx 'ZLYME_SINK=codec; export ZLYME_SINK' || fail "export: $out"
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$PULSE_LOG"
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+printf '%s\n' 'codec	1' 'hdmi	2' 'bt	3' > "$work/nodes"
+export ZLYME_WPCTL=$work/bin/wpctl
+export ZLYME_PW_NODES=$work/nodes
+export ZLYME_HDMI_AUDIO=1
 sh "$AUDIO" set hdmi >/dev/null
-grep -q 'set-default-sink hdmi' "$PULSE_LOG" || fail "default sink was not moved"
+grep -q 'set-default 2' "$PULSE_LOG" || fail "default sink was not moved"
 sh "$AUDIO" setSystemVolume 30 >/dev/null
-grep -q 'set-sink-volume codec 30%' "$PULSE_LOG" || fail "volume did not reach every sink"
-grep -q 'set-sink-volume hdmi 30%' "$PULSE_LOG" || fail "hdmi volume missed"
-grep -q 'set-sink-volume bt 30%' "$PULSE_LOG" || fail "bt volume missed"
-# Writing the same volume again must not rewrite the state file.
+grep -q 'set-volume 1 0.027000' "$PULSE_LOG" || fail "cubic gain was not applied"
 cp "$work/cfg/audio.conf" "$work/cfg/audio.conf.before"
 sh "$AUDIO" setSystemVolume 30 >/dev/null
 cmp "$work/cfg/audio.conf.before" "$work/cfg/audio.conf" || fail "unchanged volume rewrote audio.conf"
-printf '%s\n' '/org/bluealsa/hci0/dev_AA_BB_CC_DD_EE_FF/a2dpsrc' > "$work/pcms/list"
-export ZLYME_BLUEALSA_LIST=$work/pcms/list
-mac=$(sed -n 's/.*dev_\([0-9A-Fa-f][0-9A-Fa-f]_\([0-9A-Fa-f][0-9A-Fa-f]_\)\{4\}[0-9A-Fa-f][0-9A-Fa-f]\).*/\1/p' "$ZLYME_BLUEALSA_LIST" | head -n 1 | tr _ :)
-[ "$mac" = "AA:BB:CC:DD:EE:FF" ] || fail "mac: $mac"
-sh "$AUDIO" sink-up bt "$mac"
-grep -q 'bluealsa:DEV=AA:BB:CC:DD:EE:FF,PROFILE=a2dp' "$PULSE_LOG" || fail "bt module"
-sh "$AUDIO" sink-up bt "$mac"
-loads=$(grep -c 'load-module module-alsa-sink' "$PULSE_LOG" || true)
-[ "$loads" = 1 ] || fail "second load of the same headset: $loads"
-sh "$AUDIO" sink-ok bt "$mac"
-printf '%s\n' '/org/bluealsa/hci0/dev_11_22_33_44_55_66/a2dpsrc' > "$work/pcms/list"
-mac2=$(sed -n 's/.*dev_\([0-9A-Fa-f][0-9A-Fa-f]_\([0-9A-Fa-f][0-9A-Fa-f]_\)\{4\}[0-9A-Fa-f][0-9A-Fa-f]\).*/\1/p' "$ZLYME_BLUEALSA_LIST" | head -n 1 | tr _ :)
-sh "$AUDIO" sink-up bt "$mac2"
-grep -q 'bluealsa:DEV=11:22:33:44:55:66,PROFILE=a2dp' "$PULSE_LOG" || fail "second headset was not loaded"
-grep -q 'unload-module' "$PULSE_LOG" || fail "previous headset was not unloaded"
-loads=$(grep -c 'load-module module-alsa-sink' "$PULSE_LOG" || true)
-[ "$loads" = 2 ] || fail "headset switch loaded $loads modules"
-sh "$AUDIO" sink-down bt
-[ ! -s "$work/state/modules" ] || fail "bt module stayed"
-printf '%s\n' 'hog-hid' > "$work/pcms/list"
-mac=$(sed -n 's/.*dev_\([0-9A-Fa-f][0-9A-Fa-f]_\([0-9A-Fa-f][0-9A-Fa-f]_\)\{4\}[0-9A-Fa-f][0-9A-Fa-f]\).*/\1/p' "$ZLYME_BLUEALSA_LIST" | head -n 1 | tr _ :)
-[ -z "$mac" ] || fail "hid produced a mac"
+sh "$AUDIO" set auto >/dev/null
+grep -q 'set-default 3' "$PULSE_LOG" || fail "auto did not prefer bluetooth"
 PA=$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa
 grep -q 'module-switch-on-connect' "$PA" && fail "auto-switch module is loaded"
 grep -q 'module-bluez5' "$PA" && fail "Pulse owns A2DP"
 grep -q 'module-native-protocol-tcp' "$PA" && fail "tcp listener"
 grep -q 'auth-anonymous=0' "$PA" || fail "anonymous auth"
 grep -q 'auth-anonymous=1' "$PA" && fail "anonymous auth is on"
-grep -q 'auth-cookie=/run/zlyme/pulse/cookie' "$PA" || fail "cookie path"
 grep -q 'flat-volumes = no' "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" || fail "flat volumes"
 grep -q '2048/48000 = 42.7 ms' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "period comment"
-grep -q 'type pulse' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "default pcm"
+grep -q 'flipdmix_codec' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "overlay default pcm"
 grep -q 'hw:rk817ext,0' "$PA" || fail "codec sink does not open the hardware device"
 grep -q 'autospawn = no' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "autospawn"
-grep -q 'cookie-file = /run/zlyme/pulse/cookie' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "client cookie"
+grep -q 'unix:/run/zlyme/pipewire/pulse/native' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "pulse socket"
 S21=$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse
 LAUNCH=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch
 grep -q 'zlyme-pulse-launch' "$S21" || fail "S21pulse does not use the launcher"

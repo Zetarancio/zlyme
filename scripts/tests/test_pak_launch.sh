@@ -500,11 +500,11 @@ ZLYME_BOOT=/boot
 EOF
 printf '%s\n' "ZLYME_SINK=codec; touch $work/pwned-audio" > "$work/acfg/audio.conf"
 out=$(ZLYME_CONF=$work/zlyme.conf "$AUDIO" export)
-[ "$out" = "ZLYME_SINK=codec; export ZLYME_SINK" ] || fail "audio export: $out"
+printf '%s\n' "$out" | grep -qx 'ZLYME_SINK=codec; export ZLYME_SINK' || fail "audio export: $out"
 [ ! -e "$work/pwned-audio" ] || fail "audio state was executed"
 printf '%s\n' "touch $work/pwned-audio" 'ZLYME_SINK=hdmi' > "$work/acfg/audio.conf"
 out=$(ZLYME_CONF=$work/zlyme.conf "$AUDIO" export)
-[ "$out" = "ZLYME_SINK=hdmi; export ZLYME_SINK" ] || fail "audio hdmi export: $out"
+printf '%s\n' "$out" | grep -qx 'ZLYME_SINK=hdmi; export ZLYME_SINK' || fail "audio hdmi export: $out"
 [ ! -e "$work/pwned-audio" ] || fail "audio command line was executed"
 got=$(ZLYME_CONF=$work/zlyme.conf "$AUDIO" export | (
 	eval "$(cat)"
