@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — HDMI mix is stereo; the TV asks for 16-bit LPCM
+
+`00e6c343` is installed. Squashfs `960febaccf07ca98bba2036d1017c0a5440ea3241c626d686bfbd8e6a3ae1e97`, boot id `f888b548-70b7-4cc3-8021-9b33d537f1a9`. Pulse was `ready`, default sink `hdmi`, both sinks at 40% (`-23.88 dB`), unmuted. The display ELD is `20W_LCD_TV`: LPCM, 2 channels, 32/44.1/48 kHz, 16-bit only. A stereo tone with 440 Hz on the left and 880 Hz on the right was recorded from `hdmi.monitor`. Both channels peaked at 384, which is 6000 times the −23.88 dB gain. The digital mix is not one-sided and not clipped. A larger HDMI fragment was loaded for one two-second tone and the original 1024-byte fragment module was put back. Nobody here heard which tone was cleaner. The maintainer has accepted Splore, paired-headset visibility, and Bluetooth headphone audio on this image. RetroArch HDMI audio is audible and its quality is not accepted.
+
+`xdelta3.armhf` is ELF32 ARM. `/lib/ld-linux-armhf.so.3 --list` opens `libc.so.6` from `/usr/lib/zlyme-armhf`. `xdelta3.armhf -V` printed `Xdelta version 3.1.1`.
+
 ## 2026-10-19 — One automatic shutdown at 0%
 
 The maintainer observed the Flip shut itself down when the battery reached 0%. `zlyme-led` samples every 10 seconds and requests `zlyme-halt poweroff` after two numeric 0% readings when no supply reports `online=1`. Those samples and the charger state were not captured. One shutdown. Not a cycle count and not a charger-suppression test. Phase 13 stays closed.
