@@ -18,7 +18,7 @@ if [ -e "$ROOT/package/system/nextui/paks/Tools/Recent.pak" ] \
 then
 	fail "Recent.pak was added"
 fi
-grep -q '2c3fe9093230e4a85c02e2dd350755f035f2dbce' \
+grep -q '0bb030ef6f44c005df4f4942a2fa3701ae0f7121' \
 	"$ROOT/package/system/nextui/nextui.mk" || fail "NextUI pin changed"
 
 /usr/bin/python3 - "$SRC" "$ROOT/package/system/zlyme-artbook/resources/system-art-alpha.png" << 'PY'
