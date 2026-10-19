@@ -19,6 +19,18 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — e2ecc05 is not accepted, and this boot was not logged
+
+The maintainer installed `zlyme-my355-20261019-e2ecc050ad6f.tar`. RetroArch speaker audio improved. PPSSPP audio is still very bad. Abombniball does not start, and the handheld was force-restarted. The Flip also restarted during PPSSPP play and during NextUI navigation. At 20:40 UTC the host pinged 192.168.0.108 and completed a TCP handshake to port 22. No SSH banner arrived, so boot id, pstore, dmesg, and the session log were not copied. Nothing was launched and no service was restarted.
+
+`board/my355/linux/linux.config` sets `CONFIG_PSTORE=y` and leaves `CONFIG_PSTORE_RAM` and `CONFIG_PSTORE_BLK` unset. A panic record is not expected to survive on that config. That is not a reading of this boot's sysfs.
+
+The two commits after `e5e742c` are the 12-fragment codec and HDMI buffer, and the one-shot pak trace. The trace runs only when `ZLYME_PAK_TRACE=1` or `/storage/.config/zlyme/pak-trace` exists. Ordinary NextUI navigation does not call it. A traced launch that never exits keeps a one-second `/proc` walk until that leader pid is gone. That walk is not a demonstrated board reset. The buffer change is not a demonstrated board reset. The restarts stay UNKNOWN. No kernel or DTS change was made. No new image was built. The previous image, if a rollback is required, is `zlyme-my355-20261019-00e6c34320a1.tar`, squashfs `960febaccf07ca98bba2036d1017c0a5440ea3241c626d686bfbd8e6a3ae1e97`. Abombniball started on that image and did not leave on MENU+START. Speaker quality there was worse.
+
+PPSSPP is v1.19.3. `AudioBackend` 0 is the auto value and the Windows backend list does not apply to this SDL build. The SDL device is opened at 44100 Hz. `AudioBufferSize` defaults to 256 samples when the ini omits it. The resampler target is 1680 samples, about 38 ms, unless the negotiated period is larger. `ExtraAudioBuffering` is false in the stock seed and is not Android-only in `StereoResampler.cpp`. `FillAudioGaps` and `AudioSyncMode` are not in this pin. The user's ini was not read and was not modified. No PPSSPP process was started.
+
+Phase 14 did not add a per-game speaker, HDMI, or Bluetooth choice. Launchers that call `zlyme-audio export` receive the sink name. `Music Player.pak` still sets `SDL_AUDIODRIVER=alsa`, which follows the default PCM into Pulse. PipeWire is deferred in `docs/research/pipewire-zlyme-assessment.md`.
+
 ## 2026-10-19 — 12-fragment buffer and a one-shot exit trace
 
 Codec and HDMI `module-alsa-sink` arguments in source are `tsched=0 fragments=12 fragment_size=1024`. The boot file, `codec-up`, and the HDMI load use that same line. Bluetooth stays at 4 fragments. The saved FlipVolume percent is still copied as a percent. Pulse's 40 is about −23.88 dB. That is not a softvol dB conversion, and the saved number is not rewritten. This is not a listening result.

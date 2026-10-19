@@ -337,7 +337,7 @@ Why you'd do this, and how to send something back, is in the README's [User Syst
 - Stock copies live on the OS card at `Tools/my355/` and `Emus/my355/`.
 - An update replaces only pak names that exist in the image. Extra folders you add are left alone. Example: edits to `GBA.pak` are overwritten on the next update. A copy renamed to `GBA2.pak` survives, but its games must sit in `Roms/… (GBA2)/`. Every system pairs `TAG.pak` with `Roms/… (TAG)/` the same way.
 - Factory Reset also restores the stock pak names.
-- To add a **system**, put an executable `Emus/my355/TAG.pak/launch.sh` on the OS card and a non-empty `Roms/Pretty Name (TAG)/` on a library. The tag in parentheses is the pak name. `launch.sh` receives the ROM path. The existing libretro paks are examples (`ra-run -L …`).
+- To add a **system**, put an executable `Emus/my355/TAG.pak/launch.sh` on the OS card and a non-empty `Roms/Pretty Name (TAG)/` on a library. The tag in parentheses is the pak name. `launch.sh` receives the ROM path. The existing libretro paks are examples (`ra-run -L …`). A core you put on the card in place of an included one is a native program and has to come from a source you trust. An update puts the included cores back and leaves a core the image does not ship.
 - To add a **tool** (or NextUI pak), use `Tools/my355/My Tool.pak/launch.sh`. It shows up under Tools after the list restarts.
 - Stock NextUI paks usually need changes (paths, controls, binaries) before they run on Zlyme.
 - MENU+Start closes your pak like any other.
