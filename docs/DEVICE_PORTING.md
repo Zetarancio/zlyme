@@ -182,7 +182,7 @@ The implementation is `package/system/nextui/zlyme/governor.sh`, installed by th
 
 ### `zlyme-led`
 
-Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `off`, `charging`, `discharging`, `poweroff`, `flash`, `watch`, `list`. `ledcontrol` is a symlink to it. `watch` is the only battery monitor. It samples every 10 seconds. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply has `online` of 1. LED Off does not stop that check.
+Owns board LED behavior. Verbs: `apply`, `battery`, `green`, `red`, `amber`, `off`, `charging`, `discharging`, `poweroff`, `flash`, `watch`, `list`. `ledcontrol` is a symlink to it. `watch` is the only battery monitor. It samples every 10 seconds. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply has `online` of 1. LED Off does not stop that check. On 2026-10-19 the maintainer observed one automatic shutdown at 0%. The samples and the charger state were not captured. That is not a charger-suppression test.
 
 ### `zlyme-ssh-auth`
 

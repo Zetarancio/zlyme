@@ -178,6 +178,8 @@ HDMI and Bluetooth are separate Pulse sinks. BlueALSA owns the A2DP transport.
 
 Always use stable ALSA card IDs rather than assuming numeric card order.
 
+`zlyme-led watch` is the only battery monitor. It samples every 10 seconds. Two consecutive numeric 0% readings call `zlyme-halt poweroff` when no non-battery supply has `online` of 1. On 2026-10-19 the maintainer observed one automatic shutdown at 0%. The samples and the charger state were not captured. That is one event, not a cycle count and not a test that a connected charger suppresses the shutdown.
+
 ## Wi-Fi and Bluetooth
 
 The Miyoo Flip uses the RTL8733BU USB combo chip: Wi-Fi driver `8733bu`, Bluetooth firmware `rtl8723fu`. `rtl8733bu_power` owns the chip's power and rfkill.

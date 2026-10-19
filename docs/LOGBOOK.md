@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — One automatic shutdown at 0%
+
+The maintainer observed the Flip shut itself down when the battery reached 0%. `zlyme-led` samples every 10 seconds and requests `zlyme-halt poweroff` after two numeric 0% readings when no supply reports `online=1`. Those samples and the charger state were not captured. One shutdown. Not a cycle count and not a charger-suppression test. Phase 13 stays closed.
+
 ## 2026-10-19 — Splore is mono, and paired-devices is not a BlueZ 5.86 command
 
 PICO-8 opens an ALSA stream at `s16le 1ch 22050Hz` on the stereo codec sink. `daemon.conf` set `enable-remixing = no`. PulseAudio 17 maps that to `PA_RESAMPLER_NO_REMIX`. A mono channel does not match `front-left` or `front-right`, so both outputs stay at zero. The default is remixing on, and the manual says disabling it has no known use. The override is removed. The installed `f48b5bf` image still has it.
