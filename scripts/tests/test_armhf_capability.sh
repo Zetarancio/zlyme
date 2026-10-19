@@ -1,7 +1,8 @@
 #!/bin/sh
 # PortMaster's device_info.txt treats the ARMHF loader as a capability.
-# Zlyme's control.txt turns that bit back off. The GUI library path is
-# unchanged.
+# control.txt exports the same Y after a Flip ran an ARMHF program.
+# Sourcing device_info again must not leave a second, contradictory bit.
+# The GUI library path is unchanged.
 # shellcheck disable=SC1007
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -24,7 +25,16 @@ out=$(
 	bash -c '. "$1"; printf "%s %s %s [%s]\n" "$DEVICE_ARCH" "$DEVICE_HAS_ARMHF" "$DEVICE_HAS_AARCH64" "${DEVICE_HAS_VULKAN-}"' \
 		sh "$CONTROL"
 )
-[ "$out" = "aarch64 N Y []" ] || fail "capability bits: $out"
+[ "$out" = "aarch64 Y Y []" ] || fail "capability bits: $out"
+again=$(
+	controlfolder=$work/PortMaster \
+	HM_TOOLS_DIR=$work \
+	HM_PORTS_DIR=$work/ports \
+	SDL_GAMECONTROLLERCONFIG_FILE=/dev/null \
+	bash -c '. "$1"; . "$2"; printf "%s %s\n" "$DEVICE_ARCH" "$DEVICE_HAS_ARMHF"' \
+		sh "$CONTROL" "$work/PortMaster/device_info.txt"
+)
+[ "$again" = "aarch64 Y" ] || fail "second source changed the bit: $again"
 ldpath=$(
 	controlfolder=$ROOT/package/system/portmaster \
 	HM_TOOLS_DIR=$work \

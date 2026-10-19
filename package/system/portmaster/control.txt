@@ -73,11 +73,12 @@ raconf="--config /storage/.config/retroarch/retroarch.cfg"
 # DEVICE_NAME from the devicetree. Ports then look for mod_${CFW_NAME}.
 export CFW_NAME=Zlyme
 export DEVICE_NAME="Miyoo Flip"
-# device_info.txt sets DEVICE_HAS_ARMHF from the loader file alone.
-# That file can be in the image before a Flip has run an ARMHF program.
-# Leave the bit off until that run. DEVICE_ARCH stays whatever the
-# aarch64 loader check already selected.
-DEVICE_HAS_ARMHF=N
+# device_info.txt sets DEVICE_HAS_ARMHF from the loader file.
+# On a Flip, xdelta3.armhf printed "Xdelta version 3.1.1" through
+# /lib/ld-linux-armhf.so.3 with libc.so.6 from /usr/lib/zlyme-armhf.
+# This bit is that ABI. It does not mean every ARMHF port runs.
+# DEVICE_ARCH stays whatever the aarch64 loader check already selected.
+DEVICE_HAS_ARMHF=Y
 export DEVICE_HAS_ARMHF
 # PortMaster 2026.06.23-0015 device_info.txt has no Vulkan bit.
 # Do not treat an ICD on disk as that capability.

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — ARMHF userspace is advertised after one Flip run
+
+`xdelta3.armhf -V` on the installed `00e6c343` image printed `Xdelta version 3.1.1`. The program is ELF32 ARM hard-float. Its interpreter is `/lib/ld-linux-armhf.so.3`, and `libc.so.6` opened from `/usr/lib/zlyme-armhf`. `control.txt` exports `DEVICE_HAS_ARMHF=Y`. `device_info.txt` sets the same value when that loader exists, and it still sets `DEVICE_ARCH=aarch64` when the AArch64 loader exists. Abombniball's `libs.aarch64/libSDL_image-1.2.so.0` is ELF64, and that port has no `libs.armhf` directory. The flag does not select `abombniball.armhf`. Every ARMHF port working is not proven. No image was built for this flag alone.
+
 ## 2026-10-19 — HDMI mix is stereo; the TV asks for 16-bit LPCM
 
 `00e6c343` is installed. Squashfs `960febaccf07ca98bba2036d1017c0a5440ea3241c626d686bfbd8e6a3ae1e97`, boot id `f888b548-70b7-4cc3-8021-9b33d537f1a9`. Pulse was `ready`, default sink `hdmi`, both sinks at 40% (`-23.88 dB`), unmuted. The display ELD is `20W_LCD_TV`: LPCM, 2 channels, 32/44.1/48 kHz, 16-bit only. A stereo tone with 440 Hz on the left and 880 Hz on the right was recorded from `hdmi.monitor`. Both channels peaked at 384, which is 6000 times the −23.88 dB gain. The digital mix is not one-sided and not clipped. A larger HDMI fragment was loaded for one two-second tone and the original 1024-byte fragment module was put back. Nobody here heard which tone was cleaner. The maintainer has accepted Splore, paired-headset visibility, and Bluetooth headphone audio on this image. RetroArch HDMI audio is audible and its quality is not accepted.
