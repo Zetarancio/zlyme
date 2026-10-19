@@ -131,8 +131,10 @@ set_volume() {
 	amixer -q -c "$CARD" sset "$VOLCTL" "$v%" 2>/dev/null
 }
 
-# Copy FlipVolume into Pulse once. A later boot must not read the mixer
-# again and must not rewrite the state file when the flag is already there.
+# Copy the displayed FlipVolume percent into Pulse once. Pulse's percent
+# is cubic: 40 is about -23.88 dB, not the softvol plugin's dB at 40%.
+# Keep the integer. Do not rescale it and do not force 100. A later boot
+# must not read the mixer again or rewrite the state file.
 migrate_volume() {
 	src=$(saved ZLYME_VOLUME_SRC || true)
 	[ -n "$src" ] && return 0
@@ -207,7 +209,7 @@ sink_up() {
 				return 0
 			fi
 			unload_named hdmi
-			mod=$(pactl load-module module-alsa-sink device=hw:HDMI,0 sink_name=hdmi channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024) || return 1
+			mod=$(pactl load-module module-alsa-sink device=hw:HDMI,0 sink_name=hdmi channels=2 rate=48000 format=s16le tsched=0 fragments=12 fragment_size=1024) || return 1
 			printf '%s\n' "$mod" > "$PULSE_RUNTIME_PATH/module-hdmi"
 			;;
 		bt)
@@ -219,6 +221,7 @@ sink_up() {
 				return 0
 			fi
 			unload_named bt
+			# Four fragments stay on this path. A2DP playback was accepted there.
 			mod=$(pactl load-module module-alsa-sink "device=bluealsa:DEV=${mac},PROFILE=a2dp" sink_name=bt channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024) || return 1
 			printf '%s\n' "$mod" > "$PULSE_RUNTIME_PATH/module-bt"
 			printf '%s\n' "$mac" > "$PULSE_RUNTIME_PATH/mac-bt"
@@ -236,7 +239,7 @@ codec_up() {
 	if pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'; then
 		return 0
 	fi
-	pactl load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024 >/dev/null || return 1
+	pactl load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=12 fragment_size=1024 >/dev/null || return 1
 	pactl set-default-sink codec >/dev/null 2>&1 || true
 	return 0
 }

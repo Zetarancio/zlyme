@@ -9,6 +9,6 @@
 .fail
 
 load-module module-native-protocol-unix auth-anonymous=0 auth-group=pulse-access auth-group-enable=1 auth-cookie=/run/zlyme/pulse/cookie auth-cookie-enabled=1 socket=/run/zlyme/pulse/native
-load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024
+load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=12 fragment_size=1024
 
 set-default-sink codec
