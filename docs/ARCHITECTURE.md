@@ -430,7 +430,7 @@ This dual-stack mechanism is a Miyoo Flip/RK3566 implementation detail, not a re
 
 ## 9. Audio
 
-One PulseAudio server is the mixer. ALSA is the hardware backend. The default PCM is the PulseAudio plugin, so an ordinary ALSA client and a native `libpulse` client share that server. There is no second daemon and no network listener. `autospawn` is off.
+One PipeWire daemon is the mixer, with one WirePlumber and one `pipewire-pulse`. ALSA is the hardware backend. The product default PCM is the PipeWire plugin, so an ordinary ALSA client and a native `libpulse` client share that graph. BlueZ A2DP is PipeWire's BlueZ monitor. BlueALSA is not started. There is no PulseAudio daemon and no network listener. `autospawn` is off. The minimal image does not select this stack and keeps a direct ALSA default. This is not a hardware acceptance of the new graph.
 
 For the Miyoo Flip:
 

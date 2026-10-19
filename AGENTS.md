@@ -85,7 +85,7 @@ Preserve these unless the task explicitly requires changing them:
 - Software that cannot use direct KMS may use an application-scoped compatibility runtime such as Weston/WestonPack.
 - BusyBox init is the normal init system.
 - Optional services must not delay the frontend first frame.
-- One PulseAudio server is the normal application mixer. ALSA is the hardware backend. BlueALSA owns Bluetooth A2DP. `zlyme-audio` and `zlyme-btsink` choose the sink.
+- One PipeWire daemon is the product mixer, with WirePlumber and `pipewire-pulse`. ALSA is the hardware backend. PipeWire's BlueZ monitor owns A2DP. `zlyme-audio` chooses the sink. The minimal image stays ALSA-only.
 - The root filesystem is read-only squashfs; persistent state belongs under `/storage`.
 - The curated emulator model is intentional. Do not add alternate cores merely because they exist.
 - Hardware safety, thermal protection, and filesystem integrity outrank benchmark results.

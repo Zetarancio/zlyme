@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — PipeWire is the product graph, not yet heard
+
+Buildroot 2026.08 pins PipeWire 1.6.6 and WirePlumber 0.5.14. The product defconfig selects them, keeps `libpulse`, and does not select the PulseAudio daemon or BlueALSA. The minimal defconfig does not select PipeWire. `rc.late` starts the three processes after D-Bus and off the first-frame path. `zlyme-audio` reads `audio.conf` as data and applies the old displayed percent through the cubic gain `(percent/100)^3` so a stored 40 is not played as linear 40. The freeze archive was read. Its PPSSPP underruns and the OpenAL broken pipe are recorded in `docs/research/phase14-stability.md`. They are not a captured panic, and this commit does not claim they are fixed.
+
 ## 2026-10-19 — e2ecc05 is not accepted, and this boot was not logged
 
 The maintainer installed `zlyme-my355-20261019-e2ecc050ad6f.tar`. RetroArch speaker audio improved. PPSSPP audio is still very bad. Abombniball does not start, and the handheld was force-restarted. The Flip also restarted during PPSSPP play and during NextUI navigation. At 20:40 UTC the host pinged 192.168.0.108 and completed a TCP handshake to port 22. No SSH banner arrived, so boot id, pstore, dmesg, and the session log were not copied. Nothing was launched and no service was restarted.

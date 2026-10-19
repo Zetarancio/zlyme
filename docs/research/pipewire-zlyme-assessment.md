@@ -1,6 +1,15 @@
 # PipeWire on Zlyme
 
-Decision: deferred. Do not replace the PulseAudio server in the Phase 14 stability recovery.
+Decision: implement on the product image, using Buildroot 2026.08's packages. Not hardware-accepted. The earlier "deferred" note is the history of this file. The freezes are not claimed fixed.
+
+Pinned Buildroot recipes, verified in this tree:
+
+- PipeWire 1.6.6 (`buildroot/package/pipewire/pipewire.mk`). There is no separate `BR2_PACKAGE_PIPEWIRE_ALSA` symbol. `pipewire-alsa` follows `BR2_PACKAGE_ALSA_LIB`. The ALSA monitor follows `BR2_PACKAGE_HAS_UDEV`. BlueZ follows BlueZ plus SBC plus GLib. `libpulse` follows `BR2_PACKAGE_PULSEAUDIO`. Systemd units are disabled because this defconfig is not systemd.
+- WirePlumber 0.5.14. It needs Lua 5.3 or 5.4. The product selects Lua 5.4. `elogind` is disabled in the recipe.
+
+ROCKNIX `distribution` branch `next`, read 2026-10-19, is the comparison: RK3566 `PIPEWIRE_SUPPORT=yes`, PipeWire 1.6.8, WirePlumber 0.5.15, systemd units, and a `pipewire-pulse` socket. Those versions are not copied over Buildroot's pins. KNULLI and Batocera were not imported. Their `/userdata` layout is not used.
+
+The product keeps `BR2_PACKAGE_PULSEAUDIO` so `libpulse` and `libpulse-simple` remain, and turns off `BR2_PACKAGE_PULSEAUDIO_DAEMON`. `BR2_PACKAGE_BLUEZ_ALSA` is off on the product. The minimal defconfig does not select PipeWire.
 
 The comparison is ROCKNIX `distribution` branch `next`, read on 2026-10-19. `projects/ROCKNIX/devices/RK3566/options` sets `PIPEWIRE_SUPPORT="yes"`. The audio packages in that tree are PipeWire 1.6.8 and WirePlumber 0.5.15. RK3566 is not in the quantum override. SM6115 and the other listed Qualcomm boards set a 960-frame quantum. SM8250 sets a 1024-frame Pulse minimum. RK3566 keeps PipeWire's own default quantum.
 
