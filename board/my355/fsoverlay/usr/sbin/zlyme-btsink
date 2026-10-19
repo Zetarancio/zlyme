@@ -65,20 +65,30 @@ apply() {
 		bt)
 			mac=$(bt_mac) || mac=
 			[ -n "$mac" ] || return 1
-			zlyme-audio sink-down hdmi || true
+			# The new sink has to exist before the old one is
+			# removed. A failed A2DP load must leave HDMI or the
+			# codec route in place.
 			zlyme-audio sink-up bt "$mac" || return 1
+			zlyme-audio focus bt || return 1
+			zlyme-audio remember bt || return 1
+			zlyme-audio sink-down hdmi || true
+			return 0
 			;;
 		hdmi)
-			zlyme-audio sink-down bt || true
 			zlyme-audio sink-up hdmi || return 1
+			zlyme-audio focus hdmi || return 1
+			zlyme-audio remember hdmi || return 1
+			zlyme-audio sink-down bt || true
+			return 0
 			;;
 		*)
+			zlyme-audio focus codec || return 1
+			zlyme-audio remember codec || return 1
 			zlyme-audio sink-down bt || true
 			zlyme-audio sink-down hdmi || true
+			return 0
 			;;
 	esac
-	zlyme-audio focus "$want" || return 1
-	zlyme-audio remember "$want" || return 1
 }
 
 need() {

@@ -31,6 +31,10 @@ case "$1" in
 		exit 0
 		;;
 	load-module)
+		if [ "${PULSE_LOAD_FAIL:-}" = 1 ]; then
+			echo "load failed" >&2
+			exit 1
+		fi
 		id=$(cat "$PULSE_STATE/nextid")
 		id=$((id + 1))
 		printf '%s\n' "$id" > "$PULSE_STATE/nextid"
@@ -105,6 +109,17 @@ out=$(ZLYME_BTSINK_LIMIT=4 ZLYME_BTSINK_SLEEP=0 zlyme-btsink)
 [ "$out" = "prev=bt" ] || fail "headset was not selected: $out"
 loads=$(grep -c 'load-module module-alsa-sink' "$PULSE_LOG" || true)
 [ "$loads" = 1 ] || fail "headset module loads: $loads"
+
+# A failed headset load must not drop the HDMI sink first.
+printf '9\tmodule-alsa-sink\tdevice=hw:HDMI,0 sink_name=hdmi\n' > "$work/state/modules"
+export PULSE_LOAD_FAIL=1
+export BLUEALSA_BT_AFTER=1
+printf '0\n' > "$work/state/bt-calls"
+: > "$PULSE_LOG"
+out=$(ZLYME_BTSINK_LIMIT=1 ZLYME_BTSINK_SLEEP=0 ZLYME_BTSINK_SLOW=0 zlyme-btsink)
+[ "$out" = "prev=" ] || fail "failed headset was remembered: $out"
+grep -q '^9	' "$work/state/modules" || fail "HDMI sink was removed before Bluetooth existed"
+unset PULSE_LOAD_FAIL
 
 # Volume migration is once, keeps a mute, and does not rewrite after.
 printf '%s\n' "state.rk817ext { name 'FlipVolume' }" > "$work/cfg/asound.state"
