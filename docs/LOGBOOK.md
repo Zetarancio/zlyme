@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — 12-fragment buffer and a one-shot exit trace
+
+Codec and HDMI `module-alsa-sink` arguments in source are `tsched=0 fragments=12 fragment_size=1024`. The boot file, `codec-up`, and the HDMI load use that same line. Bluetooth stays at 4 fragments. The saved FlipVolume percent is still copied as a percent. Pulse's 40 is about −23.88 dB. That is not a softvol dB conversion, and the saved number is not rewritten. This is not a listening result.
+
+`libSDL2-2.0.so.0`, `gptokeyb`, `gptokeyb2`, and `libinterpose.aarch64.so` on the installed card do not contain the `EVIOCGRAB` ioctl word. No grab workaround was added. `ZLYME_PAK_TRACE=1` or `/storage/.config/zlyme/pak-trace` records one launch in `/tmp/zlyme-pak-trace.txt`: leader ids, helper pid, virtual-pad node, MENU/START state changes, signal results, a descendant outside the group, wait status, and ports cleanup. The flag file is removed at the end. A menu launch and a button press are still required before calling the exit fixed.
+
 ## 2026-10-19 — Speaker quality is bad, and Abombniball's exit was not reproduced
 
 Boot `e692324d-2469-492c-9299-2159fc78d659` is still squashfs `960febaccf07ca98bba2036d1017c0a5440ea3241c626d686bfbd8e6a3ae1e97`. The maintainer reports very bad sound on the built-in speaker and on HDMI. The codec sink was the only sink. Its arguments were `fragments=4 fragment_size=1024`. While a tone played, Pulse reported latency 21017 µs and configured 21333 µs. That is 1024 frames at 48 kHz. Phase 13's dmix buffer is 8192 frames, about 170.7 ms. A 12-fragment module, Pulse's documented interrupt-mode count, negotiated 63726 µs, configured 64000 µs. The original module was loaded again as module 4, the default sink stayed `codec`, and the volume stayed 30% (−31.37 dB). RK817 Master was 100% at 0 dB. `/proc/asound` did not grow a `hw_params` file while `pcmC1D0p` was open, so the Pulse latency line is the measurement. HDMI was not loaded on this boot, so it was not measured again. Nobody heard the 12-fragment tone. The source buffer was not changed.

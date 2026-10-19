@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,36 @@
 
 #define GRACE_US 1500000
 #define MAX_PADS 8
+
+static FILE *trace_fp;
+
+static void trace_open(void)
+{
+	const char *on;
+	const char *path;
+
+	on = getenv("ZLYME_PAK_TRACE");
+	if (!on || strcmp(on, "1") != 0)
+		return;
+	path = getenv("ZLYME_PAK_TRACE_LOG");
+	if (!path || path[0] == '\0')
+		path = "/tmp/zlyme-pak-trace.txt";
+	trace_fp = fopen(path, "a");
+	if (trace_fp)
+		setvbuf(trace_fp, NULL, _IOLBF, 0);
+}
+
+static void trace_msg(const char *fmt, ...)
+{
+	va_list ap;
+
+	if (!trace_fp)
+		return;
+	va_start(ap, fmt);
+	vfprintf(trace_fp, fmt, ap);
+	va_end(ap);
+	fputc('\n', trace_fp);
+}
 
 struct app_pad {
 	int fd;
@@ -90,6 +121,7 @@ static void scan_pads(struct app_pad *pads, int *n)
 		pads[*n].fd = fd;
 		zlyme_hotkey_reset(&pads[*n].menu, &pads[*n].start);
 		memcpy(pads[*n].node, ent->d_name, len + 1);
+		trace_msg("pad %s", pads[*n].node);
 		(*n)++;
 	}
 	closedir(dir);
@@ -97,9 +129,15 @@ static void scan_pads(struct app_pad *pads, int *n)
 
 static void kill_pak(pid_t pgid)
 {
-	kill(-pgid, SIGTERM);
+	int rc;
+
+	rc = kill(-pgid, SIGTERM);
+	trace_msg("signal term pgid=%d rc=%d errno=%d", (int)pgid, rc,
+		  rc < 0 ? errno : 0);
 	usleep(GRACE_US);
-	kill(-pgid, SIGKILL);
+	rc = kill(-pgid, SIGKILL);
+	trace_msg("signal kill pgid=%d rc=%d errno=%d", (int)pgid, rc,
+		  rc < 0 ? errno : 0);
 }
 
 static int read_pad(struct app_pad *pad)
@@ -107,10 +145,23 @@ static int read_pad(struct app_pad *pad)
 	struct input_event ev;
 
 	while (read(pad->fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+		int prev_menu;
+		int prev_start;
+
 		if (ev.type != EV_KEY)
 			continue;
-		if (zlyme_hotkey_apply(&pad->menu, &pad->start, ev.code, ev.value != 0))
+		prev_menu = pad->menu;
+		prev_start = pad->start;
+		if (zlyme_hotkey_apply(&pad->menu, &pad->start, ev.code, ev.value != 0)) {
+			if (pad->menu != prev_menu || pad->start != prev_start)
+				trace_msg("chord %s menu=%d start=%d", pad->node,
+					  pad->menu, pad->start);
 			return 1;
+		}
+		if ((ev.code == BTN_MODE || ev.code == BTN_START) &&
+		    (pad->menu != prev_menu || pad->start != prev_start))
+			trace_msg("chord %s menu=%d start=%d", pad->node,
+				  pad->menu, pad->start);
 	}
 	return 0;
 }
@@ -136,17 +187,25 @@ int main(int argc, char **argv)
 	if (pgid <= 1)
 		return 1;
 
+	trace_open();
+	trace_msg("hotkey pid=%d watching=%d", (int)getpid(), (int)pgid);
+
 	ino = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+	if (ino < 0)
+		trace_msg("inotify unavailable");
 	scan_pads(pads, &npads);
 	if (ino >= 0) {
 		if (inotify_add_watch(ino, "/dev/input",
 				      IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO) < 0) {
+			trace_msg("inotify unavailable");
 			close(ino);
 			ino = -1;
 		} else {
 			scan_pads(pads, &npads);
 		}
 	}
+	if (npads == 0)
+		trace_msg("no virtual pad");
 	if (ino < 0 && npads == 0)
 		return 1;
 
@@ -200,5 +259,7 @@ int main(int argc, char **argv)
 		drop_fd(pads, &npads, pads[0].fd);
 	if (ino >= 0)
 		close(ino);
+	if (trace_fp)
+		fclose(trace_fp);
 	return 0;
 }

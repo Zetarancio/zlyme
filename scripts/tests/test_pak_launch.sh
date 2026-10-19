@@ -549,4 +549,57 @@ done
 [ ! -e "$work/pwned" ] || fail "ra-run evaluated the rom"
 [ -z "$(cat "$OUT/ra-log")" ] || fail "ra-run invented a pak log"
 
+# Trace stays off unless asked. One asked launch records a child that
+# left the group, then removes the one-shot flag.
+case_dir quiet
+unset ZLYME_PAK_TRACE || true
+export ZLYME_PAK_TRACE_LOG=$OUT/notrace
+export ZLYME_PAK_TRACE_FLAG=$OUT/absent-flag
+install_at "$emu"
+run_pak_cmd "$emu" "/r/a"
+[ ! -e "$OUT/notrace" ] || fail "trace ran without a request"
+unset ZLYME_PAK_TRACE_LOG ZLYME_PAK_TRACE_FLAG
+
+case_dir trace
+: > "$OUT/flag"
+export ZLYME_PAK_TRACE_FLAG=$OUT/flag
+export ZLYME_PAK_TRACE_LOG=$OUT/trace
+export ZLYME_PAK_TRACE_INTERVAL=0.2
+export ZLYME_TRACE_HOLD=2
+unset ZLYME_PAK_TRACE || true
+ZLYME_PAK_HOTKEY=$work/bin/hotkey
+cat > "$ports" << 'EOF'
+#!/bin/sh
+setsid sleep 30 >/dev/null 2>&1 &
+sleep "${ZLYME_TRACE_HOLD:-0.8}"
+exit 0
+EOF
+chmod 0755 "$ports"
+run_pak_cmd "$ports" "/r/a"
+[ ! -e "$OUT/flag" ] || fail "trace flag survived the launch"
+[ "${ZLYME_PAK_TRACE-unset}" = unset ] || fail "trace env leaked"
+leader=$(sed -n 's/^leader pid=\([0-9][0-9]*\).*/\1/p' "$OUT/trace" | head -n 1)
+[ -n "$leader" ] || fail "trace has no leader"
+grep -q "helper pid=" "$OUT/trace" || fail "trace has no helper"
+grep -q '^wait status=0$' "$OUT/trace" || fail "trace wait: $(cat "$OUT/trace")"
+grep -q '^cleanup ports$' "$OUT/trace" || fail "trace skipped cleanup"
+out=$(awk -v leader="$leader" '
+	$1 == "outside" {
+		pid = $2
+		sub("pid=", "", pid)
+		ppid = $3
+		sub("ppid=", "", ppid)
+		pgid = $4
+		sub("pgid=", "", pgid)
+		if (ppid == leader && pgid != leader) {
+			print pid
+			found = 1
+		}
+	}
+	END { exit found ? 0 : 1 }
+' "$OUT/trace") || fail "no child outside the group: $(cat "$OUT/trace")"
+kill "$out" 2>/dev/null || true
+unset ZLYME_PAK_TRACE_FLAG ZLYME_PAK_TRACE_LOG ZLYME_PAK_TRACE_INTERVAL ZLYME_TRACE_HOLD
+ZLYME_PAK_HOTKEY=$work/missing-hotkey
+
 echo "pak launch ok"

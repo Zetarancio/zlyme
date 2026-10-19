@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Sourced by nextui-session. The file /tmp/next is a ZLYME1 launch
 # record. This script turns that record into an argv. It does not
 # evaluate the executable path or the ROM as shell source.
@@ -217,6 +218,114 @@ launch_apply_proxy() {
 	export NO_PROXY="localhost,127.0.0.1,::1"
 }
 
+# One launch records the process group when ZLYME_PAK_TRACE=1 or when
+# the flag file exists. The flag is removed at the end of that launch.
+# The log lists the leader, the helper, MENU/START state changes from
+# the helper, signals, and a descendant whose group is not the leader.
+# It does not list other controller events.
+pak_trace_enabled() {
+	if [ "${ZLYME_PAK_TRACE:-}" = 1 ]; then
+		return 0
+	fi
+	_flag=${ZLYME_PAK_TRACE_FLAG:-/storage/.config/zlyme/pak-trace}
+	[ -f "$_flag" ]
+}
+
+pak_trace_log() {
+	if [ -n "${ZLYME_PAK_TRACE_LOG:-}" ]; then
+		printf '%s\n' "$ZLYME_PAK_TRACE_LOG"
+		return 0
+	fi
+	printf '%s\n' /tmp/zlyme-pak-trace.txt
+}
+
+pak_trace_line() {
+	printf '%s\n' "$1" >> "$(pak_trace_log)"
+}
+
+# Descendants of $1 whose process group is not $1. Already reported
+# pids are in $3 and are not repeated.
+pak_trace_scan() {
+	_leader=$1
+	_log=$2
+	_seen=$3
+	_snap=$(mktemp) || return 0
+	(
+		for _d in /proc/[0-9]*; do
+			_pid=${_d##*/}
+			[ -r "$_d/stat" ] || continue
+			_line=$(cat "$_d/stat" 2>/dev/null) || continue
+			_rest=${_line#*)}
+			# shellcheck disable=SC2086
+			set -- $_rest
+			[ "$#" -ge 4 ] || continue
+			printf '%s %s %s %s\n' "$_pid" "$2" "$3" "$4"
+		done > "$_snap"
+	)
+	awk -v leader="$_leader" -v seenfile="$_seen" '
+		NR == FNR { seen[$1] = 1; next }
+		{
+			pid = $1
+			ppid = $2
+			pgrp = $3
+			sid = $4
+			parent[pid] = ppid
+			group[pid] = pgrp
+			session[pid] = sid
+			ids[++n] = pid
+		}
+		END {
+			queue[1] = leader
+			queued = 1
+			mark[leader] = 1
+			for (i = 1; i <= queued; i++) {
+				cur = queue[i]
+				for (j = 1; j <= n; j++) {
+					p = ids[j]
+					if (parent[p] != cur || mark[p])
+						continue
+					mark[p] = 1
+					queue[++queued] = p
+					if (group[p] != leader && !seen[p]) {
+						printf "outside pid=%s ppid=%s pgid=%s sid=%s\n", p, parent[p], group[p], session[p]
+						print p >> seenfile
+					}
+				}
+			}
+		}
+	' "$_seen" "$_snap" >> "$_log"
+	rm -f "$_snap"
+}
+
+pak_trace_watch() {
+	_leader=$1
+	_log=$(pak_trace_log)
+	_seen=${_log}.seen
+	_gap=${ZLYME_PAK_TRACE_INTERVAL:-1}
+	# A placeholder record keeps an empty file from swallowing the scan.
+	printf '.\n' > "$_seen"
+	while kill -0 "$_leader" 2>/dev/null; do
+		pak_trace_scan "$_leader" "$_log" "$_seen"
+		sleep "$_gap"
+	done
+	pak_trace_scan "$_leader" "$_log" "$_seen"
+	rm -f "$_seen"
+}
+
+pak_trace_leader() {
+	_pid=$1
+	_ids=$(
+		_line=$(cat "/proc/$_pid/stat" 2>/dev/null) || exit 0
+		_rest=${_line#*)}
+		# shellcheck disable=SC2086
+		set -- $_rest
+		[ "$#" -ge 4 ] || exit 0
+		printf '%s %s\n' "$3" "$4"
+	) || return 0
+	[ -n "$_ids" ] || return 0
+	pak_trace_line "leader pid=${_pid} pgid=${_ids%% *} sid=${_ids#* }"
+}
+
 # Runs inside the setsid child. $1 is launch.sh. $2 is the ROM or empty.
 exec_pak() {
 	if ! launch_skip_filter "$1"; then
@@ -342,12 +451,33 @@ run_pak_cmd() {
 		wine_prefix_cleanup
 	fi
 	flycast_bind_release
+	_trace=0
+	_trace_exported=0
+	_tw=
+	if pak_trace_enabled; then
+		_trace=1
+		if [ "${ZLYME_PAK_TRACE:-}" != 1 ]; then
+			export ZLYME_PAK_TRACE=1
+			_trace_exported=1
+		fi
+		: > "$(pak_trace_log)"
+	fi
 	spawn_pak "$_exe" "$_rom"
+	if [ "$_trace" = 1 ]; then
+		pak_trace_leader "$_pak_pid"
+		pak_trace_watch "$_pak_pid" &
+		_tw=$!
+	fi
 	_hk=
 	_hotkey=${ZLYME_PAK_HOTKEY:-/usr/sbin/zlyme-pak-hotkey}
 	if [ -x "$_hotkey" ]; then
 		"$_hotkey" "$_pak_pid" >> "${SESSION_LOG:-/tmp/nextui-session.txt}" 2>&1 &
 		_hk=$!
+		if [ "$_trace" = 1 ]; then
+			pak_trace_line "helper pid=${_hk}"
+		fi
+	elif [ "$_trace" = 1 ]; then
+		pak_trace_line "helper missing"
 	fi
 	if [ "$skip_bt" = 0 ] && [ "${ZLYME_PAK_BT:-1}" = 1 ]; then
 		bt_stop_scan
@@ -372,17 +502,35 @@ run_pak_cmd() {
 	st=0
 	# shellcheck disable=SC2034
 	wait "$_pak_pid" || st=$?
+	if [ -n "$_tw" ]; then
+		kill "$_tw" 2>/dev/null || true
+		wait "$_tw" 2>/dev/null || true
+		rm -f "$(pak_trace_log).seen"
+	fi
+	if [ "$_trace" = 1 ]; then
+		pak_trace_line "wait status=${st}"
+	fi
 	if [ -n "$_hk" ]; then
 		kill "$_hk" 2>/dev/null || true
 		wait "$_hk" 2>/dev/null || true
 	fi
 	if launch_is_ports "$_exe"; then
 		portmaster_cleanup
+		if [ "$_trace" = 1 ]; then
+			pak_trace_line "cleanup ports"
+		fi
 	fi
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup
 	fi
 	flycast_bind_release
+	if [ "$_trace" = 1 ]; then
+		_flag=${ZLYME_PAK_TRACE_FLAG:-/storage/.config/zlyme/pak-trace}
+		rm -f "$_flag"
+	fi
+	if [ "$_trace_exported" = 1 ]; then
+		unset ZLYME_PAK_TRACE
+	fi
 }
 
 # zlyme-audio export prints one whitelisted sink id.

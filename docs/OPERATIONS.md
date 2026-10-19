@@ -170,7 +170,9 @@ Speaker/headphones share the RK817 codec route.
 
 `zlyme-jackd` follows the headphone jack and changes `Playback Mux`.
 
-Playback goes through one PulseAudio server. The default ALSA PCM is the Pulse plugin. `FlipVolume` on `rk817ext` is the saved mixer level that the first Pulse boot copies. It is not the level a normal program changes after that.
+Playback goes through one PulseAudio server. The default ALSA PCM is the Pulse plugin. `FlipVolume` on `rk817ext` is the saved mixer level that the first Pulse boot copies. It is not the level a normal program changes after that. The copied number is the displayed percent. PulseAudio's percent is cubic, so 40 is about −23.88 dB and is not the old softvol loudness at 40. A later boot does not read that mixer again.
+
+A game that does not leave on MENU+START can be traced once. Create `/storage/.config/zlyme/pak-trace`, launch that game from the menu, and press MENU+START. The flag file is removed when the launch ends. `/tmp/zlyme-pak-trace.txt` then has the leader process group, the hotkey helper, the virtual pad it opened, MENU and START state changes, the signals it sent, any child that left that process group, and whether cleanup ran. It does not list other buttons.
 
 The server runs as `pulse`, with its socket and log under `/run/zlyme/pulse`. `/run/zlyme/pulse/service` is `ready` only when the codec sink is listed. A line that begins with `failed:` is the startup error. The longer text is `/run/zlyme/pulse/daemon.log`. Do not print the cookie file.
 

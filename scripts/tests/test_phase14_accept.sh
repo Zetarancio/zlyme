@@ -67,5 +67,10 @@ row "Bluetooth disconnect falls back" n/a n/a PENDING n/a
 row "Wi-Fi off and on" n/a n/a NOTRUN n/a
 row "charger suppression of 0% shutdown" n/a n/a NOTRUN n/a
 
+sh "$ROOT/scripts/tests/test_armhf_capability.sh"
+sh "$ROOT/scripts/tests/test_pulse_buffer.sh"
+sh "$ROOT/scripts/tests/test_pulse_card.sh"
+sh "$ROOT/scripts/tests/test_pak_launch.sh"
+
 [ "$fail" -eq 0 ]
 echo "phase14 accept host ok"
