@@ -1,29 +1,33 @@
 #!/bin/sh
 # shellcheck disable=SC1007
-# Phase 14 acceptance inventory. Host checks are PASS or FAIL.
-# Perceptual and physical checks are MANUAL. This script does not
-# turn Wi-Fi off, reboot, unplug HDMI, or stop PulseAudio.
+# Phase 14 acceptance inventory.
+# Columns are SOURCE, HOST, HARDWARE, and USER-AUDIBLE.
+# A SOURCE pass is a text check. It is not a Flip result.
+# HARDWARE and USER-AUDIBLE values below are recorded observations.
+# This script does not SSH, turn Wi-Fi off, reboot, or stop PulseAudio.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fail=0
-say() { printf '%s\n' "$1"; }
+row() { printf '%-44s %-8s %-8s %-10s %-12s\n' "$1" "$2" "$3" "$4" "$5"; }
 
 need() {
 	if grep -q "$2" "$1"; then
-		say "PASS  $3"
+		row "$3" PASS PASS n/a n/a
 	else
-		say "FAIL  $3"
+		row "$3" FAIL FAIL n/a n/a
 		fail=1
 	fi
 }
 absent() {
 	if grep -q "$2" "$1"; then
-		say "FAIL  $3"
+		row "$3" FAIL FAIL n/a n/a
 		fail=1
 	else
-		say "PASS  $3"
+		row "$3" PASS PASS n/a n/a
 	fi
 }
+
+row CHECK SOURCE HOST HARDWARE USER-AUDIBLE
 
 need "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" 'flat-volumes = no' \
 	"flat volumes stay off"
@@ -38,26 +42,30 @@ need "$ROOT/package/system/nextui/nextui.mk" '0bb030ef6f44c005df4f4942a2fa3701ae
 need "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" '^exit 0$' \
 	"Buildroot Pulse service stays a no-op"
 if [ -d "$ROOT/package/system/nextui/paks/Tools/USB Transfer.pak" ]; then
-	say "PASS  USB Transfer pak is the stock name"
+	row "USB Transfer pak is the stock name" PASS PASS n/a n/a
 else
-	say "FAIL  USB Transfer pak is the stock name"
+	row "USB Transfer pak is the stock name" FAIL FAIL n/a n/a
 	fail=1
 fi
 if [ -d "$ROOT/package/system/nextui/paks/Tools/USB File Transfer.pak" ]; then
-	say "FAIL  old USB File Transfer pak is still the stock tree"
+	row "old USB File Transfer pak is gone" FAIL FAIL n/a n/a
 	fail=1
 else
-	say "PASS  old USB File Transfer pak is not the stock tree"
+	row "old USB File Transfer pak is gone" PASS PASS n/a n/a
 fi
+need "$ROOT/package/system/portmaster/control.txt" '^DEVICE_HAS_ARMHF=Y$' \
+	"ARMHF capability bit is on"
 
-say "MANUAL  speaker and headphone audibility"
-say "MANUAL  headphone reconnect"
-say "MANUAL  HDMI sound quality"
-say "MANUAL  HDMI 720p picture and panel restore"
-say "MANUAL  one PortMaster game with sound, then MENU+START"
-say "MANUAL  Bluetooth audio disconnect falls back to the speaker"
-say "MANUAL  Wi-Fi off and on; do not run this over the only SSH session"
-say "NOTRUN charger-suppression of the 0% shutdown"
+row "speaker and headphone audibility" n/a n/a PASS PASS
+row "headphone reconnect" n/a n/a PASS PASS
+row "speaker sound quality" n/a n/a FAIL FAIL
+row "HDMI sound quality" n/a n/a FAIL FAIL
+row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
+row "Abombniball MENU+START" n/a n/a FAIL n/a
+row "Bluetooth headphone audio" n/a n/a PASS PASS
+row "Bluetooth disconnect falls back" n/a n/a PENDING n/a
+row "Wi-Fi off and on" n/a n/a NOTRUN n/a
+row "charger suppression of 0% shutdown" n/a n/a NOTRUN n/a
 
 [ "$fail" -eq 0 ]
 echo "phase14 accept host ok"

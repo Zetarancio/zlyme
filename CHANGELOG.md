@@ -29,7 +29,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- Speaker, headphone, and Bluetooth headphone audio have not been confirmed on a Flip.
+- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor. Abombniball does not leave on MENU+START.
 
 ## [zlyme44.3] - 2026-10-16
 

@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — Speaker quality is bad, and Abombniball's exit was not reproduced
+
+Boot `e692324d-2469-492c-9299-2159fc78d659` is still squashfs `960febaccf07ca98bba2036d1017c0a5440ea3241c626d686bfbd8e6a3ae1e97`. The maintainer reports very bad sound on the built-in speaker and on HDMI. The codec sink was the only sink. Its arguments were `fragments=4 fragment_size=1024`. While a tone played, Pulse reported latency 21017 µs and configured 21333 µs. That is 1024 frames at 48 kHz. Phase 13's dmix buffer is 8192 frames, about 170.7 ms. A 12-fragment module, Pulse's documented interrupt-mode count, negotiated 63726 µs, configured 64000 µs. The original module was loaded again as module 4, the default sink stayed `codec`, and the volume stayed 30% (−31.37 dB). RK817 Master was 100% at 0 dB. `/proc/asound` did not grow a `hw_params` file while `pcmC1D0p` was open, so the Pulse latency line is the measurement. HDMI was not loaded on this boot, so it was not measured again. Nobody heard the 12-fragment tone. The source buffer was not changed.
+
+Abombniball's installed script backgrounds `gptokeyb` and runs `abombniball.${DEVICE_ARCH}` in the foreground. A bash process substitution like its log redirect stayed in the leader's process group, and `SIGTERM` to that group cleared it. `abombniball.aarch64`, `gptokeyb`, and `gptokeyb2` contain no `setsid` string. One launch through `PORTS.pak/launch.sh` without `nextui-session` wrote `kmsdrm not available` and then `systemctl: not found`, and it exited in about two seconds. MENU+START was not pressed during a game that was actually running. The hotkey helper and the launcher were not changed. InputPlumber's virtual pad was `event5`, name `Microsoft X-Box 360 pad`.
+
 ## 2026-10-19 — ARMHF userspace is advertised after one Flip run
 
 `xdelta3.armhf -V` on the installed `00e6c343` image printed `Xdelta version 3.1.1`. The program is ELF32 ARM hard-float. Its interpreter is `/lib/ld-linux-armhf.so.3`, and `libc.so.6` opened from `/usr/lib/zlyme-armhf`. `control.txt` exports `DEVICE_HAS_ARMHF=Y`. `device_info.txt` sets the same value when that loader exists, and it still sets `DEVICE_ARCH=aarch64` when the AArch64 loader exists. Abombniball's `libs.aarch64/libSDL_image-1.2.so.0` is ELF64, and that port has no `libs.armhf` directory. The flag does not select `abombniball.armhf`. Every ARMHF port working is not proven. No image was built for this flag alone.
