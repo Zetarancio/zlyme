@@ -199,8 +199,10 @@ BR2_PACKAGE_KMSCUBE=y
 BR2_PACKAGE_VULKAN_HEADERS=y
 BR2_PACKAGE_VULKAN_LOADER=y
 
-# Audio: PulseAudio 17 in front of ALSA. HDMI is card 0, rk817_ext is card 1.
-# BlueALSA owns A2DP. The minimal defconfig stays ALSA-only.
+# Audio: PipeWire 1.6.6 and WirePlumber 0.5.14 in front of ALSA.
+# libpulse stays for native clients and for pipewire-pulse. The PulseAudio
+# daemon does not start. BlueZ A2DP belongs to PipeWire, not BlueALSA.
+# The minimal defconfig stays ALSA-only and does not select these lines.
 BR2_PACKAGE_ALSA_LIB=y
 
 # alsactl (S20alsa restores mixer state). The rest is bring-up.
@@ -212,10 +214,13 @@ BR2_PACKAGE_ALSA_UTILS_APLAY=y
 BR2_PACKAGE_ALSA_UTILS_SPEAKER_TEST=y
 BR2_PACKAGE_ALSA_PLUGINS=y
 BR2_PACKAGE_PULSEAUDIO=y
-BR2_PACKAGE_PULSEAUDIO_DAEMON=y
-
-# bluealsa (SBC). A2DP PCM is the `bt` sink in asound.conf.
-BR2_PACKAGE_BLUEZ_ALSA=y
+# BR2_PACKAGE_PULSEAUDIO_DAEMON is not set
+BR2_PACKAGE_PIPEWIRE=y
+BR2_PACKAGE_WIREPLUMBER=y
+BR2_PACKAGE_LUA=y
+BR2_PACKAGE_LUA_5_4=y
+BR2_PACKAGE_SBC=y
+# BR2_PACKAGE_BLUEZ_ALSA is not set
 BR2_PACKAGE_ZLYME_JACKD=y
 
 # zlyme_my355_defconfig = zlyme_my355_minimal plus emulators. Keep the shared lines in step.

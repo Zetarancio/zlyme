@@ -252,6 +252,10 @@ ready_check() {
 }
 
 start() {
+	# Product images ship PipeWire. Do not start a PulseAudio daemon beside it.
+	if [ -x /usr/bin/pipewire ]; then
+		return 0
+	fi
 	pulse_paths
 	[ -x "$DAEMON" ] || {
 		printf '%s\n' 'pulseaudio: /usr/bin/pulseaudio is missing' > /run/zlyme/pulse-missing

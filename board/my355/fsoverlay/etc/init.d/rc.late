@@ -73,6 +73,7 @@ start_bg /etc/init.d/S49ntp
 # the first frame: this subshell is backgrounded.
 (
 	[ -x /etc/init.d/S30dbus-daemon ] && /etc/init.d/S30dbus-daemon start
+	[ -x /etc/init.d/S33pipewire ] && /etc/init.d/S33pipewire start
 	_up=0
 	read -r _up _rest < /proc/uptime || true
 	echo "$_up inputplumber-start" >> /tmp/boot-timing

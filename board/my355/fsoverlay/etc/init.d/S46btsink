@@ -7,6 +7,9 @@ DAEMON=/usr/sbin/zlyme-btsink
 PIDFILE=/var/run/zlyme-btsink.pid
 
 start() {
+	if [ -x /usr/bin/pipewire ]; then
+		return 0
+	fi
 	[ -x "$DAEMON" ] || return 0
 	printf "Starting zlyme-btsink: "
 	if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then

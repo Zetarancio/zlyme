@@ -1,0 +1,23 @@
+#!/bin/sh
+# After D-Bus, before bluetoothd. The launcher bounds its own wait.
+# rc.late is already off the first-frame path.
+
+DAEMON=/usr/sbin/zlyme-pipewire-launch
+
+start() {
+	[ -x "$DAEMON" ] || return 0
+	[ -x /usr/bin/pipewire ] || return 0
+	"$DAEMON" start
+}
+
+stop() {
+	[ -x "$DAEMON" ] || return 0
+	"$DAEMON" stop
+}
+
+case "${1:-start}" in
+start) start ;;
+stop) stop ;;
+restart) stop; start ;;
+*) echo "usage: $0 {start|stop|restart}" >&2; exit 1 ;;
+esac

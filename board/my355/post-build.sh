@@ -423,4 +423,44 @@ if br2_selected BR2_PACKAGE_NEXTUI; then
 	fi
 fi
 
+if br2_selected BR2_PACKAGE_PIPEWIRE; then
+	asound="${TARGET_DIR}/etc/asound.conf"
+	if [ -f "$asound" ]; then
+		python3 - "$asound" << 'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+t = p.read_text()
+t = t.replace("\ttype plug\n\tslave.pcm \"flipdmix_codec\"", "\ttype pipewire", 1)
+t = t.replace(
+    "ctl.!default {\n\ttype hw\n\tcard rk817ext\n}",
+    "ctl.!default {\n\ttype pipewire\n}",
+    1,
+)
+if "type pipewire" not in t:
+    raise SystemExit("asound.conf was not switched to pipewire")
+p.write_text(t)
+PY
+	else
+		note "etc/asound.conf is missing"
+	fi
+	mkdir -p "${TARGET_DIR}/etc/alsa/conf.d"
+	ln -sfn ../../../usr/share/alsa/alsa.conf.d/50-pipewire.conf \
+		"${TARGET_DIR}/etc/alsa/conf.d/50-pipewire.conf"
+	chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-pipewire-launch" \
+		"${TARGET_DIR}/etc/init.d/S33pipewire" 2>/dev/null || true
+	for b in usr/bin/pipewire usr/bin/wireplumber usr/bin/pipewire-pulse \
+		usr/lib/alsa-lib/libasound_module_pcm_pipewire.so \
+		usr/lib/libpulse.so.0 usr/lib/libpulse-simple.so.0; do
+		[ -e "${TARGET_DIR}/${b}" ] || note "${b} is missing"
+	done
+	sbc=$(find "${TARGET_DIR}/usr/lib" -name '*bluez5*sbc*' -print -quit)
+	[ -n "$sbc" ] || note "PipeWire BlueZ SBC plugin is missing"
+	if [ -x "${TARGET_DIR}/usr/bin/pulseaudio" ]; then
+		note "PulseAudio daemon binary is still installed"
+	fi
+	if [ -x "${TARGET_DIR}/usr/bin/bluealsa" ] || [ -x "${TARGET_DIR}/usr/bin/bluealsad" ]; then
+		note "BlueALSA is still installed"
+	fi
+fi
+
 exit "${fail}"

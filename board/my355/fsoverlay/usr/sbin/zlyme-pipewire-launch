@@ -1,0 +1,112 @@
+#!/bin/sh
+# One PipeWire daemon, one WirePlumber, one pipewire-pulse.
+# Root owns them. NextUI and PortMaster are root, and exFAT state is
+# not a safe home for a separate service uid. Sockets live under /run.
+set -eu
+
+RT="${ZLYME_PW_RUNTIME:-/run/zlyme/pipewire}"
+HOME_DIR="${ZLYME_PW_HOME:-/run/zlyme/pipewire-home}"
+STATUS="$RT/service"
+
+export XDG_RUNTIME_DIR="$RT"
+export PIPEWIRE_RUNTIME_DIR="$RT"
+export HOME="$HOME_DIR"
+if [ -S /run/dbus/system_bus_socket ]; then
+	export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket"
+fi
+
+mkdir -p "$RT/pulse" "$HOME_DIR"
+chmod 0755 "$RT" "$RT/pulse" "$HOME_DIR" || true
+
+status() {
+	printf '%s\n' "$1" > "$STATUS" 2>/dev/null || true
+}
+
+running() {
+	[ -f "$1" ] || return 1
+	pid=$(cat "$1" 2>/dev/null) || return 1
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null || return 1
+	# The pid file must still name this binary.
+	tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "$2"
+}
+
+start_one() {
+	name=$1
+	bin=$2
+	pidf="$RT/$name.pid"
+	[ -x "$bin" ] || return 1
+	if running "$pidf" "$bin"; then
+		return 0
+	fi
+	rm -f "$pidf"
+	start-stop-daemon -S -q -b -m -p "$pidf" --exec "$bin"
+}
+
+stop_one() {
+	name=$1
+	pidf="$RT/$name.pid"
+	if [ -f "$pidf" ]; then
+		start-stop-daemon -K -q -p "$pidf" 2>/dev/null || true
+		rm -f "$pidf"
+	fi
+}
+
+wait_sock() {
+	n=0
+	while [ "$n" -lt 50 ]; do
+		[ -S "$1" ] && return 0
+		sleep 0.1
+		n=$((n + 1))
+	done
+	return 1
+}
+
+case "${1:-start}" in
+start)
+	status launching
+	start_one pipewire /usr/bin/pipewire || {
+		status "failed: pipewire"
+		exit 1
+	}
+	if ! wait_sock "$RT/pipewire-0"; then
+		status "failed: pipewire socket"
+		exit 1
+	fi
+	start_one wireplumber /usr/bin/wireplumber || {
+		status "failed: wireplumber"
+		exit 1
+	}
+	start_one pipewire-pulse /usr/bin/pipewire-pulse || {
+		status "failed: pipewire-pulse"
+		exit 1
+	}
+	if ! wait_sock "$RT/pulse/native"; then
+		status "failed: pulse socket"
+		exit 1
+	fi
+	status ready
+	if [ -x /usr/sbin/zlyme-audio ]; then
+		/usr/sbin/zlyme-audio route >/dev/null 2>&1 || true
+		/usr/sbin/zlyme-audio migrate-volume >/dev/null 2>&1 || true
+	fi
+	;;
+stop)
+	stop_one pipewire-pulse
+	stop_one wireplumber
+	stop_one pipewire
+	rm -f "$RT/pipewire-0" "$RT/pulse/native"
+	status stopped
+	;;
+status)
+	if [ -r "$STATUS" ]; then
+		cat "$STATUS"
+	else
+		echo stopped
+	fi
+	;;
+*)
+	echo "usage: $0 {start|stop|status}" >&2
+	exit 1
+	;;
+esac

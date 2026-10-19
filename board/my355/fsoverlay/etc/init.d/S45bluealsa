@@ -11,6 +11,10 @@ done
 PIDFILE=/var/run/bluealsad.pid
 
 start() {
+	# PipeWire's BlueZ monitor is the A2DP owner. Do not start a second one.
+	if [ -x /usr/bin/pipewire ]; then
+		return 0
+	fi
 	[ -n "$DAEMON" ] || return 0
 
 	# No adapter: skip rather than spin.

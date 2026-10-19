@@ -1,63 +1,60 @@
 #!/bin/sh
 #
-# Choose the PulseAudio sink and the 0-100 volume.
-# Verbs match a typical handheld frontend. `auto` is the codec;
-# the jack watcher owns speaker vs headphones.
+# Sink preference and the 0-100 volume. PipeWire is the product graph.
+# The minimal image has no wpctl and uses the RK817 mixer instead.
+# audio.conf is data. It is never sourced.
 
-# ZLYME_CONF overrides this path (host tests).
+# shellcheck disable=SC1090
 . "${ZLYME_CONF:-/etc/zlyme.conf}"
 
 STATE="${ZLYME_CFG}/audio.conf"
 CARD=rk817ext
 VOLCTL=FlipVolume
-export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-/run/zlyme/pulse}"
+RT="${ZLYME_PW_RUNTIME:-/run/zlyme/pipewire}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$RT}"
+export PIPEWIRE_RUNTIME_DIR="${PIPEWIRE_RUNTIME_DIR:-$RT}"
 
 do_usage() {
 	cat <<EOF
 usage: $(basename "$0") <command>
 
-  list                 available sinks, one per line, as id<TAB>description
-  get                  the selected sink id
+  list
+  get
   set {auto|codec|hdmi|bt}
-  status               selected sink, whether it can be opened, and the volume
-  getSystemVolume      volume as a number, 0-100
+  status
+  getSystemVolume
   setSystemVolume {mute|unmute|mute-toggle|[+-]<0-100>}
-  test                 play a tone through the current sink
-  export               print a shell assignment: eval \$($(basename "$0") export)
-
-Speaker versus headphones is not selectable: zlyme-jackd follows the jack.
-A sink change moves streams that are already playing. It does not restart the game.
+  test
+  export
+  route
+  migrate-volume
 EOF
 }
 
-# The state file is data. Do not source it: a hand-edited value would
-# become shell source through export.
-current() {
-	sink=$(saved ZLYME_SINK || true)
-	case "$sink" in
-		codec|hdmi|bt) ;;
-		*) sink=codec ;;
-	esac
-	printf '%s\n' "$sink"
-}
-
-# Read a key from the state file without disturbing the environment.
 saved() {
 	[ -r "$STATE" ] || return 1
 	sed -n "s/^$1=//p" "$STATE" | tail -n 1
 }
 
-# Rewrite one key in the state file, leaving the others alone.
 save() {
-	if [ ! -d "$ZLYME_CFG" ]; then
-		echo "$(basename "$0"): ${ZLYME_CFG} is not there -- is the card mounted?" >&2
+	key=$1
+	val=$2
+	dir=$(dirname "$STATE")
+	if [ ! -d "$dir" ]; then
+		echo "$(basename "$0"): ${dir} is not there -- is the card mounted?" >&2
 		return 1
 	fi
-
-	tmp="${STATE}.new"
-	[ -r "$STATE" ] && grep -v "^$1=" "$STATE" > "$tmp" 2>/dev/null
-	printf '%s=%s\n' "$1" "$2" >> "$tmp" || return 1
-	mv "$tmp" "$STATE"
+	tmp=$(mktemp "$dir/audio.conf.XXXXXX") || return 1
+	if [ -r "$STATE" ]; then
+		grep -v "^${key}=" "$STATE" > "$tmp" 2>/dev/null || : > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	printf '%s=%s\n' "$key" "$val" >> "$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	mv -f "$tmp" "$STATE"
 }
 
 clamp_volume() {
@@ -67,49 +64,199 @@ clamp_volume() {
 	printf '%s\n' "$v"
 }
 
-# Can the sink be opened right now? This is the difference between a selection and
-# working audio, and it is the first thing worth knowing when there is no sound:
-# HDMI with no cable and Bluetooth with nothing connected both fail here while
-# looking perfectly configured.
+pref() {
+	p=$(saved ZLYME_SINK_PREF || true)
+	case "$p" in
+		auto|codec|hdmi|bt) printf '%s\n' "$p"; return ;;
+	esac
+	s=$(saved ZLYME_SINK || true)
+	case "$s" in
+		codec|hdmi|bt) printf '%s\n' "$s"; return ;;
+	esac
+	printf '%s\n' auto
+}
+
+current() {
+	s=$(saved ZLYME_SINK || true)
+	case "$s" in
+		codec|hdmi|bt) printf '%s\n' "$s"; return ;;
+	esac
+	printf '%s\n' codec
+}
+
+describe() {
+	case "$1" in
+		codec) echo "Speaker or headphones" ;;
+		hdmi) echo "HDMI" ;;
+		bt) echo "Bluetooth" ;;
+		*) echo "$1" ;;
+	esac
+}
+
+pipewire_up() {
+	if [ "${ZLYME_AUDIO_BACKEND:-}" = alsa ]; then
+		return 1
+	fi
+	if [ -n "${ZLYME_PW_NODES:-}" ] && { [ -n "${ZLYME_WPCTL:-}" ] || [ -x /usr/bin/wpctl ]; }; then
+		return 0
+	fi
+	[ -S "$RT/pipewire-0" ] || return 1
+	[ -n "${ZLYME_WPCTL:-}" ] || [ -x /usr/bin/wpctl ]
+}
+
+# role<TAB>id
+nodes() {
+	if [ -n "${ZLYME_PW_NODES:-}" ] && [ -r "$ZLYME_PW_NODES" ]; then
+		cat "$ZLYME_PW_NODES"
+		return 0
+	fi
+	command -v pw-dump >/dev/null 2>&1 || return 1
+	command -v python3 >/dev/null 2>&1 || return 1
+	pw-dump | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for obj in data:
+    if obj.get("type") != "PipeWire:Interface:Node":
+        continue
+    props = (obj.get("info") or {}).get("props") or {}
+    if props.get("media.class") != "Audio/Sink":
+        continue
+    name = props.get("node.name") or ""
+    card = props.get("api.alsa.card.name") or ""
+    role = ""
+    if "bluez" in name:
+        role = "bt"
+    elif card == "rk817ext":
+        role = "codec"
+    elif card == "HDMI":
+        role = "hdmi"
+    if role:
+        print("%s\t%s" % (role, obj.get("id")))
+'
+}
+
+node_id() {
+	role=$1
+	nodes | awk -F '\t' -v r="$role" '$1 == r { print $2; exit }'
+}
+
+hdmi_has_audio() {
+	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && return 0
+	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && return 1
+	eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
+	[ -n "$eld" ] || return 1
+	grep -q 'sad_count *[1-9]' "$eld"
+}
+
+# Displayed percent stays the stored integer. PipeWire's wpctl float is
+# linear gain. The old Pulse percent was cubic, so 40 there is gain
+# (0.40)^3. Apply that curve so the first PipeWire boot is not louder.
+linear_gain() {
+	awk -v p="$1" 'BEGIN {
+		if (p+0 <= 0) { print "0"; exit }
+		if (p+0 >= 100) { print "1"; exit }
+		printf "%.6f", (p/100) * (p/100) * (p/100)
+	}'
+}
+
+wp() {
+	"${ZLYME_WPCTL:-wpctl}" "$@"
+}
+
+apply_gain() {
+	v=$1
+	g=$(linear_gain "$v")
+	id=$(node_id "$(current)") || true
+	if [ -n "$id" ]; then
+		wp set-volume "$id" "$g" >/dev/null 2>&1 || true
+	fi
+	# Keep the other sinks at the same gain when they exist.
+	nodes | while IFS='	' read -r role nid; do
+		[ -n "$nid" ] || continue
+		wp set-volume "$nid" "$g" >/dev/null 2>&1 || true
+	done
+}
+
+choose() {
+	want=$1
+	case "$want" in
+		codec|hdmi|bt)
+			id=$(node_id "$want" || true)
+			if [ -n "$id" ]; then
+				if [ "$want" = hdmi ] && ! hdmi_has_audio; then
+					:
+				else
+					printf '%s\n' "$want"
+					return 0
+				fi
+			fi
+			;;
+	esac
+	if [ -n "$(node_id bt || true)" ]; then
+		printf '%s\n' bt
+		return 0
+	fi
+	if [ -n "$(node_id hdmi || true)" ] && hdmi_has_audio; then
+		printf '%s\n' hdmi
+		return 0
+	fi
+	if [ -n "$(node_id codec || true)" ]; then
+		printf '%s\n' codec
+		return 0
+	fi
+	printf '%s\n' codec
+}
+
+focus_role() {
+	role=$1
+	id=$(node_id "$role" || true)
+	[ -n "$id" ] || return 1
+	wp set-default "$id" >/dev/null 2>&1 || return 1
+	save ZLYME_SINK "$role" || true
+	vol=$(saved ZLYME_VOLUME || true)
+	[ -n "$vol" ] && apply_gain "$vol"
+	return 0
+}
+
+route() {
+	pipewire_up || return 0
+	choice=$(choose "$(pref)")
+	focus_role "$choice" || true
+}
+
 why_unavailable() {
 	case "$1" in
 		codec)
-			[ -d "/proc/asound/${CARD}" ] || { echo "codec card absent"; return 1; }
+			if pipewire_up; then
+				[ -n "$(node_id codec || true)" ] || { echo "codec node absent"; return 1; }
+			else
+				[ -d "/proc/asound/${CARD}" ] || { echo "codec card absent"; return 1; }
+			fi
 			;;
 		hdmi)
-			[ -d /proc/asound/HDMI ] || { echo "HDMI card absent"; return 1; }
+			if pipewire_up; then
+				[ -n "$(node_id hdmi || true)" ] || { echo "HDMI node absent"; return 1; }
+				hdmi_has_audio || { echo "HDMI ELD has no audio"; return 1; }
+			else
+				[ -d /proc/asound/HDMI ] || { echo "HDMI card absent"; return 1; }
+			fi
 			;;
 		bt)
-			pidof bluealsad >/dev/null 2>&1 || pidof bluealsa >/dev/null 2>&1 ||
-				{ echo "bluealsad not running"; return 1; }
+			if pipewire_up; then
+				[ -n "$(node_id bt || true)" ] || { echo "Bluetooth node absent"; return 1; }
+			else
+				echo "Bluetooth audio needs PipeWire"
+				return 1
+			fi
 			;;
 	esac
 	return 0
 }
 
-describe() {
-	case "$1" in
-		codec)	echo "Speaker or headphones" ;;
-		hdmi)	echo "HDMI" ;;
-		bt)	echo "Bluetooth" ;;
-	esac
-}
-
-pulse_ok() {
-	command -v pactl >/dev/null 2>&1 && pactl info >/dev/null 2>&1
-}
-
-# The process answering pactl is not enough. The codec sink has to be listed.
-pulse_service() {
-	pulse_ok || return 1
-	pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'
-}
-
 volume() {
-	if pulse_ok; then
-		sink=$(current)
-		pactl get-sink-volume "$sink" 2>/dev/null |
-			sed -n 's/.*\/ *\([0-9][0-9]*\)%.*/\1/p' | head -n 1
+	v=$(saved ZLYME_VOLUME || true)
+	if [ -n "$v" ]; then
+		printf '%s\n' "$v"
 		return 0
 	fi
 	amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
@@ -118,318 +265,157 @@ volume() {
 
 set_volume() {
 	v=$(clamp_volume "$1") || return 1
-	if pulse_ok; then
-		for s in codec hdmi bt; do
-			pactl set-sink-volume "$s" "$v%" >/dev/null 2>&1 || true
-		done
-		cur=$(saved ZLYME_VOLUME || true)
-		if [ "$cur" != "$v" ]; then
-			save ZLYME_VOLUME "$v" || true
-		fi
-		return 0
+	cur=$(saved ZLYME_VOLUME || true)
+	if [ "$cur" != "$v" ]; then
+		save ZLYME_VOLUME "$v" || return 1
 	fi
-	amixer -q -c "$CARD" sset "$VOLCTL" "$v%" 2>/dev/null
+	if pipewire_up; then
+		apply_gain "$v"
+	else
+		amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || true
+	fi
 }
 
-# Copy the displayed FlipVolume percent into Pulse once. Pulse's percent
-# is cubic: 40 is about -23.88 dB, not the softvol plugin's dB at 40%.
-# Keep the integer. Do not rescale it and do not force 100. A later boot
-# must not read the mixer again or rewrite the state file.
 migrate_volume() {
 	src=$(saved ZLYME_VOLUME_SRC || true)
-	[ -n "$src" ] && return 0
-	pulse_service || return 1
-	if [ ! -d "$ZLYME_CFG" ]; then
-		echo "$(basename "$0"): ${ZLYME_CFG} is not there -- is the card mounted?" >&2
-		return 1
-	fi
-	state="${ZLYME_CFG}/asound.state"
-	now=""
-	if [ -r "$state" ] && grep -q 'FlipVolume' "$state"; then
+	[ "$src" = pipewire-cubic ] && return 0
+	now=$(saved ZLYME_VOLUME || true)
+	if [ -z "$now" ]; then
 		now=$(amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
 			sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1)
 	fi
 	if ! now=$(clamp_volume "$now"); then
 		now=40
 	fi
-	for s in codec hdmi bt; do
-		pactl set-sink-volume "$s" "$now%" >/dev/null 2>&1 || true
-	done
-	tmp="${STATE}.new"
-	if [ -r "$STATE" ]; then
-		grep -vE '^(ZLYME_VOLUME|ZLYME_VOLUME_SRC)=' "$STATE" > "$tmp" 2>/dev/null || : > "$tmp"
-	else
-		: > "$tmp"
+	save ZLYME_VOLUME "$now" || return 1
+	save ZLYME_VOLUME_SRC pipewire-cubic || return 1
+	if [ -z "$(saved ZLYME_SINK_PREF || true)" ]; then
+		old=$(saved ZLYME_SINK || true)
+		case "$old" in
+			codec|hdmi|bt) save ZLYME_SINK_PREF "$old" || true ;;
+			*) save ZLYME_SINK_PREF auto || true ;;
+		esac
 	fi
-	printf 'ZLYME_VOLUME=%s\nZLYME_VOLUME_SRC=flipvolume\n' "$now" >> "$tmp" || return 1
-	mv "$tmp" "$STATE"
-}
-
-# Live module rows whose sink_name is $1. A saved module number is not
-# consulted: after a restart that number can belong to something else.
-modules_named() {
-	name=$1
-	pactl list short modules 2>/dev/null | awk -v sink="$name" '
-		$2 == "module-alsa-sink" && index($0, "sink_name=" sink) { print $1 }
-	'
-}
-
-module_for_mac() {
-	mac=$1
-	pactl list short modules 2>/dev/null | awk -v mac="$mac" '
-		$2 == "module-alsa-sink" && index($0, "sink_name=bt") && index($0, "DEV=" mac ",") {
-			print $1
-			exit
-		}
-	'
-}
-
-unload_named() {
-	name=$1
-	pulse_ok || return 0
-	ids=$(modules_named "$name")
-	for id in $ids; do
-		pactl unload-module "$id" >/dev/null 2>&1 || true
-	done
-	rm -f "$PULSE_RUNTIME_PATH/module-$name" "$PULSE_RUNTIME_PATH/mac-$name"
-}
-
-# Load or drop an optional sink. The codec sink comes from zlyme.pa.
-sink_up() {
-	name=$1
-	mac=${2:-}
-	pulse_ok || return 1
-	case "$name" in
-		hdmi)
-			have=$(pactl list short modules 2>/dev/null | awk '
-				$2 == "module-alsa-sink" && index($0, "sink_name=hdmi") { print $1; exit }
-			')
-			if [ -n "$have" ]; then
-				printf '%s\n' "$have" > "$PULSE_RUNTIME_PATH/module-hdmi"
-				return 0
-			fi
-			unload_named hdmi
-			mod=$(pactl load-module module-alsa-sink device=hw:HDMI,0 sink_name=hdmi channels=2 rate=48000 format=s16le tsched=0 fragments=12 fragment_size=1024) || return 1
-			printf '%s\n' "$mod" > "$PULSE_RUNTIME_PATH/module-hdmi"
-			;;
-		bt)
-			[ -n "$mac" ] || return 1
-			have=$(module_for_mac "$mac")
-			if [ -n "$have" ]; then
-				printf '%s\n' "$have" > "$PULSE_RUNTIME_PATH/module-bt"
-				printf '%s\n' "$mac" > "$PULSE_RUNTIME_PATH/mac-bt"
-				return 0
-			fi
-			unload_named bt
-			# Four fragments stay on this path. A2DP playback was accepted there.
-			mod=$(pactl load-module module-alsa-sink "device=bluealsa:DEV=${mac},PROFILE=a2dp" sink_name=bt channels=2 rate=48000 format=s16le tsched=0 fragments=4 fragment_size=1024) || return 1
-			printf '%s\n' "$mod" > "$PULSE_RUNTIME_PATH/module-bt"
-			printf '%s\n' "$mac" > "$PULSE_RUNTIME_PATH/mac-bt"
-			;;
-		*)
-			return 0
-			;;
-	esac
-}
-
-# The boot script loads this once. If that open fails, the server
-# stays up without a codec sink. A later call uses the same arguments.
-codec_up() {
-	pulse_ok || return 1
-	if pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'; then
-		return 0
-	fi
-	pactl load-module module-alsa-sink device=hw:rk817ext,0 sink_name=codec channels=2 rate=48000 format=s16le tsched=0 fragments=12 fragment_size=1024 >/dev/null || return 1
-	pactl set-default-sink codec >/dev/null 2>&1 || true
-	return 0
-}
-
-sink_down() {
-	name=$1
-	unload_named "$name"
-}
-
-sink_ok() {
-	name=$1
-	mac=${2:-}
-	pulse_service || return 1
-	case "$name" in
-		codec)
-			return 0
-			;;
-		hdmi)
-			[ -n "$(modules_named hdmi)" ]
-			;;
-		bt)
-			[ -n "$mac" ] || return 1
-			[ -n "$(module_for_mac "$mac")" ]
-			;;
-		*)
-			return 1
-			;;
-	esac
-}
-
-focus() {
-	name=$1
-	pulse_ok || return 1
-	pactl set-default-sink "$name" >/dev/null 2>&1 || return 1
-	pactl list short sink-inputs 2>/dev/null | awk '{print $1}' | while read -r id; do
-		[ -n "$id" ] || continue
-		pactl move-sink-input "$id" "$name" >/dev/null 2>&1 || true
-	done
-	vol=$(saved ZLYME_VOLUME || true)
-	[ -n "$vol" ] && set_volume "$vol"
-	return 0
+	pipewire_up && apply_gain "$now" || true
 }
 
 case "${1:-status}" in
-	list)
-		for s in codec hdmi bt; do
-			if reason=$(why_unavailable "$s"); then
-				printf '%s\t%s\n' "$s" "$(describe "$s")"
-			else
-				printf '%s\t%s (unavailable: %s)\n' "$s" "$(describe "$s")" "$reason"
-			fi
-		done
-		;;
-
-	get)
-		current
-		;;
-
-	set)
-		sink="$2"
-		[ "$sink" = auto ] && sink=codec
-		case "$sink" in
-			codec|hdmi|bt)
-				save ZLYME_SINK "$sink" || exit 1
-				focus "$sink" || true
-				echo "sink: ${sink}"
-				reason=$(why_unavailable "$sink") ||
-					echo "warning: ${reason}" >&2
-				;;
-			*)
-				echo "$(basename "$0"): unknown sink '${sink}'" >&2
-				exit 1
-				;;
-		esac
-		;;
-
-	remember)
-		case "$2" in
-			codec|hdmi|bt) save ZLYME_SINK "$2" || exit 1 ;;
-			*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
-		esac
-		;;
-
-	status)
-		sink=$(current)
-		printf 'sink: %s\n' "$sink"
-		if reason=$(why_unavailable "$sink"); then
-			echo "state: available"
+list)
+	for s in codec hdmi bt; do
+		if reason=$(why_unavailable "$s"); then
+			printf '%s\t%s\n' "$s" "$(describe "$s")"
 		else
-			printf 'state: unavailable -- %s\n' "$reason"
+			printf '%s\t%s (unavailable: %s)\n' "$s" "$(describe "$s")" "$reason"
 		fi
-		printf 'volume: %s\n' "$(volume)"
-		;;
-
-	getSystemVolume)
-		volume
-		;;
-
-	setSystemVolume)
-		v="$2"
-		now=$(volume)
-		: "${now:=0}"
-		case "$v" in
-			# softvol has a volume but no mute switch, so mute is "remember
-			# where it was and go to zero". Without saving it, unmute would
-			# have to invent a level.
-			mute)
-				[ "$now" -gt 0 ] && save ZLYME_PREMUTE "$now"
+	done
+	;;
+get)
+	current
+	;;
+set)
+	case "$2" in
+		auto|codec|hdmi|bt) save ZLYME_SINK_PREF "$2" || exit 1 ;;
+		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
+	esac
+	route
+	echo "sink: $(current)"
+	;;
+remember)
+	case "$2" in
+		auto|codec|hdmi|bt) save ZLYME_SINK_PREF "$2" || exit 1 ;;
+		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
+	esac
+	;;
+status)
+	sink=$(current)
+	printf 'sink: %s\n' "$sink"
+	printf 'preference: %s\n' "$(pref)"
+	if reason=$(why_unavailable "$sink"); then
+		echo "state: available"
+	else
+		printf 'state: unavailable -- %s\n' "$reason"
+	fi
+	printf 'volume: %s\n' "$(volume)"
+	;;
+getSystemVolume)
+	volume
+	;;
+setSystemVolume)
+	v="$2"
+	now=$(volume)
+	: "${now:=0}"
+	case "$v" in
+		mute)
+			[ "$now" -gt 0 ] && save ZLYME_PREMUTE "$now"
+			set_volume 0
+			;;
+		unmute)
+			restore=$(saved ZLYME_PREMUTE) || restore=""
+			set_volume "${restore:-50}"
+			;;
+		mute-toggle)
+			if [ "$now" -gt 0 ]; then
+				save ZLYME_PREMUTE "$now"
 				set_volume 0
-				;;
-			unmute)
+			else
 				restore=$(saved ZLYME_PREMUTE) || restore=""
 				set_volume "${restore:-50}"
-				;;
-			mute-toggle)
-				if [ "$now" -gt 0 ]; then
-					save ZLYME_PREMUTE "$now"
-					set_volume 0
-				else
-					restore=$(saved ZLYME_PREMUTE) || restore=""
-					set_volume "${restore:-50}"
-				fi
-				;;
-			[+-]*)
-				delta=${v#[+-]}
-				case "$v" in
-					+*) new=$((now + delta)) ;;
-					-*) new=$((now - delta)) ;;
-				esac
-				[ "$new" -lt 0 ] && new=0
-				[ "$new" -gt 100 ] && new=100
-				set_volume "$new"
-				;;
-			*)
-				if echo "$v" | grep -qE '^[0-9]+$' && [ "$v" -le 100 ]; then
-					set_volume "$v"
-				else
-					echo "$(basename "$0"): invalid volume '${v}'" >&2
-					exit 1
-				fi
-				;;
-		esac
-		;;
-
-	test)
-		speaker-test -D default -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 ||
-			echo "$(basename "$0"): could not open the current sink" >&2
-		;;
-
-	export)
-		printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(current)"
-		;;
-
-	sink-up)
-		sink_up "$2" "$3" || exit 1
-		;;
-
-	sink-down)
-		sink_down "$2"
-		;;
-
-	sink-ok)
-		sink_ok "$2" "$3"
-		;;
-
-	pulse-service)
-		pulse_service
-		;;
-
-	codec-up)
-		codec_up
-		;;
-
-	migrate-volume)
-		migrate_volume
-		;;
-
-	focus)
-		case "$2" in
-			codec|hdmi|bt) focus "$2" || exit 1 ;;
-			*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
-		esac
-		;;
-
-	-h|--help|help)
-		do_usage
-		;;
-
-	*)
-		do_usage >&2
-		exit 1
-		;;
+			fi
+			;;
+		[+-]*)
+			delta=${v#[+-]}
+			case "$v" in
+				+*) new=$((now + delta)) ;;
+				-*) new=$((now - delta)) ;;
+			esac
+			[ "$new" -lt 0 ] && new=0
+			[ "$new" -gt 100 ] && new=100
+			set_volume "$new"
+			;;
+		*)
+			if echo "$v" | grep -qE '^[0-9]+$' && [ "$v" -le 100 ]; then
+				set_volume "$v"
+			else
+				echo "$(basename "$0"): invalid volume '${v}'" >&2
+				exit 1
+			fi
+			;;
+	esac
+	;;
+test)
+	speaker-test -D default -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 ||
+		echo "$(basename "$0"): could not open the current sink" >&2
+	;;
+export)
+	printf 'XDG_RUNTIME_DIR=%s; export XDG_RUNTIME_DIR\n' "$RT"
+	printf 'PIPEWIRE_RUNTIME_DIR=%s; export PIPEWIRE_RUNTIME_DIR\n' "$RT"
+	printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(current)"
+	;;
+route)
+	route
+	;;
+pulse-service)
+	if pipewire_up; then
+		[ -n "$(node_id codec || true)" ]
+		exit $?
+	fi
+	command -v pactl >/dev/null 2>&1 || exit 1
+	pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'
+	;;
+migrate-volume)
+	migrate_volume
+	;;
+focus)
+	case "$2" in
+		codec|hdmi|bt) focus_role "$2" || exit 1 ;;
+		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
+	esac
+	;;
+-h|--help|help)
+	do_usage
+	;;
+*)
+	do_usage >&2
+	exit 1
+	;;
 esac
