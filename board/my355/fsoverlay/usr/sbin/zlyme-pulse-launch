@@ -38,6 +38,14 @@ finish() {
 }
 trap 'if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child"; finish $?; fi' TERM INT
 
+level=notice
+# info records every client. zlyme-btsink polls, and that filled the
+# boot log. Set ZLYME_PULSE_LOG=info for one boot when an ALSA open
+# line is needed. The normal level is notice.
+if [ "${ZLYME_PULSE_LOG:-}" = info ]; then
+	level=info
+fi
+
 "$BIN" \
 	--daemonize=no \
 	--exit-idle-time=-1 \
@@ -46,7 +54,7 @@ trap 'if [ -n "$child" ]; then kill "$child" 2>/dev/null || true; wait "$child";
 	-n \
 	--file="$FILE" \
 	--log-target="file:${LOG}" \
-	--log-level=info &
+	--log-level="$level" &
 child=$!
 wait "$child"
 finish $?

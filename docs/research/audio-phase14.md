@@ -1,0 +1,17 @@
+# PulseAudio on Phase 14
+
+Phase 13 (`8b4218aa`, published as `zlyme44.3`) played through ALSA. `asound.conf` made `default` a `dmix` plus one `FlipVolume` softvol. BlueALSA was the Bluetooth playback device. Programs that opened `default` shared the RK817 PCM.
+
+Phase 14 plays through one PulseAudio 17 server. The server opens `hw:rk817ext,0`. `default` is the Pulse ALSA plugin, so an ordinary ALSA client, including SDL with `SDL_AUDIODRIVER=alsa` and PICO-8, reaches that server. Native `libpulse` clients use the same socket. `flipsink_*` remains for a program that opens that name. Nothing in the shipped launchers does. The Music Player sets `SDL_AUDIODRIVER=alsa`, which follows `default`.
+
+`/proc/asound/card1/id` is `rk817ext`. The kernel short name `rk817_ext` is the headphone input name (`rk817_ext Headphones`) and is not an ALSA card id.
+
+`enable-remixing` defaults to yes. PulseAudio 17 `daemon.conf` says setting it to no has no known valid use case and is deprecated. `enable-remixing=no` sets `disable_remixing`, and `resampler.c` then copies a channel only when the position names match. A mono stream is `mono`. A stereo sink is `front-left` and `front-right`. Nothing matches, so both speakers stay at zero. PICO-8 Splore opens that mono stream through the ALSA plugin. The override is not set.
+
+BlueALSA remains the A2DP owner. Its own integration note says the Pulse `module-alsa-sink` bridge is experimental and that a Pulse server should use `module-bluez5-discover` instead: [PulseAudio integration](https://github.com/Arkq/bluez-alsa/wiki/PulseAudio-integration). Pulse's Bluetooth page is [Software/PulseAudio/Documentation/User/Bluetooth](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Bluetooth/). The image contains `module-bluez5-discover.so`. It is not loaded. Loading it while BlueALSA owns the A2DP profile would register two owners. That switch needs a hardware session that can stop one owner, try the other, and put BlueALSA back. It has not been run. BlueALSA stays.
+
+`zlyme-btsink` creates the next sink and moves the default before it unloads the previous optional sink. A failed headset load leaves HDMI in place.
+
+The codec retry stays in the background for thirty seconds. `udev` on `f48b5bf` started about a second before Pulse, and the five-second window expired while `hw:rk817ext,0` still could not be opened. The retry was not removed. Routine Pulse logs are notice. `ZLYME_PULSE_LOG=info` is the one-boot diagnostic.
+
+PPSSPP underruns were reported with sound still audible. The codec fragment size was not changed. There is no new measurement of those underruns on this pass.

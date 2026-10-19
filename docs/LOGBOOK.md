@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-19 — Splore is mono, and paired-devices is not a BlueZ 5.86 command
+
+PICO-8 opens an ALSA stream at `s16le 1ch 22050Hz` on the stereo codec sink. `daemon.conf` set `enable-remixing = no`. PulseAudio 17 maps that to `PA_RESAMPLER_NO_REMIX`. A mono channel does not match `front-left` or `front-right`, so both outputs stay at zero. The default is remixing on, and the manual says disabling it has no known use. The override is removed. The installed `f48b5bf` image still has it.
+
+BlueZ 5.86 `bluetoothctl` has `devices Paired` and no `paired-devices` command. `devices` exits 0 with no rows when the short-lived client has no controller yet. The scan list skips paired devices, so a known headset can vanish from both rows. my355 now fills the known rows from the same `GetManagedObjects` snapshot as the scan. The Flip was not reachable on the LAN for a live controller listing.
+
+BlueALSA stays the A2DP owner. Its integration note calls the Pulse ALSA bridge experimental. `module-bluez5-discover.so` is in the image and is not loaded. Both cannot own the A2DP profile. No hardware switch was run.
+
 ## 2026-10-19 — rk817ext is the ALSA id; the boot lookup still failed
 
 `d1e6368` is installed. Squashfs `29907c520864123f6041f58b3e79b20a01ea5c4e24b05de113cdd95868f7f404`, boot id `ea4746d4-5fb2-4acd-a098-a3395f97a117`. `/proc/asound/card1/id` is `rk817ext`. `aplay -l` shows `card 1: rk817ext [rk817_ext]`. `hw:rk817ext,0` opens for root and for user `pulse`. `hw:rk817_ext,0` returns `Cannot get card index for rk817_ext`. The kernel line `rk817_ext` is the short name, not the card id. `S10udevd` started at 45.14s and `S21pulse` at 46.43s. The daemon log has six `Cannot get card index for rk817ext` lines and no codec sink. ALSA reports that when `snd_ctl_hw_open` fails, including when the node is missing or not group-accessible. One later `pactl load-module` of `hw:rk817ext,0` created sink `codec`. A one-second stream at 8 percent was accepted with `Playback Mux` on `SPK`. The speaker was not confirmed. Headphones were not switched.

@@ -56,7 +56,9 @@ want='failed: Sink codec does not exist.'
 if grep -q '\[:print:\]' "$S21"; then
 	fail "status text uses a BusyBox tr class"
 fi
-grep -q -- '--log-level=info' "$LAUNCH_SRC" || fail "launcher does not keep ALSA open errors"
+grep -q -- '--log-level="$level"' "$LAUNCH_SRC" || fail "launcher has no log level"
+grep -q 'level=notice' "$LAUNCH_SRC" || fail "routine log level is not notice"
+grep -q 'ZLYME_PULSE_LOG' "$LAUNCH_SRC" || fail "info logging is not opt-in"
 # No daemon log at all.
 rm -f "$work/reason/daemon.log" "$work/reason/exit"
 got=$(pulse_fail_reason)
