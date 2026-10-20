@@ -160,6 +160,7 @@ fi
 rm -f "${TARGET_DIR}/etc/init.d/S21pulse" \
 	"${TARGET_DIR}/etc/init.d/S45bluealsa" \
 	"${TARGET_DIR}/etc/init.d/S46btsink" \
+	"${TARGET_DIR}/etc/init.d/S50pulseaudio" \
 	"${TARGET_DIR}/usr/sbin/zlyme-btsink"
 [ -e "${TARGET_DIR}/etc/init.d/rcS" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rcS"
 [ -e "${TARGET_DIR}/etc/init.d/rc.late" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rc.late"
@@ -428,13 +429,8 @@ if br2_selected BR2_PACKAGE_NEXTUI; then
 fi
 
 if br2_selected BR2_PACKAGE_PIPEWIRE; then
-	src="$(cd "$(dirname "$0")" && pwd)/asound.pipewire.conf"
 	asound="${TARGET_DIR}/etc/asound.conf"
-	if [ ! -f "$src" ]; then
-		note "asound.pipewire.conf is missing"
-	else
-		cp -f "$src" "$asound"
-		python3 - "$asound" << 'PY'
+	python3 - "$asound" << 'PY'
 import pathlib, sys
 text = pathlib.Path(sys.argv[1]).read_text()
 def block(name):
@@ -447,9 +443,8 @@ def block(name):
 pcm = block("pcm.!default")
 ctl = block("ctl.!default")
 if "type pipewire" not in pcm or "type pipewire" not in ctl:
-    raise SystemExit("product asound.conf default pcm/ctl is not pipewire")
+    raise SystemExit("asound.conf default pcm/ctl is not pipewire")
 PY
-	fi
 	mkdir -p "${TARGET_DIR}/etc/alsa/conf.d"
 	ln -sfn ../../../usr/share/alsa/alsa.conf.d/50-pipewire.conf \
 		"${TARGET_DIR}/etc/alsa/conf.d/50-pipewire.conf"

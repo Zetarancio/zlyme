@@ -280,4 +280,13 @@ grep -q 'XDG_RUNTIME_DIR' "$ROOT/package/system/nextui/nextui-session" || fail "
 if grep -q 'PULSE_RUNTIME_PATH=' "$ROOT/package/system/nextui/nextui-session"; then
 	fail "session still exports the old pulse path"
 fi
+saved=$ZLYME_PW_RUNTIME
+export ZLYME_PW_RUNTIME=$work/down
+mkdir -p "$ZLYME_PW_RUNTIME"
+unset ZLYME_PW_NODES ZLYME_PW_DUMP
+if sh "$AUDIO" setSystemVolume 10 >/dev/null 2>&1; then
+	fail "a down PipeWire service was treated as success"
+fi
+grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "a down service rewrote the saved volume"
+export ZLYME_PW_RUNTIME=$saved
 echo "pipewire service ok"

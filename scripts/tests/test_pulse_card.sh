@@ -7,12 +7,11 @@ ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fail() { echo "pulse-card: $*" >&2; exit 1; }
 
 cards=$ROOT/board/my355/fsoverlay/etc/asound.conf
-pa=$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa
 audio=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio
 s20=$ROOT/board/my355/fsoverlay/etc/init.d/S20alsa
 jack=$ROOT/package/system/zlyme-jackd/src/zlyme-jackd.c
 
-for f in "$cards" "$pa" "$audio" "$s20"; do
+for f in "$cards" "$audio" "$s20"; do
 	if grep -q 'hw:rk817_ext' "$f"; then
 		fail "$f uses the kernel short name as an ALSA id"
 	fi
@@ -20,7 +19,8 @@ for f in "$cards" "$pa" "$audio" "$s20"; do
 		fail "$f hardcodes ALSA card 1"
 	fi
 done
-grep -q 'hw:rk817ext,0' "$pa" || fail "codec sink does not use the card id"
+grep -q 'card rk817ext' "$cards" || fail "codec pcm does not use the card id"
+grep -q 'type pipewire' "$cards" || fail "default pcm is not pipewire"
 grep -q 'alsa.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber lost the card id"
 grep -q 'CARD=rk817ext' "$s20" || fail "mixer restore lost the card id"
 grep -q 'Playback Mux' "$jack" || fail "jack watcher lost Playback Mux"

@@ -202,7 +202,7 @@ BR2_PACKAGE_VULKAN_LOADER=y
 # Audio: PipeWire 1.6.6 and WirePlumber 0.5.14 in front of ALSA.
 # libpulse stays for native clients and for pipewire-pulse. The PulseAudio
 # daemon does not start. BlueZ A2DP belongs to PipeWire, not BlueALSA.
-# The minimal defconfig stays ALSA-only and does not select these lines.
+# The minimal defconfig selects this same block.
 BR2_PACKAGE_ALSA_LIB=y
 
 # alsactl (S20alsa restores mixer state). The rest is bring-up.

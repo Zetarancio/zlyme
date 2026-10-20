@@ -8,8 +8,6 @@ start_bt() {
 	zlyme-ctl set bluetooth on >/dev/null 2>&1 || true
 	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
 	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
-	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
-	[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink start
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth adapter-on
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth agent
 }
@@ -18,7 +16,6 @@ stop_bt() {
 	killall -9 bluetoothctl >/dev/null 2>&1 || true
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth adapter-off
 	[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
-	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
 	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop
 	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb stop
 	zlyme-ctl set bluetooth off >/dev/null 2>&1 || true

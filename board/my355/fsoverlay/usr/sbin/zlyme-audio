@@ -1,8 +1,7 @@
 #!/bin/sh
 #
-# Sink preference and the 0-100 volume. PipeWire is the product graph.
-# The minimal image has no wpctl and uses the RK817 mixer instead.
-# audio.conf is data. It is never sourced.
+# Sink preference and the 0-100 volume. PipeWire is the mixer on both
+# images. audio.conf is data. It is never sourced.
 
 # shellcheck disable=SC1090
 . "${ZLYME_CONF:-/etc/zlyme.conf}"
@@ -128,9 +127,6 @@ describe() {
 }
 
 pipewire_up() {
-	if [ "${ZLYME_AUDIO_BACKEND:-}" = alsa ]; then
-		return 1
-	fi
 	if { [ -n "${ZLYME_PW_NODES:-}" ] || [ -n "${ZLYME_PW_DUMP:-}" ]; } && { [ -n "${ZLYME_WPCTL:-}" ] || [ -x /usr/bin/wpctl ]; }; then
 		return 0
 	fi
@@ -293,29 +289,17 @@ route() {
 }
 
 why_unavailable() {
+	pipewire_up || { echo "PipeWire is down"; return 1; }
 	case "$1" in
 		codec)
-			if pipewire_up; then
-				[ -n "$(node_id codec || true)" ] || { echo "codec node absent"; return 1; }
-			else
-				[ -d "/proc/asound/${CARD}" ] || { echo "codec card absent"; return 1; }
-			fi
+			[ -n "$(node_id codec || true)" ] || { echo "codec node absent"; return 1; }
 			;;
 		hdmi)
-			if pipewire_up; then
-				[ -n "$(node_id hdmi || true)" ] || { echo "HDMI node absent"; return 1; }
-				hdmi_has_audio || { echo "HDMI ELD has no audio"; return 1; }
-			else
-				[ -d /proc/asound/HDMI ] || { echo "HDMI card absent"; return 1; }
-			fi
+			[ -n "$(node_id hdmi || true)" ] || { echo "HDMI node absent"; return 1; }
+			hdmi_has_audio || { echo "HDMI ELD has no audio"; return 1; }
 			;;
 		bt)
-			if pipewire_up; then
-				[ -n "$(node_id bt || true)" ] || { echo "Bluetooth node absent"; return 1; }
-			else
-				echo "Bluetooth audio needs PipeWire"
-				return 1
-			fi
+			[ -n "$(node_id bt || true)" ] || { echo "Bluetooth node absent"; return 1; }
 			;;
 	esac
 	return 0
@@ -323,28 +307,25 @@ why_unavailable() {
 
 volume() {
 	v=$(saved ZLYME_VOLUME || true)
-	if [ -n "$v" ]; then
-		printf '%s\n' "$v"
-		return 0
-	fi
-	amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
-		sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1
+	[ -n "$v" ] || return 1
+	printf '%s\n' "$v"
 }
 
 set_volume() {
 	v=$(clamp_volume "$1") || return 1
+	pipewire_up || {
+		echo "$(basename "$0"): PipeWire is not running" >&2
+		return 1
+	}
 	cur=$(saved ZLYME_VOLUME || true)
 	if [ "$cur" != "$v" ]; then
 		save ZLYME_VOLUME "$v" || return 1
 	fi
-	if pipewire_up; then
-		apply_gain "$v"
-		rc=$?
-		# No sink yet: the saved number is applied when one appears.
-		[ "$rc" -eq 2 ] && return 0
-		return "$rc"
-	fi
-	amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || true
+	apply_gain "$v"
+	rc=$?
+	# No sink yet: the saved number is applied when one appears.
+	[ "$rc" -eq 2 ] && return 0
+	return "$rc"
 }
 
 # Saved percent is the user intention. It is applied on every graph.
@@ -417,13 +398,14 @@ hold)
 	# Apply a gain without rewriting the saved percent. Power-off uses
 	# this so the next boot is not left muted.
 	v=$(clamp_volume "$2") || exit 1
-	if pipewire_up; then
-		apply_gain "$v"
-		rc=$?
-		[ "$rc" -eq 2 ] && exit 0
-		exit "$rc"
-	fi
-	amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || exit 1
+	pipewire_up || {
+		echo "$(basename "$0"): PipeWire is not running" >&2
+		exit 1
+	}
+	apply_gain "$v"
+	rc=$?
+	[ "$rc" -eq 2 ] && exit 0
+	exit "$rc"
 	;;
 remember)
 	case "$2" in

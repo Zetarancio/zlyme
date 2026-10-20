@@ -1,7 +1,0 @@
-#!/bin/sh
-# Buildroot's S50pulseaudio starts a second server with
-# --disallow-module-loading. S21pulse is the one system instance.
-# HDMI and Bluetooth sinks are loaded after startup, so that flag
-# does not fit this board. This script stays so the package file is
-# replaced and init does not run it.
-exit 0

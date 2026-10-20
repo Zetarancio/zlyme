@@ -29,18 +29,24 @@ absent() {
 
 row CHECK SOURCE HOST HARDWARE USER-AUDIBLE
 
-need "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" 'flat-volumes = no' \
-	"flat volumes stay off"
-absent "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" '^enable-remixing' \
-	"remixing is the PulseAudio default"
+if [ -e "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" ]; then
+	row "no Pulse daemon.conf" FAIL FAIL n/a n/a
+	fail=1
+else
+	row "no Pulse daemon.conf" PASS PASS n/a n/a
+fi
 need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" 'alsa.id = "rk817ext"' \
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
 need "$ROOT/package/system/nextui/nextui.mk" '0adc5b6dd787b5e538227a59c4eb981fa4343973' \
 	"NextUI pin is the volume-transition snapshot"
-need "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" '^exit 0$' \
-	"Buildroot Pulse service stays a no-op"
+if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
+	row "no Pulse init script in the overlay" FAIL FAIL n/a n/a
+	fail=1
+else
+	row "no Pulse init script in the overlay" PASS PASS n/a n/a
+fi
 if [ -d "$ROOT/package/system/nextui/paks/Tools/USB Transfer.pak" ]; then
 	row "USB Transfer pak is the stock name" PASS PASS n/a n/a
 else

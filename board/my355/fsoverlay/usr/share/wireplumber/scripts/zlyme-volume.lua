@@ -76,8 +76,11 @@ SimpleEventHook {
     if node then
       apply(node)
     end
-    -- Route has to run outside this hook. A client started here waits
-    -- for WirePlumber, and WirePlumber is waiting for the client.
+    -- The pinned 0.5.14 scripts only read default.configured.audio.sink.
+    -- wpctl set-default is the writer, and it cannot run on this thread:
+    -- the client would wait for WirePlumber while this hook waits for
+    -- the client. The shell returns immediately. The ELD is not an ACP
+    -- port, so a priority rule cannot replace this call.
     os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
   end
 }:register()

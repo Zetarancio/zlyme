@@ -72,7 +72,6 @@ fi
 EOF
 chmod 755 "$work/bin/pactl" "$work/bin/amixer" "$work/bin/bluealsa-cli"
 export PATH="$ROOT/board/my355/fsoverlay/usr/sbin:$work/bin:$PATH"
-export ZLYME_AUDIO_BACKEND=alsa
 export PULSE_LOG=$work/log
 export PULSE_STATE=$work/state
 export AMIXER_LOG=$work/amixer.log

@@ -339,6 +339,6 @@ grep -q 'start_bg /etc/init.d/S50sshd' "$LATE" && fail "rc.late still starts ssh
 grep -q 'start_bg /etc/init.d/S70samba' "$LATE" && fail "rc.late still starts samba directly"
 grep -q 'start_bg /etc/init.d/S75syncthing' "$LATE" && fail "rc.late still starts syncthing directly"
 grep -q 'start_bg /etc/init.d/S30wifi' "$LATE" || fail "rc.late dropped wifi"
-grep -q 'start_bg /etc/init.d/S46btsink' "$LATE" || fail "rc.late dropped bluetooth"
+grep -q 'S40bluetoothd' "$LATE" || fail "rc.late dropped bluetooth"
 
 echo "net services ok"

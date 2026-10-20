@@ -78,16 +78,16 @@ sh "$AUDIO" setSystemVolume 30 >/dev/null
 cmp "$work/cfg/audio.conf.before" "$work/cfg/audio.conf" || fail "unchanged volume rewrote audio.conf"
 sh "$AUDIO" set auto >/dev/null
 grep -q 'set-default 3' "$PULSE_LOG" || fail "auto did not prefer bluetooth"
-PA=$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa
-grep -q 'module-switch-on-connect' "$PA" && fail "auto-switch module is loaded"
-grep -q 'module-bluez5' "$PA" && fail "Pulse owns A2DP"
-grep -q 'module-native-protocol-tcp' "$PA" && fail "tcp listener"
-grep -q 'auth-anonymous=0' "$PA" || fail "anonymous auth"
-grep -q 'auth-anonymous=1' "$PA" && fail "anonymous auth is on"
-grep -q 'flat-volumes = no' "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" || fail "flat volumes"
-grep -q '2048/48000 = 42.7 ms' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "period comment"
-grep -q 'flipdmix_codec' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "overlay default pcm"
-grep -q 'hw:rk817ext,0' "$PA" || fail "codec sink does not open the hardware device"
+if [ -e "$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa" ]; then
+	fail "pulse daemon script remains"
+fi
+if [ -e "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" ]; then
+	fail "pulse daemon.conf remains"
+fi
+grep -q 'type pipewire' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "default pcm"
+if grep -q 'flipdmix_codec' "$ROOT/board/my355/fsoverlay/etc/asound.conf"; then
+	fail "dmix graph remains"
+fi
 grep -q 'autospawn = no' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "autospawn"
 grep -q 'unix:/run/zlyme/pipewire/pulse/native' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "pulse socket"
 grep -q 'main-embedded' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber profile"

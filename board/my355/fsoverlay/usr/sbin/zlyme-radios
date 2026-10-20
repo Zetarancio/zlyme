@@ -1,5 +1,5 @@
 #!/bin/sh
-# Ordered Wi-Fi then BT. ROCKNIX sleep.sh stops Bluetooth *before* mem so
+# Ordered Wi-Fi then BT. ROCKNIX sleep.sh stops Bluetooth before mem so
 # rtl8733bu_power_suspend_late can cut the combo-chip GPIO without
 # hci_dev_close hanging freeze. Resume is the reverse: Wi-Fi first.
 
@@ -22,10 +22,7 @@ dmc_kick() {
 
 case "${1:-}" in
 	pre)
-		touch /tmp/zlyme-keep-emu
 		[ -x /usr/sbin/zlyme-bluetooth ] && /usr/sbin/zlyme-bluetooth save
-		[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink stop
-		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa stop
 		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd stop
 		[ -x /etc/init.d/S30wifi ] && /etc/init.d/S30wifi stop
 		;;
@@ -36,12 +33,7 @@ case "${1:-}" in
 		[ -x /etc/init.d/S49ntp ] && /etc/init.d/S49ntp reopen >/dev/null 2>&1 &
 		[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
 		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
-		[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
-		[ -x /etc/init.d/S46btsink ] && /etc/init.d/S46btsink start
 		dmc_kick
-		# 8733bu re-enumerates for many seconds. Dropping the hold
-		# immediately lets btsink treat that as an unpair and kill RA.
-		( sleep 25; rm -f /tmp/zlyme-keep-emu ) &
 		;;
 	*)
 		echo "usage: $0 {pre|resume}" >&2

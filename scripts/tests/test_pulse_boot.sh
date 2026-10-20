@@ -19,6 +19,9 @@ fi
 if [ -e "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-btsink" ]; then
 	fail "zlyme-btsink is still installed"
 fi
+if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
+	fail "S50pulseaudio is still installed"
+fi
 grep -q 'S33pipewire' "$LATE" || fail "rc.late does not start pipewire"
 grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh" || fail "post-build does not drop a stale S21pulse"
 # The input block and the pipewire block are separate background groups.
@@ -30,4 +33,8 @@ awk '
 		if (!(pipe && inp)) exit 1
 	}
 ' "$LATE" || fail "rc.late lost a service"
+if ! timeout 3 sh -c '. "$1"; ZLYME_FRONTEND=/no/such/nextui.elf; wait_boot_list' _ \
+	"$ROOT/board/my355/fsoverlay/etc/zlyme.conf"; then
+	fail "minimal boot waited for a frontend"
+fi
 echo "pulse boot ok"
