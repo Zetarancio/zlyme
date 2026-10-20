@@ -30,7 +30,7 @@ Product status, kept separate:
 
 ## PulseAudio on a live Flip
 
-`rcS` starts `S21pulse` after `S20alsa` and before `S25jackd`. `rc.late` does not start it. `S50pulseaudio` exits without launching a daemon. The process is the `pulse` user. It is not PulseAudio's `--system` mode, because that mode creates `/var/lib/pulse` on the read-only root and exits. `/run/zlyme/pulse/service` is `launching`, then `alive`, `socket`, and `ready`. `ready` is written only after `zlyme-audio pulse-service` sees the `codec` sink. `launched` on the console is not that. A missing file, or a first line that begins with `failed:`, means the server or the codec sink did not come up. The daemon's own text is `/run/zlyme/pulse/daemon.log`. The process starts at info so an ALSA open failure is in that file. A missing codec sink is loaded again for a few seconds after the server is up. Do not print the cookie file. `zlyme-audio status` is the sink and the 0–100 volume. Rollback is the previous OTA. Do not treat a host test as playback on the Flip.
+The product mixer is PipeWire 1.6.6 with WirePlumber 0.5.14 (`main-embedded`) and `pipewire-pulse`. `rcS` does not start it. `rc.late` starts D-Bus, then InputPlumber and Bluetooth in one background group and PipeWire in another. `/run/zlyme/pipewire/service` is `launching`, `core`, `wireplumber`, `pulse`, then `ready` only after a codec Audio/Sink exists. `codec-waiting` means the sockets are up and the RK817 node is not. `zlyme-jackd` still owns the RK817 Playback Mux. The minimal image stays ALSA-only, with `plug` into `flipvol_codec`. Do not treat a host test as playback on the Flip. The earlier PulseAudio daemon notes are history.
 
 ## Kernel and board patches
 

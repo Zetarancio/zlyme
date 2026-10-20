@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — PipeWire startup no longer claims ready from a socket
+
+WirePlumber 0.5.14 is started with the `main-embedded` profile. ALSA matches use `api.alsa.card.id`, not the descriptive name. `a2dp_source` is the headphone role. `rc.late` starts InputPlumber without waiting for a codec node. Volume data is marked `pipewire-cubic` only as a stored percent, and `ZLYME_GAIN_STATE` stays `deferred` until `wpctl` applies it to a real codec node. `S21pulse`, BlueALSA, and `zlyme-btsink` are gone from the product boot. `zlyme-jackd` still sets the RK817 mux. Not heard on a Flip. The `693c048` tar is not the install candidate.
+
 ## 2026-10-20 — PipeWire is the product graph, not yet heard
 
 Buildroot 2026.08 pins PipeWire 1.6.6 and WirePlumber 0.5.14. The product defconfig selects them, keeps `libpulse`, and does not select the PulseAudio daemon or BlueALSA. The minimal defconfig does not select PipeWire. `rc.late` starts the three processes after D-Bus and off the first-frame path. `zlyme-audio` reads `audio.conf` as data and applies the old displayed percent through the cubic gain `(percent/100)^3` so a stored 40 is not played as linear 40. The freeze archive was read. Its PPSSPP underruns and the OpenAL broken pipe are recorded in `docs/research/phase14-stability.md`. They are not a captured panic, and this commit does not claim they are fixed.
