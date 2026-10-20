@@ -163,8 +163,16 @@ grep -q 'linking.follow-default-target = true' "$conf" || fail "stream follow"
 grep -q 'policy.zlyme-volume = required' "$conf" || fail "volume hook not required"
 rules=$ROOT/board/my355/fsoverlay/etc/udev/rules.d/90-zlyme-audio.rules
 grep -q 'SUBSYSTEM=="drm"' "$rules" || fail "hdmi cable is not a sound event"
-if grep -q 'route >/dev/null' "$rules"; then
+if grep -q 'SUBSYSTEM=="sound"' "$rules" || grep -q 'SUBSYSTEM=="bluetooth"' "$rules"; then
+	fail "udev still routes on sound or adapter events"
+fi
+if grep -q ' &' "$rules"; then
 	fail "udev still backgrounds the route"
+fi
+grep -q 'zlyme-audio route' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua" || fail "late sink does not reroute"
+grep -q 'hold)' "$AUDIO" || fail "transient gain"
+if ! grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh"; then
+	fail "stale pulse init script is not removed from the target"
 fi
 
 # Live playback nodes publish alsa.id and do not publish api.alsa.card.id.
@@ -206,6 +214,19 @@ printf 'ZLYME_VOLUME=40\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n
 [ "$(sh "$AUDIO" node-id hdmi)" = 55 ] || fail "hdmi id from alsa.id"
 sh "$AUDIO" route || fail "route"
 grep -q 'set-default 33' "$WP_LOG" || fail "default stayed on HDMI $(cat "$WP_LOG")"
+# Kernel ELD uses tabs. A space-only match treated this display as silent.
+unset ZLYME_HDMI_AUDIO
+printf 'sad_count\t\t2\n' > "$work/eld"
+export ZLYME_HDMI_ELD=$work/eld
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "tab eld route"
+grep -q 'set-default 55' "$WP_LOG" || fail "tab ELD did not select HDMI $(cat "$WP_LOG")"
+printf 'sad_count\t\t0\n' > "$work/eld"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "empty eld route"
+grep -q 'set-default 33' "$WP_LOG" || fail "sad_count 0 left HDMI $(cat "$WP_LOG")"
+unset ZLYME_HDMI_ELD
+export ZLYME_HDMI_AUDIO=0
 grep -q 'set-volume 33 0.064000' "$WP_LOG" || fail "codec gain $(cat "$WP_LOG")"
 grep -q 'set-volume 55 0.064000' "$WP_LOG" || fail "hdmi gain"
 export ZLYME_HDMI_AUDIO=1
@@ -233,6 +254,10 @@ printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n'
 : > "$WP_LOG"
 sh "$AUDIO" route || fail "mute route"
 grep -Eq 'set-volume 33 0$' "$WP_LOG" || grep -q 'set-volume 33 0.000000' "$WP_LOG" || fail "saved 0 was audible $(cat "$WP_LOG")"
+: > "$WP_LOG"
+sh "$AUDIO" hold 40 || fail "hold"
+grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "hold rewrote the saved volume"
+grep -q 'set-volume 33 0.064000' "$WP_LOG" || fail "hold did not apply $(cat "$WP_LOG")"
 # The old key, present or not, must not be what identifies the codec.
 cat > "$work/dump.json" << 'EOF'
 [

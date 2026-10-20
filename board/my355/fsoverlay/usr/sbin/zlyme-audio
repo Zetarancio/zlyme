@@ -28,6 +28,7 @@ usage: $(basename "$0") <command>
   export
   route
   migrate-volume
+  hold {0-100}
 EOF
 }
 
@@ -197,9 +198,13 @@ node_id() {
 hdmi_has_audio() {
 	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && return 0
 	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && return 1
-	eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
+	eld=${ZLYME_HDMI_ELD:-}
+	if [ -z "$eld" ]; then
+		eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
+	fi
 	[ -n "$eld" ] || return 1
-	grep -q 'sad_count *[1-9]' "$eld"
+	# The kernel separates the field with tabs, not spaces.
+	grep -q 'sad_count[[:space:]]*[1-9]' "$eld"
 }
 
 # Displayed percent stays the stored integer. PipeWire's wpctl float is
@@ -281,7 +286,7 @@ focus_role() {
 route() {
 	pipewire_up || return 0
 	choice=$(choose "$(pref)")
-	focus_role "$choice" || true
+	focus_role "$choice" || return 1
 	vol=$(saved ZLYME_VOLUME || true)
 	[ -n "$vol" ] || return 0
 	apply_gain "$vol"
@@ -405,8 +410,20 @@ set)
 		auto|codec|hdmi|bt) save ZLYME_SINK_PREF "$2" || exit 1 ;;
 		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
 	esac
-	route
+	route || exit 1
 	echo "sink: $(current)"
+	;;
+hold)
+	# Apply a gain without rewriting the saved percent. Power-off uses
+	# this so the next boot is not left muted.
+	v=$(clamp_volume "$2") || exit 1
+	if pipewire_up; then
+		apply_gain "$v"
+		rc=$?
+		[ "$rc" -eq 2 ] && exit 0
+		exit "$rc"
+	fi
+	amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || exit 1
 	;;
 remember)
 	case "$2" in

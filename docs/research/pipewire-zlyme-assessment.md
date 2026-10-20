@@ -2,7 +2,7 @@
 
 Decision: implement on the product image, using Buildroot 2026.08's packages. Not hardware-accepted. The earlier "deferred" note is the history of this file. The freezes are not claimed fixed.
 
-`59c56f1` was installed and games were silent. The playback nodes on that boot published `alsa.id` and did not publish `api.alsa.card.id`. WirePlumber 0.5.14's ALSA monitor copies `alsa.*` from the parent device onto the node before it evaluates `monitor.alsa.rules` (`src/scripts/monitors/alsa.lua`). The historical fork `Zetarancio/distribution` branch `flip`, file `projects/ROCKNIX/packages/hardware/quirks/devices/Miyoo Flip/099-audio_prime`, only writes the RK817 `Playback Mux` from the headphone GPIO and uses card index 1. It does not select a PipeWire sink or restore a volume. That systemd layout was not copied.
+`0d8a3cf` plays on the speaker and headphones. A connected display with LPCM in the ELD stayed on the codec because `sad_count` is tab-separated. A paired headset did not answer the page. `59c56f1` was installed and games were silent. The playback nodes on that boot published `alsa.id` and did not publish `api.alsa.card.id`. WirePlumber 0.5.14's ALSA monitor copies `alsa.*` from the parent device onto the node before it evaluates `monitor.alsa.rules` (`src/scripts/monitors/alsa.lua`). The historical fork `Zetarancio/distribution` branch `flip`, file `projects/ROCKNIX/packages/hardware/quirks/devices/Miyoo Flip/099-audio_prime`, only writes the RK817 `Playback Mux` from the headphone GPIO and uses card index 1. It does not select a PipeWire sink or restore a volume. That systemd layout was not copied.
 
 Pinned Buildroot recipes, verified in this tree:
 

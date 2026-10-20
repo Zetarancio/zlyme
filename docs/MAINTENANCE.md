@@ -30,7 +30,7 @@ Product status, kept separate:
 
 ## PulseAudio on a live Flip
 
-The product mixer is PipeWire 1.6.6 with WirePlumber 0.5.14 (`main-embedded`) and `pipewire-pulse`. `rcS` does not start it. `rc.late` starts D-Bus, then InputPlumber and Bluetooth in one background group and PipeWire in another. `/run/zlyme/pipewire/service` is `launching`, `core`, `wireplumber`, `pulse`, then `ready` only after a codec Audio/Sink exists. `codec-waiting` means the sockets are up and the RK817 node is not. `zlyme-jackd` still owns the RK817 Playback Mux. The minimal image stays ALSA-only, with `plug` into `flipvol_codec`. Do not treat a host test as playback on the Flip. The earlier PulseAudio daemon notes are history.
+The product mixer is PipeWire 1.6.6 with WirePlumber 0.5.14 (`main-embedded`) and `pipewire-pulse`. `rcS` does not start it. `rc.late` starts D-Bus, then InputPlumber and Bluetooth in one background group and PipeWire in another. `/run/zlyme/pipewire/service` is `launching`, `core`, `wireplumber`, `pulse`, then `ready` only after a codec Audio/Sink exists. `codec-waiting` means the sockets are up and the RK817 node is not. `zlyme-jackd` still owns the RK817 Playback Mux. The minimal image stays ALSA-only, with `plug` into `flipvol_codec`. Do not treat a host test as playback on the Flip. PulseAudio 17 and BlueALSA are not the product graph. Stale `S21pulse`, `S45bluealsa`, and `S46btsink` copies are removed from the target tree at post-build because dropping them from the overlay does not delete an old `output/target`.
 
 ## Kernel and board patches
 

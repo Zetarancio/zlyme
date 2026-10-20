@@ -1,8 +1,7 @@
-# systemd-udev 251 ends programs still running when the event worker
-# returns, so these stay in the foreground. A sound-card add can run
-# before PipeWire has created the sink; the launcher and
-# zlyme-volume.lua own that moment. The HDMI card is present while the
-# connector is disconnected, so a cable change is a DRM event.
+# HDMI audio presence is an ELD change, not a new PipeWire node. The
+# card is already in the graph while the connector is disconnected.
+# systemd-udev 251 drops a RUN program that is still backgrounded when
+# the worker returns, so this stays in the foreground. Sound-card and
+# adapter events are not used: they run before the sink exists and
+# they blocked the Bluetooth udev worker.
 ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card*-HDMI-A-[0-9]*", RUN+="/usr/sbin/zlyme-audio route"
-ACTION=="add|change", SUBSYSTEM=="sound", RUN+="/usr/sbin/zlyme-audio route"
-ACTION=="add|change", SUBSYSTEM=="bluetooth", RUN+="/usr/sbin/zlyme-audio route"

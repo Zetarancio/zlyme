@@ -137,11 +137,13 @@ Where useful, device implementations provide stable commands.
 ### `zlyme-audio`
 
 Owns:
-- sink discovery and selection: `codec`, `hdmi`, `bt`, and `auto` (= `codec`);
-- the shared volume `FlipVolume`;
-- the saved sink in `/storage/.config/audio.conf`.
+- sink discovery and selection: `auto`, `codec`, `hdmi`, and `bt`;
+- the saved playback percent in `/storage/.config/audio.conf`;
+- `hold`, which applies a gain and does not store it.
 
-Verbs: `list`, `get`, `set {auto|codec|hdmi|bt}`, `status`, `getSystemVolume`, `setSystemVolume {mute|unmute|mute-toggle|[+-]N}`, `test`, `export`.
+`auto` is connected A2DP, then HDMI when its ELD `sad_count` is at least 1, then the RK817 codec. An explicit choice is used only while that sink exists and, for HDMI, while the ELD advertises audio. Otherwise the same order applies. The kernel writes the ELD with tabs. ACP on this board reports both playback ports as analog with unknown availability, so WirePlumber's port state is not the HDMI signal. `zlyme-jackd` stays: ACP does not expose the speaker/headphone mux.
+
+Verbs: `list`, `get`, `set {auto|codec|hdmi|bt}`, `status`, `getSystemVolume`, `setSystemVolume {mute|unmute|mute-toggle|[+-]N}`, `hold {0-100}`, `test`, `export`.
 
 Speaker versus headphones is not a `zlyme-audio` choice. `zlyme-jackd` follows the jack switch and owns `Playback Mux`.
 

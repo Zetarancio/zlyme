@@ -76,5 +76,8 @@ SimpleEventHook {
     if node then
       apply(node)
     end
+    -- Route has to run outside this hook. A client started here waits
+    -- for WirePlumber, and WirePlumber is waiting for the client.
+    os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
   end
 }:register()
