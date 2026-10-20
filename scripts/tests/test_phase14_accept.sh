@@ -37,8 +37,8 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '0bb030ef6f44c005df4f4942a2fa3701ae0f7121' \
-	"NextUI pin is the paired-device snapshot"
+need "$ROOT/package/system/nextui/nextui.mk" '0adc5b6dd787b5e538227a59c4eb981fa4343973' \
+	"NextUI pin is the volume-transition snapshot"
 need "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" '^exit 0$' \
 	"Buildroot Pulse service stays a no-op"
 if [ -d "$ROOT/package/system/nextui/paks/Tools/USB Transfer.pak" ]; then
