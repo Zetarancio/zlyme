@@ -280,6 +280,34 @@ grep -q 'XDG_RUNTIME_DIR' "$ROOT/package/system/nextui/nextui-session" || fail "
 if grep -q 'PULSE_RUNTIME_PATH=' "$ROOT/package/system/nextui/nextui-session"; then
 	fail "session still exports the old pulse path"
 fi
+# Live discovery uses wpctl inspect, not Python. alsa.id is present.
+# api.alsa.card.id is not.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+case "$1" in
+	status)
+		printf '%s\n' ' ├─ Sinks:' ' │      33. Built-in Audio Stereo' ' │  *   55. Built-in Audio Stereo' ' ├─ Sources:'
+		;;
+	inspect)
+		case "$2" in
+			33)
+				printf '%s\n' 'media.class = "Audio/Sink"' 'alsa.id = "rk817ext"' 'node.name = "alsa_output.rk817-sound.stereo-fallback"' 'api.alsa.card.name = "rk817_ext"'
+				;;
+			55)
+				printf '%s\n' 'media.class = "Audio/Sink"' 'alsa.id = "HDMI"' 'node.name = "alsa_output.hdmi-sound.stereo-fallback"' 'api.alsa.card.name = "HDMI"'
+				;;
+		esac
+		;;
+	*)
+		printf '%s\n' "$*" >> "$WP_LOG"
+		;;
+esac
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+unset ZLYME_PW_DUMP ZLYME_PW_NODES
+[ "$(sh "$AUDIO" node-id codec)" = 33 ] || fail "wpctl codec id"
+[ "$(sh "$AUDIO" node-id hdmi)" = 55 ] || fail "wpctl hdmi id"
 saved=$ZLYME_PW_RUNTIME
 export ZLYME_PW_RUNTIME=$work/down
 mkdir -p "$ZLYME_PW_RUNTIME"

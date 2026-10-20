@@ -140,20 +140,18 @@ nodes() {
 		cat "$ZLYME_PW_NODES"
 		return 0
 	fi
-	command -v python3 >/dev/null 2>&1 || return 1
-	dump=${ZLYME_PW_DUMP:-}
-	if [ -z "$dump" ]; then
-		command -v pw-dump >/dev/null 2>&1 || return 1
-		dump=$(mktemp) || return 1
-		if ! pw-dump > "$dump" 2>/dev/null; then
-			rm -f "$dump"
-			return 1
-		fi
-		_rm=1
-	else
-		_rm=0
+	# The dump seam is for the host fixture. A running image uses wpctl,
+	# so the minimal image does not need Python.
+	if [ -n "${ZLYME_PW_DUMP:-}" ]; then
+		command -v python3 >/dev/null 2>&1 || return 1
+		_nodes_from_dump "$ZLYME_PW_DUMP"
+		return $?
 	fi
-	python3 - "$dump" << 'PY'
+	_nodes_from_wpctl
+}
+
+_nodes_from_dump() {
+	python3 - "$1" << 'PY'
 import json, sys
 try:
     data = json.load(open(sys.argv[1]))
@@ -181,9 +179,40 @@ for obj in data:
     if role and obj.get("id") is not None:
         print("%s\t%s" % (role, obj.get("id")))
 PY
-	rc=$?
-	[ "$_rm" = 1 ] && rm -f "$dump"
-	return "$rc"
+}
+
+_nodes_from_wpctl() {
+	command -v "${ZLYME_WPCTL:-wpctl}" >/dev/null 2>&1 || return 1
+	ids=$("${ZLYME_WPCTL:-wpctl}" status 2>/dev/null | awk '
+		/Sinks:/ { on = 1; next }
+		/Sources:/ { on = 0 }
+		on && match($0, /[0-9]+\./) {
+			print substr($0, RSTART, RLENGTH - 1)
+		}
+	') || return 1
+	[ -n "$ids" ] || return 1
+	for id in $ids; do
+		props=$("${ZLYME_WPCTL:-wpctl}" inspect "$id" 2>/dev/null) || continue
+		class=$(printf '%s\n' "$props" | sed -n 's/.*media.class = "\([^"]*\)".*/\1/p' | head -n 1)
+		[ "$class" = "Audio/Sink" ] || continue
+		name=$(printf '%s\n' "$props" | sed -n 's/.*node.name = "\([^"]*\)".*/\1/p' | head -n 1)
+		case "$name" in
+			*null*|*dummy*) continue ;;
+		esac
+		card=$(printf '%s\n' "$props" | sed -n 's/.*alsa.id = "\([^"]*\)".*/\1/p' | head -n 1)
+		role=
+		case "$name" in
+			bluez_output.*) role=bt ;;
+		esac
+		if [ -z "$role" ]; then
+			case "$card" in
+				rk817ext) role=codec ;;
+				HDMI) role=hdmi ;;
+			esac
+		fi
+		[ -n "$role" ] || continue
+		printf '%s\t%s\n' "$role" "$id"
+	done
 }
 
 node_id() {
