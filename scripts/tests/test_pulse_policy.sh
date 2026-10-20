@@ -64,6 +64,8 @@ exit 0
 EOF
 chmod 755 "$work/bin/wpctl"
 printf '%s\n' 'codec	1' 'hdmi	2' 'bt	3' > "$work/nodes"
+export ZLYME_PW_RUNTIME=$work/rt
+mkdir -p "$work/rt"
 export ZLYME_WPCTL=$work/bin/wpctl
 export ZLYME_PW_NODES=$work/nodes
 export ZLYME_HDMI_AUDIO=1
@@ -88,22 +90,9 @@ grep -q 'flipdmix_codec' "$ROOT/board/my355/fsoverlay/etc/asound.conf" || fail "
 grep -q 'hw:rk817ext,0' "$PA" || fail "codec sink does not open the hardware device"
 grep -q 'autospawn = no' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "autospawn"
 grep -q 'unix:/run/zlyme/pipewire/pulse/native' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "pulse socket"
-S21=$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse
-LAUNCH=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch
-grep -q 'zlyme-pulse-launch' "$S21" || fail "S21pulse does not use the launcher"
-if grep -v '^[[:space:]]*#' "$LAUNCH" | grep -q -- '--system'; then
-	fail "launcher passes --system"
-fi
-grep -q -- '-n' "$LAUNCH" || fail "system.pa would also load"
-grep -q -- '--file=' "$LAUNCH" || fail "startup file is not passed"
-grep -q -- '--disallow-module-loading' "$S21" && fail "dynamic sinks are blocked"
-grep -q 'echo OK' "$S21" && fail "startup says OK"
-grep -q 'pulse-service' "$S21" || fail "no usable-sink check"
-grep -q 'codec-up' "$S21" || fail "codec sink is not retried"
-grep -q 'ready_check "$token" &' "$S21" || fail "readiness blocks the caller"
-grep -q 'chmod 0700' "$S21" || fail "socket directory is not private"
-grep -q '^exit 0$' "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" || fail "second server script"
-if grep -q 'killall -9' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-btsink"; then
-	fail "a sink change still kills clients"
+grep -q 'main-embedded' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber profile"
+grep -q 'api.alsa.card.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "card id match"
+if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse" ]; then
+	fail "S21pulse remains"
 fi
 echo "pulse policy ok"

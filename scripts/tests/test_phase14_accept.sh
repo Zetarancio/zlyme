@@ -33,10 +33,10 @@ need "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" 'flat-volumes = no' \
 	"flat volumes stay off"
 absent "$ROOT/board/my355/fsoverlay/etc/pulse/daemon.conf" '^enable-remixing' \
 	"remixing is the PulseAudio default"
-need "$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa" 'hw:rk817ext,0' \
-	"codec sink uses the ALSA card id"
-need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pulse-launch" 'level=notice' \
-	"routine Pulse log level is notice"
+need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" 'api.alsa.card.id = "rk817ext"' \
+	"codec match uses the ALSA card id"
+need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
+	"pipewire-pulse is started as its own argv"
 need "$ROOT/package/system/nextui/nextui.mk" '0bb030ef6f44c005df4f4942a2fa3701ae0f7121' \
 	"NextUI pin is the paired-device snapshot"
 need "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" '^exit 0$' \

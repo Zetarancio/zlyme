@@ -10,8 +10,6 @@ cards=$ROOT/board/my355/fsoverlay/etc/asound.conf
 pa=$ROOT/board/my355/fsoverlay/etc/pulse/zlyme.pa
 audio=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio
 s20=$ROOT/board/my355/fsoverlay/etc/init.d/S20alsa
-s21=$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse
-btsink=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-btsink
 jack=$ROOT/package/system/zlyme-jackd/src/zlyme-jackd.c
 
 for f in "$cards" "$pa" "$audio" "$s20"; do
@@ -23,16 +21,12 @@ for f in "$cards" "$pa" "$audio" "$s20"; do
 	fi
 done
 grep -q 'hw:rk817ext,0' "$pa" || fail "codec sink does not use the card id"
-grep -q 'api.alsa.card.name = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber lost the card id"
+grep -q 'api.alsa.card.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber lost the card id"
 grep -q 'CARD=rk817ext' "$s20" || fail "mixer restore lost the card id"
 grep -q 'Playback Mux' "$jack" || fail "jack watcher lost Playback Mux"
 grep -q 'CARD_ID "hw:rk817ext"' "$jack" || fail "jack watcher lost the card id"
 grep -q 'JACK_NAME "rk817_ext Headphones"' "$jack" || fail "jack input name is not the kernel name"
-# shellcheck disable=SC2016
-grep -q 'ready_check "$token" &' "$s21" || fail "codec retry blocks boot"
-grep -q 'ZLYME_PULSE_READY_LIMIT:-30' "$s21" || fail "codec retry is not bounded at 30s"
-grep -q 'chgrp audio' "$s21" || fail "snd nodes are not made group-accessible"
-grep -q 'ZLYME_BTSINK_SLOW:-5' "$btsink" || fail "btsink still polls pactl every second while the sink is down"
+grep -q 'Playback Mux' "$jack" || fail "jack watcher lost the physical mux"
 
 # A cards file where the codec is not index 0. The id is inside the
 # brackets. The short name is the other token.

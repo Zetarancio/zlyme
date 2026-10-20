@@ -1,4 +1,7 @@
 #!/bin/sh
+# The PulseAudio daemon contract is retired. The PipeWire service test
+# is the replacement.
+exec sh "$(CDPATH= cd -- "$(dirname "$0")" && pwd)/test_pipewire_service.sh"
 # shellcheck disable=SC1007
 # Start the real PulseAudio daemon through zlyme-pulse-launch.
 # Fake pactl scripts do not cover this. A host without the pulseaudio
