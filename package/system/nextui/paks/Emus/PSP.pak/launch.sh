@@ -29,9 +29,6 @@ if [ -d "$SAVES_PATH/PSP/SAVEDATA" ]; then
 fi
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
-if command -v zlyme-audio >/dev/null 2>&1; then
-	eval "$(zlyme-audio export 2>/dev/null)" || true
-fi
 # Assets live next to this prefix; cwd USERDATA_PATH has none.
 if [ -d /usr/share/ppsspp/assets ]; then
 	cd /usr/share/ppsspp || true

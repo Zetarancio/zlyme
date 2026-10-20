@@ -8,9 +8,6 @@ mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
 cd "$HOME"
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
-if command -v zlyme-audio >/dev/null 2>&1; then
-	eval "$(zlyme-audio export 2>/dev/null)" || true
-fi
 # dosdevices cleanup belongs to nextui-session. This script is replaced
 # by exec, and MENU+START can kill the group before an EXIT trap runs.
 # winebus.so dlopens SDL2 (SDL_GameControllerOpen). The pak hint hides

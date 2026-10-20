@@ -424,24 +424,27 @@ if br2_selected BR2_PACKAGE_NEXTUI; then
 fi
 
 if br2_selected BR2_PACKAGE_PIPEWIRE; then
+	src="$(cd "$(dirname "$0")" && pwd)/asound.pipewire.conf"
 	asound="${TARGET_DIR}/etc/asound.conf"
-	if [ -f "$asound" ]; then
+	if [ ! -f "$src" ]; then
+		note "asound.pipewire.conf is missing"
+	else
+		cp -f "$src" "$asound"
 		python3 - "$asound" << 'PY'
 import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-t = p.read_text()
-t = t.replace("\ttype plug\n\tslave.pcm \"flipdmix_codec\"", "\ttype pipewire", 1)
-t = t.replace(
-    "ctl.!default {\n\ttype hw\n\tcard rk817ext\n}",
-    "ctl.!default {\n\ttype pipewire\n}",
-    1,
-)
-if "type pipewire" not in t:
-    raise SystemExit("asound.conf was not switched to pipewire")
-p.write_text(t)
+text = pathlib.Path(sys.argv[1]).read_text()
+def block(name):
+    key = name + " {"
+    i = text.find(key)
+    if i < 0:
+        return ""
+    j = text.find("}", i)
+    return text[i:j]
+pcm = block("pcm.!default")
+ctl = block("ctl.!default")
+if "type pipewire" not in pcm or "type pipewire" not in ctl:
+    raise SystemExit("product asound.conf default pcm/ctl is not pipewire")
 PY
-	else
-		note "etc/asound.conf is missing"
 	fi
 	mkdir -p "${TARGET_DIR}/etc/alsa/conf.d"
 	ln -sfn ../../../usr/share/alsa/alsa.conf.d/50-pipewire.conf \

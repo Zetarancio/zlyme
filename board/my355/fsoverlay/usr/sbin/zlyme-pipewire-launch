@@ -1,12 +1,15 @@
 #!/bin/sh
-# One PipeWire daemon, one WirePlumber, one pipewire-pulse.
-# Root owns them. NextUI and PortMaster are root, and exFAT state is
-# not a safe home for a separate service uid. Sockets live under /run.
+# One PipeWire, one WirePlumber, one pipewire-pulse.
+# pipewire-pulse is a symlink to the pipewire ELF. Identity is argv[0],
+# not the resolved inode. Root owns the processes. Runtime is /run.
 set -eu
 
 RT="${ZLYME_PW_RUNTIME:-/run/zlyme/pipewire}"
-HOME_DIR="${ZLYME_PW_HOME:-/run/zlyme/pipewire-home}"
+HOME_DIR="${ZLYME_PW_HOME:-$RT/home}"
 STATUS="$RT/service"
+PW="${ZLYME_PIPEWIRE:-/usr/bin/pipewire}"
+WP="${ZLYME_WIREPLUMBER:-/usr/bin/wireplumber}"
+PP="${ZLYME_PIPEWIRE_PULSE:-/usr/bin/pipewire-pulse}"
 
 export XDG_RUNTIME_DIR="$RT"
 export PIPEWIRE_RUNTIME_DIR="$RT"
@@ -15,28 +18,31 @@ if [ -S /run/dbus/system_bus_socket ]; then
 	export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket"
 fi
 
-mkdir -p "$RT/pulse" "$HOME_DIR"
-chmod 0755 "$RT" "$RT/pulse" "$HOME_DIR" || true
-
 status() {
+	mkdir -p "$RT" 2>/dev/null || true
 	printf '%s\n' "$1" > "$STATUS" 2>/dev/null || true
 }
 
-running() {
-	[ -f "$1" ] || return 1
-	pid=$(cat "$1" 2>/dev/null) || return 1
-	[ -n "$pid" ] || return 1
+# $1 pidfile $2 argv token that must appear in cmdline
+ours() {
+	pidf=$1
+	token=$2
+	[ -f "$pidf" ] || return 1
+	pid=$(cat "$pidf" 2>/dev/null) || return 1
+	echo "$pid" | grep -Eq '^[0-9]+$' || return 1
 	kill -0 "$pid" 2>/dev/null || return 1
-	# The pid file must still name this binary.
-	tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "$2"
+	# A script's argv0 is the interpreter. Match any argument's basename
+	# so pipewire-pulse is not mistaken for pipewire.
+	tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | sed 's|.*/||' | grep -qx "$token"
 }
 
 start_one() {
 	name=$1
 	bin=$2
+	token=$3
 	pidf="$RT/$name.pid"
 	[ -x "$bin" ] || return 1
-	if running "$pidf" "$bin"; then
+	if ours "$pidf" "$token"; then
 		return 0
 	fi
 	rm -f "$pidf"
@@ -45,11 +51,12 @@ start_one() {
 
 stop_one() {
 	name=$1
+	token=$2
 	pidf="$RT/$name.pid"
-	if [ -f "$pidf" ]; then
+	if ours "$pidf" "$token"; then
 		start-stop-daemon -K -q -p "$pidf" 2>/dev/null || true
-		rm -f "$pidf"
 	fi
+	rm -f "$pidf"
 }
 
 wait_sock() {
@@ -64,37 +71,32 @@ wait_sock() {
 
 case "${1:-start}" in
 start)
+	mkdir -p "$RT/pulse" "$HOME_DIR"
+	chmod 0755 "$RT" "$RT/pulse" "$HOME_DIR" || true
 	status launching
-	start_one pipewire /usr/bin/pipewire || {
-		status "failed: pipewire"
-		exit 1
-	}
-	if ! wait_sock "$RT/pipewire-0"; then
-		status "failed: pipewire socket"
-		exit 1
+	start_one pipewire "$PW" pipewire || { status "failed: pipewire"; exit 1; }
+	wait_sock "$RT/pipewire-0" || { status "failed: core socket"; exit 1; }
+	status core
+	start_one wireplumber "$WP" wireplumber || { status "failed: wireplumber"; exit 1; }
+	status wireplumber
+	start_one pulse "$PP" pipewire-pulse || { status "failed: pipewire-pulse"; exit 1; }
+	wait_sock "$RT/pulse/native" || { status "failed: pulse socket"; exit 1; }
+	status pulse
+	audio=${ZLYME_AUDIO:-/usr/sbin/zlyme-audio}
+	if [ -x "$audio" ]; then
+		"$audio" migrate-volume >/dev/null 2>&1 || true
+		"$audio" route >/dev/null 2>&1 || true
 	fi
-	start_one wireplumber /usr/bin/wireplumber || {
-		status "failed: wireplumber"
-		exit 1
-	}
-	start_one pipewire-pulse /usr/bin/pipewire-pulse || {
-		status "failed: pipewire-pulse"
-		exit 1
-	}
-	if ! wait_sock "$RT/pulse/native"; then
-		status "failed: pulse socket"
-		exit 1
-	fi
-	status ready
-	if [ -x /usr/sbin/zlyme-audio ]; then
-		/usr/sbin/zlyme-audio route >/dev/null 2>&1 || true
-		/usr/sbin/zlyme-audio migrate-volume >/dev/null 2>&1 || true
+	if [ -x "$audio" ] && "$audio" node-id codec >/dev/null 2>&1; then
+		status ready
+	else
+		status codec-waiting
 	fi
 	;;
 stop)
-	stop_one pipewire-pulse
-	stop_one wireplumber
-	stop_one pipewire
+	stop_one pulse pipewire-pulse
+	stop_one wireplumber wireplumber
+	stop_one pipewire pipewire
 	rm -f "$RT/pipewire-0" "$RT/pulse/native"
 	status stopped
 	;;

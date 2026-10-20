@@ -73,15 +73,31 @@ start_bg /etc/init.d/S49ntp
 # the first frame: this subshell is backgrounded.
 (
 	[ -x /etc/init.d/S30dbus-daemon ] && /etc/init.d/S30dbus-daemon start
-	[ -x /etc/init.d/S33pipewire ] && /etc/init.d/S33pipewire start
-	_up=0
-	read -r _up _rest < /proc/uptime || true
-	echo "$_up inputplumber-start" >> /tmp/boot-timing
-	[ -x /etc/init.d/S31inputplumber ] && /etc/init.d/S31inputplumber start
-	[ -x /etc/init.d/S32zlyme-input ] && /etc/init.d/S32zlyme-input start
-	[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
-	[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
-	[ -x /etc/init.d/S45bluealsa ] && /etc/init.d/S45bluealsa start
+	i=0
+	while [ "$i" -lt 20 ]; do
+		if dbus-send --system --dest=org.freedesktop.DBus \
+			--type=method_call --print-reply \
+			/org/freedesktop/DBus org.freedesktop.DBus.Peer.Ping \
+			>/dev/null 2>&1; then
+			break
+		fi
+		sleep 0.1
+		i=$((i + 1))
+	done
+	# Input does not wait for a codec node. Audio does not wait for Bluetooth.
+	(
+		_up=0
+		read -r _up _rest < /proc/uptime || true
+		echo "$_up inputplumber-start" >> /tmp/boot-timing
+		[ -x /etc/init.d/S31inputplumber ] && /etc/init.d/S31inputplumber start
+		[ -x /etc/init.d/S32zlyme-input ] && /etc/init.d/S32zlyme-input start
+		[ -x /etc/init.d/S35btusb ] && /etc/init.d/S35btusb start
+		[ -x /etc/init.d/S40bluetoothd ] && /etc/init.d/S40bluetoothd start
+	) >/tmp/zlyme-input-late.log 2>&1 &
+	(
+		[ -x /etc/init.d/S33pipewire ] && /etc/init.d/S33pipewire start
+	) >/tmp/zlyme-pipewire-late.log 2>&1 &
+	wait
 ) >/tmp/zlyme-bt-late.log 2>&1 &
 
 _up=0

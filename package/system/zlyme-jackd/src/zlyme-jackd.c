@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Watch the headphone jack and set Playback Mux (HP / SPK).
+ * This is the RK817 analog mux, not the PipeWire default sink.
  * simple-audio-card publishes hp-det as an evdev switch.
  */
 

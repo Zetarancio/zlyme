@@ -53,7 +53,9 @@ if [ -r "$SDL_GAMECONTROLLERCONFIG_FILE" ]; then
 	# SDL_GAMECONTROLLERCONFIG is extra mappings; include every GUID.
 	export SDL_GAMECONTROLLERCONFIG="$(grep -v '^#' "$SDL_GAMECONTROLLERCONFIG_FILE" | grep -v '^$')"
 fi
-export PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-/run/zlyme/pulse}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/zlyme/pipewire}"
+export PIPEWIRE_RUNTIME_DIR="${PIPEWIRE_RUNTIME_DIR:-/run/zlyme/pipewire}"
+unset PULSE_RUNTIME_PATH || true
 export HOME=$USERDATA_PATH
 export XDG_CONFIG_HOME=/storage/.config
 # Card extras: lscpu stub, libaio, pcre2-16, cairo (live binds / OTA gap).

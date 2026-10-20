@@ -112,9 +112,17 @@ nodes() {
 	fi
 	command -v pw-dump >/dev/null 2>&1 || return 1
 	command -v python3 >/dev/null 2>&1 || return 1
-	pw-dump | python3 -c '
+	dump=$(mktemp) || return 1
+	if ! pw-dump > "$dump" 2>/dev/null; then
+		rm -f "$dump"
+		return 1
+	fi
+	python3 - "$dump" << 'PY'
 import json, sys
-data = json.load(sys.stdin)
+try:
+    data = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
 for obj in data:
     if obj.get("type") != "PipeWire:Interface:Node":
         continue
@@ -122,17 +130,22 @@ for obj in data:
     if props.get("media.class") != "Audio/Sink":
         continue
     name = props.get("node.name") or ""
-    card = props.get("api.alsa.card.name") or ""
+    if "null" in name or "dummy" in name:
+        continue
+    card = props.get("api.alsa.card.id") or ""
     role = ""
-    if "bluez" in name:
+    if name.startswith("bluez_output."):
         role = "bt"
     elif card == "rk817ext":
         role = "codec"
     elif card == "HDMI":
         role = "hdmi"
-    if role:
+    if role and obj.get("id") is not None:
         print("%s\t%s" % (role, obj.get("id")))
-'
+PY
+	rc=$?
+	rm -f "$dump"
+	return "$rc"
 }
 
 node_id() {
@@ -171,7 +184,8 @@ apply_gain() {
 		wp set-volume "$id" "$g" >/dev/null 2>&1 || true
 	fi
 	# Keep the other sinks at the same gain when they exist.
-	nodes | while IFS='	' read -r role nid; do
+	tab=$(printf '\t')
+	nodes | while IFS="$tab" read -r role nid; do
 		[ -n "$nid" ] || continue
 		wp set-volume "$nid" "$g" >/dev/null 2>&1 || true
 	done
@@ -212,9 +226,10 @@ focus_role() {
 	id=$(node_id "$role" || true)
 	[ -n "$id" ] || return 1
 	wp set-default "$id" >/dev/null 2>&1 || return 1
-	save ZLYME_SINK "$role" || true
-	vol=$(saved ZLYME_VOLUME || true)
-	[ -n "$vol" ] && apply_gain "$vol"
+	if mkdir -p "$RT" 2>/dev/null; then
+		printf '%s\n' "$role" > "$RT/active" 2>/dev/null || true
+	fi
+	apply_deferred || true
 	return 0
 }
 
@@ -278,7 +293,10 @@ set_volume() {
 
 migrate_volume() {
 	src=$(saved ZLYME_VOLUME_SRC || true)
-	[ "$src" = pipewire-cubic ] && return 0
+	if [ "$src" = pipewire-cubic ]; then
+		apply_deferred
+		return 0
+	fi
 	now=$(saved ZLYME_VOLUME || true)
 	if [ -z "$now" ]; then
 		now=$(amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
@@ -289,6 +307,7 @@ migrate_volume() {
 	fi
 	save ZLYME_VOLUME "$now" || return 1
 	save ZLYME_VOLUME_SRC pipewire-cubic || return 1
+	save ZLYME_GAIN_STATE deferred || return 1
 	if [ -z "$(saved ZLYME_SINK_PREF || true)" ]; then
 		old=$(saved ZLYME_SINK || true)
 		case "$old" in
@@ -296,7 +315,26 @@ migrate_volume() {
 			*) save ZLYME_SINK_PREF auto || true ;;
 		esac
 	fi
-	pipewire_up && apply_gain "$now" || true
+	apply_deferred
+}
+
+apply_deferred() {
+	[ "$(saved ZLYME_GAIN_STATE || true)" = applied ] && return 0
+	[ "$(saved ZLYME_VOLUME_SRC || true)" = pipewire-cubic ] || return 0
+	vol=$(saved ZLYME_VOLUME || true)
+	[ -n "$vol" ] || return 0
+	pipewire_up || return 0
+	id=$(node_id codec || true)
+	if [ -z "$id" ]; then
+		[ "$(saved ZLYME_GAIN_STATE || true)" = deferred ] || save ZLYME_GAIN_STATE deferred || true
+		return 0
+	fi
+	g=$(linear_gain "$vol")
+	if wp set-volume "$id" "$g" >/dev/null 2>&1; then
+		save ZLYME_GAIN_STATE applied || true
+	else
+		save ZLYME_GAIN_STATE deferred || true
+	fi
 }
 
 case "${1:-status}" in
@@ -393,6 +431,11 @@ export)
 	;;
 route)
 	route
+	;;
+node-id)
+	id=$(node_id "$2" || true)
+	[ -n "$id" ] || exit 1
+	printf '%s\n' "$id"
 	;;
 pulse-service)
 	if pipewire_up; then
