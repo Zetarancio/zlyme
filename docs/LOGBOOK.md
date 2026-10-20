@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — Clean outputs replace the deletion list
+
+`post-build.sh` no longer deletes `S21pulse`, `S45bluealsa`, `S46btsink`, `S50pulseaudio`, `zlyme-btsink`, `flip-jackd`, `zlyme-volmon`, or the old NextUI ELF names. Those names are not produced by the current overlay. The packages that replaced `flip-jackd`, `keymon.elf`, and `S12gpudriver` still remove the old path in their own install step. PulseAudio 17's meson build installs `/usr/bin/pulseaudio` with the client libraries; `BR2_PACKAGE_PULSEAUDIO_DAEMON` only adds the init script, and that option is off. `external.mk` removes the daemon binary. `route` and `test` fail when PipeWire or the playback command fails. The Flip was not on the LAN for a live `wpctl` check. The `6ea59c` tar stays at `/home/ale/zlyme-keep/`.
+
 ## 2026-10-20 — Both images use PipeWire
 
 The minimal defconfig selected ALSA only, and `zlyme-audio` still had a mixer fallback for that image. Both defconfigs now select PipeWire, WirePlumber, `libpulse` without the daemon, and SBC. `asound.conf` is the PipeWire plugin on both. `FlipVolume`, `flipsink_*`, `daemon.conf`, `zlyme.pa`, and the `S50pulseaudio` no-op are out of the overlay. A published `zlyme44.3` card is still migrated once through `amixer` when `ZLYME_VOLUME` is absent. `rc.late` does not wait for `nextui.elf` when that binary is not installed. The `zlyme-volume.lua` hook still starts `zlyme-audio route` in the background: the pinned WirePlumber scripts read `default.configured.audio.sink` and do not show a safe in-process writer, and a client started inside the hook deadlocks. No new product OTA. The listen stays on `6ea59c`.
