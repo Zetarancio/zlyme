@@ -110,6 +110,7 @@ pref() {
 	printf '%s\n' auto
 }
 
+# Historical ZLYME_SINK. The route that is playing is active_role.
 current() {
 	s=$(saved ZLYME_SINK || true)
 	case "$s" in
@@ -320,6 +321,15 @@ route() {
 		return 1
 	}
 	choice=$(choose "$(pref)")
+	cur=
+	if [ -r "$RT/active" ]; then
+		read -r cur < "$RT/active" || cur=
+	fi
+	# The active file is the last set-default this command wrote.
+	# A repeat while that node still exists must not rewrite gain.
+	if [ "$cur" = "$choice" ] && [ -n "$(node_id "$choice" || true)" ]; then
+		return 0
+	fi
 	focus_role "$choice" || return 1
 	vol=$(saved ZLYME_VOLUME || true)
 	[ -n "$vol" ] || return 0
@@ -430,16 +440,17 @@ set)
 		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
 	esac
 	route || exit 1
-	echo "sink: $(current)"
+	echo "sink: $(active_role)"
 	;;
 a2dp-connect)
-	# Device1.Connected can be true for a headset before any A2DP
-	# transport exists. PipeWire then never creates bluez_output.
-	# Ask BlueZ for the remote Audio Sink profile. Do not touch trust
-	# or pairing. Skip when that sink is already in the graph.
-	pipewire_up || exit 1
+	# Best-effort recovery for a headset that is already Connected and
+	# has no bluez_output. One call, after PipeWire is ready. A device
+	# without the remote Audio Sink UUID, including a HID pad, is left
+	# alone. Trust and pairing are not changed. A sink that already
+	# exists is not asked to connect again.
+	pipewire_up || exit 0
 	if [ -n "$(node_id bt || true)" ]; then
-		route || exit 1
+		route || exit 0
 		exit 0
 	fi
 	command -v bluetoothctl >/dev/null 2>&1 || exit 0
@@ -460,7 +471,7 @@ a2dp-connect)
 			>/dev/null 2>&1 || true
 	done <"$list"
 	rm -f "$list"
-	route || exit 1
+	route || exit 0
 	;;
 hold)
 	# Apply a gain without rewriting the saved percent. Power-off uses

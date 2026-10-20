@@ -73,16 +73,32 @@ SimpleEventHook {
   },
   execute = function(event)
     local node = event:get_subject()
+    local name = ""
     if node then
       apply(node)
+      local props = node.properties or {}
+      name = props["node.name"] or ""
     end
-    -- The pinned 0.5.14 scripts only read default.configured.audio.sink.
-    -- wpctl set-default is the writer, and it cannot run on this thread:
-    -- the client would wait for WirePlumber while this hook waits for
-    -- the client. The shell returns immediately. The ELD is not an ACP
-    -- port, so a priority rule cannot replace this call.
-    -- One shot can run before wpctl sees the new node. Retry for two
-    -- seconds. flock keeps a burst of node-added events to one loop.
-    os.execute("( flock -n 9 || exit 0; i=0; while [ \"$i\" -lt 8 ]; do /usr/sbin/zlyme-audio route >/dev/null 2>&1; i=$((i+1)); sleep 0.25; done ) 9>/run/zlyme/pipewire/route.lock >/dev/null 2>&1 &")
+    -- wpctl cannot run on this thread. A bluez node can be added before
+    -- a separate wpctl client lists it. Wait for that id, then route
+    -- once. route itself returns when the chosen node is already default.
+    if name:find("^bluez_output") then
+      os.execute("( i=0; while [ \"$i\" -lt 8 ]; do /usr/sbin/zlyme-audio node-id bt >/dev/null 2>&1 && break; i=$((i+1)); sleep 0.25; done; /usr/sbin/zlyme-audio route >/dev/null 2>&1 ) >/dev/null 2>&1 &")
+    else
+      os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
+    end
+  end
+}:register()
+
+SimpleEventHook {
+  name = "zlyme/route-removed-sink",
+  interests = {
+    EventInterest {
+      Constraint { "event.type", "=", "node-removed" },
+      Constraint { "media.class", "=", "Audio/Sink" },
+    },
+  },
+  execute = function()
+    os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
   end
 }:register()

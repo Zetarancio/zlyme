@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-21 — A2DP recovery stays off the udev worker
+
+`6ea59c` produced both boot results: a connected headset with no A2DP sink until `ConnectProfile`, and a later boot where `bluez_output` appeared with no such call. The ACL udev rule is not the recovery. One background `a2dp-connect` after PipeWire is ready asks for the Audio Sink UUID only when that node is absent. The volume hook waits until `wpctl` lists a new A2DP node and then routes once. `zlyme-audio set` prints the active route. HDMI and Bluetooth audibility on `6ea59c` are still pending. Speaker and headphone playback heard on `0d8a3cf`, and the `00e6c343` quality report, stay attributed to those images.
+
 ## 2026-10-20 — A connected headset had no A2DP transport
 
 `6ea59c` is installed. Boot `52577003-4070-445d-8045-c93e67ae336e`, squashfs `0604df3119d28722f7207194b10a6d11bd3450288102ad47ceebd6b284549a38`. HDMI-A-1 was connected to `20W_LCD_TV` with `sad_count` 2 and LPCM. The installed ELD match accepts that file. Preference was `auto`, volume 30, and the default sink was RK817. BlueZ showed one trusted headset, `Connected: yes`, icon `audio-headset`, UUID Audio Sink. PipeWire had no `bluez_output` until `ConnectProfile` for that UUID. The sink then appeared and a one-loop `speaker-test` linked to it. The same command linked to the HDMI I2S device while that sink was the default. Neither tone was confirmed by ear. RetroArch was not running. The default stayed on RK817 after the sink appeared, which is the late `route` race. NextUI's generic Bluetooth mark is a colon in `/sys/class/bluetooth` (`hci0:1`). The separate audio mark follows the saved sink, which was still `auto`.

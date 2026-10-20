@@ -166,7 +166,15 @@ grep -q 'SUBSYSTEM=="drm"' "$rules" || fail "hdmi cable is not a sound event"
 if grep -q 'SUBSYSTEM=="sound"' "$rules"; then
 	fail "udev still routes on sound-card events"
 fi
-grep -q 'a2dp-connect' "$rules" || fail "ACL link does not request A2DP"
+if grep -q 'a2dp-connect\|SUBSYSTEM=="bluetooth"' "$rules"; then
+	fail "udev still runs Bluetooth recovery"
+fi
+lua=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua
+grep -q 'node-id bt' "$lua" || fail "late A2DP node is not waited for"
+grep -q 'node-removed' "$lua" || fail "sink removal does not reroute"
+if grep -q 'while \[ "\$i" -lt 8 \]; do /usr/sbin/zlyme-audio route' "$lua"; then
+	fail "route still retries unconditionally"
+fi
 if grep -q ' &' "$rules"; then
 	fail "udev still backgrounds the route"
 fi
@@ -253,8 +261,13 @@ grep -q 'set-default 70' "$WP_LOG" || fail "A2DP did not become default $(cat "$
 grep -q 'set-volume 70 0.064000' "$WP_LOG" || fail "late sink missed the gain"
 printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
 : > "$WP_LOG"
-sh "$AUDIO" route || fail "mute route"
+sh "$AUDIO" setSystemVolume 0 || fail "mute"
 grep -Eq 'set-volume 33 0$' "$WP_LOG" || grep -q 'set-volume 33 0.000000' "$WP_LOG" || fail "saved 0 was audible $(cat "$WP_LOG")"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "repeat route"
+if grep -q 'set-default\|set-volume' "$WP_LOG"; then
+	fail "unchanged route rewrote the graph $(cat "$WP_LOG")"
+fi
 : > "$WP_LOG"
 sh "$AUDIO" hold 40 || fail "hold"
 grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "hold rewrote the saved volume"
@@ -372,4 +385,54 @@ if grep -q 'ConnectProfile' "$DBUS_LOG"; then
 	fail "ConnectProfile ran although the sink exists"
 fi
 grep -q 'set-default 62' "$WP_LOG" || fail "existing A2DP sink was not selected"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "second route"
+if grep -q 'set-default\|set-volume' "$WP_LOG"; then
+	fail "second route rewrote a settled sink $(cat "$WP_LOG")"
+fi
+# A connected HID pad is not an audio sink.
+cat > "$work/bin/bluetoothctl" << 'EOF'
+#!/bin/sh
+if [ "$1" = devices ]; then
+	echo "Device 11:22:33:44:55:66 Controller"
+	exit 0
+fi
+if [ "$1" = info ]; then
+	echo "Connected: yes"
+	echo "UUID: Human Interface Device (00001124-0000-1000-8000-00805f9b34fb)"
+	exit 0
+fi
+exit 0
+EOF
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+printf 'codec\n' > "$work/rt/active"
+: > "$DBUS_LOG"
+sh "$AUDIO" a2dp-connect || fail "hid recovery"
+if grep -q 'ConnectProfile' "$DBUS_LOG"; then
+	fail "HID pad was asked for A2DP $(cat "$DBUS_LOG")"
+fi
+# The node appears after the first lookup, as wpctl can lag the hook.
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+printf 'hdmi\n' > "$work/rt/active"
+export ZLYME_HDMI_AUDIO=1
+printf 'ZLYME_VOLUME=30\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\nZLYME_SINK=codec\n' > "$work/cfg/audio.conf"
+: > "$WP_LOG"
+i=0
+while [ "$i" -lt 8 ]; do
+	if sh "$AUDIO" node-id bt >/dev/null 2>&1; then
+		break
+	fi
+	if [ "$i" -eq 1 ]; then
+		printf 'bt\t62\n' >> "$work/nodes"
+	fi
+	i=$((i + 1))
+done
+sh "$AUDIO" route || fail "late visible route"
+grep -q 'set-default 62' "$WP_LOG" || fail "late A2DP node did not take auto $(cat "$WP_LOG")"
+out=$(sh "$AUDIO" set bt)
+[ "$out" = "sink: bt" ] || fail "set printed historical sink: $out"
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "removal route"
+grep -q 'set-default 51' "$WP_LOG" || fail "A2DP removal did not fall back $(cat "$WP_LOG")"
 echo "pipewire service ok"
