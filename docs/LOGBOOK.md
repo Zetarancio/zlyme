@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — Installed PipeWire image was silent
+
+`59c56f1` was installed. Squashfs `7a44f5305d8c63617636e9785a22b8a166dbdece52ee235e96171ce06c04a428`. Boot `74381cf6-26c3-4715-8757-ad3579b6f9ae`. `zlyme-audio node-id codec` and `node-id hdmi` both exited 1 while both playback sinks were in the graph. Those nodes publish `alsa.id` (`rk817ext`, `HDMI`) and do not publish `api.alsa.card.id`. Both channel volumes were 0. WirePlumber's default was the HDMI sink while HDMI-A-1 was disconnected and `eld#0` had `sad_count 0`. `Playback Mux` was already `SPK`. Setting the RK817 sink default and gain `0.064` made `pactl` report that sink, and `speaker-test -D pipewire` and `-D default` each exited 0 for one 440 Hz loop. The maintainer has not confirmed that those tones were audible. `audio.conf` was not rewritten. The saved percent on that card is 100, not 40. The archived `099-audio_prime` only sets the RK817 mux from a headphone GPIO and hardcodes card 1. It does not choose a PipeWire sink. This image is not accepted.
+
 ## 2026-10-20 — Saved volume is applied on every PipeWire graph
 
 `ZLYME_GAIN_STATE=applied` is not kept. WirePlumber `main-embedded` does not restore sink volumes, so a marker from the previous boot skipped the next one. Each graph reads the saved 0–100 number and sets linear gain `(percent/100)^3`. A new node starts at `device.routes.default-sink-volume = 0.0` until that gain is set. `zlyme-audio get` is the preference, including `auto`. The active role is `/run/zlyme/pipewire/active`, and `export` puts that in `ZLYME_SINK` for the session. Old `ZLYME_SINK=bt` is not treated as a manual choice. Not heard on a Flip. Do not install `a886cec`.

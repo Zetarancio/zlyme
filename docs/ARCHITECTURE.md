@@ -430,7 +430,7 @@ This dual-stack mechanism is a Miyoo Flip/RK3566 implementation detail, not a re
 
 ## 9. Audio
 
-One PipeWire daemon is the mixer, with one WirePlumber and one `pipewire-pulse`. ALSA is the hardware backend. The product default PCM is the PipeWire plugin, so an ordinary ALSA client and a native `libpulse` client share that graph. BlueZ A2DP is PipeWire's BlueZ monitor. BlueALSA is not started. There is no PulseAudio daemon and no network listener. `autospawn` is off. The minimal image does not select this stack and keeps a direct ALSA default. This is not a hardware acceptance of the new graph.
+One PipeWire daemon is the mixer, with one WirePlumber and one `pipewire-pulse`. ALSA is the hardware backend. Playback sinks are chosen by `alsa.id`: `rk817ext` for the codec, `HDMI` for HDMI, and a `bluez_output.` name for A2DP. The codec outranks an HDMI card whose connector has no audio ELD. A2DP outranks both when that node exists. A new sink takes the saved cubic gain, including 0. The route default before that is 0.064. The product default PCM is the PipeWire plugin, so an ordinary ALSA client and a native `libpulse` client share that graph. BlueZ A2DP is PipeWire's BlueZ monitor. BlueALSA is not started. There is no PulseAudio daemon and no network listener. `autospawn` is off. The minimal image does not select this stack and keeps a direct ALSA default. This is not a hardware acceptance of the new graph.
 
 For the Miyoo Flip:
 

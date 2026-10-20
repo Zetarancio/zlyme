@@ -21,7 +21,7 @@ for f in "$cards" "$pa" "$audio" "$s20"; do
 	fi
 done
 grep -q 'hw:rk817ext,0' "$pa" || fail "codec sink does not use the card id"
-grep -q 'api.alsa.card.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber lost the card id"
+grep -q 'alsa.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber lost the card id"
 grep -q 'CARD=rk817ext' "$s20" || fail "mixer restore lost the card id"
 grep -q 'Playback Mux' "$jack" || fail "jack watcher lost Playback Mux"
 grep -q 'CARD_ID "hw:rk817ext"' "$jack" || fail "jack watcher lost the card id"

@@ -150,9 +150,107 @@ fi
 
 conf=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf
 grep -q 'main-embedded' "$conf" || fail "profile"
-grep -q 'api.alsa.card.id = "rk817ext"' "$conf" || fail "rk817 id"
+grep -q 'alsa.id = "rk817ext"' "$conf" || fail "rk817 id"
+if grep -q 'api.alsa.card.id =' "$conf"; then
+	fail "rule still matches a property playback nodes do not have"
+fi
+grep -q 'priority.session = 2000' "$conf" || fail "codec priority"
+grep -q 'priority.session = 1000' "$conf" || fail "hdmi priority"
+grep -q 'priority.session = 3000' "$conf" || fail "a2dp priority"
+grep -q 'default-sink-volume = 0.064' "$conf" || fail "silent route default"
 grep -q 'a2dp_source' "$conf" || fail "a2dp source role"
 grep -q 'linking.follow-default-target = true' "$conf" || fail "stream follow"
+grep -q 'policy.zlyme-volume = required' "$conf" || fail "volume hook not required"
+rules=$ROOT/board/my355/fsoverlay/etc/udev/rules.d/90-zlyme-audio.rules
+grep -q 'SUBSYSTEM=="drm"' "$rules" || fail "hdmi cable is not a sound event"
+if grep -q 'route >/dev/null' "$rules"; then
+	fail "udev still backgrounds the route"
+fi
+
+# Live playback nodes publish alsa.id and do not publish api.alsa.card.id.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+unset ZLYME_PW_NODES
+cat > "$work/dump.json" << 'EOF'
+[
+  {"type":"PipeWire:Interface:Node","id":33,"info":{"props":{
+    "media.class":"Audio/Sink",
+    "node.name":"alsa_output.rk817-sound.stereo-fallback",
+    "alsa.id":"rk817ext",
+    "alsa.card_name":"rk817_ext",
+    "api.alsa.card.name":"rk817_ext"
+  }}},
+  {"type":"PipeWire:Interface:Node","id":55,"info":{"props":{
+    "media.class":"Audio/Sink",
+    "node.name":"alsa_output.hdmi-sound.stereo-fallback",
+    "alsa.id":"HDMI",
+    "alsa.card_name":"HDMI",
+    "api.alsa.card.name":"HDMI"
+  }}},
+  {"type":"PipeWire:Interface:Node","id":44,"info":{"props":{
+    "media.class":"Audio/Source",
+    "node.name":"alsa_input.rk817-sound.stereo-fallback",
+    "alsa.id":"rk817ext"
+  }}}
+]
+EOF
+export ZLYME_PW_DUMP=$work/dump.json
+export ZLYME_HDMI_AUDIO=0
+printf 'ZLYME_VOLUME=40\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
+: > "$WP_LOG"
+[ "$(sh "$AUDIO" node-id codec)" = 33 ] || fail "codec id from alsa.id"
+[ "$(sh "$AUDIO" node-id hdmi)" = 55 ] || fail "hdmi id from alsa.id"
+sh "$AUDIO" route || fail "route"
+grep -q 'set-default 33' "$WP_LOG" || fail "default stayed on HDMI $(cat "$WP_LOG")"
+grep -q 'set-volume 33 0.064000' "$WP_LOG" || fail "codec gain $(cat "$WP_LOG")"
+grep -q 'set-volume 55 0.064000' "$WP_LOG" || fail "hdmi gain"
+export ZLYME_HDMI_AUDIO=1
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "hdmi route"
+grep -q 'set-default 55' "$WP_LOG" || fail "ELD did not select HDMI $(cat "$WP_LOG")"
+# Late A2DP node. Same graph, one more sink.
+python3 - "$work/dump.json" << 'PY'
+import json, sys
+p = sys.argv[1]
+data = json.load(open(p))
+data.append({"type":"PipeWire:Interface:Node","id":70,"info":{"props":{
+    "media.class":"Audio/Sink",
+    "node.name":"bluez_output.AA_BB_CC_DD_EE_FF.1",
+    "api.alsa.card.id":"rk817ext"
+}}})
+json.dump(data, open(p, "w"))
+PY
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "bt route"
+[ "$(sh "$AUDIO" node-id bt)" = 70 ] || fail "bt id"
+grep -q 'set-default 70' "$WP_LOG" || fail "A2DP did not become default $(cat "$WP_LOG")"
+grep -q 'set-volume 70 0.064000' "$WP_LOG" || fail "late sink missed the gain"
+printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "mute route"
+grep -Eq 'set-volume 33 0$' "$WP_LOG" || grep -q 'set-volume 33 0.000000' "$WP_LOG" || fail "saved 0 was audible $(cat "$WP_LOG")"
+# The old key, present or not, must not be what identifies the codec.
+cat > "$work/dump.json" << 'EOF'
+[
+  {"type":"PipeWire:Interface:Node","id":7,"info":{"props":{
+    "media.class":"Audio/Sink",
+    "node.name":"alsa_output.rk817-sound.stereo-fallback",
+    "api.alsa.card.id":"rk817ext",
+    "api.alsa.card.name":"rk817_ext"
+  }}}
+]
+EOF
+if sh "$AUDIO" node-id codec >/dev/null 2>&1; then
+	fail "api.alsa.card.id was treated as the card id"
+fi
+pinned=$ROOT/output/build/wireplumber-0.5.14/src/scripts/monitors/alsa.lua
+if [ -f "$pinned" ]; then
+	grep -q 'add api.alsa.card.\* and alsa.\* properties for rule matching' "$pinned" || fail "pinned monitor no longer copies alsa.* before rules"
+fi
 grep -q 'XDG_RUNTIME_DIR' "$ROOT/package/system/nextui/nextui-session" || fail "session env"
 if grep -q 'PULSE_RUNTIME_PATH=' "$ROOT/package/system/nextui/nextui-session"; then
 	fail "session still exports the old pulse path"

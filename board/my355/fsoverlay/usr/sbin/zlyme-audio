@@ -130,7 +130,7 @@ pipewire_up() {
 	if [ "${ZLYME_AUDIO_BACKEND:-}" = alsa ]; then
 		return 1
 	fi
-	if [ -n "${ZLYME_PW_NODES:-}" ] && { [ -n "${ZLYME_WPCTL:-}" ] || [ -x /usr/bin/wpctl ]; }; then
+	if { [ -n "${ZLYME_PW_NODES:-}" ] || [ -n "${ZLYME_PW_DUMP:-}" ]; } && { [ -n "${ZLYME_WPCTL:-}" ] || [ -x /usr/bin/wpctl ]; }; then
 		return 0
 	fi
 	[ -S "$RT/pipewire-0" ] || return 1
@@ -143,12 +143,18 @@ nodes() {
 		cat "$ZLYME_PW_NODES"
 		return 0
 	fi
-	command -v pw-dump >/dev/null 2>&1 || return 1
 	command -v python3 >/dev/null 2>&1 || return 1
-	dump=$(mktemp) || return 1
-	if ! pw-dump > "$dump" 2>/dev/null; then
-		rm -f "$dump"
-		return 1
+	dump=${ZLYME_PW_DUMP:-}
+	if [ -z "$dump" ]; then
+		command -v pw-dump >/dev/null 2>&1 || return 1
+		dump=$(mktemp) || return 1
+		if ! pw-dump > "$dump" 2>/dev/null; then
+			rm -f "$dump"
+			return 1
+		fi
+		_rm=1
+	else
+		_rm=0
 	fi
 	python3 - "$dump" << 'PY'
 import json, sys
@@ -165,7 +171,9 @@ for obj in data:
     name = props.get("node.name") or ""
     if "null" in name or "dummy" in name:
         continue
-    card = props.get("api.alsa.card.id") or ""
+    # Live playback nodes publish alsa.id. They do not publish
+    # api.alsa.card.id. The descriptive name is rk817_ext.
+    card = props.get("alsa.id") or ""
     role = ""
     if name.startswith("bluez_output."):
         role = "bt"
@@ -177,7 +185,7 @@ for obj in data:
         print("%s\t%s" % (role, obj.get("id")))
 PY
 	rc=$?
-	rm -f "$dump"
+	[ "$_rm" = 1 ] && rm -f "$dump"
 	return "$rc"
 }
 

@@ -91,7 +91,7 @@ grep -q 'hw:rk817ext,0' "$PA" || fail "codec sink does not open the hardware dev
 grep -q 'autospawn = no' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "autospawn"
 grep -q 'unix:/run/zlyme/pipewire/pulse/native' "$ROOT/board/my355/fsoverlay/etc/pulse/client.conf" || fail "pulse socket"
 grep -q 'main-embedded' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "wireplumber profile"
-grep -q 'api.alsa.card.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "card id match"
+grep -q 'alsa.id = "rk817ext"' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf" || fail "card id match"
 if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S21pulse" ]; then
 	fail "S21pulse remains"
 fi

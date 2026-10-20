@@ -1,3 +1,8 @@
-# One shot when a sound or Bluetooth device appears. Not a poller.
-ACTION=="add|change", SUBSYSTEM=="sound", RUN+="/bin/sh -c '/usr/sbin/zlyme-audio route >/dev/null 2>&1 &'"
-ACTION=="add|change", SUBSYSTEM=="bluetooth", RUN+="/bin/sh -c '/usr/sbin/zlyme-audio route >/dev/null 2>&1 &'"
+# systemd-udev 251 ends programs still running when the event worker
+# returns, so these stay in the foreground. A sound-card add can run
+# before PipeWire has created the sink; the launcher and
+# zlyme-volume.lua own that moment. The HDMI card is present while the
+# connector is disconnected, so a cable change is a DRM event.
+ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card*-HDMI-A-[0-9]*", RUN+="/usr/sbin/zlyme-audio route"
+ACTION=="add|change", SUBSYSTEM=="sound", RUN+="/usr/sbin/zlyme-audio route"
+ACTION=="add|change", SUBSYSTEM=="bluetooth", RUN+="/usr/sbin/zlyme-audio route"

@@ -2,6 +2,8 @@
 
 Decision: implement on the product image, using Buildroot 2026.08's packages. Not hardware-accepted. The earlier "deferred" note is the history of this file. The freezes are not claimed fixed.
 
+`59c56f1` was installed and games were silent. The playback nodes on that boot published `alsa.id` and did not publish `api.alsa.card.id`. WirePlumber 0.5.14's ALSA monitor copies `alsa.*` from the parent device onto the node before it evaluates `monitor.alsa.rules` (`src/scripts/monitors/alsa.lua`). The historical fork `Zetarancio/distribution` branch `flip`, file `projects/ROCKNIX/packages/hardware/quirks/devices/Miyoo Flip/099-audio_prime`, only writes the RK817 `Playback Mux` from the headphone GPIO and uses card index 1. It does not select a PipeWire sink or restore a volume. That systemd layout was not copied.
+
 Pinned Buildroot recipes, verified in this tree:
 
 - PipeWire 1.6.6 (`buildroot/package/pipewire/pipewire.mk`). There is no separate `BR2_PACKAGE_PIPEWIRE_ALSA` symbol. `pipewire-alsa` follows `BR2_PACKAGE_ALSA_LIB`. The ALSA monitor follows `BR2_PACKAGE_HAS_UDEV`. BlueZ follows BlueZ plus SBC plus GLib. `libpulse` follows `BR2_PACKAGE_PULSEAUDIO`. Systemd units are disabled because this defconfig is not systemd.
