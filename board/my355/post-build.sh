@@ -344,8 +344,9 @@ if ! br2_selected BR2_PACKAGE_GPUDRIVER && ! br2_selected BR2_PACKAGE_LIBMALI; t
 	fi
 fi
 
-# The image links the Buildroot SDL3 library. Do not replace it with a stub.
-if [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" ]; then
+# The product image links the Buildroot SDL3 library. Do not replace it
+# with a stub. The minimal image does not select SDL3.
+if br2_selected BR2_PACKAGE_SDL3 && [ -n "${HOST_DIR:-}" ] && [ -x "${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-nm" ]; then
 	sdl3lib="${TARGET_DIR}/usr/lib/libSDL3.so.0"
 	if [ ! -e "${sdl3lib}" ]; then
 		echo "post-build: ${sdl3lib} is missing" >&2
