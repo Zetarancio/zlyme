@@ -147,7 +147,7 @@ Verbs: `list`, `get`, `set {auto|codec|hdmi|bt}`, `status`, `getSystemVolume`, `
 
 Speaker versus headphones is not a `zlyme-audio` choice. `zlyme-jackd` follows the jack switch and owns `Playback Mux`.
 
-Generic code must not know `rk817ext`, `Playback Mux`, or `FlipVolume`.
+Generic code must not know `rk817ext` or `Playback Mux`. `FlipVolume` was the Phase 13 softvol and is not the current control.
 
 ### `zlyme-governor`
 

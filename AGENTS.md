@@ -85,7 +85,7 @@ Preserve these unless the task explicitly requires changing them:
 - Software that cannot use direct KMS may use an application-scoped compatibility runtime such as Weston/WestonPack.
 - BusyBox init is the normal init system.
 - Optional services must not delay the frontend first frame.
-- One PipeWire daemon is the product mixer, with WirePlumber and `pipewire-pulse`. ALSA is the hardware backend. PipeWire's BlueZ monitor owns A2DP. `zlyme-audio` chooses the sink. The minimal image stays ALSA-only.
+- One PipeWire daemon is the mixer on both the product image and the minimal image, with WirePlumber and `pipewire-pulse`. ALSA is the hardware backend. PipeWire's BlueZ monitor owns A2DP. `zlyme-audio` chooses the sink. The minimal image omits emulators and NextUI. It does not use a second audio backend.
 - The root filesystem is read-only squashfs; persistent state belongs under `/storage`.
 - The curated emulator model is intentional. Do not add alternate cores merely because they exist.
 - Hardware safety, thermal protection, and filesystem integrity outrank benchmark results.
@@ -96,6 +96,7 @@ Preserve these unless the task explicitly requires changing them:
 
 These were replaced. Do not revive them.
 
+- An ALSA-only minimal image, and the `dmix`/`FlipVolume` default graph. Both images use PipeWire. `hw_codec` and `hw_hdmi` remain diagnostic PCMs.
 - The ROCKNIX joypad package (`rocknix-joypad`, `rocknix-singleadc-joypad`). The built-in pad is `miyoo-flip-gamepad`, and applications read InputPlumber's virtual `xb360` pads. `board/my355/post-build.sh` deletes leftover modules.
 - A mergerfs pool of `/storage/Roms`. Each card is its own library, and the active libraries are listed in `/run/zlyme/libraries`. The mergerfs package is not in the tree.
 - The Artwork Scraper and Cheat Downloader tools. ZcrapeGoat replaced both. `board/my355/post-update.sh` removes old card copies.
