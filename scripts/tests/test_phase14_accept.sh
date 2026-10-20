@@ -3,8 +3,10 @@
 # Phase 14 acceptance inventory.
 # Columns are SOURCE, HOST, HARDWARE, and USER-AUDIBLE.
 # A SOURCE pass is a text check. It is not a Flip result.
-# HARDWARE and USER-AUDIBLE values below are recorded observations.
-# This script does not SSH, turn Wi-Fi off, reboot, or stop PulseAudio.
+# HARDWARE and USER-AUDIBLE values below are a static inventory.
+# This script does not SSH. A linked PipeWire stream is not a listen.
+# HDMI and Bluetooth audibility on 6ea59c stay PENDING until the
+# maintainer records hearing that image.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 fail=0
@@ -39,8 +41,8 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '3e4289713ba9ff83c2036b467cec2d47b9115a2d' \
-	"NextUI pin is the volume-transition snapshot"
+need "$ROOT/package/system/nextui/nextui.mk" '41f1ef17118ba1bdcd7034c25be677dd8435c65c' \
+	"NextUI pin follows the active audio route"
 if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
 	row "no Pulse init script in the overlay" FAIL FAIL n/a n/a
 	fail=1
@@ -62,13 +64,31 @@ fi
 need "$ROOT/package/system/portmaster/control.txt" '^DEVICE_HAS_ARMHF=Y$' \
 	"ARMHF capability bit is on"
 
-row "speaker and headphone audibility" n/a n/a PASS PASS
-row "headphone reconnect" n/a n/a PASS PASS
-row "speaker sound quality" n/a n/a FAIL FAIL
-row "HDMI sound quality" n/a n/a FAIL FAIL
+row "speaker/headphones on 0d8a3cf" n/a n/a HEARD HEARD
+row "headphone jack on 0d8a3cf" n/a n/a HEARD HEARD
+row "speaker quality on 00e6c343" n/a n/a FAIL FAIL
+row "HDMI quality on 00e6c343" n/a n/a HEARD FAIL
+row "BT audio on 00e6c343" n/a n/a HEARD HEARD
+row "A2DP transport on 6ea59c" n/a n/a OBSERVED n/a
+row "HDMI graph on 6ea59c" n/a n/a OBSERVED n/a
+row "BT audibility on 6ea59c" n/a n/a PENDING PENDING
+row "HDMI audibility on 6ea59c" n/a n/a PENDING PENDING
+row "RetroArch BT listen" n/a n/a PENDING PENDING
+row "RetroArch HDMI listen" n/a n/a PENDING PENDING
 row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
 row "Abombniball MENU+START" n/a n/a FAIL n/a
-row "Bluetooth headphone audio" n/a n/a PASS PASS
+if awk '
+	/^row "BT audibility on 6ea59c"/ && /PASS/ { bad = 1 }
+	/^row "HDMI audibility on 6ea59c"/ && /PASS/ { bad = 1 }
+	/^row "RetroArch BT listen"/ && /PASS/ { bad = 1 }
+	/^row "RetroArch HDMI listen"/ && /PASS/ { bad = 1 }
+	/^row "A2DP transport on 6ea59c"/ && /PASS/ { bad = 1 }
+	/^row "HDMI graph on 6ea59c"/ && /PASS/ { bad = 1 }
+	END { exit !bad }
+' "$0"; then
+	echo "phase14 accept: a 6ea59c listen was marked PASS" >&2
+	fail=1
+fi
 row "Bluetooth disconnect falls back" n/a n/a PENDING n/a
 row "Wi-Fi off and on" n/a n/a NOTRUN n/a
 row "charger suppression of 0% shutdown" n/a n/a NOTRUN n/a
