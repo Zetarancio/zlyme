@@ -28,6 +28,7 @@ usage: $(basename "$0") <command>
   route
   migrate-volume
   hold {0-100}
+  a2dp-connect
 EOF
 }
 
@@ -430,6 +431,36 @@ set)
 	esac
 	route || exit 1
 	echo "sink: $(current)"
+	;;
+a2dp-connect)
+	# Device1.Connected can be true for a headset before any A2DP
+	# transport exists. PipeWire then never creates bluez_output.
+	# Ask BlueZ for the remote Audio Sink profile. Do not touch trust
+	# or pairing. Skip when that sink is already in the graph.
+	pipewire_up || exit 1
+	if [ -n "$(node_id bt || true)" ]; then
+		route || exit 1
+		exit 0
+	fi
+	command -v bluetoothctl >/dev/null 2>&1 || exit 0
+	list=$(mktemp) || exit 1
+	bluetoothctl devices >"$list" 2>/dev/null || : >"$list"
+	while read -r _ mac _; do
+		case "$mac" in
+			*:*:*) ;;
+			*) continue ;;
+		esac
+		info=$(bluetoothctl info "$mac" 2>/dev/null) || continue
+		printf '%s\n' "$info" | grep -q 'Connected: yes' || continue
+		printf '%s\n' "$info" | grep -q '0000110b' || continue
+		dev=/org/bluez/hci0/dev_$(printf '%s' "$mac" | tr ':' '_')
+		dbus-send --system --print-reply --reply-timeout=4000 \
+			--dest=org.bluez "$dev" org.bluez.Device1.ConnectProfile \
+			string:0000110b-0000-1000-8000-00805f9b34fb \
+			>/dev/null 2>&1 || true
+	done <"$list"
+	rm -f "$list"
+	route || exit 1
 	;;
 hold)
 	# Apply a gain without rewriting the saved percent. Power-off uses

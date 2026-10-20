@@ -81,6 +81,8 @@ SimpleEventHook {
     -- the client would wait for WirePlumber while this hook waits for
     -- the client. The shell returns immediately. The ELD is not an ACP
     -- port, so a priority rule cannot replace this call.
-    os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
+    -- One shot can run before wpctl sees the new node. Retry for two
+    -- seconds. flock keeps a burst of node-added events to one loop.
+    os.execute("( flock -n 9 || exit 0; i=0; while [ \"$i\" -lt 8 ]; do /usr/sbin/zlyme-audio route >/dev/null 2>&1; i=$((i+1)); sleep 0.25; done ) 9>/run/zlyme/pipewire/route.lock >/dev/null 2>&1 &")
   end
 }:register()

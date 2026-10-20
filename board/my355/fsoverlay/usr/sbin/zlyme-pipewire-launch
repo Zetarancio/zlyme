@@ -96,6 +96,13 @@ start)
 			"$audio" migrate-volume >/dev/null 2>&1 || true
 			if "$audio" node-id codec >/dev/null 2>&1 && "$audio" route >/dev/null 2>&1; then
 				status ready
+				# A headset can already be Connected with no A2DP
+				# transport. This does not block the ready state.
+				if command -v setsid >/dev/null 2>&1; then
+					setsid "$audio" a2dp-connect >/dev/null 2>&1 &
+				else
+					"$audio" a2dp-connect >/dev/null 2>&1 &
+				fi
 				exit 0
 			fi
 		fi

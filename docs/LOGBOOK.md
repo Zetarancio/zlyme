@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — A connected headset had no A2DP transport
+
+`6ea59c` is installed. Boot `52577003-4070-445d-8045-c93e67ae336e`, squashfs `0604df3119d28722f7207194b10a6d11bd3450288102ad47ceebd6b284549a38`. HDMI-A-1 was connected to `20W_LCD_TV` with `sad_count` 2 and LPCM. The installed ELD match accepts that file. Preference was `auto`, volume 30, and the default sink was RK817. BlueZ showed one trusted headset, `Connected: yes`, icon `audio-headset`, UUID Audio Sink. PipeWire had no `bluez_output` until `ConnectProfile` for that UUID. The sink then appeared and a one-loop `speaker-test` linked to it. The same command linked to the HDMI I2S device while that sink was the default. Neither tone was confirmed by ear. RetroArch was not running. The default stayed on RK817 after the sink appeared, which is the late `route` race. NextUI's generic Bluetooth mark is a colon in `/sys/class/bluetooth` (`hci0:1`). The separate audio mark follows the saved sink, which was still `auto`.
+
 ## 2026-10-20 — Clean outputs replace the deletion list
 
 `post-build.sh` no longer deletes `S21pulse`, `S45bluealsa`, `S46btsink`, `S50pulseaudio`, `zlyme-btsink`, `flip-jackd`, `zlyme-volmon`, or the old NextUI ELF names. Those names are not produced by the current overlay. The packages that replaced `flip-jackd`, `keymon.elf`, and `S12gpudriver` still remove the old path in their own install step. PulseAudio 17's meson build installs `/usr/bin/pulseaudio` with the client libraries; `BR2_PACKAGE_PULSEAUDIO_DAEMON` only adds the init script, and that option is off. `external.mk` removes the daemon binary. `route` and `test` fail when PipeWire or the playback command fails. The Flip was not on the LAN for a live `wpctl` check. The `6ea59c` tar stays at `/home/ale/zlyme-keep/`.

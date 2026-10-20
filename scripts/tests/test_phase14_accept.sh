@@ -39,7 +39,7 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '0adc5b6dd787b5e538227a59c4eb981fa4343973' \
+need "$ROOT/package/system/nextui/nextui.mk" '3e4289713ba9ff83c2036b467cec2d47b9115a2d' \
 	"NextUI pin is the volume-transition snapshot"
 if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
 	row "no Pulse init script in the overlay" FAIL FAIL n/a n/a

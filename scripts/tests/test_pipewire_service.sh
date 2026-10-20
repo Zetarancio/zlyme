@@ -163,9 +163,10 @@ grep -q 'linking.follow-default-target = true' "$conf" || fail "stream follow"
 grep -q 'policy.zlyme-volume = required' "$conf" || fail "volume hook not required"
 rules=$ROOT/board/my355/fsoverlay/etc/udev/rules.d/90-zlyme-audio.rules
 grep -q 'SUBSYSTEM=="drm"' "$rules" || fail "hdmi cable is not a sound event"
-if grep -q 'SUBSYSTEM=="sound"' "$rules" || grep -q 'SUBSYSTEM=="bluetooth"' "$rules"; then
-	fail "udev still routes on sound or adapter events"
+if grep -q 'SUBSYSTEM=="sound"' "$rules"; then
+	fail "udev still routes on sound-card events"
 fi
+grep -q 'a2dp-connect' "$rules" || fail "ACL link does not request A2DP"
 if grep -q ' &' "$rules"; then
 	fail "udev still backgrounds the route"
 fi
@@ -328,4 +329,47 @@ if sh "$AUDIO" test >/dev/null 2>&1; then
 	fail "a failed playback test was success"
 fi
 export ZLYME_PW_RUNTIME=$saved
+# Connected headset with the A2DP Sink UUID, and no bluez node yet.
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+export ZLYME_PW_NODES=$work/nodes
+export ZLYME_PW_RUNTIME=$work/rt
+unset ZLYME_HDMI_AUDIO ZLYME_HDMI_ELD
+cat > "$work/bin/bluetoothctl" << 'EOF'
+#!/bin/sh
+if [ "$1" = devices ]; then
+	echo "Device AA:BB:CC:DD:EE:FF Headset"
+	exit 0
+fi
+if [ "$1" = info ]; then
+	echo "Connected: yes"
+	echo "UUID: Audio Sink (0000110b-0000-1000-8000-00805f9b34fb)"
+	exit 0
+fi
+exit 0
+EOF
+cat > "$work/bin/dbus-send" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$DBUS_LOG"
+exit 0
+EOF
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+exit 0
+EOF
+chmod 755 "$work/bin/bluetoothctl" "$work/bin/dbus-send" "$work/bin/wpctl"
+export DBUS_LOG=$work/dbus.log
+: > "$DBUS_LOG"
+: > "$WP_LOG"
+sh "$AUDIO" a2dp-connect || fail "a2dp-connect"
+grep -q 'ConnectProfile' "$DBUS_LOG" || fail "A2DP profile was not requested $(cat "$DBUS_LOG")"
+grep -q '0000110b-0000-1000-8000-00805f9b34fb' "$DBUS_LOG" || fail "wrong profile"
+grep -q 'set-default 55' "$WP_LOG" || fail "route did not keep a sink $(cat "$WP_LOG")"
+printf 'codec\t55\nbt\t62\n' > "$work/nodes"
+: > "$DBUS_LOG"
+sh "$AUDIO" a2dp-connect || fail "a2dp-connect with sink"
+if grep -q 'ConnectProfile' "$DBUS_LOG"; then
+	fail "ConnectProfile ran although the sink exists"
+fi
+grep -q 'set-default 62' "$WP_LOG" || fail "existing A2DP sink was not selected"
 echo "pipewire service ok"
