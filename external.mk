@@ -1,5 +1,17 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_ZLYME_PATH)/package/*/*/*.mk))
 
+# PulseAudio 17 installs src/daemon/pulseaudio with the client libraries.
+# BR2_PACKAGE_PULSEAUDIO_DAEMON only adds S50pulseaudio. pipewire-pulse
+# is the server, so the extra binary does not belong on the target.
+ifeq ($(BR2_PACKAGE_PULSEAUDIO),y)
+ifneq ($(BR2_PACKAGE_PULSEAUDIO_DAEMON),y)
+define ZLYME_DROP_PULSE_DAEMON_BINARY
+	rm -f $(TARGET_DIR)/usr/bin/pulseaudio
+endef
+TARGET_FINALIZE_HOOKS += ZLYME_DROP_PULSE_DAEMON_BINARY
+endif
+endif
+
 # Board hooks register only for the selected device. my355 is the only
 # one today; a second board adds another clause, not a plugin loader.
 ifeq ($(BR2_ZLYME_DEVICE_MY355),y)

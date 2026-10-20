@@ -155,13 +155,6 @@ fi
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-radios" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-radios"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-combo" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-combo"
 [ -e "${TARGET_DIR}/usr/sbin/zlyme-bluetooth" ] && chmod 0755 "${TARGET_DIR}/usr/sbin/zlyme-bluetooth"
-# Removed from the overlay. A previous target tree still has the copies,
-# and Buildroot does not delete files the overlay no longer ships.
-rm -f "${TARGET_DIR}/etc/init.d/S21pulse" \
-	"${TARGET_DIR}/etc/init.d/S45bluealsa" \
-	"${TARGET_DIR}/etc/init.d/S46btsink" \
-	"${TARGET_DIR}/etc/init.d/S50pulseaudio" \
-	"${TARGET_DIR}/usr/sbin/zlyme-btsink"
 [ -e "${TARGET_DIR}/etc/init.d/rcS" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rcS"
 [ -e "${TARGET_DIR}/etc/init.d/rc.late" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/rc.late"
 [ -e "${TARGET_DIR}/etc/init.d/S30dbus-daemon" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S30dbus-daemon"
@@ -170,13 +163,6 @@ rm -f "${TARGET_DIR}/etc/init.d/S21pulse" \
 [ -e "${TARGET_DIR}/etc/init.d/S12splash" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S12splash"
 [ -e "${TARGET_DIR}/etc/init.d/S18zlymeupdate" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S18zlymeupdate"
 [ -e "${TARGET_DIR}/etc/init.d/S15gpudriver" ] && chmod 0755 "${TARGET_DIR}/etc/init.d/S15gpudriver"
-rm -f "${TARGET_DIR}/etc/init.d/S12gpudriver" \
-	"${TARGET_DIR}/usr/bin/keymon.elf" \
-	"${TARGET_DIR}/usr/sbin/zlyme-volmon" \
-	"${TARGET_DIR}/etc/init.d/S26keymon" \
-	"${TARGET_DIR}/usr/sbin/flip-jackd" \
-	"${TARGET_DIR}/usr/bin/minarch.elf" \
-	"${TARGET_DIR}/usr/bin/gametimectl.elf"
 ln -sfn zlyme-led "${TARGET_DIR}/usr/sbin/ledcontrol"
 
 if [ -e "${TARGET_DIR}/usr/bin/portmaster" ]; then
@@ -457,18 +443,6 @@ PY
 	done
 	sbc=$(find "${TARGET_DIR}/usr/lib" -name '*bluez5*sbc*' -print -quit)
 	[ -n "$sbc" ] || note "PipeWire BlueZ SBC plugin is missing"
-	# Buildroot still installs the pulseaudio binary when the daemon
-	# option is off. It must not be startable beside PipeWire.
-	if ! br2_selected BR2_PACKAGE_PULSEAUDIO_DAEMON; then
-		rm -f "${TARGET_DIR}/usr/bin/pulseaudio"
-	fi
-	if ! br2_selected BR2_PACKAGE_BLUEZ_ALSA; then
-		rm -f "${TARGET_DIR}/usr/bin/bluealsa" \
-			"${TARGET_DIR}/usr/bin/bluealsad" \
-			"${TARGET_DIR}/usr/bin/bluealsa-aplay"
-		rm -f "${TARGET_DIR}"/usr/lib/alsa-lib/libasound_module_ctl_bluealsa.so \
-			"${TARGET_DIR}"/usr/lib/alsa-lib/libasound_module_pcm_bluealsa.so
-	fi
 fi
 
 exit "${fail}"

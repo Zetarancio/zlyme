@@ -171,8 +171,8 @@ if grep -q ' &' "$rules"; then
 fi
 grep -q 'zlyme-audio route' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua" || fail "late sink does not reroute"
 grep -q 'hold)' "$AUDIO" || fail "transient gain"
-if ! grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh"; then
-	fail "stale pulse init script is not removed from the target"
+if grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh"; then
+	fail "post-build still deletes a retired init script"
 fi
 
 # Live playback nodes publish alsa.id and do not publish api.alsa.card.id.
@@ -286,7 +286,7 @@ cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
 case "$1" in
 	status)
-		printf '%s\n' ' ├─ Sinks:' ' │      33. Built-in Audio Stereo' ' │  *   55. Built-in Audio Stereo' ' ├─ Sources:'
+		printf '%s\n' 'Audio' ' ├─ Sinks:' ' │      33. Built-in Audio Stereo               [vol: 0.09]' ' │  *   55. Built-in Audio Stereo               [vol: 0.09]' ' ├─ Sources:' ' │      44. Built-in Audio Stereo               [vol: 1.00]' 'Video' ' ├─ Sinks:'
 		;;
 	inspect)
 		case "$2" in
@@ -316,5 +316,16 @@ if sh "$AUDIO" setSystemVolume 10 >/dev/null 2>&1; then
 	fail "a down PipeWire service was treated as success"
 fi
 grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "a down service rewrote the saved volume"
+if sh "$AUDIO" route >/dev/null 2>&1; then
+	fail "route succeeded without PipeWire"
+fi
+cat > "$work/bin/speaker-test" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod 755 "$work/bin/speaker-test"
+if sh "$AUDIO" test >/dev/null 2>&1; then
+	fail "a failed playback test was success"
+fi
 export ZLYME_PW_RUNTIME=$saved
 echo "pipewire service ok"

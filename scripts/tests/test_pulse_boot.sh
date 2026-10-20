@@ -23,7 +23,9 @@ if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
 	fail "S50pulseaudio is still installed"
 fi
 grep -q 'S33pipewire' "$LATE" || fail "rc.late does not start pipewire"
-grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh" || fail "post-build does not drop a stale S21pulse"
+if grep -q 'S21pulse\|S45bluealsa\|S46btsink\|zlyme-btsink\|flip-jackd' "$ROOT/board/my355/post-build.sh"; then
+	fail "post-build still deletes retired files"
+fi
 # The input block and the pipewire block are separate background groups.
 awk '
 	/inputplumber-start/ { input = 1 }

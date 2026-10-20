@@ -183,9 +183,14 @@ PY
 
 _nodes_from_wpctl() {
 	command -v "${ZLYME_WPCTL:-wpctl}" >/dev/null 2>&1 || return 1
+	# wpctl 0.5.14 prints " │  *   56. name" under Audio → Sinks.
+	# The first number-dot on that line is the node id. The volume
+	# "0.09" is later on the same line. Video has its own Sinks heading.
 	ids=$("${ZLYME_WPCTL:-wpctl}" status 2>/dev/null | awk '
-		/Sinks:/ { on = 1; next }
-		/Sources:/ { on = 0 }
+		/^Audio$/ { audio = 1; next }
+		/^Video$/ { audio = 0; on = 0; next }
+		audio && /Sinks:/ { on = 1; next }
+		audio && /Sources:/ { on = 0; next }
 		on && match($0, /[0-9]+\./) {
 			print substr($0, RSTART, RLENGTH - 1)
 		}
@@ -309,7 +314,10 @@ focus_role() {
 }
 
 route() {
-	pipewire_up || return 0
+	pipewire_up || {
+		echo "$(basename "$0"): PipeWire is not running" >&2
+		return 1
+	}
 	choice=$(choose "$(pref)")
 	focus_role "$choice" || return 1
 	vol=$(saved ZLYME_VOLUME || true)
@@ -463,19 +471,19 @@ setSystemVolume)
 	case "$v" in
 		mute)
 			[ "$now" -gt 0 ] && save ZLYME_PREMUTE "$now"
-			set_volume 0
+			set_volume 0 || exit 1
 			;;
 		unmute)
 			restore=$(saved ZLYME_PREMUTE) || restore=""
-			set_volume "${restore:-50}"
+			set_volume "${restore:-50}" || exit 1
 			;;
 		mute-toggle)
 			if [ "$now" -gt 0 ]; then
 				save ZLYME_PREMUTE "$now"
-				set_volume 0
+				set_volume 0 || exit 1
 			else
 				restore=$(saved ZLYME_PREMUTE) || restore=""
-				set_volume "${restore:-50}"
+				set_volume "${restore:-50}" || exit 1
 			fi
 			;;
 		[+-]*)
@@ -486,11 +494,11 @@ setSystemVolume)
 			esac
 			[ "$new" -lt 0 ] && new=0
 			[ "$new" -gt 100 ] && new=100
-			set_volume "$new"
+			set_volume "$new" || exit 1
 			;;
 		*)
 			if echo "$v" | grep -qE '^[0-9]+$' && [ "$v" -le 100 ]; then
-				set_volume "$v"
+				set_volume "$v" || exit 1
 			else
 				echo "$(basename "$0"): invalid volume '${v}'" >&2
 				exit 1
@@ -499,8 +507,10 @@ setSystemVolume)
 	esac
 	;;
 test)
-	speaker-test -D default -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 ||
+	speaker-test -D default -c 2 -t sine -f 440 -l 1 >/dev/null 2>&1 || {
 		echo "$(basename "$0"): could not open the current sink" >&2
+		exit 1
+	}
 	;;
 export)
 	printf 'XDG_RUNTIME_DIR=%s; export XDG_RUNTIME_DIR\n' "$RT"
@@ -516,12 +526,9 @@ node-id)
 	printf '%s\n' "$id"
 	;;
 pulse-service)
-	if pipewire_up; then
-		[ -n "$(node_id codec || true)" ]
-		exit $?
-	fi
-	command -v pactl >/dev/null 2>&1 || exit 1
-	pactl list short sinks 2>/dev/null | awk '$2 == "codec" { found = 1 } END { exit !found }'
+	pipewire_up || exit 1
+	[ -n "$(node_id codec || true)" ]
+	exit $?
 	;;
 migrate-volume)
 	migrate_volume
