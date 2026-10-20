@@ -44,7 +44,17 @@ save() {
 		echo "$(basename "$0"): ${dir} is not there -- is the card mounted?" >&2
 		return 1
 	fi
-	tmp=$(mktemp "$dir/audio.conf.XXXXXX") || return 1
+	lock="$dir/audio.conf.lock"
+	n=0
+	while ! mkdir "$lock" 2>/dev/null; do
+		n=$((n + 1))
+		[ "$n" -gt 50 ] && return 1
+		sleep 0.02
+	done
+	tmp=$(mktemp "$dir/audio.conf.XXXXXX") || {
+		rmdir "$lock" 2>/dev/null || true
+		return 1
+	}
 	if [ -r "$STATE" ]; then
 		grep -v "^${key}=" "$STATE" > "$tmp" 2>/dev/null || : > "$tmp"
 	else
@@ -52,9 +62,32 @@ save() {
 	fi
 	printf '%s=%s\n' "$key" "$val" >> "$tmp" || {
 		rm -f "$tmp"
+		rmdir "$lock" 2>/dev/null || true
 		return 1
 	}
 	mv -f "$tmp" "$STATE"
+	rmdir "$lock" 2>/dev/null || true
+}
+
+drop_key() {
+	key=$1
+	[ -r "$STATE" ] || return 0
+	grep -q "^${key}=" "$STATE" || return 0
+	dir=$(dirname "$STATE")
+	lock="$dir/audio.conf.lock"
+	n=0
+	while ! mkdir "$lock" 2>/dev/null; do
+		n=$((n + 1))
+		[ "$n" -gt 50 ] && return 1
+		sleep 0.02
+	done
+	tmp=$(mktemp "$dir/audio.conf.XXXXXX") || {
+		rmdir "$lock" 2>/dev/null || true
+		return 1
+	}
+	grep -v "^${key}=" "$STATE" > "$tmp" 2>/dev/null || : > "$tmp"
+	mv -f "$tmp" "$STATE"
+	rmdir "$lock" 2>/dev/null || true
 }
 
 clamp_volume() {
@@ -176,19 +209,24 @@ wp() {
 	"${ZLYME_WPCTL:-wpctl}" "$@"
 }
 
+# 0 applied to every listed sink, 2 no sinks, 1 a command failed.
 apply_gain() {
 	v=$1
 	g=$(linear_gain "$v")
-	id=$(node_id "$(current)") || true
-	if [ -n "$id" ]; then
-		wp set-volume "$id" "$g" >/dev/null 2>&1 || true
-	fi
-	# Keep the other sinks at the same gain when they exist.
 	tab=$(printf '\t')
-	nodes | while IFS="$tab" read -r role nid; do
+	list=$(nodes 2>/dev/null) || return 1
+	[ -n "$list" ] || return 2
+	mark=$(mktemp) || return 1
+	printf '%s\n' "$list" | while IFS="$tab" read -r role nid; do
 		[ -n "$nid" ] || continue
-		wp set-volume "$nid" "$g" >/dev/null 2>&1 || true
+		wp set-volume "$nid" "$g" >/dev/null 2>&1 || echo fail >> "$mark"
 	done
+	if [ -s "$mark" ]; then
+		rm -f "$mark"
+		return 1
+	fi
+	rm -f "$mark"
+	return 0
 }
 
 choose() {
@@ -229,7 +267,6 @@ focus_role() {
 	if mkdir -p "$RT" 2>/dev/null; then
 		printf '%s\n' "$role" > "$RT/active" 2>/dev/null || true
 	fi
-	apply_deferred || true
 	return 0
 }
 
@@ -237,6 +274,9 @@ route() {
 	pipewire_up || return 0
 	choice=$(choose "$(pref)")
 	focus_role "$choice" || true
+	vol=$(saved ZLYME_VOLUME || true)
+	[ -n "$vol" ] || return 0
+	apply_gain "$vol"
 }
 
 why_unavailable() {
@@ -286,55 +326,57 @@ set_volume() {
 	fi
 	if pipewire_up; then
 		apply_gain "$v"
-	else
-		amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || true
+		rc=$?
+		# No sink yet: the saved number is applied when one appears.
+		[ "$rc" -eq 2 ] && return 0
+		return "$rc"
 	fi
+	amixer -q -c "$CARD" sset "$VOLCTL" "${v}%" 2>/dev/null || true
 }
 
+# Saved percent is the user intention. It is applied on every graph.
+# ZLYME_GAIN_STATE from the previous candidate is not that intention.
 migrate_volume() {
 	src=$(saved ZLYME_VOLUME_SRC || true)
-	if [ "$src" = pipewire-cubic ]; then
-		apply_deferred
-		return 0
+	if [ "$src" != pipewire-cubic ]; then
+		now=$(saved ZLYME_VOLUME || true)
+		if [ -z "$now" ]; then
+			now=$(amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
+				sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1)
+		fi
+		if ! now=$(clamp_volume "$now"); then
+			now=40
+		fi
+		save ZLYME_VOLUME "$now" || return 1
+		save ZLYME_VOLUME_SRC pipewire-cubic || return 1
 	fi
-	now=$(saved ZLYME_VOLUME || true)
-	if [ -z "$now" ]; then
-		now=$(amixer -c "$CARD" sget "$VOLCTL" 2>/dev/null |
-			sed -n 's/.*\[\([0-9]*\)%\].*/\1/p' | head -n 1)
-	fi
-	if ! now=$(clamp_volume "$now"); then
-		now=40
-	fi
-	save ZLYME_VOLUME "$now" || return 1
-	save ZLYME_VOLUME_SRC pipewire-cubic || return 1
-	save ZLYME_GAIN_STATE deferred || return 1
+	# Old ZLYME_SINK was the last automatic route, not a manual choice.
 	if [ -z "$(saved ZLYME_SINK_PREF || true)" ]; then
-		old=$(saved ZLYME_SINK || true)
-		case "$old" in
-			codec|hdmi|bt) save ZLYME_SINK_PREF "$old" || true ;;
-			*) save ZLYME_SINK_PREF auto || true ;;
-		esac
+		save ZLYME_SINK_PREF auto || return 1
 	fi
-	apply_deferred
-}
-
-apply_deferred() {
-	[ "$(saved ZLYME_GAIN_STATE || true)" = applied ] && return 0
-	[ "$(saved ZLYME_VOLUME_SRC || true)" = pipewire-cubic ] || return 0
+	drop_key ZLYME_GAIN_STATE || true
 	vol=$(saved ZLYME_VOLUME || true)
 	[ -n "$vol" ] || return 0
 	pipewire_up || return 0
-	id=$(node_id codec || true)
-	if [ -z "$id" ]; then
-		[ "$(saved ZLYME_GAIN_STATE || true)" = deferred ] || save ZLYME_GAIN_STATE deferred || true
-		return 0
+	apply_gain "$vol"
+	rc=$?
+	[ "$rc" -eq 2 ] && return 0
+	return "$rc"
+}
+
+active_role() {
+	role=
+	if [ -r "$RT/active" ]; then
+		read -r role < "$RT/active" || role=
 	fi
-	g=$(linear_gain "$vol")
-	if wp set-volume "$id" "$g" >/dev/null 2>&1; then
-		save ZLYME_GAIN_STATE applied || true
-	else
-		save ZLYME_GAIN_STATE deferred || true
-	fi
+	case "$role" in
+		codec|hdmi|bt) printf '%s\n' "$role"; return ;;
+	esac
+	s=$(saved ZLYME_SINK || true)
+	case "$s" in
+		codec|hdmi|bt) printf '%s\n' "$s"; return ;;
+	esac
+	printf '%s\n' codec
 }
 
 case "${1:-status}" in
@@ -348,7 +390,7 @@ list)
 	done
 	;;
 get)
-	current
+	pref
 	;;
 set)
 	case "$2" in
@@ -365,7 +407,7 @@ remember)
 	esac
 	;;
 status)
-	sink=$(current)
+	sink=$(active_role)
 	printf 'sink: %s\n' "$sink"
 	printf 'preference: %s\n' "$(pref)"
 	if reason=$(why_unavailable "$sink"); then
@@ -427,7 +469,7 @@ test)
 export)
 	printf 'XDG_RUNTIME_DIR=%s; export XDG_RUNTIME_DIR\n' "$RT"
 	printf 'PIPEWIRE_RUNTIME_DIR=%s; export PIPEWIRE_RUNTIME_DIR\n' "$RT"
-	printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(current)"
+	printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(active_role)"
 	;;
 route)
 	route

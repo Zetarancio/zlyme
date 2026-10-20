@@ -76,6 +76,8 @@ export ZLYME_CFG=$work/cfg
 printf 'ZLYME_CFG=%s\n' "$work/cfg" > "$work/z.conf"
 export ZLYME_CONF=$work/z.conf
 export ZLYME_AUDIO=$AUDIO
+export ZLYME_PW_CHECK_PULSE=0
+export ZLYME_PW_CODEC_TRIES=1
 printf 'ZLYME_VOLUME=40\nZLYME_PREMUTE=15\n' > "$work/cfg/audio.conf"
 # No codec node yet.
 printf '' > "$work/nodes"
@@ -93,8 +95,11 @@ export WP_LOG=$work/wp.log
 sh "$LAUNCH" start
 grep -qx codec-waiting "$work/rt/service" || fail "status $(cat "$work/rt/service")"
 grep -q '^ZLYME_VOLUME_SRC=pipewire-cubic$' "$work/cfg/audio.conf" || fail "data not converted"
-grep -q '^ZLYME_GAIN_STATE=deferred$' "$work/cfg/audio.conf" || fail "gain marked applied with no codec"
+if grep -q '^ZLYME_GAIN_STATE=' "$work/cfg/audio.conf"; then
+	fail "runtime gain state was stored on disk"
+fi
 grep -q '^ZLYME_PREMUTE=15$' "$work/cfg/audio.conf" || fail "premute dropped"
+grep -q '^ZLYME_SINK_PREF=auto$' "$work/cfg/audio.conf" || fail "old sink became a manual preference"
 # The pipewire pid must not be the pipewire-pulse process.
 ppid=$(cat "$work/rt/pipewire.pid")
 tr '\0' '\n' < "/proc/$ppid/cmdline" | sed 's|.*/||' | grep -qx pipewire || fail "pipewire identity $(tr '\0' ' ' < /proc/$ppid/cmdline)"
@@ -110,9 +115,35 @@ kill "$ppid" 2>/dev/null || true
 
 # Late codec. Restart pieces are dead; just the audio helper.
 printf 'codec\t7\nhdmi\t8\nbt\t9\n' > "$work/nodes"
+: > "$WP_LOG"
 sh "$AUDIO" migrate-volume
-grep -q '^ZLYME_GAIN_STATE=applied$' "$work/cfg/audio.conf" || fail "late codec did not receive gain"
-grep -q 'set-volume 7 0.064000' "$WP_LOG" || fail "cubic gain $(cat "$WP_LOG")"
+grep -q 'set-volume 7 0.064000' "$WP_LOG" || fail "first graph $(cat "$WP_LOG")"
+grep -q 'set-volume 8 0.064000' "$WP_LOG" || fail "hdmi missed the saved gain"
+grep -q 'set-volume 9 0.064000' "$WP_LOG" || fail "bt missed the saved gain"
+: > "$WP_LOG"
+sh "$AUDIO" migrate-volume
+grep -q 'set-volume 7 0.064000' "$WP_LOG" || fail "second graph skipped the saved gain"
+printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_GAIN_STATE=applied\nZLYME_PREMUTE=15\n' > "$work/cfg/audio.conf"
+: > "$WP_LOG"
+sh "$AUDIO" migrate-volume
+grep -q 'set-volume 7 0$' "$WP_LOG" || grep -q 'set-volume 7 0.000000' "$WP_LOG" || fail "mute was not reapplied $(cat "$WP_LOG")"
+if grep -q '^ZLYME_GAIN_STATE=' "$work/cfg/audio.conf"; then
+	fail "old applied marker survived"
+fi
+for spec in "1 0.000001" "10 0.001000" "50 0.125000" "100 1"; do
+	set -- $spec
+	printf 'ZLYME_VOLUME=%s\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' "$1" > "$work/cfg/audio.conf"
+	: > "$WP_LOG"
+	sh "$AUDIO" migrate-volume
+	grep -q "set-volume 7 $2" "$WP_LOG" || fail "percent $1 gain $(cat "$WP_LOG")"
+done
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+exit 1
+EOF
+if sh "$AUDIO" route; then
+	fail "failed wpctl was treated as success"
+fi
 # Three nodes, tab separated, all seen by node-id.
 [ "$(sh "$AUDIO" node-id bt)" = 9 ] || fail "bt id"
 [ "$(sh "$AUDIO" node-id hdmi)" = 8 ] || fail "hdmi id"

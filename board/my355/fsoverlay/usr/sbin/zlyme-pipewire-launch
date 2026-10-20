@@ -83,12 +83,27 @@ start)
 	wait_sock "$RT/pulse/native" || { status "failed: pulse socket"; exit 1; }
 	status pulse
 	audio=${ZLYME_AUDIO:-/usr/sbin/zlyme-audio}
-	if [ -x "$audio" ]; then
-		"$audio" migrate-volume >/dev/null 2>&1 || true
-		"$audio" route >/dev/null 2>&1 || true
+	if [ "${ZLYME_PW_CHECK_PULSE:-1}" = 1 ] && command -v pactl >/dev/null 2>&1; then
+		if ! pactl info >/dev/null 2>&1; then
+			status "failed: pulse protocol"
+			exit 1
+		fi
 	fi
+	tries=${ZLYME_PW_CODEC_TRIES:-60}
+	n=0
+	while [ "$n" -lt "$tries" ]; do
+		if [ -x "$audio" ]; then
+			"$audio" migrate-volume >/dev/null 2>&1 || true
+			if "$audio" node-id codec >/dev/null 2>&1 && "$audio" route >/dev/null 2>&1; then
+				status ready
+				exit 0
+			fi
+		fi
+		sleep 0.5
+		n=$((n + 1))
+	done
 	if [ -x "$audio" ] && "$audio" node-id codec >/dev/null 2>&1; then
-		status ready
+		status "failed: gain"
 	else
 		status codec-waiting
 	fi

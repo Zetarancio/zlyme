@@ -1,0 +1,3 @@
+# One shot when a sound or Bluetooth device appears. Not a poller.
+ACTION=="add|change", SUBSYSTEM=="sound", RUN+="/bin/sh -c '/usr/sbin/zlyme-audio route >/dev/null 2>&1 &'"
+ACTION=="add|change", SUBSYSTEM=="bluetooth", RUN+="/bin/sh -c '/usr/sbin/zlyme-audio route >/dev/null 2>&1 &'"

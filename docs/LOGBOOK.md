@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-20 — Saved volume is applied on every PipeWire graph
+
+`ZLYME_GAIN_STATE=applied` is not kept. WirePlumber `main-embedded` does not restore sink volumes, so a marker from the previous boot skipped the next one. Each graph reads the saved 0–100 number and sets linear gain `(percent/100)^3`. A new node starts at `device.routes.default-sink-volume = 0.0` until that gain is set. `zlyme-audio get` is the preference, including `auto`. The active role is `/run/zlyme/pipewire/active`, and `export` puts that in `ZLYME_SINK` for the session. Old `ZLYME_SINK=bt` is not treated as a manual choice. Not heard on a Flip. Do not install `a886cec`.
+
 ## 2026-10-20 — PipeWire startup no longer claims ready from a socket
 
 WirePlumber 0.5.14 is started with the `main-embedded` profile. ALSA matches use `api.alsa.card.id`, not the descriptive name. `a2dp_source` is the headphone role. `rc.late` starts InputPlumber without waiting for a codec node. Volume data is marked `pipewire-cubic` only as a stored percent, and `ZLYME_GAIN_STATE` stays `deferred` until `wpctl` applies it to a real codec node. `S21pulse`, BlueALSA, and `zlyme-btsink` are gone from the product boot. `zlyme-jackd` still sets the RK817 mux. Not heard on a Flip. The `693c048` tar is not the install candidate.
