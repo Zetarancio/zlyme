@@ -41,7 +41,7 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '8de5cc8979aefd406d3f1fef6056f967afde9b62' \
+need "$ROOT/package/system/nextui/nextui.mk" 'de8f05439fcfe9064b82cae87673107bc2323ae2' \
 	"NextUI pin follows the active audio route"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio" '@DEFAULT_AUDIO_SINK@' \
 	"route reads the PipeWire default"
@@ -89,6 +89,12 @@ row "BT headset indicator on b8b490" n/a n/a FAIL n/a
 row "volume response on b8b490" n/a n/a FAIL n/a
 row "HDMI audibility on b8b490" n/a n/a FAIL FAIL
 row "HDMI fell back to speaker on b8b490" n/a n/a OBSERVED n/a
+row "volume UI on 1178d5" n/a n/a PASS n/a
+row "Recent firmware art on 1178d5" n/a n/a PASS n/a
+row "BT latency on 1178d5" n/a n/a FAIL n/a
+row "BT cold-boot route on 1178d5" n/a n/a FAIL n/a
+row "BT headset icon on 1178d5" n/a n/a FAIL n/a
+row "HDMI audibility on 1178d5" n/a n/a FAIL FAIL
 row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
 row "Abombniball MENU+START" n/a n/a FAIL n/a
 if awk '
@@ -104,6 +110,10 @@ if awk '
 	/^row "volume response on b8b490"/ && /PASS/ { bad = 1 }
 	/^row "HDMI audibility on b8b490"/ && /PASS/ { bad = 1 }
 	/^row "HDMI fell back to speaker on b8b490"/ && /PASS/ { bad = 1 }
+	/^row "BT latency on 1178d5"/ && /PASS/ { bad = 1 }
+	/^row "BT cold-boot route on 1178d5"/ && /PASS/ { bad = 1 }
+	/^row "BT headset icon on 1178d5"/ && /PASS/ { bad = 1 }
+	/^row "HDMI audibility on 1178d5"/ && /PASS/ { bad = 1 }
 	/^row "A2DP default on 7eb86d2"/ && /PASS/ { bad = 1 }
 	END { exit !bad }
 ' "$0"; then
