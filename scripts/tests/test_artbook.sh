@@ -168,20 +168,20 @@ fi
 # Both allow-listed identities become this render. A file that already
 # is this render is left alone.
 mig=$(mktemp -d)
-mkdir -p "$mig/Recently Played/.media" "$mig/.config/zlyme"
+mkdir -p "$mig/Recently Played/.media"
 printf 'old-bytes\n' > "$mig/old"
 oldhash=$(sha256sum "$mig/old" | awk '{print $1}')
 printf '%s\n%s\n' "$oldhash" "$recent_new" > "$mig/known"
 cp "$mig/old" "$mig/Recently Played/.media/bg.png"
-: > "$mig/.config/zlyme/recent-art-seeded"
 printf 'history\n' > "$mig/Recently Played/list.txt"
 ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \
 	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$work/once/special/recent.png \
 	ZLYME_RECENT_KNOWN=$mig/known \
 	sh "$ROOT/package/system/nextui/zlyme/zlyme-stock-seed"
-cmp -s "$work/once/special/recent.png" "$mig/Recently Played/.media/bg.png" \
-	|| fail "allow-listed stock was not replaced with the new render"
+[ ! -e "$mig/Recently Played/.media/bg.png" ] \
+	|| fail "allow-listed stock still hides the firmware picture"
 [ "$(cat "$mig/Recently Played/list.txt")" = "history" ] || fail "migration changed history"
+cp "$work/once/special/recent.png" "$mig/Recently Played/.media/bg.png"
 before=$(stat -c '%Y' "$mig/Recently Played/.media/bg.png")
 sleep 1
 ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \

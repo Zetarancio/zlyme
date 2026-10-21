@@ -89,48 +89,22 @@ seed_standalones() {
 	install_cfg "$_drastic" "$STORAGE/.config/drastic/drastic.cfg" 0
 }
 
-# One copy of the firmware Recently Played picture into the virtual
-# directory NextUI already reads. The marker stops a later boot from
-# putting the stock file back after the person deletes it. A file
-# whose hash is in the known-stock list is a previous built-in
-# picture and is replaced. Anything else stays. A failed copy leaves
-# the marker unset. This does not touch history or bg.png.
+# NextUI reads the firmware Recently Played picture itself. This does
+# not copy it and does not create the folder. A previous built-in
+# picture at the old path would hide the firmware file, so that hash
+# is removed. A picture the person made stays. History is untouched.
 seed_recent() {
-	_marker=$STORAGE/.config/zlyme/recent-art-seeded
 	_dest=$STORAGE/Recently\ Played/.media/bg.png
-	_global=$STORAGE/bg.png
 	_src=${ZLYME_RECENT_ART:-/usr/share/nextui/artbook/special/recent.png}
 	_known=${ZLYME_RECENT_KNOWN:-$SHARE/recent-stock.sha256}
-	if [ -f "$_marker" ]; then
-		if [ -f "$_dest" ] && [ -f "$_src" ] && [ -f "$_known" ]; then
-			_have=$(sha256sum "$_dest" | awk '{print $1}')
-			_new=$(sha256sum "$_src" | awk '{print $1}')
-			if [ "$_have" != "$_new" ] && grep -qx "$_have" "$_known"; then
-				install_cfg "$_src" "$_dest" 1 || return 1
-			fi
-		fi
-		return 0
-	fi
-	mkdir -p "$STORAGE/.config/zlyme" || return 1
-	if [ -f "$_dest" ] || [ -f "$_global" ]; then
-		: > "$_marker" || return 1
-		return 0
-	fi
-	# A minimal image has no picture. Do not record that as finished.
+	[ -f "$_dest" ] || return 0
 	[ -f "$_src" ] || return 0
-	_dir=$STORAGE/Recently\ Played/.media
-	mkdir -p "$_dir" || return 1
-	_tmp=$(mktemp "$_dir/.zlyme-stock.XXXXXX") || return 1
-	if ! cp "$_src" "$_tmp"; then
-		rm -f "$_tmp"
-		return 1
-	fi
-	sync_file "$_tmp"
-	if ! mv -f "$_tmp" "$_dest"; then
-		rm -f "$_tmp"
-		return 1
-	fi
-	: > "$_marker" || return 1
+	[ -f "$_known" ] || return 0
+	_have=$(sha256sum "$_dest" | awk '{print $1}')
+	_new=$(sha256sum "$_src" | awk '{print $1}')
+	[ "$_have" = "$_new" ] && return 0
+	grep -qx "$_have" "$_known" || return 0
+	rm -f "$_dest"
 }
 
 case "$MODE" in
