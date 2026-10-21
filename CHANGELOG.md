@@ -20,7 +20,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Opening a game list no longer puts the previous system's picture back after you have moved on.
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
 - The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
-- A playing Bluetooth headset uses the lit Bluetooth mark. A Bluetooth connection that is not the current output uses the dim mark. HDMI uses the separate audio mark. The mark follows the output without opening Settings.
+- A playing Bluetooth headset uses the headset mark. A Bluetooth connection that is not the current output uses the Bluetooth mark. HDMI uses the separate audio mark. The mark follows the output without opening Settings.
+- A paired headset is connected when it becomes available, including when that is after the menu is already on screen.
 
 ### Changed
 
@@ -31,7 +32,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor, including with the longer buffer, until someone listens to that build. The image installed on 2026-10-21 played Bluetooth games, and HDMI fell back to the speaker. The current candidate has not been heard. Abombniball does not leave on MENU+START.
+- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor, including with the longer buffer, until someone listens to that build. The image installed on 2026-10-21 played Bluetooth games. The delay on a headset is still too large, and that delay has not been measured against wired headphones. HDMI on the television is still silent. Abombniball does not leave on MENU+START.
 
 ## [zlyme44.3] - 2026-10-16
 
