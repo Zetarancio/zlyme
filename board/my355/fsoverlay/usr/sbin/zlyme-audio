@@ -309,10 +309,21 @@ focus_role() {
 	id=$(node_id "$role" || true)
 	[ -n "$id" ] || return 1
 	wp set-default "$id" >/dev/null 2>&1 || return 1
-	if mkdir -p "$RT" 2>/dev/null; then
-		printf '%s\n' "$role" > "$RT/active" 2>/dev/null || true
-	fi
+	remember_role "$role"
 	return 0
+}
+
+remember_role() {
+	if mkdir -p "$RT" 2>/dev/null; then
+		printf '%s\n' "$1" > "$RT/active" 2>/dev/null || true
+	fi
+}
+
+# wpctl prints "id 64, type PipeWire:Interface:Node". The comma is not
+# part of the id. An empty result is not a successful match.
+default_sink_id() {
+	wp inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null |
+		awk '/^id / { gsub(/,/, "", $2); print $2; exit }'
 }
 
 route() {
@@ -321,13 +332,12 @@ route() {
 		return 1
 	}
 	choice=$(choose "$(pref)")
-	cur=
-	if [ -r "$RT/active" ]; then
-		read -r cur < "$RT/active" || cur=
-	fi
-	# The active file is the last set-default this command wrote.
-	# A repeat while that node still exists must not rewrite gain.
-	if [ "$cur" = "$choice" ] && [ -n "$(node_id "$choice" || true)" ]; then
+	id=$(node_id "$choice" || true)
+	cur=$(default_sink_id || true)
+	# The active file is a cache for the UI. The default node is the
+	# route. A matching id is left alone, including its gain.
+	if [ -n "$id" ] && [ -n "$cur" ] && [ "$cur" = "$id" ]; then
+		remember_role "$choice"
 		return 0
 	fi
 	focus_role "$choice" || return 1

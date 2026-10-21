@@ -43,6 +43,11 @@ need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-puls
 	"pipewire-pulse is started as its own argv"
 need "$ROOT/package/system/nextui/nextui.mk" '41f1ef17118ba1bdcd7034c25be677dd8435c65c' \
 	"NextUI pin follows the active audio route"
+need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio" '@DEFAULT_AUDIO_SINK@' \
+	"route reads the PipeWire default"
+NEXT=${ZLYME_NEXTUI_SRC:-$ROOT/../NextUI}
+need "$NEXT/workspace/all/nextui/nextui.c" 'zlyme_recent_bg_choice' \
+	"Recently Played resolves without the folder"
 if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
 	row "no Pulse init script in the overlay" FAIL FAIL n/a n/a
 	fail=1
@@ -75,6 +80,9 @@ row "BT audibility on 6ea59c" n/a n/a PENDING PENDING
 row "HDMI audibility on 6ea59c" n/a n/a PENDING PENDING
 row "RetroArch BT listen" n/a n/a PENDING PENDING
 row "RetroArch HDMI listen" n/a n/a PENDING PENDING
+row "A2DP default on 7eb86d2" n/a n/a OBSERVED n/a
+row "RetroArch/PPSSPP BT on 7eb86d2" n/a n/a n/a FAIL
+row "HDMI audibility on 7eb86d2" n/a n/a PENDING PENDING
 row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
 row "Abombniball MENU+START" n/a n/a FAIL n/a
 if awk '
@@ -84,6 +92,9 @@ if awk '
 	/^row "RetroArch HDMI listen"/ && /PASS/ { bad = 1 }
 	/^row "A2DP transport on 6ea59c"/ && /PASS/ { bad = 1 }
 	/^row "HDMI graph on 6ea59c"/ && /PASS/ { bad = 1 }
+	/^row "RetroArch\/PPSSPP BT on 7eb86d2"/ && /PASS/ { bad = 1 }
+	/^row "HDMI audibility on 7eb86d2"/ && /PASS/ { bad = 1 }
+	/^row "A2DP default on 7eb86d2"/ && /PASS/ { bad = 1 }
 	END { exit !bad }
 ' "$0"; then
 	echo "phase14 accept: a 6ea59c listen was marked PASS" >&2

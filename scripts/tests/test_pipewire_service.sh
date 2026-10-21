@@ -185,9 +185,22 @@ if grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh"; then
 fi
 
 # Live playback nodes publish alsa.id and do not publish api.alsa.card.id.
+# set-default records the node. inspect of the default prints that id.
+export WP_DEFAULT=$work/wp-default
+rm -f "$WP_DEFAULT"
 cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$*" >> "$WP_LOG"
+case "$1" in
+	set-default)
+		printf '%s\n' "$2" > "$WP_DEFAULT"
+		;;
+	inspect)
+		if [ "$2" = "@DEFAULT_AUDIO_SINK@" ] && [ -s "$WP_DEFAULT" ]; then
+			printf 'id %s, type PipeWire:Interface:Node\n' "$(cat "$WP_DEFAULT")"
+		fi
+		;;
+esac
 exit 0
 EOF
 chmod 755 "$work/bin/wpctl"
@@ -268,6 +281,12 @@ sh "$AUDIO" route || fail "repeat route"
 if grep -q 'set-default\|set-volume' "$WP_LOG"; then
 	fail "unchanged route rewrote the graph $(cat "$WP_LOG")"
 fi
+# The active file still says bt. The real default is the codec.
+printf 'bt\n' > "$work/rt/active"
+printf '33\n' > "$WP_DEFAULT"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "stale cache route"
+grep -q 'set-default 70' "$WP_LOG" || fail "stale active file skipped the real default $(cat "$WP_LOG")"
 : > "$WP_LOG"
 sh "$AUDIO" hold 40 || fail "hold"
 grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "hold rewrote the saved volume"
@@ -368,9 +387,20 @@ EOF
 cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$*" >> "$WP_LOG"
+case "$1" in
+	set-default)
+		printf '%s\n' "$2" > "$WP_DEFAULT"
+		;;
+	inspect)
+		if [ "$2" = "@DEFAULT_AUDIO_SINK@" ] && [ -s "$WP_DEFAULT" ]; then
+			printf 'id %s, type PipeWire:Interface:Node\n' "$(cat "$WP_DEFAULT")"
+		fi
+		;;
+esac
 exit 0
 EOF
 chmod 755 "$work/bin/bluetoothctl" "$work/bin/dbus-send" "$work/bin/wpctl"
+rm -f "$WP_DEFAULT"
 export DBUS_LOG=$work/dbus.log
 : > "$DBUS_LOG"
 : > "$WP_LOG"

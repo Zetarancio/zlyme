@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-21 — Installed 7eb86d2 Bluetooth silence
+
+The maintainer installed `zlyme-my355-20261020-7eb86d2970b2.tar` (rootfs `54820d528b73d7a98a57332789cc381ecaa0f16b8c0d81544b47f3497eea92bb`) and heard silence from RetroArch and PPSSPP over Bluetooth. HDMI was not tested. The headset mark was absent. Deleting `/storage/Recently Played/` left the seed marker, so the firmware picture was not used. On boot `015e946c-1ef5-4049-9edc-fd1146e1c09a` the buds were the default A2DP sink, profile `a2dp-sink`, codec SBC, transport idle, saved volume 85, cubic gain about 0.61. No emulator was running. That graph is not a listen. `route` was still trusting `/run/zlyme/pipewire/active`.
+
 ## 2026-10-21 — A2DP recovery stays off the udev worker
 
 `6ea59c` produced both boot results: a connected headset with no A2DP sink until `ConnectProfile`, and a later boot where `bluez_output` appeared with no such call. The ACL udev rule is not the recovery. One background `a2dp-connect` after PipeWire is ready asks for the Audio Sink UUID only when that node is absent. The volume hook waits until `wpctl` lists a new A2DP node and then routes once. `zlyme-audio set` prints the active route. HDMI and Bluetooth audibility on `6ea59c` are still pending. Speaker and headphone playback heard on `0d8a3cf`, and the `00e6c343` quality report, stay attributed to those images.
