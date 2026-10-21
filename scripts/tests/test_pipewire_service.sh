@@ -159,6 +159,13 @@ grep -q 'priority.session = 1000' "$conf" || fail "hdmi priority"
 grep -q 'priority.session = 3000' "$conf" || fail "a2dp priority"
 grep -q 'default-sink-volume = 0.064' "$conf" || fail "silent route default"
 grep -q 'a2dp_source' "$conf" || fail "a2dp source role"
+grep -q -F 'bluez5.auto-connect = [ a2dp_sink ]' "$conf" || fail "remote sink is not auto-connected"
+if grep -q -F 'bluez5.auto-connect = [ a2dp_source ]' "$conf"; then
+	fail "auto-connect uses the local sender role"
+fi
+if grep -q 'a2dp-connect' "$LAUNCH"; then
+	fail "PipeWire ready still starts a second A2DP recovery"
+fi
 grep -q 'linking.follow-default-target = true' "$conf" || fail "stream follow"
 grep -q 'policy.zlyme-volume = required' "$conf" || fail "volume hook not required"
 rules=$ROOT/board/my355/fsoverlay/etc/udev/rules.d/90-zlyme-audio.rules
@@ -541,4 +548,47 @@ while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
 done
 [ ! -d "$ZLYME_PW_RUNTIME/volume-apply" ] || fail "a failed apply kept running"
 grep -q '^ZLYME_VOLUME=40$' "$work/cfg/audio.conf" || fail "a failed apply rewrote the saved volume"
+# A dead holder must not block the next press. An empty directory is
+# the same failure.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+mkdir -p "$ZLYME_PW_RUNTIME/volume-apply"
+echo 999999 > "$ZLYME_PW_RUNTIME/volume-apply/pid"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 15 || fail "stale volume lock rejected the save"
+i=0
+while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
+[ ! -d "$ZLYME_PW_RUNTIME/volume-apply" ] || fail "a dead volume holder kept the lock"
+grep -q 'set-volume 55' "$WP_LOG" || fail "a dead holder suppressed the apply $(cat "$WP_LOG")"
+mkdir -p "$ZLYME_PW_RUNTIME/volume-apply"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 16 || fail "empty volume lock rejected the save"
+i=0
+while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
+grep -q 'set-volume 55' "$WP_LOG" || fail "an empty lock suppressed the apply"
+# One HDMI launch can record the route. Twelve lines retire the flag.
+trace=$work/hdmi-trace
+log=$work/hdmi-trace.log
+: > "$trace"
+export ZLYME_HDMI_TRACE=$trace ZLYME_HDMI_TRACE_LOG=$log
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+export ZLYME_HDMI_AUDIO=1
+printf '55\n' > "$WP_DEFAULT"
+sh "$AUDIO" route || fail "traced route"
+grep -q 'state=yes' "$log" || fail "HDMI trace was empty $(cat "$log")"
+[ -f "$trace" ] || fail "one trace line retired the flag"
+printf '%s\n' line line line line line line line line line line line > "$log"
+sh "$AUDIO" route || fail "retiring route"
+[ ! -e "$trace" ] || fail "the HDMI trace flag survived twelve lines"
+unset ZLYME_HDMI_TRACE ZLYME_HDMI_TRACE_LOG ZLYME_HDMI_AUDIO
 echo "pipewire service ok"

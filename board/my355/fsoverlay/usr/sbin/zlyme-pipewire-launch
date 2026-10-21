@@ -96,14 +96,10 @@ start)
 			"$audio" migrate-volume >/dev/null 2>&1 || true
 			if "$audio" node-id codec >/dev/null 2>&1 && "$audio" route >/dev/null 2>&1; then
 				status ready
-				# One recovery if a headset is already connected and
-				# has no transport. It returns immediately when the
-				# sink exists, and it does not hold this ready state.
-				if command -v setsid >/dev/null 2>&1; then
-					setsid "$audio" a2dp-connect >/dev/null 2>&1 &
-				else
-					"$audio" a2dp-connect >/dev/null 2>&1 &
-				fi
+				# A headset that appears later is PipeWire's
+				# bluez5.auto-connect on the card. This ready path
+				# does not call ConnectProfile and does not wait
+				# for bluetoothd.
 				exit 0
 			fi
 		fi

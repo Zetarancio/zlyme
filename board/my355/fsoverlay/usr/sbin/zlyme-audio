@@ -345,6 +345,33 @@ remember_role() {
 	fi
 }
 
+# Opt-in. Touch the flag before one HDMI launch. route() appends at
+# most twelve lines, then removes the flag. It does not change the route.
+hdmi_trace() {
+	flag=${ZLYME_HDMI_TRACE:-/storage/.config/zlyme/hdmi-audio-trace}
+	[ -f "$flag" ] || return 0
+	[ -L "$flag" ] && return 0
+	log=${ZLYME_HDMI_TRACE_LOG:-/storage/.logs/hdmi-audio-trace.log}
+	mkdir -p "$(dirname "$log")" 2>/dev/null || return 0
+	state=$(hdmi_audio_state)
+	up=$(awk '{print $1; exit}' /proc/uptime 2>/dev/null || printf '%s\n' 0)
+	sad=
+	eld=${ZLYME_HDMI_ELD:-}
+	if [ -z "$eld" ]; then
+		eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
+	fi
+	if [ -n "$eld" ] && [ -r "$eld" ]; then
+		sad=$(grep 'sad_count' "$eld" 2>/dev/null | head -n 1 | tr -s '[:space:]' ' ')
+	fi
+	active=$(cat "$RT/active" 2>/dev/null || true)
+	printf '%s state=%s choice=%s default=%s active=%s %s\n' \
+		"$up" "$state" "$1" "$2" "$active" "$sad" >> "$log" 2>/dev/null || return 0
+	n=$(wc -l < "$log" 2>/dev/null || printf '%s\n' 0)
+	if [ "$n" -ge 12 ]; then
+		rm -f "$flag"
+	fi
+}
+
 # wpctl prints "id 64, type PipeWire:Interface:Node". The comma is not
 # part of the id. An empty result is not a successful match.
 default_sink_id() {
@@ -360,6 +387,7 @@ route() {
 	choice=$(choose "$(pref)")
 	id=$(node_id "$choice" || true)
 	cur=$(default_sink_id || true)
+	hdmi_trace "$choice" "$cur"
 	# The active file is a cache for the UI. The default node is the
 	# route. A matching id is left alone, including its gain.
 	if [ -n "$id" ] && [ -n "$cur" ] && [ "$cur" = "$id" ]; then
@@ -400,13 +428,22 @@ volume() {
 spawn_apply() {
 	dir=$RT/volume-apply
 	mkdir -p "$RT" 2>/dev/null || return 0
-	mkdir "$dir" 2>/dev/null || return 0
+	if ! mkdir "$dir" 2>/dev/null; then
+		pid=$(cat "$dir/pid" 2>/dev/null || true)
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			return 0
+		fi
+		# The holder exited without removing the directory.
+		rm -rf "$dir"
+		mkdir "$dir" 2>/dev/null || return 0
+	fi
 	# Ignore hangup so the caller's shell can exit. The saved percent
-	# stays if this process does not.
+	# stays if this process does not. $! is the applier; exec keeps it.
 	(
 		trap '' HUP INT
 		exec "$0" apply-saved
 	) >/dev/null 2>&1 &
+	echo $! > "$dir/pid" 2>/dev/null || true
 }
 
 apply_saved() {
@@ -431,7 +468,7 @@ apply_saved() {
 		[ "$now" = "$want" ] || continue
 		[ "$last" = "$want" ] && break
 	done
-	rmdir "$dir" 2>/dev/null || true
+	rm -rf "$dir" 2>/dev/null || true
 	now=$(saved ZLYME_VOLUME || true)
 	# A failed apply does not respawn. The next press, or a new sink,
 	# starts one applier. A write during the release does.
