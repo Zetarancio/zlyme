@@ -10,7 +10,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - Settings → Game → Orphan game preferences removes a per-ROM governor or emulator choice when that ROM is gone. A folder or system choice stays. A choice for the second card stays while that card is out.
 - The system list shows a transparent Art Book picture behind each system when you have not chosen your own image. A game list does not add a second wallpaper. Each included tool has an illustration of that tool, and the firmware draws the tool's name on it, centered like the system names. The pictures are part of the firmware. You do not download an artwork pack. Your `.media` art and `/storage/bg.png` stay in front. The pictures are CC BY-NC-SA 2.0. Settings → Appearance → Use folder background for ROMs starts on, and turning it off keeps the plain background.
-- Recently Played shows the built-in picture even when that folder is gone. A picture you already put in the folder stays. Your own replacement goes in the NextUI shared art folder, and deleting it brings the built-in picture back. `/storage/bg.png` still applies when you have not set one of those. Names stay off the built-in picture.
+- Recently Played shows the built-in picture even when that folder is gone. Your own replacement goes in the NextUI shared art folder, and deleting it brings the built-in picture back. `/storage/bg.png` still applies when you have not set one of those. A picture left in the folder is not used. An update from zlyme44.3 keeps a picture you put there when it is not a built-in render. Names stay off the built-in picture.
 - The firmware includes SDL 3.4.12 with KMS, OpenGL ES, and Wayland. SDL 2 is unchanged. An SDL 3 game is not a promise that every SDL 3 program runs.
 - Delete game removes that ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A folder or system choice stays. A save for another system stays. A game with the same name on another card stays. If the delete stops early, the game stays in the list.
 - SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was. Turning one on while Wi-Fi is off leaves that switch on and the service stopped.
@@ -19,6 +19,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - Opening a game list no longer puts the previous system's picture back after you have moved on.
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
+- The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
+- A playing Bluetooth headset uses the lit Bluetooth mark. A Bluetooth connection that is not the current output uses the dim mark. HDMI uses the separate audio mark. The mark follows the output without opening Settings.
 
 ### Changed
 
@@ -29,7 +31,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor, including with the longer buffer, until someone listens to that build. Abombniball does not leave on MENU+START.
+- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor, including with the longer buffer, until someone listens to that build. The image installed on 2026-10-21 played Bluetooth games, and HDMI fell back to the speaker. The current candidate has not been heard. Abombniball does not leave on MENU+START.
 
 ## [zlyme44.3] - 2026-10-16
 

@@ -81,8 +81,14 @@ row "HDMI audibility on 6ea59c" n/a n/a PENDING PENDING
 row "RetroArch BT listen" n/a n/a PENDING PENDING
 row "RetroArch HDMI listen" n/a n/a PENDING PENDING
 row "A2DP default on 7eb86d2" n/a n/a OBSERVED n/a
-row "RetroArch/PPSSPP BT on 7eb86d2" n/a n/a n/a FAIL
+row "BT routed to RK817 on 7eb86d2" n/a n/a OBSERVED FAIL
 row "HDMI audibility on 7eb86d2" n/a n/a PENDING PENDING
+row "RetroArch BT on b8b490" n/a n/a n/a PASS
+row "PPSSPP BT on b8b490" n/a n/a n/a PASS
+row "BT headset indicator on b8b490" n/a n/a FAIL n/a
+row "volume response on b8b490" n/a n/a FAIL n/a
+row "HDMI audibility on b8b490" n/a n/a FAIL FAIL
+row "HDMI fell back to speaker on b8b490" n/a n/a OBSERVED n/a
 row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
 row "Abombniball MENU+START" n/a n/a FAIL n/a
 if awk '
@@ -92,8 +98,12 @@ if awk '
 	/^row "RetroArch HDMI listen"/ && /PASS/ { bad = 1 }
 	/^row "A2DP transport on 6ea59c"/ && /PASS/ { bad = 1 }
 	/^row "HDMI graph on 6ea59c"/ && /PASS/ { bad = 1 }
-	/^row "RetroArch\/PPSSPP BT on 7eb86d2"/ && /PASS/ { bad = 1 }
+	/^row "BT routed to RK817 on 7eb86d2"/ && /PASS/ { bad = 1 }
 	/^row "HDMI audibility on 7eb86d2"/ && /PASS/ { bad = 1 }
+	/^row "BT headset indicator on b8b490"/ && /PASS/ { bad = 1 }
+	/^row "volume response on b8b490"/ && /PASS/ { bad = 1 }
+	/^row "HDMI audibility on b8b490"/ && /PASS/ { bad = 1 }
+	/^row "HDMI fell back to speaker on b8b490"/ && /PASS/ { bad = 1 }
 	/^row "A2DP default on 7eb86d2"/ && /PASS/ { bad = 1 }
 	END { exit !bad }
 ' "$0"; then

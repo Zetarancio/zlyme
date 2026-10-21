@@ -118,7 +118,7 @@ Box art is `{folder}/.media/{rom stem}.png`: the same basename as the game file 
 
 A system folder uses `{folder}/.media/bg.png` when that file exists. A game list uses `{folder}/.media/bglist.png`. `/storage/bg.png` is the next choice. On the system list, if none of those exist, Zlyme shows a transparent Art Book picture for that system. Inside a game list, Zlyme does not add its own wallpaper. Your images are not replaced. Settings → Appearance → Use folder background for ROMs starts on. Turning it off keeps the plain background. The pictures are CC BY-NC-SA 2.0.
 
-Recently Played shows a built-in picture even when that folder is not on the card. A picture already at `/storage/Recently Played/.media/bg.png` stays in front of it. The next place for your own picture is `/storage/.config/nextui/shared/artbook/special/recent.png`. `/storage/bg.png` comes after that. Deleting your picture brings the built-in one back. An older built-in copy in the folder is removed on boot so it does not hide the new one. A picture you made is left alone. The built-in picture keeps names off to the left. A long name can scroll there. It is not a separate download.
+Recently Played shows a built-in picture even when that folder is not on the card. Your own picture goes at `/storage/.config/nextui/shared/artbook/special/recent.png`. `/storage/bg.png` comes after that. Deleting your picture brings the built-in one back. A picture left in the Recently Played folder is not used. An update from zlyme44.3 keeps a picture you put there, unless it is one of the built-in renders, and does not remove it. The built-in picture keeps names off to the left. A long name can scroll there. It is not a separate download.
 
 ## USB file transfer
 
