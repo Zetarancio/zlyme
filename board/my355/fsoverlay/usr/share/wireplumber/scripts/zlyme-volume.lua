@@ -95,7 +95,7 @@ SimpleEventHook {
   interests = {
     EventInterest {
       Constraint { "event.type", "=", "node-removed" },
-      Constraint { "media.class", "=", "Audio/Sink" },
+      Constraint { "media.class", "matches", "Audio/Sink", type = "pw-global" },
     },
   },
   execute = function()

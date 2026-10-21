@@ -227,16 +227,31 @@ node_id() {
 	nodes | awk -F '\t' -v r="$role" '$1 == r { print $2; exit }'
 }
 
-hdmi_has_audio() {
-	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && return 0
-	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && return 1
+# yes: ELD advertises a format. no: a parsed ELD has no audio.
+# pending: the connector is mid-modeset and the ELD is still version 0
+# or empty. That is not a reason to leave HDMI or to enter it.
+hdmi_audio_state() {
 	eld=${ZLYME_HDMI_ELD:-}
+	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && { printf '%s\n' yes; return; }
+	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && { printf '%s\n' no; return; }
 	if [ -z "$eld" ]; then
 		eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
 	fi
-	[ -n "$eld" ] || return 1
+	[ -n "$eld" ] || { printf '%s\n' pending; return; }
 	# The kernel separates the field with tabs, not spaces.
-	grep -q 'sad_count[[:space:]]*[1-9]' "$eld"
+	if grep -q 'sad_count[[:space:]]*[1-9]' "$eld"; then
+		printf '%s\n' yes
+		return
+	fi
+	if grep -q 'sad_count[[:space:]]*0' "$eld"; then
+		printf '%s\n' no
+		return
+	fi
+	printf '%s\n' pending
+}
+
+hdmi_has_audio() {
+	[ "$(hdmi_audio_state)" = yes ]
 }
 
 # Displayed percent stays the stored integer. PipeWire's wpctl float is
@@ -293,9 +308,20 @@ choose() {
 		printf '%s\n' bt
 		return 0
 	fi
-	if [ -n "$(node_id hdmi || true)" ] && hdmi_has_audio; then
+	state=$(hdmi_audio_state)
+	hid=$(node_id hdmi || true)
+	if [ -n "$hid" ] && [ "$state" = yes ]; then
 		printf '%s\n' hdmi
 		return 0
+	fi
+	# A blank ELD during modeset must not move a stream that is
+	# already on the HDMI node. It also must not select that node.
+	if [ -n "$hid" ] && [ "$state" = pending ]; then
+		cur=$(default_sink_id || true)
+		if [ -n "$cur" ] && [ "$cur" = "$hid" ]; then
+			printf '%s\n' hdmi
+			return 0
+		fi
 	fi
 	if [ -n "$(node_id codec || true)" ]; then
 		printf '%s\n' codec

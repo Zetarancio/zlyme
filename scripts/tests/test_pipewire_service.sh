@@ -172,6 +172,7 @@ fi
 lua=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua
 grep -q 'node-id bt' "$lua" || fail "late A2DP node is not waited for"
 grep -q 'node-removed' "$lua" || fail "sink removal does not reroute"
+grep -q 'type = "pw-global"' "$lua" || fail "sink removal does not see the node class"
 if grep -q 'while \[ "\$i" -lt 8 \]; do /usr/sbin/zlyme-audio route' "$lua"; then
 	fail "route still retries unconditionally"
 fi
@@ -474,6 +475,24 @@ printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
 : > "$WP_LOG"
 sh "$AUDIO" route || fail "removal route"
 grep -q 'set-default 51' "$WP_LOG" || fail "A2DP removal did not fall back $(cat "$WP_LOG")"
+# A blank ELD does not pull an existing HDMI default onto the codec.
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+printf 'sad_count missing\n' > "$work/eld"
+export ZLYME_HDMI_ELD=$work/eld
+unset ZLYME_HDMI_AUDIO
+printf '51\n' > "$WP_DEFAULT"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "pending eld route"
+if grep -q 'set-default 55' "$WP_LOG"; then
+	fail "a blank ELD moved HDMI onto the speaker $(cat "$WP_LOG")"
+fi
+# A parsed ELD selects HDMI when the headset node is gone.
+printf 'sad_count\t\t2\n' > "$work/eld"
+printf '55\n' > "$WP_DEFAULT"
+printf 'bt\n' > "$work/rt/active"
+: > "$WP_LOG"
+sh "$AUDIO" route || fail "valid eld route"
+grep -q 'set-default 51' "$WP_LOG" || fail "valid ELD left the speaker $(cat "$WP_LOG")"
 # Volume apply is not on the caller's clock. A slow wpctl still returns,
 # and a newer press replaces the older one.
 cat > "$work/bin/wpctl" << 'EOF'
