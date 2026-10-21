@@ -26,9 +26,10 @@ usage: $(basename "$0") <command>
   test
   export
   route
+  hdmi-event
+  policy
   migrate-volume
   hold {0-100}
-  a2dp-connect
 EOF
 }
 
@@ -266,7 +267,13 @@ linear_gain() {
 }
 
 wp() {
-	"${ZLYME_WPCTL:-wpctl}" "$@"
+	# The worker's life lock is fd 8. A child must not inherit it, or
+	# killing the worker leaves the lock held by wpctl.
+	if [ -n "${ZLYME_VOLUME_WORKER:-}" ]; then
+		"${ZLYME_WPCTL:-wpctl}" "$@" 8>&-
+	else
+		"${ZLYME_WPCTL:-wpctl}" "$@"
+	fi
 }
 
 # 0 applied to every listed sink, 2 no sinks, 1 a command failed.
@@ -277,10 +284,13 @@ apply_gain() {
 	list=$(nodes 2>/dev/null) || return 1
 	[ -n "$list" ] || return 2
 	mark=$(mktemp) || return 1
-	printf '%s\n' "$list" | while IFS="$tab" read -r role nid; do
+	listfile=$(mktemp) || { rm -f "$mark"; return 1; }
+	printf '%s\n' "$list" > "$listfile"
+	while IFS="$tab" read -r role nid; do
 		[ -n "$nid" ] || continue
 		wp set-volume "$nid" "$g" >/dev/null 2>&1 || echo fail >> "$mark"
-	done
+	done < "$listfile"
+	rm -f "$listfile"
 	if [ -s "$mark" ]; then
 		rm -f "$mark"
 		return 1
@@ -289,71 +299,16 @@ apply_gain() {
 	return 0
 }
 
-choose() {
-	want=$1
-	case "$want" in
-		codec|hdmi|bt)
-			id=$(node_id "$want" || true)
-			if [ -n "$id" ]; then
-				if [ "$want" = hdmi ] && ! hdmi_has_audio; then
-					:
-				else
-					printf '%s\n' "$want"
-					return 0
-				fi
-			fi
-			;;
-	esac
-	if [ -n "$(node_id bt || true)" ]; then
-		printf '%s\n' bt
-		return 0
-	fi
-	state=$(hdmi_audio_state)
-	hid=$(node_id hdmi || true)
-	if [ -n "$hid" ] && [ "$state" = yes ]; then
-		printf '%s\n' hdmi
-		return 0
-	fi
-	# A blank ELD during modeset must not move a stream that is
-	# already on the HDMI node. It also must not select that node.
-	if [ -n "$hid" ] && [ "$state" = pending ]; then
-		cur=$(default_sink_id || true)
-		if [ -n "$cur" ] && [ "$cur" = "$hid" ]; then
-			printf '%s\n' hdmi
-			return 0
-		fi
-	fi
-	if [ -n "$(node_id codec || true)" ]; then
-		printf '%s\n' codec
-		return 0
-	fi
-	printf '%s\n' codec
-}
-
-focus_role() {
-	role=$1
-	id=$(node_id "$role" || true)
-	[ -n "$id" ] || return 1
-	wp set-default "$id" >/dev/null 2>&1 || return 1
-	remember_role "$role"
-	return 0
-}
-
-remember_role() {
-	if mkdir -p "$RT" 2>/dev/null; then
-		printf '%s\n' "$1" > "$RT/active" 2>/dev/null || true
-	fi
-}
-
-# Opt-in. Touch the flag before one HDMI launch. route() appends at
-# most twelve lines, then removes the flag. It does not change the route.
+# Opt-in. Touch the flag before one HDMI launch. Each DRM event appends
+# one line, at most twelve, then removes the flag. The line is the ELD
+# and the policy decision. It does not set a sink.
 hdmi_trace() {
 	flag=${ZLYME_HDMI_TRACE:-/storage/.config/zlyme/hdmi-audio-trace}
 	[ -f "$flag" ] || return 0
 	[ -L "$flag" ] && return 0
 	log=${ZLYME_HDMI_TRACE_LOG:-/storage/.logs/hdmi-audio-trace.log}
 	mkdir -p "$(dirname "$log")" 2>/dev/null || return 0
-	state=$(hdmi_audio_state)
+	state=$1
 	up=$(awk '{print $1; exit}' /proc/uptime 2>/dev/null || printf '%s\n' 0)
 	sad=
 	eld=${ZLYME_HDMI_ELD:-}
@@ -364,12 +319,45 @@ hdmi_trace() {
 		sad=$(grep 'sad_count' "$eld" 2>/dev/null | head -n 1 | tr -s '[:space:]' ' ')
 	fi
 	active=$(cat "$RT/active" 2>/dev/null || true)
-	printf '%s state=%s choice=%s default=%s active=%s %s\n' \
-		"$up" "$state" "$1" "$2" "$active" "$sad" >> "$log" 2>/dev/null || return 0
+	choice=$(policy_role 2>/dev/null || true)
+	def=
+	if pipewire_up; then
+		def=$(default_sink_id || true)
+	fi
+	conn=${ZLYME_HDMI_CONNECTOR:-}
+	printf '%s eld=%s connector=%s pref=%s choice=%s default=%s active=%s %s\n' \
+		"$up" "$state" "$conn" "$(pref)" "$choice" "$def" "$active" "$sad" >> "$log" 2>/dev/null || return 0
 	n=$(wc -l < "$log" 2>/dev/null || printf '%s\n' 0)
 	if [ "$n" -ge 12 ]; then
 		rm -f "$flag"
 	fi
+}
+
+# The same decision as zlyme-policy.lua. The active file is what the
+# graph last published. It is not a preference.
+policy_role() {
+	pol=${ZLYME_POLICY:-/usr/share/wireplumber/scripts/zlyme-policy.lua}
+	[ -f "$pol" ] || return 1
+	cur=$(cat "$RT/active" 2>/dev/null || true)
+	case "$cur" in
+		codec|hdmi|bt) ;;
+		*) cur=- ;;
+	esac
+	nodes | lua "$pol" "$(pref)" "$(hdmi_audio_state)" "$cur"
+}
+
+# Publish the ELD and wake WirePlumber. A configured default outranks
+# node priority for the rest of the session, so this does not set one.
+signal_graph() {
+	state=$(hdmi_audio_state)
+	if mkdir -p "$RT" 2>/dev/null; then
+		printf '%s\n' "$state" > "$RT/hdmi-audio" 2>/dev/null || true
+	fi
+	hdmi_trace "$state"
+	if [ -S "$RT/pipewire-0" ] && command -v pw-metadata >/dev/null 2>&1; then
+		pw-metadata -n default 0 zlyme.hdmi "$state" >/dev/null 2>&1 || true
+	fi
+	return 0
 }
 
 # wpctl prints "id 64, type PipeWire:Interface:Node". The comma is not
@@ -380,24 +368,7 @@ default_sink_id() {
 }
 
 route() {
-	pipewire_up || {
-		echo "$(basename "$0"): PipeWire is not running" >&2
-		return 1
-	}
-	choice=$(choose "$(pref)")
-	id=$(node_id "$choice" || true)
-	cur=$(default_sink_id || true)
-	hdmi_trace "$choice" "$cur"
-	# The active file is a cache for the UI. The default node is the
-	# route. A matching id is left alone, including its gain.
-	if [ -n "$id" ] && [ -n "$cur" ] && [ "$cur" = "$id" ]; then
-		remember_role "$choice"
-		return 0
-	fi
-	focus_role "$choice" || return 1
-	vol=$(saved ZLYME_VOLUME || true)
-	[ -n "$vol" ] || return 0
-	apply_gain "$vol"
+	signal_graph
 }
 
 why_unavailable() {
@@ -423,58 +394,64 @@ volume() {
 	printf '%s\n' "$v"
 }
 
-# One background applier. A newer saved percent replaces an older one.
-# Callers return after the file write. wpctl does not run on their thread.
+# One worker holds the life lock for its whole life, including the
+# slow wpctl. The state lock is only the handoff. A caller writes the
+# percent first, then takes the state lock and tries the life lock.
+# The worker re-reads the percent while it still holds the state lock,
+# and drops the life lock before it releases that state lock. A caller
+# blocked on the state lock therefore either sees the new percent
+# applied by this worker or starts the next one. There is no pid file.
+# Closing the life fd, or killing the worker, releases the lock.
 spawn_apply() {
-	dir=$RT/volume-apply
+	state=$RT/volume.state
+	life=$RT/volume.life
 	mkdir -p "$RT" 2>/dev/null || return 0
-	if ! mkdir "$dir" 2>/dev/null; then
-		pid=$(cat "$dir/pid" 2>/dev/null || true)
-		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-			return 0
-		fi
-		# The holder exited without removing the directory.
-		rm -rf "$dir"
-		mkdir "$dir" 2>/dev/null || return 0
+	exec 9>>"$state"
+	flock 9 || { exec 9>&-; return 0; }
+	exec 8>>"$life"
+	if flock -n 8; then
+		(
+			trap '' HUP INT
+			ZLYME_VOLUME_WORKER=1
+			export ZLYME_VOLUME_WORKER
+			exec 9>&-
+			exec "$0" apply-saved
+		) >/dev/null 2>&1 &
+		exec 8>&-
+	else
+		exec 8>&-
 	fi
-	# Ignore hangup so the caller's shell can exit. The saved percent
-	# stays if this process does not. $! is the applier; exec keeps it.
-	(
-		trap '' HUP INT
-		exec "$0" apply-saved
-	) >/dev/null 2>&1 &
-	echo $! > "$dir/pid" 2>/dev/null || true
+	flock -u 9
+	exec 9>&-
 }
 
 apply_saved() {
-	dir=$RT/volume-apply
-	last=
-	n=0
-	while [ "$n" -lt 8 ]; do
+	state=$RT/volume.state
+	want=
+	while :; do
+		exec 7>>"$state"
+		flock 7 || { exec 7>&-; exec 8>&-; return 0; }
 		want=$(saved ZLYME_VOLUME || true)
+		flock -u 7
+		exec 7>&-
 		[ -n "$want" ] || break
-		if [ "$want" = "$last" ]; then
-			break
-		fi
-		n=$((n + 1))
 		if ! pipewire_up; then
-			last=$want
 			break
 		fi
-		if apply_gain "$want"; then
-			last=$want
-		fi
+		apply_gain "$want" || true
+		exec 7>>"$state"
+		flock 7 || { exec 7>&-; exec 8>&-; return 0; }
 		now=$(saved ZLYME_VOLUME || true)
-		[ "$now" = "$want" ] || continue
-		[ "$last" = "$want" ] && break
+		if [ "$now" = "$want" ]; then
+			exec 8>&-
+			flock -u 7
+			exec 7>&-
+			return 0
+		fi
+		flock -u 7
+		exec 7>&-
 	done
-	rm -rf "$dir" 2>/dev/null || true
-	now=$(saved ZLYME_VOLUME || true)
-	# A failed apply does not respawn. The next press, or a new sink,
-	# starts one applier. A write during the release does.
-	if [ -n "$last" ] && [ -n "$now" ] && [ "$now" != "$last" ]; then
-		spawn_apply
-	fi
+	exec 8>&-
 }
 
 set_volume() {
@@ -552,39 +529,17 @@ set)
 		auto|codec|hdmi|bt) save ZLYME_SINK_PREF "$2" || exit 1 ;;
 		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
 	esac
-	route || exit 1
-	echo "sink: $(active_role)"
-	;;
-a2dp-connect)
-	# Best-effort recovery for a headset that is already Connected and
-	# has no bluez_output. One call, after PipeWire is ready. A device
-	# without the remote Audio Sink UUID, including a HID pad, is left
-	# alone. Trust and pairing are not changed. A sink that already
-	# exists is not asked to connect again.
-	pipewire_up || exit 0
-	if [ -n "$(node_id bt || true)" ]; then
-		route || exit 0
-		exit 0
+	signal_graph
+	if [ -S "$RT/pipewire-0" ] && command -v pw-metadata >/dev/null 2>&1; then
+		pw-metadata -n default 0 zlyme.pref "$2" >/dev/null 2>&1 || true
 	fi
-	command -v bluetoothctl >/dev/null 2>&1 || exit 0
-	list=$(mktemp) || exit 1
-	bluetoothctl devices >"$list" 2>/dev/null || : >"$list"
-	while read -r _ mac _; do
-		case "$mac" in
-			*:*:*) ;;
-			*) continue ;;
-		esac
-		info=$(bluetoothctl info "$mac" 2>/dev/null) || continue
-		printf '%s\n' "$info" | grep -q 'Connected: yes' || continue
-		printf '%s\n' "$info" | grep -q '0000110b' || continue
-		dev=/org/bluez/hci0/dev_$(printf '%s' "$mac" | tr ':' '_')
-		dbus-send --system --print-reply --reply-timeout=4000 \
-			--dest=org.bluez "$dev" org.bluez.Device1.ConnectProfile \
-			string:0000110b-0000-1000-8000-00805f9b34fb \
-			>/dev/null 2>&1 || true
-	done <"$list"
-	rm -f "$list"
-	route || exit 0
+	echo "preference: $2"
+	;;
+hdmi-event)
+	signal_graph
+	;;
+policy)
+	policy_role
 	;;
 hold)
 	# Apply a gain without rewriting the saved percent. Power-off uses
@@ -693,9 +648,10 @@ migrate-volume)
 	;;
 focus)
 	case "$2" in
-		codec|hdmi|bt) focus_role "$2" || exit 1 ;;
+		auto|codec|hdmi|bt) save ZLYME_SINK_PREF "$2" || exit 1 ;;
 		*) echo "$(basename "$0"): unknown sink '${2}'" >&2; exit 1 ;;
 	esac
+	signal_graph
 	;;
 -h|--help|help)
 	do_usage

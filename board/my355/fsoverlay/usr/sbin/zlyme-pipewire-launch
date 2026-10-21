@@ -94,23 +94,19 @@ start)
 	while [ "$n" -lt "$tries" ]; do
 		if [ -x "$audio" ]; then
 			"$audio" migrate-volume >/dev/null 2>&1 || true
-			if "$audio" node-id codec >/dev/null 2>&1 && "$audio" route >/dev/null 2>&1; then
+			if "$audio" node-id codec >/dev/null 2>&1; then
+				# Publish the ELD once so the policy hook can see
+				# it. WirePlumber selects the sink. This does not
+				# wait for bluetoothd or call ConnectProfile.
+				"$audio" hdmi-event >/dev/null 2>&1 || true
 				status ready
-				# A headset that appears later is PipeWire's
-				# bluez5.auto-connect on the card. This ready path
-				# does not call ConnectProfile and does not wait
-				# for bluetoothd.
 				exit 0
 			fi
 		fi
 		sleep 0.5
 		n=$((n + 1))
 	done
-	if [ -x "$audio" ] && "$audio" node-id codec >/dev/null 2>&1; then
-		status "failed: gain"
-	else
-		status codec-waiting
-	fi
+	status codec-waiting
 	;;
 stop)
 	stop_one pulse pipewire-pulse

@@ -1,7 +1,8 @@
 # HDMI audio presence is an ELD change, not a new PipeWire node. The
 # card is already in the graph while the connector is disconnected.
-# systemd-udev 251 drops a RUN program that is still backgrounded when
-# the worker returns, so this stays in the foreground. Sound-card and
-# adapter events are not used: they run before the sink exists and
-# they blocked the Bluetooth udev worker.
-ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card*-HDMI-A-[0-9]*", RUN+="/usr/sbin/zlyme-audio route"
+# This publishes that fact and wakes WirePlumber. It does not set a
+# default sink. systemd-udev 251 drops a RUN program that is still
+# backgrounded when the worker returns, so this stays in the foreground.
+# Sound-card and adapter events are not used: they run before the sink
+# exists and they blocked the Bluetooth udev worker.
+ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card*-HDMI-A-[0-9]*", RUN+="/usr/sbin/zlyme-audio hdmi-event"

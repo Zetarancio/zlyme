@@ -2,6 +2,7 @@
 -- main-embedded does not restore route volume. The route default is only
 -- the level used before this hook runs. A stored 0 stays silent.
 -- The curve matches linear_gain() in zlyme-audio: (percent/100)^3.
+-- Sink choice is zlyme-policy.lua. This hook does not spawn a router.
 
 log = Log.open_topic("s-zlyme")
 
@@ -73,32 +74,8 @@ SimpleEventHook {
   },
   execute = function(event)
     local node = event:get_subject()
-    local name = ""
     if node then
       apply(node)
-      local props = node.properties or {}
-      name = props["node.name"] or ""
     end
-    -- wpctl cannot run on this thread. A bluez node can be added before
-    -- a separate wpctl client lists it. Wait for that id, then route
-    -- once. route itself returns when the chosen node is already default.
-    if name:find("^bluez_output") then
-      os.execute("( i=0; while [ \"$i\" -lt 8 ]; do /usr/sbin/zlyme-audio node-id bt >/dev/null 2>&1 && break; i=$((i+1)); sleep 0.25; done; /usr/sbin/zlyme-audio route >/dev/null 2>&1 ) >/dev/null 2>&1 &")
-    else
-      os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
-    end
-  end
-}:register()
-
-SimpleEventHook {
-  name = "zlyme/route-removed-sink",
-  interests = {
-    EventInterest {
-      Constraint { "event.type", "=", "node-removed" },
-      Constraint { "media.class", "matches", "Audio/Sink", type = "pw-global" },
-    },
-  },
-  execute = function()
-    os.execute("( /usr/sbin/zlyme-audio route >/dev/null 2>&1 & )")
   end
 }:register()

@@ -141,7 +141,7 @@ cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
 exit 1
 EOF
-if sh "$AUDIO" route; then
+if sh "$AUDIO" hold 40; then
 	fail "failed wpctl was treated as success"
 fi
 # Three nodes, tab separated, all seen by node-id.
@@ -177,16 +177,29 @@ if grep -q 'a2dp-connect\|SUBSYSTEM=="bluetooth"' "$rules"; then
 	fail "udev still runs Bluetooth recovery"
 fi
 lua=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua
-grep -q 'node-id bt' "$lua" || fail "late A2DP node is not waited for"
-grep -q 'node-removed' "$lua" || fail "sink removal does not reroute"
-grep -q 'type = "pw-global"' "$lua" || fail "sink removal does not see the node class"
-if grep -q 'while \[ "\$i" -lt 8 \]; do /usr/sbin/zlyme-audio route' "$lua"; then
-	fail "route still retries unconditionally"
+grep -q 'channelVolumes' "$lua" || fail "a new sink does not take the saved gain"
+if grep -q 'node-removed' "$lua"; then
+	fail "volume hook still reroutes on removal"
+fi
+grep -q 'hdmi-event' "$rules" || fail "HDMI event does not publish ELD"
+if grep -q 'zlyme-audio route' "$rules"; then
+	fail "udev still chooses a sink"
 fi
 if grep -q ' &' "$rules"; then
 	fail "udev still backgrounds the route"
 fi
-grep -q 'zlyme-audio route' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua" || fail "late sink does not reroute"
+if grep -q 'zlyme-audio route' "$lua"; then
+	fail "volume hook still spawns a router"
+fi
+if grep -q 'os.execute' "$lua"; then
+	fail "volume hook still shells out"
+fi
+pol=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua
+grep -q 'function policy.choose' "$pol" || fail "sink policy is not one function"
+if grep -q 'set-default' "$AUDIO"; then
+	fail "shell still calls wpctl set-default"
+fi
+export ZLYME_POLICY=$pol
 grep -q 'hold)' "$AUDIO" || fail "transient gain"
 if grep -q 'S21pulse' "$ROOT/board/my355/post-build.sh"; then
 	fail "post-build still deletes a retired init script"
@@ -242,28 +255,23 @@ printf 'ZLYME_VOLUME=40\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n
 : > "$WP_LOG"
 [ "$(sh "$AUDIO" node-id codec)" = 33 ] || fail "codec id from alsa.id"
 [ "$(sh "$AUDIO" node-id hdmi)" = 55 ] || fail "hdmi id from alsa.id"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "silent HDMI was selected"
+# Publishing the ELD does not call wpctl set-default.
 sh "$AUDIO" route || fail "route"
-grep -q 'set-default 33' "$WP_LOG" || fail "default stayed on HDMI $(cat "$WP_LOG")"
+if grep -q 'set-default' "$WP_LOG"; then
+	fail "route set a configured default $(cat "$WP_LOG")"
+fi
 # Kernel ELD uses tabs. A space-only match treated this display as silent.
 unset ZLYME_HDMI_AUDIO
 printf 'sad_count\t\t2\n' > "$work/eld"
 export ZLYME_HDMI_ELD=$work/eld
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "tab eld route"
-grep -q 'set-default 55' "$WP_LOG" || fail "tab ELD did not select HDMI $(cat "$WP_LOG")"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "tab ELD did not select HDMI"
 printf 'sad_count\t\t0\n' > "$work/eld"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "empty eld route"
-grep -q 'set-default 33' "$WP_LOG" || fail "sad_count 0 left HDMI $(cat "$WP_LOG")"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "sad_count 0 left HDMI"
 unset ZLYME_HDMI_ELD
-export ZLYME_HDMI_AUDIO=0
-grep -q 'set-volume 33 0.064000' "$WP_LOG" || fail "codec gain $(cat "$WP_LOG")"
-grep -q 'set-volume 55 0.064000' "$WP_LOG" || fail "hdmi gain"
 export ZLYME_HDMI_AUDIO=1
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "hdmi route"
-grep -q 'set-default 55' "$WP_LOG" || fail "ELD did not select HDMI $(cat "$WP_LOG")"
-# Late A2DP node. Same graph, one more sink.
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "ELD did not select HDMI"
+# Late A2DP node. Same graph, one more sink. Auto prefers it.
 python3 - "$work/dump.json" << 'PY'
 import json, sys
 p = sys.argv[1]
@@ -275,16 +283,17 @@ data.append({"type":"PipeWire:Interface:Node","id":70,"info":{"props":{
 }}})
 json.dump(data, open(p, "w"))
 PY
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "bt route"
 [ "$(sh "$AUDIO" node-id bt)" = 70 ] || fail "bt id"
-grep -q 'set-default 70' "$WP_LOG" || fail "A2DP did not become default $(cat "$WP_LOG")"
-grep -q 'set-volume 70 0.064000' "$WP_LOG" || fail "late sink missed the gain"
+[ "$(sh "$AUDIO" policy)" = bt ] || fail "A2DP did not become the auto sink"
+# An explicit speaker choice is not overridden by the headset.
+printf 'ZLYME_VOLUME=40\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=codec\n' > "$work/cfg/audio.conf"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "explicit codec lost to A2DP"
 printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
 : > "$WP_LOG"
 sh "$AUDIO" setSystemVolume 0 || fail "mute"
 i=0
-while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+while [ "$i" -lt 40 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
 	i=$((i + 1))
 	sleep 0.05
 done
@@ -294,12 +303,10 @@ sh "$AUDIO" route || fail "repeat route"
 if grep -q 'set-default\|set-volume' "$WP_LOG"; then
 	fail "unchanged route rewrote the graph $(cat "$WP_LOG")"
 fi
-# The active file still says bt. The real default is the codec.
-printf 'bt\n' > "$work/rt/active"
-printf '33\n' > "$WP_DEFAULT"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "stale cache route"
-grep -q 'set-default 70' "$WP_LOG" || fail "stale active file skipped the real default $(cat "$WP_LOG")"
+# A stale active file is not the preference. Auto still follows the nodes.
+printf 'codec\n' > "$work/rt/active"
+[ "$(sh "$AUDIO" policy)" = bt ] || fail "stale active file hid the headset"
+rm -f "$work/rt/active"
 : > "$WP_LOG"
 sh "$AUDIO" hold 40 || fail "hold"
 grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "hold rewrote the saved volume"
@@ -366,8 +373,9 @@ grep -q '^ZLYME_VOLUME=10$' "$work/cfg/audio.conf" || fail "a down service dropp
 if grep -q 'set-volume' "$WP_LOG"; then
 	fail "a down service called wpctl $(cat "$WP_LOG")"
 fi
-if sh "$AUDIO" route >/dev/null 2>&1; then
-	fail "route succeeded without PipeWire"
+sh "$AUDIO" route >/dev/null 2>&1 || fail "ELD publication needs a running graph"
+if grep -q 'set-default' "$WP_LOG"; then
+	fail "offline publication set a sink $(cat "$WP_LOG")"
 fi
 cat > "$work/bin/speaker-test" << 'EOF'
 #!/bin/sh
@@ -378,142 +386,56 @@ if sh "$AUDIO" test >/dev/null 2>&1; then
 	fail "a failed playback test was success"
 fi
 export ZLYME_PW_RUNTIME=$saved
-# Connected headset with the A2DP Sink UUID, and no bluez node yet.
+# No bluez node yet. Auto stays on the codec while the ELD is pending.
+# ConnectProfile is PipeWire's one-shot, not a shell command.
 printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
 export ZLYME_PW_NODES=$work/nodes
 export ZLYME_PW_RUNTIME=$work/rt
 unset ZLYME_HDMI_AUDIO ZLYME_HDMI_ELD
-cat > "$work/bin/bluetoothctl" << 'EOF'
-#!/bin/sh
-if [ "$1" = devices ]; then
-	echo "Device AA:BB:CC:DD:EE:FF Headset"
-	exit 0
+rm -f "$work/rt/active"
+printf 'ZLYME_VOLUME=30\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "pending ELD entered HDMI"
+if grep -q 'ConnectProfile' "$AUDIO"; then
+	fail "shell still requests an A2DP profile"
 fi
-if [ "$1" = info ]; then
-	echo "Connected: yes"
-	echo "UUID: Audio Sink (0000110b-0000-1000-8000-00805f9b34fb)"
-	exit 0
-fi
-exit 0
-EOF
-cat > "$work/bin/dbus-send" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$DBUS_LOG"
-exit 0
-EOF
-cat > "$work/bin/wpctl" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$WP_LOG"
-case "$1" in
-	set-default)
-		printf '%s\n' "$2" > "$WP_DEFAULT"
-		;;
-	inspect)
-		if [ "$2" = "@DEFAULT_AUDIO_SINK@" ] && [ -s "$WP_DEFAULT" ]; then
-			printf 'id %s, type PipeWire:Interface:Node\n' "$(cat "$WP_DEFAULT")"
-		fi
-		;;
-esac
-exit 0
-EOF
-chmod 755 "$work/bin/bluetoothctl" "$work/bin/dbus-send" "$work/bin/wpctl"
-rm -f "$WP_DEFAULT"
-export DBUS_LOG=$work/dbus.log
-: > "$DBUS_LOG"
-: > "$WP_LOG"
-sh "$AUDIO" a2dp-connect || fail "a2dp-connect"
-grep -q 'ConnectProfile' "$DBUS_LOG" || fail "A2DP profile was not requested $(cat "$DBUS_LOG")"
-grep -q '0000110b-0000-1000-8000-00805f9b34fb' "$DBUS_LOG" || fail "wrong profile"
-grep -q 'set-default 55' "$WP_LOG" || fail "route did not keep a sink $(cat "$WP_LOG")"
-printf 'codec\t55\nbt\t62\n' > "$work/nodes"
-: > "$DBUS_LOG"
-sh "$AUDIO" a2dp-connect || fail "a2dp-connect with sink"
-if grep -q 'ConnectProfile' "$DBUS_LOG"; then
-	fail "ConnectProfile ran although the sink exists"
-fi
-grep -q 'set-default 62' "$WP_LOG" || fail "existing A2DP sink was not selected"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "second route"
-if grep -q 'set-default\|set-volume' "$WP_LOG"; then
-	fail "second route rewrote a settled sink $(cat "$WP_LOG")"
-fi
-# A connected HID pad is not an audio sink.
-cat > "$work/bin/bluetoothctl" << 'EOF'
-#!/bin/sh
-if [ "$1" = devices ]; then
-	echo "Device 11:22:33:44:55:66 Controller"
-	exit 0
-fi
-if [ "$1" = info ]; then
-	echo "Connected: yes"
-	echo "UUID: Human Interface Device (00001124-0000-1000-8000-00805f9b34fb)"
-	exit 0
-fi
-exit 0
-EOF
-printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
-printf 'codec\n' > "$work/rt/active"
-: > "$DBUS_LOG"
-sh "$AUDIO" a2dp-connect || fail "hid recovery"
-if grep -q 'ConnectProfile' "$DBUS_LOG"; then
-	fail "HID pad was asked for A2DP $(cat "$DBUS_LOG")"
-fi
-# The node appears after the first lookup, as wpctl can lag the hook.
-printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
 printf 'hdmi\n' > "$work/rt/active"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "pending ELD left HDMI"
+printf 'codec\n' > "$work/rt/active"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "pending ELD entered HDMI from the codec"
 export ZLYME_HDMI_AUDIO=1
-printf 'ZLYME_VOLUME=30\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\nZLYME_SINK=codec\n' > "$work/cfg/audio.conf"
-: > "$WP_LOG"
-i=0
-while [ "$i" -lt 8 ]; do
-	if sh "$AUDIO" node-id bt >/dev/null 2>&1; then
-		break
-	fi
-	if [ "$i" -eq 1 ]; then
-		printf 'bt\t62\n' >> "$work/nodes"
-	fi
-	i=$((i + 1))
-done
-sh "$AUDIO" route || fail "late visible route"
-grep -q 'set-default 62' "$WP_LOG" || fail "late A2DP node did not take auto $(cat "$WP_LOG")"
+rm -f "$work/rt/active"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "valid ELD left the speaker"
+printf 'bt\t62\n' >> "$work/nodes"
+[ "$(sh "$AUDIO" policy)" = bt ] || fail "late A2DP node did not take auto"
+printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "A2DP removal did not fall back"
 out=$(sh "$AUDIO" set bt)
-[ "$out" = "sink: bt" ] || fail "set printed historical sink: $out"
-printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "removal route"
-grep -q 'set-default 51' "$WP_LOG" || fail "A2DP removal did not fall back $(cat "$WP_LOG")"
-# A blank ELD does not pull an existing HDMI default onto the codec.
-printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
-printf 'sad_count missing\n' > "$work/eld"
-export ZLYME_HDMI_ELD=$work/eld
-unset ZLYME_HDMI_AUDIO
-printf '51\n' > "$WP_DEFAULT"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "pending eld route"
-if grep -q 'set-default 55' "$WP_LOG"; then
-	fail "a blank ELD moved HDMI onto the speaker $(cat "$WP_LOG")"
-fi
-# A parsed ELD selects HDMI when the headset node is gone.
-printf 'sad_count\t\t2\n' > "$work/eld"
-printf '55\n' > "$WP_DEFAULT"
-printf 'bt\n' > "$work/rt/active"
-: > "$WP_LOG"
-sh "$AUDIO" route || fail "valid eld route"
-grep -q 'set-default 51' "$WP_LOG" || fail "valid ELD left the speaker $(cat "$WP_LOG")"
-# Volume apply is not on the caller's clock. A slow wpctl still returns,
-# and a newer press replaces the older one.
+[ "$out" = "preference: bt" ] || fail "set printed a graph claim: $out"
+printf 'bt\t62\n' >> "$work/nodes"
+[ "$(sh "$AUDIO" policy)" = bt ] || fail "explicit headset was not selected"
+printf 'ZLYME_VOLUME=30\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=codec\n' > "$work/cfg/audio.conf"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "explicit codec was overridden"
+# Volume apply is not on the caller's clock. One worker applies the
+# latest saved percent. A second press does not start a second wpctl.
 cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$*" >> "$WP_LOG"
 case "$1" in
-	set-volume) sleep 0.3 ;;
+	set-volume)
+		if ! mkdir "$WP_BUSY" 2>/dev/null; then
+			echo OVERLAP >> "$WP_LOG"
+		fi
+		sleep 0.25
+		rmdir "$WP_BUSY" 2>/dev/null || true
+		;;
 esac
 exit 0
 EOF
 chmod 755 "$work/bin/wpctl"
+export WP_BUSY=$work/wp-busy
+rm -rf "$WP_BUSY" "$ZLYME_PW_RUNTIME/volume.life" "$ZLYME_PW_RUNTIME/volume.state"
 printf 'codec\t55\n' > "$work/nodes"
 printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
-rm -rf "$ZLYME_PW_RUNTIME/volume-apply"
 : > "$WP_LOG"
 start=$(date +%s%N)
 sh "$AUDIO" setSystemVolume 10 || fail "fast volume"
@@ -524,13 +446,102 @@ if [ "$elapsed" -gt 200000000 ]; then
 	fail "volume calls blocked on wpctl (${elapsed}ns)"
 fi
 i=0
-while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+while [ "$i" -lt 40 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
 	i=$((i + 1))
 	sleep 0.05
 done
+flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true || fail "volume worker did not exit"
 grep -q '^ZLYME_VOLUME=50$' "$work/cfg/audio.conf" || fail "latest volume was not saved"
+if grep -q OVERLAP "$WP_LOG"; then
+	fail "two volume workers ran at once"
+fi
 last=$(grep 'set-volume 55' "$WP_LOG" | tail -n 1)
 printf '%s\n' "$last" | grep -q '0.125000' || fail "an older volume won: $last"
+# Many reversals still end on the last saved percent.
+: > "$WP_LOG"
+n=0
+while [ "$n" -lt 20 ]; do
+	if [ $((n % 2)) -eq 0 ]; then
+		sh "$AUDIO" setSystemVolume 5 || fail "rapid down"
+	else
+		sh "$AUDIO" setSystemVolume 90 || fail "rapid up"
+	fi
+	n=$((n + 1))
+done
+i=0
+while [ "$i" -lt 80 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
+	i=$((i + 1))
+	sleep 0.05
+done
+flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true || fail "rapid worker did not exit"
+grep -q '^ZLYME_VOLUME=90$' "$work/cfg/audio.conf" || fail "rapid presses lost the last value"
+last=$(grep 'set-volume 55' "$WP_LOG" | tail -n 1)
+printf '%s\n' "$last" | grep -q '0.729000' || fail "rapid presses applied an older gain: $last"
+if grep -q OVERLAP "$WP_LOG"; then
+	fail "rapid presses overlapped workers"
+fi
+# The life lock is the ownership. A caller that arrives before it can
+# be taken still saves, and the next caller applies.
+exec 8>>"$ZLYME_PW_RUNTIME/volume.life"
+flock -n 8 || fail "test could not hold the life lock"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 12 || fail "blocked worker rejected the save"
+grep -q '^ZLYME_VOLUME=12$' "$work/cfg/audio.conf" || fail "blocked worker dropped the save"
+if grep -q 'set-volume' "$WP_LOG"; then
+	fail "a held life lock still started wpctl"
+fi
+flock -u 8
+exec 8>&-
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 12 || fail "released lock rejected the save"
+i=0
+while [ "$i" -lt 40 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
+	i=$((i + 1))
+	sleep 0.05
+done
+grep -q 'set-volume 55' "$WP_LOG" || fail "the released lock did not apply"
+# Kill the worker mid-apply. The kernel drops the lock. The next press applies.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+case "$1" in
+	set-volume) sleep 2 ;;
+esac
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 18 || fail "kill setup"
+i=0
+while [ "$i" -lt 40 ]; do
+	grep -q 'set-volume' "$WP_LOG" && break
+	i=$((i + 1))
+	sleep 0.05
+done
+pid=$(ps -eo pid,args | awk '/apply-saved/ && !/awk/ { print $1; exit }')
+[ -n "$pid" ] || fail "no volume worker to kill"
+kill -9 "$pid" 2>/dev/null || true
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 19 || fail "press after kill"
+i=0
+while [ "$i" -lt 40 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
+	i=$((i + 1))
+	sleep 0.05
+done
+grep -q 'set-volume 55 0.006859' "$WP_LOG" || fail "a killed worker left the old gain $(cat "$WP_LOG")"
+if ps -eo args | awk '/apply-saved/ && !/awk/ { found=1 } END { exit !found }'; then
+	fail "a volume worker was left behind"
+fi
 # A failing wpctl leaves the saved percent and does not retry forever.
 cat > "$work/bin/wpctl" << 'EOF'
 #!/bin/sh
@@ -538,57 +549,31 @@ printf '%s\n' "$*" >> "$WP_LOG"
 exit 1
 EOF
 chmod 755 "$work/bin/wpctl"
-rm -rf "$ZLYME_PW_RUNTIME/volume-apply"
 : > "$WP_LOG"
-sh "$AUDIO" setSystemVolume 40 || fail "failed apply rejected the save"
+sh "$AUDIO" setSystemVolume 0 || fail "failed apply rejected the save"
 i=0
-while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+while [ "$i" -lt 40 ]; do
+	flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true && break
 	i=$((i + 1))
 	sleep 0.05
 done
-[ ! -d "$ZLYME_PW_RUNTIME/volume-apply" ] || fail "a failed apply kept running"
-grep -q '^ZLYME_VOLUME=40$' "$work/cfg/audio.conf" || fail "a failed apply rewrote the saved volume"
-# A dead holder must not block the next press. An empty directory is
-# the same failure.
-cat > "$work/bin/wpctl" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$WP_LOG"
-exit 0
-EOF
-chmod 755 "$work/bin/wpctl"
-mkdir -p "$ZLYME_PW_RUNTIME/volume-apply"
-echo 999999 > "$ZLYME_PW_RUNTIME/volume-apply/pid"
-: > "$WP_LOG"
-sh "$AUDIO" setSystemVolume 15 || fail "stale volume lock rejected the save"
-i=0
-while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
-	i=$((i + 1))
-	sleep 0.05
-done
-[ ! -d "$ZLYME_PW_RUNTIME/volume-apply" ] || fail "a dead volume holder kept the lock"
-grep -q 'set-volume 55' "$WP_LOG" || fail "a dead holder suppressed the apply $(cat "$WP_LOG")"
-mkdir -p "$ZLYME_PW_RUNTIME/volume-apply"
-: > "$WP_LOG"
-sh "$AUDIO" setSystemVolume 16 || fail "empty volume lock rejected the save"
-i=0
-while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
-	i=$((i + 1))
-	sleep 0.05
-done
-grep -q 'set-volume 55' "$WP_LOG" || fail "an empty lock suppressed the apply"
-# One HDMI launch can record the route. Twelve lines retire the flag.
+flock -n "$ZLYME_PW_RUNTIME/volume.life" -c true || fail "a failed apply kept running"
+grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "saved zero was rewritten"
+calls=$(grep -c 'set-volume' "$WP_LOG" || true)
+[ "$calls" -eq 1 ] || fail "a failed apply retried ($calls)"
+# One HDMI launch can record the event. Twelve lines retire the flag.
 trace=$work/hdmi-trace
 log=$work/hdmi-trace.log
 : > "$trace"
 export ZLYME_HDMI_TRACE=$trace ZLYME_HDMI_TRACE_LOG=$log
 printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
 export ZLYME_HDMI_AUDIO=1
-printf '55\n' > "$WP_DEFAULT"
-sh "$AUDIO" route || fail "traced route"
-grep -q 'state=yes' "$log" || fail "HDMI trace was empty $(cat "$log")"
+sh "$AUDIO" hdmi-event || fail "traced event"
+grep -q 'eld=yes' "$log" || fail "HDMI trace was empty $(cat "$log")"
+grep -q 'choice=' "$log" || fail "HDMI trace omitted the policy $(cat "$log")"
 [ -f "$trace" ] || fail "one trace line retired the flag"
 printf '%s\n' line line line line line line line line line line line > "$log"
-sh "$AUDIO" route || fail "retiring route"
+sh "$AUDIO" hdmi-event || fail "retiring event"
 [ ! -e "$trace" ] || fail "the HDMI trace flag survived twelve lines"
 unset ZLYME_HDMI_TRACE ZLYME_HDMI_TRACE_LOG ZLYME_HDMI_AUDIO
 echo "pipewire service ok"
