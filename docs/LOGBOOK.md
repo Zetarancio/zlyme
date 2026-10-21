@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-21 — Uninstalled candidate after the NextUI merge
+
+`./build.sh --config zlyme_my355_defconfig` from `b8b49046ffc0bdac401ddb8046d948d40042bdb6`. The successful run started 2026-10-21T00:31:48Z and ended 00:34:33Z. It rebuilt `nextui`, `minui-list`, `minui-presenter`, and `zlyme-keylidmon`. An earlier attempt in the same hour failed because NextUI `a2dc9d22` was not on the remote yet. OTA `output/images/zlyme-my355-20261021-b8b49046ffc0.tar`, SHA-256 `558c777a7f9340eed8d941d0f32f2fa92b69d3055e0e4d63e2314c32ae3c206a`. The `zlyme` member and `rootfs.squashfs` are `f331a90f232ba382c5c1b22e7c19c579bcecceecf83ecefa1e8642221fb1509d`. NextUI in that root is `a2dc9d22e363266c6366aa5cbbbf3b10956d3806`. Its `UPSTREAM` file is `5291344b3aceae5fa197437a70824afb41e2d338`. Boot files match the installed `7eb86d2` tar. Not installed. Bluetooth and HDMI audibility are not claimed.
+
 ## 2026-10-21 — Installed 7eb86d2 Bluetooth silence
 
 The maintainer installed `zlyme-my355-20261020-7eb86d2970b2.tar` (rootfs `54820d528b73d7a98a57332789cc381ecaa0f16b8c0d81544b47f3497eea92bb`) and heard silence from RetroArch and PPSSPP over Bluetooth. HDMI was not tested. The headset mark was absent. Deleting `/storage/Recently Played/` left the seed marker, so the firmware picture was not used. On boot `015e946c-1ef5-4049-9edc-fd1146e1c09a` the buds were the default A2DP sink, profile `a2dp-sink`, codec SBC, transport idle, saved volume 85, cubic gain about 0.61. No emulator was running. That graph is not a listen. `route` was still trusting `/run/zlyme/pipewire/active`.
