@@ -21,7 +21,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
 - The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
 - A playing Bluetooth headset uses the headset mark. A Bluetooth connection that is not the current output uses the Bluetooth mark. HDMI uses the separate audio mark. The mark follows the output without opening Settings.
-- A paired headset is connected when it becomes available, including when that is after the menu is already on screen.
+- A paired headset is asked for its audio profile once BlueZ has registered that device. The request does not keep retrying, and it does not run before the device exists.
 
 ### Changed
 
