@@ -106,4 +106,33 @@ if [ -e "$usb_old" ] || [ -L "$usb_old" ]; then
 		retire_usb || echo "post-update: failed to retire $usb_old" >&2
 	fi
 fi
+
+# zlyme44.3 showed a picture the person put at the Recently Played
+# folder. Later candidates also left built-in renders there. Copy only
+# a file that is not one of those renders, and only when the new
+# override is absent. Leave the old file and the history list alone.
+recent_src="$root/Recently Played/.media/bg.png"
+recent_dst="$root/.config/nextui/shared/artbook/special/recent.png"
+recent_dejavu=c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703
+recent_changa=90ba5400b94b81c0a0bf0ab2b43522ccdfbe6c5ac1d3c5470ffc338a058a9cda
+if [ -f "$recent_src" ] && [ ! -L "$recent_src" ] \
+	&& [ ! -e "$recent_dst" ] && [ ! -L "$recent_dst" ] \
+	&& under_storage "$recent_src" && under_storage "$recent_dst"
+then
+	sum=$(sha256sum "$recent_src" | awk '{print $1}')
+	case "$sum" in
+		"$recent_dejavu"|"$recent_changa") ;;
+		*)
+			mkdir -p "$root/.config/nextui/shared/artbook/special" \
+				|| echo "post-update: failed to create recent art dir" >&2
+			part="$recent_dst.part"
+			if cp "$recent_src" "$part" && mv -f "$part" "$recent_dst"; then
+				:
+			else
+				rm -f "$part"
+				echo "post-update: failed to keep $recent_src" >&2
+			fi
+			;;
+	esac
+fi
 exit 0

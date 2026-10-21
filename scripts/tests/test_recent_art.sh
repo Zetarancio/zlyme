@@ -1,7 +1,8 @@
 #!/bin/sh
-# Recently Played art comes from the firmware picture. The seed does
-# not copy it. A previous built-in file at the old path is removed so
-# it cannot hide the firmware picture. A picture the person made stays.
+# Recently Played art comes from the firmware picture. Session start
+# does not copy, delete, or rewrite it. An update copies a picture the
+# person put at the zlyme44.3 folder path when it is not a built-in
+# render and the new override is absent.
 # shellcheck disable=SC1007
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -71,30 +72,61 @@ run_seed "$global"
 [ ! -e "$global/Recently Played" ] || fail "global background created a folder"
 [ "$(cat "$global/bg.png")" = "global" ] || fail "global background changed"
 
-# A previous built-in picture is removed. The current firmware bytes stay.
+# Session start leaves a built-in render and a history list alone.
 old=$(mktemp -d)
-known=$(mktemp)
-cur=$(mktemp -d)
-printf 'old-stock\n' > "$old/picture"
-oldhash=$(sha256sum "$old/picture" | awk '{print $1}')
-printf '%s\n' "$oldhash" > "$known"
 mkdir -p "$old/Recently Played/.media"
-cp "$old/picture" "$old/Recently Played/.media/bg.png"
+printf 'old-stock\n' > "$old/Recently Played/.media/bg.png"
 printf 'history\n' > "$old/Recently Played/list.txt"
-ZLYME_STOCK_ROOT=$old ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
-	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"
-[ ! -e "$old/Recently Played/.media/bg.png" ] || fail "known stock was left in place"
-[ "$(cat "$old/Recently Played/list.txt")" = "history" ] || fail "migration changed history"
+run_seed "$old"
+[ "$(cat "$old/Recently Played/.media/bg.png")" = "old-stock" ] || fail "seed removed old art"
+[ "$(cat "$old/Recently Played/list.txt")" = "history" ] || fail "seed changed history"
+if grep -q 'seed_recent\|recent-stock' "$SEED"; then
+	fail "session seed still migrates Recently Played"
+fi
 
-mkdir -p "$cur/Recently Played/.media"
-cp "$SRC" "$cur/Recently Played/.media/bg.png"
-before=$(stat -c '%Y' "$cur/Recently Played/.media/bg.png")
-sleep 1
-ZLYME_STOCK_ROOT=$cur ZLYME_STOCK_SHARE=$SHARE ZLYME_DEVICE_CONF= \
-	ZLYME_RECENT_ART=$SRC ZLYME_RECENT_KNOWN=$known sh "$SEED"
-cmp -s "$SRC" "$cur/Recently Played/.media/bg.png" || fail "current stock changed"
-after=$(stat -c '%Y' "$cur/Recently Played/.media/bg.png")
-[ "$before" = "$after" ] || fail "current stock was rewritten"
+# 44.3 custom art is copied once. Built-in renders are not. The old
+# file and the history list stay.
+POST=$ROOT/board/my355/post-update.sh
+run_update() {
+	ZLYME_STORAGE_ROOT=$1 sh "$POST"
+}
+keep=$(mktemp -d)
+mkdir -p "$keep/Recently Played/.media"
+printf 'mine\n' > "$keep/Recently Played/.media/bg.png"
+printf 'history\n' > "$keep/Recently Played/list.txt"
+run_update "$keep"
+[ "$(cat "$keep/.config/nextui/shared/artbook/special/recent.png")" = "mine" ] \
+	|| fail "44.3 custom art was not kept"
+[ "$(cat "$keep/Recently Played/.media/bg.png")" = "mine" ] || fail "update removed the old file"
+[ "$(cat "$keep/Recently Played/list.txt")" = "history" ] || fail "update changed history"
+run_update "$keep"
+[ "$(cat "$keep/.config/nextui/shared/artbook/special/recent.png")" = "mine" ] \
+	|| fail "second update rewrote the override"
 
-rm -rf "$old" "$cur" "$known"
+stock=$(mktemp -d)
+dejavu=c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703
+grep -q "$dejavu" "$POST" || fail "update does not know the built-in render"
+stub=$(mktemp -d)
+cat > "$stub/sha256sum" << EOF
+#!/bin/sh
+printf '%s  %s\n' '$dejavu' "\$1"
+EOF
+chmod 755 "$stub/sha256sum"
+mkdir -p "$stock/Recently Played/.media"
+printf 'builtin\n' > "$stock/Recently Played/.media/bg.png"
+PATH="$stub:$PATH" run_update "$stock"
+[ ! -e "$stock/.config/nextui/shared/artbook/special/recent.png" ] \
+	|| fail "built-in render became the override"
+[ "$(cat "$stock/Recently Played/.media/bg.png")" = "builtin" ] || fail "built-in render was deleted"
+
+owned=$(mktemp -d)
+mkdir -p "$owned/.config/nextui/shared/artbook/special"
+printf 'kept\n' > "$owned/.config/nextui/shared/artbook/special/recent.png"
+mkdir -p "$owned/Recently Played/.media"
+printf 'older\n' > "$owned/Recently Played/.media/bg.png"
+run_update "$owned"
+[ "$(cat "$owned/.config/nextui/shared/artbook/special/recent.png")" = "kept" ] \
+	|| fail "existing override was replaced"
+
+rm -rf "$old" "$keep" "$stock" "$stub" "$owned"
 echo "recent art ok"

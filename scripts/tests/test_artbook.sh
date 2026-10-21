@@ -165,31 +165,20 @@ grep -qx 'c67d6a187feecee5f791ae89a723b13c5ba974d0d84080c96a192f15c7f67703' \
 if grep -qx "$recent_new" "$ROOT/board/my355/fsoverlay/usr/share/zlyme/recent-stock.sha256"; then
 	fail "the new Recently Played image is listed as an old one"
 fi
-# Both allow-listed identities become this render. A file that already
-# is this render is left alone.
+# Session start does not copy, delete, or rewrite Recently Played art.
 mig=$(mktemp -d)
 mkdir -p "$mig/Recently Played/.media"
-printf 'old-bytes\n' > "$mig/old"
-oldhash=$(sha256sum "$mig/old" | awk '{print $1}')
-printf '%s\n%s\n' "$oldhash" "$recent_new" > "$mig/known"
-cp "$mig/old" "$mig/Recently Played/.media/bg.png"
+printf 'old-bytes\n' > "$mig/Recently Played/.media/bg.png"
 printf 'history\n' > "$mig/Recently Played/list.txt"
-ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \
-	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$work/once/special/recent.png \
-	ZLYME_RECENT_KNOWN=$mig/known \
-	sh "$ROOT/package/system/nextui/zlyme/zlyme-stock-seed"
-[ ! -e "$mig/Recently Played/.media/bg.png" ] \
-	|| fail "allow-listed stock still hides the firmware picture"
-[ "$(cat "$mig/Recently Played/list.txt")" = "history" ] || fail "migration changed history"
-cp "$work/once/special/recent.png" "$mig/Recently Played/.media/bg.png"
 before=$(stat -c '%Y' "$mig/Recently Played/.media/bg.png")
-sleep 1
 ZLYME_STOCK_ROOT=$mig ZLYME_STOCK_SHARE=$ROOT/board/my355/fsoverlay/usr/share/zlyme \
-	ZLYME_DEVICE_CONF= ZLYME_RECENT_ART=$work/once/special/recent.png \
-	ZLYME_RECENT_KNOWN=$mig/known \
+	ZLYME_DEVICE_CONF= \
 	sh "$ROOT/package/system/nextui/zlyme/zlyme-stock-seed"
+[ "$(cat "$mig/Recently Played/.media/bg.png")" = "old-bytes" ] \
+	|| fail "session start changed Recently Played art"
+[ "$(cat "$mig/Recently Played/list.txt")" = "history" ] || fail "session start changed history"
 after=$(stat -c '%Y' "$mig/Recently Played/.media/bg.png")
-[ "$before" = "$after" ] || fail "current uppercase render was rewritten"
+[ "$before" = "$after" ] || fail "session start rewrote Recently Played art"
 rm -rf "$mig"
 test ! -e "$work/once/system/(GONE).png" || fail "removed system art survived"
 test ! -e "$work/once/tools/Obsolete Tool.png" || fail "removed tool art survived"
