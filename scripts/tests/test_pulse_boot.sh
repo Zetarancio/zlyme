@@ -23,6 +23,26 @@ if [ -e "$ROOT/board/my355/fsoverlay/etc/init.d/S50pulseaudio" ]; then
 	fail "S50pulseaudio is still installed"
 fi
 grep -q 'S33pipewire' "$LATE" || fail "rc.late does not start pipewire"
+# The first frame is earlier than both services. A card that exists
+# before WirePlumber, one that appears after PipeWire is ready, and one
+# that appears after that frame all use the same device rule.
+awk '
+	/nextui-first-flip/ && !frame { frame = NR }
+	/S40bluetoothd/ && !bt { bt = NR }
+	/S33pipewire/ && !pw { pw = NR }
+	END {
+		if (!(frame && bt && pw)) exit 1
+		if (frame > bt || frame > pw) exit 1
+	}
+' "$LATE" || fail "bluetooth or pipewire starts before the first frame"
+if grep -q 'S33pipewire\|S40bluetoothd' "$RCS"; then
+	fail "rcS starts audio or bluetooth before the frontend"
+fi
+conf=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zlyme.conf
+grep -q 'device.name = "~bluez_card.\*"' "$conf" || fail "auto-connect is not a card rule"
+if grep -q 'a2dp-connect' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch"; then
+	fail "ready path still connects once"
+fi
 if grep -q 'S21pulse\|S45bluealsa\|S46btsink\|zlyme-btsink\|flip-jackd' "$ROOT/board/my355/post-build.sh"; then
 	fail "post-build still deletes retired files"
 fi
