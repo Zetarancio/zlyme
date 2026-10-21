@@ -275,6 +275,11 @@ grep -q 'set-volume 70 0.064000' "$WP_LOG" || fail "late sink missed the gain"
 printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
 : > "$WP_LOG"
 sh "$AUDIO" setSystemVolume 0 || fail "mute"
+i=0
+while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
 grep -Eq 'set-volume 33 0$' "$WP_LOG" || grep -q 'set-volume 33 0.000000' "$WP_LOG" || fail "saved 0 was audible $(cat "$WP_LOG")"
 : > "$WP_LOG"
 sh "$AUDIO" route || fail "repeat route"
@@ -345,10 +350,14 @@ saved=$ZLYME_PW_RUNTIME
 export ZLYME_PW_RUNTIME=$work/down
 mkdir -p "$ZLYME_PW_RUNTIME"
 unset ZLYME_PW_NODES ZLYME_PW_DUMP
-if sh "$AUDIO" setSystemVolume 10 >/dev/null 2>&1; then
-	fail "a down PipeWire service was treated as success"
+: > "$WP_LOG"
+if ! sh "$AUDIO" setSystemVolume 10 >/dev/null 2>&1; then
+	fail "a down PipeWire service rejected the saved volume"
 fi
-grep -q '^ZLYME_VOLUME=0$' "$work/cfg/audio.conf" || fail "a down service rewrote the saved volume"
+grep -q '^ZLYME_VOLUME=10$' "$work/cfg/audio.conf" || fail "a down service dropped the saved volume"
+if grep -q 'set-volume' "$WP_LOG"; then
+	fail "a down service called wpctl $(cat "$WP_LOG")"
+fi
 if sh "$AUDIO" route >/dev/null 2>&1; then
 	fail "route succeeded without PipeWire"
 fi
@@ -465,4 +474,52 @@ printf 'codec\t55\nhdmi\t51\n' > "$work/nodes"
 : > "$WP_LOG"
 sh "$AUDIO" route || fail "removal route"
 grep -q 'set-default 51' "$WP_LOG" || fail "A2DP removal did not fall back $(cat "$WP_LOG")"
+# Volume apply is not on the caller's clock. A slow wpctl still returns,
+# and a newer press replaces the older one.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+case "$1" in
+	set-volume) sleep 0.3 ;;
+esac
+exit 0
+EOF
+chmod 755 "$work/bin/wpctl"
+printf 'codec\t55\n' > "$work/nodes"
+printf 'ZLYME_VOLUME=0\nZLYME_VOLUME_SRC=pipewire-cubic\nZLYME_SINK_PREF=auto\n' > "$work/cfg/audio.conf"
+rm -rf "$ZLYME_PW_RUNTIME/volume-apply"
+: > "$WP_LOG"
+start=$(date +%s%N)
+sh "$AUDIO" setSystemVolume 10 || fail "fast volume"
+sh "$AUDIO" setSystemVolume 50 || fail "reversed volume"
+end=$(date +%s%N)
+elapsed=$((end - start))
+if [ "$elapsed" -gt 200000000 ]; then
+	fail "volume calls blocked on wpctl (${elapsed}ns)"
+fi
+i=0
+while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
+grep -q '^ZLYME_VOLUME=50$' "$work/cfg/audio.conf" || fail "latest volume was not saved"
+last=$(grep 'set-volume 55' "$WP_LOG" | tail -n 1)
+printf '%s\n' "$last" | grep -q '0.125000' || fail "an older volume won: $last"
+# A failing wpctl leaves the saved percent and does not retry forever.
+cat > "$work/bin/wpctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$WP_LOG"
+exit 1
+EOF
+chmod 755 "$work/bin/wpctl"
+rm -rf "$ZLYME_PW_RUNTIME/volume-apply"
+: > "$WP_LOG"
+sh "$AUDIO" setSystemVolume 40 || fail "failed apply rejected the save"
+i=0
+while [ -d "$ZLYME_PW_RUNTIME/volume-apply" ] && [ "$i" -lt 40 ]; do
+	i=$((i + 1))
+	sleep 0.05
+done
+[ ! -d "$ZLYME_PW_RUNTIME/volume-apply" ] || fail "a failed apply kept running"
+grep -q '^ZLYME_VOLUME=40$' "$work/cfg/audio.conf" || fail "a failed apply rewrote the saved volume"
 echo "pipewire service ok"

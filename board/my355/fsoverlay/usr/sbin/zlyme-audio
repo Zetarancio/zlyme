@@ -369,21 +369,61 @@ volume() {
 	printf '%s\n' "$v"
 }
 
+# One background applier. A newer saved percent replaces an older one.
+# Callers return after the file write. wpctl does not run on their thread.
+spawn_apply() {
+	dir=$RT/volume-apply
+	mkdir -p "$RT" 2>/dev/null || return 0
+	mkdir "$dir" 2>/dev/null || return 0
+	# Ignore hangup so the caller's shell can exit. The saved percent
+	# stays if this process does not.
+	(
+		trap '' HUP INT
+		exec "$0" apply-saved
+	) >/dev/null 2>&1 &
+}
+
+apply_saved() {
+	dir=$RT/volume-apply
+	last=
+	n=0
+	while [ "$n" -lt 8 ]; do
+		want=$(saved ZLYME_VOLUME || true)
+		[ -n "$want" ] || break
+		if [ "$want" = "$last" ]; then
+			break
+		fi
+		n=$((n + 1))
+		if ! pipewire_up; then
+			last=$want
+			break
+		fi
+		if apply_gain "$want"; then
+			last=$want
+		fi
+		now=$(saved ZLYME_VOLUME || true)
+		[ "$now" = "$want" ] || continue
+		[ "$last" = "$want" ] && break
+	done
+	rmdir "$dir" 2>/dev/null || true
+	now=$(saved ZLYME_VOLUME || true)
+	# A failed apply does not respawn. The next press, or a new sink,
+	# starts one applier. A write during the release does.
+	if [ -n "$last" ] && [ -n "$now" ] && [ "$now" != "$last" ]; then
+		spawn_apply
+	fi
+}
+
 set_volume() {
 	v=$(clamp_volume "$1") || return 1
-	pipewire_up || {
-		echo "$(basename "$0"): PipeWire is not running" >&2
-		return 1
-	}
 	cur=$(saved ZLYME_VOLUME || true)
 	if [ "$cur" != "$v" ]; then
 		save ZLYME_VOLUME "$v" || return 1
 	fi
-	apply_gain "$v"
-	rc=$?
-	# No sink yet: the saved number is applied when one appears.
-	[ "$rc" -eq 2 ] && return 0
-	return "$rc"
+	# PipeWire may still be down. The saved percent is the intention.
+	# The volume hook applies it when a sink appears.
+	spawn_apply
+	return 0
 }
 
 # Saved percent is the user intention. It is applied on every graph.
@@ -568,6 +608,9 @@ export)
 	printf 'XDG_RUNTIME_DIR=%s; export XDG_RUNTIME_DIR\n' "$RT"
 	printf 'PIPEWIRE_RUNTIME_DIR=%s; export PIPEWIRE_RUNTIME_DIR\n' "$RT"
 	printf 'ZLYME_SINK=%s; export ZLYME_SINK\n' "$(active_role)"
+	;;
+apply-saved)
+	apply_saved
 	;;
 route)
 	route
