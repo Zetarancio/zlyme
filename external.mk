@@ -7,6 +7,11 @@ ifeq ($(BR2_PACKAGE_PULSEAUDIO),y)
 ifneq ($(BR2_PACKAGE_PULSEAUDIO_DAEMON),y)
 define ZLYME_DROP_PULSE_DAEMON_BINARY
 	rm -f $(TARGET_DIR)/usr/bin/pulseaudio
+	# pulseaudio-system.conf allows the pulse user to own
+	# org.pulseaudio.Server. That user is not created, and
+	# pipewire-pulse does not need the policy. dbus-daemon warns
+	# about the unknown name and then ignores the policy.
+	rm -f $(TARGET_DIR)/usr/share/dbus-1/system.d/pulseaudio-system.conf
 endef
 TARGET_FINALIZE_HOOKS += ZLYME_DROP_PULSE_DAEMON_BINARY
 endif

@@ -693,4 +693,5 @@ if [ -f "$wp" ]; then
 	grep -q 'default.audio.sink' "$wp" || fail "linking rescan ignores the default sink"
 	grep -q 'bluez-session-item-removed' "$wp" || fail "bluetooth removal pause missing"
 fi
+grep -q 'pulseaudio-system.conf' "$ROOT/external.mk" || fail "pulse system bus policy is kept"
 echo "pipewire service ok"
