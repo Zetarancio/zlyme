@@ -230,13 +230,42 @@ node_id() {
 	nodes | awk -F '\t' -v r="$role" '$1 == r { print $2; exit }'
 }
 
-# yes: some ELD advertises a format. no: every parsed ELD has no audio.
-# pending: a connector is mid-modeset and an ELD is still version 0
-# or empty. That is not a reason to leave HDMI or to enter it.
-# Procfs reports these files as size 0 even when a read returns the ELD.
+# 0: an HDMI-A connector is connected. 1: connectors exist and none
+# is connected. 2: this sysfs has no HDMI-A node, so the ELD is the
+# only signal. A modeset keeps the connector connected while the ELD
+# is still empty. That stays pending. A disconnected port is no even
+# when the old ELD still lists a format.
+hdmi_link() {
+	root=${ZLYME_HDMI_SYSFS:-/sys/class/drm}
+	seen=0
+	for status in "$root"/card*-HDMI-A-*/status; do
+		[ -r "$status" ] || continue
+		seen=1
+		state=$(cat "$status" 2>/dev/null || true)
+		if [ "$state" = connected ]; then
+			return 0
+		fi
+	done
+	if [ "$seen" = 1 ]; then
+		return 1
+	fi
+	return 2
+}
+
+# yes: a connected port has an ELD with a format. no: the port is
+# disconnected, or every parsed ELD has no audio. pending: the port
+# is connected and an ELD is still version 0 or empty. Pending does
+# not enter HDMI and does not leave it. Procfs reports these files
+# as size 0 even when a read returns the ELD.
 hdmi_audio_state() {
 	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && { printf '%s\n' yes; return; }
 	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && { printf '%s\n' no; return; }
+	hdmi_link
+	link=$?
+	if [ "$link" = 1 ]; then
+		printf '%s\n' no
+		return
+	fi
 	eld=${ZLYME_HDMI_ELD:-}
 	if [ -n "$eld" ]; then
 		set -- "$eld"

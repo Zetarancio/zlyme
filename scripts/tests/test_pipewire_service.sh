@@ -643,4 +643,54 @@ grep -qx no "$work/rt/hdmi-audio" || fail "parsed empty ELD was not no"
 ( sleep 0.3; printf 'sad_count\t2\n' > "$work/eld" ) &
 sh "$AUDIO" hdmi-recheck || fail "recheck"
 grep -qx yes "$work/rt/hdmi-audio" || fail "late ELD stayed unpublished"
+# A disconnected port is not HDMI, even when the ELD file still
+# advertises a format. Pending is only a connected port.
+drm=$work/drm/card0-HDMI-A-1
+printf '%s\n' disconnected > "$drm/status"
+printf 'sad_count\t\t2\nmonitor_present\t\t1\neld_valid\t\t1\n' > "$work/eld"
+printf 'hdmi\n' > "$work/rt/active"
+saved=$(cat "$work/cfg/audio.conf")
+sh "$AUDIO" hdmi-event || fail "unplug event"
+grep -qx no "$work/rt/hdmi-audio" || fail "stale ELD stayed eligible $(cat "$work/rt/hdmi-audio")"
+[ "$(sh "$AUDIO" policy)" = codec ] || fail "unplug policy stayed on HDMI"
+[ "$(cat "$work/cfg/audio.conf")" = "$saved" ] || fail "unplug rewrote the saved volume"
+[ "$(cat "$work/rt/active")" = hdmi ] || fail "unplug wrote the route file"
+printf '%s\n' connected > "$drm/status"
+printf 'monitor_present\t\t1\neld_valid\t\t0\n' > "$work/eld"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "connected pending ELD left HDMI"
+printf 'sad_count\t\t2\n' > "$work/eld"
+[ "$(sh "$AUDIO" policy)" = hdmi ] || fail "reconnected ELD did not select HDMI"
+# The route file is not the selector. These rows are the policy.
+pol=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua
+choose() {
+	printf '%s\n' "$4" | lua "$pol" "$1" "$2" "$3"
+}
+[ "$(choose auto no - codec)" = codec ] || fail "codec only"
+[ "$(choose auto no - 'codec
+bt')" = bt ] || fail "bluetooth over codec"
+[ "$(choose auto no hdmi codec)" = codec ] || fail "bluetooth gone"
+[ "$(choose auto yes - 'codec
+hdmi')" = hdmi ] || fail "valid ELD"
+[ "$(choose auto no hdmi 'codec
+hdmi')" = codec ] || fail "hdmi unplug"
+[ "$(choose auto yes - 'codec
+hdmi
+bt')" = bt ] || fail "both external sinks"
+[ "$(choose auto yes bt 'codec
+hdmi')" = hdmi ] || fail "bluetooth gone with HDMI"
+[ "$(choose auto no hdmi 'codec
+hdmi
+bt')" = bt ] || fail "hdmi gone with bluetooth"
+[ "$(choose bt no - codec)" = codec ] || fail "explicit bluetooth gone"
+[ "$(choose hdmi no hdmi 'codec
+hdmi')" = codec ] || fail "explicit HDMI gone"
+[ "$(choose auto pending hdmi 'codec
+hdmi')" = hdmi ] || fail "pending modeset left HDMI"
+[ "$(choose auto pending - 'codec
+hdmi')" = codec ] || fail "pending entered HDMI"
+wp=$ROOT/output/build/wireplumber-0.5.14/src/scripts/linking/rescan.lua
+if [ -f "$wp" ]; then
+	grep -q 'default.audio.sink' "$wp" || fail "linking rescan ignores the default sink"
+	grep -q 'bluez-session-item-removed' "$wp" || fail "bluetooth removal pause missing"
+fi
 echo "pipewire service ok"
