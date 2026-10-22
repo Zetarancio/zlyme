@@ -491,15 +491,55 @@ note_sink_line() {
 		*"key:'default.audio.sink'"*) ;;
 		*) return 0 ;;
 	esac
+	case "$1" in
+		remove:*)
+			rm -f "$RT/active"
+			return 0
+			;;
+	esac
 	name=$(printf '%s\n' "$1" | sed -n 's/.*value:'\''{"name":"\([^"]*\)".*/\1/p')
-	[ -n "$name" ] || return 0
-	write_active_role "$(role_of_node_name "$name")"
+	role=
+	if [ -n "$name" ]; then
+		role=$(role_of_node_name "$name")
+	fi
+	if [ -z "$role" ]; then
+		rm -f "$RT/active"
+		return 0
+	fi
+	write_active_role "$role"
+}
+
+# pw-metadata -m stays up and also prints the keys that already exist.
+# One pass without -m still records the sink before that listener
+# attaches, and clears a file when the key is absent.
+follow_snapshot() {
+	seen=$RT/follow.seen
+	rm -f "$seen"
+	command -v pw-metadata >/dev/null 2>&1 || return 0
+	pw-metadata -n default | while IFS= read -r line; do
+		case "$line" in
+			*"key:'default.audio.sink'"*)
+				: > "$seen"
+				note_sink_line "$line"
+				;;
+		esac
+	done
+	if [ ! -f "$seen" ]; then
+		rm -f "$RT/active"
+	fi
+	rm -f "$seen"
 }
 
 follow_metadata() {
 	command -v pw-metadata >/dev/null 2>&1 || return 0
-	pw-metadata -n default -m | while IFS= read -r line; do
-		note_sink_line "$line"
+	while :; do
+		follow_snapshot
+		pw-metadata -n default -m | while IFS= read -r line; do
+			note_sink_line "$line"
+		done
+		[ "${ZLYME_FOLLOW_ONCE:-}" = 1 ] && return 0
+		[ -S "$RT/pipewire-0" ] || return 0
+		sleep 1
 	done
 }
 

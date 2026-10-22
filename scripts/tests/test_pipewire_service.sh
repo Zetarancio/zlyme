@@ -586,7 +586,8 @@ lua "$ROOT/scripts/tests/wp_policy_hook.lua" \
 	"$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua" \
 	"$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua" \
 	|| fail "sandbox hook"
-# The route file follows the effective default, after apply.
+# The route file follows the effective default. It is not a preference.
+export ZLYME_FOLLOW_ONCE=1
 cat > "$work/bin/pw-metadata" << 'EOF'
 #!/bin/sh
 printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"alsa_output._sys_devices_platform_hdmi-sound_sound_card0.stereo-fallback\"}' type:'Spa:String:JSON'"
@@ -601,6 +602,33 @@ printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"bluez_ou
 EOF
 sh "$AUDIO" follow || fail "follow headset"
 grep -qx bt "$work/rt/active" || fail "follow did not publish bt"
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"alsa_output._sys_devices_platform_rk817-sound_sound_card1.stereo-fallback\"}' type:'Spa:String:JSON'"
+EOF
+sh "$AUDIO" follow || fail "follow codec"
+grep -qx codec "$work/rt/active" || fail "follow did not publish codec"
+printf '%s\n' bt > "$work/rt/active"
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "remove: id:0 key:'default.audio.sink'"
+EOF
+sh "$AUDIO" follow || fail "follow remove"
+[ ! -e "$work/rt/active" ] || fail "a removed default left the route file"
+printf '%s\n' bt > "$work/rt/active"
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "Found \"default\" metadata 1"
+EOF
+sh "$AUDIO" follow || fail "follow empty"
+[ ! -e "$work/rt/active" ] || fail "a missing default left a stale route"
+printf '%s\n' bt > "$work/rt/active"
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"alsa_output.unknown\"}' type:'Spa:String:JSON'"
+EOF
+sh "$AUDIO" follow || fail "follow unknown"
+[ ! -e "$work/rt/active" ] || fail "an unknown sink left a stale route"
 # A connected connector can report sad_count 0 and gain a format later.
 # The recheck publishes the new ELD and then stops.
 drm=$work/drm/card0-HDMI-A-1
