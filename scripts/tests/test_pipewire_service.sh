@@ -182,6 +182,16 @@ if grep -q 'node-removed' "$lua"; then
 	fail "volume hook still reroutes on removal"
 fi
 grep -q 'hdmi-event' "$rules" || fail "HDMI event does not publish ELD"
+rule=$(grep -v '^[[:space:]]*#' "$rules")
+printf '%s\n' "$rule" | grep -q 'ENV{HOTPLUG}=="1"' || fail "HDMI event is not a card hotplug"
+printf '%s\n' "$rule" | grep -q 'ENV{DEVTYPE}=="drm_minor"' || fail "HDMI event is not limited to a DRM minor"
+printf '%s\n' "$rule" | grep -q 'KERNEL=="card\[0-9\]\*"' || fail "HDMI event does not name the card minor"
+if printf '%s\n' "$rule" | grep -q 'ZLYME_HDMI_CONNECTOR'; then
+	fail "udev records the card name as a connector"
+fi
+if printf '%s\n' "$rule" | grep -q 'HDMI-A'; then
+	fail "udev still waits for a connector device"
+fi
 if grep -q 'zlyme-audio route' "$rules"; then
 	fail "udev still chooses a sink"
 fi
@@ -650,16 +660,33 @@ printf '%s\n' disconnected > "$drm/status"
 printf 'sad_count\t\t2\nmonitor_present\t\t1\neld_valid\t\t1\n' > "$work/eld"
 printf 'hdmi\n' > "$work/rt/active"
 saved=$(cat "$work/cfg/audio.conf")
+unset ZLYME_HDMI_CONNECTOR
+: > "$work/cfg/hdmi-flag"
+export ZLYME_HDMI_TRACE="$work/cfg/hdmi-flag"
+export ZLYME_HDMI_TRACE_LOG="$work/hdmi.log"
 sh "$AUDIO" hdmi-event || fail "unplug event"
 grep -qx no "$work/rt/hdmi-audio" || fail "stale ELD stayed eligible $(cat "$work/rt/hdmi-audio")"
 [ "$(sh "$AUDIO" policy)" = codec ] || fail "unplug policy stayed on HDMI"
 [ "$(cat "$work/cfg/audio.conf")" = "$saved" ] || fail "unplug rewrote the saved volume"
 [ "$(cat "$work/rt/active")" = hdmi ] || fail "unplug wrote the route file"
+grep -q 'connector=card0-HDMI-A-1:disconnected' "$work/hdmi.log" || fail "unplug trace did not name the connector"
+if grep -q 'connector=card0 ' "$work/hdmi.log"; then
+	fail "unplug trace used the card name"
+fi
 printf '%s\n' connected > "$drm/status"
 printf 'monitor_present\t\t1\neld_valid\t\t0\n' > "$work/eld"
+sh "$AUDIO" hdmi-event || fail "pending event"
+grep -qx pending "$work/rt/hdmi-audio" || fail "connected empty ELD was not pending"
 [ "$(sh "$AUDIO" policy)" = hdmi ] || fail "connected pending ELD left HDMI"
+[ "$(cat "$work/cfg/audio.conf")" = "$saved" ] || fail "pending event rewrote the saved volume"
+[ "$(cat "$work/rt/active")" = hdmi ] || fail "pending event wrote the route file"
 printf 'sad_count\t\t2\n' > "$work/eld"
+sh "$AUDIO" hdmi-event || fail "reconnect event"
+grep -qx yes "$work/rt/hdmi-audio" || fail "connected ELD was not yes"
 [ "$(sh "$AUDIO" policy)" = hdmi ] || fail "reconnected ELD did not select HDMI"
+[ "$(cat "$work/cfg/audio.conf")" = "$saved" ] || fail "reconnect event rewrote the saved volume"
+[ "$(cat "$work/rt/active")" = hdmi ] || fail "reconnect event wrote the route file"
+grep -q 'start-stop-daemon -S -q -b' "$AUDIO" || fail "ELD recheck is not detached"
 # The route file is not the selector. These rows are the policy.
 pol=$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua
 choose() {
@@ -694,4 +721,125 @@ if [ -f "$wp" ]; then
 	grep -q 'bluez-session-item-removed' "$wp" || fail "bluetooth removal pause missing"
 fi
 grep -q 'pulseaudio-system.conf' "$ROOT/external.mk" || fail "pulse system bus policy is kept"
+# udevadm test reports the RUN line and does not execute it. HOTPLUG is
+# an event variable, not a stored sysfs property, so the positive cases
+# use a private sysfs whose uevent file carries the same key the kernel
+# puts on the netlink message. udevadm refuses a path that is not on a
+# sysfs mount, and the preload reports that magic for the private tree.
+command -v udevadm >/dev/null 2>&1 || fail "udevadm is required"
+command -v gcc >/dev/null 2>&1 || fail "gcc is required to test the udev rule"
+command -v unshare >/dev/null 2>&1 || fail "unshare is required to test the udev rule"
+cat > "$work/sysfsmagic.c" << 'EOF'
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <string.h>
+#include <sys/vfs.h>
+int statfs64(const char *path, struct statfs64 *buf) {
+	static int (*real)(const char *, struct statfs64 *);
+	if (!real)
+		real = dlvsym(RTLD_NEXT, "statfs64", "GLIBC_2.2.5");
+	if (path && strncmp(path, "/sys", 4) == 0 && (path[4] == '\0' || path[4] == '/')) {
+		int rc = real ? real(path, buf) : -1;
+		if (rc != 0)
+			memset(buf, 0, sizeof(*buf));
+		buf->f_type = 0x62656572;
+		return 0;
+	}
+	return real(path, buf);
+}
+int fstatfs64(int fd, struct statfs64 *buf) {
+	static int (*real)(int, struct statfs64 *);
+	if (!real)
+		real = dlvsym(RTLD_NEXT, "fstatfs64", "GLIBC_2.2.5");
+	int rc = real(fd, buf);
+	if (rc == 0)
+		buf->f_type = 0x62656572;
+	return rc;
+}
+EOF
+cat > "$work/sysfsmagic.ver" << 'EOF'
+GLIBC_2.2.5 {
+	global:
+		statfs64;
+		fstatfs64;
+	local:
+		*;
+};
+EOF
+gcc -shared -fPIC -Wl,--version-script="$work/sysfsmagic.ver" -o "$work/sysfsmagic.so" "$work/sysfsmagic.c" -ldl
+udev_runs() {
+	printf '%s\n' "$1" | grep -o '/usr/sbin/zlyme-audio hdmi-event' | wc -l | tr -d ' '
+}
+real_dev() {
+	path=$1
+	[ -e "$path" ] || return 0
+	json=$(udevadm test --action=change -D "$work/rules" "$path" --json=short 2>/dev/null || true)
+	got=$(udev_runs "$json")
+	[ "$got" = 0 ] || fail "plain DRM change ran hdmi-event for $path"
+}
+mkdir -p "$work/rules"
+cp "$rules" "$work/rules/90-zlyme-audio.rules"
+real_dev /sys/class/drm/card0
+real_dev /sys/class/drm/card1
+real_dev /sys/class/drm/renderD128
+for conn in /sys/class/drm/card*-HDMI-A-*; do
+	[ -e "$conn" ] || continue
+	real_dev "$conn"
+	break
+done
+fake_dev() {
+	name=$1
+	shift
+	mkdir -p "$work/sys/devices/virtual/drm/$name" "$work/sys/class/drm"
+	printf '%s\n' "$@" > "$work/sys/devices/virtual/drm/$name/uevent"
+	ln -s ../../../../class/drm "$work/sys/devices/virtual/drm/$name/subsystem"
+	ln -s ../../devices/virtual/drm/"$name" "$work/sys/class/drm/$name"
+}
+fake_dev card0 'MAJOR=226' 'MINOR=0' 'DEVNAME=dri/card0' 'DEVTYPE=drm_minor' 'HOTPLUG=1' 'CONNECTOR=56'
+fake_dev card1 'MAJOR=226' 'MINOR=1' 'DEVNAME=dri/card1' 'DEVTYPE=drm_minor' 'HOTPLUG=1'
+fake_dev renderD128 'MAJOR=226' 'MINOR=128' 'DEVNAME=dri/renderD128' 'DEVTYPE=drm_minor' 'HOTPLUG=1'
+fake_dev card0-HDMI-A-1 'DEVTYPE=drm_connector' 'HOTPLUG=1'
+fake_dev card0-lease 'MAJOR=226' 'MINOR=0' 'DEVNAME=dri/card0' 'DEVTYPE=drm_minor' 'LEASE=1'
+mkdir -p "$work/udev"
+cat > "$work/udev-run.sh" << 'EOF'
+#!/bin/sh
+root=$1
+mount --bind "$root/sys" /sys
+export LD_PRELOAD="$root/sysfsmagic.so"
+for dev in card0 card1 renderD128 card0-HDMI-A-1 card0-lease; do
+	udevadm test --action=change -D "$root/rules" "/sys/devices/virtual/drm/$dev" --json=short \
+		> "$root/udev/$dev.json" 2>/dev/null
+done
+EOF
+chmod +x "$work/udev-run.sh"
+unshare --user --map-root-user --mount -- "$work/udev-run.sh" "$work" || fail "udevadm could not read the synthetic card event"
+expect_hotplug() {
+	name=$1
+	want=$2
+	[ -s "$work/udev/$name.json" ] || fail "no udev result for $name"
+	got=$(udev_runs "$(cat "$work/udev/$name.json")")
+	[ "$got" = "$want" ] || fail "$name ran hdmi-event $got times, wanted $want"
+	if [ "$want" != 0 ]; then
+		grep -q 'ZLYME_HDMI_RECHECK=1' "$work/udev/$name.json" || fail "$name did not arm the ELD recheck"
+		if grep -q 'ZLYME_HDMI_CONNECTOR' "$work/udev/$name.json"; then
+			fail "$name published a connector name"
+		fi
+	fi
+}
+expect_hotplug card0 1
+expect_hotplug card1 1
+expect_hotplug renderD128 0
+expect_hotplug card0-HDMI-A-1 0
+expect_hotplug card0-lease 0
+target=$ROOT/output/target
+if [ "${ZLYME_CHECK_TARGET:-}" = 1 ] || { [ -f "$target/etc/udev/rules.d/90-zlyme-audio.rules" ] && grep -q 'ENV{HOTPLUG}' "$target/etc/udev/rules.d/90-zlyme-audio.rules"; }; then
+	cmp -s "$rules" "$target/etc/udev/rules.d/90-zlyme-audio.rules" || fail "target udev rule is not the source rule"
+	if [ -e "$target/usr/share/dbus-1/system.d/pulseaudio-system.conf" ]; then
+		fail "pulse system bus policy is still in the target"
+	fi
+	[ -f "$target/etc/pulse/client.conf" ] || fail "pulse client.conf was removed"
+	[ -e "$target/usr/bin/pactl" ] || fail "pulse client tool was removed"
+	[ ! -e "$target/usr/bin/pulseaudio" ] || fail "pulse daemon binary is still in the target"
+	[ -f "$target/usr/share/dbus-1/system.d/bluetooth.conf" ] || fail "bluetooth dbus policy was removed"
+fi
 echo "pipewire service ok"

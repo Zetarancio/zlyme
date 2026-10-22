@@ -1,10 +1,13 @@
-# HDMI audio presence is an ELD change, not a new PipeWire node. The
-# card is already in the graph while the connector is disconnected.
-# This publishes that fact and wakes WirePlumber. It does not set a
-# default sink. The kernel name is recorded so a trace can name the
-# connector. A connected connector whose ELD is not ready yet gets one
-# detached recheck. systemd-udev 251 drops a RUN program that is still
-# backgrounded when the worker returns, so this stays in the foreground.
-# Sound-card and adapter events are not used: they run before the sink
-# exists and they blocked the Bluetooth udev worker.
-ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card*-HDMI-A-[0-9]*", ENV{ZLYME_HDMI_CONNECTOR}="%k", ENV{ZLYME_HDMI_RECHECK}="1", RUN+="/usr/sbin/zlyme-audio hdmi-event"
+# Linux 7.2 sends HDMI hotplug as HOTPLUG=1 on the primary DRM card.
+# drm_sysfs_hotplug_event and drm_sysfs_connector_hotplug_event both
+# use that card (card0 or card1, DEVTYPE drm_minor). DesignWare HDMI
+# reaches them through drm_helper_hpd_irq_event. The handler reads
+# HDMI-A status and the ELD. The card name is not a connector name.
+# A connected port whose ELD is not ready gets one detached recheck.
+# eudev 3.2.14 waits for this program and kills that pid on timeout.
+# start-stop-daemon -b has already setsid'd the recheck before this
+# program returns, so the recheck is not that pid. Render nodes, lease
+# changes, and connector sysfs devices do not match. Sound-card events
+# are not used: they ran before the sink existed and blocked the
+# Bluetooth udev worker.
+ACTION=="change", SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", KERNEL=="card[0-9]*", ENV{HOTPLUG}=="1", ENV{ZLYME_HDMI_RECHECK}="1", RUN+="/usr/sbin/zlyme-audio hdmi-event"
