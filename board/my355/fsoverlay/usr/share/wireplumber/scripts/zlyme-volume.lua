@@ -3,25 +3,19 @@
 -- the level used before this hook runs. A stored 0 stays silent.
 -- The curve matches linear_gain() in zlyme-audio: (percent/100)^3.
 -- Sink choice is zlyme-policy.lua. This hook does not spawn a router.
+-- The percent is metadata zlyme.volume. The sandbox has no io library.
 
 log = Log.open_topic("s-zlyme")
 
-local CONF = "/storage/.config/audio.conf"
-
-local function saved_percent()
-  local f = io.open(CONF, "r")
-  if not f then
+local function saved_percent(metadata)
+  if not metadata then
     return nil
   end
-  local percent = nil
-  for line in f:lines() do
-    local v = line:match("^ZLYME_VOLUME=(%d+)$")
-    if v then
-      percent = tonumber(v)
-    end
+  local value = metadata:find(0, "zlyme.volume")
+  if type(value) ~= "string" then
+    return nil
   end
-  f:close()
-  return percent
+  return tonumber(value)
 end
 
 local function gain_of(percent)
@@ -35,13 +29,22 @@ local function gain_of(percent)
   return x * x * x
 end
 
-local function apply(node)
+local function apply(node, source)
   local props = node.properties
   local name = props["node.name"] or ""
   if name:find("null", 1, true) or name:find("dummy", 1, true) then
     return
   end
-  local percent = saved_percent()
+  local metadata = nil
+  if source then
+    local metadata_om = source:call("get-object-manager", "metadata")
+    if metadata_om then
+      metadata = metadata_om:lookup {
+        Constraint { "metadata.name", "=", "default" },
+      }
+    end
+  end
+  local percent = saved_percent(metadata)
   if percent == nil then
     return
   end
@@ -75,7 +78,7 @@ SimpleEventHook {
   execute = function(event)
     local node = event:get_subject()
     if node then
-      apply(node)
+      apply(node, event:get_source())
     end
   end
 }:register()

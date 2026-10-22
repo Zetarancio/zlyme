@@ -576,4 +576,43 @@ printf '%s\n' line line line line line line line line line line line > "$log"
 sh "$AUDIO" hdmi-event || fail "retiring event"
 [ ! -e "$trace" ] || fail "the HDMI trace flag survived twelve lines"
 unset ZLYME_HDMI_TRACE ZLYME_HDMI_TRACE_LOG ZLYME_HDMI_AUDIO
+if grep -q 'io.open' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua"; then
+	fail "policy hook still opens files"
+fi
+if grep -q 'io.open' "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua"; then
+	fail "volume hook still opens files"
+fi
+lua "$ROOT/scripts/tests/wp_policy_hook.lua" \
+	"$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-policy.lua" \
+	"$ROOT/board/my355/fsoverlay/usr/share/wireplumber/scripts/zlyme-volume.lua" \
+	|| fail "sandbox hook"
+# The route file follows the effective default, after apply.
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"alsa_output._sys_devices_platform_hdmi-sound_sound_card0.stereo-fallback\"}' type:'Spa:String:JSON'"
+EOF
+chmod 755 "$work/bin/pw-metadata"
+rm -f "$work/rt/active"
+sh "$AUDIO" follow || fail "follow exited"
+grep -qx hdmi "$work/rt/active" || fail "follow did not publish hdmi $(cat "$work/rt/active" 2>/dev/null)"
+cat > "$work/bin/pw-metadata" << 'EOF'
+#!/bin/sh
+printf '%s\n' "update: id:0 key:'default.audio.sink' value:'{\"name\":\"bluez_output.TEST\"}' type:'Spa:String:JSON'"
+EOF
+sh "$AUDIO" follow || fail "follow headset"
+grep -qx bt "$work/rt/active" || fail "follow did not publish bt"
+# A connected connector can report sad_count 0 and gain a format later.
+# The recheck publishes the new ELD and then stops.
+drm=$work/drm/card0-HDMI-A-1
+mkdir -p "$drm"
+printf '%s\n' connected > "$drm/status"
+printf 'sad_count 0\n' > "$work/eld"
+export ZLYME_HDMI_ELD=$work/eld ZLYME_HDMI_SYSFS=$work/drm
+export ZLYME_HDMI_RECHECK_TRIES=5 ZLYME_HDMI_RECHECK_INTERVAL=0.2
+unset ZLYME_HDMI_AUDIO ZLYME_HDMI_RECHECK
+sh "$AUDIO" hdmi-event || fail "initial ELD"
+grep -qx no "$work/rt/hdmi-audio" || fail "parsed empty ELD was not no"
+( sleep 0.3; printf 'sad_count\t2\n' > "$work/eld" ) &
+sh "$AUDIO" hdmi-recheck || fail "recheck"
+grep -qx yes "$work/rt/hdmi-audio" || fail "late ELD stayed unpublished"
 echo "pipewire service ok"

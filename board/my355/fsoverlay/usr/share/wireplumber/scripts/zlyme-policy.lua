@@ -4,9 +4,11 @@
 -- outranks priority.session by 30000, so automatic mode must not call it.
 --
 -- The shell publishes the ELD (yes, no, or pending) and the saved
--- preference. It does not choose the node. A pending ELD is a modeset
--- with no parsed format: do not enter HDMI, and do not leave it when
--- the graph is already there.
+-- preference as metadata. This script does not choose by reading
+-- files: the WirePlumber sandbox does not provide io. A pending ELD
+-- is a modeset with no parsed format: do not enter HDMI, and do not
+-- leave it when the graph is already there. The effective sink name
+-- is published to the route file by zlyme-audio follow, after apply.
 
 local policy = {}
 
@@ -105,38 +107,6 @@ end
 
 log = Log.open_topic("s-zlyme")
 
-local CONF = "/storage/.config/audio.conf"
-
-local function saved_pref()
-  local f = io.open(CONF, "r")
-  if not f then
-    return "auto"
-  end
-  local pref = "auto"
-  for line in f:lines() do
-    local v = line:match("^ZLYME_SINK_PREF=(%S+)$")
-    if v == "auto" or v == "codec" or v == "hdmi" or v == "bt" then
-      pref = v
-    end
-  end
-  f:close()
-  return pref
-end
-
-local function read_eld()
-  local rt = os.getenv("ZLYME_PW_RUNTIME") or "/run/zlyme/pipewire"
-  local f = io.open(rt .. "/hdmi-audio", "r")
-  if not f then
-    return "pending"
-  end
-  local s = f:read("*l")
-  f:close()
-  if s == "yes" or s == "no" or s == "pending" then
-    return s
-  end
-  return "pending"
-end
-
 local function role_of(props)
   local name = props["node.name"] or ""
   if name:find("null", 1, true) or name:find("dummy", 1, true) then
@@ -146,23 +116,40 @@ local function role_of(props)
     return "bt"
   end
   local card = props["alsa.id"] or ""
-  if card == "rk817ext" then
+  if card == "rk817ext" or name:find("rk817-sound", 1, true) then
     return "codec"
   end
-  if card == "HDMI" then
+  if card == "HDMI" or name:find("hdmi-sound", 1, true) then
     return "hdmi"
   end
   return nil
 end
 
-local function write_active(role)
-  local rt = os.getenv("ZLYME_PW_RUNTIME") or "/run/zlyme/pipewire"
-  local f = io.open(rt .. "/active", "w")
-  if not f then
-    return
+local function meta_value(metadata, key)
+  if not metadata then
+    return nil
   end
-  f:write(role, "\n")
-  f:close()
+  local value = metadata:find(0, key)
+  if type(value) ~= "string" or value == "" then
+    return nil
+  end
+  return value
+end
+
+local function saved_pref(metadata)
+  local pref = meta_value(metadata, "zlyme.pref")
+  if pref == "auto" or pref == "codec" or pref == "hdmi" or pref == "bt" then
+    return pref
+  end
+  return "auto"
+end
+
+local function read_eld(metadata)
+  local eld = meta_value(metadata, "zlyme.hdmi")
+  if eld == "yes" or eld == "no" or eld == "pending" then
+    return eld
+  end
+  return "pending"
 end
 
 local function current_role(metadata, by_name)
@@ -226,19 +213,18 @@ SimpleEventHook {
         Constraint { "metadata.name", "=", "default" },
       }
     end
-    local choice = policy.choose(saved_pref(), nodes, read_eld(), current_role(metadata, by_name))
+    local choice = policy.choose(saved_pref(metadata), nodes, read_eld(metadata), current_role(metadata, by_name))
     local name = policy.name_for(nodes, choice)
     if not name then
       return
     end
     event:set_data("selected-node", name)
-    write_active(choice)
     log:info(string.format("sink %s (%s)", choice, name))
   end
 }:register()
 
 -- A DRM event or a saved preference writes one metadata key. That is
--- the rescan. The hook above reads the files; the key is only a wakeup.
+-- the rescan. The hook above reads those keys. It does not read files.
 SimpleEventHook {
   name = "zlyme/rescan-hint",
   interests = {

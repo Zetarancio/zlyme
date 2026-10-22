@@ -40,13 +40,14 @@ start_one() {
 	name=$1
 	bin=$2
 	token=$3
+	shift 3
 	pidf="$RT/$name.pid"
 	[ -x "$bin" ] || return 1
 	if ours "$pidf" "$token"; then
 		return 0
 	fi
 	rm -f "$pidf"
-	start-stop-daemon -S -q -b -m -p "$pidf" --exec "$bin"
+	start-stop-daemon -S -q -b -m -p "$pidf" --exec "$bin" -- "$@"
 }
 
 stop_one() {
@@ -95,10 +96,12 @@ start)
 		if [ -x "$audio" ]; then
 			"$audio" migrate-volume >/dev/null 2>&1 || true
 			if "$audio" node-id codec >/dev/null 2>&1; then
-				# Publish the ELD once so the policy hook can see
-				# it. WirePlumber selects the sink. This does not
+				# Publish the ELD and the saved volume. WirePlumber
+				# selects the sink. The follow process records the
+				# effective default in the route file. This does not
 				# wait for bluetoothd or call ConnectProfile.
-				"$audio" hdmi-event >/dev/null 2>&1 || true
+				ZLYME_HDMI_RECHECK=1 "$audio" hdmi-event >/dev/null 2>&1 || true
+				start_one follow "$audio" zlyme-audio follow
 				status ready
 				exit 0
 			fi
@@ -109,6 +112,7 @@ start)
 	status codec-waiting
 	;;
 stop)
+	stop_one follow zlyme-audio
 	stop_one pulse pipewire-pulse
 	stop_one wireplumber wireplumber
 	stop_one pipewire pipewire

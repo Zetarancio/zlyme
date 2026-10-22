@@ -27,6 +27,8 @@ usage: $(basename "$0") <command>
   export
   route
   hdmi-event
+  hdmi-recheck
+  follow
   policy
   migrate-volume
   hold {0-100}
@@ -228,27 +230,76 @@ node_id() {
 	nodes | awk -F '\t' -v r="$role" '$1 == r { print $2; exit }'
 }
 
-# yes: ELD advertises a format. no: a parsed ELD has no audio.
-# pending: the connector is mid-modeset and the ELD is still version 0
+# yes: some ELD advertises a format. no: every parsed ELD has no audio.
+# pending: a connector is mid-modeset and an ELD is still version 0
 # or empty. That is not a reason to leave HDMI or to enter it.
+# Procfs reports these files as size 0 even when a read returns the ELD.
 hdmi_audio_state() {
-	eld=${ZLYME_HDMI_ELD:-}
 	[ "${ZLYME_HDMI_AUDIO:-}" = 1 ] && { printf '%s\n' yes; return; }
 	[ "${ZLYME_HDMI_AUDIO:-}" = 0 ] && { printf '%s\n' no; return; }
-	if [ -z "$eld" ]; then
-		eld=$(ls /proc/asound/HDMI/eld#* 2>/dev/null | head -n 1)
+	eld=${ZLYME_HDMI_ELD:-}
+	if [ -n "$eld" ]; then
+		set -- "$eld"
+	else
+		# shellcheck disable=SC2086
+		set -- /proc/asound/HDMI/eld#*
 	fi
-	[ -n "$eld" ] || { printf '%s\n' pending; return; }
-	# The kernel separates the field with tabs, not spaces.
-	if grep -q 'sad_count[[:space:]]*[1-9]' "$eld"; then
-		printf '%s\n' yes
+	if [ ! -e "$1" ]; then
+		printf '%s\n' pending
 		return
 	fi
-	if grep -q 'sad_count[[:space:]]*0' "$eld"; then
-		printf '%s\n' no
+	pending=0
+	parsed=0
+	for eld do
+		if grep -q 'sad_count[[:space:]]*[1-9]' "$eld" 2>/dev/null; then
+			printf '%s\n' yes
+			return
+		fi
+		if grep -q 'sad_count[[:space:]]*0' "$eld" 2>/dev/null; then
+			parsed=1
+		else
+			pending=1
+		fi
+	done
+	if [ "$pending" = 1 ] || [ "$parsed" != 1 ]; then
+		printf '%s\n' pending
 		return
 	fi
-	printf '%s\n' pending
+	printf '%s\n' no
+}
+
+# The connected HDMI-A connector, if one is up. The name is the DRM
+# kernel name, for example card0-HDMI-A-1.
+connector_dir() {
+	root=${ZLYME_HDMI_SYSFS:-/sys/class/drm}
+	for status in "$root"/card*-HDMI-A-*/status; do
+		[ -r "$status" ] || continue
+		state=$(cat "$status" 2>/dev/null || true)
+		if [ "$state" = connected ]; then
+			dirname "$status"
+			return 0
+		fi
+	done
+	return 1
+}
+
+connector_label() {
+	if [ -n "${ZLYME_HDMI_CONNECTOR:-}" ]; then
+		printf '%s\n' "$ZLYME_HDMI_CONNECTOR"
+		return 0
+	fi
+	dir=$(connector_dir 2>/dev/null || true)
+	if [ -n "$dir" ]; then
+		printf '%s:connected\n' "$(basename "$dir")"
+		return 0
+	fi
+	root=${ZLYME_HDMI_SYSFS:-/sys/class/drm}
+	for status in "$root"/card*-HDMI-A-*/status; do
+		[ -r "$status" ] || continue
+		state=$(cat "$status" 2>/dev/null || true)
+		printf '%s:%s\n' "$(basename "$(dirname "$status")")" "${state:-unknown}"
+		return 0
+	done
 }
 
 hdmi_has_audio() {
@@ -324,7 +375,7 @@ hdmi_trace() {
 	if pipewire_up; then
 		def=$(default_sink_id || true)
 	fi
-	conn=${ZLYME_HDMI_CONNECTOR:-}
+	conn=$(connector_label 2>/dev/null || true)
 	printf '%s eld=%s connector=%s pref=%s choice=%s default=%s active=%s %s\n' \
 		"$up" "$state" "$conn" "$(pref)" "$choice" "$def" "$active" "$sad" >> "$log" 2>/dev/null || return 0
 	n=$(wc -l < "$log" 2>/dev/null || printf '%s\n' 0)
@@ -346,18 +397,110 @@ policy_role() {
 	nodes | lua "$pol" "$(pref)" "$(hdmi_audio_state)" "$cur"
 }
 
-# Publish the ELD and wake WirePlumber. A configured default outranks
+# Publish one fact. WirePlumber reads it. A configured default outranks
 # node priority for the rest of the session, so this does not set one.
-signal_graph() {
+publish_meta() {
+	key=$1
+	val=$2
+	if [ -S "$RT/pipewire-0" ] && command -v pw-metadata >/dev/null 2>&1; then
+		pw-metadata -n default 0 "$key" "$val" >/dev/null 2>&1 || true
+	fi
+}
+
+publish_eld() {
 	state=$(hdmi_audio_state)
 	if mkdir -p "$RT" 2>/dev/null; then
 		printf '%s\n' "$state" > "$RT/hdmi-audio" 2>/dev/null || true
 	fi
 	hdmi_trace "$state"
-	if [ -S "$RT/pipewire-0" ] && command -v pw-metadata >/dev/null 2>&1; then
-		pw-metadata -n default 0 zlyme.hdmi "$state" >/dev/null 2>&1 || true
+	publish_meta zlyme.hdmi "$state"
+	printf '%s\n' "$state"
+}
+
+# The DRM change can arrive while the ELD is still version 0. One
+# detached pass re-reads it for up to thirty seconds, then stops.
+# A later DRM change starts another pass. It publishes the ELD. It
+# does not choose a sink.
+maybe_recheck() {
+	[ "${ZLYME_HDMI_RECHECK:-}" = 1 ] || return 0
+	[ "$1" = yes ] && return 0
+	connector_dir >/dev/null 2>&1 || return 0
+	pidf=$RT/hdmi-recheck.pid
+	if [ -f "$pidf" ]; then
+		pid=$(cat "$pidf" 2>/dev/null || true)
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			return 0
+		fi
 	fi
+	mkdir -p "$RT" 2>/dev/null || return 0
+	start-stop-daemon -S -q -b -m -p "$pidf" --exec "$0" -- hdmi-recheck
+}
+
+hdmi_recheck() {
+	tries=${ZLYME_HDMI_RECHECK_TRIES:-30}
+	interval=${ZLYME_HDMI_RECHECK_INTERVAL:-1}
+	i=0
+	while [ "$i" -lt "$tries" ]; do
+		sleep "$interval"
+		i=$((i + 1))
+		now=$(hdmi_audio_state)
+		prev=$(cat "$RT/hdmi-audio" 2>/dev/null || true)
+		if [ "$now" != "$prev" ]; then
+			publish_eld >/dev/null
+		fi
+		if [ "$now" = yes ]; then
+			return 0
+		fi
+		connector_dir >/dev/null 2>&1 || return 0
+	done
 	return 0
+}
+
+signal_graph() {
+	state=$(publish_eld)
+	maybe_recheck "$state"
+	return 0
+}
+
+# The route file is the effective default sink, written after
+# WirePlumber applies it. The policy hook cannot write the file.
+role_of_node_name() {
+	case "$1" in
+		bluez_output.*) printf '%s\n' bt ;;
+		*hdmi-sound*) printf '%s\n' hdmi ;;
+		*rk817*) printf '%s\n' codec ;;
+	esac
+}
+
+write_active_role() {
+	role=$1
+	case "$role" in
+		codec|hdmi|bt) ;;
+		*) return 0 ;;
+	esac
+	cur=$(cat "$RT/active" 2>/dev/null || true)
+	[ "$cur" = "$role" ] && return 0
+	mkdir -p "$RT" 2>/dev/null || return 0
+	tmp=$(mktemp "$RT/active.XXXXXX") || return 0
+	printf '%s\n' "$role" > "$tmp"
+	mv -f "$tmp" "$RT/active"
+}
+
+note_sink_line() {
+	case "$1" in
+		*"key:'default.audio.sink'"*) ;;
+		*) return 0 ;;
+	esac
+	name=$(printf '%s\n' "$1" | sed -n 's/.*value:'\''{"name":"\([^"]*\)".*/\1/p')
+	[ -n "$name" ] || return 0
+	write_active_role "$(role_of_node_name "$name")"
+}
+
+follow_metadata() {
+	command -v pw-metadata >/dev/null 2>&1 || return 0
+	pw-metadata -n default -m | while IFS= read -r line; do
+		note_sink_line "$line"
+	done
 }
 
 # wpctl prints "id 64, type PipeWire:Interface:Node". The comma is not
@@ -460,6 +603,9 @@ set_volume() {
 	if [ "$cur" != "$v" ]; then
 		save ZLYME_VOLUME "$v" || return 1
 	fi
+	# The volume hook reads this when a sink appears later. The sandbox
+	# cannot open the conf file.
+	publish_meta zlyme.volume "$v"
 	# PipeWire may still be down. The saved percent is the intention.
 	# The volume hook applies it when a sink appears.
 	spawn_apply
@@ -489,6 +635,7 @@ migrate_volume() {
 	drop_key ZLYME_GAIN_STATE || true
 	vol=$(saved ZLYME_VOLUME || true)
 	[ -n "$vol" ] || return 0
+	publish_meta zlyme.volume "$vol"
 	pipewire_up || return 0
 	apply_gain "$vol"
 	rc=$?
@@ -537,6 +684,12 @@ set)
 	;;
 hdmi-event)
 	signal_graph
+	;;
+hdmi-recheck)
+	hdmi_recheck
+	;;
+follow)
+	follow_metadata
 	;;
 policy)
 	policy_role
