@@ -20,7 +20,7 @@ if [ -e "$ROOT/package/system/nextui/paks/Tools/Recent.pak" ] \
 then
 	fail "Recent.pak was added"
 fi
-grep -q '39f5cf0e51ae35c7fd98378791065da596a1d09c' \
+grep -q '666ff5fdf737a01f83505b843916ac9c46da80d6' \
 	"$ROOT/package/system/nextui/nextui.mk" || fail "NextUI pin changed"
 if grep -q 'recent-art-seeded' "$SEED"; then
 	fail "the seed still writes a marker"
