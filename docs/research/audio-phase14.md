@@ -4,7 +4,7 @@ Status, 2026-10-20: both images use PipeWire. The paragraphs below that describe
 
 Phase 13 (`8b4218aa`, published as `zlyme44.3`) played through ALSA. `asound.conf` made `default` a `dmix` plus one `FlipVolume` softvol. BlueALSA was the Bluetooth playback device. Programs that opened `default` shared the RK817 PCM.
 
-Phase 14 plays through one PulseAudio 17 server. The server opens `hw:rk817ext,0`. `default` is the Pulse ALSA plugin, so an ordinary ALSA client, including SDL with `SDL_AUDIODRIVER=alsa` and PICO-8, reaches that server. Native `libpulse` clients use the same socket. `flipsink_*` remains for a program that opens that name. Nothing in the shipped launchers does. The Music Player sets `SDL_AUDIODRIVER=alsa`, which follows `default`.
+Phase 14's earlier candidate played through one PulseAudio 17 server. The current graph does not. The server opens `hw:rk817ext,0`. `default` is the Pulse ALSA plugin, so an ordinary ALSA client, including SDL with `SDL_AUDIODRIVER=alsa` and PICO-8, reaches that server. Native `libpulse` clients use the same socket. `flipsink_*` remains for a program that opens that name. Nothing in the shipped launchers does. The Music Player sets `SDL_AUDIODRIVER=alsa`, which follows `default`.
 
 `/proc/asound/card1/id` is `rk817ext`. The kernel short name `rk817_ext` is the headphone input name (`rk817_ext Headphones`) and is not an ALSA card id.
 

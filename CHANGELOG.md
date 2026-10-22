@@ -24,14 +24,14 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
-- Sound from a game, HDMI, and Bluetooth headphones goes through one PipeWire mixer. The old PulseAudio server and the old Bluetooth audio bridge are not started. Headphones still switch themselves when the plug goes in. A saved volume number is kept. Whether the new mixer sounds better still needs a listen on the device. A normal boot leaves the internal screen on. Starting a program with HDMI on turns that screen off until you leave the program.
+- Sound from a game, HDMI, and Bluetooth headphones goes through one PipeWire mixer. The old PulseAudio server and the old Bluetooth audio bridge are not started. Headphones still switch themselves when the plug goes in. A saved volume number is kept. On the image installed on 2026-10-22, the television, a Bluetooth headset, and the headphone jack were acceptable to listen to. Speaker quality from an earlier image remains open. A normal boot leaves the internal screen on. Starting a program with HDMI on turns that screen off until you leave the program.
 - PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.
 - PortMaster is told this system can run a 32-bit ARM hard-float program. That does not mean every 32-bit port runs.
 - Tools → USB Transfer is the file-copy tool. An update removes that tool's old stock folder when it still matches the copy Zlyme shipped. A folder you changed is kept outside the tool list.
 
 ### Known limitations
 
-- Games are audible on the speaker, headphones, and a paired Bluetooth headset. The sound quality on the speaker and on HDMI is still poor, including with the longer buffer, until someone listens to that build. The image installed on 2026-10-22 played Bluetooth games, and the delay sounded shorter than the previous image. That delay has not been measured against wired headphones. The playing mark is still the Bluetooth rune. HDMI on the television is still silent. Abombniball does not leave on MENU+START.
+- Games are audible on the speaker, headphones, and a paired Bluetooth headset. On the image installed on 2026-10-22, HDMI played on the television, Bluetooth playback and its delay were acceptable, and the headphone jack switched acceptably. Those delays were not measured. Speaker sound quality from the earlier listen remains open. The status icons for a Bluetooth link and the playing sink are still open. HDMI video at 720p was not part of that listen. Abombniball does not leave on MENU+START.
 
 ## [zlyme44.3] - 2026-10-16
 

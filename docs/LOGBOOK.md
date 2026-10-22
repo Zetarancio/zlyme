@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-22 — Installed 3d4ff87: HDMI, Bluetooth, and the jack passed; icons stay open
+
+The maintainer installed `zlyme-my355-20261022-3d4ff87d4bc3.tar`. Source `3d4ff87d4bc3a1713b20cdaa6374595eb36e2ba4`. Squashfs `5801885e04d598c0afa296f00fabc43f8219f7223ad8e4eb1cf809fed2f6b1b6`. NextUI `de8f05439fcfe9064b82cae87673107bc2323ae2`. HDMI audio on the television passed. Bluetooth playback and the perceived delay passed. The headphone jack and the perceived switching delay passed. Those delays were not measured. The status icons on that image stay open. The assets are not the failure. Speaker quality reported on `00e6c343` stays open. That listen was not an HDMI 720p or panel-off pass. `71668a8` remains the previous installed candidate. Phase 14 stays open. Stable `zlyme44.3` is unchanged.
+
 ## 2026-10-22 — Installed 71668a8, then an uninstalled route-file candidate
 
 The maintainer installed `zlyme-my355-20261021-71668a8d98cd.tar`. `/boot/zlyme` is squashfs `6941fa45f2107ba1aeb03f7aa6bbff0e889012aea0b6d0c461ec388cddd71232`. Source `71668a8d98cd389c597449c1c75b937564ea4886`. NextUI `de8f05439fcfe9064b82cae87673107bc2323ae2`. Kernel `7.2.10`. Bluetooth playback is audible and the delay is subjectively shorter than `1178d5`. The delay was not measured. The status mark stayed the radio rune. The firmware atlas has the headset at `(66,104)` and the rune at `(53,104)`. `/run/zlyme/pipewire/active` was absent, so NextUI drew the rune for a radio link. The policy hook calls `io.open`. WirePlumber 0.5.14's Lua sandbox does not export `io`, so the hook errors before it sets a sink or could have written that file. Backup priorities then keep the codec above HDMI.
@@ -27,7 +31,7 @@ With the television connected, `card0-HDMI-A-1` was connected and enabled. `/pro
 
 The working Miyoo Flip ROCKNIX checkout is `/run/media/ale/SPCC/Cursor/MIYOO-FLIP/ROCKNIX/distribution`, branch `flip`, clean, `d249b09bd95120c65555b0c56bc381f72ce073bc`. Its RK3566 kernel pin is 7.0.2. `hdmi_sense` selects a sink from connector status and calls `pactl set-default-sink`. That was not copied. A configured default outranks node priority. Zlyme's kernel already produced a valid ELD, so this failure is the unpublished ELD and the sandbox hook, not a kernel or DTS change.
 
-`./build.sh --config zlyme_my355_defconfig` from `3d4ff87d4bc3a1713b20cdaa6374595eb36e2ba4`. The run started 2026-10-22T17:21:00Z and ended 17:22:37Z. No package was rebuilt. OTA `output/images/zlyme-my355-20261022-3d4ff87d4bc3.tar`, SHA-256 `0a4e4e091a3b59e9ae2aac549a13aa39a8aeae476478084fa716d817e900cfc8`. The `zlyme` member and `rootfs.squashfs` are `5801885e04d598c0afa296f00fabc43f8219f7223ad8e4eb1cf809fed2f6b1b6`. NextUI in that root is `de8f05439fcfe9064b82cae87673107bc2323ae2`. Boot files match the `71668a8` tar. Not installed. The headset glyph and HDMI television audio are not claimed.
+`./build.sh --config zlyme_my355_defconfig` from `3d4ff87d4bc3a1713b20cdaa6374595eb36e2ba4`. The run started 2026-10-22T17:21:00Z and ended 17:22:37Z. No package was rebuilt. OTA `output/images/zlyme-my355-20261022-3d4ff87d4bc3.tar`, SHA-256 `0a4e4e091a3b59e9ae2aac549a13aa39a8aeae476478084fa716d817e900cfc8`. The `zlyme` member and `rootfs.squashfs` are `5801885e04d598c0afa296f00fabc43f8219f7223ad8e4eb1cf809fed2f6b1b6`. NextUI in that root is `de8f05439fcfe9064b82cae87673107bc2323ae2`. Boot files match the `71668a8` tar. Installation and the listen are the entry above. This build record does not itself claim the television or the glyph.
 
 ## 2026-10-21 — Uninstalled candidate after WirePlumber owns sink choice
 
