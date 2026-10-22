@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-22 — Installed be5d8c0: icons, speaker, and charger passed; disconnect fallback failed
+
+The maintainer installed `zlyme-my355-20261022-be5d8c0cec39.tar`. Source `be5d8c0cec3939b48880063f2e90dd07728cf4a3`. Squashfs `c8b5f1d83d2dfd52683d06c4d5c0d46702790148ca9853ee0b578a882bafbeac`. NextUI `666ff5fdf737a01f83505b843916ac9c46da80d6`. Accepted: Bluetooth and volume-pill icons, speaker sound quality, HDMI television audio, Bluetooth playback and the perceived delay, the headphone jack and the perceived switch, and charger suppression of the 0% shutdown. The delays were not measured. Failed: unplugging HDMI does not return sound to the speaker, and disconnecting Bluetooth does not return sound to the speaker. HDMI 720p and panel-off were not part of that listen. A normal boot does not set `ZLYME_HDMI_720P`, so inserting the cable does not run the panel-off path. Wi-Fi off was not run. PortMaster hardware and 14O stay deferred. Phase 14 stays open. `3d4ff87` remains the previous installed candidate. The speaker-quality failure on `00e6c343` stays in the earlier entries.
+
 ## 2026-10-22 — Installed 3d4ff87: HDMI, Bluetooth, and the jack passed; icons stay open
 
 The maintainer installed `zlyme-my355-20261022-3d4ff87d4bc3.tar`. Source `3d4ff87d4bc3a1713b20cdaa6374595eb36e2ba4`. Squashfs `5801885e04d598c0afa296f00fabc43f8219f7223ad8e4eb1cf809fed2f6b1b6`. NextUI `de8f05439fcfe9064b82cae87673107bc2323ae2`. HDMI audio on the television passed. Bluetooth playback and the perceived delay passed. The headphone jack and the perceived switching delay passed. Those delays were not measured. The status icons on that image stay open. The assets are not the failure. Speaker quality reported on `00e6c343` stays open. That listen was not an HDMI 720p or panel-off pass. `71668a8` remains the previous installed candidate. Phase 14 stays open. Stable `zlyme44.3` is unchanged.
