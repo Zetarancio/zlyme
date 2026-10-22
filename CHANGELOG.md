@@ -24,14 +24,14 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
-- Sound from a game, HDMI, and Bluetooth headphones goes through one PipeWire mixer. The old PulseAudio server and the old Bluetooth audio bridge are not started. Headphones still switch themselves when the plug goes in. A saved volume number is kept. On `74597688`, disconnecting Bluetooth returned sound to the speaker and connecting it again returned the headset. On 2026-10-23, unplugging HDMI on that image left the speaker silent and left the headset-looking external-audio mark visible. On the previous image, the speaker, the television, a Bluetooth headset, and the headphone jack were acceptable, and both disconnects left the sound off the speaker. A normal boot leaves the internal screen on.
+- Sound from a game, HDMI, and Bluetooth headphones goes through one PipeWire mixer. Unplugging HDMI returns sound to the speaker and clears the headset-looking mark. Plugging it back in returns sound to the television. Disconnecting Bluetooth returns the speaker, and connecting it again returns the headset. Headphones still switch themselves when the plug goes in. A saved volume number is kept. A normal boot leaves the internal screen on.
 - PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.
 - PortMaster is told this system can run a 32-bit ARM hard-float program. That does not mean every 32-bit port runs.
 - Tools → USB Transfer is the file-copy tool. An update removes that tool's old stock folder when it still matches the copy Zlyme shipped. A folder you changed is kept outside the tool list.
 
 ### Known limitations
 
-- On the image installed as `74597688`, disconnecting Bluetooth returned sound to the speaker, and connecting it again returned sound to the headset. On 2026-10-23, unplugging HDMI left the speaker silent and left the external-audio mark visible. Uninstalled `zlyme-my355-20261022-0b35a90e9388.tar` carries a corrected hotplug rule and has not been heard. On the previous image, the speaker, headphones, HDMI, and a paired Bluetooth headset were audible, and a connected charger suppressed the shutdown at 0%. Those delays were not measured. HDMI video at 720p was not part of either listen. A normal boot leaves the internal screen on. Abombniball does not leave on MENU+START.
+- HDMI video at 720p is not what a normal boot does. The internal screen stays on. Abombniball does not leave on MENU+START. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
 
 ## [zlyme44.3] - 2026-10-16
 
