@@ -31,7 +31,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- HDMI video at 720p is not what a normal boot does. The internal screen stays on. Abombniball does not leave on MENU+START. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
+- Volume and mute were not rechecked on the current image. HDMI video at 720p is not what a normal boot does. The internal screen stays on. Abombniball does not leave on MENU+START. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
 
 ## [zlyme44.3] - 2026-10-16
 
