@@ -31,7 +31,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- On the image installed as `74597688`, disconnecting Bluetooth returned sound to the speaker, and connecting it again returned sound to the headset. On 2026-10-23, unplugging HDMI left the speaker silent and left the external-audio mark visible. A corrected hotplug rule is in source and has not been heard. On the previous image, the speaker, headphones, HDMI, and a paired Bluetooth headset were audible, and a connected charger suppressed the shutdown at 0%. Those delays were not measured. HDMI video at 720p was not part of either listen. A normal boot leaves the internal screen on. Abombniball does not leave on MENU+START.
+- On the image installed as `74597688`, disconnecting Bluetooth returned sound to the speaker, and connecting it again returned sound to the headset. On 2026-10-23, unplugging HDMI left the speaker silent and left the external-audio mark visible. Uninstalled `zlyme-my355-20261022-0b35a90e9388.tar` carries a corrected hotplug rule and has not been heard. On the previous image, the speaker, headphones, HDMI, and a paired Bluetooth headset were audible, and a connected charger suppressed the shutdown at 0%. Those delays were not measured. HDMI video at 720p was not part of either listen. A normal boot leaves the internal screen on. Abombniball does not leave on MENU+START.
 
 ## [zlyme44.3] - 2026-10-16
 
