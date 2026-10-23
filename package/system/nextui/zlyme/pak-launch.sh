@@ -414,14 +414,8 @@ exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 		sleep 0.05
 	done
 	if [ "$_ready" != 1 ]; then
-		kill "$_pak_waiter" 2>/dev/null || true
-		wait "$_pak_waiter" 2>/dev/null || true
-		rm -f "$_pak_leader_file"
-		_pak_waiter=
-		_pak_pid=
-		_pak_leader_file=
-		echo "launch rejected: pak session was not created" >&2
-		return 1
+		reject_pak_spawn "pak session was not created"
+		return $?
 	fi
 	IFS= read -r _pak_pid < "$_pak_leader_file" || _pak_pid=
 	case "$_pak_pid" in
@@ -430,16 +424,26 @@ exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 			;;
 	esac
 	if [ -z "$_pak_pid" ] || [ "$_pak_pid" = "$_pak_waiter" ]; then
-		kill "$_pak_waiter" 2>/dev/null || true
-		wait "$_pak_waiter" 2>/dev/null || true
-		rm -f "$_pak_leader_file"
-		_pak_waiter=
-		_pak_pid=
-		_pak_leader_file=
-		echo "launch rejected: pak leader" >&2
-		return 1
+		reject_pak_spawn "pak leader"
+		return $?
 	fi
 	return 0
+}
+
+reject_pak_spawn() {
+	_reason=$1
+	_wait_st=0
+	kill "$_pak_waiter" 2>/dev/null || true
+	wait "$_pak_waiter" || _wait_st=$?
+	rm -f "$_pak_leader_file"
+	_pak_waiter=
+	_pak_pid=
+	_pak_leader_file=
+	echo "launch rejected: $_reason" >&2
+	if pak_cleanup_failed "$_wait_st"; then
+		return 125
+	fi
+	return 1
 }
 
 # PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack.
@@ -535,8 +539,13 @@ run_pak_cmd() {
 	_pak_waiter=
 	_pak_pid=
 	_pak_leader_file=
-	if ! spawn_pak "$_exe" "$_rom"; then
-		st=127
+	if spawn_pak "$_exe" "$_rom"; then
+		:
+	else
+		st=$?
+		if ! pak_cleanup_failed "$st"; then
+			st=127
+		fi
 	fi
 	if [ -n "${_pak_pid:-}" ]; then
 		if [ "$_trace" = 1 ]; then

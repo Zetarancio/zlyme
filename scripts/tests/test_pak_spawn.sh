@@ -318,6 +318,28 @@ run_pak_cmd "$emu" "/r/a"
 rm -rf "$fake/999999"
 unset ZLYME_TEST_PROC_ROOT ZLYME_PAK_SPAWN
 
+# Startup rejection must not hide an ownership failure reported by the
+# waiter before it can publish a valid session leader.
+cat > "$work/reject-no-leader" << 'EOF'
+#!/bin/sh
+exit 125
+EOF
+chmod 0755 "$work/reject-no-leader"
+export ZLYME_PAK_SPAWN="$work/reject-no-leader"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 125 ] || fail "missing-leader cleanup status $st"
+
+cat > "$work/reject-bad-leader" << 'EOF'
+#!/bin/sh
+printf '%s\n' invalid > "$1"
+exit 125
+EOF
+chmod 0755 "$work/reject-bad-leader"
+export ZLYME_PAK_SPAWN="$work/reject-bad-leader"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 125 ] || fail "invalid-leader cleanup status $st"
+unset ZLYME_PAK_SPAWN
+
 # More than the historical 128-member cap, each in its own process
 # group but in the pak session, must all be signaled and reaped.
 cat > "$emu" << 'EOF'
