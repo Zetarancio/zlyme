@@ -256,7 +256,8 @@ fail() {
 	exit 1
 }
 
-# The session sources pak-launch.sh, which cleans up after the pak wait returns.
+# The session sources pak-launch.sh. Cleanup runs after the spawn
+# helper returns, which is after the pak session is empty.
 LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 awk '
 	/^portmaster_cleanup\(\)/ { next }
@@ -265,7 +266,7 @@ awk '
 		if (seen) post = 1
 	}
 	/spawn_pak "/ { if (!spawn) spawn = 1 }
-	/wait "\$_pak_pid"/ { seen = 1 }
+	/wait "\$_pak_waiter"/ { seen = 1 }
 	END { exit (pre && post && spawn) ? 0 : 1 }
 ' "$LAUNCH" || fail "session does not clean up before and after the pak"
 grep -q 'launch_with_reload' "$SESSION" || fail "session does not run the pak helper"

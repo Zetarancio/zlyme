@@ -121,6 +121,8 @@ printf '%s\n' 'enabled=0' 'protocol=http' 'host=' 'port=' 'valid=1' > "$work/pro
 export ZLYME_PROXY_GET=$work/proxy-get
 
 cc=${CC:-gcc}
+"$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/bin/zlyme-pak-spawn" \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c"
 "$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/lq" "$LQT" "$LQ"
 "$work/lq" >/dev/null
 

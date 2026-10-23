@@ -42,12 +42,13 @@ if grep -R -n 'pico8-splore-pad' \
 fi
 
 session=$root/package/system/nextui/nextui-session
-if ! grep -q 'zlyme-pak-hotkey' "$session"; then
-	say "session does not arm zlyme-pak-hotkey"
+launch=$root/package/system/nextui/zlyme/pak-launch.sh
+if ! grep -q 'zlyme-pak-hotkey' "$launch"; then
+	say "pak launch does not arm zlyme-pak-hotkey"
 	fail=1
 fi
-if ! grep -q 'setsid sh' "$session"; then
-	say "session does not setsid the pak"
+if ! grep -q 'zlyme-pak-spawn' "$launch"; then
+	say "pak launch does not spawn a pak session"
 	fail=1
 fi
 if ! grep -q 'Settings.pak' "$session"; then

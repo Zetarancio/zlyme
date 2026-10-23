@@ -68,6 +68,9 @@ define NEXTUI_BUILD_CMDS
 		-I$(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-input \
 		-o $(@D)/zlyme-pak-hotkey \
 		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-hotkey.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra -Werror -std=gnu99 \
+		-o $(@D)/zlyme-pak-spawn \
+		$(NEXTUI_PKGDIR)/zlyme/zlyme-pak-spawn.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -Wall -Wextra \
 		-I$(NEXTUI_PKGDIR)/zlyme/gamepad-ff \
 		-o $(@D)/zlyme-gamepad-ff \
@@ -157,6 +160,7 @@ define NEXTUI_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/libmsettings.so $(TARGET_DIR)/usr/lib/libmsettings.so
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-bcsh $(TARGET_DIR)/usr/sbin/zlyme-bcsh
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-hotkey $(TARGET_DIR)/usr/sbin/zlyme-pak-hotkey
+	$(INSTALL) -D -m 0755 $(@D)/zlyme-pak-spawn $(TARGET_DIR)/usr/sbin/zlyme-pak-spawn
 	$(INSTALL) -D -m 0755 $(@D)/zlyme-gamepad-ff $(TARGET_DIR)/usr/sbin/zlyme-gamepad-ff
 	rm -f $(TARGET_DIR)/usr/bin/keymon.elf \
 		$(TARGET_DIR)/usr/bin/minarch.elf \

@@ -129,6 +129,9 @@ sh "$ROOT/scripts/tests/test_armhf_capability.sh"
 sh "$ROOT/scripts/tests/test_pulse_buffer.sh"
 sh "$ROOT/scripts/tests/test_pulse_card.sh"
 sh "$ROOT/scripts/tests/test_pak_launch.sh"
+sh "$ROOT/scripts/tests/test_pak_spawn.sh"
+sh "$ROOT/package/system/nextui/zlyme/hotkey_logic_test.sh"
+sh "$ROOT/package/system/nextui/zlyme/app_pad_abi_test.sh"
 
 [ "$fail" -eq 0 ]
 echo "phase14 accept host ok"

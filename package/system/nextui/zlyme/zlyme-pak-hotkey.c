@@ -1,7 +1,8 @@
 /*
  * Watch MENU+START while one pak process group lives.
- * nextui-session passes the setsid child pid (also the pgid). SIGTERM the
- * group, then SIGKILL after a short grace. Do not touch nextui.elf.
+ * nextui-session passes the session leader. SIGTERM that group, then
+ * SIGKILL after a short grace, only when the pid is still a leader of
+ * a different session. Do not touch nextui.elf.
  *
  * The chord is read from each InputPlumber xb360 target. MENU+START on
  * any one virtual controller exits. Buttons from two controllers do not
@@ -13,6 +14,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -20,7 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
-#include <unistd.h>
 
 #define GRACE_US 1500000
 #define MAX_PADS 8
@@ -127,10 +128,47 @@ static void scan_pads(struct app_pad *pads, int *n)
 	closedir(dir);
 }
 
+static int target_ids(pid_t pid, pid_t *pgid, pid_t *sid)
+{
+	char path[64];
+	char buf[512];
+	const char *rest;
+	ssize_t n;
+	long pgrp, session;
+	int fd;
+
+	snprintf(path, sizeof path, "/proc/%d/stat", (int)pid);
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return 0;
+	n = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (n <= 0)
+		return 0;
+	buf[n] = '\0';
+	rest = strrchr(buf, ')');
+	if (!rest || sscanf(rest + 1, " %*c %*d %ld %ld", &pgrp, &session) != 2)
+		return 0;
+	*pgid = (pid_t)pgrp;
+	*sid = (pid_t)session;
+	return 1;
+}
+
 static void kill_pak(pid_t pgid)
 {
+	pid_t found_pgid = 0;
+	pid_t found_sid = 0;
+	int alive;
 	int rc;
 
+	alive = target_ids(pgid, &found_pgid, &found_sid);
+	if (!zlyme_hotkey_may_signal((int)getsid(0), alive, (int)pgid,
+				     (int)found_pgid, (int)found_sid)) {
+		trace_msg("signal refused pid=%d alive=%d pgid=%d sid=%d our=%d",
+			  (int)pgid, alive, (int)found_pgid, (int)found_sid,
+			  (int)getsid(0));
+		return;
+	}
 	rc = kill(-pgid, SIGTERM);
 	trace_msg("signal term pgid=%d rc=%d errno=%d", (int)pgid, rc,
 		  rc < 0 ? errno : 0);

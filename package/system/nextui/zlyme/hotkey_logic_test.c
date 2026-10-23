@@ -34,6 +34,24 @@ int main(void)
 	failed += expect("reset start", start, 0);
 	failed += expect("after reset", zlyme_hotkey_apply(&menu, &start, BTN_START, 0), 0);
 
+	/* Frontend session 143. A real pak leader is its own session. */
+	failed += expect("other session leader",
+			 zlyme_hotkey_may_signal(143, 1, 5659, 5659, 5659), 1);
+	failed += expect("frontend pid",
+			 zlyme_hotkey_may_signal(143, 1, 649, 143, 143), 0);
+	failed += expect("frontend sid as pid",
+			 zlyme_hotkey_may_signal(143, 1, 143, 143, 143), 0);
+	failed += expect("pre-setsid sample",
+			 zlyme_hotkey_may_signal(143, 1, 1928, 143, 143), 0);
+	failed += expect("dead leader",
+			 zlyme_hotkey_may_signal(143, 0, 5659, 5659, 5659), 0);
+	failed += expect("not a session leader",
+			 zlyme_hotkey_may_signal(143, 1, 6161, 5659, 5659), 0);
+	failed += expect("pid one",
+			 zlyme_hotkey_may_signal(143, 1, 1, 1, 1), 0);
+	failed += expect("unknown own session",
+			 zlyme_hotkey_may_signal(0, 1, 5659, 5659, 5659), 0);
+
 	if (failed) {
 		fprintf(stderr, "HOTKEY_FAIL %d\n", failed);
 		return 1;

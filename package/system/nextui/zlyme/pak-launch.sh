@@ -356,22 +356,84 @@ exec_pak() {
 	exec "$1"
 }
 
+# zlyme-pak-spawn is the waited process. BusyBox setsid can return 0
+# from a parent that does not wait, and a leader can exit while a
+# member of its session is still running. The leader file is written
+# only after setsid(), so the hotkey is never given the frontend group.
 spawn_pak() {
 	_exe=$1
 	_rom=${2-}
 	_helper=${ZLYME_PAK_LAUNCH_SH:-/usr/share/nextui/bin/pak-launch.sh}
 	_log=${SESSION_LOG:-/tmp/nextui-session.txt}
+	_pak_pid=
+	_pak_waiter=
+	_pak_leader_file=
+	if [ -n "${ZLYME_PAK_SPAWN:-}" ]; then
+		_spawn=$ZLYME_PAK_SPAWN
+	elif [ -x /usr/sbin/zlyme-pak-spawn ]; then
+		_spawn=/usr/sbin/zlyme-pak-spawn
+	else
+		_spawn=zlyme-pak-spawn
+	fi
+	if [ ! -x "$_spawn" ] && ! command -v "$_spawn" >/dev/null 2>&1; then
+		echo "launch rejected: pak spawn missing" >&2
+		return 1
+	fi
+	_pak_leader_file=$(mktemp "${TMPDIR:-/tmp}/zlyme-pak-leader.XXXXXX") || {
+		echo "launch rejected: leader file" >&2
+		return 1
+	}
 	# The single quotes are the program. Paths stay positional parameters.
 	if [ "${LOGS_ON:-0}" = 1 ]; then
 		# shellcheck disable=SC2016
-		setsid sh -c '. "$0" || exit 126
+		"$_spawn" "$_pak_leader_file" sh -c '. "$0" || exit 126
 exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" &
 	else
 		# shellcheck disable=SC2016
-		setsid sh -c '. "$0" || exit 126
+		"$_spawn" "$_pak_leader_file" sh -c '. "$0" || exit 126
 exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 	fi
-	_pak_pid=$!
+	_pak_waiter=$!
+	_ready=0
+	_i=0
+	while [ "$_i" -lt 50 ]; do
+		if [ -s "$_pak_leader_file" ]; then
+			_ready=1
+			break
+		fi
+		if ! kill -0 "$_pak_waiter" 2>/dev/null; then
+			break
+		fi
+		_i=$((_i + 1))
+		sleep 0.05
+	done
+	if [ "$_ready" != 1 ]; then
+		kill "$_pak_waiter" 2>/dev/null || true
+		wait "$_pak_waiter" 2>/dev/null || true
+		rm -f "$_pak_leader_file"
+		_pak_waiter=
+		_pak_pid=
+		_pak_leader_file=
+		echo "launch rejected: pak session was not created" >&2
+		return 1
+	fi
+	IFS= read -r _pak_pid < "$_pak_leader_file" || _pak_pid=
+	case "$_pak_pid" in
+		''|*[!0-9]*|1)
+			_pak_pid=
+			;;
+	esac
+	if [ -z "$_pak_pid" ] || [ "$_pak_pid" = "$_pak_waiter" ]; then
+		kill "$_pak_waiter" 2>/dev/null || true
+		wait "$_pak_waiter" 2>/dev/null || true
+		rm -f "$_pak_leader_file"
+		_pak_waiter=
+		_pak_pid=
+		_pak_leader_file=
+		echo "launch rejected: pak leader" >&2
+		return 1
+	fi
+	return 0
 }
 
 # PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack.
@@ -436,7 +498,7 @@ flycast_bind_release() {
 	fi
 }
 
-# setsid so MENU+START can SIGTERM the pak group. BlueZ work stays in
+# The pak session is created by zlyme-pak-spawn. BlueZ work stays in
 # this shell so a hung bluetoothctl cannot become the session leader.
 # ZLYME_PAK_BT=0 is a host-test seam. nextui-session unsets it.
 run_pak_cmd() {
@@ -454,6 +516,8 @@ run_pak_cmd() {
 	_trace=0
 	_trace_exported=0
 	_tw=
+	_hk=
+	st=0
 	if pak_trace_enabled; then
 		_trace=1
 		if [ "${ZLYME_PAK_TRACE:-}" != 1 ]; then
@@ -462,24 +526,30 @@ run_pak_cmd() {
 		fi
 		: > "$(pak_trace_log)"
 	fi
-	spawn_pak "$_exe" "$_rom"
-	if [ "$_trace" = 1 ]; then
-		pak_trace_leader "$_pak_pid"
-		pak_trace_watch "$_pak_pid" &
-		_tw=$!
+	_pak_waiter=
+	_pak_pid=
+	_pak_leader_file=
+	if ! spawn_pak "$_exe" "$_rom"; then
+		st=127
 	fi
-	_hk=
-	_hotkey=${ZLYME_PAK_HOTKEY:-/usr/sbin/zlyme-pak-hotkey}
-	if [ -x "$_hotkey" ]; then
-		"$_hotkey" "$_pak_pid" >> "${SESSION_LOG:-/tmp/nextui-session.txt}" 2>&1 &
-		_hk=$!
+	if [ -n "${_pak_pid:-}" ]; then
 		if [ "$_trace" = 1 ]; then
-			pak_trace_line "helper pid=${_hk}"
+			pak_trace_leader "$_pak_pid"
+			pak_trace_watch "$_pak_pid" &
+			_tw=$!
 		fi
-	elif [ "$_trace" = 1 ]; then
-		pak_trace_line "helper missing"
+		_hotkey=${ZLYME_PAK_HOTKEY:-/usr/sbin/zlyme-pak-hotkey}
+		if [ -x "$_hotkey" ]; then
+			"$_hotkey" "$_pak_pid" >> "${SESSION_LOG:-/tmp/nextui-session.txt}" 2>&1 &
+			_hk=$!
+			if [ "$_trace" = 1 ]; then
+				pak_trace_line "helper pid=${_hk}"
+			fi
+		elif [ "$_trace" = 1 ]; then
+			pak_trace_line "helper missing"
+		fi
 	fi
-	if [ "$skip_bt" = 0 ] && [ "${ZLYME_PAK_BT:-1}" = 1 ]; then
+	if [ -n "${_pak_pid:-}" ] && [ "$skip_bt" = 0 ] && [ "${ZLYME_PAK_BT:-1}" = 1 ]; then
 		bt_stop_scan
 		sleep 0.3
 		modprobe hid-nintendo >/dev/null 2>&1 || true
@@ -499,9 +569,14 @@ run_pak_cmd() {
 		sleep 0.6
 	fi
 	# nextui-session reads st after launch_with_reload returns.
-	st=0
-	# shellcheck disable=SC2034
-	wait "$_pak_pid" || st=$?
+	# Wait for the spawn helper, which returns only after the pak
+	# session is empty. Waiting on the leader misses a member that
+	# outlives it.
+	if [ -n "${_pak_waiter:-}" ]; then
+		# shellcheck disable=SC2034
+		wait "$_pak_waiter" || st=$?
+	fi
+	rm -f "${_pak_leader_file:-}"
 	if [ -n "$_tw" ]; then
 		kill "$_tw" 2>/dev/null || true
 		wait "$_tw" 2>/dev/null || true
