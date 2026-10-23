@@ -31,8 +31,13 @@ export ZLYME_FAKE_MOUNT_FAIL=0
 export ZLYME_FAKE_UMOUNT_FAIL=0
 export ZLYME_PORTMASTER_MOUNTS="$ROOT/package/system/portmaster/zlyme-portmaster-mounts.sh"
 export ZLYME_PYTHON_LOG="$work/python.log"
+export ZLYME_INPUT_BIN="$work/bin/zlyme-input"
+export ZLYME_INPUT_LOG="$work/input.log"
+export ZLYME_SYSTEMCTL_LOG="$work/systemctl.log"
 export PATH="$work/bin:$PATH"
 : > "$ZLYME_PYTHON_LOG"
+: > "$ZLYME_INPUT_LOG"
+: > "$ZLYME_SYSTEMCTL_LOG"
 
 mkdir -p "$work/bin"
 printf '%s\n' /storage "/mnt/media/USB Games" > "$work/libraries"
@@ -41,6 +46,17 @@ cat > "$work/bin/python3" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$*" >> "${ZLYME_PYTHON_LOG:?}"
 exit 127
+EOF
+
+cat > "$ZLYME_INPUT_BIN" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "${ZLYME_INPUT_LOG:?}"
+EOF
+
+cat > "$work/bin/systemctl" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "${ZLYME_SYSTEMCTL_LOG:?}"
+exit 19
 EOF
 
 # Remount leaves the mount count unchanged. Option values are not operands.
@@ -205,7 +221,8 @@ fi
 mv -f "$drop_mountinfo" "$ZLYME_PM_MOUNTINFO"
 mv -f "$drop_mounts" "$ZLYME_PM_MOUNTS"
 EOF
-chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount"
+chmod 0755 "$work/bin/python3" "$work/bin/mount" "$work/bin/umount" \
+	"$ZLYME_INPUT_BIN" "$work/bin/systemctl"
 
 reset() {
 	: > "$ZLYME_PM_MOUNTS"
@@ -255,6 +272,18 @@ fail() {
 	echo "portmaster mounts: $*" >&2
 	exit 1
 }
+
+"$EXEC" systemctl restart oga_events \
+	|| fail "PortMaster input restore translation failed"
+grep -Fxq ensure "$ZLYME_INPUT_LOG" \
+	|| fail "PortMaster input restore did not use zlyme-input ensure"
+status=0
+"$EXEC" systemctl stop oga_events >/dev/null 2>&1 || status=$?
+if [ "$status" -ne 19 ]; then
+	fail "unrecognized systemctl request was translated"
+fi
+grep -Fxq 'stop oga_events' "$ZLYME_SYSTEMCTL_LOG" \
+	|| fail "unrecognized systemctl request was not passed through"
 
 # The session sources pak-launch.sh. Cleanup runs after the spawn
 # helper returns, which is after the pak session is empty.

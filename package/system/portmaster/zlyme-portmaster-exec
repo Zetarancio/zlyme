@@ -1,7 +1,8 @@
 #!/bin/sh
 # PortMaster command prefix. control.txt sets ESUDO to this path.
 #
-# Pass every command through unchanged, except mount and umount.
+# Pass every command through unchanged, except mount, umount, and the
+# one upstream post-port request to restart ROCKNIX's oga_events.
 # A mount is recorded under /run/zlyme-portmaster/owned-mounts only when
 # it adds one new mountinfo id at its target. A remount is not owned.
 # A successful umount drops that id when it is gone. nextui-session
@@ -370,6 +371,19 @@ fi
 
 cmd=$1
 shift
+
+if [ "$cmd" = systemctl ] && [ "$#" -eq 2 ] &&
+   [ "$1" = restart ] && [ "$2" = oga_events ]; then
+	input=${ZLYME_INPUT_BIN:-/usr/sbin/zlyme-input}
+	if [ ! -x "$input" ]; then
+		log "cannot restore input: $input is missing"
+		exit 127
+	fi
+	# PortMaster's pm_finish restarts the distribution's event mapper.
+	# Zlyme never stops InputPlumber; ensure is the matching idempotent
+	# contract and repairs the virtual pad if a port disturbed it.
+	exec "$input" ensure
+fi
 
 case "$cmd" in
 	mount)
