@@ -217,7 +217,24 @@ Installed accepted baseline remains `3da3f2bafe05` (squashfs `ad9c430a…`).
 | `0a3cce950da4` | Do **not** install (superseded). |
 | `3486b510aa8e` | **Blocked.** Tar `42bc535f…`, squashfs `f0b961a4…`. Validator lifecycle defects below. Do **not** install. |
 | `da7eb2128294` | **Installed for hardware.** Squashfs `f08c3fa8…`. Still ships format=3 validator. Do **not** run campaign complete/fail/retry/start/reset on this image for queue acceptance; use normal Ports launches and passive SSH until format=4 OTA. |
-| format=4 candidate | Built after verified-completion gates; hashes recorded when packed. Leave uninstalled until ready. |
+| `074949c025c3` | **format=4 replacement (UNINSTALLED).** Verified-completion gates. Leave uninstalled until ready. |
+
+### Replacement OTA `074949c025c3` (UNINSTALLED)
+
+Built from `074949c025c3da0951c0b1f0c27d3822c561a5e2`. Supersedes format=3
+`da7eb21` for validator campaign use. Installed device may still be
+`da7eb21` until this is applied.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `zlyme-my355-20261023-074949c025c3.tar` | `7d486c04575c228bd150cfbe826e9ec7457ac6abb184e96e5c82c676967663cb` |
+| squashfs `zlyme` | `f241c05d61c5b3c7a59ef8592b8e453a334cd1e101cf9c043f5426fe8d82e873` |
+| `Image.gz` | `564b6009d46a7a2b3922fa8de0dcec35603f28bf635fec21b7c82626054808de` |
+| `rk3566-miyoo-flip.dtb` | `f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18` |
+| `idbloader.img` | `ff773a4fc97a65475639fed61f8cac86c79639e9e6498b37cfca82f296cca43e` |
+| `u-boot.itb` | `59b828c86b6874a68918ffa73cf347190d02e3864dfac4d78874aae9f17843d7` |
+
+Squashfs validate matches source (`format=4`, `require_completion_evidence`).
 
 ### Replacement OTA `da7eb2128294` (UNINSTALLED)
 
