@@ -295,6 +295,12 @@ if [ "$status" -ne 19 ]; then
 fi
 grep -Fxq 'stop oga_events' "$ZLYME_SYSTEMCTL_LOG" \
 	|| fail "unrecognized systemctl request was not passed through"
+status=0
+"$EXEC" systemctl >/dev/null 2>&1 || status=$?
+[ "$status" -eq 2 ] || fail "bare systemctl status $status"
+status=0
+"$EXEC" systemctl restart >/dev/null 2>&1 || status=$?
+[ "$status" -eq 2 ] || fail "systemctl missing unit status $status"
 
 # The session sources pak-launch.sh. Cleanup runs after the spawn
 # helper returns, which is after the pak session is empty.

@@ -378,23 +378,35 @@ shift
 # ports append .service. Neither should fall through to a real
 # systemctl binary that Zlyme does not ship.
 if [ "$cmd" = systemctl ]; then
-	action=$1
-	unit=$2
-	action=${action%"$(printf '\r')"}
-	unit=${unit%"$(printf '\r')"}
-	unit=${unit%.service}
-	if [ "$#" -eq 2 ] && [ "$action" = restart ] && [ "$unit" = oga_events ]; then
-		input=${ZLYME_INPUT_BIN:-/usr/sbin/zlyme-input}
-		if [ ! -x "$input" ]; then
-			log "cannot restore input: $input is missing"
-			exit 127
+	# Read arguments only after arity checks. set -u must not abort on
+	# a bare "systemctl" or "systemctl restart" with no unit.
+	if [ "$#" -eq 2 ]; then
+		action=$1
+		unit=$2
+		action=${action%"$(printf '\r')"}
+		unit=${unit%"$(printf '\r')"}
+		unit=${unit%.service}
+		if [ "$action" = restart ] && [ "$unit" = oga_events ]; then
+			input=${ZLYME_INPUT_BIN:-/usr/sbin/zlyme-input}
+			if [ ! -x "$input" ]; then
+				log "cannot restore input: $input is missing"
+				exit 127
+			fi
+			# PortMaster's pm_finish restarts the distribution's event mapper.
+			# Zlyme never stops InputPlumber; ensure is the matching idempotent
+			# contract and repairs the virtual pad if a port disturbed it.
+			exec "$input" ensure
 		fi
-		# PortMaster's pm_finish restarts the distribution's event mapper.
-		# Zlyme never stops InputPlumber; ensure is the matching idempotent
-		# contract and repairs the virtual pad if a port disturbed it.
-		exec "$input" ensure
+		log "untranslated systemctl: $*"
+	elif [ "$#" -eq 0 ]; then
+		log "systemctl: missing action and unit"
+		exit 2
+	elif [ "$#" -eq 1 ]; then
+		log "systemctl: missing unit for action $1"
+		exit 2
+	else
+		log "untranslated systemctl: $*"
 	fi
-	log "untranslated systemctl: $*"
 fi
 
 case "$cmd" in
