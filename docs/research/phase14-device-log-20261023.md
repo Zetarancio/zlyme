@@ -213,3 +213,25 @@ translation, SDL soft-fail string, Phase 14 validate helpers, NextUI pin
 `b0960dcde4d69d32871d6605c354b1b901621eb5`. Leave uninstalled until
 maintainer hardware gates below pass.
 
+## Validator and runtime correction pass (pre-install)
+
+Do **not** install `0a3cce9`. Installed baseline stays `3da3f2b`.
+
+### Confirmed defects vs false alarms
+
+| Item | Verdict |
+| --- | --- |
+| Tools validator duplicating PORTS setup / skipping `launch_is_ports` cleanup | Confirmed. Fixed: Validation PAK `exec`s canonical `PORTS.pak/launch.sh`; `launch_is_ports` also matches the Validation Tools path. |
+| Timeout SIGTERM to validation shell only | Confirmed incomplete. Fixed: timeout signals the pak-spawn **waiter** (`PPID`), which owns `stop_session_bounded`. |
+| `pidof nextui.elf` inside the Tools PAK | Confirmed false PASS risk. Fixed: post-observer runs after the leader exits and records `NEXTUI_RESTORED` separately. |
+| Persistent queue / suite-started after reset | Confirmed. Fixed: campaign IDs per GPU/boot/squashfs; `reset` clears active campaign and suite budget; reports retained; flock-style lock. |
+| `LIBGL_FB=3` as "SDL framebuffer" | Documentation error. Upstream USAGE: FB=3 is **PBuffer**; FB=4 is **GBM**. Kept FB=3 to avoid GBM DRM race; comment corrected. |
+| SDL MoveCursor soft-success | Too weak. Revised patch disables/destroys the HW cursor BO on first failed move, clears the SDL error, and returns success from warp so AGS can continue without a frozen plane. |
+| systemctl `$1`/`$2` under `set -u` | Confirmed. Arity checked before reading args. |
+
+### Maintainer sequence after replacement OTA
+
+1. `phase14-portmaster-validate start` (one campaign per GPU boot).
+2. Tools → Zlyme PortMaster Validation (one game per launch) **or** launch Ports normally with observer.
+3. GL4ES Mali then Panfrost; Winter Travelers cursor; Shards gptk restore; Steel Mono mount; Ascent Panfrost; Mina log; SDL3 pad; Box86; HDMI CRTC.
+

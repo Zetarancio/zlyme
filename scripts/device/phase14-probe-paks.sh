@@ -57,6 +57,32 @@ install_one() {
 	mv "$tmp" "$dir"
 }
 
+
+install_pm_validation() {
+	dir=$1
+	tmp=$dir.tmp.$$
+	validate=/usr/libexec/zlyme-tests/phase14-portmaster-validate
+
+	if [ -e "$dir" ] || [ -L "$dir" ]; then
+		owned "$dir" || die "entry already exists and is not owned: $dir"
+		return 0
+	fi
+	[ -x "$validate" ] || die "PortMaster validate helper is not installed"
+	rm -rf "$tmp"
+	mkdir -p "$tmp"
+	printf '%s\n' phase14-graphics-v1 > "$tmp/$marker"
+	# Select one ROM, then exec the canonical PORTS.pak launch.sh so
+	# nextui-session applies PortMaster cleanup to this Tools path.
+	cat > "$tmp/launch.sh" << 'LAUNCH'
+#!/bin/sh
+set -eu
+VALIDATE=${ZLYME_PHASE14_VALIDATE:-/usr/libexec/zlyme-tests/phase14-portmaster-validate}
+exec "$VALIDATE" run
+LAUNCH
+	chmod 0755 "$tmp/launch.sh"
+	mv "$tmp" "$dir"
+}
+
 case "${1:-}" in
 install)
 	[ -x /usr/libexec/zlyme-tests/zlyme-sdl3-kms-probe ] ||
@@ -71,8 +97,7 @@ install)
 	install_one "$root/$gl_name" \
 		/usr/libexec/zlyme-tests/zlyme-gl4es-probe \
 		/usr/bin/zlyme-gl4es-run
-	install_one "$root/$pm_name" \
-		/usr/libexec/zlyme-tests/phase14-portmaster-validate
+	install_pm_validation "$root/$pm_name"
 	echo "phase14 probe Tools installed"
 	;;
 remove)
