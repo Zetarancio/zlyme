@@ -369,6 +369,27 @@ if [ "$#" -lt 1 ]; then
 	exit 127
 fi
 
+# Port scripts write "/$controlfolder/...". controlfolder is already
+# /opt/system/Tools/PortMaster, so the operand is //opt/system/Tools/PortMaster/...
+# That directory is the symlink to the selected library, on the OS card
+# or the second card. BusyBox mount treats a leading // as a host name.
+# Rewrite only an operand under this control tree, and only when the
+# single-slash path exists. Option values and any other // path stay.
+# ZLYME_PM_CONTROL is the host-test fixture for this same directory.
+pm_control=${ZLYME_PM_CONTROL:-/opt/system/Tools/PortMaster}
+
+pm_norm_operand() {
+	_norm=$1
+	case "$_norm" in
+		"/$pm_control"|"/$pm_control"/*)
+			_one=${_norm#/}
+			if [ -n "$_one" ] && [ -e "$_one" ]; then
+				_norm=$_one
+			fi
+			;;
+	esac
+}
+
 cmd=$1
 shift
 
@@ -411,6 +432,30 @@ fi
 
 case "$cmd" in
 	mount)
+		_pm_take=
+		_pm_count=$#
+		for _pm_arg in "$@"; do
+			if [ -n "$_pm_take" ]; then
+				_pm_take=
+				set -- "$@" "$_pm_arg"
+				continue
+			fi
+			case "$_pm_arg" in
+				-o|-t|--options|--types)
+					_pm_take=1
+					set -- "$@" "$_pm_arg"
+					continue
+					;;
+				-*)
+					set -- "$@" "$_pm_arg"
+					continue
+					;;
+			esac
+			pm_norm_operand "$_pm_arg"
+			set -- "$@" "$_norm"
+		done
+		shift "$_pm_count"
+		unset _pm_take _pm_count _pm_arg _norm _one
 		if weston_mount_dest "$@"; then
 			before=0
 			pm_watch_clear
@@ -479,6 +524,30 @@ case "$cmd" in
 		exit "$st"
 		;;
 	umount)
+		_pm_take=
+		_pm_count=$#
+		for _pm_arg in "$@"; do
+			if [ -n "$_pm_take" ]; then
+				_pm_take=
+				set -- "$@" "$_pm_arg"
+				continue
+			fi
+			case "$_pm_arg" in
+				-o|-t|--options|--types)
+					_pm_take=1
+					set -- "$@" "$_pm_arg"
+					continue
+					;;
+				-*)
+					set -- "$@" "$_pm_arg"
+					continue
+					;;
+			esac
+			pm_norm_operand "$_pm_arg"
+			set -- "$@" "$_norm"
+		done
+		shift "$_pm_count"
+		unset _pm_take _pm_count _pm_arg _norm _one
 		if weston_umount_argv "$@"; then
 			if ! unmount_wrapper_bind; then
 				log "could not unmount westonwrap bind"

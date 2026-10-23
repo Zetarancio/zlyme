@@ -27,6 +27,7 @@ export ZLYME_LIBRARIES_FILE="$work/libraries"
 export ZLYME_MOUNTS_LIB="$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh"
 export ZLYME_LIBRARY_SH="$LIB"
 export ZLYME_FAKE_UMOUNT_LOG="$work/umount.log"
+export ZLYME_FAKE_MOUNT_ARGV="$work/mount-argv"
 export ZLYME_FAKE_MOUNT_FAIL=0
 export ZLYME_FAKE_UMOUNT_FAIL=0
 export ZLYME_PORTMASTER_MOUNTS="$ROOT/package/system/portmaster/zlyme-portmaster-mounts.sh"
@@ -63,6 +64,12 @@ EOF
 cat > "$work/bin/mount" << 'EOF'
 #!/bin/sh
 set -eu
+if [ -n "${ZLYME_FAKE_MOUNT_ARGV:-}" ]; then
+	for arg in "$@"; do
+		printf 'ARG %s\n' "$arg" >> "$ZLYME_FAKE_MOUNT_ARGV"
+	done
+	printf 'END\n' >> "$ZLYME_FAKE_MOUNT_ARGV"
+fi
 if [ "${ZLYME_FAKE_MOUNT_FAIL:-0}" = 1 ]; then
 	exit 1
 fi
@@ -230,6 +237,7 @@ reset() {
 	printf '%s\n' 1 > "$ZLYME_FAKE_MOUNT_SEQ"
 	rm -f "$ZLYME_PM_REGISTRY"
 	: > "$ZLYME_FAKE_UMOUNT_LOG"
+	: > "$ZLYME_FAKE_MOUNT_ARGV"
 	ZLYME_FAKE_MOUNT_FAIL=0
 	ZLYME_FAKE_UMOUNT_FAIL=0
 }
@@ -1027,5 +1035,173 @@ grep -F -q '/src/a /var/port/blind ' "$ZLYME_PM_MOUNTS" \
 if [ -s "$ZLYME_PYTHON_LOG" ]; then
 	fail "mount helper invoked python3"
 fi
+
+# The control directory is one symlink. SD2 and the OS card are two
+# targets of that symlink, not two prefixes the wrapper rewrites.
+ctrl=$work/opt/system/Tools/PortMaster
+mkdir -p "$(dirname "$ctrl")"
+export ZLYME_PM_CONTROL=$ctrl
+for card in sd2 storage; do
+	reset
+	tree=$work/$card/PortMaster
+	mkdir -p "$tree/libs" "$work/mnt"
+	printf 'squashfs\n' > "$tree/libs/runtime.squashfs"
+	rm -rf "$ctrl"
+	ln -s "$tree" "$ctrl"
+	src=$ctrl/libs/runtime.squashfs
+	dbl="/$src"
+	"$EXEC" mount "$dbl" "$work/mnt" || fail "$card control mount failed"
+	grep -F -q "$src " "$ZLYME_PM_MOUNTS" \
+		|| fail "$card source was not the single-slash control path"
+	if grep -F -q "$dbl" "$ZLYME_PM_MOUNTS"; then
+		fail "$card double slash reached mount"
+	fi
+	reg_exact "$work/mnt" || fail "$card mount was not registered"
+	# The port umounts the squashfs path, not the mountpoint. The
+	# wrapper must still hand umount the single-slash file. This fake
+	# umount then fails because that file is not the mounted directory.
+	"$EXEC" umount "$dbl" || true
+	grep -Fxq -- "$src" "$ZLYME_FAKE_UMOUNT_LOG" \
+		|| fail "$card umount did not receive the single-slash path"
+	: > "$ZLYME_FAKE_UMOUNT_LOG"
+	"$CLEAN" || fail "$card cleanup of the registered mount failed"
+	if reg_exact "$work/mnt"; then
+		fail "$card cleanup left the registration"
+	fi
+	grep -Fxq -- "$work/mnt" "$ZLYME_FAKE_UMOUNT_LOG" \
+		|| fail "$card cleanup did not unmount the destination"
+done
+unset ZLYME_PM_CONTROL
+
+# A network share is not a control-tree path.
+reset
+"$EXEC" mount "//server/share" "$work/mnt" || fail "share argv was not delivered"
+grep -F -q '//server/share ' "$ZLYME_PM_MOUNTS" \
+	|| fail "network share path was rewritten"
+[ ! -e /server/share ] || fail "test host unexpectedly has /server/share"
+
+# Spaces stay inside the control-tree operand. Options keep their order.
+reset
+mkdir -p "$ctrl/libs" "$work/mnt"
+spaced=$ctrl/libs/"mono file.squashfs"
+printf 'squashfs\n' > "$spaced"
+export ZLYME_PM_CONTROL=$ctrl
+"$EXEC" mount -t squashfs -o loop,ro "/$spaced" "$work/mnt" \
+	|| fail "spaced control mount failed"
+awk '
+	$0 == "ARG -t" { t = NR }
+	$0 == "ARG squashfs" { ts = NR }
+	$0 == "ARG -o" { o = NR }
+	$0 == "ARG loop,ro" { ov = NR }
+	$0 == "END" { end = NR }
+	END {
+		if (!(t && ts && o && ov && end)) exit 1
+		if (!(t < ts && ts < o && o < ov && ov < end)) exit 1
+	}
+' "$ZLYME_FAKE_MOUNT_ARGV" || fail "mount options were reordered"
+grep -q '\\040' "$ZLYME_PM_MOUNTS" || fail "spaced source was not escaped"
+if grep -F -q "/$spaced" "$ZLYME_PM_MOUNTS"; then
+	fail "spaced operand kept the extra slash"
+fi
+reg_exact "$work/mnt" || fail "spaced mount was not registered"
+
+# An embedded newline stays one operand, collapsed to one slash.
+reset
+nlfile=$ctrl/libs/"mono
+file.squashfs"
+printf 'squashfs\n' > "$nlfile"
+"$EXEC" mount "/$nlfile" "$work/mnt" || fail "newline operand mount failed"
+{
+	printf 'ARG %s\n' "$nlfile"
+	printf 'ARG %s\n' "$work/mnt"
+	printf 'END\n'
+} > "$work/nl.argv"
+cmp -s "$work/nl.argv" "$ZLYME_FAKE_MOUNT_ARGV" \
+	|| fail "newline operand was split or not collapsed"
+reg_exact "$work/mnt" || fail "newline operand changed the destination"
+
+# A missing control-tree file is not invented.
+reset
+missing="/$ctrl/libs/absent.squashfs"
+"$EXEC" mount "$missing" "$work/mnt" || fail "missing operand was dropped"
+grep -F -q "ARG $missing" "$ZLYME_FAKE_MOUNT_ARGV" \
+	|| fail "missing control path was rewritten"
+[ ! -e "$ctrl/libs/absent.squashfs" ] || fail "missing source was created"
+
+# mount's own failure status is returned, and nothing is registered.
+reset
+present=$ctrl/libs/runtime.squashfs
+printf 'squashfs\n' > "$present"
+st=0
+ZLYME_FAKE_MOUNT_FAIL=1 "$EXEC" mount "/$present" "$work/mnt" || st=$?
+[ "$st" -eq 1 ] || fail "failed mount status $st"
+if reg_exact "$work/mnt"; then
+	fail "failed mount was registered"
+fi
+unset ZLYME_PM_CONTROL
+
+# Same rotation under dash and BusyBox ash: empty operand, spaces,
+# a newline, option order, and a non-control // path.
+rotate=$work/rotate.sh
+cat > "$rotate" << 'EOF'
+#!/bin/sh
+set -u
+pm_control=$1
+shift
+pm_norm_operand() {
+	_norm=$1
+	case "$_norm" in
+		"/$pm_control"|"/$pm_control"/*)
+			_one=${_norm#/}
+			if [ -n "$_one" ] && [ -e "$_one" ]; then
+				_norm=$_one
+			fi
+			;;
+	esac
+}
+_pm_take=
+_pm_count=$#
+for _pm_arg in "$@"; do
+	if [ -n "$_pm_take" ]; then
+		_pm_take=
+		set -- "$@" "$_pm_arg"
+		continue
+	fi
+	case "$_pm_arg" in
+		-o|-t|--options|--types)
+			_pm_take=1
+			set -- "$@" "$_pm_arg"
+			continue
+			;;
+		-*)
+			set -- "$@" "$_pm_arg"
+			continue
+			;;
+	esac
+	pm_norm_operand "$_pm_arg"
+	set -- "$@" "$_norm"
+done
+shift "$_pm_count"
+printf '%s\0' "$#" "$@"
+EOF
+chmod 0755 "$rotate"
+nlarg="line
+break"
+printf '%s\0' 6 -o "loop value" "" "$spaced" "$nlarg" "//server/share" > "$work/rotate.expected"
+for shbin in \
+	/tmp/zlyme-posix-shells/dash \
+	/tmp/zlyme-posix-shells/busybox
+do
+	[ -x "$shbin" ] || fail "missing $shbin"
+	if [ "$(basename "$shbin")" = busybox ]; then
+		"$shbin" ash "$rotate" "$ctrl" -o "loop value" "" "/$spaced" "$nlarg" "//server/share" \
+			> "$work/rotate.got"
+	else
+		"$shbin" "$rotate" "$ctrl" -o "loop value" "" "/$spaced" "$nlarg" "//server/share" \
+			> "$work/rotate.got"
+	fi
+	cmp -s "$work/rotate.expected" "$work/rotate.got" \
+		|| fail "argument rotation failed under $shbin"
+done
 
 echo "portmaster mounts ok"
