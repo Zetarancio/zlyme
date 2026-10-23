@@ -443,7 +443,10 @@ refresh_local_packages() {
         package/system/zlyme-box86
     refresh_compiled_package zlyme-graphics-probes BR2_PACKAGE_ZLYME_GRAPHICS_PROBES \
         package/system/zlyme-graphics-probes \
-        scripts/device/phase14-probe-paks.sh
+        scripts/device/phase14-probe-paks.sh \
+        scripts/device/phase14-port-observer.sh \
+        scripts/device/phase14-portmaster-inventory.sh \
+        scripts/device/phase14-portmaster-validate.sh
     refresh_compiled_package zlyme-hdmi BR2_PACKAGE_ZLYME_HDMI \
         package/system/zlyme-hdmi
 }
