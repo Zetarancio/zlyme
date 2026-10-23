@@ -8,6 +8,7 @@ set -eu
 root=/storage/Tools/my355
 sdl_name='Zlyme SDL3 Validation.pak'
 gl_name='Zlyme GL4ES Validation.pak'
+pm_name='Zlyme PortMaster Validation.pak'
 marker='.zlyme-phase14-probe'
 
 die() {
@@ -70,11 +71,14 @@ install)
 	install_one "$root/$gl_name" \
 		/usr/libexec/zlyme-tests/zlyme-gl4es-probe \
 		/usr/bin/zlyme-gl4es-run
+	install_one "$root/$pm_name" \
+		/usr/libexec/zlyme-tests/phase14-portmaster-validate
 	echo "phase14 probe Tools installed"
 	;;
 remove)
 	remove_one "$root/$sdl_name"
 	remove_one "$root/$gl_name"
+	remove_one "$root/$pm_name"
 	echo "phase14 probe Tools removed"
 	;;
 *)

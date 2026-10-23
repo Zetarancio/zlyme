@@ -36,6 +36,15 @@ define ZLYME_GRAPHICS_PROBES_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0755 \
 		$(BR2_EXTERNAL_ZLYME_PATH)/scripts/device/phase14-probe-paks.sh \
 		$(TARGET_DIR)/usr/libexec/zlyme-tests/phase14-probe-paks
+	$(INSTALL) -D -m 0755 \
+		$(BR2_EXTERNAL_ZLYME_PATH)/scripts/device/phase14-port-observer.sh \
+		$(TARGET_DIR)/usr/libexec/zlyme-tests/phase14-port-observer
+	$(INSTALL) -D -m 0755 \
+		$(BR2_EXTERNAL_ZLYME_PATH)/scripts/device/phase14-portmaster-inventory.sh \
+		$(TARGET_DIR)/usr/libexec/zlyme-tests/phase14-portmaster-inventory
+	$(INSTALL) -D -m 0755 \
+		$(BR2_EXTERNAL_ZLYME_PATH)/scripts/device/phase14-portmaster-validate.sh \
+		$(TARGET_DIR)/usr/libexec/zlyme-tests/phase14-portmaster-validate
 endef
 
 $(eval $(generic-package))
