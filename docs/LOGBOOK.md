@@ -73,11 +73,19 @@ call `$ESUDO systemctl restart oga_events` after exit.
 `zlyme-portmaster-exec` now maps only that exact upstream request to
 `zlyme-input ensure`; no fake `systemctl` exists.
 
-The final OTA remains to be built and stays uninstalled. Phase 14
-remains open for candidate ARMHF/Box86 execution, SDL3 display/input,
-GL4ES rendering, eligible named ports and shared runtimes, audio,
-cleanup and NextUI return, a focused Abombniball rerun, and RetroArch's
-own 1280×720 CRTC observation.
+The final candidate is
+`zlyme-my355-20261023-8c5841c04fbc.tar`, built from
+`8c5841c04fbc23ac1ca0c9ad4a21e21c3c910da2`. Its SHA-256 is
+`519dc0d40c5d0d6fa2a2ae7eaa2a0d08cd664de00c034dbc40e0bb068ad1e829`;
+the squashfs SHA-256 is
+`d5f9f77ee4bb1f7ea1ee7a15881c6a0c1bafd1d591e2d4d41dcf5639be5d90fc`.
+It remains uninstalled. The kernel, DTB, idbloader, and U-Boot payloads
+match the installed `c67692f` archive. The embedded NextUI pin remains
+`b0960dcde4d69d32871d6605c354b1b901621eb5`. Phase 14 remains open for
+candidate ARMHF/Box86 execution, SDL3 display/input, GL4ES rendering,
+eligible named ports and shared runtimes, audio, cleanup and NextUI
+return, a focused Abombniball rerun, and RetroArch's own 1280×720 CRTC
+observation.
 
 ## 2026-10-23 — 14O accepted on 4652076; Abombniball did not return
 
