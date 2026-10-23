@@ -1,0 +1,38 @@
+From: Zlyme <zlyme@local>
+Subject: [PATCH] kmsdrm: soft-fail drmModeMoveCursor when unsupported
+
+On RK3566 drmModeMoveCursor can fail after a cursor BO exists.
+AGS treats that SDL error as fatal graphics init. Keep software
+mouse state and do not abort the video path.
+
+---
+--- a/src/video/kmsdrm/SDL_kmsdrmmouse.c
++++ b/src/video/kmsdrm/SDL_kmsdrmmouse.c
+@@ -381,7 +381,13 @@
+             ret = KMSDRM_drmModeMoveCursor(dispdata->cursor_bo_drm_fd, dispdata->crtc->crtc_id, x, y);
+ 
+             if (ret) {
+-                SDL_SetError("drmModeMoveCursor() failed.");
++                /* Unsupported HW cursor move: keep software mouse state. */
++                static SDL_bool warned = SDL_FALSE;
++                if (!warned) {
++                    warned = SDL_TRUE;
++                    SDL_Log("KMSDRM: drmModeMoveCursor unsupported (%d); continuing without HW cursor move", ret);
++                }
++                return 0;
+             }
+ 
+             return ret;
+@@ -441,7 +447,11 @@
+         ret = KMSDRM_drmModeMoveCursor(dispdata->cursor_bo_drm_fd, dispdata->crtc->crtc_id, mouse->x, mouse->y);
+ 
+         if (ret) {
+-            SDL_SetError("drmModeMoveCursor() failed.");
++            static SDL_bool warned = SDL_FALSE;
++            if (!warned) {
++                warned = SDL_TRUE;
++                SDL_Log("KMSDRM: drmModeMoveCursor unsupported (%d); continuing without HW cursor move", ret);
++            }
+         }
+     }
+ }
