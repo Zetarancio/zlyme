@@ -199,19 +199,19 @@ mounted Mono bind. Runtime bytes exist; mount/PATH for that launch
 failed. Re-test after the oga_events/systemctl and mount fixes; do not
 install a global Mono package.
 
-## Candidate OTA (UNINSTALLED)
+## Candidate OTA (UNINSTALLED) — supersedes `0a3cce9`
 
-Built from `0a3cce950da4` on branch `zlyme44.4-phase-14`.
+Do **not** install `0a3cce950da4`. Installed baseline remains `3da3f2b`.
+
+Built from `3486b510aa8e` on branch `zlyme44.4-phase-14`.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `zlyme-my355-20261023-0a3cce950da4.tar` | `1690a9ddddbe81bda0d2e0fde22e1d7e7cdb04f427f57438672289393266aeb9` |
-| squashfs `zlyme` inside tar | `9d8e3f6f62e5ab86a435383675f428d558bb12cb5e350fd7cfb3a7b3f53847ae` |
+| `zlyme-my355-20261023-3486b510aa8e.tar` | `42bc535f986201b0c6bec5e56d663ab98a0ae544c6fcecb92066261642fa8b3e` |
+| squashfs `zlyme` inside tar | `f0b961a429d4c8e76eed3a9d842b258f0eabd50c5cc63c349281bf56c6b86e24` |
 
-Host-verified in `output/target` before pack: `LIBGL_FB:=3`, systemctl CR/.service
-translation, SDL soft-fail string, Phase 14 validate helpers, NextUI pin
-`b0960dcde4d69d32871d6605c354b1b901621eb5`. Leave uninstalled until
-maintainer hardware gates below pass.
+Host-verified in `output/target`: PORTS validation exec path, `launch_is_ports` for the Validation Tools PAK, systemctl arity guards, GL4ES PBuffer comment/`LIBGL_FB:=3`, SDL "disabling HW cursor", NextUI pin `b0960dcde4d69d32871d6605c354b1b901621eb5`.
+
 
 ## Validator and runtime correction pass (pre-install)
 
