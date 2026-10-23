@@ -5,8 +5,15 @@ This is the opening inventory for Phase 14. It is not an acceptance matrix. Stat
 ## Runtime completion status
 
 The PortMaster seed stays `2026.06.23-0015`. No alpha or beta seed was
-taken. Phase 14 remains open while the final runtime candidate is
-uninstalled.
+taken. Phase 14 remains open. As of the 2026-10-23 evening pass, the
+installed image is source `da7eb2128294`, squashfs
+`f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`,
+GPU `libmali`. The format=4 validator archive is uninstalled and is
+not an acceptance tool. The architecture review is
+[phase14-portmaster-architecture-proposal.md](phase14-portmaster-architecture-proposal.md).
+It is not approved and it is not current architecture. Sentences
+below that still say the final candidate is uninstalled describe the
+state before that install. They are left in place.
 
 Box comparison was made at these exact revisions:
 

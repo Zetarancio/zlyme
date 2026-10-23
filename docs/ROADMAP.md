@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed PortMaster image is `da7eb21`, squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`. The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -295,13 +295,27 @@ Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortM
 
 ## Phase 14. PortMaster compatibility and zlyme44.4
 
-Phase 14 is open on `zlyme44.4-phase-14`. `ZLYME_VERSION` stays `zlyme44.3` until the release is prepared. The aim is the broadest practical PortMaster match on the Miyoo Flip, plus the OS-quality items below. It does not claim that every port runs. A `zlyme44.4` release waits for acceptance. Research notes belong in `docs/research/`, not here. Hardware checks are one pass at the end, except where a destructive risk appears earlier. The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md).
+Phase 14 is open on `zlyme44.4-phase-14`. Phase 15 has not started. `zlyme44.4` has not released. `ZLYME_VERSION` stays `zlyme44.3` until a release is prepared.
+
+The installed firmware for the 2026-10-23 PortMaster pass is source `da7eb2128294d2ef3d48a6691dd857da75ae8e89`, squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`, GPU `libmali`, PortMaster seed `2026.06.23-0015`. That image contains the format=3 validator. The format=4 archive built from `074949c025c3da0951c0b1f0c27d3822c561a5e2` is uninstalled and is not approved for acceptance. Do not use either validation campaign as the acceptance path. Ordinary Ports and Tools launches are the evidence.
+
+`c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is not the installed firmware. It remains the image that accepted Abombniball MENU+START. `0b35a90` remains the image that accepted volume, Wi-Fi, HDMI audio, and NextUI at HDMI 720p. `4652076` remains the image that accepted the looked-at 14O rows. Later images do not rewrite those records.
+
+Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is review, not implementation. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
+
+### Next decision gate
+
+**PortMaster compatibility architecture review — NOT APPROVED.**
+
+Decide whether the long-term implementation is a small correction of the current integration, or a coherent application-scoped compatibility runtime informed by ROCKNIX, upstream PortMaster, and KNULLI. The archived working ROCKNIX fork is comparison evidence. It is not current Zlyme architecture. A system-wide GPU library switch is not the proposal's supported reading of the `da7eb21` results.
+
+The maintainer reviews this section, with the decision note, before any implementation. ChatGPT review of the roadmap is part of that gate. No gate below starts until this one is approved.
 
 ### 14A. Capability baseline
 
-Compare official PortMaster, the pinned `2026.06.23-0015` seed, upstream `2026.10.03-1041` or a newer stable tag if one exists when the update is reviewed, and the relevant ROCKNIX, KNULLI, and Batocera packaging. Record implemented, missing, partial, and hardware-limited. Do not copy another distribution's claim into Zlyme.
+Compare official PortMaster, the pinned `2026.06.23-0015` seed, upstream `2026.10.03-1041` or a newer stable tag if one exists when the update is reviewed, and the relevant ROCKNIX, KNULLI, and Batocera packaging. Record implemented, missing, partial, and hardware-limited. Do not copy another distribution's claim into Zlyme. Do not treat a newer upstream `funcs.txt` as identical to this seed. Do not redistribute a proprietary blob because another distribution ships it.
 
-Status: Inventory started from this tree. The pin is still `2026.06.23-0015`. `zlyme` maps to `PlatformZlyme`.
+Status: Inventory exists for this tree. The pin is still `2026.06.23-0015`. `zlyme` maps to `PlatformZlyme`. The recorded comparison, including historical `Zetarancio/distribution` branch `flip` at PortMaster `2026.05.04-1202` and official ROCKNIX commits already listed in `docs/UPSTREAMS.md`, is in the decision note. That comparison is not an implementation.
 
 ### 14B. ARMHF userspace
 
@@ -313,18 +327,18 @@ Status: Host-tested through qemu-user, and installed into the product target tre
 
 Keep the working Box64 and Wine path. Compare native Box86 with Box64's BOX32 against what PortMaster runs. Pick one combination. Do not enable both to raise a count.
 
-Status: Implemented in source, hardware-unproven on the uninstalled
-candidate. Native ARMHF Box86 is built from pinned upstream
-`bb716a2a6576cc06da811bf55e31e2f6f03b7596`, imported through a
-checked artifact manifest, and invoked explicitly by
+Status: Implemented. On installed `da7eb21`, the legal console probe
+`zlyme-box86-run` printed `box86-x86 4 475f677f` and exited 0. That
+is not a graphical result. Native ARMHF Box86 is built from pinned
+upstream `bb716a2a6576cc06da811bf55e31e2f6f03b7596`, imported through
+a checked artifact manifest, and invoked explicitly by
 `zlyme-box86-run`. There is no binfmt registration or permanent
-service. A legal dynamic i386 probe runs under Box86 and the private
-ARMHF glibc in the host qemu-arm check; invalid ELF and unresolved
-library paths fail with diagnostics. Box64 remains pinned at
-`2f130fab`, `BOX32=OFF`, and Wine remains the amd64 WOW64 build.
-Graphical Box86 is a separate gate: its ARMHF EGL/GLES provider is
-Mesa/Panfrost, because the libmali payload is AArch64-only. A libmali
-boot does not provide ARMHF graphics.
+service. Host qemu-arm checks still reject invalid ELF and unresolved
+library paths. Box64 remains pinned at `2f130fab`, `BOX32=OFF`, and
+Wine remains the amd64 WOW64 build. Graphical Box86 is still untested.
+Its ARMHF EGL/GLES provider is Mesa/Panfrost, because the libmali
+payload is AArch64-only. A libmali boot does not provide ARMHF
+graphics.
 
 ### 14D. Graphics and SDL3
 
@@ -332,54 +346,70 @@ Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing 
 
 Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
 
-Status: Implemented in source, hardware-unproven on the uninstalled
-candidate. SDL 3.4.12 still provides KMSDRM, OpenGL ES, and Wayland,
-and the old stub is absent. A source-controlled probe opens an SDL3
-KMSDRM renderer, draws frames, observes an InputPlumber gamepad button,
-and exits. Pinned GL4ES is packaged in explicit isolated AArch64 and
-ARMHF directories; neither replaces a system GL/EGL/GLES link or a
-port-bundled copy. The matching OpenGL triangle probe and disposable
-normal-menu Tools entries are built. The active libmali path was
-observed on the installed image; no probe has rendered on it yet. The
-alternate Panfrost boot is unobserved. No shared SDL1.2 requirement was
-proved, so no conflicting SDL compatibility layer was added.
+Status: Partial on installed `da7eb21`, libmali. SDL 3.4.12 provides
+KMSDRM, OpenGL ES, and Wayland, and the old stub is absent. The SDL3
+Tools probe selected an OpenGL ES2 renderer, saw the Xbox 360 virtual
+pad, logged button events, and exited with `SDL3_DONE frames=512
+input=1`. The maintainer saw no on-screen reaction to the pad. The
+probe does not draw a response to those events. Event delivery is
+PASS. Visual controller feedback is NOT DEMONSTRATED. That is not an
+InputPlumber failure.
+
+The GL4ES Tools probe logged `LIBGL_FB=3`, KMSDRM, and `GL4ES_READY`
+with Mali-G52. The screen stayed black. MENU+START returned. No
+`GL4ES_DONE` line was recorded. Context initialization was observed.
+Visible rendering is FAIL. Panfrost GL4ES was not run. GL4ES is not
+fully working.
+
+Pinned GL4ES stays in explicit isolated AArch64 and ARMHF directories
+and does not replace a system GL/EGL/GLES link or a port-bundled copy.
+No shared SDL1.2 requirement was proved, so no conflicting SDL
+compatibility layer was added. DRM debugfs clients were unavailable
+on this pass. An empty client list was not observed, so DRM ownership
+is UNKNOWN. An earlier idle inspection saw only `nextui.elf` holding
+`/dev/dri/card0`. That is not a master-ownership PASS.
 
 ### 14E. GPTK and input
 
 Audit gptokeyb, gptokeyb2, `.gptk`, `control.txt`, and the SDL controller map. InputPlumber keeps the virtual Xbox pad. Do not add a second grabber. MENU+START, MENU, suspend, and return to NextUI stay. Host-test the mapping before a device pass.
 
-Status: Implemented; the individual Abombniball gate is accepted on
-installed source `c67692f`. The maintainer launched it from the Ports
-list and physically returned with MENU+START. The seed's unsuffixed
-gptokeyb binaries remain AArch64, InputPlumber remains the virtual Xbox
-pad, and no second grabber is added. Review of LoveRetro NextUI,
-ROCKNIX, rocknix-hotkey, and PortMaster did not justify replacing
-Zlyme's ownership model with application-name `killall`.
-`zlyme-pak-spawn` now distinguishes `/proc` failure from an empty
-session, has no fixed member truncation, ignores zombies, verifies PID,
-start time, PGID, and SID through pidfds before signaling, and returns
-the reserved cleanup failure if a member survives bounded TERM/KILL.
-Mount cleanup still runs, but `nextui-session` then stays stopped
-instead of racing another direct-KMS frontend. This hardening is later
-than `c67692f`, so Abombniball needs one focused rerun on the final
-candidate without reopening the accepted result on the older image.
+Status: Abombniball MENU+START stays accepted on `c67692f`. On
+installed `da7eb21`, Shards of God started under gptokeyb with
+`./shardsofgod.gptk` and the maintainer reports usable controller
+input. The expected file was restored with a non-overwriting copy
+from the Syncthing conflict file. The conflict original remains.
+That result is this port, not every gptokeyb port. The seed's
+unsuffixed gptokeyb binaries remain AArch64. InputPlumber remains
+the virtual Xbox pad. No second grabber was added. Review of
+LoveRetro NextUI, ROCKNIX, rocknix-hotkey, and PortMaster did not
+justify replacing Zlyme's ownership model with application-name
+`killall`. `zlyme-pak-spawn` distinguishes `/proc` failure from an
+empty session, ignores zombies, and signals only a verified
+pid/start-time/PGID/SID through a pidfd. Unresolved ownership stays
+status 125. That hardening is later than `c67692f`, so Abombniball
+still needs one focused rerun on a final candidate. The `c67692f`
+acceptance stays.
 
 ### 14F. Shared runtimes
 
 Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. Native `libpulse` clients use `pipewire-pulse` on the one PipeWire graph. ALSA stays the hardware path. PipeWire's BlueZ monitor owns A2DP. The PulseAudio daemon and BlueALSA are not this graph. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
 
-Status: Infrastructure implemented; representative candidate execution
-is still hardware-unproven. PipeWire, WirePlumber, and
-`pipewire-pulse` remain the one audio graph. The seed keeps LÖVE 11.5;
-other engine squashfs files remain user-selected PortMaster downloads.
-The ARMHF and Box86 selectors, isolated AArch64/ARMHF GL4ES, SDL2,
-SDL3, system OpenAL, Wine/Box64, WestonPack mount ownership, and
-PipeWire-compatible ALSA and Pulse client libraries are present or
-covered by deterministic host checks. Runtime mount cleanup uses one
-recorded owner and fails closed on uncertain topology. The installed
-tree was not updated. No candidate LÖVE, Mono, WestonPack, Wine, GL4ES,
-or Box86 workload has yet supplied rendered, input, audio, exit, and
-cleanup evidence on the Flip; package presence is not that result.
+Status: Infrastructure is in the image. Representative execution is
+partial. PipeWire, WirePlumber, and `pipewire-pulse` remain the one
+audio graph. The seed keeps LÖVE 11.5. Other engine squashfs files
+remain user-selected PortMaster downloads. On `da7eb21`, Steel
+Assault's Mono squashfs is present on SD2 and the launch still failed:
+`taskset not found, bailing...`, `mount: bad address 'opt'`, source
+`//opt/system/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs`,
+then `mono: command not found`. That is a runtime path and mount
+failure. It does not prove the bytes are missing, and it does not
+isolate one shell expansion. A shared runtime-path contract is a
+design candidate in the decision note. It is not implemented.
+GL4ES context init was observed and visible rendering failed, as in
+14D. Console Box86 passed. Graphical Box86, WestonPack, and a
+candidate LÖVE render on this image were not in this archive.
+Mount cleanup still uses one recorded owner. Package presence is
+not a rendered result.
 
 ### 14G. Named ports
 
@@ -394,19 +424,22 @@ not PASS.
 
 REJECTED — a fake `systemctl`.
 
-Status: Active and partially implemented. Read-only inspection found
-the AArch64 engines and game-data indicators for Shards, LISA, Rakuen,
-Skautfold, Winter Travelers, and Mina. Steel Assault's game data is
-present but its requested Mono squashfs was absent in the bounded
-check. Existing logs show Shards reached AGS, OpenAL, and an SDL GLES2
-renderer; LISA and Rakuen recorded older Pulse compatibility failures;
-Winter reached AGS; Mina reached its compatibility loader and Vulkan
-window path with unresolved symbols. Those are historical diagnostics,
-not physical acceptance of the new candidate. LISA, Rakuen, Steel
-Assault, and Winter explicitly request `systemctl restart oga_events`
-after exit. `zlyme-portmaster-exec` now translates exactly that request
-to `zlyme-input ensure`; it does not provide a fake `systemctl`.
-Per-port candidate execution remains open.
+Status: Open on installed `da7eb21`. An earlier bounded check did not
+find the Mono squashfs. The 2026-10-23 evening archive shows that
+file on SD2, and the launch still did not run `mono`. That later
+observation does not delete the earlier check.
+
+On this image: Shards of God starts and takes pad input. Winter
+Travelers fails after the cursor soft-fail, with `Cursor not
+initialized properly` and a segmentation fault. Steel Assault fails
+as in 14F. LISA and Rakuen were not rerun in this archive. Skautfold
+remains external data (`game.droid` absent in the earlier card
+inspection). Mina's complete diagnostic was not in this archive.
+Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and
+Winter still request `systemctl restart oga_events` after exit.
+`zlyme-portmaster-exec` translates that request to `zlyme-input
+ensure`. It does not provide a fake `systemctl`. One AGS success
+does not mean every AGS port works.
 
 ### 14H. Acceptance
 
@@ -423,14 +456,19 @@ exit, NextUI return, no surviving owned process, and no leaked mount
 separately. RetroArch's own 1280×720 CRTC is still open. The matrix is
 [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
-Status: Open. The installed runtime baseline is
-`zlyme-my355-20261023-c67692fe7ba7.tar`, Linux `7.2.10`, U-Boot
-`2026.01`, `/boot/zlyme`
-`134130f227792e21cfbfc82493d8ed0ba79ad3da24873b6665b41688519cce13`,
-and NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`. The final runtime
-candidate is not installed and inherits no hardware acceptance. Dated
-failures and acceptances for earlier images remain in the logbook and
-research matrix rather than being rewritten here.
+Status: Open. The installed PortMaster image is source `da7eb21`,
+squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`.
+It does not inherit hardware acceptance from `c67692f` or from
+`0b35a90`. Dated failures and acceptances for earlier images stay in
+the logbook and the matrix. Supersession is a later entry, not an
+edit of the old result.
+
+Ordered later work, none of it started, is in the decision note:
+runtime paths (Steel), AGS graphics (Winter without breaking Shards),
+visible GL4ES on Mali then Panfrost, SDL3 picture plus the events
+already seen, representative engines, then regression against the
+accepted items below. Gate 0 is the architecture review. It is not
+approved.
 
 - Boot reaches NextUI. MENU+START returns from a game.
 - Wi-Fi off stops SSH, Samba, and Syncthing. Wi-Fi on starts only the services that are enabled. Run this on the device. Do not turn Wi-Fi off over the live SSH session. Accepted on `0b35a90`. Do not repeat it on this image.
@@ -441,12 +479,11 @@ research matrix rather than being rewritten here.
 - HDMI, with `ZLYME_HDMI_720P=1` only after the normal boot has reached NextUI. A normal boot still leaves the gate unset and keeps the internal panel at 640×480. One session owns DRM. `S28minui stop` does not stop it. With SSH already connected and Wi-Fi left on, end that session, confirm `pidof nextui-session` is empty, and start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Quitting the picture restarts it still gated. Return is to end that session and start one ungated session. A hang does not restore the panel. Reboot does: `/run` is cleared and boot is ungated. Do not start a second session beside the owner. Pass requires an HDMI CRTC at 1280×720 whose clock is 74250 kHz for the 1650×750 60 Hz mode, the DSI CRTC inactive, and the internal panel dark. The sysfs `mode` file is not that proof. One RetroArch GLES core must show the same HDMI CRTC while the game keeps its own aspect. That RetroArch path does not use the SDL panel-off patch and is not yet proven. Unplugging the cable does not program the panel back. The return is the ungated session. That session scans the panel at the saved 640×480 mode, and `/storage/.config/zlyme/display_mode` is unchanged. Connecting the cable while NextUI is already running does not switch. A failed HDMI modeset must leave the panel scanning. Earlier candidates kept both CRTCs active. That is history, not this requirement.
 - Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. The SDL3 and GL4ES probes are candidate acceptance tools; they are not accepted until launched normally and physically observed.
 
-The version string stays `zlyme44.3`. Installed `c67692f` accepts
-Abombniball MENU+START. Installed `4652076` retains the earlier HDMI,
-volume, Wi-Fi, panel, and looked-at 14O acceptances; a user background
-was not a separate check. The final runtime candidate is uninstalled.
-RetroArch's own KMS path and the runtime matrix remain open. No
-`zlyme44.4` release until this pass.
+The version string stays `zlyme44.3`. `c67692f` accepts Abombniball
+MENU+START. `4652076` retains the looked-at 14O rows. `0b35a90`
+retains HDMI, volume, Wi-Fi, and panel acceptance. A user background
+was not a separate 14O check. RetroArch's own KMS path and the
+runtime matrix remain open. No `zlyme44.4` release until this pass.
 
 ### 14I. PortMaster platform
 

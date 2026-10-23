@@ -1,4 +1,34 @@
-# Phase 14 device log analysis — 2026-10-23 (`3da3f2b`)
+# Phase 14 device log analysis — 2026-10-23
+
+## Later pass on installed `da7eb21`
+
+2026-10-23 evening. Source
+`da7eb2128294d2ef3d48a6691dd857da75ae8e89`. Squashfs
+`f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`.
+GPU `libmali`. Seed `2026.06.23-0015`. Archive
+`Portmaster and gpu report.zip`, SHA-256
+`4c101d6e5e8b9ddff202795a247ca36bd87fd58648e3cce04e3b0751e954abb8`.
+This section does not rewrite the `3da3f2b` table below.
+
+Shards of God started and the maintainer reports usable pad input
+after `shardsofgod.gptk` was restored without overwriting the
+Syncthing conflict file. Winter Travelers failed: SDL2 disabled the
+hardware cursor (`drmModeMoveCursor failed (-14)`), then AGS reported
+`Failed to load GL` and `Cursor not initialized properly`, then a
+segmentation fault. The soft-fail in this image did not fix that
+launch. Steel Assault failed to reach `mono` after `taskset not
+found`, `mount: bad address 'opt'`, and a doubled `/opt` squashfs
+path. The squashfs file is on SD2. GL4ES logged `GL4ES_READY` on
+Mali-G52 with `LIBGL_FB=3` and did not log `GL4ES_DONE`; the screen
+stayed black. SDL3 logged button events and `SDL3_DONE frames=512
+input=1` without a visible pad reaction in the probe. Box86's legal
+console probe exited 0 with `box86-x86 4 475f677f`. DRM debugfs
+clients were unavailable. The format=3 campaign on this image is not
+an acceptance tool. The format=4 OTA is uninstalled. The decision
+note is `docs/research/phase14-portmaster-architecture-proposal.md`.
+It is not approved.
+
+## Earlier analysis — `3da3f2b`
 
 Phase 14 stays OPEN. This note records the maintainer log archive
 `ph14-PORTS.zip` (SHA-256 `66c30d61…`) against installed image

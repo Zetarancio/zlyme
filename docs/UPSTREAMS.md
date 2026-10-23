@@ -95,7 +95,9 @@ Historical Miyoo Flip implementation evidence:
 https://github.com/Zetarancio/distribution
 ```
 
-That fork is archived. Consult it only when a historical implementation detail or commit is relevant, preferably through provenance recorded by the device wiki. Do not infer current Zlyme state from it.
+That fork is archived. Consult it only when a historical implementation detail or commit is relevant, preferably through provenance recorded by the device wiki. Do not infer current Zlyme state from it. Do not copy its PortMaster layout into `docs/ARCHITECTURE.md` as if it were deployed.
+
+The 2026-10-23 comparison, not a new fetch, records branch `flip` at PortMaster `2026.05.04-1202`, with ROCKNIX `compat.tar.gz`, a distribution `control.txt`, mapper, `oga_controls`, gptokeyb, `/etc/profile` environment, and `runemu.sh`. Its gpudriver switches global graphics libraries and contains PortMaster-specific SDL handling. A checkout used earlier for kernel comparison is `d249b09bd95120c65555b0c56bc381f72ce073bc`. Official ROCKNIX commits already in the package table below install a PortMaster seed and, at `7cffc96617df2a051af091182e8a3d270fd794a4`, a compatibility archive. KNULLI remains a Buildroot packaging reference whose launcher generates a controller database. Batocera remains a packaging reference, not a proven Miyoo Flip runtime. A proprietary file shipped by one of those trees is not a Zlyme redistribution right. The decision proposal that cites this comparison is `docs/research/phase14-portmaster-architecture-proposal.md`. It is not approved.
 
 ## Package update workflow
 

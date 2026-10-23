@@ -1,5 +1,30 @@
 # PortMaster validation, 2026-10-23
 
+## Installed `da7eb21` pass
+
+Supersedes the "candidate not installed" sentences in the section
+below for current status only. Those sentences stay as the record of
+the earlier day.
+
+Installed source `da7eb2128294d2ef3d48a6691dd857da75ae8e89`. Squashfs
+`f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`.
+GPU `libmali`. Seed `2026.06.23-0015`. Evidence archive
+`Portmaster and gpu report.zip`, SHA-256
+`4c101d6e5e8b9ddff202795a247ca36bd87fd58648e3cce04e3b0751e954abb8`.
+The on-image validator is format=3. Do not use it for acceptance.
+The format=4 archive from `074949c` is uninstalled.
+
+| Case | Status | Bound |
+| --- | --- | --- |
+| Shards of God | Start and pad input observed | `PORTS.log.2` at 20:55:20Z. AGS reached `Starting game`. gptokeyb used `./shardsofgod.gptk`. Maintainer reports usable input. Conflict original kept. Not every AGS port. |
+| Winter Travelers | FAIL | `PORTS.log.1` at 20:55:54Z. Cursor soft-fail logged, then `Cursor not initialized properly`, then segmentation fault. Replacement design not established. |
+| Steel Assault | FAIL | `PORTS.log` at 20:56:30Z. `taskset not found`, `mount: bad address 'opt'`, doubled `/opt` Mono squashfs path, `mono: command not found`. Bytes are on SD2. Cause of the path is not isolated. |
+| GL4ES probe | Context observed, picture FAIL | `system-0/session.txt`. `LIBGL_FB=3`, `GL4ES_READY` Mali-G52, no `GL4ES_DONE`. Black screen. MENU+START. |
+| SDL3 probe | Events PASS, picture reaction NOT DEMONSTRATED | Same session. OpenGL ES2, Xbox 360 pad, `SDL3_DONE frames=512 input=1`. Probe does not draw button state. Not an InputPlumber failure. |
+| Box86 console | PASS | Same image, SSH, `box86-x86 4 475f677f`, exit 0. Not in the zip. Graphical Box86 not run. |
+| DRM clients | UNKNOWN | Debugfs unavailable. Idle `/dev/dri/card0` fd on `nextui.elf` is not a master PASS. |
+| Panfrost GL4ES, Ascent Panfrost, Mina, RetroArch HDMI CRTC | Open | Not in this archive. |
+
 ## Runtime-completion update
 
 Phase 14 is still open. The maintainer installed
