@@ -417,13 +417,33 @@ exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 		reject_pak_spawn "pak session was not created"
 		return $?
 	fi
-	IFS= read -r _pak_pid < "$_pak_leader_file" || _pak_pid=
+	_pak_starttime=
+	_pak_waiter_id=
+	_pak_waiter_starttime=
+	IFS=' ' read -r _pak_pid _pak_starttime _pak_waiter_id \
+		_pak_waiter_starttime < "$_pak_leader_file" || _pak_pid=
 	case "$_pak_pid" in
 		''|*[!0-9]*|1)
 			_pak_pid=
 			;;
 	esac
-	if [ -z "$_pak_pid" ] || [ "$_pak_pid" = "$_pak_waiter" ]; then
+	case "$_pak_starttime" in
+		''|*[!0-9]*)
+			_pak_pid=
+			;;
+	esac
+	case "$_pak_waiter_id" in
+		''|*[!0-9]*|1)
+			_pak_pid=
+			;;
+	esac
+	case "$_pak_waiter_starttime" in
+		''|*[!0-9]*)
+			_pak_pid=
+			;;
+	esac
+	if [ -z "$_pak_pid" ] || [ "$_pak_pid" = "$_pak_waiter" ] ||
+		[ "$_pak_waiter_id" != "$_pak_waiter" ]; then
 		reject_pak_spawn "pak leader"
 		return $?
 	fi
@@ -438,6 +458,9 @@ reject_pak_spawn() {
 	rm -f "$_pak_leader_file"
 	_pak_waiter=
 	_pak_pid=
+	_pak_starttime=
+	_pak_waiter_id=
+	_pak_waiter_starttime=
 	_pak_leader_file=
 	echo "launch rejected: $_reason" >&2
 	if pak_cleanup_failed "$_wait_st"; then
@@ -538,6 +561,9 @@ run_pak_cmd() {
 	fi
 	_pak_waiter=
 	_pak_pid=
+	_pak_starttime=
+	_pak_waiter_id=
+	_pak_waiter_starttime=
 	_pak_leader_file=
 	if spawn_pak "$_exe" "$_rom"; then
 		:
@@ -555,7 +581,9 @@ run_pak_cmd() {
 		fi
 		_hotkey=${ZLYME_PAK_HOTKEY:-/usr/sbin/zlyme-pak-hotkey}
 		if [ -x "$_hotkey" ]; then
-			"$_hotkey" "$_pak_pid" >> "${SESSION_LOG:-/tmp/nextui-session.txt}" 2>&1 &
+			"$_hotkey" "$_pak_waiter" "$_pak_waiter_starttime" \
+				"$_pak_pid" "$_pak_starttime" \
+				>> "${SESSION_LOG:-/tmp/nextui-session.txt}" 2>&1 &
 			_hk=$!
 			if [ "$_trace" = 1 ]; then
 				pak_trace_line "helper pid=${_hk}"

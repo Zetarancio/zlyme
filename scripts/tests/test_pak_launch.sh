@@ -85,7 +85,8 @@ EOF
 
 cat > "$work/bin/hotkey" << 'EOF'
 #!/bin/sh
-printf '%s\n' "$1" > "$OUT/hotkey-pid"
+printf '%s\n' "$3" > "$OUT/hotkey-pid"
+printf '%s\n' "$1" > "$OUT/hotkey-waiter"
 while :; do
 	sleep 1
 done
@@ -442,6 +443,8 @@ install_at "$emu"
 	export ZLYME_WAIT_HOTKEY=1
 run_pak_cmd "$emu" "/r/a"
 [ "$(cat "$OUT/hotkey-pid")" = "$(cat "$OUT/pid")" ] || fail "hotkey was not given the setsid pid"
+[ "$(cat "$OUT/hotkey-waiter")" != "$(cat "$OUT/pid")" ] ||
+	fail "hotkey was not given the spawn waiter"
 [ "$(cat "$OUT/sid")" = "$(cat "$OUT/pid")" ] || fail "hotkey target is not the session leader"
 ZLYME_PAK_HOTKEY=$work/missing-hotkey
 unset ZLYME_WAIT_HOTKEY

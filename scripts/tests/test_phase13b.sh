@@ -169,16 +169,21 @@ grep -q 'paks/Tools' "$ROOT/package/system/nextui/nextui.mk" \
 	|| fail "Tools paks are not installed from the package"
 
 # Close Content is CLI mode. A game passes -L and a ROM. The tool does not.
-# Quit from the menu is RetroArch's own exit. MENU+START stays SIGTERM
-# then SIGKILL for every pak.
+# Quit from the menu is RetroArch's own exit. MENU+START asks the
+# identity-pinned spawn waiter to perform bounded TERM/KILL cleanup.
 grep -q 'exec retroarch --appendconfig' "$RA" || fail "ra-run no longer execs retroarch"
 if grep -q 'retroarch' "$ROOT/package/system/nextui/zlyme/zlyme-pak-hotkey.c"; then
 	fail "the emergency hotkey special-cases RetroArch"
 fi
-grep -q 'kill(-pgid, SIGTERM);' "$ROOT/package/system/nextui/zlyme/zlyme-pak-hotkey.c" \
-	|| fail "emergency exit no longer sends SIGTERM"
-grep -q 'kill(-pgid, SIGKILL);' "$ROOT/package/system/nextui/zlyme/zlyme-pak-hotkey.c" \
-	|| fail "emergency exit no longer sends SIGKILL"
+grep -q 'SYS_pidfd_send_signal, waiter_fd, SIGTERM' \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-hotkey.c" ||
+	fail "emergency exit no longer signals the owned waiter"
+grep -q 'signal_session(leader, starttime, SIGTERM)' \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c" ||
+	fail "spawn waiter no longer sends session TERM"
+grep -q 'signal_session(leader, starttime, SIGKILL)' \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c" ||
+	fail "spawn waiter no longer sends session KILL"
 grep -q 'exec ra-run -L' "$ROOT/package/system/nextui/paks/Emus/GB.pak/launch.sh" \
 	|| fail "a game launcher no longer passes a core and ROM"
 out=$(run_ra "$work/xdg-quit" "$work/etc-stock" '' -L "$work/sys-cores/mgba_libretro.so" "$work/same.gb")

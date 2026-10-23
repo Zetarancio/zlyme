@@ -13,6 +13,8 @@
  *
  * argv: <leader-file> <command> [args...]
  * The leader file is written only after the child has called setsid().
+ * It records leader PID/start time and waiter PID/start time. The child
+ * cannot exec until the parent publishes that identity.
  */
 #define _GNU_SOURCE
 
@@ -419,10 +421,67 @@ static int reap_session(pid_t leader, unsigned long long starttime)
 	return -1;
 }
 
-static int write_leader(const char *path, pid_t pid)
+static int wait_child_bounded(pid_t pid, int *st, int polls)
+{
+	int i;
+
+	for (i = 0; i < polls; i++) {
+		pid_t got = waitpid(pid, st, WNOHANG);
+
+		if (got == pid)
+			return 1;
+		if (got < 0 && errno == EINTR)
+			continue;
+		if (got < 0)
+			return -1;
+		usleep(POLL_US);
+	}
+	return 0;
+}
+
+static int stop_child_bounded(pid_t pid, int *st)
+{
+	int rc;
+
+	if (kill(pid, SIGTERM) != 0 && errno != ESRCH)
+		return -1;
+	rc = wait_child_bounded(pid, st, TERM_POLLS);
+	if (rc != 0)
+		return rc > 0 ? 0 : -1;
+	if (kill(pid, SIGKILL) != 0 && errno != ESRCH)
+		return -1;
+	rc = wait_child_bounded(pid, st, KILL_POLLS);
+	return rc > 0 ? 0 : -1;
+}
+
+static int stop_session_bounded(pid_t leader, unsigned long long starttime,
+				int *st)
+{
+	int rc;
+
+	if (signal_session(leader, starttime, SIGTERM) != 0)
+		fprintf(stderr, "pak spawn: initial TERM scan was incomplete\n");
+	rc = wait_child_bounded(leader, st, TERM_POLLS);
+	if (rc == 0) {
+		if (signal_session(leader, starttime, SIGKILL) != 0)
+			fprintf(stderr, "pak spawn: KILL scan was incomplete\n");
+		if (kill(leader, SIGKILL) != 0 && errno != ESRCH)
+			fprintf(stderr, "pak spawn: leader KILL failed\n");
+		rc = wait_child_bounded(leader, st, KILL_POLLS);
+	}
+	if (rc < 1)
+		return -1;
+	if (reap_session(leader, starttime) != 0)
+		return -1;
+	return 0;
+}
+
+static int write_leader(const char *path, pid_t pid,
+			unsigned long long starttime, pid_t waiter,
+			unsigned long long waiter_starttime)
 {
 	char tmp[4096];
-	char body[32];
+	char body[128];
 	int fd, n, nw;
 
 	n = snprintf(tmp, sizeof tmp, "%s.tmp", path);
@@ -431,8 +490,10 @@ static int write_leader(const char *path, pid_t pid)
 	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0)
 		return -1;
-	nw = snprintf(body, sizeof body, "%d\n", (int)pid);
-	if (nw < 0 || write(fd, body, (size_t)nw) != nw) {
+	nw = snprintf(body, sizeof body, "%d %llu %d %llu\n", (int)pid,
+		      starttime, (int)waiter, waiter_starttime);
+	if (nw < 0 || (size_t)nw >= sizeof body ||
+	    write(fd, body, (size_t)nw) != nw) {
 		close(fd);
 		unlink(tmp);
 		return -1;
@@ -468,8 +529,10 @@ static int child_status(int st)
 int main(int argc, char **argv)
 {
 	int fds[2];
+	int ack[2];
 	int st = 0;
 	struct leader_identity identity;
+	struct proc_info waiter;
 	struct sigaction sa;
 
 	if (argc < 3 || argv[1][0] == '\0')
@@ -482,13 +545,32 @@ int main(int argc, char **argv)
 
 	if (pipe2(fds, O_CLOEXEC) != 0)
 		return 127;
-	child_pid = fork();
-	if (child_pid < 0)
+	if (pipe2(ack, O_CLOEXEC) != 0) {
+		close(fds[0]);
+		close(fds[1]);
 		return 127;
+	}
+	child_pid = fork();
+	if (child_pid < 0) {
+		close(fds[0]);
+		close(fds[1]);
+		close(ack[0]);
+		close(ack[1]);
+		return 127;
+	}
 	if (child_pid == 0) {
 		struct proc_info self;
+		char release;
 
 		close(fds[0]);
+		close(ack[1]);
+#ifdef ZLYME_TESTING
+		if (getenv("ZLYME_TEST_HANDSHAKE_HANG")) {
+			signal(SIGTERM, SIG_IGN);
+			for (;;)
+				pause();
+		}
+#endif
 		if (setsid() < 0)
 			_exit(127);
 		memset(&identity, 0, sizeof identity);
@@ -500,36 +582,60 @@ int main(int argc, char **argv)
 		    (ssize_t)sizeof identity)
 			_exit(127);
 		close(fds[1]);
+		if (read(ack[0], &release, 1) != 1)
+			_exit(127);
+		close(ack[0]);
 		execvp(argv[2], &argv[2]);
 		_exit(127);
 	}
 	close(fds[1]);
+	close(ack[0]);
 	memset(&identity, 0, sizeof identity);
 	if (read(fds[0], &identity, sizeof identity) !=
 	    (ssize_t)sizeof identity || identity.ok != 1 ||
 	    identity.starttime == 0) {
+		int exited;
+
 		close(fds[0]);
-		waitpid(child_pid, &st, 0);
+		close(ack[1]);
+		exited = wait_child_bounded(child_pid, &st, 1);
+		if (exited == 1)
+			return 127;
+		if (stop_child_bounded(child_pid, &st) != 0) {
+			fprintf(stderr, "pak spawn: handshake child did not stop\n");
+			return CLEANUP_FAILED;
+		}
 		return 127;
 	}
 	close(fds[0]);
-	if (write_leader(argv[1], child_pid) != 0) {
-		if (signal_session(child_pid, identity.starttime, SIGKILL) != 0)
-			fprintf(stderr, "pak spawn: failed to signal unreported session\n");
-		waitpid(child_pid, &st, 0);
-		return reap_session(child_pid, identity.starttime) == 0 ?
-			127 : CLEANUP_FAILED;
+	if (read_info_at("/proc", getpid(), &waiter) != 1 ||
+	    write_leader(argv[1], child_pid, identity.starttime, getpid(),
+			 waiter.starttime) != 0) {
+		close(ack[1]);
+		if (stop_session_bounded(child_pid, identity.starttime, &st) != 0) {
+			fprintf(stderr, "pak spawn: unreported session cleanup failed\n");
+			return CLEANUP_FAILED;
+		}
+		return 127;
 	}
+	if (write(ack[1], "x", 1) != 1) {
+		close(ack[1]);
+		unlink(argv[1]);
+		if (stop_session_bounded(child_pid, identity.starttime, &st) != 0)
+			return CLEANUP_FAILED;
+		return 127;
+	}
+	close(ack[1]);
 
 	for (;;) {
 		pid_t got;
 
 		if (stop_requested) {
-			if (signal_session(child_pid, identity.starttime, SIGKILL) != 0)
+			if (stop_session_bounded(child_pid, identity.starttime, &st) != 0) {
 				fprintf(stderr, "pak spawn: failed to stop session\n");
-			waitpid(child_pid, &st, 0);
-			return reap_session(child_pid, identity.starttime) == 0 ?
-				128 + SIGTERM : CLEANUP_FAILED;
+				return CLEANUP_FAILED;
+			}
+			return 128 + SIGTERM;
 		}
 		got = waitpid(child_pid, &st, 0);
 		if (got == child_pid)

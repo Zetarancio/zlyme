@@ -77,9 +77,11 @@ Hotkey comparison used LoveRetro NextUI
 NextUI. ROCKNIX and PortMaster gptokeyb use application-name
 termination and a later force kill. LoveRetro NextUI has
 application-specific launch scripts rather than an equivalent generic
-session waiter. Zlyme keeps its PID/start-time/session ownership model:
-it never uses `killall`, never signals the frontend group, and refuses
-to restart DRM after unresolved cleanup.
+session waiter. Zlyme keeps its PID/start-time/session ownership model.
+The hotkey retains a pidfd for the published spawn waiter and signals
+only that waiter; the waiter performs bounded, identity-checked session
+cleanup. It never uses `killall`, never signals the frontend group, and
+refuses to restart DRM after unresolved cleanup.
 
 The installed-image and named-port evidence is in
 [portmaster-matrix-20261023.md](portmaster-matrix-20261023.md). Build

@@ -339,8 +339,8 @@ fi
 /usr/bin/zlyme-drm-release
 
 # MENU/Home (SDL GUIDE) opens RGUI. MENU+START is zlyme-pak-hotkey,
-# which SIGTERMs the process group and then SIGKILLs it. RetroArch
-# 1.22.2's Unix handler does not turn one SIGTERM into a quit, so that
+# which asks zlyme-pak-spawn to perform bounded TERM/KILL cleanup.
+# RetroArch 1.22.2's Unix handler does not turn one SIGTERM into a quit, so that
 # chord does not run retroarch_main_quit. Quit from the menu does.
 if [ -n "$ZLYME_PAK_LOG" ]; then
 	mkdir -p "$(dirname "$ZLYME_PAK_LOG")"

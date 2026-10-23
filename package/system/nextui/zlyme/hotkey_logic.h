@@ -24,33 +24,14 @@ static inline int zlyme_hotkey_apply(int *menu, int *start, unsigned code, int d
 	return *menu && *start;
 }
 
-/* 1 only when pid is a living session leader of some other session.
- * A dead pid is refused: the number may be reused, and the spawn
- * helper is what reaps members after the leader exits. */
-static inline int zlyme_hotkey_may_signal(int our_sid, int alive, int pid,
-					  int pgid, int sid)
-{
-	if (!alive || pid <= 1 || our_sid <= 1)
-		return 0;
-	if (sid == our_sid || pgid == our_sid)
-		return 0;
-	if (pgid != pid || sid != pid)
-		return 0;
-	return 1;
-}
-
-/* Revalidate after the TERM grace. The numeric session id alone is
- * not an identity once its leader has exited. */
-static inline int zlyme_hotkey_same_target(int our_sid, int alive, int pid,
-					   int pgid, int sid,
+/* The waiter identity is published by zlyme-pak-spawn. A pidfd is
+ * opened only while /proc still reports that original start time. */
+static inline int zlyme_hotkey_same_waiter(int alive, char state,
 					   unsigned long long starttime,
-					   int old_pgid, int old_sid,
-					   unsigned long long old_starttime)
+					   unsigned long long expected_starttime)
 {
-	if (!zlyme_hotkey_may_signal(our_sid, alive, pid, pgid, sid))
-		return 0;
-	return pgid == old_pgid && sid == old_sid &&
-	       starttime == old_starttime;
+	return alive && state != 'Z' && starttime != 0 &&
+	       starttime == expected_starttime;
 }
 
 #endif

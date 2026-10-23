@@ -33,6 +33,10 @@ note() {
 "$cc" -std=gnu99 -Wall -Wextra -Werror -DZLYME_TESTING \
 	-o "$work/zlyme-pak-spawn-testing" \
 	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c"
+"$cc" -std=gnu99 -Wall -Wextra -Werror -DZLYME_TESTING \
+	-I"$ROOT/package/system/zlyme-input" \
+	-o "$work/zlyme-pak-hotkey-testing" \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-hotkey.c"
 "$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/survivor" -x c - << 'EOF'
 #include <signal.h>
 #include <stdio.h>
@@ -109,10 +113,12 @@ printf '%s\n' clean >> "${SEQ:-/dev/null}"
 EOF
 cat > "$work/bin/hotkey" << 'EOF'
 #!/bin/sh
-printf '%s\n' "$1" > "$OUT/hotkey-pid"
-ps -o sid= -p "$1" | tr -d ' \n' > "$OUT/hotkey-sid"
+printf '%s\n' "$3" > "$OUT/hotkey-pid"
+printf '%s\n' "$1" > "$OUT/hotkey-waiter"
+printf '%s\n' "$2" > "$OUT/hotkey-waiter-start"
+ps -o sid= -p "$3" | tr -d ' \n' > "$OUT/hotkey-sid"
 sleep 0.2
-kill -TERM -- "-$1" 2>/dev/null || true
+kill -TERM "$1" 2>/dev/null || true
 while :; do
 	sleep 1
 done
@@ -149,6 +155,75 @@ wait_bound() {
 	wait "$pid" 2>/dev/null || true
 }
 
+# The hotkey must retain the published waiter identity and signal only
+# that pidfd. A reused start time is refused, and the unrelated leader
+# is never a signal target.
+hotkey_mark=$work/hotkey-term
+SURVIVOR_MARK=$hotkey_mark "$work/survivor" &
+hotkey_waiter=$!
+note "$hotkey_waiter"
+sleep 30 &
+hotkey_leader=$!
+note "$hotkey_leader"
+hotkey_waiter_start=$(awk '{ print $22 }' "/proc/$hotkey_waiter/stat")
+hotkey_leader_start=$(awk '{ print $22 }' "/proc/$hotkey_leader/stat")
+bad_start=$((hotkey_waiter_start + 1))
+if ZLYME_TEST_STOP_NOW=1 "$work/zlyme-pak-hotkey-testing" \
+	"$hotkey_waiter" "$bad_start" "$hotkey_leader" "$hotkey_leader_start"; then
+	fail "hotkey accepted a reused waiter identity"
+fi
+[ ! -e "$hotkey_mark" ] || fail "reused waiter identity was signaled"
+ZLYME_TEST_STOP_NOW=1 "$work/zlyme-pak-hotkey-testing" \
+	"$hotkey_waiter" "$hotkey_waiter_start" \
+	"$hotkey_leader" "$hotkey_leader_start"
+i=0
+while [ ! -s "$hotkey_mark" ] && [ "$i" -lt 20 ]; do
+	sleep 0.05
+	i=$((i + 1))
+done
+[ -s "$hotkey_mark" ] || fail "hotkey did not signal the published waiter"
+kill -0 "$hotkey_waiter" 2>/dev/null || fail "hotkey killed its waiter directly"
+kill -0 "$hotkey_leader" 2>/dev/null || fail "hotkey signaled the leader"
+kill -KILL "$hotkey_waiter" "$hotkey_leader" 2>/dev/null || true
+wait "$hotkey_waiter" 2>/dev/null || true
+wait "$hotkey_leader" 2>/dev/null || true
+
+# SIGTERM during the pre-publication handshake must not enter an
+# unbounded wait on a child that ignores TERM. The child cannot exec
+# before the parent acknowledges its identity, so successful cleanup
+# is an ordinary rejected launch rather than unresolved ownership.
+handshake_file=$work/handshake-leader
+ZLYME_TEST_HANDSHAKE_HANG=1 "$work/zlyme-pak-spawn-testing" \
+	"$handshake_file" sh -c 'exit 0' &
+handshake_waiter=$!
+note "$handshake_waiter"
+i=0
+children=
+while [ "$i" -lt 20 ]; do
+	if [ -r "/proc/$handshake_waiter/task/$handshake_waiter/children" ]; then
+		children=$(cat "/proc/$handshake_waiter/task/$handshake_waiter/children")
+		[ -z "$children" ] || break
+	fi
+	sleep 0.05
+	i=$((i + 1))
+done
+[ -n "$children" ] || fail "handshake child was not created"
+kill -TERM "$handshake_waiter"
+i=0
+while kill -0 "$handshake_waiter" 2>/dev/null && [ "$i" -lt 80 ]; do
+	sleep 0.05
+	i=$((i + 1))
+done
+if kill -0 "$handshake_waiter" 2>/dev/null; then
+	fail "handshake termination was unbounded"
+fi
+handshake_st=0
+wait "$handshake_waiter" || handshake_st=$?
+[ "$handshake_st" -eq 127 ] || fail "handshake status $handshake_st"
+for child in $children; do
+	[ ! -d "/proc/$child" ] || fail "handshake child $child survived"
+done
+
 # Clean exit. The recorded leader is its own session.
 cat > "$emu" << 'EOF'
 #!/bin/sh
@@ -180,7 +255,8 @@ if pak_cleanup_failed "$st"; then
 	fail "pak status 125 was classified as unresolved ownership"
 fi
 
-# Long-running leader. The stub hotkey signals that leader's group.
+# Long-running leader. The stub hotkey signals the identity-pinned
+# waiter, which owns bounded cleanup of the session.
 cat > "$emu" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$$" > "$OUT/pid"
@@ -191,7 +267,7 @@ OUT=$work/long
 mkdir -p "$OUT"
 export OUT
 export ZLYME_PAK_HOTKEY="$work/bin/hotkey"
-run_pak_cmd "$emu" "/r/a" &
+(run_pak_cmd "$emu" "/r/a"; printf '%s\n' "$st" > "$OUT/status") &
 job=$!
 note "$job"
 i=0
@@ -201,10 +277,14 @@ while [ ! -s "$OUT/hotkey-pid" ] && [ "$i" -lt 50 ]; do
 done
 [ -s "$OUT/hotkey-pid" ] || fail "long-running hotkey did not see a leader"
 leader=$(cat "$OUT/hotkey-pid")
+waiter=$(cat "$OUT/hotkey-waiter")
 sid=$(cat "$OUT/hotkey-sid")
 [ "$leader" = "$sid" ] || fail "long-running target sid $sid is not leader $leader"
+[ "$waiter" != "$leader" ] || fail "hotkey waiter is the pak leader"
+[ -n "$(cat "$OUT/hotkey-waiter-start")" ] || fail "hotkey waiter has no start time"
 [ "$leader" != "$$" ] || fail "long-running target is the test shell"
 wait_bound "$job" "long-running child"
+[ "$(cat "$OUT/status")" -eq 143 ] || fail "hotkey stop status $(cat "$OUT/status")"
 [ ! -d "/proc/$leader" ] || fail "long-running leader $leader survived"
 
 # Short-lived wrapper. The leader exits and leaves a child that ignores

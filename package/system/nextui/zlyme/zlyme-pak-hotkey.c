@@ -1,8 +1,9 @@
 /*
  * Watch MENU+START while one pak process group lives.
- * nextui-session passes the session leader. SIGTERM that group, then
- * SIGKILL after a short grace, only when the pid is still a leader of
- * a different session. Do not touch nextui.elf.
+ * nextui-session passes the spawn waiter and its published start time.
+ * The helper retains a pidfd and asks that exact waiter to stop the
+ * owned session. The waiter performs bounded TERM/KILL cleanup. The
+ * frontend group is never a signal target.
  *
  * The chord is read from each InputPlumber xb360 target. MENU+START on
  * any one virtual controller exits. Buttons from two controllers do not
@@ -22,8 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/inotify.h>
+#include <sys/syscall.h>
 
-#define GRACE_US 1500000
 #define MAX_PADS 8
 
 static FILE *trace_fp;
@@ -194,41 +195,73 @@ static int target_info(pid_t pid, struct target_info *info)
 	return 0;
 }
 
-static void kill_pak(pid_t pgid)
+static int parse_pid(const char *text, pid_t *pid)
 {
-	struct target_info before;
-	struct target_info after;
-	int alive;
+	char *end;
+	long value;
+
+	errno = 0;
+	value = strtol(text, &end, 10);
+	if (errno != 0 || end == text || *end != '\0' || value <= 1)
+		return 0;
+	*pid = (pid_t)value;
+	return (long)*pid == value;
+}
+
+static int parse_starttime(const char *text, unsigned long long *starttime)
+{
+	char *end;
+	unsigned long long value;
+
+	errno = 0;
+	value = strtoull(text, &end, 10);
+	if (errno != 0 || end == text || *end != '\0' || value == 0)
+		return 0;
+	*starttime = value;
+	return 1;
+}
+
+static int open_waiter(pid_t waiter, unsigned long long starttime)
+{
+#if defined(SYS_pidfd_open) && defined(SYS_pidfd_send_signal)
+	struct target_info info;
+	int fd;
+
+	if (!target_info(waiter, &info) ||
+	    !zlyme_hotkey_same_waiter(1, info.state, info.starttime, starttime))
+		return -1;
+	fd = (int)syscall(SYS_pidfd_open, waiter, 0);
+	if (fd < 0)
+		return -1;
+	if (!target_info(waiter, &info) ||
+	    !zlyme_hotkey_same_waiter(1, info.state, info.starttime, starttime)) {
+		close(fd);
+		return -1;
+	}
+	return fd;
+#else
+	(void)waiter;
+	(void)starttime;
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+
+static int stop_pak(int waiter_fd, pid_t waiter, pid_t leader)
+{
+#if defined(SYS_pidfd_send_signal)
 	int rc;
 
-	memset(&before, 0, sizeof before);
-	alive = target_info(pgid, &before);
-	if (!zlyme_hotkey_may_signal((int)getsid(0), alive, (int)pgid,
-				     (int)before.pgid, (int)before.sid) ||
-	    before.state == 'Z') {
-		trace_msg("signal refused pid=%d alive=%d pgid=%d sid=%d our=%d",
-			  (int)pgid, alive, (int)before.pgid, (int)before.sid,
-			  (int)getsid(0));
-		return;
-	}
-	rc = kill(-pgid, SIGTERM);
-	trace_msg("signal term pgid=%d rc=%d errno=%d", (int)pgid, rc,
-		  rc < 0 ? errno : 0);
-	usleep(GRACE_US);
-	memset(&after, 0, sizeof after);
-	alive = target_info(pgid, &after);
-	if (after.state == 'Z' ||
-	    !zlyme_hotkey_same_target((int)getsid(0), alive, (int)pgid,
-				      (int)after.pgid, (int)after.sid,
-				      after.starttime, (int)before.pgid,
-				      (int)before.sid, before.starttime)) {
-		trace_msg("signal kill refused pid=%d alive=%d pgid=%d sid=%d",
-			  (int)pgid, alive, (int)after.pgid, (int)after.sid);
-		return;
-	}
-	rc = kill(-pgid, SIGKILL);
-	trace_msg("signal kill pgid=%d rc=%d errno=%d", (int)pgid, rc,
-		  rc < 0 ? errno : 0);
+	rc = (int)syscall(SYS_pidfd_send_signal, waiter_fd, SIGTERM, NULL, 0);
+	trace_msg("stop waiter=%d leader=%d rc=%d errno=%d", (int)waiter,
+		  (int)leader, rc, rc < 0 ? errno : 0);
+	return rc == 0 ? 0 : 1;
+#else
+	(void)waiter_fd;
+	(void)waiter;
+	(void)leader;
+	return 1;
+#endif
 }
 
 static int read_pad(struct app_pad *pad)
@@ -267,19 +300,39 @@ static void drain_inotify(int fd)
 
 int main(int argc, char **argv)
 {
-	pid_t pgid;
+	pid_t waiter;
+	pid_t leader;
+	unsigned long long waiter_starttime;
+	unsigned long long leader_starttime;
 	struct app_pad pads[MAX_PADS];
 	int npads = 0;
 	int ino;
+	int waiter_fd;
+	int result = 0;
 
-	if (argc < 2)
+	if (argc != 5 ||
+	    !parse_pid(argv[1], &waiter) ||
+	    !parse_starttime(argv[2], &waiter_starttime) ||
+	    !parse_pid(argv[3], &leader) ||
+	    !parse_starttime(argv[4], &leader_starttime) ||
+	    waiter == leader)
 		return 1;
-	pgid = (pid_t)atoi(argv[1]);
-	if (pgid <= 1)
+	waiter_fd = open_waiter(waiter, waiter_starttime);
+	if (waiter_fd < 0)
 		return 1;
 
 	trace_open();
-	trace_msg("hotkey pid=%d watching=%d", (int)getpid(), (int)pgid);
+	trace_msg("hotkey pid=%d waiter=%d leader=%d leader_start=%llu",
+		  (int)getpid(), (int)waiter, (int)leader, leader_starttime);
+#ifdef ZLYME_TESTING
+	if (getenv("ZLYME_TEST_STOP_NOW")) {
+		result = stop_pak(waiter_fd, waiter, leader);
+		close(waiter_fd);
+		if (trace_fp)
+			fclose(trace_fp);
+		return result;
+	}
+#endif
 
 	ino = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
 	if (ino < 0)
@@ -297,8 +350,10 @@ int main(int argc, char **argv)
 	}
 	if (npads == 0)
 		trace_msg("no virtual pad");
-	if (ino < 0 && npads == 0)
+	if (ino < 0 && npads == 0) {
+		close(waiter_fd);
 		return 1;
+	}
 
 	while (1) {
 		struct pollfd pf[MAX_PADS + 1];
@@ -341,7 +396,7 @@ int main(int argc, char **argv)
 			}
 		}
 		if (fire) {
-			kill_pak(pgid);
+			result = stop_pak(waiter_fd, waiter, leader);
 			break;
 		}
 	}
@@ -350,7 +405,8 @@ int main(int argc, char **argv)
 		drop_fd(pads, &npads, pads[0].fd);
 	if (ino >= 0)
 		close(ino);
+	close(waiter_fd);
 	if (trace_fp)
 		fclose(trace_fp);
-	return 0;
+	return result;
 }
