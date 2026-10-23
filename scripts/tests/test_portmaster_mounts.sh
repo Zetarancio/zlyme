@@ -277,6 +277,17 @@ fail() {
 	|| fail "PortMaster input restore translation failed"
 grep -Fxq ensure "$ZLYME_INPUT_LOG" \
 	|| fail "PortMaster input restore did not use zlyme-input ensure"
+: > "$ZLYME_INPUT_LOG"
+# Upstream card scripts edited on Windows keep a trailing CR on the unit.
+"$EXEC" systemctl restart "$(printf 'oga_events\r')" \
+	|| fail "CR-suffixed oga_events was not translated"
+grep -Fxq ensure "$ZLYME_INPUT_LOG" \
+	|| fail "CR-suffixed oga_events did not use zlyme-input ensure"
+: > "$ZLYME_INPUT_LOG"
+"$EXEC" systemctl restart oga_events.service \
+	|| fail "oga_events.service was not translated"
+grep -Fxq ensure "$ZLYME_INPUT_LOG" \
+	|| fail "oga_events.service did not use zlyme-input ensure"
 status=0
 "$EXEC" systemctl stop oga_events >/dev/null 2>&1 || status=$?
 if [ "$status" -ne 19 ]; then
