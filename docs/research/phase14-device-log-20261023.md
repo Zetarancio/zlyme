@@ -115,13 +115,18 @@ Installed helpers (opt-in Tools PAK via `phase14-probe-paks install`):
 
 - `phase14-portmaster-inventory` — classify every `*.sh` under both
   libraries' `Roms/Ports (PORTS)/`
-- `phase14-portmaster-validate` — claims one ELIGIBLE port into
-  `active-run`, holds the campaign lock, and `exec`s canonical
-  `PORTS.pak/launch.sh`. No in-session timer or post-observer.
-  Exit is MENU+START or the game's own exit. SSH
-  `phase14-portmaster-validate observe` records post-session
-  evidence. Cursor advances only via `complete` (or stays put on
-  `fail`/`retry`).
+- `phase14-portmaster-validate` **format=4** — claims one ELIGIBLE
+  port into `active-run` with claimer pid+starttime, holds the
+  campaign lock, and `exec`s canonical `PORTS.pak/launch.sh`.
+  No in-session timer or post-observer. Exit is MENU+START or the
+  game's own exit. SSH `observe` records post-session evidence.
+  `complete` advances the cursor only after the claimer identity
+  has ended and machine evidence shows: observe ran, NextUI
+  restored, owned mounts none, no pak-cleanup 125, no foreign DRM,
+  and no `blocked` file. User labels are not that proof.
+  `fail`/`retry`/`reset`/`start` refuse while the claimer is live
+  or any active-run is unresolved. Library identity is part of
+  campaign identity. Lock owners are pid+starttime.
 - `phase14-port-observer` — optional bounded SSH-side samples
 - Per-run logs under the campaign `runs/` directory, named
   `$id-$gpu-$stamp.log` (does not rotate `PORTS.log`)
@@ -211,7 +216,8 @@ Installed accepted baseline remains `3da3f2bafe05` (squashfs `ad9c430a…`).
 | --- | --- |
 | `0a3cce950da4` | Do **not** install (superseded). |
 | `3486b510aa8e` | **Blocked.** Tar `42bc535f…`, squashfs `f0b961a4…`. Validator lifecycle defects below. Do **not** install. |
-| `da7eb2128294` | **Replacement (UNINSTALLED).** Lifecycle fix + fingerprint. Host-tested. Do not install until the physical sequence below. |
+| `da7eb2128294` | **Installed for hardware.** Squashfs `f08c3fa8…`. Still ships format=3 validator. Do **not** run campaign complete/fail/retry/start/reset on this image for queue acceptance; use normal Ports launches and passive SSH until format=4 OTA. |
+| format=4 candidate | Built after verified-completion gates; hashes recorded when packed. Leave uninstalled until ready. |
 
 ### Replacement OTA `da7eb2128294` (UNINSTALLED)
 
@@ -240,12 +246,35 @@ Squashfs `phase14-portmaster-validate` matches source (`format=3`, no timer/obse
 | Tools validator duplicating PORTS setup | Still fixed: `exec` canonical `PORTS.pak/launch.sh`; `launch_is_ports` matches Validation Tools. |
 | `LIBGL_FB=3` / SDL HW cursor / systemctl arity | Retained as previously corrected. |
 
-### Maintainer sequence after replacement OTA
+### Shards card repair (2026-10-23, on installed `da7eb21`)
 
-1. Install the replacement image only (not `3486b51` / `0a3cce9`).
+On `/mnt/sd2/Roms/Ports (PORTS)/shardsofgod/`, only the Syncthing
+conflict file `shardsofgod.sync-conflict-20260615-095224-KAO2TYI.gptk`
+existed. Launcher expects `./shardsofgod.gptk`. Mapping is mouse
+emulation for AGS (compatible with `$GPTOKEYB` + InputPlumber virtual
+pad; no global config change). Copied with `cp -n` to
+`shardsofgod.gptk`. Conflict original retained and byte-identical.
+Physical Shards input still needs a maintainer launch.
+
+### Maintainer sequence on installed `da7eb21` (until format=4 OTA)
+
+1. Do **not** use validator `complete`/`fail`/`retry`/`start`/`reset`
+   for acceptance on format=3.
+2. Normal Ports / probe Tools launches only.
+3. Passive SSH: unique log path, DRM clients, owned mounts, NextUI
+   pid, exit observation. Keep screen/input/audio notes separate.
+4. Priority: GL4ES both GPUs; Winter Travelers cursor; Steel Mono;
+   Shards input after gptk restore; Ascent Panfrost; Mina; Box86;
+   SDL3 pad; RetroArch HDMI CRTC.
+
+### Maintainer sequence after format=4 OTA
+
+1. Install the format=4 candidate only when ready (leave uninstalled
+   until then). Confirm squashfs hash.
 2. `phase14-portmaster-validate start` (one campaign per GPU boot).
 3. Tools → Zlyme PortMaster Validation (one game per launch).
 4. Exit with MENU+START or the game exit.
-5. SSH: `phase14-portmaster-validate observe`, then `complete` or `fail` / `retry`.
-6. GL4ES Mali then Panfrost; Winter Travelers cursor; Shards gptk restore; Steel Mono mount; Ascent Panfrost; Mina log; SDL3 pad; Box86; HDMI CRTC.
+5. SSH: `observe`, then `complete` only if evidence gates pass; else
+   `fail` / `retry` after the claimer has ended.
+6. Continue the named-port and 14A–14O hardware gates.
 
