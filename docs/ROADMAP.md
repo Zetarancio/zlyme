@@ -307,9 +307,9 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 **PortMaster compatibility architecture review — NOT APPROVED.**
 
-Decide whether the long-term implementation is a small correction of the current integration, or a coherent application-scoped compatibility runtime informed by ROCKNIX, upstream PortMaster, and KNULLI. The archived working ROCKNIX fork is comparison evidence. It is not current Zlyme architecture. A system-wide GPU library switch is not the proposal's supported reading of the `da7eb21` results.
+Option A, the current integration, is the baseline. A later change may approve a narrow diagnostic or fix. Option B, an application-scoped compatibility environment, stays deferred unless later evidence shows that baseline cannot carry the failing contract. Option C, a system-wide GPU and library switch, is not supported by the `da7eb21` results. Steel Assault and Winter Travelers are different failures. They do not establish one shared root cause. The archived ROCKNIX fork is comparison evidence, not current architecture.
 
-The maintainer reviews this section, with the decision note, before any implementation. ChatGPT review of the roadmap is part of that gate. No gate below starts until this one is approved.
+Approval of this review is still required before implementation. Approval can be a narrow scope. It does not have to choose B. No gate below starts until that approval exists.
 
 ### 14A. Capability baseline
 
@@ -342,7 +342,7 @@ graphics.
 
 ### 14D. Graphics and SDL3
 
-Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing SDL2, KMS/DRM, and application-scoped WestonPack. Do not add a permanent compositor or system Xwayland. Report Vulkan as experimental PanVK, not as a Mali replacement.
+Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing SDL2, KMS/DRM, and application-scoped WestonPack. Do not add a permanent compositor or system Xwayland. Vulkan follows the saved GPU choice: libmali uses the proprietary Mali ICD, `panfrost` stays OpenGL, and `panvk` is the only PanVK opt-in. Neither Vulkan path is hardware-accepted here.
 
 Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
 
@@ -430,9 +430,9 @@ file on SD2, and the launch still did not run `mono`. That later
 observation does not delete the earlier check.
 
 On this image: Shards of God starts and takes pad input. Winter
-Travelers fails after the cursor soft-fail, with `Cursor not
-initialized properly` and a segmentation fault. Steel Assault fails
-as in 14F. LISA and Rakuen were not rerun in this archive. Skautfold
+Travelers fails on a different AGS graphics path. Both logs contain
+the same KMSDRM cursor line. The contrast is in the matrix. Steel
+Assault fails as in 14F. LISA and Rakuen were not rerun in this archive. Skautfold
 remains external data (`game.droid` absent in the earlier card
 inspection). Mina's complete diagnostic was not in this archive.
 Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and
@@ -447,13 +447,14 @@ Volume and mute, Wi-Fi off and on, NextUI at HDMI 720p, and the internal
 panel coming back remain accepted on installed `0b35a90`. The 14O rows
 that were looked at remain accepted on installed `4652076`; a user
 background was not a separate check. Abombniball MENU+START is accepted
-on installed `c67692f`. The remaining pass belongs to the final runtime
-candidate: rerun Abombniball after waiter hardening; run ARMHF and
-Box86 execution; physically observe SDL3 window/input and GL4ES
-rendering; run each eligible named port and representative LÖVE,
-Mono, WestonPack, and Wine runtime actually present; and prove audio,
-exit, NextUI return, no surviving owned process, and no leaked mount
-separately. RetroArch's own 1280×720 CRTC is still open. The matrix is
+on `c67692f`. Still open on a final candidate: Abombniball after
+waiter hardening, graphical Box86, visible GL4ES, an SDL3 picture
+that matches the events already logged on `da7eb21`, each remaining
+eligible named port, and representative LÖVE, Mono, and WestonPack
+runs that are actually installed. Audio, exit, NextUI return, owned
+processes, and mounts stay separate from a process exit. RetroArch's
+own 1280×720 CRTC stays open and does not reopen the accepted NextUI
+HDMI result. The matrix is
 [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
 Status: Open. The installed PortMaster image is source `da7eb21`,
@@ -477,7 +478,7 @@ approved.
 - `/usr/bin/zlyme-armhf-probe` is not the check. The ARMHF userspace check is an ELF32 hard-float program whose interpreter is `/lib/ld-linux-armhf.so.3` and whose `libc.so.6` opens from `/usr/lib/zlyme-armhf`. `xdelta3.armhf` did that and printed `Xdelta version 3.1.1`. `DEVICE_HAS_ARMHF=Y` advertises that ABI. Every ARMHF port working is still not proven.
 - PipeWire, WirePlumber, and `pipewire-pulse` start from `rc.late` after the first frame. The codec, HDMI when the connector is connected and the published ELD advertises a format, and an A2DP headset share that graph. On installed `0b35a90` the maintainer accepts HDMI television audio, disconnect back to the speaker, the external-audio mark clearing, reconnect back to the television, and Bluetooth disconnect and reconnect. Volume and mute, including sound returning after mute, are accepted on that image. `74597688` left the speaker silent after HDMI unplug. That failure stays with that image. The route file names the effective default sink and does not select it. A radio link and that sink are different marks. A saved zero stays silent. The headphone jack follows the plug. Speaker quality, the icons, television audio, Bluetooth playback, and the jack passed on `be5d8c0` and were not withdrawn. The PulseAudio daemon and BlueALSA are the earlier candidate, not this graph. A Bluetooth scan in Settings lists a nearby device, including one with no class. RetroArch's KMS path is separate and is not proof of the SDL panel-off.
 - HDMI, with `ZLYME_HDMI_720P=1` only after the normal boot has reached NextUI. A normal boot still leaves the gate unset and keeps the internal panel at 640×480. One session owns DRM. `S28minui stop` does not stop it. With SSH already connected and Wi-Fi left on, end that session, confirm `pidof nextui-session` is empty, and start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Quitting the picture restarts it still gated. Return is to end that session and start one ungated session. A hang does not restore the panel. Reboot does: `/run` is cleared and boot is ungated. Do not start a second session beside the owner. Pass requires an HDMI CRTC at 1280×720 whose clock is 74250 kHz for the 1650×750 60 Hz mode, the DSI CRTC inactive, and the internal panel dark. The sysfs `mode` file is not that proof. One RetroArch GLES core must show the same HDMI CRTC while the game keeps its own aspect. That RetroArch path does not use the SDL panel-off patch and is not yet proven. Unplugging the cable does not program the panel back. The return is the ungated session. That session scans the panel at the saved 640×480 mode, and `/storage/.config/zlyme/display_mode` is unchanged. Connecting the cable while NextUI is already running does not switch. A failed HDMI modeset must leave the panel scanning. Earlier candidates kept both CRTCs active. That is history, not this requirement.
-- Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. The SDL3 and GL4ES probes are candidate acceptance tools; they are not accepted until launched normally and physically observed.
+- Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. On `da7eb21` the GL4ES probe initialized and the picture stayed black. The SDL3 probe delivered pad events. Visual button feedback was not demonstrated. Neither probe is accepted as complete. RetroArch's own 1280×720 CRTC remains open. The accepted NextUI HDMI 720p result on `0b35a90` stays closed.
 
 The version string stays `zlyme44.3`. `c67692f` accepts Abombniball
 MENU+START. `4652076` retains the looked-at 14O rows. `0b35a90`

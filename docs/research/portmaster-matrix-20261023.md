@@ -17,8 +17,8 @@ The format=4 archive from `074949c` is uninstalled.
 | Case | Status | Bound |
 | --- | --- | --- |
 | Shards of God | Start and pad input observed | `PORTS.log.2` at 20:55:20Z. AGS reached `Starting game`. gptokeyb used `./shardsofgod.gptk`. Maintainer reports usable input. Conflict original kept. Not every AGS port. |
-| Winter Travelers | FAIL | `PORTS.log.1` at 20:55:54Z. Cursor soft-fail logged, then `Cursor not initialized properly`, then segmentation fault. Replacement design not established. |
-| Steel Assault | FAIL | `PORTS.log` at 20:56:30Z. `taskset not found`, `mount: bad address 'opt'`, doubled `/opt` Mono squashfs path, `mono: command not found`. Bytes are on SD2. Cause of the path is not isolated. |
+| Winter Travelers | FAIL | `PORTS.log.1` at 20:55:54Z. Same cursor line as Shards, then another graphics path: `Failed to load GL`, `Cursor not initialized properly`, segmentation fault. The cursor line is not the established cause. |
+| Steel Assault | FAIL | `PORTS.log` at 20:56:30Z. `taskset not found`, `mount: bad address 'opt'`, mount source begins `//opt/system/Tools/PortMaster/libs/` (double leading slash), `mono: command not found`. Bytes are on SD2. `taskset`, mount, runtime root, and `PATH` are separate. |
 | GL4ES probe | Context observed, picture FAIL | `system-0/session.txt`. `LIBGL_FB=3`, `GL4ES_READY` Mali-G52, no `GL4ES_DONE`. Black screen. MENU+START. |
 | SDL3 probe | Events PASS, picture reaction NOT DEMONSTRATED | Same session. OpenGL ES2, Xbox 360 pad, `SDL3_DONE frames=512 input=1`. Probe does not draw button state. Not an InputPlumber failure. |
 | Box86 console | PASS | Same image, SSH, `box86-x86 4 475f677f`, exit 0. Not in the zip. Graphical Box86 not run. |

@@ -32,15 +32,17 @@ the acceptance path.
 
 Evidence archive `Portmaster and gpu report.zip`, SHA-256
 `4c101d6e5e8b9ddff202795a247ca36bd87fd58648e3cce04e3b0751e954abb8`.
-Shards of God reached `Starting game` and the maintainer reports
-usable controller input after a non-overwriting restore of
-`shardsofgod.gptk`. The Syncthing conflict original remains. Winter
-Travelers failed after the SDL2 cursor soft-fail: AGS reported
-`Cursor not initialized properly` and the engine segmentation-faulted.
-Steel Assault failed with `taskset not found`, `mount: bad address
-'opt'`, a doubled `/opt` Mono squashfs path, and `mono: command not
-found`. The squashfs is on SD2. That log does not prove a single
-shell-expansion cause. GL4ES logged `GL4ES_READY` on Mali-G52 with
+Shards of God and Winter Travelers both logged the KMSDRM cursor
+soft-fail. Shards then reached `Starting game` on an `opengles2`
+software path, and the maintainer reports usable input after a
+non-overwriting restore of `shardsofgod.gptk`. Winter took another
+graphics path, reported `Failed to load GL` and `Cursor not
+initialized properly`, and segmentation-faulted. The cursor line
+is not the established cause. Steel Assault failed with `taskset
+not found`, `mount: bad address 'opt'`, a mount source that begins
+`//opt/system/Tools/PortMaster/libs/` (double leading slash), and
+`mono: command not found`. The squashfs is on SD2. `taskset`, the
+mount, the runtime root, and `PATH` stay separate. GL4ES logged `GL4ES_READY` on Mali-G52 with
 `LIBGL_FB=3` and no `GL4ES_DONE`; the picture stayed black. SDL3
 logged Xbox 360 button events and `SDL3_DONE frames=512 input=1`.
 The maintainer saw no on-screen pad reaction. The probe does not

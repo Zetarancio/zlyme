@@ -40,9 +40,9 @@ a DRM-master PASS.
 
 | Case | Result on `da7eb21` |
 | --- | --- |
-| Shards of God | AGS 3.6.2 reached `Starting game` with SDL2 software / OpenGL ES2 at 640×480. gptokeyb opened `./shardsofgod.gptk`. The maintainer reports usable controller input. The expected filename was restored with a non-overwriting copy from the Syncthing conflict file. The conflict original remains. This is one AGS port, not every AGS port. |
-| Winter Travelers | FAIL. SDL2 logged `drmModeMoveCursor failed (-14); disabling HW cursor`. AGS then logged `Failed to load GL` and `Failed to init gfx mode. Error: Cursor not initialized properly`, then a segmentation fault. The cursor soft-fail already in this image did not make this launch work. A replacement design is not established. |
-| Steel Assault | FAIL. The Mono squashfs is on SD2. The log has `taskset not found, bailing...`, `mount: bad address 'opt'`, mount source `//opt/system/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs`, and `mono: command not found`. That is a runtime path and mount failure. It does not prove the squashfs bytes are missing, and it does not by itself prove one shell-expansion bug. A shared PortMaster runtime-path contract is a design candidate. |
+| Shards of God | AGS 3.6.2 reached `Starting game`. The log contains `KMSDRM: drmModeMoveCursor failed (-14); disabling HW cursor`, then an SDL `opengles2` renderer on the software graphics path. gptokeyb opened `./shardsofgod.gptk`. The maintainer reports usable controller input. The expected filename was restored with a non-overwriting copy. The conflict original remains. This is one AGS port, not every AGS port. |
+| Winter Travelers | FAIL. The same cursor line is present. Winter then requests another graphics path, logs `Failed to load GL` and `Failed to init gfx mode. Error: Cursor not initialized properly`, and segmentation-faults. The cursor line is not, by itself, the established cause. The soft-fail already in this image did not make this launch work. A replacement design is not established. |
+| Steel Assault | FAIL. The Mono squashfs is on SD2. The log has `taskset not found, bailing...`, `mount: bad address 'opt'`, a mount source that begins `//opt/system/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs` (a double leading slash), and `mono: command not found`. `taskset`, the squashfs mount, the runtime root, and `PATH` stay separate possibilities. No shell-expansion cause is established. |
 | GL4ES Tools probe | Context init observed, visible rendering FAIL. `LIBGL_FB=3`, KMSDRM, and `GL4ES_READY` with renderer Mali-G52 were logged. The screen stayed black. The maintainer used MENU+START. No `GL4ES_DONE` line was recorded. |
 | SDL3 Tools probe | Event delivery PASS. Visual controller feedback NOT DEMONSTRATED. KMSDRM selected an OpenGL ES2 renderer. An Xbox 360 virtual pad was detected. Several `SDL3_INPUT` lines were logged, then `SDL3_DONE frames=512 input=1`. The maintainer saw no on-screen reaction to the pad. The probe source does not draw a response to those events. This is not an InputPlumber failure. |
 | Box86 | Console probe exit 0, `box86-x86 4 475f677f`. Graphical Box86 untested. A libmali boot does not provide ARMHF GLES. |
@@ -112,11 +112,10 @@ recorded mount cleanup, isolated GL4ES, explicit Box86, InputPlumber
 pad input on `da7eb21` on that path. SDL3 events arrived. Box86 ran
 a legal console probe.
 
-The same image failed Winter's AGS graphics init after the cursor
-soft-fail, failed to mount Steel's Mono squashfs onto a usable
-`mono`, and showed a black GL4ES probe after `GL4ES_READY`. Those
-are concrete contract failures. Option A would change only the
-failing contract, with a hardware check at that boundary.
+The same image also shows separate failures: Winter's AGS graphics
+path, Steel's Mono runtime path, and a black GL4ES probe after
+`GL4ES_READY`. Option A is the current baseline. A later approval
+can name one of those contracts and stop there.
 
 Cost: each new port can reveal another path, loader, or SDL quirk.
 Benefit: no second graphics stack and no global library switch.
@@ -129,9 +128,11 @@ Informed by ROCKNIX's compat archive, upstream PortMaster's
 per-architecture directories, and KNULLI's generated controller map,
 without making that environment the system default. A port launch
 would see stable runtime roots, ABI-matched loaders, and SDL/GL
-libraries only for that process. Steel's Mono mount and Winter's
-AGS/SDL/GL combination are the representative cases. GL4ES would
-stay an explicit selector, not a system `libGL`.
+libraries only for that process. Steel and Winter are different
+failures at compatibility boundaries. They become reasons to
+consider B only if a narrow fix of the current baseline cannot
+carry the contract that actually failed. GL4ES would stay an
+explicit selector, not a system `libGL`.
 
 This matches the principle of one interface for runtime resolution.
 It is larger than option A. It is still not a boot-time GPU switch
@@ -151,33 +152,32 @@ board GPU choice without replacing system SONAMEs for one program.
 No `da7eb21` failure requires that. Shards rendered with the system
 SDL2 OpenGL ES2 path. GL4ES already isolated its `libGL`. A global
 switch would add boot and regression cost for a problem that has
-not been shown to be global. Option C stays a rejected direction
-unless a later measurement shows the application-scoped path cannot
-carry a supported port.
+not been shown to be global. Option C is not supported by the
+present evidence.
 
 ## What the evidence supports
 
-Option A is the smallest reading of the successes: Shards, SDL3
-events, and the Box86 console probe already run on the current
-integration. Option B is the smallest reading of the shared
-failures: Steel's runtime root and Winter's AGS graphics init are
-not one-game typos, and a per-port patch would miss the next
-squashfs or the next AGS title. Option C is not supported by this
-archive.
+Option A is the implementation baseline. Shards, SDL3 events, and
+the Box86 console probe already run on it. Option B is a conditional
+extension if a diagnosed failure needs a broader compatibility
+environment. Steel and Winter do not establish that need by
+themselves. Option C is not supported by this archive.
 
-This note does not choose B over A. The maintainer decides after
-reviewing `docs/ROADMAP.md`. Until that decision, no compat archive,
-no new service, and no global SDL or GPU library change is in scope.
+The maintainer can approve a narrow diagnostic or fix, defer B, or
+escalate to B later. Review is still required before any of that
+work. Until then, no compat archive, no new service, and no global
+SDL or GPU library change is in scope.
 
 ## Unknowns
 
-- Why AGS reports `Cursor not initialized properly` after SDL2 has
-  already disabled the hardware cursor. The soft-fail is present and
-  insufficient. The next graphics change is not specified here.
-- Whether Steel's `mount: bad address 'opt'` is the control-folder
-  path, `taskset` aborting early, or the squashfs helper. The log
-  shows the doubled `/opt` path and a missing `mono` command. It
-  does not isolate one line of shell.
+- Which AGS graphics and cursor contract Winter uses, and why that
+  path reports `Failed to load GL` and `Cursor not initialized
+  properly` while Shards logs the same KMSDRM cursor line and still
+  reaches `Starting game`. The cursor line alone is not the cause.
+- Whether Steel's `mount: bad address 'opt'` comes from `taskset`
+  bailing, the squashfs mount, the runtime root, or `PATH`. The
+  mount source begins with `//`. That double leading slash is not
+  a proven shell-expansion bug.
 - Whether GL4ES PBuffer mode can present on the panel, or whether
   the black screen is swap/presentation while the context is valid.
   Panfrost was not booted for this probe.
@@ -199,8 +199,11 @@ start, and it is the review itself. Do not begin Gate 1.
 
 Prerequisite: this note and the Phase 14 roadmap section.
 Scope: maintainer reads the roadmap diff. Approval required.
-Pass: a written choice of A or B, or a named rejection of both.
-Fail: implementation starts without that choice.
+Pass: written approval of a narrow diagnostic or fix on the current
+baseline, or a written deferral of B, or a later escalation to B
+with the evidence that justifies it.
+Fail: implementation starts without that approval. A forced choice
+of B is not required.
 Regression risk: none. This gate changes no tree behavior.
 Hardware: not required.
 
@@ -219,10 +222,17 @@ SD2. Hardware: required.
 
 Prerequisite: Gate 1, or an explicit decision that Winter does not
 depend on the runtime-root fix.
-Scope: one supported AGS/SDL cursor and graphics path.
-Pass: Winter Travelers shows a picture and leaves. Shards of God
-still starts and still takes pad input.
-Fail: Winter still dies on cursor or GL init, or Shards regresses.
+Scope: identify the AGS graphics and cursor contract Winter uses,
+and the contract Shards uses, before any correction is chosen.
+Both `da7eb21` logs contain `drmModeMoveCursor failed (-14)`.
+Shards then creates an `opengles2` renderer and reaches
+`Starting game`. Winter requests another path, reports
+`Failed to load GL` and `Cursor not initialized properly`, and
+crashes. The cursor line is not the selected fix.
+Pass: Winter shows a picture and leaves, and Shards still starts
+and still takes pad input.
+Fail: a patch is chosen before those two contracts are named, Winter
+still dies in graphics init, or Shards regresses.
 Regression risk: SDL2 KMSDRM for every port, not only AGS.
 Hardware: required. A replacement cursor design is not implied by
 the current patch.
@@ -254,9 +264,13 @@ Hardware: required.
 
 Prerequisite: Gates 1–4 for the class each port uses.
 Scope: one present LÖVE port, WestonPack if a port on the card
-needs it, ARMHF and graphical Box86 on Panfrost, Vulkan only as
-the experimental PanVK opt-in, and the remaining eligible named
-ports whose data is present.
+needs it, ARMHF and graphical Box86 on Panfrost, and the remaining
+eligible named ports whose data is present. Vulkan follows
+`docs/ARCHITECTURE.md`: libmali selects the proprietary Mali ICD,
+and `panvk` is the explicit experimental PanVK opt-in. `panfrost`
+does not enable PanVK. Neither Vulkan path is hardware-accepted
+until a watched result says so. Do not enable PanVK for every GPU
+choice.
 Pass and fail are per port: process, picture, input, audio, exit,
 mounts, and NextUI are separate. Missing commercial data stays
 external, not PASS.
@@ -270,7 +284,10 @@ Scope: NextUI, RetroArch, MENU+START, audio, mounts, DRM, both
 cards, HDMI, and the already accepted Phase 14 items on their
 original images. A new image does not inherit those acceptances.
 Pass: no regression of an accepted item that the change could
-affect, plus RetroArch's own 1280×720 CRTC if HDMI policy changed.
-Fail: an accepted path breaks, or a DRM client is reported clean
-when debugfs was unavailable.
+affect. RetroArch's own 1280×720 HDMI CRTC stays an open Phase
+14H/14M requirement. It is not conditional on an HDMI policy
+change. The accepted NextUI HDMI 720p and panel result on
+`0b35a90` stays closed.
+Fail: an accepted path breaks, the RetroArch CRTC check is dropped,
+or a DRM client is reported clean when debugfs was unavailable.
 Hardware: required where the change can affect that path.

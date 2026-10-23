@@ -146,7 +146,7 @@ Pinned Box64 `2f130fab` (v0.4.4) says `BOX32` is experimental and not to be used
 
 The seed's unsuffixed `gptokeyb` and `gptokeyb2` are AArch64 PIE binaries. `gptokeyb.armhf` and `gptokeyb2.armhf` are ARM EABI hard-float. `control.txt` exports `GPTOKEYB` and `GPTOKEYB2` as the unsuffixed names, through `zlyme-portmaster-exec`. InputPlumber remains the virtual Xbox pad (`0x045e/0x028e`). No second grabber was added.
 
-`runtimes/` in the seed contains LÖVE 11.5 with `libs.aarch64` and `libs.x86_64`. There is no ARMHF LÖVE runtime in that zip. `libs/` is empty. `libgl_default.txt` prepends `gl4es.$DEVICE_ARCH` or `gl4es` from the port directory. GL4ES is not a Zlyme package. OpenAL is not in the seed. Engine squashfs files stay PortMaster downloads. The earlier device passes heard ALSA and BlueALSA. The current source uses one PulseAudio server in front of that hardware. That server has not been heard on a Flip.
+`runtimes/` in the seed contains LÖVE 11.5 with `libs.aarch64` and `libs.x86_64`. There is no ARMHF LÖVE runtime in that zip. `libs/` is empty. `libgl_default.txt` prepends `gl4es.$DEVICE_ARCH` or `gl4es` from the port directory. The seed does not ship a system GL4ES. Zlyme packages an isolated copy separately. OpenAL is not in the seed. Engine squashfs files stay PortMaster downloads. Earlier device passes heard ALSA and BlueALSA. The current graph is one PipeWire daemon, WirePlumber, and `pipewire-pulse`. ALSA is the hardware backend. PipeWire's BlueZ monitor owns A2DP. `zlyme-audio` chooses the sink.
 
 ## HDMI
 

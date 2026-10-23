@@ -153,7 +153,7 @@ Normal Zlyme assumptions include:
 - AArch64 / Cortex-A55;
 - direct DRM/KMS where supported;
 - no permanent X11/Wayland stack;
-- one PulseAudio server, ALSA hardware, BlueALSA A2DP, and `zlyme-audio` routing;
+- one PipeWire daemon, WirePlumber, and `pipewire-pulse` for Pulse clients; ALSA is the hardware backend; PipeWire's BlueZ monitor owns A2DP; `zlyme-audio` chooses the sink;
 - Buildroot cross compilation;
 - curated emulator choices;
 - no hidden runtime package manager;
@@ -328,7 +328,7 @@ A maintainer can ask:
 
 Then, after reviewing the report:
 
-> Apply the `<package>` update following `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md`, and `docs/UPSTREAMS.md`. Preserve Zlyme's direct KMS path and the one PulseAudio server with an ALSA backend. Do not import unrelated distro integration.
+> Apply the `<package>` update following `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md`, and `docs/UPSTREAMS.md`. Preserve Zlyme's direct KMS path and the one PipeWire graph: WirePlumber, `pipewire-pulse`, ALSA as the hardware backend, the BlueZ monitor for A2DP, and `zlyme-audio` for routing. Do not import unrelated distro integration.
 
 This two-step workflow is safer than telling an agent to "update everything".
 

@@ -10,15 +10,20 @@ GPU `libmali`. Seed `2026.06.23-0015`. Archive
 `4c101d6e5e8b9ddff202795a247ca36bd87fd58648e3cce04e3b0751e954abb8`.
 This section does not rewrite the `3da3f2b` table below.
 
-Shards of God started and the maintainer reports usable pad input
-after `shardsofgod.gptk` was restored without overwriting the
-Syncthing conflict file. Winter Travelers failed: SDL2 disabled the
-hardware cursor (`drmModeMoveCursor failed (-14)`), then AGS reported
-`Failed to load GL` and `Cursor not initialized properly`, then a
-segmentation fault. The soft-fail in this image did not fix that
-launch. Steel Assault failed to reach `mono` after `taskset not
-found`, `mount: bad address 'opt'`, and a doubled `/opt` squashfs
-path. The squashfs file is on SD2. GL4ES logged `GL4ES_READY` on
+Shards of God and Winter Travelers both log
+`KMSDRM: drmModeMoveCursor failed (-14); disabling HW cursor`.
+Shards then creates an SDL `opengles2` renderer on its software
+path, reaches `Starting game`, and the maintainer reports usable
+pad input. The `.gptk` file was restored without overwriting the
+Syncthing conflict original. Winter requests another graphics path,
+reports `Failed to load GL` and `Cursor not initialized properly`,
+and segmentation-faults. The cursor line is not the established
+cause. The soft-fail in this image did not make Winter work. Steel
+Assault did not reach `mono`. The log has `taskset not found`,
+`mount: bad address 'opt'`, and a mount source that begins
+`//opt/system/Tools/PortMaster/libs/` (a double leading slash).
+The squashfs file is on SD2. `taskset`, the mount, the runtime
+root, and `PATH` are separate possibilities. GL4ES logged `GL4ES_READY` on
 Mali-G52 with `LIBGL_FB=3` and did not log `GL4ES_DONE`; the screen
 stayed black. SDL3 logged button events and `SDL3_DONE frames=512
 input=1` without a visible pad reaction in the probe. Box86's legal
@@ -246,8 +251,8 @@ Installed accepted baseline remains `3da3f2bafe05` (squashfs `ad9c430a…`).
 | --- | --- |
 | `0a3cce950da4` | Do **not** install (superseded). |
 | `3486b510aa8e` | **Blocked.** Tar `42bc535f…`, squashfs `f0b961a4…`. Validator lifecycle defects below. Do **not** install. |
-| `da7eb2128294` | **Installed for hardware.** Squashfs `f08c3fa8…`. Still ships format=3 validator. Do **not** run campaign complete/fail/retry/start/reset on this image for queue acceptance; use normal Ports launches and passive SSH until format=4 OTA. |
-| `074949c025c3` | **format=4 replacement (UNINSTALLED).** Verified-completion gates. Leave uninstalled until ready. |
+| `da7eb2128294` | **Installed for hardware.** Squashfs `f08c3fa8…`. Ships format=3. Do not use that campaign for acceptance. |
+| `074949c025c3` | **format=4 archive, UNINSTALLED.** Not approved for acceptance. Do not install it to resume the validator campaign. |
 
 ### Replacement OTA `074949c025c3` (UNINSTALLED)
 
@@ -301,9 +306,17 @@ existed. Launcher expects `./shardsofgod.gptk`. Mapping is mouse
 emulation for AGS (compatible with `$GPTOKEYB` + InputPlumber virtual
 pad; no global config change). Copied with `cp -n` to
 `shardsofgod.gptk`. Conflict original retained and byte-identical.
-Physical Shards input still needs a maintainer launch.
+The later `da7eb21` archive, above, is the launch that followed this
+copy. The conflict original was still present in that record.
 
-### Maintainer sequence on installed `da7eb21` (until format=4 OTA)
+The two maintainer sequences below were written before that evening
+pass. They are historical instructions. Do not install the format=4
+archive. Do not start the format=3 or format=4 validation campaign.
+Observed results for GL4ES, SDL3, Shards, Winter, and Steel are in
+the section at the top of this file and in
+`docs/research/portmaster-matrix-20261023.md`.
+
+### Maintainer sequence on installed `da7eb21` (historical, before the evening pass)
 
 1. Do **not** use validator `complete`/`fail`/`retry`/`start`/`reset`
    for acceptance on format=3.
@@ -314,7 +327,7 @@ Physical Shards input still needs a maintainer launch.
    Shards input after gptk restore; Ascent Panfrost; Mina; Box86;
    SDL3 pad; RetroArch HDMI CRTC.
 
-### Maintainer sequence after format=4 OTA
+### Maintainer sequence after format=4 OTA (historical; do not follow)
 
 1. Install the format=4 candidate only when ready (leave uninstalled
    until then). Confirm squashfs hash.
