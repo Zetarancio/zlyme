@@ -211,7 +211,23 @@ Installed accepted baseline remains `3da3f2bafe05` (squashfs `ad9c430a…`).
 | --- | --- |
 | `0a3cce950da4` | Do **not** install (superseded). |
 | `3486b510aa8e` | **Blocked.** Tar `42bc535f…`, squashfs `f0b961a4…`. Validator lifecycle defects below. Do **not** install. |
-| Lifecycle-fixed replacement | Built after the host proof in `test_phase14_validate.sh`; hashes recorded when the archive is packed. |
+| `da7eb2128294` | **Replacement (UNINSTALLED).** Lifecycle fix + fingerprint. Host-tested. Do not install until the physical sequence below. |
+
+### Replacement OTA `da7eb2128294` (UNINSTALLED)
+
+Built from `da7eb2128294d2ef3d48a6691dd857da75ae8e89` on `zlyme44.4-phase-14`.
+Supersedes blocked `3486b510aa8e`. Installed baseline stays `3da3f2bafe05`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `zlyme-my355-20261023-da7eb2128294.tar` | `3efea80f648215e15b69ce2dc9f8eac8a0e5851b74291bfdac3ea86fb6fd5e2a` |
+| squashfs `zlyme` | `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1` |
+| `Image.gz` | `564b6009d46a7a2b3922fa8de0dcec35603f28bf635fec21b7c82626054808de` |
+| `rk3566-miyoo-flip.dtb` | `f4e159435e29428a7f1a391e238bd42225b4220fa58f2d0031a7a1011ed55d18` |
+| `idbloader.img` | `ff773a4fc97a65475639fed61f8cac86c79639e9e6498b37cfca82f296cca43e` |
+| `u-boot.itb` | `59b828c86b6874a68918ffa73cf347190d02e3864dfac4d78874aae9f17843d7` |
+
+Squashfs `phase14-portmaster-validate` matches source (`format=3`, no timer/observer PID kill).
 
 ## Validator lifecycle fix (blocks `3486b51`)
 
