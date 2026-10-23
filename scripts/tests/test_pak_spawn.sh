@@ -450,4 +450,48 @@ grep -q 'pak cleanup unresolved; frontend stopped' \
 	"$ROOT/package/system/nextui/nextui-session" ||
 	fail "nextui-session cleanup failure is not diagnosable"
 
+# Hotkey stop while the leader has already become a zombie must still
+# reap session members. The TERM scan warning is not ownership failure
+# when the leader identity matches a zombie or an absent PID.
+cat > "$emu" << 'EOF'
+#!/bin/sh
+"$SURVIVOR" &
+printf '%s\n' "$!" > "$OUT/child"
+# Exit immediately so the waiter may see a zombie/absent leader when
+# the stub hotkey signals stop shortly after spawn.
+exit 0
+EOF
+chmod 0755 "$emu"
+OUT=$work/zombie-stop
+mkdir -p "$OUT"
+export OUT SURVIVOR_MARK="$OUT/mark"
+export ZLYME_PAK_HOTKEY="$work/bin/hotkey"
+SEQ=$OUT/seq
+export SEQ
+: > "$SEQ"
+(run_pak_cmd "$emu" "/r/a"; printf '%s\n' "$st" > "$OUT/status") &
+job=$!
+note "$job"
+i=0
+while [ ! -s "$OUT/hotkey-pid" ] && [ "$i" -lt 50 ]; do
+	sleep 0.05
+	i=$((i + 1))
+done
+[ -s "$OUT/hotkey-pid" ] || fail "zombie-stop hotkey did not see a leader"
+wait_bound "$job" "zombie-stop child"
+[ -s "$OUT/child" ] || fail "zombie-stop did not start a child"
+child=$(cat "$OUT/child")
+[ ! -d "/proc/$child" ] || fail "zombie-stop child $child survived"
+st_out=$(cat "$OUT/status")
+# Natural exit is 0; hotkey may still race and report 143. Neither is 125.
+case "$st_out" in
+	0|143) ;;
+	*) fail "zombie-stop status $st_out" ;;
+esac
+if [ "$st_out" -eq 125 ]; then
+	fail "zombie-stop raised unresolved ownership"
+fi
+unset ZLYME_PAK_HOTKEY
+
+
 echo "pak spawn ok"

@@ -219,17 +219,27 @@ static int append_member(struct member_list *list, const struct proc_info *info)
 	return 0;
 }
 
-/* 0 is a complete scan. Any negative result is unsafe to treat as empty. */
-static int leader_identity_ok(pid_t leader, unsigned long long starttime)
+/*
+ * Classify the recorded session leader.
+ *  1: live matching session leader
+ *  0: absent, or a matching zombie — members may still use the old SID
+ * -1: PID reuse, identity conflict, or /proc error
+ */
+static int leader_session_state(pid_t leader, unsigned long long starttime)
 {
 	struct proc_info info;
 	int rc;
 
 	rc = read_info(leader, &info);
-	if (rc <= 0)
+	if (rc < 0)
 		return rc;
-	if (info.starttime != starttime || info.pgid != leader ||
-	    info.sid != leader || info.state == 'Z')
+	if (rc == 0)
+		return 0;
+	if (info.starttime != starttime)
+		return -1;
+	if (info.state == 'Z')
+		return 0;
+	if (info.pgid != leader || info.sid != leader)
 		return -1;
 	return 1;
 }
@@ -240,11 +250,13 @@ static int collect_members(pid_t leader, unsigned long long starttime,
 	DIR *dir;
 	struct dirent *ent;
 	int scan_error = 0;
+	int leader_state;
 
 	memset(list, 0, sizeof *list);
 	if (own_session(leader))
 		return -1;
-	if (leader_identity_ok(leader, starttime) < 0)
+	leader_state = leader_session_state(leader, starttime);
+	if (leader_state < 0)
 		return -1;
 	dir = opendir(proc_root());
 	if (!dir)
@@ -283,7 +295,9 @@ static int collect_members(pid_t leader, unsigned long long starttime,
 	}
 	if (closedir(dir) != 0)
 		scan_error = 1;
-	if (!scan_error && leader_identity_ok(leader, starttime) < 0)
+	/* Leader may exit or become a zombie during the scan. That is
+	 * still the same session; only a reused PID is unsafe. */
+	if (!scan_error && leader_session_state(leader, starttime) < 0)
 		scan_error = 1;
 	if (scan_error) {
 		free_members(list);
@@ -361,16 +375,16 @@ static int signal_session(pid_t leader, unsigned long long starttime, int sig)
 	struct proc_info leader_info;
 	size_t i;
 	int rc, failed = 0;
+	int leader_state;
 
 	if (own_session(leader))
 		return -1;
-	rc = read_info(leader, &leader_info);
-	if (rc < 0)
+	leader_state = leader_session_state(leader, starttime);
+	if (leader_state < 0)
 		return -1;
-	if (rc > 0) {
-		if (leader_info.starttime != starttime ||
-		    leader_info.pgid != leader || leader_info.sid != leader ||
-		    leader_info.state == 'Z')
+	if (leader_state > 0) {
+		rc = read_info(leader, &leader_info);
+		if (rc <= 0)
 			return -1;
 		rc = signal_verified(&leader_info, sig);
 		if (rc < 0)
