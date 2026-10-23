@@ -38,7 +38,9 @@ hits=$(grep -R -s -l 'ld-linux-armhf.so.3' "$ROOT/board" "$ROOT/package" || true
 for hit in $hits; do
 	case "$hit" in
 		"$ROOT/package/system/zlyme-armhf-runtime/"* | \
-		"$ROOT/package/system/zlyme-armhf-probe/"*) ;;
+		"$ROOT/package/system/zlyme-armhf-probe/"* | \
+		"$ROOT/package/system/zlyme-box86/"* | \
+		"$ROOT/package/system/portmaster/control.txt") ;;
 		*) fail "loader path is named in $hit" ;;
 	esac
 done

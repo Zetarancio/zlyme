@@ -19,6 +19,9 @@ prime() {
 	mkdir -p "$work/$name/target/lib" "$work/$name/target/usr/lib"
 	cp -a "$SYS/lib/ld-linux-armhf.so.3" "$work/$name/target/lib/"
 	cp -a "$SYS/usr/lib/zlyme-armhf" "$work/$name/target/usr/lib/"
+	mkdir -p "$work/$name/target/usr/lib/zlyme-armhf/dri"
+	cp -a "$SYS/usr/lib/zlyme-armhf/libgcc_s.so.1" \
+		"$work/$name/target/usr/lib/zlyme-armhf/dri/"
 	printf '%s\n' zlyme_my355_armhf_defconfig > "$work/$name/.zlyme-defconfig"
 	printf '%s\n' 'BR2_arm=y' 'BR2_ARM_EABIHF=y' > "$work/$name/.config"
 }
@@ -77,6 +80,8 @@ run_stage "$root"
 [ "$(sha256sum "$root/lib/libc.so.6")" = "$before_ok" ] || fail "success changed AArch64 libc"
 [ -f "$root/lib/ld-linux-armhf.so.3" ] || fail "loader missing"
 [ -f "$root/usr/lib/zlyme-armhf/libc.so.6" ] || fail "private libc missing"
+[ -f "$root/usr/lib/zlyme-armhf/dri/libgcc_s.so.1" ] ||
+	fail "nested ARMHF graphics library missing"
 [ ! -e "$root/usr/lib/libc.so.6" ] || fail "libc copied to /usr/lib"
 printf 'stale\n' > "$root/usr/lib/zlyme-armhf/libstale.so.1"
 run_stage "$root"

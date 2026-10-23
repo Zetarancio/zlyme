@@ -41,9 +41,11 @@ GLIBC_CONF_OPTS += --libdir=/usr/lib/zlyme-armhf
 # --libdir puts crti.o, the libc.so linker script, and the static
 # archives in the private directory. gcc-final looks for those in the
 # sysroot's /usr/lib, so a clean build fails with "cannot find -lc".
-# Symlink the unversioned linker inputs back. Versioned shared objects
-# stay where the loader searches, and this staging directory is not the
-# target rootfs.
+# Symlink linker inputs and versioned shared objects back in the staging
+# sysroot. GNU ld resolves transitive DT_NEEDED names such as libm.so.6
+# while linking target LLVM/Clang and does not search the private runtime
+# directory by itself. This staging directory is not the target rootfs;
+# shipped ARMHF objects remain confined to /usr/lib/zlyme-armhf.
 define ZLYME_ARMHF_GLIBC_LINKER_LINKS
 	src="$(STAGING_DIR)/usr/lib/zlyme-armhf"; \
 	dst="$(STAGING_DIR)/usr/lib"; \
@@ -52,9 +54,6 @@ define ZLYME_ARMHF_GLIBC_LINKER_LINKS
 		[ -e "$$file" ] || continue; \
 		[ -d "$$file" ] && continue; \
 		base=$$(basename "$$file"); \
-		case "$$base" in \
-			*.so.[0-9]*) continue ;; \
-		esac; \
 		ln -sfn "zlyme-armhf/$$base" "$$dst/$$base"; \
 	done
 endef
@@ -64,6 +63,12 @@ GLIBC_POST_INSTALL_STAGING_HOOKS += ZLYME_ARMHF_GLIBC_LINKER_LINKS
 # libatomic are still installed in /lib by the compiler. Move those
 # into the private directory so the loader can see them. If a name is
 # already there, the /lib copy is the old layout and is removed.
+#
+# Panfrost's Buildroot dependency graph builds target LLVM, Clang, and
+# SPIR-V tools for Mesa's precompile step. The installed EGL/GLES graph
+# needs libSPIRV-Tools.so but not the compiler or utility libraries
+# removed below. stage-runtime.sh checks every remaining ELF's NEEDED
+# closure before the private runtime is published.
 define ZLYME_ARMHF_PRIVATE_RUNTIME
 	dest="$(TARGET_DIR)/usr/lib/zlyme-armhf"; \
 	mkdir -p "$$dest"; \
@@ -72,6 +77,7 @@ define ZLYME_ARMHF_PRIVATE_RUNTIME
 		find "$$dir" -mindepth 1 -maxdepth 1 \
 			! -name 'ld-linux-armhf.so.3' \
 			! -name 'zlyme-armhf' \
+			! -name 'os-release' \
 			\( -type f -o -type l \) -print | while IFS= read -r leftover; do \
 			base=$$(basename "$$leftover"); \
 			if [ -e "$$dest/$$base" ]; then \
@@ -80,7 +86,29 @@ define ZLYME_ARMHF_PRIVATE_RUNTIME
 				mv "$$leftover" "$$dest/$$base"; \
 			fi; \
 		done; \
-	done
+	done; \
+	for subdir in dri gbm; do \
+		src="$(TARGET_DIR)/usr/lib/$$subdir"; \
+		[ -d "$$src" ] || continue; \
+		mkdir -p "$$dest/$$subdir"; \
+		find "$$src" -mindepth 1 -maxdepth 1 \
+			\( -type f -o -type l \) -exec mv -f {} "$$dest/$$subdir/" \;; \
+		rmdir "$$src" 2>/dev/null || true; \
+	done; \
+	rm -f \
+		"$$dest"/libclang*.so* \
+		"$$dest"/libLLVM*.so* \
+		"$$dest"/libLTO.so* \
+		"$$dest"/libRemarks.so* \
+		"$$dest"/libLLVMSPIRVLib.so* \
+		"$$dest"/libSPIRV-Tools-diff.so* \
+		"$$dest"/libSPIRV-Tools-link.so* \
+		"$$dest"/libSPIRV-Tools-lint.so* \
+		"$$dest"/libSPIRV-Tools-opt.so* \
+		"$$dest"/libSPIRV-Tools-reduce.so* \
+		"$$dest"/libSPIRV-Tools-shared.so* \
+		"$$dest"/libstdc++.so.*-gdb.py \
+		"$$dest"/os-release
 endef
 TARGET_FINALIZE_HOOKS += ZLYME_ARMHF_PRIVATE_RUNTIME
 endif

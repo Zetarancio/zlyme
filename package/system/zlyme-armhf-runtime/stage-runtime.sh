@@ -193,23 +193,16 @@ mkdir -p "$stage/lib" "$stage/usr/lib/zlyme-armhf"
 cp -a "$loader" "$stage/lib/ld-linux-armhf.so.3"
 require_armhf_elf "$stage/lib/ld-linux-armhf.so.3"
 
-for src in "$libdir"/*; do
-	[ -e "$src" ] || [ -L "$src" ] || continue
-	name=$(basename "$src")
-	dst=$stage/usr/lib/zlyme-armhf/$name
-	if [ -L "$src" ]; then
-		target=$(readlink "$src")
-		case "$target" in
-			/* | *..* | */*) die "symlink escapes the private directory: $src -> $target" ;;
-		esac
-		ln -s "$target" "$dst"
-	else
-		cp -a "$src" "$dst"
-	fi
-done
-
-for src in "$stage/usr/lib/zlyme-armhf"/*; do
-	[ -e "$src" ] || [ -L "$src" ] || continue
+cp -a "$libdir/." "$stage/usr/lib/zlyme-armhf/"
+if find "$stage/usr/lib/zlyme-armhf" -mindepth 1 \
+	! -type d ! -type f ! -type l | grep -q .; then
+	die "private runtime contains a special file"
+fi
+file_list=$stage/.armhf-files
+find "$stage/usr/lib/zlyme-armhf" -mindepth 1 \
+	\( -type f -o -type l \) -print | sort > "$file_list"
+while IFS= read -r src; do
+	[ -n "$src" ] || continue
 	if [ -L "$src" ]; then
 		resolve_link "$src"
 		continue
@@ -238,7 +231,7 @@ for src in "$stage/usr/lib/zlyme-armhf"/*; do
 			fi
 			;;
 	esac
-done
+done < "$file_list"
 require_interp "$stage/usr/lib/zlyme-armhf/libc.so.6"
 [ -f "$stage/usr/lib/zlyme-armhf/libgcc_s.so.1" ] || die "libgcc_s.so.1 is missing"
 check_needed "$stage/lib/ld-linux-armhf.so.3" "$stage"

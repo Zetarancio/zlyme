@@ -100,9 +100,12 @@ do
 	grep -qx "$need" "$seen" || die "manifest omits $need"
 done
 
-have=$(find "$out/target/usr/lib/zlyme-armhf" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
-for name in $have; do
-	grep -qx "usr/lib/zlyme-armhf/$name" "$seen" || die "unlisted runtime file $name"
-done
+have=$scratch/have
+(cd "$out/target" && find usr/lib/zlyme-armhf -mindepth 1 \
+	\( -type f -o -type l \) -print | sort) > "$have"
+while IFS= read -r rel; do
+	[ -n "$rel" ] || continue
+	grep -qx "$rel" "$seen" || die "unlisted runtime file $rel"
+done < "$have"
 grep -qx 'lib/ld-linux-armhf.so.3' "$seen" || die "manifest omits the loader"
 echo "armhf manifest ok"

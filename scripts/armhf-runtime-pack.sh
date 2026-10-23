@@ -10,6 +10,7 @@ arc=${2:?archive path}
 die() { echo "armhf-pack: $*" >&2; exit 1; }
 
 "$ROOT/package/system/zlyme-armhf-runtime/check-manifest.sh" "$src"
+"$ROOT/package/system/zlyme-box86/check-manifest.sh" "$src"
 mkdir -p "$(dirname "$arc")"
 rm -f "$arc"
 # POSIX tar, no dereference. Members are relative to the export root.

@@ -43,7 +43,14 @@ staging=$out/host/arm-buildroot-linux-gnueabihf/sysroot/usr/lib
 if [ -d "$staging" ]; then
 	[ -L "$staging/crti.o" ] || fail "toolchain crti.o is not linked into usr/lib"
 	[ "$(readlink "$staging/crti.o")" = "zlyme-armhf/crti.o" ] || fail "crti.o link target"
-	[ ! -e "$staging/libc.so.6" ] || fail "versioned libc is on the toolchain's /usr/lib"
+	[ -L "$staging/libc.so.6" ] ||
+		fail "toolchain libc.so.6 is not linked into usr/lib"
+	[ "$(readlink "$staging/libc.so.6")" = "zlyme-armhf/libc.so.6" ] ||
+		fail "libc.so.6 staging link target"
+	[ -L "$staging/libm.so.6" ] ||
+		fail "toolchain libm.so.6 is not linked into usr/lib"
+	[ "$(readlink "$staging/libm.so.6")" = "zlyme-armhf/libm.so.6" ] ||
+		fail "libm.so.6 staging link target"
 fi
 product=$ROOT/output/target
 if [ -f "$product/lib/libc.so.6" ]; then

@@ -1,0 +1,13 @@
+config BR2_PACKAGE_BOX86_ARMHF
+	bool "box86-armhf"
+	depends on BR2_arm
+	depends on BR2_ARM_EABIHF
+	help
+	  Native ARM hard-float Box86 for the separate my355 ARMHF
+	  sysroot. The AArch64 product imports the verified executable
+	  through zlyme-box86; this package is not selected there.
+
+	  https://github.com/ptitSeb/box86
+
+comment "box86-armhf needs an ARM hard-float target"
+	depends on !BR2_arm || !BR2_ARM_EABIHF

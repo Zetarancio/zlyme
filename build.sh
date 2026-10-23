@@ -437,6 +437,10 @@ refresh_local_packages() {
         package/system/zlyme-armhf-runtime
     refresh_compiled_package zlyme-armhf-probe BR2_PACKAGE_ZLYME_ARMHF_PROBE \
         package/system/zlyme-armhf-probe
+    # The imported executable is versioned by its ARMHF manifest; the
+    # wrappers and install contract are local source inputs.
+    refresh_compiled_package zlyme-box86 BR2_PACKAGE_ZLYME_BOX86 \
+        package/system/zlyme-box86
     refresh_compiled_package zlyme-hdmi BR2_PACKAGE_ZLYME_HDMI \
         package/system/zlyme-hdmi
 }

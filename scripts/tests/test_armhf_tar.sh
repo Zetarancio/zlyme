@@ -8,19 +8,31 @@ fail() { echo "armhf-tar: $*" >&2; exit 1; }
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 src=$work/src
-mkdir -p "$src/target/lib" "$src/target/usr/lib/zlyme-armhf"
+mkdir -p "$src/target/lib" "$src/target/usr/lib/zlyme-armhf" "$src/target/usr/bin"
 printf '%s\n' zlyme_my355_armhf_defconfig > "$src/.zlyme-defconfig"
-printf '%s\n' 'BR2_arm=y' 'BR2_ARM_EABIHF=y' > "$src/.config"
+printf '%s\n' 'BR2_arm=y' 'BR2_ARM_EABIHF=y' \
+	'BR2_PACKAGE_BOX86_ARMHF=y' > "$src/.config"
 loader=$ROOT/output-armhf/target/lib/ld-linux-armhf.so.3
 [ -f "$loader" ] || fail "real ARMHF loader is not built"
 cp -a "$loader" "$src/target/lib/ld-linux-armhf.so.3"
 chmod 755 "$src/target/lib/ld-linux-armhf.so.3"
+box86=$ROOT/output-armhf/target/usr/bin/box86
+[ -x "$box86" ] || fail "real ARMHF Box86 is not built"
+cp -a "$box86" "$src/target/usr/bin/box86"
 printf 'libc\n' > "$src/target/usr/lib/zlyme-armhf/libc.so.6"
 printf 'libm\n' > "$src/target/usr/lib/zlyme-armhf/libm.so.6"
 printf 'libgcc\n' > "$src/target/usr/lib/zlyme-armhf/libgcc_s.so.1"
 printf 'atomic\n' > "$src/target/usr/lib/zlyme-armhf/libatomic.so.1"
 ln -s libatomic.so.1 "$src/target/usr/lib/zlyme-armhf/libatomic.so"
+for needed in $(readelf -d "$box86" | awk '
+	/NEEDED/ { gsub(/[][]/, "", $NF); print $NF }
+'); do
+	[ "$needed" = ld-linux-armhf.so.3 ] && continue
+	[ -e "$src/target/usr/lib/zlyme-armhf/$needed" ] ||
+		printf '%s\n' "$needed" > "$src/target/usr/lib/zlyme-armhf/$needed"
+done
 ZLYME_ARMHF_OUTPUT=$src "$ROOT/scripts/armhf-runtime-manifest.sh" >/dev/null
+ZLYME_ARMHF_OUTPUT=$src "$ROOT/scripts/armhf-box86-manifest.sh" >/dev/null
 "$ROOT/scripts/armhf-runtime-pack.sh" "$src" "$work/runtime.tar"
 "$ROOT/scripts/armhf-runtime-unpack.sh" "$work/runtime.tar" "$work/out"
 [ "$(stat -c '%a' "$work/out/target/lib/ld-linux-armhf.so.3")" = 755 ] \
@@ -31,6 +43,15 @@ ZLYME_ARMHF_OUTPUT=$src "$ROOT/scripts/armhf-runtime-manifest.sh" >/dev/null
 	|| fail "libatomic.so target changed"
 cmp -s "$src/.config" "$work/out/.config" || fail ".config changed"
 cmp -s "$src/.zlyme-defconfig" "$work/out/.zlyme-defconfig" || fail "stamp changed"
+cmp -s "$src/target/usr/bin/box86" "$work/out/target/usr/bin/box86" ||
+	fail "Box86 changed"
+"$ROOT/package/system/zlyme-box86/check-manifest.sh" "$work/out" >/dev/null
+
+cp -a "$work/out" "$work/box-stale"
+printf 'tampered\n' >> "$work/box-stale/target/usr/bin/box86"
+if "$ROOT/package/system/zlyme-box86/check-manifest.sh" "$work/box-stale" >/dev/null 2>&1; then
+	fail "changed Box86 bytes were accepted"
+fi
 
 printf 'tampered\n' > "$work/out/target/usr/lib/zlyme-armhf/libc.so.6"
 if "$ROOT/package/system/zlyme-armhf-runtime/check-manifest.sh" "$work/out" >/dev/null 2>&1; then

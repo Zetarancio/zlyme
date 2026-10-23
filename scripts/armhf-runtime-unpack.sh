@@ -33,6 +33,7 @@ rm -rf "$dest"
 mkdir -p "$dest"
 tar -xf "$arc" -C "$dest" || die "extract failed"
 "$ROOT/package/system/zlyme-armhf-runtime/check-manifest.sh" "$dest"
+"$ROOT/package/system/zlyme-box86/check-manifest.sh" "$dest"
 
 loader=$dest/target/lib/ld-linux-armhf.so.3
 magic=$(od -An -t x1 -N 4 "$loader" | tr -d ' \n')

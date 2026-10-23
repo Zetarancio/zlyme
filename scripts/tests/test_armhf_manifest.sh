@@ -17,6 +17,10 @@ grep -q '/zlyme/armhf' "$mk" || fail "runtime package does not read /zlyme/armhf
 if grep -E '^(file|link) .* (host/|usr/bin/|bin/)' "$SRC/zlyme-armhf-runtime.manifest"; then
 	fail "manifest lists a compiler or the probe"
 fi
+if grep -E '/(libclang|libLLVM|libLTO|libRemarks|libLLVMSPIRVLib|libSPIRV-Tools-(diff|link|lint|opt|reduce|shared)|os-release)' \
+	"$SRC/zlyme-armhf-runtime.manifest"; then
+	fail "manifest lists an ARMHF build-only library or target metadata"
+fi
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/good/target/lib" "$work/good/target/usr/lib"
@@ -24,6 +28,14 @@ cp -a "$SRC/target/lib/ld-linux-armhf.so.3" "$work/good/target/lib/"
 cp -a "$SRC/target/usr/lib/zlyme-armhf" "$work/good/target/usr/lib/"
 cp -a "$SRC/.zlyme-defconfig" "$SRC/.config" "$SRC/zlyme-armhf-runtime.manifest" "$work/good/"
 "$CHECK" "$work/good"
+mkdir -p "$work/good/target/usr/lib/zlyme-armhf/dri"
+printf 'unlisted\n' > "$work/good/target/usr/lib/zlyme-armhf/dri/unlisted.so"
+if "$CHECK" "$work/good" >"$work/unlisted.out" 2>&1; then
+	fail "unlisted nested runtime file was accepted"
+fi
+grep -q 'unlisted runtime file' "$work/unlisted.out" ||
+	fail "nested unlisted file was not reported"
+rm -f "$work/good/target/usr/lib/zlyme-armhf/dri/unlisted.so"
 sum=$(awk '/^file / { print $2; exit }' "$work/good/zlyme-armhf-runtime.manifest")
 sed -i "s/$sum/0000000000000000000000000000000000000000000000000000000000000000/" \
 	"$work/good/zlyme-armhf-runtime.manifest"

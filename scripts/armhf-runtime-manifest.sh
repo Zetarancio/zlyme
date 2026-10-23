@@ -28,7 +28,8 @@ buildroot=$(awk -F\" '/^readonly BUILDROOT_VERSION=/ { print $2; exit }' "$ROOT/
 def_hash=$(sha256sum "$ROOT/configs/zlyme_my355_armhf_defconfig" | awk '{print $1}')
 manifest=$OUT/zlyme-armhf-runtime.manifest
 tmp=$(mktemp "$OUT/.armhf-manifest.XXXXXX")
-cleanup() { rm -f "$tmp"; }
+paths=
+cleanup() { rm -f "$tmp" ${paths:+"$paths"}; }
 trap cleanup EXIT
 
 {
@@ -63,11 +64,14 @@ record() {
 }
 
 record "$loader" "lib/ld-linux-armhf.so.3"
-# shellcheck disable=SC2012
-names=$(ls -A "$libdir" | sort)
-for name in $names; do
-	record "$libdir/$name" "usr/lib/zlyme-armhf/$name"
-done
+paths=$(mktemp "$OUT/.armhf-paths.XXXXXX")
+(cd "$target" && find usr/lib/zlyme-armhf -mindepth 1 \
+	\( -type f -o -type l \) -print | sort) > "$paths"
+while IFS= read -r rel; do
+	[ -n "$rel" ] || continue
+	record "$target/$rel" "$rel"
+done < "$paths"
+rm -f "$paths"
 
 mv "$tmp" "$manifest"
 trap - EXIT

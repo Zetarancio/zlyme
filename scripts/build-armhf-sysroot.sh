@@ -19,10 +19,12 @@ if [ "${ZLYME_ARMHF_WRAPPER_DRY:-}" = 1 ]; then
 fi
 export ZLYME_OUTPUT="$OUT"
 set +e
-"$ROOT/build.sh" --config zlyme_my355_armhf_defconfig zlyme-armhf-probe target-finalize
+"$ROOT/build.sh" --config zlyme_my355_armhf_defconfig \
+	zlyme-armhf-probe box86-armhf gl4es-armhf target-finalize
 status=$?
 set -e
 if [ "$status" -eq 0 ]; then
 	"$ROOT/scripts/armhf-runtime-manifest.sh"
+	"$ROOT/scripts/armhf-box86-manifest.sh"
 fi
 exit "$status"

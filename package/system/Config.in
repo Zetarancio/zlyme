@@ -2,6 +2,9 @@
 
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-armhf-probe/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-armhf-runtime/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/box86-armhf/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-box86/Config.in"
+source "$BR2_EXTERNAL_ZLYME_PATH/package/system/gl4es-armhf/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-hdmi/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-artbook/Config.in"
 source "$BR2_EXTERNAL_ZLYME_PATH/package/system/zlyme-jackd/Config.in"

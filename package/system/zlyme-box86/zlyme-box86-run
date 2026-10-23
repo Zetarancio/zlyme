@@ -1,0 +1,51 @@
+#!/bin/sh
+# Explicit PortMaster entry point for ARMHF Box86. The ARMHF graphics
+# module paths are private and are never added to the AArch64 process
+# environment globally.
+set -eu
+
+[ "$#" -ge 1 ] || {
+	echo "usage: zlyme-box86-run <x86-program> [args...]" >&2
+	exit 2
+}
+box86=${ZLYME_BOX86_BIN:-/usr/bin/box86}
+[ -x "$box86" ] || {
+	echo "zlyme-box86-run: Box86 is unavailable" >&2
+	exit 127
+}
+program=$1
+[ -f "$program" ] || {
+	echo "zlyme-box86-run: x86 program is missing: $program" >&2
+	exit 126
+}
+ident=$(od -An -t x1 -N 6 "$program" 2>/dev/null | tr -d ' \n')
+machine=$(od -An -t x1 -j 18 -N 2 "$program" 2>/dev/null | tr -d ' \n')
+if [ "$ident" != 7f454c460101 ] || [ "$machine" != 0300 ]; then
+	echo "zlyme-box86-run: not a little-endian ELF32 i386 program: $program" >&2
+	exit 126
+fi
+
+# nextui-session's LD_LIBRARY_PATH contains AArch64 directories. Never
+# pass those to this native ARMHF process. A port with private ARMHF
+# libraries names them explicitly; guest x86 paths use Box86's own
+# BOX86_LD_LIBRARY_PATH contract.
+native=${ZLYME_BOX86_NATIVE_LIBRARY_PATH:-}
+if [ -n "$native" ]; then
+	LD_LIBRARY_PATH=$native:/usr/lib/zlyme-armhf
+else
+	LD_LIBRARY_PATH=/usr/lib/zlyme-armhf
+fi
+export LD_LIBRARY_PATH
+if [ -d /usr/lib/zlyme-armhf/dri ]; then
+	LIBGL_DRIVERS_PATH=/usr/lib/zlyme-armhf/dri
+	export LIBGL_DRIVERS_PATH
+fi
+if [ -d /usr/lib/zlyme-armhf/gbm ]; then
+	GBM_BACKENDS_PATH=/usr/lib/zlyme-armhf/gbm
+	export GBM_BACKENDS_PATH
+fi
+: "${BOX86_LOG:=1}"
+: "${BOX86_NOBANNER:=1}"
+export BOX86_LOG BOX86_NOBANNER
+
+exec "$box86" "$@"

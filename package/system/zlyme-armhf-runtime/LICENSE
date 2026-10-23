@@ -1,13 +1,20 @@
-The shared libraries installed by zlyme-armhf-runtime are the glibc and
-GCC runtime produced by configs/zlyme_my355_armhf_defconfig with the
-Buildroot version named in the runtime manifest. They are not imported
-from another distribution.
+The shared libraries installed by zlyme-armhf-runtime are produced by
+configs/zlyme_my355_armhf_defconfig with the Buildroot version named in
+the runtime manifest. They are not imported from another distribution.
 
 glibc is LGPL-2.1-or-later, with some files GPL-2.0-or-later.
-libgcc and libatomic are GPL-3.0-or-later WITH GCC-exception-3.1.
+libgcc, libatomic, and libstdc++ are GPL-3.0-or-later WITH
+GCC-exception-3.1.
+Mesa is MIT, SGI-B-2.0, and Khronos licensed.
+libdrm and Expat are MIT licensed.
+SPIRV-Tools is Apache-2.0 licensed.
+zlib is Zlib licensed.
+GL4ES is MIT licensed.
 
-The corresponding source is the glibc and GCC source Buildroot downloads
-for that version. The stage script in this directory is MIT:
+The corresponding source is the source Buildroot downloads for those
+packages and versions. Target LLVM, Clang, and build-only SPIR-V utility
+libraries are not included in this runtime. The stage script in this
+directory is MIT:
 
 Copyright (c) 2026 Alessandro Zucca
 

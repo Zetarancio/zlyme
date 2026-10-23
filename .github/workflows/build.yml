@@ -66,7 +66,7 @@ jobs:
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
 
       - name: Use cached ARMHF runtime
         id: cached
@@ -77,7 +77,9 @@ jobs:
             exit 0
           fi
           if ./package/system/zlyme-armhf-runtime/check-manifest.sh output-armhf-export; then
-            echo "hit=true" >> "$GITHUB_OUTPUT"
+            if ./package/system/zlyme-box86/check-manifest.sh output-armhf-export; then
+              echo "hit=true" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Restore ARMHF ccache
@@ -127,7 +129,7 @@ jobs:
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
 
       - name: Pack ARMHF runtime tar
         run: |

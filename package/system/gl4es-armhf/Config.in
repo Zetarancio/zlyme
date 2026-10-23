@@ -1,0 +1,16 @@
+config BR2_PACKAGE_GL4ES_ARMHF
+	bool "gl4es-armhf (isolated Box86 runtime)"
+	depends on BR2_arm
+	depends on BR2_ARM_EABIHF
+	depends on BR2_PACKAGE_MESA3D_OPENGL_EGL
+	depends on BR2_PACKAGE_MESA3D_OPENGL_ES
+	depends on BR2_PACKAGE_MESA3D_GBM
+	help
+	  ARMHF GL4ES for explicit graphical Box86 launches. It uses
+	  the ARMHF Mesa/Panfrost EGL/GLES provider and is installed
+	  under /usr/lib/zlyme-armhf/gl4es only.
+
+comment "gl4es-armhf needs ARMHF Mesa EGL, GLES, and GBM"
+	depends on !BR2_arm || !BR2_ARM_EABIHF || \
+		!BR2_PACKAGE_MESA3D_OPENGL_EGL || \
+		!BR2_PACKAGE_MESA3D_OPENGL_ES || !BR2_PACKAGE_MESA3D_GBM

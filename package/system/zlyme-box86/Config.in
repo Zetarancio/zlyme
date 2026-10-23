@@ -1,0 +1,11 @@
+config BR2_PACKAGE_ZLYME_BOX86
+	bool "zlyme-box86"
+	depends on BR2_aarch64
+	select BR2_PACKAGE_ZLYME_ARMHF_RUNTIME
+	help
+	  Import the manifest-verified ARMHF Box86 executable from the
+	  separate my355 ARMHF Buildroot output. Box64 remains the
+	  AArch64 x86-64 runtime and keeps BOX32 disabled.
+
+comment "zlyme-box86 is installed into the AArch64 product"
+	depends on !BR2_aarch64
