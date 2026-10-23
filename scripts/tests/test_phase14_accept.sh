@@ -96,7 +96,7 @@ row "BT cold-boot route on 1178d5" n/a n/a FAIL n/a
 row "BT headset icon on 1178d5" n/a n/a FAIL n/a
 row "HDMI audibility on 1178d5" n/a n/a FAIL FAIL
 row "HDMI 720p picture and panel restore" n/a n/a PASS n/a
-row "Abombniball MENU+START" n/a n/a FAIL n/a
+row "Abombniball MENU+START on c67692f" n/a n/a PASS n/a
 if awk '
 	/^row "BT audibility on 6ea59c"/ && /PASS/ { bad = 1 }
 	/^row "HDMI audibility on 6ea59c"/ && /PASS/ { bad = 1 }
@@ -132,6 +132,8 @@ sh "$ROOT/scripts/tests/test_pak_launch.sh"
 sh "$ROOT/scripts/tests/test_pak_spawn.sh"
 sh "$ROOT/package/system/nextui/zlyme/hotkey_logic_test.sh"
 sh "$ROOT/package/system/nextui/zlyme/app_pad_abi_test.sh"
+sh "$ROOT/scripts/tests/test_box86_package.sh"
+sh "$ROOT/scripts/tests/test_graphics_compat.sh"
 
 [ "$fail" -eq 0 ]
 echo "phase14 accept host ok"

@@ -313,7 +313,18 @@ Status: Host-tested through qemu-user, and installed into the product target tre
 
 Keep the working Box64 and Wine path. Compare native Box86 with Box64's BOX32 against what PortMaster runs. Pick one combination. Do not enable both to raise a count.
 
-Status: Deferred. The pinned Box64 `2f130fab` (v0.4.4) marks `BOX32` experimental and says not to use it. Its README still points 32-bit Windows programs at Box86 or at a WOW64 build. Zlyme's Wine is the WOW64 build on this Box64 with `BOX32=OFF`. Buildroot 2026.08 has no Box86 package. A native Box86 would be an ARMHF program on top of the private glibc, and it needs a Flip result before it can replace anything. `BOX32` stays off. Box86 is not added.
+Status: Implemented in source, hardware-unproven on the uninstalled
+candidate. Native ARMHF Box86 is built from pinned upstream
+`bb716a2a6576cc06da811bf55e31e2f6f03b7596`, imported through a
+checked artifact manifest, and invoked explicitly by
+`zlyme-box86-run`. There is no binfmt registration or permanent
+service. A legal dynamic i386 probe runs under Box86 and the private
+ARMHF glibc in the host qemu-arm check; invalid ELF and unresolved
+library paths fail with diagnostics. Box64 remains pinned at
+`2f130fab`, `BOX32=OFF`, and Wine remains the amd64 WOW64 build.
+Graphical Box86 is a separate gate: its ARMHF EGL/GLES provider is
+Mesa/Panfrost, because the libmali payload is AArch64-only. A libmali
+boot does not provide ARMHF graphics.
 
 ### 14D. Graphics and SDL3
 
@@ -321,35 +332,105 @@ Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing 
 
 Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
 
-Status: Built on the host toolchain. SDL 3.4.12 with KMSDRM, OpenGL ES, and Wayland. The stub is not installed. A Flip has not opened an SDL3 window.
+Status: Implemented in source, hardware-unproven on the uninstalled
+candidate. SDL 3.4.12 still provides KMSDRM, OpenGL ES, and Wayland,
+and the old stub is absent. A source-controlled probe opens an SDL3
+KMSDRM renderer, draws frames, observes an InputPlumber gamepad button,
+and exits. Pinned GL4ES is packaged in explicit isolated AArch64 and
+ARMHF directories; neither replaces a system GL/EGL/GLES link or a
+port-bundled copy. The matching OpenGL triangle probe and disposable
+normal-menu Tools entries are built. The active libmali path was
+observed on the installed image; no probe has rendered on it yet. The
+alternate Panfrost boot is unobserved. No shared SDL1.2 requirement was
+proved, so no conflicting SDL compatibility layer was added.
 
 ### 14E. GPTK and input
 
 Audit gptokeyb, gptokeyb2, `.gptk`, `control.txt`, and the SDL controller map. InputPlumber keeps the virtual Xbox pad. Do not add a second grabber. MENU+START, MENU, suspend, and return to NextUI stay. Host-test the mapping before a device pass.
 
-Status: Audited. The PortMaster seed ships AArch64 `gptokeyb` and `gptokeyb2`, plus ARMHF copies. `control.txt` points `GPTOKEYB` and `GPTOKEYB2` at the unsuffixed AArch64 binaries in the PortMaster tree. InputPlumber remains the virtual Xbox pad. No second grabber is added. A missing `.gptk` mapping is a per-port Flip check. On installed `4652076`, Abombniball started from the Ports list and did not return on MENU+START. The one-shot trace for a launch in that boot sampled the waited pid while it was still in the frontend session, recorded no chord and no signal, and returned status 0. The game was later the only DRM holder, reparented to init, in a session whose leader was already dead. `zlyme-pak-spawn` is the process the session waits on. It publishes the leader only after `setsid()`, and it ends members that stay in that session after the leader exits. The hotkey refuses a pid that is not a leader of some other session. That correction is not in the installed image. A physical MENU+START on the corrected image has not been done. RetroArch, PPSSPP, Splore, Settings, and PortMaster keep the same chord.
+Status: Implemented; the individual Abombniball gate is accepted on
+installed source `c67692f`. The maintainer launched it from the Ports
+list and physically returned with MENU+START. The seed's unsuffixed
+gptokeyb binaries remain AArch64, InputPlumber remains the virtual Xbox
+pad, and no second grabber is added. Review of LoveRetro NextUI,
+ROCKNIX, rocknix-hotkey, and PortMaster did not justify replacing
+Zlyme's ownership model with application-name `killall`.
+`zlyme-pak-spawn` now distinguishes `/proc` failure from an empty
+session, has no fixed member truncation, ignores zombies, verifies PID,
+start time, PGID, and SID through pidfds before signaling, and returns
+the reserved cleanup failure if a member survives bounded TERM/KILL.
+Mount cleanup still runs, but `nextui-session` then stays stopped
+instead of racing another direct-KMS frontend. This hardening is later
+than `c67692f`, so Abombniball needs one focused rerun on the final
+candidate without reopening the accepted result on the older image.
 
 ### 14F. Shared runtimes
 
 Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. Native `libpulse` clients use `pipewire-pulse` on the one PipeWire graph. ALSA stays the hardware path. PipeWire's BlueZ monitor owns A2DP. The PulseAudio daemon and BlueALSA are not this graph. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` already holds the Theora 1.1 decoder for LÖVE.
 
-Status: Implemented in source, hardware-pending. The product mixer is PipeWire with `pipewire-pulse`. The PulseAudio daemon and BlueALSA sentences below are the earlier candidate, not this one. The seed's `runtimes/` directory contains LÖVE 11.5 for AArch64 and x86_64. `libs/` is empty. Other engines stay catalogue downloads. `libgl_default.txt` prepends a port's own GL4ES directory. Zlyme does not ship GL4ES or OpenAL. One PulseAudio 17 server was the mixer on that earlier candidate, ALSA was the hardware path, and BlueALSA was the A2DP owner. On `a5483cb` the boot server exited before opening the codec. On `95d086e` the server and socket come up and the codec sink does not. A later load of that sink on the running server was accepted. Speaker, A2DP, and PortMaster playback are not accepted. Squashfs mount and cleanup stay in `zlyme-portmaster-exec` and `zlyme-portmaster-cleanup`. `/usr/lib/compat` remains the Theora 1.1 decoder.
+Status: Infrastructure implemented; representative candidate execution
+is still hardware-unproven. PipeWire, WirePlumber, and
+`pipewire-pulse` remain the one audio graph. The seed keeps LÖVE 11.5;
+other engine squashfs files remain user-selected PortMaster downloads.
+The ARMHF and Box86 selectors, isolated AArch64/ARMHF GL4ES, SDL2,
+SDL3, system OpenAL, Wine/Box64, WestonPack mount ownership, and
+PipeWire-compatible ALSA and Pulse client libraries are present or
+covered by deterministic host checks. Runtime mount cleanup uses one
+recorded owner and fails closed on uncertain topology. The installed
+tree was not updated. No candidate LÖVE, Mono, WestonPack, Wine, GL4ES,
+or Box86 workload has yet supplied rendered, input, audio, exit, and
+cleanup evidence on the Flip; package presence is not that result.
 
 ### 14G. Named ports
 
-The recorded cases are Shards of God, LISA The Painful, Rakuen, Steel Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers, and Mina the Hollower. They are background for missing infrastructure. Individual game debugging is not part of Phase 14, and running each one is not a closure requirement.
+The recorded cases are Shards of God, LISA The Painful, Rakuen, Steel
+Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers,
+and Mina the Hollower. Audit each installed launcher and run every case
+whose legal data and runtime are present. Missing proprietary data or a
+user-declined runtime download is an attributable external blocker,
+not PASS.
 
 `systemctl` was reported missing.
 
 REJECTED — a fake `systemctl`.
 
-Status: Deferred as per-game work. The rejection stands.
+Status: Active and partially implemented. Read-only inspection found
+the AArch64 engines and game-data indicators for Shards, LISA, Rakuen,
+Skautfold, Winter Travelers, and Mina. Steel Assault's game data is
+present but its requested Mono squashfs was absent in the bounded
+check. Existing logs show Shards reached AGS, OpenAL, and an SDL GLES2
+renderer; LISA and Rakuen recorded older Pulse compatibility failures;
+Winter reached AGS; Mina reached its compatibility loader and Vulkan
+window path with unresolved symbols. Those are historical diagnostics,
+not physical acceptance of the new candidate. LISA, Rakuen, Steel
+Assault, and Winter explicitly request `systemctl restart oga_events`
+after exit. `zlyme-portmaster-exec` now translates exactly that request
+to `zlyme-input ensure`; it does not provide a fake `systemctl`.
+Per-port candidate execution remains open.
 
 ### 14H. Acceptance
 
-Volume and mute, Wi-Fi off and on, NextUI at HDMI 720p, and the internal panel coming back are accepted on installed `0b35a90`. The 14O rows that were looked at are accepted on installed `4652076`. A user background was not a separate check. The remaining hardware pass is one native port and one compatibility runtime, then a clean return to NextUI with no leaked mount, including Abombniball MENU+START on an image that contains the pak-session waiter. RetroArch's own KMS path was not observed. Host and build checks cover the rest. Say what was not run. The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
+Volume and mute, Wi-Fi off and on, NextUI at HDMI 720p, and the internal
+panel coming back remain accepted on installed `0b35a90`. The 14O rows
+that were looked at remain accepted on installed `4652076`; a user
+background was not a separate check. Abombniball MENU+START is accepted
+on installed `c67692f`. The remaining pass belongs to the final runtime
+candidate: rerun Abombniball after waiter hardening; run ARMHF and
+Box86 execution; physically observe SDL3 window/input and GL4ES
+rendering; run each eligible named port and representative LÖVE,
+Mono, WestonPack, and Wine runtime actually present; and prove audio,
+exit, NextUI return, no surviving owned process, and no leaked mount
+separately. RetroArch's own 1280×720 CRTC is still open. The matrix is
+[docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
-Status: Open. The installed image is `zlyme-my355-20261023-465207696ff8.tar` (source `465207696ff8493f239a1bcab0e232459f4be75c`, squashfs `512454168f4cbb671de9020e12f24f8380fc8ea8c4d410e2d2590fcdd6722906`, NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`). Kernel `7.2.10`. `/boot/zlyme` matches that squashfs. `0b35a90` remains the image that accepted HDMI audio, volume and mute, Wi-Fi, NextUI at HDMI 720p, and the panel return. On `0b35a90` the maintainer accepts HDMI television audio, HDMI disconnect back to the speaker, the external-audio mark clearing after that unplug, HDMI reconnect back to the television, and Bluetooth disconnect and reconnect. On `0b35a90` the maintainer also accepts volume and mute, including sound returning after mute, Wi-Fi off and on with the enabled services returning, NextUI at HDMI 720p, and the internal panel coming back. RetroArch's own KMS path was not given a separate CRTC observation. On this image the maintainer accepts the 14O rows that were looked at: a ROM list's first row and a later row with no art, a ROM thumbnail, Art Book system and tool artwork, a long name staying inside the selection pill, and the default Game art width showing a nonzero percent. A user background was not a separate check. That limit does not reopen the rows that were seen. Abombniball still did not return on MENU+START. PortMaster's hardware matrix stays open. Accepted earlier and not withdrawn: the Bluetooth and volume-pill icons, speaker quality, Bluetooth playback and its perceived delay, the headphone jack, and charger suppression of the 0% shutdown. Those delays were not measured. `74597688` left the speaker silent and the external-audio mark up after HDMI unplug. `be5d8c0` failed HDMI unplug and Bluetooth disconnect. Those failures stay the record of those images. Still open after the later acceptances: Abombniball MENU+START on the installed image, the PortMaster hardware matrix, and a separate RetroArch HDMI CRTC observation. Earlier reports follow. The maintainer installed the full image for `zlyme-my355-20261021-b8b49046ffc0.tar` (squashfs `f331a90f232ba382c5c1b22e7c19c579bcecceecf83ecefa1e8642221fb1509d`, source `b8b4904`, NextUI `a2dc9d22`). RetroArch and PPSSPP were audible over CMF Buds Pro 2. The headset indicator was missing. Volume buttons lagged before the screen changed. HDMI audio did not play on the TV, and the stream fell back to the speaker. That image is not accepted. The maintainer then installed `zlyme-my355-20261021-1178d5b426e0.tar` (squashfs `3798635e8eb393a5e8c1908206c39b20e29a8de647cefa39208c757bd8f45423`, source `1178d5b`, NextUI `8de5cc89`). Volume buttons and the Recently Played firmware picture passed. Bluetooth playback after a reconnect was audible and the delay was unacceptable. A paired headset was not selected on a boot where Bluetooth was already enabled. The headset mark used the radio glyph. HDMI television audio failed. HDMI video was not accepted from that report. That image is not accepted. The next candidate was `zlyme-my355-20261021-feb7a1823603.tar`. It was not installed. Its volume worker could drop a newer press, and sink choice was still split across the shell and WirePlumber. That candidate is not the one to install. Headset delay and television audio stay open. The maintainer installed `zlyme-my355-20261021-71668a8d98cd.tar` (squashfs `6941fa45f2107ba1aeb03f7aa6bbff0e889012aea0b6d0c461ec388cddd71232`, source `71668a8d98cd389c597449c1c75b937564ea4886`, NextUI `de8f0543`). `/boot/zlyme` matches that squashfs. Kernel `7.2.10`. Bluetooth playback is audible and the delay is subjectively shorter than `1178d5`. The delay was not measured. The status mark stayed the radio rune. `/run/zlyme/pipewire/active` was absent. The policy hook calls `io.open`, and WirePlumber 0.5.14's Lua sandbox does not provide `io`. With the television connected, `card0-HDMI-A-1` was enabled and `/proc/asound/HDMI/eld#0` advertised LPCM (`sad_count` 2, monitor `20W_LCD_TV`) while the default sink stayed the codec. One earlier trace line, `eld=no` and `sad_count 0`, is one event. It does not show that the ELD stayed empty. That image is not accepted. `zlyme-my355-20261022-3d4ff87d4bc3.tar` is the image installed on 2026-10-22. Its television audio, Bluetooth playback, and headphone switching are the acceptance at the start of this status. On `zlyme-my355-20261020-7eb86d2970b2.tar`, Bluetooth-connected RetroArch and PPSSPP were audible through the internal speaker. That was a routing failure. HDMI audio on `7eb86d2` was not tested. A later capture on that image had the buds as the default A2DP sink and no game running. Deleting `/storage/Recently Played/` removed the background because the seed marker was still there. `6ea59c` linked an A2DP sink and an HDMI stream. Neither was heard, and RetroArch was not in that graph. `0d8a3cf` plays through the speaker and headphones, and the jack switch follows the plug. HDMI with an audio ELD stayed on the speaker because the ELD match required spaces. A paired headset was not connectable (`br-connection-page-timeout`). Both defconfigs select PipeWire 1.6.6 and WirePlumber 0.5.14. The 2026-10-22 listen accepted HDMI audibility, Bluetooth playback, and the headphone jack on `3d4ff87`. It did not accept speaker quality, the status icons, HDMI 720p video, or PortMaster. `6ea59c` is an earlier gate, not the current graph. `59c56f1` was an earlier silent image. `e2ecc05` is an earlier image and is not accepted. RetroArch speaker audio improved. PPSSPP audio is still very bad. Abombniball does not start, and the maintainer force-restarted the handheld. The Flip also restarted during PPSSPP play and during NextUI navigation. Those restarts were not captured: TCP port 22 answered and the SSH banner did not. `00e6c343` remains the previous image. On that image, RetroArch and PPSSPP were audible on the speaker and on headphones, including after the headphone plug is moved. RetroArch HDMI audio is audible. The maintainer now reports very bad sound quality on the built-in speaker as well as on HDMI. Earlier audibility does not close that quality gate. PICO-8 Splore is audible. A previously paired Bluetooth headset is listed again and its audio plays. PPSSPP has logged many ALSA underruns on an earlier boot and was still audible; that count was not repeated on this boot. Abombniball does not return on MENU+START. A launch started outside `nextui-session` died with `kmsdrm not available` before a button press, so the chord was not observed on a running game. Bash process substitution stayed in the same process group, and the port binaries contain no `setsid` string. The shared launcher was not changed on that pass. Source now has a one-shot trace: `/storage/.config/zlyme/pak-trace` records one menu launch and is then removed. SDL2 and the installed gptokeyb binaries did not contain the exclusive-grab ioctl, so no grab workaround was added. A button press during a real menu launch is still required. HDMI 720p video acceptance was not repeated. On 2026-10-19 one automatic shutdown at 0% was observed. An ELF32 `xdelta3.armhf` printed its version through `/lib/ld-linux-armhf.so.3` with `libc.so.6` from `/usr/lib/zlyme-armhf`. Wi-Fi off was not run over the live SSH session. On that Pulse candidate, BlueALSA was the A2DP owner. On boot `e692324d-2469-492c-9299-2159fc78d659` the codec sink was the only sink. Pulse reported 21017 µs latency, configured 21333 µs, for `fragments=4` and `fragment_size=1024`. A reversible load of 12 fragments negotiated 63726 µs, configured 64000 µs, and the original module was restored. Saved volume was 30%, which Pulse reports as −31.37 dB. RK817 Master was 0 dB. Nobody compared the two buffers by ear. Codec and HDMI in source now request 12 fragments of 1024 bytes. Bluetooth stays at 4. The saved volume percent is not rescaled. Listening on that build is still required. On `d438e74` the Recently Played picture is the Changa One file, and RetroArch contains the fullscreen-size patch, but gambatte exited before modeset: HDMI connector 56 was unbound and the free-CRTC check refused every CRTC because `ACTIVE` is invisible until the atomic client cap is set. That cap is not in the installed binary. The installed candidate `a58a5ab6` boots, the ArtBook stack no longer accumulates, Reset standalone settings no longer aborts, and the Wi-Fi toggle returns without waiting on the services. A temporary wrapper, not the stock session, exported the HDMI policy. HDMI-A-1 then scanned 1280×720 at 74250 kHz and NextUI logged viewport 160,0 960×720. The panel stayed 640×480 at 32000 kHz, and the previous HDMI mode returned after that process exited. The required HDMI case is a cable connected after NextUI is up, then a new emulator process at 1280×720. The proof is the CRTC mode and its pixel clock in debugfs, not the sysfs `mode` file. Changing the cable while that process is running is not a gate. On `1cbe3b8`, NextUI and PPSSPP OpenGL did that. RetroArch fell back to mode 0. Picture quality, RetroArch, an SDL2 standalone, Wi-Fi off, a native port, and native ARMHF were not run on the candidate that exports the policy. No `zlyme44.4` release until this pass.
+Status: Open. The installed runtime baseline is
+`zlyme-my355-20261023-c67692fe7ba7.tar`, Linux `7.2.10`, U-Boot
+`2026.01`, `/boot/zlyme`
+`134130f227792e21cfbfc82493d8ed0ba79ad3da24873b6665b41688519cce13`,
+and NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`. The final runtime
+candidate is not installed and inherits no hardware acceptance. Dated
+failures and acceptances for earlier images remain in the logbook and
+research matrix rather than being rewritten here.
 
 - Boot reaches NextUI. MENU+START returns from a game.
 - Wi-Fi off stops SSH, Samba, and Syncthing. Wi-Fi on starts only the services that are enabled. Run this on the device. Do not turn Wi-Fi off over the live SSH session. Accepted on `0b35a90`. Do not repeat it on this image.
@@ -358,9 +439,14 @@ Status: Open. The installed image is `zlyme-my355-20261023-465207696ff8.tar` (so
 - `/usr/bin/zlyme-armhf-probe` is not the check. The ARMHF userspace check is an ELF32 hard-float program whose interpreter is `/lib/ld-linux-armhf.so.3` and whose `libc.so.6` opens from `/usr/lib/zlyme-armhf`. `xdelta3.armhf` did that and printed `Xdelta version 3.1.1`. `DEVICE_HAS_ARMHF=Y` advertises that ABI. Every ARMHF port working is still not proven.
 - PipeWire, WirePlumber, and `pipewire-pulse` start from `rc.late` after the first frame. The codec, HDMI when the connector is connected and the published ELD advertises a format, and an A2DP headset share that graph. On installed `0b35a90` the maintainer accepts HDMI television audio, disconnect back to the speaker, the external-audio mark clearing, reconnect back to the television, and Bluetooth disconnect and reconnect. Volume and mute, including sound returning after mute, are accepted on that image. `74597688` left the speaker silent after HDMI unplug. That failure stays with that image. The route file names the effective default sink and does not select it. A radio link and that sink are different marks. A saved zero stays silent. The headphone jack follows the plug. Speaker quality, the icons, television audio, Bluetooth playback, and the jack passed on `be5d8c0` and were not withdrawn. The PulseAudio daemon and BlueALSA are the earlier candidate, not this graph. A Bluetooth scan in Settings lists a nearby device, including one with no class. RetroArch's KMS path is separate and is not proof of the SDL panel-off.
 - HDMI, with `ZLYME_HDMI_720P=1` only after the normal boot has reached NextUI. A normal boot still leaves the gate unset and keeps the internal panel at 640×480. One session owns DRM. `S28minui stop` does not stop it. With SSH already connected and Wi-Fi left on, end that session, confirm `pidof nextui-session` is empty, and start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Quitting the picture restarts it still gated. Return is to end that session and start one ungated session. A hang does not restore the panel. Reboot does: `/run` is cleared and boot is ungated. Do not start a second session beside the owner. Pass requires an HDMI CRTC at 1280×720 whose clock is 74250 kHz for the 1650×750 60 Hz mode, the DSI CRTC inactive, and the internal panel dark. The sysfs `mode` file is not that proof. One RetroArch GLES core must show the same HDMI CRTC while the game keeps its own aspect. That RetroArch path does not use the SDL panel-off patch and is not yet proven. Unplugging the cable does not program the panel back. The return is the ungated session. That session scans the panel at the saved 640×480 mode, and `/storage/.config/zlyme/display_mode` is unchanged. Connecting the cable while NextUI is already running does not switch. A failed HDMI modeset must leave the panel scanning. Earlier candidates kept both CRTCs active. That is history, not this requirement.
-- Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. No SDL3 window probe is shipped. Skip that row.
+- Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. The SDL3 and GL4ES probes are candidate acceptance tools; they are not accepted until launched normally and physically observed.
 
-The version string stays `zlyme44.3`. Installed `4652076` has the earlier HDMI, volume, Wi-Fi, and panel acceptances from `0b35a90`, plus the 14O rows that were looked at. A user background was not a separate check. RetroArch's own KMS path was not observed. Abombniball MENU+START failed on this image. The pak-session waiter is in source and is not in this installed image. PortMaster hardware is still open. No `zlyme44.4` release until this pass.
+The version string stays `zlyme44.3`. Installed `c67692f` accepts
+Abombniball MENU+START. Installed `4652076` retains the earlier HDMI,
+volume, Wi-Fi, panel, and looked-at 14O acceptances; a user background
+was not a separate check. The final runtime candidate is uninstalled.
+RetroArch's own KMS path and the runtime matrix remain open. No
+`zlyme44.4` release until this pass.
 
 ### 14I. PortMaster platform
 

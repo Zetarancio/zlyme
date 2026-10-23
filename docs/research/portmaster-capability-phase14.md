@@ -2,9 +2,96 @@
 
 This is the opening inventory for Phase 14. It is not an acceptance matrix. Status words in the table below are from this tree on 2026-10-16, pin `2026.06.23-0015` in `package/system/portmaster/portmaster.mk`.
 
-## Status on 2026-10-23
+## Runtime completion status
 
-The pin is still `2026.06.23-0015`. An October 18 upstream labeled alpha is not taken, and neither is `2026.10.03-1041`. The 2026-10-16 table is the record of that day. Where it disagrees with this note, this note is the current source.
+The PortMaster seed stays `2026.06.23-0015`. No alpha or beta seed was
+taken. Phase 14 remains open while the final runtime candidate is
+uninstalled.
+
+Box comparison was made at these exact revisions:
+
+- ptitSeb Box86
+  `bb716a2a6576cc06da811bf55e31e2f6f03b7596`, which is the reviewed
+  upstream head, is the Zlyme ARMHF pin;
+- ptitSeb Box64 head
+  `39aae76ddf3c515393bab5b2dd58ce676386501f` was reviewed, but Zlyme
+  preserves its working v0.4.4 pin
+  `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` and `BOX32=OFF`;
+- Batocera master
+  `cac5b73176de87ec6670f9a7f0d7306a75a969fb` configures its RK3568
+  target as AArch64. `batocera-system` selects Box64 for every AArch64
+  target, and its current Box64 recipe enables `BOX32` and
+  `BOX32_BINFMT`. That tree has no Box86 package. This is Box64/BOX32
+  selection on RK3568, not evidence for a native ARMHF Box86 there;
+- KNULLI `knulli-main`
+  `57afa662009641d181f57241bcc480119b131530`, Batocera submodule
+  `487014d91147610ebdd62f870009d4563ac61763`, and Buildroot submodule
+  `c2d7985b7528db04c783851db36a5c83ad848c0e` were reviewed. Its RK3566
+  image is AArch64 and selects proprietary Mali EGL/GLES/GBM. Neither
+  Box package is selected by that target. One legacy Shovel Knight
+  launcher carries a game-local Box86 directory; that is not system
+  Box86 support;
+- ROCKNIX `next`
+  `8b70f693b87464efb2ad0febe570db8eb67b6563` builds RK3566 as AArch64
+  plus an ARM hard-float side. Its AArch64 emulator set selects Box64.
+  The ARM virtual package evaluates the RK3566 emulator set with
+  `ENABLE_32BIT=true`, which selects Box86, and the device supplies
+  32-bit libmali. Zlyme adopts neither ROCKNIX's copied binary layout,
+  binfmt registration, nor global profile configuration.
+
+Zlyme instead builds Box86 natively in its own ARMHF Buildroot target,
+checks a separate artifact manifest, and exposes an explicit
+`zlyme-box86-run`. It installs no binfmt handler, service, or global
+x86 library path. A source-controlled dynamically linked i386 probe
+executed under ARMHF Box86 and qemu-arm with output
+`box86-x86 4 475f677f`; invalid ELF and missing-library cases returned
+diagnostics. That is CPU/runtime proof only. It is not rendered
+PortMaster proof.
+
+The 32-bit graphics requirement is separate. An AArch64 GL4ES cannot be
+loaded by native ARMHF Box86. Zlyme's licensed ARMHF provider is
+Mesa/Panfrost: EGL, GLES, GBM, the Panfrost DRI driver, and ARMHF GL4ES
+remain under `/usr/lib/zlyme-armhf`. The existing proprietary libmali
+payload is AArch64-only, so graphical Box86 requires a Panfrost boot.
+No unsupported ARMHF blob is imported. AArch64 GL4ES is isolated under
+`/usr/lib/portmaster/gl4es/aarch64`; ARMHF GL4ES is isolated under
+`/usr/lib/zlyme-armhf/gl4es`. Ports select either explicitly, after
+their own library directories. System GL, EGL, and GLES symlinks are
+unchanged.
+
+SDL3 now has a source-controlled KMSDRM render and InputPlumber-pad
+probe. GL4ES has a desktop-OpenGL triangle probe. Disposable marked
+Tools entries run both through the normal NextUI ownership lifecycle.
+They have built on the target toolchain but have not been physically
+observed on the uninstalled candidate. SDL 1.2 compatibility remains
+per-port: the installed Abombniball tree carries its own AArch64
+SDL-1.2-related library, and no shared SDL1.2 SONAME requirement was
+demonstrated. No blind SONAME link or global compatibility package was
+added.
+
+Hotkey comparison used LoveRetro NextUI
+`5291344b3aceae5fa197437a70824afb41e2d338`, ROCKNIX
+`8b70f693b87464efb2ad0febe570db8eb67b6563`, rocknix-hotkey
+`cc3a863199a71a350db05e9d0d0e646a8411332c`, PortMaster-GUI
+`ccea6b746827d0ae3a1cad744f6e8ccc5a032041`, and the pinned Zlyme
+NextUI. ROCKNIX and PortMaster gptokeyb use application-name
+termination and a later force kill. LoveRetro NextUI has
+application-specific launch scripts rather than an equivalent generic
+session waiter. Zlyme keeps its PID/start-time/session ownership model:
+it never uses `killall`, never signals the frontend group, and refuses
+to restart DRM after unresolved cleanup.
+
+The installed-image and named-port evidence is in
+[portmaster-matrix-20261023.md](portmaster-matrix-20261023.md). Build
+success, executable runtime, rendered display, physical input, audio,
+exit, cleanup, and frontend return are separate statuses there.
+
+## Earlier status on 2026-10-23
+
+This section preserves the status before runtime completion was reopened.
+The runtime-completion section above is current where the two differ.
+The pin was `2026.06.23-0015`. An October 18 upstream labeled alpha was
+not taken, and neither was `2026.10.03-1041`.
 
 The product mixer on the installed image is PipeWire with `pipewire-pulse`. `libpulse` and `libpulse-simple` are on that image. BlueALSA is not the A2DP owner. The PulseAudio daemon row and the BlueALSA sentences later in this file are the earlier candidate.
 
@@ -31,7 +118,8 @@ GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release
 | ALSA / PulseAudio | Implemented in source, not yet on a Flip | One PulseAudio 17 server. The default ALSA PCM is the Pulse plugin. BlueALSA still owns A2DP and is a Pulse sink. |
 | Fake `systemctl` | Rejected | Still rejected. |
 
-Named ports in the roadmap are not a test list for this phase.
+At this checkpoint the named ports were not a test list. The later
+runtime-completion decision explicitly reopened them.
 
 ## Launch environment
 

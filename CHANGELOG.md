@@ -12,6 +12,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - The system list shows a transparent Art Book picture behind each system when you have not chosen your own image. A game list does not add a second wallpaper. Each included tool has an illustration of that tool, and the firmware draws the tool's name on it, centered like the system names. The pictures are part of the firmware. You do not download an artwork pack. Your `.media` art and `/storage/bg.png` stay in front. The pictures are CC BY-NC-SA 2.0. Settings → Appearance → Use folder background for ROMs starts on, and turning it off keeps the plain background.
 - Recently Played shows the built-in picture even when that folder is gone. Your own replacement goes in the NextUI shared art folder, and deleting it brings the built-in picture back. `/storage/bg.png` still applies when you have not set one of those. A picture left in the folder is not used. An update from zlyme44.3 keeps a picture you put there when it is not a built-in render. Names stay off the built-in picture.
 - The firmware includes SDL 3.4.12 with KMS, OpenGL ES, and Wayland. SDL 2 is unchanged. An SDL 3 game is not a promise that every SDL 3 program runs.
+- PortMaster can explicitly run a 32-bit x86 Linux program through Box86. Box64 and Wine are unchanged. This does not make every x86 game compatible.
+- PortMaster can explicitly select a firmware GL4ES runtime when a port does not bring its own. It does not replace the system OpenGL or GLES libraries.
 - Delete game removes that ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A folder or system choice stays. A save for another system stays. A game with the same name on another card stays. If the delete stops early, the game stays in the list.
 - SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was. Turning one on while Wi-Fi is off leaves that switch on and the service stopped.
 
@@ -22,6 +24,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
 - The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
 - A paired headset is asked for its audio profile once BlueZ has registered that device. The request does not keep retrying, and it does not run before the device exists.
+- A port whose launcher exits before its game no longer leaves that game holding the screen. If Zlyme cannot prove that every owned process stopped, it leaves the frontend stopped instead of starting a second graphics client.
 
 ### Changed
 
@@ -32,7 +35,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- A normal boot leaves the internal screen on. HDMI at 720p, and the internal screen coming back, were accepted on the current image. Abombniball does not leave on MENU+START. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
+- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. The final runtime candidate still needs its own PortMaster, SDL 3, GL4ES, and Box86 hardware pass. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
 
 ## [zlyme44.3] - 2026-10-16
 

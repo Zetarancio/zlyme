@@ -1,5 +1,121 @@
 # PortMaster validation, 2026-10-23
 
+## Runtime-completion update
+
+Phase 14 is still open. The maintainer installed
+`zlyme-my355-20261023-c67692fe7ba7.tar` from
+`c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` and physically accepted
+Abombniball returning from the Ports list after MENU+START. SSH on that
+installation observed Zlyme `zlyme44.3 (2026-10-23)`, Linux `7.2.10`,
+U-Boot `2026.01`, read-only `/boot`, and `/boot/zlyme` SHA-256
+`134130f227792e21cfbfc82493d8ed0ba79ad3da24873b6665b41688519cce13`.
+The running `nextui.elf` SHA-256 is
+`49cefda55510db18c74197c75eaa4e963d663a596aab58063ea1c1a49b5f738c`;
+the host binary built from pinned NextUI
+`b0960dcde4d69d32871d6605c354b1b901621eb5` has the same hash. The
+rootfs does not embed the Zlyme Git revision, so the source association
+comes from the named archive and build record rather than a runtime
+revision file.
+
+The source after that installed image now has:
+
+- native ARMHF Box86 at upstream
+  `bb716a2a6576cc06da811bf55e31e2f6f03b7596`, imported through its own
+  checked manifest; Box64 stays at `2f130fab` with `BOX32=OFF`, and the
+  Wine WOW64 path is unchanged;
+- ARMHF Mesa/Panfrost EGL, GLES, and GBM for graphical Box86 work.
+  The installed proprietary libmali is AArch64-only. ARMHF graphics
+  therefore requires a Panfrost boot and remains unavailable on a
+  libmali boot;
+- pinned GL4ES `2037865590d410bcd7b8d1f22b841472ed6d39ac` in isolated,
+  explicit AArch64 and ARMHF directories. It does not replace system
+  GL, EGL, or GLES and does not override a port-bundled GL4ES;
+- normal-NextUI disposable SDL3 KMSDRM/input and AArch64 GL4ES render
+  probes, plus a passive bounded process/DRM/mount observer;
+- fail-closed PAK session cleanup. Incomplete `/proc` inspection,
+  identity changes, allocation failure, or a surviving owned process
+  returns status 125. PortMaster cleanup still runs, but
+  `nextui-session` does not start another DRM client;
+- the exact upstream `systemctl restart oga_events` request translated
+  by `zlyme-portmaster-exec` to the existing idempotent
+  `zlyme-input ensure` contract. Other `systemctl` commands are not
+  emulated.
+
+Current host results separate package presence from execution:
+
+- A clean ARMHF target build, package and manifest checks, invalid-ELF
+  and missing-library checks, and the dynamic i386 probe pass. The
+  legal probe prints `box86-x86 4 475f677f` under ARMHF Box86 and
+  qemu-arm. The product target contains the byte-identical ELF32 ARM
+  hard-float Box86 and private libc. That proves CPU/runtime execution,
+  not graphical output. Target LLVM, Clang, and build-only SPIR-V
+  utility libraries are excluded from the imported runtime after its
+  remaining ELF dependency closure is checked.
+- SDL3 and GL4ES package/probe builds, explicit selector ordering,
+  absence of build-tree RPATH, ARMHF manifest closure, PAK lifecycle,
+  mount ownership, PlatformZlyme, library selection, orphan preference,
+  and synthetic Delete Game checks are host tests only.
+- The candidate graphics probes must be launched from NextUI. Running
+  them from SSH beside the frontend would be a second DRM client and is
+  not an acceptance test. Physical display and pad observations remain
+  NOT RUN until the candidate is installed.
+
+The current installed card still selects `/mnt/sd2`. No compatibility
+mount was active during the read-only preflight, and NextUI was the
+frontend. Both cards and user files were left unchanged. The named-port
+static audit found:
+
+The earlier `DEVICE_HAS_ARMHF=N` is in the selected card's unprepared
+copy. Normal launches source `/opt/system/Tools/PortMaster/control.txt`,
+whose prepared Zlyme override exports `DEVICE_HAS_ARMHF=Y` after
+`device_info.txt`; the captured Abombniball launch also reported Y.
+The N file is stale/inactive for that lifecycle, not an effective
+capability contradiction, so the user's tree is not rewritten.
+
+- Shards of God: AArch64 AGS engine and game data present. Existing
+  diagnostics reached `Starting game`, OpenAL, and an SDL GLES2
+  renderer. That historical launch is not a new physical acceptance.
+- LISA The Painful: AArch64 `falcon_mkxp.bin` and configuration present.
+  The old log failed to open an OpenAL device through Pulse. Current
+  Zlyme supplies PipeWire-compatible `libpulse` and
+  `libpulse-simple`; the game was not rerun.
+- Rakuen: the same AArch64 mkxp engine class is present. Its old log
+  names missing `libpulse-simple.so.0`; that SONAME is present on the
+  installed image, but the game was not rerun.
+- Steel Assault: user game data is present. Its requested Mono squashfs
+  was not found in the bounded selected-tree check, and the old launch
+  ended at `mono: command not found`. Status is BLOCKED on the shared
+  PortMaster runtime, not PASS.
+- Skautfold: AArch64 `gmloadernext`, `data.win`, and the input map are
+  present. Execution is NOT RUN on the current completion candidate.
+- If On A Winter's Night, Four Travelers: AArch64 AGS engine, data, and
+  input map are present. An old log reached the engine and later
+  reported CRTC restore failure. Execution is NOT RUN on the candidate.
+- Mina the Hollower: the AArch64 Machismo loader, extracted application,
+  and prepared shader corpus are present. An old log reached the
+  Vulkan window path but also recorded unresolved symbols and missing
+  initial user files. Rendering, input, audio, clean exit, and NextUI
+  return are NOT RUN on the candidate.
+
+The `systemctl: not found` report is now attributable: LISA, Rakuen,
+Steel Assault, and Winter Travelers explicitly request
+`$ESUDO systemctl restart oga_events` after their engine returns.
+Upstream `pm_finish` does the same. Zlyme does not run `oga_events` and
+does not add a fake `systemctl`; InputPlumber remains the one input
+owner.
+
+Required candidate hardware work remains: install the final uninstalled
+OTA, rerun Abombniball because the waiter changed after its accepted
+image, run the SDL3 and GL4ES probes from the normal menu with a
+physical pad, run the ARMHF and Box86 console probes, exercise each
+runnable named port and selected LÖVE/Mono/WestonPack/Wine runtime that
+is actually installed, verify audio, exit, NextUI return, and mount
+cleanup separately, and capture RetroArch's own 1280×720 CRTC. The
+alternate Panfrost graphics boot is unobserved. Missing commercial data
+or an absent downloaded runtime is not converted into PASS.
+
+## Earlier installed-image matrix
+
 Phase 14 stays open. This is the host and live-device matrix for installed `zlyme-my355-20261023-465207696ff8.tar`. Source `465207696ff8493f239a1bcab0e232459f4be75c`. Squashfs `512454168f4cbb671de9020e12f24f8380fc8ea8c4d410e2d2590fcdd6722906`. NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`. Kernel `7.2.10`. `/boot/zlyme` matches that squashfs. The version string is `zlyme44.3`. Nothing here was installed over the user's PortMaster tree.
 
 A status of NOT RUN is not a pass.

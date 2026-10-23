@@ -254,10 +254,30 @@ These are recorded comparisons, not a promise to track any tree. Local clone pat
 | mkxp-z | `white-axe/mkxp-z` | `650cb0888a07d0b5044e131160ddfa53feaf595b` | `LIBRETRO_MKXP_Z_VERSION`. One wrapper directory is `0001-one-wrapper-archive-root.patch` |
 | Wine | `Kron4ek/Wine-Builds` | `11.6` asset `wine-11.6-amd64-wow64.tar.xz` | SHA-256 `045549657b513c2fb191734b0434c81000b36ba4d482d1688bf99f80a8ee07a5` in `wine-amd64.hash`. Vanilla `amd64-wow64`, not staging |
 | Box64 | `ptitSeb/box64` | `2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a` (v0.4.4) | `BOX64_VERSION`. `BOX32=OFF` |
+| Box86 | `ptitSeb/box86` | `bb716a2a6576cc06da811bf55e31e2f6f03b7596` | `BOX86_ARMHF_VERSION`. MIT. ARMHF `ARM64=ON`, `ARM_DYNAREC=ON`, `NOGIT=ON`; no binfmt, config, or bundled x86 libraries. Source SHA-256 `474bf47f4f03d40f0c664578c9eee90f29eaf3d25f5d86ffe4e50c603a44eaa6`, license SHA-256 `56215a2e982c1fde0f63afcdeff6c0f44826711f17e9c87a4c1d2cfb1694a789` |
+| GL4ES | `ptitSeb/gl4es` | `2037865590d410bcd7b8d1f22b841472ed6d39ac` | `GL4ES_VERSION` and `GL4ES_ARMHF_VERSION`. MIT. AArch64 and ARMHF builds are in separate explicit PortMaster paths and do not replace system GL/EGL/GLES. Source SHA-256 `eaee3043a95eab40570539592f3f85f23d855286418dfacd961fa91d5211560d`, license SHA-256 `69a3049c77abd88658f6ad7cf6a5b6ceb5cf03b80e60f7c4657d90322cfab7bd` |
 | ROCKNIX | `ROCKNIX/distribution` `next` | `a55d58a1209b35e287dd55a3aad67a5543b467ce` | carries gpSP `8d268a6bb2cd799f8f2791ebb544a7ef550cfc6f`, the `package/emulators/libretro-gpsp` pin |
 | KNULLI | `knulli-cfw/knulli-linux` `knulli-main` | `6a23957a19a1df18989ac6aa5e9fff003ae611ed` | carries the older gpSP `d6decfa3`; compared, not adopted |
 | SpruceOS | `spruceUI/spruceOS` | `2b7bc4a79359de14ea4d4f00da9801a937e2846d` | CPU floor table in `package/system/nextui/zlyme/governor.sh` |
 | ROCKNIX | `ROCKNIX/distribution` | `fe127fad01f6006bea1734ebde87d1c02cc6d256` | RK817 patch `001`, applied as local `0003`; `002`, `005`, `008` not adopted |
+
+The Phase 14 Box/runtime comparison is a dated review, not a new
+authority or a request to follow those branches. It used Batocera
+master `cac5b73176de87ec6670f9a7f0d7306a75a969fb`, KNULLI
+`knulli-main` `57afa662009641d181f57241bcc480119b131530`
+with Batocera submodule `487014d91147610ebdd62f870009d4563ac61763`
+and Buildroot submodule
+`c2d7985b7528db04c783851db36a5c83ad848c0e`, and ROCKNIX `next`
+`8b70f693b87464efb2ad0febe570db8eb67b6563`. Batocera's AArch64
+RK3568 selects Box64 with BOX32 and has no Box86 package. KNULLI's
+AArch64 RK3566 target selects neither system Box package; one
+game-local Box86 directory is not that support. ROCKNIX selects Box64
+for AArch64 and Box86 in its enabled 32-bit RK3566 side, with matching
+32-bit libmali. Zlyme uses these as packaging evidence only. The
+adopted implementation is its own ARMHF Buildroot target, private
+glibc and Mesa/Panfrost userspace, explicit runners, and no binfmt
+registration. Detailed evidence is in
+`docs/research/portmaster-capability-phase14.md`.
 
 The gpSP comparison is in `docs/research/product-phase9.md`. The RK817 dispositions are in `docs/research/kernel-patch-audit-phase5.md` and `docs/research/deep-suspend-phase6.md`. ZcrapeGoat's import is recorded below.
 

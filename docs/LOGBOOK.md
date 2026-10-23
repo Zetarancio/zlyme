@@ -19,6 +19,66 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-23 — Phase 14 runtime completion candidate
+
+The maintainer installed
+`zlyme-my355-20261023-c67692fe7ba7.tar` and accepts a physical
+MENU+START return from Abombniball launched through the Ports list.
+SSH observed Linux `7.2.10`, U-Boot `2026.01`, read-only `/boot`,
+`/boot/zlyme`
+`134130f227792e21cfbfc82493d8ed0ba79ad3da24873b6665b41688519cce13`,
+and running NextUI
+`49cefda55510db18c74197c75eaa4e963d663a596aab58063ea1c1a49b5f738c`.
+The host binary built from root pin
+`b0960dcde4d69d32871d6605c354b1b901621eb5` has the same hash. The
+rootfs has no embedded Zlyme revision file; the source association
+`c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is the archive/build
+identity, not a value read from the running root.
+
+The later source hardens the PAK session waiter. `/proc` scan errors,
+allocation failure, PID identity changes, and a process that survives
+bounded TERM/KILL are not treated as an empty session. Zombies are not
+owners, the member list is dynamic, every signal uses a pidfd after
+PID/start-time/PGID/SID verification, and unresolved ownership returns
+125. PortMaster mount and Wine cleanup still runs. `nextui-session`
+then records the failure and does not start another DRM frontend. A
+process that deliberately creates a new session remains outside this
+boundary; no global subreaper or process-name killer was added without
+evidence. The Abombniball gate must be rerun on the final candidate
+because this hardening is later than the accepted image.
+
+Box86 is now built natively in the ARMHF side target from
+`bb716a2a6576cc06da811bf55e31e2f6f03b7596`. It has a separate checked
+manifest and an explicit runner. Box64, `BOX32=OFF`, and Wine WOW64 are
+unchanged. A dynamic i386 source probe executes under ARMHF Box86 and
+qemu-arm; invalid ELF and missing-library paths are diagnosed. This is
+not a graphical pass. The clean ARMHF target build and manifest checks
+pass, and the product target has byte-identical Box86 and private libc
+copies. Target LLVM, Clang, and build-only SPIR-V utility libraries are
+not imported. ARMHF graphics uses Mesa/Panfrost because the installed
+proprietary libmali is AArch64-only. Pinned GL4ES is isolated for
+AArch64 and ARMHF explicit use. An SDL3 KMSDRM/gamepad probe and a
+GL4ES OpenGL probe are installed as disposable, marked Tools entries
+for normal NextUI launch. No system GL/EGL/GLES link, global compositor,
+service, or binfmt handler was added.
+
+The selected library was `/mnt/sd2`; NextUI was running and no
+PortMaster compatibility mount was active. Read-only named-port
+inspection found the expected AArch64 engines and data indicators for
+Shards of God, LISA, Rakuen, Skautfold, Winter Travelers, and Mina.
+Steel Assault's requested Mono squashfs was absent in that bounded
+check. Existing logs are older diagnostic evidence, not new physical
+passes. LISA, Rakuen, Steel Assault, and Winter Travelers explicitly
+call `$ESUDO systemctl restart oga_events` after exit.
+`zlyme-portmaster-exec` now maps only that exact upstream request to
+`zlyme-input ensure`; no fake `systemctl` exists.
+
+The final OTA remains to be built and stays uninstalled. Phase 14
+remains open for candidate ARMHF/Box86 execution, SDL3 display/input,
+GL4ES rendering, eligible named ports and shared runtimes, audio,
+cleanup and NextUI return, a focused Abombniball rerun, and RetroArch's
+own 1280×720 CRTC observation.
+
 ## 2026-10-23 — 14O accepted on 4652076; Abombniball did not return
 
 The maintainer installed `zlyme-my355-20261023-465207696ff8.tar`. Source `465207696ff8493f239a1bcab0e232459f4be75c`. Squashfs `512454168f4cbb671de9020e12f24f8380fc8ea8c4d410e2d2590fcdd6722906`. NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`. Kernel `7.2.10`. `/boot/zlyme` matches that squashfs. Accepted on this image: a ROM list's first row and a later row with no art, a ROM thumbnail, Art Book system and tool artwork, a long name staying inside the selection pill, and the default Game art width showing a nonzero percent. A user background was not a separate check. That limit does not reopen the rows that were seen. The earlier HDMI, Bluetooth, volume, Wi-Fi, and panel acceptances stay. Phase 14 stays open.
