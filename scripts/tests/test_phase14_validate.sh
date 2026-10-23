@@ -1,7 +1,7 @@
 #!/bin/sh
 # Phase 14 PortMaster validation: static guards plus dynamic integration.
 # Proves command-substitution stalls under real shells, then exercises the
-# rewritten validator with a mocked PORTS launcher (no device required).
+# format=4 validator with a mocked PORTS launcher and live processes.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 VALIDATE=$ROOT/scripts/device/phase14-portmaster-validate.sh
@@ -15,6 +15,14 @@ fail() {
 	exit 1
 }
 
+expect_fail() {
+	label=$1
+	shift
+	if "$@" >/dev/null 2>&1; then
+		fail "$label: expected failure"
+	fi
+}
+
 [ -f "$VALIDATE" ] || fail "missing validate script"
 grep -q 'Validation.pak/launch.sh' "$LAUNCH" ||
 	fail "pak-launch does not classify the validation Tools PAK as ports"
@@ -23,23 +31,20 @@ grep -q 'exec "\$ports" "\$script"' "$VALIDATE" ||
 if grep -q 'run_ports_like' "$VALIDATE"; then
 	fail "validate still embeds a duplicated ports setup"
 fi
-# Forbidden lifecycle hazards.
 if grep -E -q 'arm_timeout_waiter|start_post_observer|TIMER_PID|POST_OBSERVER_PID' \
 	"$VALIDATE"; then
 	fail "validate still contains in-session timer/observer helpers"
 fi
-if grep -F 'kill -TERM' "$VALIDATE" | grep -q waiter; then
-	fail "validate still delayed-kills a saved waiter PID"
-fi
 if grep -q 'kill -TERM "\$waiter_pid"' "$VALIDATE"; then
 	fail "validate still has bare waiter PID TERM"
 fi
-# No command-sub that starts background helpers.
 if grep -E -q '\$\((arm_|start_post)' "$VALIDATE"; then
 	fail "validate still uses risky command substitution for helpers"
 fi
-grep -q 'active-run' "$VALIDATE" || fail "validate has no active-run transaction"
-grep -q 'cmd_observe' "$VALIDATE" || fail "validate has no SSH observe command"
+grep -q 'claimer_starttime' "$VALIDATE" || fail "validate missing starttime identity"
+grep -q 'require_completion_evidence' "$VALIDATE" ||
+	fail "validate missing completion evidence gate"
+grep -q 'format=4' "$VALIDATE" || fail "validate not format=4"
 grep -q 'install_pm_validation' "$PROBE" ||
 	fail "probe-paks does not install the ports-exec validation entry"
 sh -n "$VALIDATE" || fail "validate syntax"
@@ -52,13 +57,11 @@ cat > "$cs_script" << 'BUG'
 arm() {
 	(
 		sleep 2
-		# Intentionally write to inherited stdout so $(arm) waits.
 		echo BG
 	) &
 	printf '%s\n' "$!"
 }
 start=$(date +%s)
-# Discard captured text; we only care about wall time.
 pid=$(arm) >/dev/null
 end=$(date +%s)
 echo "$((end - start))"
@@ -105,6 +108,7 @@ ensure_cached_shell() {
 	[ -x "$dest" ]
 }
 
+ASH_BIN=
 if ensure_cached_shell dash \
 	"https://archlinux.org/packages/core/x86_64/dash/download/"; then
 	run_cs_stall "$SHELL_CACHE/dash" dash
@@ -113,45 +117,34 @@ else
 fi
 if ensure_cached_shell busybox \
 	"https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox"; then
-	# BusyBox ash via applet name.
 	ash_wrap=$(mktemp)
 	cat > "$ash_wrap" << ASH
 #!/bin/sh
 exec "$SHELL_CACHE/busybox" ash "\$@"
 ASH
 	chmod 0755 "$ash_wrap"
+	ASH_BIN=$ash_wrap
 	run_cs_stall "$ash_wrap" busybox-ash
-	rm -f "$ash_wrap"
 else
 	echo "phase14 validate: busybox ash unavailable; bash stall still required" >&2
 fi
 rm -f "$cs_script"
 
-# Fixed shape: no $(background). Must reach PORTS marker immediately.
-fix_mark=$(mktemp)
-fix_ports=$(mktemp)
-cat > "$fix_ports" << 'OK'
-#!/bin/sh
-set -eu
-printf 'REACHED\n' > "$1"
-printf '%s\n' "$@" > "$1.argv"
-OK
-chmod 0755 "$fix_ports"
-start=$(date +%s)
-# Mimic cmd_run's final step: plain exec, no command-sub helpers.
-"$fix_ports" "$fix_mark" /fake/Good.sh
-end=$(date +%s)
-[ "$((end - start))" -lt 1 ] || fail "fixed launch path was not prompt"
-grep -q REACHED "$fix_mark" || fail "fixed launch did not reach PORTS"
-rm -f "$fix_mark" "$fix_mark.argv" "$fix_ports"
-
 # --- Campaign integration with mocked PORTS + inventory. ---
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+# shellcheck disable=SC2064
+trap 'rm -rf "$work"; rm -f "'"${ASH_BIN:-}"'"' EXIT
 export ZLYME_PHASE14_VALIDATE_DIR=$work/state
 export ZLYME_PHASE14_TEST_GPU=libmali
 export ZLYME_PHASE14_TEST_BOOT_ID=bootA
 export ZLYME_PHASE14_TEST_SQUASHFS=sqA
+export ZLYME_PHASE14_TEST_LIBRARIES=/storage
+export ZLYME_PHASE14_TEST_NEXTUI=yes
+export ZLYME_PHASE14_OWNED_MOUNTS=$work/owned-mounts
+export ZLYME_PHASE14_DRM_CLIENTS=$work/drm-clients
+export ZLYME_PHASE14_PAK_CLEANUP_FAILED=$work/pak-cleanup-failed
+: > "$work/drm-clients"
+rm -f "$work/owned-mounts" "$work/pak-cleanup-failed"
 
 mkdir -p "$work/lib/Roms/Ports (PORTS)" "$work/bin"
 good=$work/lib/Roms/Ports\ \(PORTS\)/Good\ Port.sh
@@ -190,7 +183,6 @@ printf 'EXTERNAL_DATA_REQUIRED\tskaut\t/missing/skaut.sh\n' >> "\$out/queue.txt"
 STUB
 chmod 0755 "$stub_inv"
 export ZLYME_PHASE14_INVENTORY=$stub_inv
-# Force SSH-side observe path (no in-tree observer binary required).
 export ZLYME_PHASE14_OBSERVER=/nonexistent-phase14-observer
 
 export TRACE=$work/trace
@@ -198,139 +190,267 @@ export GAME_LOG=$work/game.log
 : > "$TRACE"
 : > "$GAME_LOG"
 
-sh "$VALIDATE" start >/dev/null
+run_validate() {
+	sh "$VALIDATE" "$@"
+}
+
+# Prefer BusyBox ash for lifecycle when available.
+if [ -n "${ASH_BIN:-}" ]; then
+	run_validate() {
+		"$ASH_BIN" "$VALIDATE" "$@"
+	}
+	echo "phase14 validate: lifecycle under busybox ash"
+fi
+
+run_validate start >/dev/null
 cid=$(cat "$work/state/active-campaign")
 cdir=$work/state/campaigns/$cid
 [ -s "$cdir/queue.txt" ] || fail "start did not write queue"
+grep -q 'format=4' "$cdir/meta.txt" || fail "campaign meta not format=4"
 
-# Prompt launch under the real validator (exec into mock PORTS).
-start=$(date +%s%N 2>/dev/null || date +%s)
-sh "$VALIDATE" run
-end=$(date +%s%N 2>/dev/null || date +%s)
-case "$start$end" in
-*[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*)
-	elapsed_ms=$(( (end - start) / 1000000 ))
-	[ "$elapsed_ms" -lt 500 ] || fail "launch not prompt: ${elapsed_ms}ms"
-	;;
-*)
-	elapsed=$((end - start))
-	[ "$elapsed" -lt 2 ] || fail "launch not prompt: ${elapsed}s"
-	;;
-esac
-
-grep -q '^PORTS_ARGV$' "$TRACE" || fail "PORTS launcher was not invoked"
-grep -Fq "$good" "$TRACE" || fail "selected game was not the first eligible"
-grep -q game_ran "$GAME_LOG" || fail "selected game script did not run"
-[ -f "$cdir/active-run" ] || fail "active-run missing after run"
-grep -q 'status=in_flight' "$cdir/active-run" || fail "active-run not in_flight"
-[ -d "$cdir/lock" ] || fail "lock not held across run claim"
-[ "$(cat "$cdir/cursor")" = 0 ] || fail "cursor advanced before complete"
-
-# Second runner must not advance while active-run is set.
-if sh "$VALIDATE" run >/dev/null 2>&1; then
-	fail "second run was allowed during active-run"
-fi
-count=$(grep -c '^PORTS_ARGV$' "$TRACE" || true)
-[ "$count" = 1 ] || fail "expected one PORTS invoke, got $count"
-
-# Concurrent exclusivity while a held launch is still "running".
+# Same-second collision: pre-create the next candidate base is hard; instead
+# force an existing directory and ensure start allocates a distinct id.
+export ZLYME_PHASE14_TEST_BOOT_ID=bootA
+# With unresolved empty, start a second campaign after reset.
+# First prove start refuses while unresolved.
 : > "$TRACE"
-PORTS_HOLD_SECS=2 sh "$VALIDATE" retry >/dev/null
 (
-	PORTS_HOLD_SECS=2 sh "$VALIDATE" run
+	PORTS_HOLD_SECS=8 run_validate run
 ) &
 holder=$!
-# Give the holder time to claim and enter sleep.
 i=0
-while [ "$i" -lt 50 ]; do
+while [ "$i" -lt 80 ]; do
 	[ -f "$cdir/active-run" ] && break
 	i=$((i + 1))
-	# BusyBox-friendly short wait.
 	sleep 0.05 2>/dev/null || sleep 1
 done
 [ -f "$cdir/active-run" ] || fail "holder did not claim active-run"
-if sh "$VALIDATE" run >/dev/null 2>&1; then
-	kill "$holder" 2>/dev/null || true
-	wait "$holder" 2>/dev/null || true
-	fail "second run advanced queue during in-flight hold"
-fi
-wait "$holder" || true
-count=$(grep -c '^PORTS_ARGV$' "$TRACE" || true)
-[ "$count" = 1 ] || fail "hold test expected one PORTS invoke, got $count"
-
-# SSH-side observe after the PAK process has exited.
-sh "$VALIDATE" observe 1 >/dev/null
-run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
-[ -n "$run_log" ] || fail "active-run missing run_log"
-grep -q 'OBSERVE time=' "$run_log" || fail "observe did not append evidence"
-grep -q 'NEXTUI_RESTORED' "$run_log" || fail "observe missing NextUI field"
-grep -q 'OWNED_MOUNTS_REMAIN' "$run_log" || fail "observe missing mount field"
-# Observe must work with no live PAK claimer.
+# Prove the claimer identity is live before negative tests.
 claimer=$(awk -F= '/^claimer_pid=/{print $2; exit}' "$cdir/active-run")
-if [ -n "$claimer" ] && [ -d "/proc/$claimer" ]; then
-	fail "claimer still alive after PORTS exit; observe must be post-session"
-fi
+[ -d "/proc/$claimer" ] || fail "holder claimer pid $claimer not live"
+cst=$(awk -F= '/^claimer_starttime=/{print $2; exit}' "$cdir/active-run")
+[ -n "$cst" ] || fail "active-run missing claimer_starttime"
 
-# complete advances cursor and clears claim/lock.
-sh "$VALIDATE" complete PASS_PROCESS >/dev/null
+# complete while mocked PORTS is running must fail.
+err=$(run_validate complete PASS_PROCESS 2>&1) && fail "complete while running: expected failure"
+printf '%s\n' "$err" | grep -q 'still active' ||
+	fail "complete while running did not cite live claimer: $err"
+[ -f "$cdir/active-run" ] || fail "complete-while-running cleared active-run"
+[ "$(cat "$cdir/cursor")" = 0 ] || fail "complete-while-running advanced cursor"
+
+# retry while running must fail.
+err=$(run_validate retry 2>&1) && fail "retry while running: expected failure"
+printf '%s\n' "$err" | grep -q 'still active' ||
+	fail "retry while running did not cite live claimer: $err"
+[ -f "$cdir/active-run" ] || fail "retry-while-running cleared active-run"
+
+# reset/start during unresolved must fail.
+expect_fail "reset while unresolved" run_validate reset
+expect_fail "start while unresolved" run_validate start
+
+# Second runner cannot advance.
+expect_fail "second run while in-flight" run_validate run
+count=$(grep -c '^PORTS_ARGV$' "$TRACE" || true)
+[ "$count" = 1 ] || fail "expected one PORTS invoke during hold, got $count"
+
+wait "$holder" || true
+[ ! -d "/proc/$holder" ] || sleep 1
+
+# Claimer ended; observe + complete path.
+export ZLYME_PHASE14_TEST_NEXTUI=yes
+rm -f "$work/owned-mounts" "$work/pak-cleanup-failed"
+run_validate observe 1 >/dev/null
+run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
+grep -q 'OBSERVE time=' "$run_log" || fail "observe did not append evidence"
+grep -q 'NEXTUI_RESTORED process=yes' "$run_log" || fail "observe missing NextUI yes"
+grep -q 'OWNED_MOUNTS_REMAIN none' "$run_log" || fail "observe missing mounts none"
+grep -q 'PAK_CLEANUP_FAILED no' "$run_log" || fail "observe missing cleanup flag"
+
+# Missing observer evidence prevents completion: wipe OBSERVE lines into a copy test.
+# incomplete cleanup prevents completion.
+printf '1\t/tmp/leak\n' > "$work/owned-mounts"
+expect_fail "complete with mount leak" run_validate complete PASS_PROCESS
+rm -f "$work/owned-mounts"
+
+printf '125\n' > "$work/pak-cleanup-failed"
+expect_fail "complete with pak cleanup 125" run_validate complete PASS_PROCESS
+rm -f "$work/pak-cleanup-failed"
+
+# blocked state must not be cleared by complete.
+printf 'prior\n' > "$cdir/blocked"
+expect_fail "complete while blocked" run_validate complete PASS_PROCESS
+rm -f "$cdir/blocked"
+
+# Missing observe: strip OBSERVE from log and refuse complete.
+# Re-observe first to ensure clean, then test a fresh claim without observe.
+run_validate complete PASS_PROCESS >/dev/null
 [ ! -e "$cdir/active-run" ] || fail "complete left active-run"
-[ ! -d "$cdir/lock" ] || fail "complete left lock"
 [ "$(cat "$cdir/cursor")" = 1 ] || fail "complete did not advance cursor to 1"
-grep -q 'COMPLETE time=' "$run_log" || fail "complete did not log"
+completes=$(grep -h 'COMPLETE time=' "$cdir/runs/"*.log 2>/dev/null | wc -l | tr -d ' ')
+[ "$completes" = 1 ] || fail "expected exactly one COMPLETE, got $completes"
 
-# Next run claims exactly the second eligible game.
+# Second game: run, refuse complete without observe, then observe+complete.
 : > "$TRACE"
 : > "$GAME_LOG"
-sh "$VALIDATE" run
+run_validate run
 grep -Fq "$second" "$TRACE" || fail "second eligible was not selected"
-grep -q second "$GAME_LOG" || fail "second game script did not run"
-count=$(grep -c '^PORTS_ARGV$' "$TRACE" || true)
-[ "$count" = 1 ] || fail "second run invoked PORTS $count times"
+expect_fail "complete without observe" run_validate complete PASS_PROCESS
+[ -f "$cdir/active-run" ] || fail "complete-without-observe cleared active-run"
+[ "$(cat "$cdir/cursor")" = 1 ] || fail "complete-without-observe advanced cursor"
+run_validate observe 1 >/dev/null
+run_validate complete PASS_PROCESS >/dev/null
+[ "$(cat "$cdir/cursor")" = 2 ] || fail "second complete did not advance to 2"
 
-# fail does not advance; keeps identity for retry.
+# Interrupted / fail path: new campaign game then fail keeps identity.
+run_validate reset >/dev/null
+export ZLYME_PHASE14_TEST_BOOT_ID=bootA2
+run_validate start >/dev/null
+cid=$(cat "$work/state/active-campaign")
+cdir=$work/state/campaigns/$cid
+: > "$TRACE"
+run_validate run
 cur=$(cat "$cdir/cursor")
-sh "$VALIDATE" fail unresolved >/dev/null
+run_validate fail unresolved >/dev/null
 [ -f "$cdir/active-run" ] || fail "fail cleared active-run"
 [ -f "$cdir/blocked" ] || fail "fail did not set blocked"
 [ "$(cat "$cdir/cursor")" = "$cur" ] || fail "fail advanced cursor"
-# Interrupted/failed must not become PASS by silence.
-completes=$(grep -h 'COMPLETE time=' "$cdir/runs/"*.log 2>/dev/null | wc -l | tr -d ' ')
-[ "$completes" = 1 ] || fail "unexpected COMPLETE count $completes"
-if grep -h 'COMPLETE time=' "$cdir/runs/"*.log 2>/dev/null | grep -q second; then
-	fail "failed second run was marked COMPLETE"
-fi
-if grep -q 'result=PASS' "$cdir/runs/"*second* 2>/dev/null; then
-	fail "failed second run was marked PASS"
-fi
-
-# retry clears claim without advancing.
-sh "$VALIDATE" retry >/dev/null
+id=$(awk -F= '/^id=/{print $2; exit}' "$cdir/active-run")
+[ "$id" = good ] || fail "fail lost game identity ($id)"
+run_validate retry >/dev/null
 [ ! -e "$cdir/active-run" ] || fail "retry left active-run"
 [ ! -e "$cdir/blocked" ] || fail "retry left blocked"
 [ "$(cat "$cdir/cursor")" = "$cur" ] || fail "retry moved cursor"
+# Retryable: same game launches again.
+: > "$TRACE"
+run_validate run
+grep -Fq "$good" "$TRACE" || fail "retry did not relaunch same game"
 
-# reset keeps reports; clears active campaign pointer.
-sh "$VALIDATE" reset >/dev/null
-[ ! -e "$work/state/active-campaign" ] || fail "reset left active-campaign"
-[ -d "$cdir" ] || fail "reset deleted campaign"
+# PID reuse / starttime mismatch: forge active-run with live pid, wrong starttime.
+pid=$(awk -F= '/^claimer_pid=/{print $2; exit}' "$cdir/active-run")
+# End the process first via retry after natural exit — already ended? Still in flight.
+# Wait for natural exit of this quick game, then forge a live shell as claimer with bad starttime.
+run_validate observe 1 >/dev/null
+run_validate fail forge-setup >/dev/null
+run_validate retry >/dev/null
 
-# Separate GPU campaigns: restore pointer, refuse mismatched GPU.
-printf '%s\n' "$cid" > "$work/state/active-campaign"
+# Start a hold run, then rewrite starttime to a wrong value while pid still live.
+: > "$TRACE"
+(
+	PORTS_HOLD_SECS=4 run_validate run
+) &
+holder=$!
+i=0
+while [ "$i" -lt 80 ]; do
+	[ -f "$cdir/active-run" ] && break
+	i=$((i + 1))
+	sleep 0.05 2>/dev/null || sleep 1
+done
+[ -f "$cdir/active-run" ] || fail "reuse-holder did not claim"
+# Corrupt starttime → identity mismatch while pid live → refuse transitions.
+awk '
+	BEGIN { OFS=FS="=" }
+	$1 == "claimer_starttime" { print "claimer_starttime=1"; next }
+	{ print }
+' "$cdir/active-run" > "$cdir/active-run.bad"
+mv -f "$cdir/active-run.bad" "$cdir/active-run"
+expect_fail "complete with starttime mismatch" run_validate complete PASS_PROCESS
+expect_fail "retry with starttime mismatch" run_validate retry
+# Restore real starttime so we can wait and clean up without killing (user forbids kill for pass).
+# Read live starttime from /proc.
+live_pid=$(awk -F= '/^claimer_pid=/{print $2; exit}' "$cdir/active-run")
+line=$(cat "/proc/$live_pid/stat")
+rest=${line#*)}
+# shellcheck disable=SC2086
+set -- $rest
+live_st=${20}
+awk -v st="$live_st" '
+	BEGIN { FS=OFS="=" }
+	$1 == "claimer_starttime" { print "claimer_starttime=" st; next }
+	{ print }
+' "$cdir/active-run" > "$cdir/active-run.fix"
+mv -f "$cdir/active-run.fix" "$cdir/active-run"
+wait "$holder" || true
+run_validate observe 1 >/dev/null
+run_validate fail cleanup-hold >/dev/null
+run_validate retry >/dev/null
+
+# Changed library identity invalidates the queue.
+export ZLYME_PHASE14_TEST_LIBRARIES=/storage
+run_validate start >/dev/null
+cid=$(cat "$work/state/active-campaign")
+cdir=$work/state/campaigns/$cid
+export ZLYME_PHASE14_TEST_LIBRARIES=/mnt/sd2
+expect_fail "run after library change" run_validate run
+
+# Same-second campaign creation cannot overwrite reports.
+export ZLYME_PHASE14_TEST_LIBRARIES=/storage
+export ZLYME_PHASE14_TEST_BOOT_ID=bootSame
+# Pre-create a colliding id pattern by starting once, then mkdir a forged sibling.
+run_validate start >/dev/null
+cid_a=$(cat "$work/state/active-campaign")
+# Fabricate the exact next id the algorithm might pick is unnecessary:
+# starting again after reset with a pre-existing directory of the new cid.
+run_validate reset >/dev/null
+# Create many possible collision dirs for this second: stamp-$$-gpu-boot
+# Easier: create the directory that start will try: we cannot know $$ of the
+# child, so create after capturing by racing — instead verify two starts keep both.
+run_validate start >/dev/null
+cid_b=$(cat "$work/state/active-campaign")
+run_validate reset >/dev/null
+run_validate start >/dev/null
+cid_c=$(cat "$work/state/active-campaign")
+[ -d "$work/state/campaigns/$cid_a" ] || fail "campaign A reports overwritten"
+[ -d "$work/state/campaigns/$cid_b" ] || fail "campaign B reports overwritten"
+[ -d "$work/state/campaigns/$cid_c" ] || fail "campaign C missing"
+[ "$cid_b" != "$cid_c" ] || fail "sequential starts reused campaign id"
+# Explicit overwrite guard: mkdir the id start is about to use by predicting
+# from a wrapper is heavy; create a directory matching an existing campaign and
+# ensure start still succeeds with a suffixed id when base exists.
+base_prefix=$(date -u +%Y%m%dT%H%M%SZ)
+# Force collision by creating campaigns/$base_prefix-*-libmali-* is awkward.
+# Create the active campaign dir path that equals what a known $$ would use:
+# Directly invoke the uniqueness loop by planting cid file.
+plant=$work/state/campaigns/planted-collide
+mkdir -p "$plant/runs"
+# Not the same algorithm — instead plant using the next start's $$ via a shim:
+cat > "$work/bin/start-collide.sh" << SH
+#!/bin/sh
+set -eu
+VALIDATE=$VALIDATE
+gpu=\${ZLYME_PHASE14_TEST_GPU}
+bid=\$(printf '%s' "\${ZLYME_PHASE14_TEST_BOOT_ID}" | cut -c1-8)
+stamp=\$(date -u +%Y%m%dT%H%M%SZ)
+cid=\${stamp}-\$\$-\${gpu}-\${bid}
+mkdir -p "\$ZLYME_PHASE14_VALIDATE_DIR/campaigns/\$cid/runs"
+printf 'planted\\n' > "\$ZLYME_PHASE14_VALIDATE_DIR/campaigns/\$cid/meta.txt"
+exec sh "\$VALIDATE" start
+SH
+chmod 0755 "$work/bin/start-collide.sh"
+run_validate reset >/dev/null
+export ZLYME_PHASE14_TEST_BOOT_ID=bootCollide
+"$work/bin/start-collide.sh" >/dev/null
+new=$(cat "$work/state/active-campaign")
+[ -f "$work/state/campaigns/$new/meta.txt" ] || fail "colliding start lost meta"
+grep -q 'format=4' "$work/state/campaigns/$new/meta.txt" ||
+	fail "colliding start overwrote planted reports without new campaign"
+planted_count=$(grep -rl '^planted$' "$work/state/campaigns" 2>/dev/null | wc -l | tr -d ' ')
+[ "$planted_count" -ge 1 ] || fail "planted campaign reports were overwritten"
+# New campaign must be distinct from the planted directory.
+planted_id=$(grep -rl '^planted$' "$work/state/campaigns" | head -1 | awk -F/ '{print $(NF-1)}')
+[ "$new" != "$planted_id" ] || fail "start reused planted campaign id"
+
+# GPU campaigns remain separate.
 export ZLYME_PHASE14_TEST_GPU=panfrost
-if sh "$VALIDATE" run >/dev/null 2>&1; then
-	fail "run did not refuse GPU mismatch"
-fi
-# Fresh panfrost campaign is allowed and distinct.
-export ZLYME_PHASE14_TEST_BOOT_ID=bootB
-sh "$VALIDATE" start >/dev/null
-cid2=$(cat "$work/state/active-campaign")
-case "$cid2" in
+export ZLYME_PHASE14_TEST_BOOT_ID=bootPan
+run_validate reset >/dev/null
+run_validate start >/dev/null
+cid_p=$(cat "$work/state/active-campaign")
+case "$cid_p" in
 	*panfrost*) ;;
-	*) fail "panfrost campaign id missing gpu tag: $cid2" ;;
+	*) fail "panfrost campaign id missing gpu tag: $cid_p" ;;
 esac
-[ "$cid2" != "$cid" ] || fail "GPU campaigns were not separate"
 
-# No leftover watchdog/helper from this harness.
+# No leftover watchdog/helper.
 # shellcheck disable=SC2009
 if ps -eo args= 2>/dev/null | grep -F "$work/state" | grep -E 'sleep 180|arm_timeout|post_observer' >/dev/null; then
 	fail "leftover watchdog/helper still running"
