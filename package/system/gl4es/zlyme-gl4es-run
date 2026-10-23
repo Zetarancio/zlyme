@@ -34,9 +34,10 @@ done
 IFS=$old_ifs
 LD_LIBRARY_PATH=${port_paths:+$port_paths:}$gl4es${system_paths:+:$system_paths}
 export LD_LIBRARY_PATH
-# LIBGL_FB=3 lets GL4ES use the SDL window. FB=4 opens GBM on the
-# card during libGL load and races SDL2's KMSDRM master probe, which
-# surfaces as "kmsdrm not available" before any triangle is drawn.
+# Pinned GL4ES USAGE: LIBGL_FB=3 is PBuffer mode (usepbuffer=1).
+# LIBGL_FB=4 enables GBM scanout (usegbm=1) and races SDL2 KMSDRM's
+# DRM-master probe ("kmsdrm not available"). Prefer PBuffer so GL4ES
+# does not open the card for scanout while SDL owns KMSDRM.
 : "${LIBGL_ES:=2}"
 : "${LIBGL_GL:=21}"
 : "${LIBGL_FB:=3}"

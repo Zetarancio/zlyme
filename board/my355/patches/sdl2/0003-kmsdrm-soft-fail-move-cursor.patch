@@ -1,29 +1,56 @@
 From: Zlyme <zlyme@local>
-Subject: [PATCH] kmsdrm: soft-fail drmModeMoveCursor when unsupported
+Subject: [PATCH] kmsdrm: disable HW cursor when MoveCursor is unsupported
 
 On RK3566 drmModeMoveCursor can fail after a cursor BO exists.
-AGS treats that SDL error as fatal graphics init. Keep software
-mouse state and do not abort the video path.
+AGS treats that SDL error as fatal. Disable the HW cursor path
+instead of reporting success with a frozen cursor plane.
 
 ---
 --- a/src/video/kmsdrm/SDL_kmsdrmmouse.c
 +++ b/src/video/kmsdrm/SDL_kmsdrmmouse.c
-@@ -381,7 +381,13 @@
+@@ -361,6 +361,25 @@
+     KMSDRM_WarpMouseGlobal(x, y);
+ }
+ 
++
++static void KMSDRM_DisableHWCursor(SDL_DisplayData *dispdata)
++{
++    SDL_VideoDevice *dev = SDL_GetVideoDevice();
++    SDL_VideoData *viddata = dev ? (SDL_VideoData *)dev->driverdata : NULL;
++
++    if (!dispdata) {
++        return;
++    }
++    if (viddata && dispdata->crtc) {
++        (void)KMSDRM_drmModeSetCursor(viddata->drm_fd, dispdata->crtc->crtc_id, 0, 0, 0);
++    }
++    if (dispdata->cursor_bo) {
++        KMSDRM_gbm_bo_destroy(dispdata->cursor_bo);
++        dispdata->cursor_bo = NULL;
++        dispdata->cursor_bo_drm_fd = -1;
++    }
++}
++
+ /* Warp the mouse to (x,y) */
+ static int KMSDRM_WarpMouseGlobal(int x, int y)
+ {
+@@ -381,7 +400,14 @@
              ret = KMSDRM_drmModeMoveCursor(dispdata->cursor_bo_drm_fd, dispdata->crtc->crtc_id, x, y);
  
              if (ret) {
 -                SDL_SetError("drmModeMoveCursor() failed.");
-+                /* Unsupported HW cursor move: keep software mouse state. */
 +                static SDL_bool warned = SDL_FALSE;
 +                if (!warned) {
 +                    warned = SDL_TRUE;
-+                    SDL_Log("KMSDRM: drmModeMoveCursor unsupported (%d); continuing without HW cursor move", ret);
++                    SDL_Log("KMSDRM: drmModeMoveCursor failed (%d); disabling HW cursor", ret);
 +                }
++                KMSDRM_DisableHWCursor(dispdata);
++                SDL_ClearError();
 +                return 0;
              }
  
              return ret;
-@@ -441,7 +447,11 @@
+@@ -441,7 +467,13 @@
          ret = KMSDRM_drmModeMoveCursor(dispdata->cursor_bo_drm_fd, dispdata->crtc->crtc_id, mouse->x, mouse->y);
  
          if (ret) {
@@ -31,8 +58,10 @@ mouse state and do not abort the video path.
 +            static SDL_bool warned = SDL_FALSE;
 +            if (!warned) {
 +                warned = SDL_TRUE;
-+                SDL_Log("KMSDRM: drmModeMoveCursor unsupported (%d); continuing without HW cursor move", ret);
++                SDL_Log("KMSDRM: drmModeMoveCursor failed (%d); disabling HW cursor", ret);
 +            }
++            KMSDRM_DisableHWCursor(dispdata);
++            SDL_ClearError();
          }
      }
  }

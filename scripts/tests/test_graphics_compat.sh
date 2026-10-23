@@ -82,14 +82,17 @@ got=$(
 [ "$got" = "/port/first:/port/second:$work/gl4es:/usr/lib:/usr/lib/compat:/storage/.config/zlyme/lib" ] ||
 	fail "GL4ES selector precedence is $got"
 grep -q 'LIBGL_FB:=3' "$RUN" ||
-	fail "AArch64 GL4ES selector does not default to SDL framebuffer mode"
+	fail "AArch64 GL4ES selector does not default to PBuffer mode"
+grep -q 'PBuffer' "$RUN" ||
+	fail "AArch64 GL4ES selector comment does not name PBuffer mode"
 grep -q 'SDL_VIDEODRIVER:=kmsdrm' "$RUN" ||
 	fail "AArch64 GL4ES selector does not prefer KMSDRM"
 grep -q 'GL4ES_VIDEO_DRIVER' "$PROBES/gl4es-probe.c" ||
 	fail "GL4ES probe does not report the active video driver"
 [ -f "$ROOT/board/my355/patches/sdl2/0003-kmsdrm-soft-fail-move-cursor.patch" ] ||
 	fail "SDL2 KMSDRM cursor soft-fail patch is missing"
-grep -q 'continuing without HW cursor move' 	"$ROOT/board/my355/patches/sdl2/0003-kmsdrm-soft-fail-move-cursor.patch" ||
-	fail "SDL2 cursor patch does not soft-fail MoveCursor"
+grep -q 'disabling HW cursor' \
+	"$ROOT/board/my355/patches/sdl2/0003-kmsdrm-soft-fail-move-cursor.patch" ||
+	fail "SDL2 cursor patch does not disable HW cursor on MoveCursor failure"
 
 echo "graphics compatibility ok"
