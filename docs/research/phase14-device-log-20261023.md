@@ -199,3 +199,17 @@ mounted Mono bind. Runtime bytes exist; mount/PATH for that launch
 failed. Re-test after the oga_events/systemctl and mount fixes; do not
 install a global Mono package.
 
+## Candidate OTA (UNINSTALLED)
+
+Built from `0a3cce950da4` on branch `zlyme44.4-phase-14`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `zlyme-my355-20261023-0a3cce950da4.tar` | `1690a9ddddbe81bda0d2e0fde22e1d7e7cdb04f427f57438672289393266aeb9` |
+| squashfs `zlyme` inside tar | `9d8e3f6f62e5ab86a435383675f428d558bb12cb5e350fd7cfb3a7b3f53847ae` |
+
+Host-verified in `output/target` before pack: `LIBGL_FB:=3`, systemctl CR/.service
+translation, SDL soft-fail string, Phase 14 validate helpers, NextUI pin
+`b0960dcde4d69d32871d6605c354b1b901621eb5`. Leave uninstalled until
+maintainer hardware gates below pass.
+
