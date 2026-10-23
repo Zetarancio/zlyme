@@ -41,7 +41,7 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '666ff5fdf737a01f83505b843916ac9c46da80d6' \
+need "$ROOT/package/system/nextui/nextui.mk" 'b0960dcde4d69d32871d6605c354b1b901621eb5' \
 	"NextUI pin separates a radio link from the playing sink"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio" '@DEFAULT_AUDIO_SINK@' \
 	"route reads the PipeWire default"
@@ -95,7 +95,7 @@ row "BT latency on 1178d5" n/a n/a FAIL n/a
 row "BT cold-boot route on 1178d5" n/a n/a FAIL n/a
 row "BT headset icon on 1178d5" n/a n/a FAIL n/a
 row "HDMI audibility on 1178d5" n/a n/a FAIL FAIL
-row "HDMI 720p picture and panel restore" n/a n/a PENDING n/a
+row "HDMI 720p picture and panel restore" n/a n/a PASS n/a
 row "Abombniball MENU+START" n/a n/a FAIL n/a
 if awk '
 	/^row "BT audibility on 6ea59c"/ && /PASS/ { bad = 1 }
@@ -120,9 +120,10 @@ if awk '
 	echo "phase14 accept: a 6ea59c listen was marked PASS" >&2
 	fail=1
 fi
-row "Bluetooth disconnect falls back" n/a n/a PENDING n/a
-row "Wi-Fi off and on" n/a n/a NOTRUN n/a
-row "charger suppression of 0% shutdown" n/a n/a NOTRUN n/a
+row "Bluetooth disconnect falls back" n/a n/a PASS PASS
+row "Wi-Fi off and on" n/a n/a PASS n/a
+row "volume and mute on 0b35a90" n/a n/a PASS PASS
+row "charger suppression of 0% shutdown" n/a n/a PASS n/a
 
 sh "$ROOT/scripts/tests/test_armhf_capability.sh"
 sh "$ROOT/scripts/tests/test_pulse_buffer.sh"

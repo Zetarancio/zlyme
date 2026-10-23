@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-23 — NextUI list width is in the branch pin
+
+NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5` sizes the selection pill and the scrolling text from one row width. The first row stops at the hardware cluster. Art Book stops at x=320 and does not also subtract that cluster. Game art width percent multiplies before the cast. The settings file writer is unchanged. This is not installed and has not been seen on a Flip. Installed NextUI stays `666ff5fdf737a01f83505b843916ac9c46da80d6` on `0b35a90`. Phase 14 stays open.
+
 ## 2026-10-23 — Installed 0b35a90: volume, Wi-Fi, and NextUI HDMI 720p accepted
 
 On the same installed image, `zlyme-my355-20261022-0b35a90e9388.tar`, the maintainer accepts volume and mute, including sound returning after mute, Wi-Fi off and on with the enabled services returning, NextUI at HDMI 720p, and the internal panel coming back. RetroArch's own KMS path was not given a separate CRTC observation. That limit does not reopen the NextUI result. The earlier HDMI-audio acceptance on this image stays. `74597688` and `be5d8c0` keep their HDMI-unplug failures. An unbounded `pidof` loop after `SIGTERM`, documented for the gated session, did not finish and had to be interrupted. `nextui.elf` catches `SIGTERM` and does not leave. The session shell waits on that child and starts it again while `/tmp/nextui_exec` exists. A later read-only look, about five minutes after boot, showed one session: shell pid 367 in `do_wait`, child `nextui.elf` pid 545 running, both in process group 131, parent init, neither a zombie. Those were the boot session, not leftovers from the loop. The procedure no longer polls. Abombniball MENU+START, PortMaster hardware, and 14O stay open. Phase 14 stays open. No new image was built for this record.
