@@ -134,6 +134,8 @@ sh "$ROOT/package/system/nextui/zlyme/hotkey_logic_test.sh"
 sh "$ROOT/package/system/nextui/zlyme/app_pad_abi_test.sh"
 sh "$ROOT/scripts/tests/test_box86_package.sh"
 sh "$ROOT/scripts/tests/test_graphics_compat.sh"
+sh "$ROOT/scripts/tests/test_phase14_validate.sh"
+sh "$ROOT/scripts/tests/test_portmaster_mounts.sh"
 
 [ "$fail" -eq 0 ]
 echo "phase14 accept host ok"

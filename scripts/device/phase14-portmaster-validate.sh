@@ -2,17 +2,20 @@
 # SPDX-License-Identifier: MIT
 # Opt-in Phase 14 PortMaster validation.
 #
-# The Tools PAK only selects the next ROM and execs the canonical
+# The Tools PAK claims one queue entry and execs the canonical
 # PORTS.pak/launch.sh. nextui-session classifies that Tools path as a
-# PortMaster launch (launch_is_ports) so the real cleanup runs. This
-# script does not duplicate port bind/prepare/drm-release.
+# PortMaster launch (launch_is_ports) so real cleanup runs.
+#
+# No in-session timeout watchdog and no in-session post-observer.
+# Exit is MENU+START or the game's own exit. Post-session evidence is
+# gathered from SSH with: phase14-portmaster-validate observe
+# Cursor advances only via complete (or fail after unresolved cleanup).
 set -eu
 
 root_state=${ZLYME_PHASE14_VALIDATE_DIR:-/storage/.config/zlyme/phase14-validate}
 inventory_bin=${ZLYME_PHASE14_INVENTORY:-/usr/libexec/zlyme-tests/phase14-portmaster-inventory}
 observer_bin=${ZLYME_PHASE14_OBSERVER:-/usr/libexec/zlyme-tests/phase14-port-observer}
 ports_launch=${ZLYME_PORTS_LAUNCH:-/usr/share/nextui/paks/Emus/PORTS.pak/launch.sh}
-max_secs=${ZLYME_PHASE14_PORT_TIMEOUT:-180}
 suite_budget=${ZLYME_PHASE14_SUITE_BUDGET:-3600}
 
 die() {
@@ -25,7 +28,6 @@ stamp() {
 }
 
 atomic_write() {
-	# $1 dest, stdin content
 	dest=$1
 	tmp=$dest.tmp.$$
 	cat > "$tmp"
@@ -89,6 +91,20 @@ campaign_dir() {
 	printf '%s\n' "$root_state/campaigns/$id"
 }
 
+pid_alive() {
+	pid=$1
+	case "$pid" in
+		''|*[!0-9]*|0|1) return 1 ;;
+	esac
+	[ -d "/proc/$pid" ] || return 1
+	# Zombies are not live owners.
+	state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null || echo Z)
+	[ "$state" != Z ]
+}
+
+# Lock is held for the whole in-flight run. A dead lock owner with no
+# active-run may be reclaimed. An active-run without a live claimer is
+# left for complete/fail/retry — never silently advanced.
 acquire_lock() {
 	cdir=$1
 	lock=$cdir/lock
@@ -96,7 +112,19 @@ acquire_lock() {
 		printf '%s\n' "$$" > "$lock/pid"
 		return 0
 	fi
-	die "campaign lock held (another validation runner owns this queue)"
+	old=
+	[ -f "$lock/pid" ] && old=$(tr -d '\r\n' < "$lock/pid")
+	if [ -n "$old" ] && pid_alive "$old"; then
+		die "campaign lock held by pid $old"
+	fi
+	# Stale lock directory.
+	if [ -f "$cdir/active-run" ]; then
+		die "stale lock but active-run present; run observe/complete/fail/retry"
+	fi
+	rm -f "$lock/pid"
+	rmdir "$lock" 2>/dev/null || die "could not reclaim stale lock"
+	mkdir "$lock" || die "could not acquire lock after reclaim"
+	printf '%s\n' "$$" > "$lock/pid"
 }
 
 release_lock() {
@@ -123,8 +151,9 @@ cmd_start() {
 		printf 'squashfs_sha256=%s\n' "$sq"
 		printf 'boot_id=%s\n' "$bid"
 		printf 'libraries=%s\n' "$lib"
-		printf 'timeout_secs=%s\n' "$max_secs"
 		printf 'suite_budget_secs=%s\n' "$suite_budget"
+		printf 'exit_policy=MENU+START_or_game_exit\n'
+		printf 'observe=phase14-portmaster-validate observe\n'
 	} | atomic_write "$cdir/meta.txt"
 	[ -x "$inventory_bin" ] || die "inventory helper missing"
 	"$inventory_bin" "$cdir"
@@ -133,10 +162,10 @@ cmd_start() {
 	date +%s | atomic_write "$cdir/suite-started"
 	printf '%s\n' "$cid" | atomic_write "$root_state/active-campaign"
 	echo "phase14-validate started campaign $cid (gpu=$gpu)"
+	echo "phase14-validate: no automated kill timer; use MENU+START and SSH observe"
 }
 
 cmd_reset() {
-	# Drop active pointer and suite budget. Keep campaign reports.
 	rm -f "$root_state/active-campaign"
 	echo "phase14-validate reset: no active campaign (prior reports retained under $root_state/campaigns)"
 }
@@ -148,12 +177,19 @@ cmd_status() {
 		[ -f "$cdir/meta.txt" ] && cat "$cdir/meta.txt"
 		[ -f "$cdir/cursor" ] && echo "cursor=$(cat "$cdir/cursor")"
 		[ -f "$cdir/blocked" ] && echo "blocked=$(cat "$cdir/blocked")"
+		if [ -f "$cdir/active-run" ]; then
+			echo "active_run=yes"
+			cat "$cdir/active-run"
+		else
+			echo "active_run=no"
+		fi
 	else
 		echo "active="
 	fi
 }
 
-next_eligible() {
+# Peek the next ELIGIBLE row at or after cursor without advancing.
+peek_eligible() {
 	cdir=$1
 	queue=$cdir/queue.txt
 	cursor=$cdir/cursor
@@ -168,89 +204,21 @@ next_eligible() {
 			n=$((n + 1))
 			continue
 		fi
-		# Advance past this row whether eligible or not.
 		n=$((n + 1))
-		printf '%s\n' "$n" | atomic_write "$cursor"
 		if [ "$ready" != ELIGIBLE ]; then
 			printf 'SKIP ready=%s id=%s script=%s\n' "$ready" "$id" "$script" >&2
 			printf '%s\t%s\t%s\t%s\n' "$(stamp)" "$ready" "$id" "$script" >> "$cdir/skipped.log"
+			# Skip non-eligible immediately; that is not a launched test.
+			printf '%s\n' "$n" | atomic_write "$cursor"
+			idx=$n
 			continue
 		fi
 		[ -f "$script" ] || die "queue script missing: $script"
-		printf '%s\t%s\n' "$id" "$script"
+		# Emit: queue_index(after claim) id script
+		printf '%s\t%s\t%s\n' "$n" "$id" "$script"
 		return 0
 	done < "$queue"
 	return 1
-}
-
-arm_timeout_waiter() {
-	# Signal the pak-spawn waiter (session leader's PPID), not a
-	# historical game PID. The waiter owns stop_session_bounded.
-	waiter_pid=$1
-	run_log=$2
-	(
-		sleep "$max_secs"
-		{
-			echo "TIMEOUT time=$(stamp) waiter=$waiter_pid"
-			if [ -r "/proc/$waiter_pid/stat" ]; then
-				printf 'TIMEOUT_WAITER_STAT '
-				cat "/proc/$waiter_pid/stat"
-			else
-				echo "TIMEOUT_WAITER gone"
-			fi
-		} >> "$run_log"
-		kill -TERM "$waiter_pid" 2>/dev/null || true
-	) &
-	printf '%s\n' "$!"
-}
-
-start_post_observer() {
-	run_log=$1
-	leader_pid=$2
-	(
-		# Survive the Tools shell's exec into PORTS.pak.
-		i=0
-		while [ "$i" -lt 600 ]; do
-			if [ ! -d "/proc/$leader_pid" ]; then
-				break
-			fi
-			# Leader may be zombie briefly.
-			state=$(awk '{print $3}' "/proc/$leader_pid/stat" 2>/dev/null || echo X)
-			if [ "$state" = Z ]; then
-				break
-			fi
-			sleep 1
-			i=$((i + 1))
-		done
-		# Bound: allow cleanup + frontend restore.
-		sleep 2
-		{
-			echo "POST_OBSERVE time=$(stamp) after_leader=$leader_pid"
-			if pidof nextui.elf >/dev/null 2>&1; then
-				echo "NEXTUI_RESTORED process=yes"
-			else
-				echo "NEXTUI_RESTORED process=no"
-			fi
-			if [ -r /sys/kernel/debug/dri/0/clients ]; then
-				awk '{ print "DRM_CLIENT " $0 }' /sys/kernel/debug/dri/0/clients
-			else
-				echo "DRM_CLIENTS unavailable"
-			fi
-			if [ -r /run/zlyme-portmaster/owned-mounts ] &&
-				[ -s /run/zlyme-portmaster/owned-mounts ]; then
-				echo "OWNED_MOUNTS_REMAIN begin"
-				cat /run/zlyme-portmaster/owned-mounts
-				echo "OWNED_MOUNTS_REMAIN end"
-			else
-				echo "OWNED_MOUNTS_REMAIN none"
-			fi
-			echo "NOTE visible frontend requires physical observation"
-		} >> "$run_log"
-		if [ -x "$observer_bin" ]; then
-			"$observer_bin" 15 2 >> "${run_log%.log}.post-observer.log" 2>&1 || true
-		fi
-	) &
-	printf '%s\n' "$!"
 }
 
 find_ports_launch() {
@@ -271,13 +239,8 @@ find_ports_launch() {
 	return 1
 }
 
-# Called as the Tools PAK body: select one ROM, arm helpers, exec PORTS.pak.
-cmd_run() {
-	cdir=$(campaign_dir)
-	[ -f "$cdir/meta.txt" ] || die "campaign meta missing"
-	[ -f "$cdir/blocked" ] && die "campaign blocked: $(cat "$cdir/blocked")"
-
-	# Reject stale queue paths from another boot/library/gpu.
+verify_campaign_identity() {
+	cdir=$1
 	meta_gpu=$(awk -F= '/^gpu=/{print $2; exit}' "$cdir/meta.txt")
 	meta_boot=$(awk -F= '/^boot_id=/{print $2; exit}' "$cdir/meta.txt")
 	meta_sq=$(awk -F= '/^squashfs_sha256=/{print $2; exit}' "$cdir/meta.txt")
@@ -287,98 +250,201 @@ cmd_run() {
 	[ "$meta_gpu" = "$cur_gpu" ] || die "campaign gpu $meta_gpu != current $cur_gpu; start a new campaign"
 	[ "$meta_boot" = "$cur_boot" ] || die "campaign boot_id changed; start a new campaign"
 	[ "$meta_sq" = "$cur_sq" ] || die "campaign squashfs changed; start a new campaign"
-
 	now=$(date +%s)
 	suite_start=$(tr -d '\r\n' < "$cdir/suite-started")
 	if [ $((now - suite_start)) -ge "$suite_budget" ]; then
 		die "suite budget ${suite_budget}s exhausted; reset and start"
 	fi
+}
+
+# Claim one game into active-run. Cursor advances only on complete/fail.
+cmd_run() {
+	cdir=$(campaign_dir)
+	[ -f "$cdir/meta.txt" ] || die "campaign meta missing"
+	[ -f "$cdir/blocked" ] && die "campaign blocked: $(cat "$cdir/blocked")"
+	verify_campaign_identity "$cdir"
+
+	if [ -f "$cdir/active-run" ]; then
+		die "active-run already set; observe/complete/fail/retry before another launch"
+	fi
 
 	acquire_lock "$cdir"
-	# shellcheck disable=SC2064
-	trap "release_lock \"$cdir\"" EXIT
+	# Lock stays until complete/fail/retry. Survives exec as a directory.
+	# Do not trap-release on EXIT: exec replaces us; SSH complete clears it.
 
-	pair=$(next_eligible "$cdir") || die "no further ELIGIBLE ports in queue"
-	id=${pair%%	*}
-	script=${pair#*	}
+	row=$(peek_eligible "$cdir") || {
+		release_lock "$cdir"
+		die "no further ELIGIBLE ports in queue"
+	}
+	next_idx=${row%%	*}
+	rest=${row#*	}
+	id=${rest%%	*}
+	script=${rest#*	}
+	meta_gpu=$(awk -F= '/^gpu=/{print $2; exit}' "$cdir/meta.txt")
 	run_stamp=$(date -u +%Y%m%dT%H%M%SZ)
 	run_log=$cdir/runs/${id}-${meta_gpu}-${run_stamp}.log
-
-	ports=$(find_ports_launch) || die "PORTS.pak/launch.sh not found"
-
-	waiter_pid=$PPID
-	leader_pid=$$
+	ports=$(find_ports_launch) || {
+		release_lock "$cdir"
+		die "PORTS.pak/launch.sh not found"
+	}
 
 	{
-		echo "PHASE14_VALIDATE format=2"
+		printf 'status=in_flight\n'
+		printf 'claimed=%s\n' "$(stamp)"
+		printf 'queue_next_index=%s\n' "$next_idx"
+		printf 'id=%s\n' "$id"
+		printf 'script=%s\n' "$script"
+		printf 'run_log=%s\n' "$run_log"
+		printf 'ports_launch=%s\n' "$ports"
+		printf 'claimer_pid=%s\n' "$$"
+		printf 'gpu=%s\n' "$meta_gpu"
+		printf 'campaign=%s\n' "$(active_campaign)"
+	} | atomic_write "$cdir/active-run"
+
+	{
+		echo "PHASE14_VALIDATE format=3"
 		echo "START time=$(stamp) campaign=$(active_campaign) id=$id gpu=$meta_gpu"
 		echo "SCRIPT $script"
 		echo "PORTS_LAUNCH $ports"
-		echo "LEADER pid=$leader_pid"
-		echo "WAITER pid=$waiter_pid"
-		echo "TIMEOUT_SECS $max_secs"
-		echo "NOTE game exit/render/input/MENU+START are independent results"
+		echo "CLAIMER pid=$$"
+		echo "NOTE no automated timeout; use MENU+START or natural exit"
+		echo "NOTE cursor advances only via complete/fail after observe"
+		echo "NOTE post-session evidence: phase14-portmaster-validate observe"
 	} | atomic_write "$run_log"
 
-	# Live DRM owner check before launching.
 	if [ -r /sys/kernel/debug/dri/0/clients ]; then
 		others=$(awk 'NR>1 && $2 ~ /^[0-9]+$/ {print $2}' /sys/kernel/debug/dri/0/clients | tr '\n' ' ')
-		# nextui.elf should have released; warn if foreign masters linger.
 		for p in $others; do
-			[ "$p" = "$leader_pid" ] && continue
+			[ "$p" = "$$" ] && continue
 			cmd=$(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null || true)
 			case "$cmd" in
 				*nextui.elf* | '') ;;
 				*)
 					echo "DRM_PRECHECK foreign_pid=$p cmd=$cmd" >> "$run_log"
-					printf 'unresolved DRM client pid %s before launch\n' "$p" > "$cdir/blocked"
+					printf 'unresolved DRM client pid %s before launch\n' "$p" | atomic_write "$cdir/blocked"
+					# Keep active-run for retry; release lock so fail/retry can run.
+					release_lock "$cdir"
 					die "foreign DRM client $p still active; campaign blocked"
 					;;
 			esac
 		done
 	fi
 
-	timer_pid=$(arm_timeout_waiter "$waiter_pid" "$run_log")
-	post_pid=$(start_post_observer "$run_log" "$leader_pid")
-	echo "TIMER_PID $timer_pid" >> "$run_log"
-	echo "POST_OBSERVER_PID $post_pid" >> "$run_log"
-
-	# Release lock before exec so a later Tools launch can proceed after
-	# this session ends. The blocked flag still stops the campaign.
-	release_lock "$cdir"
-	trap - EXIT
-
-	echo "phase14-validate exec PORTS.pak for $id" >&2
+	echo "phase14-validate exec PORTS.pak for $id (lock held; complete after observe)" >&2
+	# No command substitutions that start background jobs. Exec promptly.
 	exec "$ports" "$script"
 }
 
-cmd_retry() {
-	# Rewind cursor by one and clear blocked, for a failed game retry.
+append_observe() {
+	run_log=$1
+	{
+		echo "OBSERVE time=$(stamp)"
+		if pidof nextui.elf >/dev/null 2>&1; then
+			echo "NEXTUI_RESTORED process=yes"
+		else
+			echo "NEXTUI_RESTORED process=no"
+		fi
+		if [ -r /sys/kernel/debug/dri/0/clients ]; then
+			awk '{ print "DRM_CLIENT " $0 }' /sys/kernel/debug/dri/0/clients
+		else
+			echo "DRM_CLIENTS unavailable"
+		fi
+		if [ -r /run/zlyme-portmaster/owned-mounts ] &&
+			[ -s /run/zlyme-portmaster/owned-mounts ]; then
+			echo "OWNED_MOUNTS_REMAIN begin"
+			cat /run/zlyme-portmaster/owned-mounts
+			echo "OWNED_MOUNTS_REMAIN end"
+		else
+			echo "OWNED_MOUNTS_REMAIN none"
+		fi
+		echo "NOTE visible frontend and audio/input require physical observation"
+	} >> "$run_log"
+}
+
+# SSH-side, after the PAK session has ended.
+cmd_observe() {
 	cdir=$(campaign_dir)
-	[ -f "$cdir/cursor" ] || die "no cursor"
-	idx=$(tr -d '\r\n' < "$cdir/cursor")
-	case "$idx" in
-		''|*[!0-9]*) die "corrupt cursor" ;;
+	[ -f "$cdir/active-run" ] || die "no active-run to observe"
+	run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
+	[ -n "$run_log" ] || die "active-run missing run_log"
+	append_observe "$run_log"
+	if [ -x "$observer_bin" ]; then
+		duration=${1:-30}
+		"$observer_bin" "$duration" 2 >> "${run_log%.log}.ssh-observer.log" 2>&1 || true
+	fi
+	echo "phase14-validate observe wrote $run_log"
+}
+
+advance_past_active() {
+	cdir=$1
+	next_idx=$(awk -F= '/^queue_next_index=/{print $2; exit}' "$cdir/active-run")
+	case "$next_idx" in
+		''|*[!0-9]*) die "active-run missing queue_next_index" ;;
 	esac
-	if [ "$idx" -gt 0 ]; then
-		printf '%s\n' $((idx - 1)) | atomic_write "$cdir/cursor"
+	printf '%s\n' "$next_idx" | atomic_write "$cdir/cursor"
+}
+
+# Successful or accepted physical result: advance queue, clear in-flight.
+cmd_complete() {
+	cdir=$(campaign_dir)
+	[ -f "$cdir/active-run" ] || die "no active-run to complete"
+	run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
+	result=${1:-PASS_PROCESS}
+	{
+		echo "COMPLETE time=$(stamp) result=$result"
+		echo "NOTE result=$result is not a render/input/MENU+START PASS by itself"
+	} >> "$run_log"
+	advance_past_active "$cdir"
+	mv -f "$cdir/active-run" "$cdir/runs/completed-$(date -u +%Y%m%dT%H%M%SZ).active-run"
+	release_lock "$cdir"
+	rm -f "$cdir/blocked"
+	echo "phase14-validate complete result=$result cursor=$(cat "$cdir/cursor")"
+}
+
+# Unresolved cleanup or blocked: do not advance; keep identity for retry.
+cmd_fail() {
+	cdir=$(campaign_dir)
+	[ -f "$cdir/active-run" ] || die "no active-run to fail"
+	run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
+	reason=${1:-unresolved}
+	{
+		echo "FAIL time=$(stamp) reason=$reason"
+		echo "NOTE cursor not advanced; use retry after fixing"
+	} >> "$run_log"
+	printf '%s\n' "$reason" | atomic_write "$cdir/blocked"
+	# Keep active-run and evidence; release lock so retry can reclaim.
+	release_lock "$cdir"
+	echo "phase14-validate fail: $reason (active-run retained for retry)"
+}
+
+# Clear a failed/in-flight claim without advancing; same game relaunches.
+cmd_retry() {
+	cdir=$(campaign_dir)
+	if [ -f "$cdir/active-run" ]; then
+		run_log=$(awk -F= '/^run_log=/{print $2; exit}' "$cdir/active-run")
+		[ -n "$run_log" ] && echo "RETRY time=$(stamp)" >> "$run_log"
+		mv -f "$cdir/active-run" "$cdir/runs/retried-$(date -u +%Y%m%dT%H%M%SZ).active-run"
 	fi
 	rm -f "$cdir/blocked"
-	echo "phase14-validate retry: cursor=$idx -> $(cat "$cdir/cursor")"
+	release_lock "$cdir"
+	echo "phase14-validate retry: same cursor $(cat "$cdir/cursor"); active-run cleared"
 }
 
 case "${1:-run}" in
 start) cmd_start ;;
 reset) cmd_reset ;;
 status) cmd_status ;;
+run|"") cmd_run ;;
+observe) shift; cmd_observe "${1:-30}" ;;
+complete) shift; cmd_complete "${1:-PASS_PROCESS}" ;;
+fail) shift; cmd_fail "${1:-unresolved}" ;;
 retry) cmd_retry ;;
 inventory)
 	cdir=$(campaign_dir)
 	[ -x "$inventory_bin" ] || die "inventory missing"
 	exec "$inventory_bin" "$cdir"
 	;;
-run|"") cmd_run ;;
 *)
-	die "usage: $0 {start|run|reset|retry|status|inventory}"
+	die "usage: $0 {start|run|observe|complete|fail|retry|reset|status|inventory}"
 	;;
 esac

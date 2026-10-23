@@ -115,15 +115,19 @@ Installed helpers (opt-in Tools PAK via `phase14-probe-paks install`):
 
 - `phase14-portmaster-inventory` — classify every `*.sh` under both
   libraries' `Roms/Ports (PORTS)/`
-- `phase14-portmaster-validate` — one ELIGIBLE port per Tools launch,
-  reusing PORTS.pak prepare/bind/drm-release/script execution
-- `phase14-port-observer` — bounded process/DRM/mount samples
-- Per-run logs under `/storage/.config/zlyme/phase14-validate/runs/`
-  named `$id-$gpu-$stamp.log` (does not rotate `PORTS.log`)
-- Suite budget and per-port timeout; timeout signals only the recorded
-  session leader (not MENU+START, not `killall`)
-- Mali then Panfrost require separate boots; GPU setting is not flipped
-  mid-run
+- `phase14-portmaster-validate` — claims one ELIGIBLE port into
+  `active-run`, holds the campaign lock, and `exec`s canonical
+  `PORTS.pak/launch.sh`. No in-session timer or post-observer.
+  Exit is MENU+START or the game's own exit. SSH
+  `phase14-portmaster-validate observe` records post-session
+  evidence. Cursor advances only via `complete` (or stays put on
+  `fail`/`retry`).
+- `phase14-port-observer` — optional bounded SSH-side samples
+- Per-run logs under the campaign `runs/` directory, named
+  `$id-$gpu-$stamp.log` (does not rotate `PORTS.log`)
+- Suite budget only; no automated kill of a saved numeric PID
+- Mali then Panfrost require separate campaigns/boots; GPU setting
+  is not flipped mid-run
 
 Statuses allowed in the campaign matrix: PASS, FAIL, BLOCKED, NOT RUN,
 EXTERNAL DATA REQUIRED. Process exit is never treated as render/input
@@ -199,39 +203,33 @@ mounted Mono bind. Runtime bytes exist; mount/PATH for that launch
 failed. Re-test after the oga_events/systemctl and mount fixes; do not
 install a global Mono package.
 
-## Candidate OTA (UNINSTALLED) — supersedes `0a3cce9`
+## Candidate OTA history (UNINSTALLED except baseline)
 
-Do **not** install `0a3cce950da4`. Installed baseline remains `3da3f2b`.
+Installed accepted baseline remains `3da3f2bafe05` (squashfs `ad9c430a…`).
 
-Built from `3486b510aa8e` on branch `zlyme44.4-phase-14`.
-
-| Artifact | SHA-256 |
+| Candidate | Status |
 | --- | --- |
-| `zlyme-my355-20261023-3486b510aa8e.tar` | `42bc535f986201b0c6bec5e56d663ab98a0ae544c6fcecb92066261642fa8b3e` |
-| squashfs `zlyme` inside tar | `f0b961a429d4c8e76eed3a9d842b258f0eabd50c5cc63c349281bf56c6b86e24` |
+| `0a3cce950da4` | Do **not** install (superseded). |
+| `3486b510aa8e` | **Blocked.** Tar `42bc535f…`, squashfs `f0b961a4…`. Validator lifecycle defects below. Do **not** install. |
+| Lifecycle-fixed replacement | Built after the host proof in `test_phase14_validate.sh`; hashes recorded when the archive is packed. |
 
-Host-verified in `output/target`: PORTS validation exec path, `launch_is_ports` for the Validation Tools PAK, systemctl arity guards, GL4ES PBuffer comment/`LIBGL_FB:=3`, SDL "disabling HW cursor", NextUI pin `b0960dcde4d69d32871d6605c354b1b901621eb5`.
-
-
-## Validator and runtime correction pass (pre-install)
-
-Do **not** install `0a3cce9`. Installed baseline stays `3da3f2b`.
-
-### Confirmed defects vs false alarms
+## Validator lifecycle fix (blocks `3486b51`)
 
 | Item | Verdict |
 | --- | --- |
-| Tools validator duplicating PORTS setup / skipping `launch_is_ports` cleanup | Confirmed. Fixed: Validation PAK `exec`s canonical `PORTS.pak/launch.sh`; `launch_is_ports` also matches the Validation Tools path. |
-| Timeout SIGTERM to validation shell only | Confirmed incomplete. Fixed: timeout signals the pak-spawn **waiter** (`PPID`), which owns `stop_session_bounded`. |
-| `pidof nextui.elf` inside the Tools PAK | Confirmed false PASS risk. Fixed: post-observer runs after the leader exits and records `NEXTUI_RESTORED` separately. |
-| Persistent queue / suite-started after reset | Confirmed. Fixed: campaign IDs per GPU/boot/squashfs; `reset` clears active campaign and suite budget; reports retained; flock-style lock. |
-| `LIBGL_FB=3` as "SDL framebuffer" | Documentation error. Upstream USAGE: FB=3 is **PBuffer**; FB=4 is **GBM**. Kept FB=3 to avoid GBM DRM race; comment corrected. |
-| SDL MoveCursor soft-success | Too weak. Revised patch disables/destroys the HW cursor BO on first failed move, clears the SDL error, and returns success from warp so AGS can continue without a frozen plane. |
-| systemctl `$1`/`$2` under `set -u` | Confirmed. Arity checked before reading args. |
+| `$(arm_timeout_waiter)` / `$(start_post_observer)` blocking PORTS exec | Confirmed under bash, dash, and BusyBox ash (~2s stall). **Removed** both helpers; `cmd_run` claims then `exec`s PORTS with no background command-sub. |
+| Delayed `kill -TERM` of a saved waiter PID | Confirmed unsafe (PID reuse). **Removed.** Exit is MENU+START / game exit. |
+| Post-observer inside the PAK session | Confirmed: cleaned with the session. **Moved** to SSH `observe` after the session ends. Frontend return does not depend on it. |
+| Lock released before `exec` | Confirmed: a second runner could advance. **Fixed:** lock + `active-run` held for the in-flight claim; cursor advances only on `complete`; `fail`/`retry` keep identity. |
+| Tools validator duplicating PORTS setup | Still fixed: `exec` canonical `PORTS.pak/launch.sh`; `launch_is_ports` matches Validation Tools. |
+| `LIBGL_FB=3` / SDL HW cursor / systemctl arity | Retained as previously corrected. |
 
 ### Maintainer sequence after replacement OTA
 
-1. `phase14-portmaster-validate start` (one campaign per GPU boot).
-2. Tools → Zlyme PortMaster Validation (one game per launch) **or** launch Ports normally with observer.
-3. GL4ES Mali then Panfrost; Winter Travelers cursor; Shards gptk restore; Steel Mono mount; Ascent Panfrost; Mina log; SDL3 pad; Box86; HDMI CRTC.
+1. Install the replacement image only (not `3486b51` / `0a3cce9`).
+2. `phase14-portmaster-validate start` (one campaign per GPU boot).
+3. Tools → Zlyme PortMaster Validation (one game per launch).
+4. Exit with MENU+START or the game exit.
+5. SSH: `phase14-portmaster-validate observe`, then `complete` or `fail` / `retry`.
+6. GL4ES Mali then Panfrost; Winter Travelers cursor; Shards gptk restore; Steel Mono mount; Ascent Panfrost; Mina log; SDL3 pad; Box86; HDMI CRTC.
 
