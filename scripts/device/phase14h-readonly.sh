@@ -9,6 +9,7 @@ say() {
 
 say "-- identity"
 if [ -r /etc/os-release ]; then
+	# shellcheck disable=SC1091
 	. /etc/os-release
 	say "name=${NAME:-} version=${VERSION:-} device=${HW_DEVICE:-}"
 fi
@@ -51,7 +52,12 @@ for dir in /sys/class/drm/card*-*; do
 done
 if [ -r /sys/kernel/debug/dri/0/state ]; then
 	say "-- debugfs"
-	awk '/clock|mode|crtc|connector/ { print }' /sys/kernel/debug/dri/0/state | head -40
+	awk '/clock|mode|crtc|connector/ {
+		print
+		shown++
+		if (shown == 40)
+			exit
+	}' /sys/kernel/debug/dri/0/state
 else
 	say "debugfs dri state not mounted"
 fi
@@ -71,6 +77,50 @@ if [ -d /usr/share/nextui/artbook ]; then
 fi
 say "-- armhf"
 ls -l /lib/ld-linux-armhf.so.3 /usr/lib/zlyme-armhf/libc.so.6 2>&1 || true
+for file in /usr/bin/box86 /usr/bin/box64; do
+	[ -x "$file" ] || continue
+	if command -v readelf >/dev/null 2>&1; then
+		readelf -h "$file" 2>/dev/null |
+			awk -v file="$file" '/Class:|Machine:|Flags:/ { print file ": " $0 }'
+		readelf -l "$file" 2>/dev/null |
+			awk -v file="$file" '/Requesting program interpreter/ { print file ": " $0 }'
+	else
+		class=$(od -An -t u1 -j 4 -N 1 "$file" 2>/dev/null | tr -d ' ')
+		machine=$(od -An -t u2 -j 18 -N 2 "$file" 2>/dev/null | tr -d ' ')
+		printf '%s: elf_class=%s machine=%s\n' "$file" "$class" "$machine"
+	fi
+done
 say "-- libraries"
-ls /usr/lib/libSDL2-2.0.so.0 /usr/lib/libSDL3.so.0 2>&1 || true
+ls /usr/lib/libSDL2-2.0.so.0 /usr/lib/libSDL3.so.0 \
+	/usr/lib/portmaster/gl4es/aarch64/libGL.so.1 \
+	/usr/lib/zlyme-armhf/gl4es/libGL.so.1 2>&1 || true
+say "-- portmaster"
+if [ -x /usr/sbin/zlyme-portmaster-root ]; then
+	root=$(/usr/sbin/zlyme-portmaster-root get 2>/dev/null || true)
+	printf 'selected_root=%s\n' "$root"
+	if [ -n "$root" ]; then
+		pm="$root/Roms/.portmaster"
+		for file in "$pm"/version "$pm"/control.txt "$pm"/device_info.txt; do
+			[ -r "$file" ] || continue
+			printf 'file=%s\n' "$file"
+			case "$file" in
+				*/control.txt | */device_info.txt)
+					grep -E '^(CFW_NAME|DEVICE_ARCH|DEVICE_HAS_ARMHF|PORTMASTER_VERSION)=' \
+						"$file" 2>/dev/null || true
+					;;
+				*) cat "$file" ;;
+			esac
+		done
+		find "$pm/runtimes" "$pm/libs" -maxdepth 2 -type f \
+			2>/dev/null | sort
+	fi
+fi
+say "-- compatibility mounts"
+awk '
+	/ - squashfs / ||
+	$0 ~ /\/var\/port(\/| )/ ||
+	$0 ~ /\/roms(\/| )/ ||
+	$0 ~ /\/PortMaster(\/| )/ ||
+	$0 ~ /\/weston(\/| )/ { print }
+' /proc/self/mountinfo
 say "done"

@@ -1,0 +1,16 @@
+config BR2_PACKAGE_GL4ES
+	bool "gl4es (isolated PortMaster runtime)"
+	depends on BR2_aarch64
+	depends on BR2_PACKAGE_MESA3D_OPENGL_EGL
+	depends on BR2_PACKAGE_MESA3D_OPENGL_ES
+	depends on BR2_PACKAGE_MESA3D_GBM
+	help
+	  OpenGL 2.1 compatibility over GLES 2, installed only under
+	  /usr/lib/portmaster/gl4es/aarch64. Ports must select it
+	  explicitly; it does not replace system GL, EGL, or GLES.
+
+	  https://github.com/ptitSeb/gl4es
+
+comment "gl4es needs AArch64 Mesa EGL, GLES, and GBM"
+	depends on !BR2_aarch64 || !BR2_PACKAGE_MESA3D_OPENGL_EGL || \
+		!BR2_PACKAGE_MESA3D_OPENGL_ES || !BR2_PACKAGE_MESA3D_GBM
