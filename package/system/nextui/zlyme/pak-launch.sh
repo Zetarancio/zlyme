@@ -52,6 +52,12 @@ pak_exit_ok() {
 	return 1
 }
 
+# zlyme-pak-spawn reserves this status for an ownership or inspection
+# failure after the leader exits. A frontend must not take DRM again.
+pak_cleanup_failed() {
+	[ "$1" = 125 ]
+}
+
 read_launch() {
 	_lf_file=${1:-}
 	LAUNCH_EXE=
@@ -437,7 +443,7 @@ exec_pak "$1" "$2"' "$_helper" "$_exe" "$_rom" >> "$_log" 2>&1 &
 }
 
 # PORTS.pak execs the port, so its EXIT trap cannot unmount WestonPack.
-# MENU+START can kill that process group. This session is outside it.
+# MENU+START can end that pak session. This launcher is outside it.
 # Recorded wrapper mounts are what that cleanup releases.
 portmaster_cleanup() {
 	_bin=${ZLYME_PORTMASTER_CLEANUP:-/usr/sbin/zlyme-portmaster-cleanup}
@@ -454,8 +460,8 @@ wine_prefix_cleanup() {
 }
 
 # DC.pak execs flycast, so that shell cannot unmount its save bind.
-# The record is one path on tmpfs. This session is outside the pak
-# group, so it still runs after a normal exit and after MENU+START.
+# The record is one path on tmpfs. This launcher is outside the pak
+# session, so it still runs after a normal exit and after MENU+START.
 flycast_bind_mounted() {
 	if command -v mountpoint >/dev/null 2>&1; then
 		mountpoint -q "$1"
@@ -616,6 +622,9 @@ launch_with_reload() {
 	run_pak_cmd "$_lr_exe" "$_lr_rom"
 	while [ -f "$_lr_flag" ]; do
 		rm -f "$_lr_flag"
+		if pak_cleanup_failed "$st"; then
+			break
+		fi
 		if command -v zlyme-audio >/dev/null 2>&1; then
 			eval "$(zlyme-audio export 2>/dev/null)" || true
 		fi

@@ -448,6 +448,15 @@ while [ -f "$EXEC_PATH" ]; do
 				eval "$(zlyme-audio export 2>/dev/null)" || true
 			fi
 			launch_with_reload "$exe" "$rom"
+			# Status 125 means the waiter could not prove that every
+			# process it owns is gone. Do not start another KMS client
+			# against an unresolved game or an unreadable /proc.
+			if pak_cleanup_failed "$st"; then
+				echo "pak cleanup unresolved; frontend stopped" >> "$SESSION_LOG"
+				printf '%s\n' "$st" > /run/zlyme/pak-cleanup-failed
+				rm -f "$EXEC_PATH"
+				break
+			fi
 			# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
 			# shellcheck disable=SC2154 # st is set by run_pak_cmd
 			if ! pak_exit_ok "$st"; then

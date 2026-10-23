@@ -567,7 +567,9 @@ case_dir trace
 export ZLYME_PAK_TRACE_FLAG=$OUT/flag
 export ZLYME_PAK_TRACE_LOG=$OUT/trace
 export ZLYME_PAK_TRACE_INTERVAL=0.2
-export ZLYME_TRACE_HOLD=2
+# Host /proc can contain thousands of build processes. Keep the leader
+# available long enough for one complete passive trace scan.
+export ZLYME_TRACE_HOLD=8
 unset ZLYME_PAK_TRACE || true
 ZLYME_PAK_HOTKEY=$work/bin/hotkey
 cat > "$ports" << 'EOF'

@@ -63,6 +63,13 @@ struct app_pad {
 	char node[32];
 };
 
+struct target_info {
+	pid_t pgid;
+	pid_t sid;
+	char state;
+	unsigned long long starttime;
+};
+
 static int pad_find(struct app_pad *pads, int n, const char *node)
 {
 	int i;
@@ -128,13 +135,17 @@ static void scan_pads(struct app_pad *pads, int *n)
 	closedir(dir);
 }
 
-static int target_ids(pid_t pid, pid_t *pgid, pid_t *sid)
+static int target_info(pid_t pid, struct target_info *info)
 {
 	char path[64];
 	char buf[512];
-	const char *rest;
+	char *rest;
+	char *save = NULL;
+	char *token;
+	char *end;
 	ssize_t n;
-	long pgrp, session;
+	long value;
+	int field = 0;
 	int fd;
 
 	snprintf(path, sizeof path, "/proc/%d/stat", (int)pid);
@@ -147,25 +158,56 @@ static int target_ids(pid_t pid, pid_t *pgid, pid_t *sid)
 		return 0;
 	buf[n] = '\0';
 	rest = strrchr(buf, ')');
-	if (!rest || sscanf(rest + 1, " %*c %*d %ld %ld", &pgrp, &session) != 2)
+	if (!rest)
 		return 0;
-	*pgid = (pid_t)pgrp;
-	*sid = (pid_t)session;
-	return 1;
+	memset(info, 0, sizeof *info);
+	for (token = strtok_r(rest + 1, " \t\r\n", &save);
+	     token;
+	     token = strtok_r(NULL, " \t\r\n", &save), field++) {
+		switch (field) {
+		case 0:
+			if (token[0] == '\0' || token[1] != '\0')
+				return 0;
+			info->state = token[0];
+			break;
+		case 2:
+		case 3:
+			errno = 0;
+			value = strtol(token, &end, 10);
+			if (errno != 0 || end == token || *end != '\0')
+				return 0;
+			if (field == 2)
+				info->pgid = (pid_t)value;
+			else
+				info->sid = (pid_t)value;
+			break;
+		case 19:
+			errno = 0;
+			info->starttime = strtoull(token, &end, 10);
+			if (errno != 0 || end == token || *end != '\0')
+				return 0;
+			return 1;
+		default:
+			break;
+		}
+	}
+	return 0;
 }
 
 static void kill_pak(pid_t pgid)
 {
-	pid_t found_pgid = 0;
-	pid_t found_sid = 0;
+	struct target_info before;
+	struct target_info after;
 	int alive;
 	int rc;
 
-	alive = target_ids(pgid, &found_pgid, &found_sid);
+	memset(&before, 0, sizeof before);
+	alive = target_info(pgid, &before);
 	if (!zlyme_hotkey_may_signal((int)getsid(0), alive, (int)pgid,
-				     (int)found_pgid, (int)found_sid)) {
+				     (int)before.pgid, (int)before.sid) ||
+	    before.state == 'Z') {
 		trace_msg("signal refused pid=%d alive=%d pgid=%d sid=%d our=%d",
-			  (int)pgid, alive, (int)found_pgid, (int)found_sid,
+			  (int)pgid, alive, (int)before.pgid, (int)before.sid,
 			  (int)getsid(0));
 		return;
 	}
@@ -173,6 +215,17 @@ static void kill_pak(pid_t pgid)
 	trace_msg("signal term pgid=%d rc=%d errno=%d", (int)pgid, rc,
 		  rc < 0 ? errno : 0);
 	usleep(GRACE_US);
+	memset(&after, 0, sizeof after);
+	alive = target_info(pgid, &after);
+	if (after.state == 'Z' ||
+	    !zlyme_hotkey_same_target((int)getsid(0), alive, (int)pgid,
+				      (int)after.pgid, (int)after.sid,
+				      after.starttime, (int)before.pgid,
+				      (int)before.sid, before.starttime)) {
+		trace_msg("signal kill refused pid=%d alive=%d pgid=%d sid=%d",
+			  (int)pgid, alive, (int)after.pgid, (int)after.sid);
+		return;
+	}
 	rc = kill(-pgid, SIGKILL);
 	trace_msg("signal kill pgid=%d rc=%d errno=%d", (int)pgid, rc,
 		  rc < 0 ? errno : 0);

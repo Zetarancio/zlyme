@@ -51,6 +51,18 @@ int main(void)
 			 zlyme_hotkey_may_signal(143, 1, 1, 1, 1), 0);
 	failed += expect("unknown own session",
 			 zlyme_hotkey_may_signal(0, 1, 5659, 5659, 5659), 0);
+	failed += expect("same target after grace",
+			 zlyme_hotkey_same_target(143, 1, 5659, 5659, 5659,
+						  1000, 5659, 5659, 1000), 1);
+	failed += expect("leader exited during grace",
+			 zlyme_hotkey_same_target(143, 0, 5659, 5659, 5659,
+						  1000, 5659, 5659, 1000), 0);
+	failed += expect("pid reused during grace",
+			 zlyme_hotkey_same_target(143, 1, 5659, 5659, 5659,
+						  2000, 5659, 5659, 1000), 0);
+	failed += expect("group changed during grace",
+			 zlyme_hotkey_same_target(143, 1, 5659, 6000, 5659,
+						  1000, 5659, 5659, 1000), 0);
 
 	if (failed) {
 		fprintf(stderr, "HOTKEY_FAIL %d\n", failed);

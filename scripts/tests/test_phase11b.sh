@@ -199,7 +199,7 @@ grep -q 'zlyme-weston-run wine' "$WINE_LAUNCH" || fail "weston"
 LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 grep -q '/usr/sbin/zlyme-wine-prefix' "$LAUNCH" || fail "wine prefix helper"
 awk '
-	/wait "\$_pak_pid"/ { seen = 1 }
+	/wait "\$_pak_waiter"/ { seen = 1 }
 	seen && /wine_prefix_cleanup/ { found = 1 }
 	END { exit found ? 0 : 1 }
 ' "$LAUNCH" || fail "wine cleanup is not after the pak"

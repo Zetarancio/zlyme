@@ -39,4 +39,18 @@ static inline int zlyme_hotkey_may_signal(int our_sid, int alive, int pid,
 	return 1;
 }
 
+/* Revalidate after the TERM grace. The numeric session id alone is
+ * not an identity once its leader has exited. */
+static inline int zlyme_hotkey_same_target(int our_sid, int alive, int pid,
+					   int pgid, int sid,
+					   unsigned long long starttime,
+					   int old_pgid, int old_sid,
+					   unsigned long long old_starttime)
+{
+	if (!zlyme_hotkey_may_signal(our_sid, alive, pid, pgid, sid))
+		return 0;
+	return pgid == old_pgid && sid == old_sid &&
+	       starttime == old_starttime;
+}
+
 #endif

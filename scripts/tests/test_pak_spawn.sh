@@ -30,6 +30,9 @@ note() {
 
 "$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/zlyme-pak-spawn" \
 	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c"
+"$cc" -std=gnu99 -Wall -Wextra -Werror -DZLYME_TESTING \
+	-o "$work/zlyme-pak-spawn-testing" \
+	"$ROOT/package/system/nextui/zlyme/zlyme-pak-spawn.c"
 "$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/survivor" -x c - << 'EOF'
 #include <signal.h>
 #include <stdio.h>
@@ -54,6 +57,40 @@ int main(void)
 	signal(SIGTERM, on_term);
 	for (;;)
 		pause();
+	return 0;
+}
+EOF
+"$cc" -std=gnu99 -Wall -Wextra -Werror -o "$work/fanout-helper" -x c - << 'EOF'
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+int main(int argc, char **argv)
+{
+	FILE *out;
+	int count, i;
+	if (argc != 3)
+		return 2;
+	count = atoi(argv[1]);
+	out = fopen(argv[2], "w");
+	if (!out)
+		return 2;
+	for (i = 0; i < count; i++) {
+		pid_t pid = fork();
+		if (pid < 0)
+			return 3;
+		if (pid == 0) {
+			if (setpgid(0, 0) != 0)
+				_exit(4);
+			for (;;)
+				pause();
+		}
+		fprintf(out, "%d\n", (int)pid);
+	}
+	fclose(out);
+	usleep(300000);
 	return 0;
 }
 EOF
@@ -130,6 +167,19 @@ run_pak_cmd "$emu" "/r/a"
 # shellcheck disable=SC2154 # set by spawn_pak
 [ "$(cat "$OUT/pid")" = "$_pak_pid" ] || fail "clean target is not the leader"
 
+# A pak may return the status reserved for unresolved ownership. Keep
+# that an ordinary launch failure instead of suppressing the frontend.
+cat > "$emu" << 'EOF'
+#!/bin/sh
+exit 125
+EOF
+chmod 0755 "$emu"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 126 ] || fail "pak status 125 was not kept out of cleanup contract: $st"
+if pak_cleanup_failed "$st"; then
+	fail "pak status 125 was classified as unresolved ownership"
+fi
+
 # Long-running leader. The stub hotkey signals that leader's group.
 cat > "$emu" << 'EOF'
 #!/bin/sh
@@ -202,5 +252,100 @@ if ! kill -0 "$innocent" 2>/dev/null; then
 fi
 kill "$innocent" 2>/dev/null || true
 wait "$innocent" 2>/dev/null || true
+
+# A /proc scan failure is not an empty session. Status 125 is reserved
+# for unresolved ownership and is propagated by pak-launch.sh.
+OUT=$work/proc-error
+mkdir -p "$OUT"
+export OUT ZLYME_PAK_SPAWN="$work/zlyme-pak-spawn-testing"
+export ZLYME_TEST_PROC_ROOT="$work/missing-proc"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 125 ] || fail "proc failure status $st"
+pak_cleanup_failed "$st" || fail "proc failure was not classified"
+
+# A malformed live stat entry is an inspection error, while a zombie is
+# not an active owner and must not keep the session busy.
+fake=$work/fake-proc
+mkdir -p "$fake"
+export ZLYME_TEST_PROC_ROOT="$fake"
+cat > "$emu" << 'EOF'
+#!/bin/sh
+mkdir -p "$ZLYME_TEST_PROC_ROOT/999999"
+printf '%s\n' 'malformed' > "$ZLYME_TEST_PROC_ROOT/999999/stat"
+exit 0
+EOF
+chmod 0755 "$emu"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 125 ] || fail "malformed proc status $st"
+rm -rf "$fake/999999"
+# A reused leader number with a different start time is not the owned
+# session, even when its PGID and SID numerically match.
+cat > "$emu" << 'EOF'
+#!/bin/sh
+mkdir -p "$ZLYME_TEST_PROC_ROOT/$$"
+{
+	printf '%s (reused) S 1 %s %s' "$$" "$$" "$$"
+	i=0
+	while [ "$i" -lt 15 ]; do
+		printf ' 0'
+		i=$((i + 1))
+	done
+	printf ' 1\n'
+} > "$ZLYME_TEST_PROC_ROOT/$$/stat"
+exit 0
+EOF
+chmod 0755 "$emu"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 125 ] || fail "reused leader status $st"
+rm -rf "${fake:?}/"*
+cat > "$emu" << 'EOF'
+#!/bin/sh
+mkdir -p "$ZLYME_TEST_PROC_ROOT/999999"
+{
+	printf '999999 (zombie) Z 1 999999 %s' "$$"
+	i=0
+	while [ "$i" -lt 15 ]; do
+		printf ' 0'
+		i=$((i + 1))
+	done
+	printf ' 123\n'
+} > "$ZLYME_TEST_PROC_ROOT/999999/stat"
+exit 0
+EOF
+chmod 0755 "$emu"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 0 ] || fail "zombie-only session status $st"
+rm -rf "$fake/999999"
+unset ZLYME_TEST_PROC_ROOT ZLYME_PAK_SPAWN
+
+# More than the historical 128-member cap, each in its own process
+# group but in the pak session, must all be signaled and reaped.
+cat > "$emu" << 'EOF'
+#!/bin/sh
+exec "$FANOUT" 140 "$OUT/pids"
+EOF
+chmod 0755 "$emu"
+OUT=$work/fanout
+mkdir -p "$OUT"
+export OUT FANOUT="$work/fanout-helper"
+run_pak_cmd "$emu" "/r/a"
+[ "$st" -eq 0 ] || fail "fanout status $st"
+[ "$(wc -l < "$OUT/pids" | tr -d ' ')" -eq 140 ] || fail "fanout count"
+while read -r pid; do
+	[ -n "$pid" ] || continue
+	if [ -d "/proc/$pid" ]; then
+		fail "fanout member $pid survived"
+	fi
+done < "$OUT/pids"
+
+# The frontend wrapper must stop, not show/restart, on the reserved
+# cleanup failure after PortMaster cleanup has had its chance.
+# shellcheck disable=SC2016
+grep -q 'if pak_cleanup_failed "$st"; then' \
+	"$ROOT/package/system/nextui/nextui-session" ||
+	fail "nextui-session does not stop on cleanup failure"
+grep -q 'pak cleanup unresolved; frontend stopped' \
+	"$ROOT/package/system/nextui/nextui-session" ||
+	fail "nextui-session cleanup failure is not diagnosable"
 
 echo "pak spawn ok"
