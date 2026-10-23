@@ -430,8 +430,10 @@ if [ "$cmd" = systemctl ]; then
 	fi
 fi
 
+# One rewrite for both commands. A function cannot replace this
+# shell's positional parameters, so the loop stays here.
 case "$cmd" in
-	mount)
+	mount|umount)
 		_pm_take=
 		_pm_count=$#
 		for _pm_arg in "$@"; do
@@ -456,6 +458,11 @@ case "$cmd" in
 		done
 		shift "$_pm_count"
 		unset _pm_take _pm_count _pm_arg _norm _one
+		;;
+esac
+
+case "$cmd" in
+	mount)
 		if weston_mount_dest "$@"; then
 			before=0
 			pm_watch_clear
@@ -524,30 +531,6 @@ case "$cmd" in
 		exit "$st"
 		;;
 	umount)
-		_pm_take=
-		_pm_count=$#
-		for _pm_arg in "$@"; do
-			if [ -n "$_pm_take" ]; then
-				_pm_take=
-				set -- "$@" "$_pm_arg"
-				continue
-			fi
-			case "$_pm_arg" in
-				-o|-t|--options|--types)
-					_pm_take=1
-					set -- "$@" "$_pm_arg"
-					continue
-					;;
-				-*)
-					set -- "$@" "$_pm_arg"
-					continue
-					;;
-			esac
-			pm_norm_operand "$_pm_arg"
-			set -- "$@" "$_norm"
-		done
-		shift "$_pm_count"
-		unset _pm_take _pm_count _pm_arg _norm _one
 		if weston_umount_argv "$@"; then
 			if ! unmount_wrapper_bind; then
 				log "could not unmount westonwrap bind"

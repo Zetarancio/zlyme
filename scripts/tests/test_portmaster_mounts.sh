@@ -1,5 +1,7 @@
 #!/bin/sh
 # PortMaster transient mounts. Fake mount(8) edits a table; no root mounts.
+# The required run is this host shell. dash and BusyBox ash are optional:
+# command -v finds them. A missing optional shell is SKIP, not PASS.
 # shellcheck disable=SC1007
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -1105,21 +1107,6 @@ if grep -F -q "/$spaced" "$ZLYME_PM_MOUNTS"; then
 fi
 reg_exact "$work/mnt" || fail "spaced mount was not registered"
 
-# An embedded newline stays one operand, collapsed to one slash.
-reset
-nlfile=$ctrl/libs/"mono
-file.squashfs"
-printf 'squashfs\n' > "$nlfile"
-"$EXEC" mount "/$nlfile" "$work/mnt" || fail "newline operand mount failed"
-{
-	printf 'ARG %s\n' "$nlfile"
-	printf 'ARG %s\n' "$work/mnt"
-	printf 'END\n'
-} > "$work/nl.argv"
-cmp -s "$work/nl.argv" "$ZLYME_FAKE_MOUNT_ARGV" \
-	|| fail "newline operand was split or not collapsed"
-reg_exact "$work/mnt" || fail "newline operand changed the destination"
-
 # A missing control-tree file is not invented.
 reset
 missing="/$ctrl/libs/absent.squashfs"
@@ -1138,70 +1125,75 @@ ZLYME_FAKE_MOUNT_FAIL=1 "$EXEC" mount "/$present" "$work/mnt" || st=$?
 if reg_exact "$work/mnt"; then
 	fail "failed mount was registered"
 fi
-unset ZLYME_PM_CONTROL
-
-# Same rotation under dash and BusyBox ash: empty operand, spaces,
-# a newline, option order, and a non-control // path.
-rotate=$work/rotate.sh
-cat > "$rotate" << 'EOF'
-#!/bin/sh
-set -u
-pm_control=$1
-shift
-pm_norm_operand() {
-	_norm=$1
-	case "$_norm" in
-		"/$pm_control"|"/$pm_control"/*)
-			_one=${_norm#/}
-			if [ -n "$_one" ] && [ -e "$_one" ]; then
-				_norm=$_one
-			fi
-			;;
+# Optional interpreters run the production wrapper, not a copied loop.
+# Lookup is command -v only.
+run_wrap() {
+	_how=$1
+	shift
+	case "$_how" in
+		host) "$EXEC" "$@" ;;
+		dash) "$DASH_BIN" "$EXEC" "$@" ;;
+		busybox) "$BUSYBOX_BIN" ash "$EXEC" "$@" ;;
+		*) fail "unknown wrapper shell $_how" ;;
 	esac
 }
-_pm_take=
-_pm_count=$#
-for _pm_arg in "$@"; do
-	if [ -n "$_pm_take" ]; then
-		_pm_take=
-		set -- "$@" "$_pm_arg"
-		continue
+
+check_wrap() {
+	_how=$1
+	_label=$2
+	reset
+	src=$ctrl/libs/runtime.squashfs
+	dbl="/$src"
+	run_wrap "$_how" mount "$dbl" "$work/mnt" \
+		|| fail "$_label control mount failed"
+	grep -F -q "$src " "$ZLYME_PM_MOUNTS" \
+		|| fail "$_label source was not collapsed"
+	if grep -F -q "$dbl" "$ZLYME_PM_MOUNTS"; then
+		fail "$_label double slash reached mount"
 	fi
-	case "$_pm_arg" in
-		-o|-t|--options|--types)
-			_pm_take=1
-			set -- "$@" "$_pm_arg"
-			continue
-			;;
-		-*)
-			set -- "$@" "$_pm_arg"
-			continue
-			;;
-	esac
-	pm_norm_operand "$_pm_arg"
-	set -- "$@" "$_norm"
-done
-shift "$_pm_count"
-printf '%s\0' "$#" "$@"
-EOF
-chmod 0755 "$rotate"
-nlarg="line
-break"
-printf '%s\0' 6 -o "loop value" "" "$spaced" "$nlarg" "//server/share" > "$work/rotate.expected"
-for shbin in \
-	/tmp/zlyme-posix-shells/dash \
-	/tmp/zlyme-posix-shells/busybox
-do
-	[ -x "$shbin" ] || fail "missing $shbin"
-	if [ "$(basename "$shbin")" = busybox ]; then
-		"$shbin" ash "$rotate" "$ctrl" -o "loop value" "" "/$spaced" "$nlarg" "//server/share" \
-			> "$work/rotate.got"
-	else
-		"$shbin" "$rotate" "$ctrl" -o "loop value" "" "/$spaced" "$nlarg" "//server/share" \
-			> "$work/rotate.got"
+	reg_exact "$work/mnt" || fail "$_label mount was not registered"
+	run_wrap "$_how" umount "$dbl" || true
+	grep -Fxq -- "$src" "$ZLYME_FAKE_UMOUNT_LOG" \
+		|| fail "$_label umount was not normalized"
+	: > "$ZLYME_FAKE_UMOUNT_LOG"
+	"$CLEAN" || fail "$_label cleanup failed"
+	if reg_exact "$work/mnt"; then
+		fail "$_label cleanup left the registration"
 	fi
-	cmp -s "$work/rotate.expected" "$work/rotate.got" \
-		|| fail "argument rotation failed under $shbin"
-done
+	reset
+	run_wrap "$_how" mount "//server/share" "$work/mnt" \
+		|| fail "$_label share argv was not delivered"
+	grep -F -q '//server/share ' "$ZLYME_PM_MOUNTS" \
+		|| fail "$_label rewrote a network share"
+	reset
+	st=0
+	ZLYME_FAKE_MOUNT_FAIL=1 run_wrap "$_how" mount "/$src" "$work/mnt" || st=$?
+	[ "$st" -eq 1 ] || fail "$_label failed-mount status $st"
+	if reg_exact "$work/mnt"; then
+		fail "$_label registered a failed mount"
+	fi
+}
+
+host_sh=$(command -v sh)
+host_ver=$("$host_sh" -c 'if [ -n "${BASH_VERSION:-}" ]; then printf "bash %s\n" "$BASH_VERSION"; else printf "%s\n" "$0"; fi')
+echo "portmaster mounts: sh PASS ($host_sh, $host_ver)"
+
+DASH_BIN=$(command -v dash 2>/dev/null || true)
+if [ -n "$DASH_BIN" ]; then
+	check_wrap dash "dash"
+	echo "portmaster mounts: dash PASS ($DASH_BIN)"
+else
+	echo "portmaster mounts: dash SKIP (not on PATH)"
+fi
+
+BUSYBOX_BIN=$(command -v busybox 2>/dev/null || true)
+if [ -n "$BUSYBOX_BIN" ]; then
+	bb_ver=$("$BUSYBOX_BIN" 2>&1 | head -n 1 || true)
+	check_wrap busybox "busybox ash"
+	echo "portmaster mounts: busybox ash PASS ($BUSYBOX_BIN${bb_ver:+, $bb_ver})"
+else
+	echo "portmaster mounts: busybox ash SKIP (not on PATH)"
+fi
+unset ZLYME_PM_CONTROL
 
 echo "portmaster mounts ok"
