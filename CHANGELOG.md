@@ -36,7 +36,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. Steel Assault's Mono runtime starts on the current development image. Winter Travelers still does not. SDL 3 picture feedback, visible GL4ES, and graphical Box86 are still open. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
+- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. Steel Assault's Mono runtime starts on the current development image. Winter Travelers shows a picture after that game's own graphics setting is software. A copy that still asks for D3D9 does not. SDL 3 picture feedback, visible GL4ES, and graphical Box86 are still open. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
 
 ## [zlyme44.3] - 2026-10-16
 

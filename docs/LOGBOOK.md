@@ -19,6 +19,24 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-24 — Gate 2 accepted on the Winter install
+
+On the installed `72916de` image the maintainer set
+`ioawn4t/gamedata/acsetup.cfg` from `driver=D3D9` to
+`driver=software` and launched Winter Travelers from the Ports
+list. Picture, controller, audio, and return to NextUI passed.
+Shards of God already used `driver=software` and had passed on this
+image before that edit. Both games log the KMSDRM cursor soft-fail.
+The port script runs `./ags ./gamedata` and does not pass
+`--gfxdriver`. AGS `3.6.2.0` on that card lists `ogl` and
+`software` for that option. The package template
+`config/acsetup.cfg` was already `software`, and
+`.initial_config_done` stops the script from copying it again. The
+loaded file is the one that had `D3D9`. No SDL, EGL, or GPU change
+was made. A later reinstall of the port is not guaranteed to keep
+this local file. The earlier `D3D9` failure stays the record of the
+unmodified configuration.
+
 ## 2026-10-24 — Gate 1 accepted on `72916de`
 
 The maintainer installed

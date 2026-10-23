@@ -305,9 +305,9 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 ### Next decision gate
 
-**Gate 0 approved for Gate 1 only. Gate 1 hardware-accepted. Gate 2 is not started.**
+**Gate 0 approved Gate 1 only. Gate 1 and Gate 2 are hardware-accepted. Gate 3 is not started.**
 
-Option A stays the baseline. Gate 0 approved one narrow fix: BusyBox `mount` was treating `//opt/system/Tools/PortMaster/...` as a host name. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and the maintainer returned to NextUI. On that same boot, `/storage/.config/nextui/my355/mono` was not mounted, `owned-mounts` was empty, and Shards of God had no leftover AGS bind. Winter Travelers still fails its AGS graphics init. That is Gate 2, and it is not implemented.
+Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file. Gate 3, visible GL4ES, is still open.
 
 ### 14A. Capability baseline
 
@@ -428,11 +428,13 @@ file on SD2, and the launch still did not run `mono`. That later
 observation does not delete the earlier check.
 
 On `da7eb21`: Shards of God starts and takes pad input. Winter
-Travelers fails on a different AGS graphics path. Both logs contain
-the same KMSDRM cursor line. The contrast is in the matrix. Steel
+Travelers failed on a D3D9 graphics setting. Both logs contain the
+same KMSDRM cursor line. The contrast is in the matrix. Steel
 Assault failed as in 14F. On installed `72916de`, Steel Assault and
-Shards of God both ran and returned. Winter still fails. That
-failure is Gate 2. LISA and Rakuen were not rerun in this archive. Skautfold
+Shards of God ran and returned. Winter also runs after the
+maintainer set `ioawn4t/gamedata/acsetup.cfg` to `driver=software`.
+That is a local game file. The earlier `D3D9` file remains the
+incompatible original. Gate 3 is not started. LISA and Rakuen were not rerun in this archive. Skautfold
 remains external data (`game.droid` absent in the earlier card
 inspection). Mina's complete diagnostic was not in this archive.
 Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and

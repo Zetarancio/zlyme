@@ -10,10 +10,15 @@ maintainer exited to NextUI. Shards of God reached `Starting game`
 and the maintainer exited. After those launches, `owned-mounts` was
 empty and mountinfo had no Mono directory, no Shards AGS bind, no
 `/roms`, and no `/tmp/weston`. `/storage` and `/mnt/sd2` stayed
-mounted. Winter Travelers at 23:24:11Z still fails. Its
-`acsetup.cfg` requests `driver=D3D9`. Shards requests
-`driver=software`. Both still log the KMSDRM cursor line. Gate 2 is
-not started. Audio for Steel was not a separate check.
+mounted. Winter Travelers' loaded `gamedata/acsetup.cfg` requested `D3D9`
+and failed at 23:24:11Z. The maintainer later set that same file to
+`driver=software` and reports picture, pad, audio, and return to
+NextUI. Shards already used `driver=software`. Both still log the
+KMSDRM cursor line. The package template `config/acsetup.cfg` was
+already `software` and is not recopied while
+`.initial_config_done` exists. Reinstalling the port is not
+guaranteed to keep the corrected file. Gate 3 is not started.
+Audio for Steel was not a separate check.
 
 ## Installed `da7eb21` pass
 

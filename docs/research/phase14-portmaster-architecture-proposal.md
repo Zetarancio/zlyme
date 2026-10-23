@@ -1,12 +1,13 @@
 # PortMaster compatibility architecture review
 
-Status: Gate 0 approved a narrow Gate 1 fix. Gate 1 is
+Status: Gate 0 approved a narrow Gate 1 fix. Gate 1 and Gate 2 are
 hardware-accepted on source `72916de97b2ce8a027bad14ace275ef25426a695`,
 squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
-Option B and option C are not approved. Gate 2 is not started. This
-note is not current architecture. `docs/ARCHITECTURE.md` still owns
-what Zlyme ships. Phase 15 has not started. `zlyme44.4` has not
-released.
+Gate 2 is the maintainer's local Winter `acsetup.cfg` change to
+`driver=software`, not a firmware patch. Option B and option C are
+not approved. Gate 3 is not started. This note is not current
+architecture. `docs/ARCHITECTURE.md` still owns what Zlyme ships.
+Phase 15 has not started. `zlyme44.4` has not released.
 
 ## Installed image
 
