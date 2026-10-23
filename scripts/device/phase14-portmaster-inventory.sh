@@ -52,10 +52,33 @@ classify_one() {
 			fi
 			;;
 		*[Ss]teel*[Aa]ssault*)
-			if ! find /storage/Tools /mnt/sd2/Tools /var/port \
-				2>/dev/null | grep -qi 'mono.*\.squashfs'; then
+			mono=
+			for cand in \
+				"/mnt/sd2/Roms/Ports (PORTS)/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs" \
+				/mnt/sd2/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs \
+				/storage/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs
+			do
+				if [ -f "$cand" ]; then
+					mono=$cand
+					break
+				fi
+			done
+			if [ -z "$mono" ]; then
 				ready=MISSING_RUNTIME
-				notes="compatible Mono squashfs not found in Tools/runtimes"
+				notes="mono-6.12.0.122-aarch64.squashfs not found under PortMaster/libs"
+			else
+				notes="mono squashfs present at $mono; prior log was mono: command not found"
+			fi
+			;;
+		*[Ss]hards*)
+			dir=$(dirname "$script")
+			# shell port dir is usually sibling of the .sh via PortMaster layout
+			gdir=
+			for cand in "$dir/shardsofgod" "/mnt/sd2/Roms/Ports (PORTS)/shardsofgod"; do
+				[ -d "$cand" ] && gdir=$cand && break
+			done
+			if [ -n "$gdir" ] && [ ! -f "$gdir/shardsofgod.gptk" ]; then
+				notes="missing shardsofgod.gptk (Syncthing conflict name present?); launch ELIGIBLE but controls will fail"
 			fi
 			;;
 		*[Mm]ina*)

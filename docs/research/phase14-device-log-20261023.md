@@ -166,3 +166,36 @@ per-run archive transcript.
 
 Do not mark Phase 14 complete while observed failures remain. Do not
 start Phase 15.
+
+## Live card inspection on `192.168.0.108` (read-only)
+
+Installed squashfs SHA matches `ad9c430a…`. GPU mode `libmali`.
+
+### Shards of God controls
+
+Launch script runs `$GPTOKEYB "ags" -c "./shardsofgod.gptk"`, and the
+resolution `sed` edits that same path. On the card the only mapping file
+is `shardsofgod.sync-conflict-20260615-095224-KAO2TYI.gptk`. There is no
+`shardsofgod.gptk`. That is a Syncthing conflict rename, not a Zlyme
+input daemon defect. Mapping content is mouse emulation (dpad/analog →
+mouse move, A/B → mouse buttons). Fix on the card: restore the expected
+filename. Do not change global InputPlumber mapping for this.
+
+### Skautfold
+
+Tree has `assets/data.win`, `skautfoldinsanity.port`, and
+`gmloadernext.aarch64`, but no `saves/game.droid`. `patchlog_error.txt`
+records `Missing zip!` / `Patching process failed.` while
+`patchlog.txt` already exists, so the launcher skips the patcher on
+later runs. Classification remains EXTERNAL DATA / failed APK patch —
+not a GPU failure. Do not fabricate the Android game blob.
+
+### Steel Assault
+
+`mono-6.12.0.122-aarch64.squashfs` is present under
+`Ports (PORTS)/PortMaster/libs/`. `steelassault/log.txt` is only
+`mono: command not found`, so a prior launch did not get a usable
+mounted Mono bind. Runtime bytes exist; mount/PATH for that launch
+failed. Re-test after the oga_events/systemctl and mount fixes; do not
+install a global Mono package.
+
