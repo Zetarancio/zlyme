@@ -104,12 +104,13 @@ Upstream `pm_finish` does the same. Zlyme does not run `oga_events` and
 does not add a fake `systemctl`; InputPlumber remains the one input
 owner.
 
-The uninstalled candidate is
-`zlyme-my355-20261023-8c5841c04fbc.tar`, source
-`8c5841c04fbc23ac1ca0c9ad4a21e21c3c910da2`. Its OTA SHA-256 is
-`519dc0d40c5d0d6fa2a2ae7eaa2a0d08cd664de00c034dbc40e0bb068ad1e829`,
+The uninstalled `8c5841c` build was superseded before use after
+waiter-identity review. The replacement candidate is
+`zlyme-my355-20261023-3da3f2bafe05.tar`, source
+`3da3f2bafe051821a4aaf484441c71f573e0346e`. Its OTA SHA-256 is
+`59ba6c76bd6120fd39fb0aee40be266234ae5f8ebb673e52778e37e53c9f6c8b`,
 and its squashfs SHA-256 is
-`d5f9f77ee4bb1f7ea1ee7a15881c6a0c1bafd1d591e2d4d41dcf5639be5d90fc`.
+`ad9c430a9efde75156146d2d2f1b26a2cc2e4bba1fc1f29f3cc7f4931bcfb320`.
 The embedded NextUI pin is
 `b0960dcde4d69d32871d6605c354b1b901621eb5`. Boot payload comparison
 against the installed `c67692f` archive found the kernel, DTB,
