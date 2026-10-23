@@ -20,6 +20,17 @@ static unsigned timeout_ms(void)
 	return (unsigned)seconds * 1000U;
 }
 
+static void log_video_drivers(void)
+{
+	int i, n = SDL_GetNumVideoDrivers();
+
+	printf("GL4ES_VIDEO_DRIVERS count=%d", n);
+	for (i = 0; i < n; i++)
+		printf(" %s", SDL_GetVideoDriver(i));
+	printf("\n");
+	fflush(stdout);
+}
+
 int main(void)
 {
 	SDL_Window *window = NULL;
@@ -30,13 +41,31 @@ int main(void)
 	GLenum gl_error;
 	int rc = 1;
 	int done = 0;
+	int profile = 0;
+	const char *driver;
+
+	printf("GL4ES_ENV LIBGL_FB=%s LIBGL_ES=%s LIBGL_GL=%s SDL_VIDEODRIVER=%s\n",
+	       getenv("LIBGL_FB") ? getenv("LIBGL_FB") : "",
+	       getenv("LIBGL_ES") ? getenv("LIBGL_ES") : "",
+	       getenv("LIBGL_GL") ? getenv("LIBGL_GL") : "",
+	       getenv("SDL_VIDEODRIVER") ? getenv("SDL_VIDEODRIVER") : "");
+	fflush(stdout);
+
+	log_video_drivers();
+
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "GL4ES_SDL_ERROR %s\n", SDL_GetError());
+		log_video_drivers();
 		return 1;
 	}
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+	driver = SDL_GetCurrentVideoDriver();
+	printf("GL4ES_VIDEO_DRIVER %s\n", driver ? driver : "(null)");
+	fflush(stdout);
+
 	window = SDL_CreateWindow("Zlyme GL4ES probe", SDL_WINDOWPOS_UNDEFINED,
 				  SDL_WINDOWPOS_UNDEFINED, 640, 480,
 				  SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
@@ -49,10 +78,12 @@ int main(void)
 		fprintf(stderr, "GL4ES_CONTEXT_ERROR %s\n", SDL_GetError());
 		goto out;
 	}
-	printf("GL4ES_READY vendor=%s renderer=%s version=%s\n",
+	SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile);
+	printf("GL4ES_READY vendor=%s renderer=%s version=%s profile=%d\n",
 	       (const char *)glGetString(GL_VENDOR),
 	       (const char *)glGetString(GL_RENDERER),
-	       (const char *)glGetString(GL_VERSION));
+	       (const char *)glGetString(GL_VERSION),
+	       profile);
 	fflush(stdout);
 	started = SDL_GetTicks();
 	while (!done && SDL_GetTicks() - started < timeout_ms()) {
