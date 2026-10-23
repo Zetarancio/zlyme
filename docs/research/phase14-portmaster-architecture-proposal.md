@@ -1,9 +1,12 @@
 # PortMaster compatibility architecture review
 
-Status: **NOT APPROVED**. This note is a decision proposal for maintainer
-review. It is not current architecture. `docs/ARCHITECTURE.md` still
-owns what Zlyme ships. Phase 15 has not started. `zlyme44.4` has not
-released. No gate below is authorized work.
+Status: Gate 0 approved a narrow Gate 1 fix. Gate 1 is
+hardware-accepted on source `72916de97b2ce8a027bad14ace275ef25426a695`,
+squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Option B and option C are not approved. Gate 2 is not started. This
+note is not current architecture. `docs/ARCHITECTURE.md` still owns
+what Zlyme ships. Phase 15 has not started. `zlyme44.4` has not
+released.
 
 ## Installed image
 

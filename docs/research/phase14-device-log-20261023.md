@@ -1,5 +1,14 @@
 # Phase 14 device log analysis — 2026-10-23
 
+## Gate 1 on installed `72916de` (2026-10-24)
+
+Source `72916de97b2ce8a027bad14ace275ef25426a695`. Squashfs
+`cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Same boot as the Steel and Shards launches. Mono mount and the Shards
+AGS bind were gone afterward. `owned-mounts` was empty.
+`pak-cleanup-failed` was absent. Winter still fails graphics init.
+The `da7eb21` sections below stay as that image's record.
+
 ## Later pass on installed `da7eb21`
 
 2026-10-23 evening. Source

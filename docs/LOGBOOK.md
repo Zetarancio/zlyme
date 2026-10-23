@@ -19,6 +19,30 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-24 — Gate 1 accepted on `72916de`
+
+The maintainer installed
+`zlyme-my355-20261023-72916de97b2c.tar` from
+`72916de97b2ce8a027bad14ace275ef25426a695`. `/boot/zlyme` is
+`cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Boot id `5fdca665-7a90-4aaf-8d89-4fc32e4456cc`. Steel Assault and
+Shards of God were launched on that boot and the maintainer returned
+to NextUI from both. The Steel log shows Mali-G52 OpenGL ES, shaders,
+and a save write. `bad address 'opt'` and `mono: command not found`
+are gone. `umount` of the squashfs file itself still prints
+`Invalid argument`; that file is not the mountpoint, and the launch
+continued. After both games, `owned-mounts` was empty,
+`/storage/.config/nextui/my355/mono` was not mounted, the Shards AGS
+bind was not mounted, `/roms` and `/tmp/weston` were absent, and
+`/run/zlyme/pak-cleanup-failed` was absent. `/storage` and `/mnt/sd2`
+stayed mounted. The only squashfs entries were the read-only root and
+the libmali library binds. Winter Travelers still fails AGS graphics
+init on this image. That is Gate 2 and is not implemented. Steel
+audio was not a separate check. An early `zlyme-input` line could not
+open the system bus socket, then reported the built-in target ready.
+`dmesg` still has the exFAT "not properly unmounted" warning. It was
+not repaired online.
+
 ## 2026-10-23 — Phase 14 installed `da7eb21` PortMaster pass
 
 The installed firmware for this pass is source

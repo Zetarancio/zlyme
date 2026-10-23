@@ -19,6 +19,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
+- A PortMaster runtime squashfs whose path was written with two slashes in front of `/opt` now mounts. Steel Assault can start its Mono runtime and return to the menu.
 - Opening a game list no longer puts the previous system's picture back after you have moved on.
 - A long name in a game list scrolls inside its selection. The first row stops before the clock and battery. A ROM picture, and an Art Book picture, keep the name beside the art. Game art width shows a percent.
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
@@ -35,7 +36,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. The final runtime candidate still needs its own PortMaster, SDL 3, GL4ES, and Box86 hardware pass. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
+- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. Steel Assault's Mono runtime starts on the current development image. Winter Travelers still does not. SDL 3 picture feedback, visible GL4ES, and graphical Box86 are still open. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
 
 ## [zlyme44.3] - 2026-10-16
 

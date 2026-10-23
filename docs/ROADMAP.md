@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed PortMaster image is `da7eb21`, squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed PortMaster image is `72916de`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`. The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -297,7 +297,7 @@ Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortM
 
 Phase 14 is open on `zlyme44.4-phase-14`. Phase 15 has not started. `zlyme44.4` has not released. `ZLYME_VERSION` stays `zlyme44.3` until a release is prepared.
 
-The installed firmware for the 2026-10-23 PortMaster pass is source `da7eb2128294d2ef3d48a6691dd857da75ae8e89`, squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`, GPU `libmali`, PortMaster seed `2026.06.23-0015`. That image contains the format=3 validator. The format=4 archive built from `074949c025c3da0951c0b1f0c27d3822c561a5e2` is uninstalled and is not approved for acceptance. Do not use either validation campaign as the acceptance path. Ordinary Ports and Tools launches are the evidence.
+The installed firmware as of 2026-10-24 is source `72916de97b2ce8a027bad14ace275ef25426a695`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`, GPU `libmali`, PortMaster seed `2026.06.23-0015`. `da7eb2128294` (squashfs `f08c3fa8…`) is the previous installed image. The format=3 and format=4 validation campaigns are not the acceptance path.
 
 `c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is not the installed firmware. It remains the image that accepted Abombniball MENU+START. `0b35a90` remains the image that accepted volume, Wi-Fi, HDMI audio, and NextUI at HDMI 720p. `4652076` remains the image that accepted the looked-at 14O rows. Later images do not rewrite those records.
 
@@ -305,11 +305,9 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 ### Next decision gate
 
-**PortMaster compatibility architecture review — NOT APPROVED.**
+**Gate 0 approved for Gate 1 only. Gate 1 hardware-accepted. Gate 2 is not started.**
 
-Option A, the current integration, is the baseline. A later change may approve a narrow diagnostic or fix. Option B, an application-scoped compatibility environment, stays deferred unless later evidence shows that baseline cannot carry the failing contract. Option C, a system-wide GPU and library switch, is not supported by the `da7eb21` results. Steel Assault and Winter Travelers are different failures. They do not establish one shared root cause. The archived ROCKNIX fork is comparison evidence, not current architecture.
-
-Approval of this review is still required before implementation. Approval can be a narrow scope. It does not have to choose B. No gate below starts until that approval exists.
+Option A stays the baseline. Gate 0 approved one narrow fix: BusyBox `mount` was treating `//opt/system/Tools/PortMaster/...` as a host name. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and the maintainer returned to NextUI. On that same boot, `/storage/.config/nextui/my355/mono` was not mounted, `owned-mounts` was empty, and Shards of God had no leftover AGS bind. Winter Travelers still fails its AGS graphics init. That is Gate 2, and it is not implemented.
 
 ### 14A. Capability baseline
 
@@ -403,8 +401,8 @@ Assault's Mono squashfs is present on SD2 and the launch still failed:
 `//opt/system/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs`,
 then `mono: command not found`. That is a runtime path and mount
 failure. It does not prove the bytes are missing, and it does not
-isolate one shell expansion. A shared runtime-path contract is a
-design candidate in the decision note. It is not implemented.
+isolate one shell expansion. On installed `72916de` that mount path is corrected and Steel Assault
+ran. The `da7eb21` failure stays the record of the earlier image.
 GL4ES context init was observed and visible rendering failed, as in
 14D. Console Box86 passed. Graphical Box86, WestonPack, and a
 candidate LÖVE render on this image were not in this archive.
@@ -424,15 +422,17 @@ not PASS.
 
 REJECTED — a fake `systemctl`.
 
-Status: Open on installed `da7eb21`. An earlier bounded check did not
+Status: Open. The current image is `72916de`. An earlier bounded check on a previous card did not
 find the Mono squashfs. The 2026-10-23 evening archive shows that
 file on SD2, and the launch still did not run `mono`. That later
 observation does not delete the earlier check.
 
-On this image: Shards of God starts and takes pad input. Winter
+On `da7eb21`: Shards of God starts and takes pad input. Winter
 Travelers fails on a different AGS graphics path. Both logs contain
 the same KMSDRM cursor line. The contrast is in the matrix. Steel
-Assault fails as in 14F. LISA and Rakuen were not rerun in this archive. Skautfold
+Assault failed as in 14F. On installed `72916de`, Steel Assault and
+Shards of God both ran and returned. Winter still fails. That
+failure is Gate 2. LISA and Rakuen were not rerun in this archive. Skautfold
 remains external data (`game.droid` absent in the earlier card
 inspection). Mina's complete diagnostic was not in this archive.
 Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and
@@ -457,8 +457,10 @@ own 1280×720 CRTC stays open and does not reopen the accepted NextUI
 HDMI result. The matrix is
 [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
-Status: Open. The installed PortMaster image is source `da7eb21`,
-squashfs `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`.
+Status: Open. The installed PortMaster image is source `72916de`,
+squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Gate 1 is accepted there. `da7eb21` remains the earlier PortMaster
+image.
 It does not inherit hardware acceptance from `c67692f` or from
 `0b35a90`. Dated failures and acceptances for earlier images stay in
 the logbook and the matrix. Supersession is a later entry, not an

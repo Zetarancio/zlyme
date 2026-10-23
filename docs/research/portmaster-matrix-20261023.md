@@ -1,5 +1,20 @@
 # PortMaster validation, 2026-10-23
 
+## Installed `72916de` Gate 1
+
+Source `72916de97b2ce8a027bad14ace275ef25426a695`. Squashfs
+`cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Boot `5fdca665-7a90-4aaf-8d89-4fc32e4456cc`. Steel Assault at
+23:22:28Z reached Mali-G52, loaded shaders, and wrote a save. The
+maintainer exited to NextUI. Shards of God reached `Starting game`
+and the maintainer exited. After those launches, `owned-mounts` was
+empty and mountinfo had no Mono directory, no Shards AGS bind, no
+`/roms`, and no `/tmp/weston`. `/storage` and `/mnt/sd2` stayed
+mounted. Winter Travelers at 23:24:11Z still fails. Its
+`acsetup.cfg` requests `driver=D3D9`. Shards requests
+`driver=software`. Both still log the KMSDRM cursor line. Gate 2 is
+not started. Audio for Steel was not a separate check.
+
 ## Installed `da7eb21` pass
 
 Supersedes the "candidate not installed" sentences in the section
