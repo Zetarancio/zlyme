@@ -10,6 +10,7 @@ ARM_MK=$ROOT/package/system/gl4es-armhf/gl4es-armhf.mk
 ARM_RUN=$ROOT/package/system/zlyme-box86/zlyme-box86-gl4es-run
 PROBES=$ROOT/package/system/zlyme-graphics-probes
 FIXTURES=$ROOT/scripts/device/phase14-probe-paks.sh
+OBSERVER=$ROOT/scripts/device/phase14-port-observer.sh
 fail() { echo "graphics-compat: $*" >&2; exit 1; }
 
 for option in BR2_PACKAGE_GL4ES BR2_PACKAGE_ZLYME_GRAPHICS_PROBES \
@@ -55,9 +56,17 @@ grep -q 'scripts/device/phase14-probe-paks\.sh' \
 if grep -Eq '(/dev/uinput|EVIOCGRAB|input_event)' "$FIXTURES"; then
 	fail "probe fixture injects or grabs input"
 fi
+grep -Fq 'NR > 1 && $2 ~ /^[0-9]+$/ { print $2 }' "$OBSERVER" ||
+	fail "DRM observer does not read the debugfs TGID column"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+cat > "$work/drm-clients" << 'EOF'
+command	tgid	dev	master	a	uid	magic
+nextui.elf	4242	0	y	y	0	1
+EOF
+got=$(awk 'NR > 1 && $2 ~ /^[0-9]+$/ { print $2 }' "$work/drm-clients")
+[ "$got" = 4242 ] || fail "DRM clients fixture parsed PID $got"
 mkdir -p "$work/gl4es"
 : > "$work/gl4es/libGL.so.1"
 cat > "$work/show-path" << 'EOF'

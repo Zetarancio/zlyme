@@ -57,7 +57,7 @@ proc_snapshot() {
 drm_snapshot() {
 	if [ -r /sys/kernel/debug/dri/0/clients ]; then
 		awk '{ print "DRM_CLIENT " $0 }' /sys/kernel/debug/dri/0/clients
-		client_pids=$(awk 'NR > 1 && $3 ~ /^[0-9]+$/ { print $3 }' \
+		client_pids=$(awk 'NR > 1 && $2 ~ /^[0-9]+$/ { print $2 }' \
 			/sys/kernel/debug/dri/0/clients | sort -u)
 	else
 		echo "DRM_CLIENTS unavailable"
