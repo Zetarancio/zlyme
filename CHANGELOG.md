@@ -18,6 +18,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 ### Fixed
 
 - Opening a game list no longer puts the previous system's picture back after you have moved on.
+- A long name in a game list scrolls inside its selection. The first row stops before the clock and battery. A ROM picture, and an Art Book picture, keep the name beside the art. Game art width shows a percent.
 - Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
 - The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
 - A paired headset is asked for its audio profile once BlueZ has registered that device. The request does not keep retrying, and it does not run before the device exists.

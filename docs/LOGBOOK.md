@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-23 — 14O accepted on 4652076; Abombniball did not return
+
+The maintainer installed `zlyme-my355-20261023-465207696ff8.tar`. Source `465207696ff8493f239a1bcab0e232459f4be75c`. Squashfs `512454168f4cbb671de9020e12f24f8380fc8ea8c4d410e2d2590fcdd6722906`. NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`. Kernel `7.2.10`. `/boot/zlyme` matches that squashfs. Accepted on this image: a ROM list's first row and a later row with no art, a ROM thumbnail, Art Book system and tool artwork, a long name staying inside the selection pill, and the default Game art width showing a nonzero percent. A user background was not a separate check. That limit does not reopen the rows that were seen. The earlier HDMI, Bluetooth, volume, Wi-Fi, and panel acceptances stay. Phase 14 stays open.
+
+Abombniball was launched from the Ports list (`PORTS.pak/launch.sh`) and did not return on MENU+START. The one-shot trace in that boot is five lines: the waited pid was still in the frontend session when it was recorded, the hotkey had opened the virtual pad, and `wait` returned 0. There is no chord, no signal, and no port-cleanup line. Settings had also run in that boot, so those five lines are not proven to be the Abombniball launch. The game process was still running afterward. It was `abombniball.aarch64`, reparented to init, the only member of a session whose leader was already dead, and the only DRM holder. `SIGTERM` to that pid did not stop it. `SIGKILL` of that same pid did. The frontend session was not signaled. `nextui.elf` then held the display device. The screen was not watched over SSH. The game binary does not import `fork` or `setsid`. Its script runs it in the foreground. The session had already treated an exit status of 0 as the end of the pak and had stopped the hotkey.
+
+`zlyme-pak-spawn` is now the process the session waits on. The leader pid is published only after `setsid()`. Members that remain in that session are signaled after the leader exits. The hotkey does not signal a pid that is still in the frontend session. That correction is not in the installed image. A physical MENU+START on it has not been done. The PortMaster matrix is `docs/research/portmaster-matrix-20261023.md`.
+
 ## 2026-10-23 — NextUI list width is in the branch pin
 
 NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5` sizes the selection pill and the scrolling text from one row width. The first row stops at the hardware cluster. Art Book stops at x=320 and does not also subtract that cluster. Game art width percent multiplies before the cast. The settings file writer is unchanged. This is not installed and has not been seen on a Flip. Installed NextUI stays `666ff5fdf737a01f83505b843916ac9c46da80d6` on `0b35a90`. Phase 14 stays open.

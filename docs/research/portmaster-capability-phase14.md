@@ -1,6 +1,14 @@
 # PortMaster capability, Phase 14 start
 
-This is the opening inventory for Phase 14. It is not an acceptance matrix. Status words are from this tree on 2026-10-16, pin `2026.06.23-0015` in `package/system/portmaster/portmaster.mk`.
+This is the opening inventory for Phase 14. It is not an acceptance matrix. Status words in the table below are from this tree on 2026-10-16, pin `2026.06.23-0015` in `package/system/portmaster/portmaster.mk`.
+
+## Status on 2026-10-23
+
+The pin is still `2026.06.23-0015`. An October 18 upstream labeled alpha is not taken, and neither is `2026.10.03-1041`. The 2026-10-16 table is the record of that day. Where it disagrees with this note, this note is the current source.
+
+The product mixer on the installed image is PipeWire with `pipewire-pulse`. `libpulse` and `libpulse-simple` are on that image. BlueALSA is not the A2DP owner. The PulseAudio daemon row and the BlueALSA sentences later in this file are the earlier candidate.
+
+14O's looked-at rows are accepted on installed `4652076`. Abombniball MENU+START failed on that image. The pak-session waiter is in source and was not in that image. ARMHF userspace was proven earlier by `xdelta3.armhf`; that binary is not installed on `4652076`, so it was not run again. SDL3 is installed and has no Flip display test. Box86 and Box64 `BOX32` stay deferred. No GL4ES library was found in the prepared PortMaster tree or three levels under the installed Ports directory. System GLES is Mesa. The launch matrix is [portmaster-matrix-20261023.md](portmaster-matrix-20261023.md).
 
 GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release: 2026.10.03-1041 (alpha)`. That is not a reason to move the pin. `2026.07.28-1212` and `2026.10.01-0433` are beta. The latest release whose own text says stable, through 2026-10-16, is `2026.06.23-0015`. Review a newer stable release when one is published. A fix taken from a beta or alpha tag needs a named benefit and a named regression risk, and that fix does not move the pin by itself.
 

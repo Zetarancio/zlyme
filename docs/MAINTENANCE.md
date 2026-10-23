@@ -54,7 +54,7 @@ A Buildroot release bump changes `BUILDROOT_VERSION` in `build.sh` and the pinne
 
 ## Deferred NextUI list layout
 
-Phase 14 item 14O is recorded and not implemented. The first list row can get a narrow pill, and scrolling stops short of the art. The notes, including the `artWidth` text cast, are in `docs/ROADMAP.md`. Do not edit NextUI for that item until a later pass asks for it. Do not hide Game art width.
+Phase 14 item 14O is accepted on installed `zlyme-my355-20261023-465207696ff8.tar` for the rows that were looked at: a ROM list's first row and a later row with no art, a ROM thumbnail, Art Book system and tool artwork, a long name staying inside the selection pill, and the default Game art width showing a nonzero percent. A user background was not a separate check. That limit does not reopen the rows that were seen. Do not change the list geometry again without a demonstrated regression. Do not hide Game art width. The notes are in `docs/ROADMAP.md`.
 
 ## Vendored helpers
 
