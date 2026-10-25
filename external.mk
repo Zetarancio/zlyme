@@ -17,6 +17,15 @@ TARGET_FINALIZE_HOOKS += ZLYME_DROP_PULSE_DAEMON_BINARY
 endif
 endif
 
+# libtool writes the build sysroot into DT_RPATH and the .la file.
+# The loader must not search that path, and the .la is not used on target.
+define SDL2_NET_DROP_SYSROOT_RPATH
+	find $(TARGET_DIR)/usr/lib -name 'libSDL2_net-2.0.so.*' -type f \
+		-exec $(HOST_DIR)/bin/patchelf --remove-rpath {} \;
+	rm -f $(TARGET_DIR)/usr/lib/libSDL2_net.la
+endef
+SDL2_NET_POST_INSTALL_TARGET_HOOKS += SDL2_NET_DROP_SYSROOT_RPATH
+
 # Board hooks register only for the selected device. my355 is the only
 # one today; a second board adds another clause, not a plugin loader.
 ifeq ($(BR2_ZLYME_DEVICE_MY355),y)

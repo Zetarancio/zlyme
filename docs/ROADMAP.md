@@ -313,9 +313,9 @@ An isolated libmali GL4ES diagnostic passed on 2026-10-25. It used a private bui
 
 Aerofoil is the accepted PortMaster GL4ES result on this image. Its launcher used the seed's `libgl_default.txt`, so `LIBGL_FB=4`, and SDL loaded the port's own `gl4es.aarch64` `libGL.so.1` and `libEGL.so.1` (GL4ES built Nov 12 2024, GBM on `card0`). The maintainer saw the game, used its menu to exit, and returned to NextUI with no leftover process, mount, or kernel fault. Zlyme's optional fallback was not the library that ran. Panfrost was not tested. One port does not accept every GL4ES game.
 
-On the same installed image, boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`, X-Moto and JVGS stayed blank because the dynamic linker stopped them. X-Moto needs `libxml2.so.2` and the system provides `libxml2.so.16`. JVGS needs `libmodplug.so.1`, which is neither installed nor in that port's `libs.aarch64`. Neither reached SDL or a GL context. Their bundled GL4ES files were not loaded.
+On the same installed image, boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`, X-Moto and JVGS stayed blank because the dynamic linker stopped them. X-Moto needs `libxml2.so.2` and `libSDL2_net-2.0.so.0`. The system provides `libxml2.so.16` and does not provide SDL2_net. JVGS's bundled `libSDL_mixer-1.2.so.0` needs `libmodplug.so.1`, which is neither installed nor in that port. Neither reached SDL or a GL context. Their bundled GL4ES files were not loaded. The ROCKNIX compat archive at `691f24bc` supplies an unlabeled `libxml2.so.2` and neither of the other two libraries, so it is not installed. The uncommitted source change builds libxml2 2.13.9 into `/usr/lib/compat`, and selects Buildroot `sdl2_net` and `libmodplug`. No firmware contains that change yet.
 
-The uncommitted AArch64 fallback recipe follows ROCKNIX `next` `projects/ROCKNIX/packages/graphics/gl4es/package.mk` at ROCKNIX `651150fc88a8ee40e3f8e69c6d36feb6b005bde5`: pin `81547d986798e876de8b434193920b606a72363f`, `ODROID`, `NOX11`, and `NOEGL`. It remains under `/usr/lib/portmaster/gl4es/aarch64`. `zlyme-gl4es-run` does not assign `LIBGL_FB`. That library is not on the installed image, and no port was switched onto it. The constructor still runs. This does not close the earlier exit SIGSEGV. A host package build completed and stays in the build tree. ARMHF GL4ES stays at `2037865590`. PortMaster's own GL4ES remains the contract normal ports use.
+Pushed source `5587b67` follows ROCKNIX `next` `projects/ROCKNIX/packages/graphics/gl4es/package.mk` at ROCKNIX `651150fc88a8ee40e3f8e69c6d36feb6b005bde5`: pin `81547d986798e876de8b434193920b606a72363f`, `ODROID`, `NOX11`, and `NOEGL`. It remains under `/usr/lib/portmaster/gl4es/aarch64`. `zlyme-gl4es-run` does not assign `LIBGL_FB`. A host package build passed. No firmware containing that library has been built or installed, no port was switched onto it, and hardware acceptance is still pending. The constructor still runs. This does not close the earlier exit SIGSEGV. ARMHF GL4ES stays at `2037865590`. PortMaster's own GL4ES remains the contract normal ports use.
 
 ### 14A. Capability baseline
 
@@ -371,8 +371,9 @@ was not installed, and the program called GL4ES directly. Aerofoil
 then passed on its bundled GL4ES. X-Moto and JVGS failed earlier, in
 the dynamic linker, on missing `libxml2.so.2` and `libmodplug.so.1`.
 Panfrost GL4ES was not run. GL4ES is not a general PortMaster result.
-The source fallback now follows the ROCKNIX `NOX11` and `NOEGL` pin
-and has not been hardware-tested.
+Pushed source `5587b67` follows the ROCKNIX `NOX11` and `NOEGL` pin.
+A host build passed. That library is not in installed firmware, and
+hardware acceptance is still pending.
 
 Pinned GL4ES stays in explicit isolated AArch64 and ARMHF directories
 and does not replace a system GL/EGL/GLES link or a port-bundled copy.

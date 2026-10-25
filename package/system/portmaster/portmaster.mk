@@ -16,7 +16,7 @@ PORTMASTER_SITE = https://github.com/PortsMaster/PortMaster-GUI/releases/downloa
 PORTMASTER_LICENSE = MIT
 PORTMASTER_LICENSE_FILES = LICENSE
 PORTMASTER_DEPENDENCIES = python3 box64 openssl sqlite ca-certificates xz \
-	portmaster-theora-compat
+	portmaster-theora-compat portmaster-xml2-compat
 
 define PORTMASTER_EXTRACT_CMDS
 	mkdir -p $(@D)

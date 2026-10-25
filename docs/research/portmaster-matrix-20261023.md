@@ -10,6 +10,8 @@ JVGS `bin/jvgs` is AArch64, needs `libGL.so.1` and `libSDL-1.2.so.0`, and calls 
 
 `pm_finish` then killed gptokeyb and gptokeyb2. No GL4ES init line, no GBM line, and no KMSDRM line appears in either port log. Zlyme's fallback was not involved.
 
+The rest of X-Moto's closure also misses `libSDL2_net-2.0.so.0`. Every other X-Moto dependency resolves, including `libcurl.so.4` at `CURL_OPENSSL_4`. JVGS itself resolves; `libmodplug.so.1` is a dependency of `jvgs/libs.aarch64/libSDL_mixer-1.2.so.0`, with unversioned `ModPlug_Load`, `ModPlug_Read`, `ModPlug_Unload`, `ModPlug_Seek`, `ModPlug_GetSettings`, `ModPlug_SetSettings`, and `ModPlug_SetMasterVolume`. X-Moto's libxml2 symbols are all `@@LIBXML2_2.4.30`. The system `libxml2.so.16` exports those names as plain globals and does not define that version node.
+
 ## Aerofoil, 2026-10-25
 
 Same squashfs and boot `190b7a7d-150f-4bc3-bbf2-badc3dcea785`. GPU `libmali`. The maintainer launched Aerofoil from Ports and exited from the game menu. Picture, motion, pad, and audio were fine. NextUI returned. No Pak failed dialog, leftover process, save bind, or kernel Oops. The port log shows `libgl_default.txt` selecting `LIBGL_FB=4` and the port's `gl4es.aarch64` library, built Nov 12 2024, logging `using GBM` on `/dev/dri/card0`. `libGL.so.1` SHA-256 `b2b24ebe56b894e44b2ed8ce335ad8b1c90e8856b3b3f864561122c8ec32f970`. Zlyme's fallback library was not loaded. JVGS and X-Moto were not run. Panfrost was not tested.
@@ -107,8 +109,9 @@ The source after that installed image now has:
   `/usr/lib/portmaster/gl4es/aarch64`. ARMHF stays at
   `2037865590d410bcd7b8d1f22b841472ed6d39ac` under
   `/usr/lib/zlyme-armhf/gl4es`. Neither replaces system GL, EGL, or
-  GLES or a port-bundled GL4ES. The AArch64 change is a host recipe;
-  it is not the library on the installed image;
+  GLES or a port-bundled GL4ES. The AArch64 change is pushed source
+  `5587b67`. A host build passed. It is not in installed firmware,
+  and hardware acceptance is still pending;
 - normal-NextUI disposable SDL3 KMSDRM/input and AArch64 GL4ES render
   probes, plus a passive bounded process/DRM/mount observer;
 - fail-closed PAK session cleanup. Incomplete `/proc` inspection,

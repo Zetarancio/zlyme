@@ -1,0 +1,10 @@
+config BR2_PACKAGE_PORTMASTER_XML2_COMPAT
+	bool "portmaster libxml2 2.13 compatibility"
+	select BR2_PACKAGE_ZLIB
+	help
+	  libxml2 2.13.9, installed only under /usr/lib/compat as
+	  libxml2.so.2. X-Moto was built against that SONAME and the
+	  LIBXML2_2.4.30 symbol version. The system libxml2 stays 2.15
+	  (libxml2.so.16). This is not a symlink between those names.
+
+	  https://download.gnome.org/sources/libxml2/2.13/
