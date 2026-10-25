@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, GPU `libmali`. Gates 1, 2, and 4 are accepted. Gate 5 is next, then Gate 6, then [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review). The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, GPU `libmali`. Gates 1, 2, and 4 are accepted. Gate 5's AArch64 engines are accepted on libmali by maintainer report. Its native ARMHF path is open. Gate 6 and [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review) follow. The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -307,7 +307,7 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 ### Next decision gate
 
-**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5 is next, then Gate 6, then 14P.**
+**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5's AArch64 engines are accepted on libmali. Native ARMHF on Panfrost is the rest of Gate 5. Gate 6 and 14P follow.**
 
 Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
 
@@ -375,7 +375,10 @@ the dynamic linker, on missing `libxml2.so.2` and `libmodplug.so.1`.
 Panfrost GL4ES was not run. GL4ES is not a general PortMaster result.
 Pushed source `5587b67` follows the ROCKNIX `NOX11` and `NOEGL` pin.
 A host build passed. Installed `9acb1fc` contains that library.
-Hardware acceptance is still pending. On that image X-Moto and JVGS
+Its Tools probe there reached `GL4ES_READY` on KMSDRM, stayed black,
+logged no `GL4ES_DONE`, and returned on MENU+START. The optional
+fallback fails on libmali. No installed port uses `ZLYME_GL4ES_RUN`;
+14P decides whether to remove it after a consumer audit. On that image X-Moto and JVGS
 get past the loader. X-Moto stops in its own database check and JVGS
 segmentation-faults. Those failures are deferred. The dynamic-linker
 stops stay the record of `72916de`.
@@ -407,7 +410,9 @@ empty session, ignores zombies, and signals only a verified
 pid/start-time/PGID/SID through a pidfd. Unresolved ownership stays
 status 125. That hardening is later than `c67692f`, so Abombniball
 still needs one focused rerun on a final candidate. The `c67692f`
-acceptance stays.
+acceptance stays. On 2026-10-25 the maintainer reports Abombniball
+running and MENU+START returning on installed `9acb1fc`, which has
+that hardening.
 
 ### 14F. Shared runtimes
 
@@ -431,6 +436,17 @@ passed. Graphical Box86, WestonPack, and a candidate LÖVE render on
 this image were not in this archive.
 Mount cleanup still uses one recorded owner. Package presence is
 not a rendered result.
+
+On installed `9acb1fc`, libmali, the maintainer reports Ascent DX
+(LÖVE 11.5), A Key(s) Path (Godot, FRT 3.3.4), Undertale and REPOSE
+(AArch64 GameMaker), and LISA The Painful and Rakuen (mkxp) working.
+LISA's log is in the 2026-10-25 logbook entry. Those are the accepted
+representatives for their engines, not every port of that engine. No
+installed launcher uses WestonPack, Box86, or Box64, so those have no
+Gate 5 candidate on this card. Bowling Cross, a native ARMHF GameMaker
+port, stopped in the loader on `libSDL2-2.0.so.0: wrong ELF class:
+ELFCLASS64`. The private ARMHF runtime had no SDL2, OpenAL, FreeType,
+or bzip2. Native ARMHF graphics also need Panfrost.
 
 ### 14G. Named ports
 
@@ -465,6 +481,14 @@ Winter still request `systemctl restart oga_events` after exit.
 `zlyme-portmaster-exec` translates that request to `zlyme-input
 ensure`. It does not provide a fake `systemctl`. One AGS success
 does not mean every AGS port works.
+
+On installed `9acb1fc` the maintainer reports LISA and Rakuen
+working. Mina the Hollower's Vulkan path reached a 640×480 swapchain
+and then failed with `VK_ERROR_SURFACE_LOST_KHR` from
+`vkAcquireNextImageKHR`. The cause is not established, and Mina is
+not accepted. Skautfold's own patch step failed (`Missing zip!`) and
+the launch then could not find `game.droid`. That is port data, not a
+runtime result. X-Moto and JVGS stay deferred.
 
 ### 14H. Acceptance
 

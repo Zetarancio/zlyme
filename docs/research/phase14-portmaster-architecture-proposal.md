@@ -287,6 +287,8 @@ external, not PASS.
 Regression risk: audio graph and mount cleanup.
 Hardware: required for each class that is actually installed.
 
+2026-10-25 status on installed `9acb1fc`, libmali: the maintainer reports LÖVE (Ascent DX), Godot/FRT (A Key(s) Path), AArch64 GameMaker (Undertale, REPOSE), mkxp (LISA The Painful, Rakuen), and Abombniball with MENU+START working. Those engines are accepted by that report. No installed launcher uses WestonPack, Box86, or Box64. Bowling Cross is the native ARMHF candidate. It stopped in the loader because the private ARMHF runtime had no SDL2, OpenAL, FreeType, or bzip2, and its graphics need Panfrost. Mina's `VK_ERROR_SURFACE_LOST_KHR` is a separate, unaccepted result. The optional Zlyme GL4ES fallback stayed black on this image. Gate 3's acceptance remains Aerofoil's bundled GL4ES.
+
 ### Gate 6. Regression
 
 Prerequisite: the gates that changed a shared component.

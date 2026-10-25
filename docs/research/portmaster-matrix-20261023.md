@@ -1,5 +1,21 @@
 # PortMaster validation, 2026-10-23
 
+## Gate 5 on `9acb1fc`, 2026-10-25
+
+Same image and GPU. Evidence archive `ph14-phase5.zip`, SHA-256 `ef82f24b4df58fede9c4d9a2fece621fd12f7b9a7d8448c4a7799cde46dcf080`.
+
+| Case | Status | Bound |
+| --- | --- | --- |
+| Ascent DX | PASS, maintainer report | LÖVE 11.5 |
+| A Key(s) Path | PASS, maintainer report | Godot, FRT 3.3.4 |
+| Undertale, REPOSE | PASS, maintainer report | AArch64 `gmloadernext` |
+| LISA The Painful | PASS, maintainer report and log | mkxp, Mali-G52 GLES 3.2, OpenAL, normal shutdown |
+| Rakuen | PASS, maintainer report | mkxp |
+| Abombniball | PASS, maintainer report | MENU+START on the waiter-hardened image |
+| Bowling Cross | FAIL, loader | ELF32 `gmloader`; `libSDL2-2.0.so.0: wrong ELF class: ELFCLASS64` |
+| Zlyme GL4ES probe | FAIL, black | `GL4ES_READY`, no `GL4ES_DONE`, MENU+START returned |
+| Mina the Hollower | FAIL | `vkAcquireNextImageKHR` `VK_ERROR_SURFACE_LOST_KHR` |
+
 ## SDL3 probe, 2026-10-25
 
 Installed `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`. Two Tools launches of `Zlyme SDL3 Validation`. The picture was visible and the rectangle did not change. `system-0/session.txt` records `SDL3_DONE frames=666 input=1` and `frames=415 input=1`. NextUI returned. The `da7eb21` row below stays that earlier session.
