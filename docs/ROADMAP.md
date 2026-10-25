@@ -305,9 +305,11 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 ### Next decision gate
 
-**Gate 0 approved Gate 1 only. Gate 1 and Gate 2 are hardware-accepted. Gate 3 is not started.**
+**Gate 0 approved Gate 1 only. Gate 1 and Gate 2 are hardware-accepted. Gate 3 remains open.**
 
-Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file. Gate 3, visible GL4ES, is still open.
+Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
+
+An isolated libmali GL4ES diagnostic passed on 2026-10-25. It used a private build of the same pin with `NOX11`, `NOEGL`, and `NO_INIT_CONSTRUCTOR`, called `initialize_gl4es()` after SDL created the context, flushed before each swap, and called `close_gl4es()` before SDL destroyed that context. The maintainer saw a moving triangle, the log recorded 709 frames and GL error 0, and NextUI returned with no Pak failed dialog and no leftover process or mount. That program called the GL4ES private API. It is not the installed library, not an ordinary PortMaster binary, and not a Panfrost result. The installed library and its earlier dark-screen record stay. No production recipe change was made.
 
 ### 14A. Capability baseline
 
@@ -353,11 +355,14 @@ probe does not draw a response to those events. Event delivery is
 PASS. Visual controller feedback is NOT DEMONSTRATED. That is not an
 InputPlumber failure.
 
-The GL4ES Tools probe logged `LIBGL_FB=3`, KMSDRM, and `GL4ES_READY`
-with Mali-G52. The screen stayed black. MENU+START returned. No
-`GL4ES_DONE` line was recorded. Context initialization was observed.
-Visible rendering is FAIL. Panfrost GL4ES was not run. GL4ES is not
-fully working.
+The installed GL4ES Tools probe logged `LIBGL_FB=3`, KMSDRM, and
+`GL4ES_READY` with Mali-G52. The screen stayed black. MENU+START
+returned. No `GL4ES_DONE` line was recorded. Context initialization
+was observed. Visible rendering of that installed library is FAIL.
+Later, on 2026-10-25, one private library from the same pin rendered
+a moving triangle on libmali and returned to NextUI. That library
+was not installed, and the program called GL4ES directly. Panfrost
+GL4ES was not run. GL4ES is not a general PortMaster result.
 
 Pinned GL4ES stays in explicit isolated AArch64 and ARMHF directories
 and does not replace a system GL/EGL/GLES link or a port-bundled copy.
@@ -403,9 +408,11 @@ then `mono: command not found`. That is a runtime path and mount
 failure. It does not prove the bytes are missing, and it does not
 isolate one shell expansion. On installed `72916de` that mount path is corrected and Steel Assault
 ran. The `da7eb21` failure stays the record of the earlier image.
-GL4ES context init was observed and visible rendering failed, as in
-14D. Console Box86 passed. Graphical Box86, WestonPack, and a
-candidate LÖVE render on this image were not in this archive.
+GL4ES context init was observed and visible rendering of the
+installed library failed, as in 14D. The 2026-10-25 private
+diagnostic is not that library and is not a port. Console Box86
+passed. Graphical Box86, WestonPack, and a candidate LÖVE render on
+this image were not in this archive.
 Mount cleanup still uses one recorded owner. Package presence is
 not a rendered result.
 
@@ -434,7 +441,7 @@ Assault failed as in 14F. On installed `72916de`, Steel Assault and
 Shards of God ran and returned. Winter also runs after the
 maintainer set `ioawn4t/gamedata/acsetup.cfg` to `driver=software`.
 That is a local game file. The earlier `D3D9` file remains the
-incompatible original. Gate 3 is not started. LISA and Rakuen were not rerun in this archive. Skautfold
+incompatible original. The later isolated GL4ES diagnostic does not change these port results. LISA and Rakuen were not rerun in this archive. Skautfold
 remains external data (`game.droid` absent in the earlier card
 inspection). Mina's complete diagnostic was not in this archive.
 Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and

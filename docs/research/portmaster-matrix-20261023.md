@@ -1,5 +1,21 @@
 # PortMaster validation, 2026-10-23
 
+## Isolated GL4ES diagnostic, 2026-10-25
+
+Same installed squashfs
+`cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
+Boot `190b7a7d-150f-4bc3-bbf2-badc3dcea785`. GPU `libmali`. A private
+GL4ES library from pin `2037865590`, built with `NOX11`, `NOEGL`,
+and `NO_INIT_CONSTRUCTOR`, was loaded from the disposable Tools pak.
+The probe called `initialize_gl4es()` after the SDL context existed,
+`glFlush()` before each swap, and `close_gl4es()` before SDL teardown.
+The maintainer saw a moving triangle. `GL4ES_DONE frames=709 error=0x0`.
+NextUI returned with no Pak failed dialog and no leftover probe or
+mount. The original launcher was restored and the installed
+`/usr/lib/portmaster/gl4es` library was not replaced. This is not an
+ordinary PortMaster binary and not a Panfrost result. The dark-screen
+row below remains the record of the installed library.
+
 ## Installed `72916de` Gate 1
 
 Source `72916de97b2ce8a027bad14ace275ef25426a695`. Squashfs
@@ -17,7 +33,7 @@ NextUI. Shards already used `driver=software`. Both still log the
 KMSDRM cursor line. The package template `config/acsetup.cfg` was
 already `software` and is not recopied while
 `.initial_config_done` exists. Reinstalling the port is not
-guaranteed to keep the corrected file. Gate 3 is not started.
+guaranteed to keep the corrected file. The 2026-10-25 isolated GL4ES diagnostic is a later entry and does not change this Winter result.
 Audio for Steel was not a separate check.
 
 ## Installed `da7eb21` pass

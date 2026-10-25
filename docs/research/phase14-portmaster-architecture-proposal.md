@@ -5,7 +5,7 @@ hardware-accepted on source `72916de97b2ce8a027bad14ace275ef25426a695`,
 squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
 Gate 2 is the maintainer's local Winter `acsetup.cfg` change to
 `driver=software`, not a firmware patch. Option B and option C are
-not approved. Gate 3 is not started. This note is not current
+not approved. Gate 3 remains open. An isolated libmali diagnostic passed on 2026-10-25 and is not the installed library or a PortMaster game. This note is not current
 architecture. `docs/ARCHITECTURE.md` still owns what Zlyme ships.
 Phase 15 has not started. `zlyme44.4` has not released.
 
@@ -251,6 +251,8 @@ NextUI returns. Context-only `GL4ES_READY` is not a pass.
 Fail: black screen or a missing done line.
 Regression risk: ports that bundle another `libGL`.
 Hardware: required on each GPU boot.
+
+2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. The installed library's earlier dark-screen result stays. A PortMaster binary that does not call that API, and any Panfrost boot, are still open. Gate 3 is not closed.
 
 ### Gate 4. SDL3 picture and pad
 

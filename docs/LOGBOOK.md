@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-25 — Isolated Mali GL4ES diagnostic accepted
+
+On installed source `72916de97b2ce8a027bad14ace275ef25426a695`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`, boot `190b7a7d-150f-4bc3-bbf2-badc3dcea785`, GPU `libmali`, the maintainer launched one disposable Tools probe. The private library was the pinned GL4ES revision built with `NOX11`, `NOEGL`, and `NO_INIT_CONSTRUCTOR`. The probe called `initialize_gl4es()` after SDL created the KMSDRM context, `glFlush()` before each `SDL_GL_SwapWindow()`, and `close_gl4es()` before SDL destroyed that context. The loaded file was the pak copy of `libGL.so.1`, not `/usr/lib/portmaster/gl4es/aarch64/libGL.so.1`. The maintainer saw a moving colored triangle. The log recorded `GL4ES_DONE frames=709 error=0x0`. SDL teardown returned, NextUI returned, and there was no Pak failed dialog, leftover probe, or extra mount. `close_gl4es()` wrote `/storage/.config/nextui/my355/.gl4es.psa`. The original Tools launcher was restored. The installed GL4ES library was not replaced.
+
+That result is this probe. It does not show that an ordinary PortMaster binary, which does not call those functions, renders or exits cleanly. It does not cover Panfrost. The earlier production-library runs that stayed dark and exited 139 remain the record of that library. Gate 3 stays open.
+
 ## 2026-10-24 — Gate 2 accepted on the Winter install
 
 On the installed `72916de` image the maintainer set
