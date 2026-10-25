@@ -268,7 +268,7 @@ Fail: no picture, or events stop arriving.
 Regression risk: SDL3 SONAME used by other packages.
 Hardware: required.
 
-2026-10-25 status: installed `9acb1fc` has the same probe. `Zlyme SDL3 Validation.pak` is the owned Tools entry and was left in place. The maintainer has not run it on this image. Gate 4 is not accepted. A missing on-screen reaction to a button matches this probe: it logs the button and does not redraw the rectangle from that event.
+2026-10-25 result: accepted on installed `9acb1fc`, libmali. The maintainer saw the picture, saw no rectangle change, and NextUI returned with no error. Two runs logged `SDL3_DONE frames=666 input=1` and `frames=415 input=1` for the Xbox 360 pad on KMSDRM OpenGL ES2. The missing rectangle change matches the probe. No probe or cleanup failure remained. Gate 5 has not started.
 
 ### Gate 5. Representative engines
 

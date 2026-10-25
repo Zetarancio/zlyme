@@ -299,15 +299,15 @@ Phase 14 is open on `zlyme44.4-phase-14`. Phase 15 has not started. `zlyme44.4` 
 
 The installed firmware as of 2026-10-24 was source `72916de97b2ce8a027bad14ace275ef25426a695`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`, GPU `libmali`, PortMaster seed `2026.06.23-0015`. `da7eb2128294` (squashfs `f08c3fa8…`) is the previous installed image. The format=3 and format=4 validation campaigns are not the acceptance path.
 
-The installed image on 2026-10-25 is `zlyme-my355-20261025-9acb1fcb30a5.tar` from `9acb1fcb30a5f72e1ab08aef6e9179a83619fa82`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`. NextUI is running. The 49-SONAME ROCKNIX compatibility baseline is implemented and host-validated. That does not accept every PortMaster game, Zlyme's GL4ES fallback, or Panfrost. Aerofoil passes. X-Moto and JVGS still fail after their libraries load, and those failures are deferred. Gate 4 is the next hardware test and is not accepted.
+The installed image on 2026-10-25 is `zlyme-my355-20261025-9acb1fcb30a5.tar` from `9acb1fcb30a5f72e1ab08aef6e9179a83619fa82`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`. NextUI is running. The 49-SONAME ROCKNIX compatibility baseline is implemented and host-validated. That does not accept every PortMaster game, Zlyme's GL4ES fallback, or Panfrost. Aerofoil passes. X-Moto and JVGS still fail after their libraries load, and those failures are deferred. Gate 4 is accepted on this image: the SDL3 probe showed a picture, logged Xbox 360 button events, left the rectangle unchanged, and returned to NextUI with no leftover client.
 
 `c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is not the installed firmware. It remains the image that accepted Abombniball MENU+START. `0b35a90` remains the image that accepted volume, Wi-Fi, HDMI audio, and NextUI at HDMI 720p. `4652076` remains the image that accepted the looked-at 14O rows. Later images do not rewrite those records.
 
-Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is the Gate 4 SDL3 hardware test. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
+Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is Gate 5. Gate 4 is accepted on libmali. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
 ### Next decision gate
 
-**Gate 0 approved Gate 1 only. Gate 1 and Gate 2 are hardware-accepted. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 4 is the next hardware test.**
+**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5 has not started.**
 
 Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
 
@@ -315,7 +315,7 @@ An isolated libmali GL4ES diagnostic passed on 2026-10-25. It used a private bui
 
 Aerofoil is the accepted PortMaster GL4ES result on this image. Its launcher used the seed's `libgl_default.txt`, so `LIBGL_FB=4`, and SDL loaded the port's own `gl4es.aarch64` `libGL.so.1` and `libEGL.so.1` (GL4ES built Nov 12 2024, GBM on `card0`). The maintainer saw the game, used its menu to exit, and returned to NextUI with no leftover process, mount, or kernel fault. Zlyme's optional fallback was not the library that ran. Panfrost was not tested. One port does not accept every GL4ES game.
 
-On the same installed image, boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`, X-Moto and JVGS stayed blank because the dynamic linker stopped them. X-Moto needs `libxml2.so.2` and `libSDL2_net-2.0.so.0`. The system provides `libxml2.so.16` and does not provide SDL2_net. JVGS's bundled `libSDL_mixer-1.2.so.0` needs `libmodplug.so.1`, which is neither installed nor in that port. Neither reached SDL or a GL context. Their bundled GL4ES files were not loaded. The ROCKNIX compat archive at `691f24bc` supplies an unlabeled `libxml2.so.2` and neither of the other two libraries, so it is not installed. Pushed source `98ff32c` builds libxml2 2.13.9 into `/usr/lib/compat` and selects Buildroot `sdl2_net` and `libmodplug`. The maintainer installed local OTA `1b74536a35de`. Aerofoil still runs. X-Moto gets past the missing libraries and then fails in `SDL_Init` with `kmsdrm not available`. JVGS gets past `libmodplug.so.1`, warns that `.jvgs.xml` is missing, and then segmentation-faults. Neither new failure is a missing SONAME. `portmaster-rocknix-compat` installs the other 41 SONAMEs from that `compat.tar.gz` under `/usr/lib/compat`. It leaves both SDL2 objects out and does not replace the source-built `libxml2.so.2` or `libtheoradec.so.1`. `libgomp.so.1`, X11, Pango, Speex, libgcrypt, and libvdpau are source-built so those files can load. The license identifier is `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. That record is not a license grant. `gl4es.tar.gz` stays out. Gate 4 is the next test.
+On the same installed image, boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`, X-Moto and JVGS stayed blank because the dynamic linker stopped them. X-Moto needs `libxml2.so.2` and `libSDL2_net-2.0.so.0`. The system provides `libxml2.so.16` and does not provide SDL2_net. JVGS's bundled `libSDL_mixer-1.2.so.0` needs `libmodplug.so.1`, which is neither installed nor in that port. Neither reached SDL or a GL context. Their bundled GL4ES files were not loaded. The ROCKNIX compat archive at `691f24bc` supplies an unlabeled `libxml2.so.2` and neither of the other two libraries, so it is not installed. Pushed source `98ff32c` builds libxml2 2.13.9 into `/usr/lib/compat` and selects Buildroot `sdl2_net` and `libmodplug`. The maintainer installed local OTA `1b74536a35de`. Aerofoil still runs. X-Moto gets past the missing libraries and then fails in `SDL_Init` with `kmsdrm not available`. JVGS gets past `libmodplug.so.1`, warns that `.jvgs.xml` is missing, and then segmentation-faults. Neither new failure is a missing SONAME. `portmaster-rocknix-compat` installs the other 41 SONAMEs from that `compat.tar.gz` under `/usr/lib/compat`. It leaves both SDL2 objects out and does not replace the source-built `libxml2.so.2` or `libtheoradec.so.1`. `libgomp.so.1`, X11, Pango, Speex, libgcrypt, and libvdpau are source-built so those files can load. The license identifier is `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. That record is not a license grant. `gl4es.tar.gz` stays out. Gate 4 is accepted on `9acb1fc`.
 
 Pushed source `5587b67` follows ROCKNIX `next` `projects/ROCKNIX/packages/graphics/gl4es/package.mk` at ROCKNIX `651150fc88a8ee40e3f8e69c6d36feb6b005bde5`: pin `81547d986798e876de8b434193920b606a72363f`, `ODROID`, `NOX11`, and `NOEGL`. It remains under `/usr/lib/portmaster/gl4es/aarch64`. `zlyme-gl4es-run` does not assign `LIBGL_FB`. A host package build passed. Installed `9acb1fc` contains that library under `/usr/lib/portmaster/gl4es/aarch64`. No port was switched onto it, and hardware acceptance is still pending. The constructor still runs. This does not close the earlier exit SIGSEGV. ARMHF GL4ES stays at `2037865590`. PortMaster's own GL4ES remains the contract normal ports use.
 
@@ -354,14 +354,14 @@ Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing 
 
 Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
 
-Status: Partial on installed `da7eb21`, libmali. SDL 3.4.12 provides
-KMSDRM, OpenGL ES, and Wayland, and the old stub is absent. The SDL3
-Tools probe selected an OpenGL ES2 renderer, saw the Xbox 360 virtual
-pad, logged button events, and exited with `SDL3_DONE frames=512
-input=1`. The maintainer saw no on-screen reaction to the pad. The
-probe does not draw a response to those events. Event delivery is
-PASS. Visual controller feedback is NOT DEMONSTRATED. That is not an
-InputPlumber failure.
+Status: Accepted on installed `9acb1fc`, libmali, for the SDL3 probe.
+The maintainer saw the picture. The rectangle did not change with
+the buttons. Both launches logged `opengles2`, the Xbox 360 pad, and
+`SDL3_DONE` with `input=1` (`frames=666` and `frames=415`). NextUI
+returned, and no probe or extra mount remained. The probe does not
+draw a response to a button, so that missing change is the expected
+picture. The earlier `da7eb21` run logged the same events without a
+recorded picture. That run stays the earlier record.
 
 The installed GL4ES Tools probe logged `LIBGL_FB=3`, KMSDRM, and
 `GL4ES_READY` with Mali-G52. The screen stayed black. MENU+START

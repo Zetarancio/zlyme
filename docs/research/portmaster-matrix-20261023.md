@@ -1,5 +1,9 @@
 # PortMaster validation, 2026-10-23
 
+## SDL3 probe, 2026-10-25
+
+Installed `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`. Two Tools launches of `Zlyme SDL3 Validation`. The picture was visible and the rectangle did not change. `system-0/session.txt` records `SDL3_DONE frames=666 input=1` and `frames=415 input=1`. NextUI returned. The `da7eb21` row below stays that earlier session.
+
 ## X-Moto and JVGS, 2026-10-25
 
 Same squashfs. Boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`. GPU `libmali`. Both screens stayed blank. The failing boundary is the dynamic linker, before SDL initialization and before GL context creation.

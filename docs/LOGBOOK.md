@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-25 — Gate 4 accepted on libmali
+
+On the same installed image, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`, the maintainer launched `Zlyme SDL3 Validation` from Tools twice. The picture was visible. The rectangle did not change when buttons were pressed. NextUI returned both times with no Pak failed dialog. `system-0/session.txt` records both runs: `video=kmsdrm`, `renderer=opengles2`, pad `Microsoft X-Box 360 pad`, then `SDL3_DONE frames=666 input=1` and `SDL3_DONE frames=415 input=1`. The first run logged buttons 13, 14, 12, 1, 3, 0, 2, 6, 4, and 10. The second logged 14, 12, 13, 1, 3, 0, and 2. The probe logs a button and does not redraw the rectangle from it, so the missing picture change is the expected behavior. Afterward `nextui.elf` held `/dev/dri/card0`, the probe was gone, `/run/zlyme/pak-cleanup-failed` was absent, and `dmesg` had no Oops or probe segfault. Gate 4 is accepted for this probe on libmali. It does not accept Zlyme's GL4ES fallback, Panfrost, or every PortMaster game. X-Moto and JVGS stay deferred.
+
 ## 2026-10-25 — Compat baseline on 9acb1fc, Gate 4 waiting
 
 The maintainer installed `zlyme-my355-20261025-9acb1fcb30a5.tar`. Live `/boot/zlyme` is squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, the root of that OTA. Source is `9acb1fcb30a5f72e1ab08aef6e9179a83619fa82`. Boot id `e1d5969c-96f6-46cc-92d5-eb3285820dca`. `/storage/.config/zlyme/gpu` is `libmali`. `nextui.elf` is running and holds `/dev/dri/card0`. InputPlumber is running. The read-only root has 43 regular files under `/usr/lib/compat` and `/usr/lib/portmaster/gl4es/aarch64/libGL.so.1` at SHA-256 `8466a29c369c0399be3d68cdb67cad081000e0148f869b64867ec04d97515b14`. That fallback is installed. It is not hardware-accepted, and Panfrost is not accepted.
