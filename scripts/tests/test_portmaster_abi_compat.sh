@@ -1,5 +1,8 @@
 #!/bin/sh
 # X-Moto and JVGS ABI gaps are source-built, not the ROCKNIX blob.
+# With no arguments this checks the source contract and, when a target
+# tree already contains the three libraries, their ELF. --built is the
+# full-build acceptance gate and fails if any of those libraries is absent.
 set -eu
 # shellcheck disable=SC1007
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -7,6 +10,11 @@ fail() {
 	echo "portmaster-abi-compat: $*" >&2
 	exit 1
 }
+built=0
+if [ "${1:-}" = --built ]; then
+	built=1
+	shift
+fi
 
 mk=$ROOT/package/system/portmaster-xml2-compat/portmaster-xml2-compat.mk
 install=$ROOT/package/system/portmaster-xml2-compat/install-compat-libs.sh
@@ -35,6 +43,14 @@ fi
 grep -q '81547d986798e876de8b434193920b606a72363f' "$glmk" || fail "AArch64 GL4ES pin changed"
 grep -q 'gl4es.tar.gz' "$glmk" && fail "AArch64 GL4ES uses the binary archive"
 grep -q '2037865590d410bcd7b8d1f22b841472ed6d39ac' "$arm" || fail "ARMHF GL4ES pin changed"
+grep -q 'SDL2_NET_DEPENDENCIES += host-patchelf' "$ROOT/external.mk" ||
+	fail "SDL2_net does not depend on host-patchelf"
+control=$ROOT/package/system/portmaster/control.txt
+grep -q 'clibs="/usr/lib/compat"' "$control" || fail "compat directory moved"
+# The ${} forms are the literal control.txt text.
+# shellcheck disable=SC2016
+grep -q 'export LD_LIBRARY_PATH="${clibs}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' \
+	"$control" || fail "compat path no longer stays behind a port path"
 
 compat_root=$(mktemp -d)
 trap 'rm -rf "$compat_root"' EXIT
@@ -62,6 +78,9 @@ xml=$target/usr/lib/compat/libxml2.so.2
 mod=$target/usr/lib/libmodplug.so.1
 net=$target/usr/lib/libSDL2_net-2.0.so.0
 if [ ! -f "$xml" ] || [ ! -f "$mod" ] || [ ! -f "$net" ]; then
+	if [ "$built" -eq 1 ]; then
+		fail "full-build acceptance missing one of libxml2.so.2, libSDL2_net-2.0.so.0, libmodplug.so.1 under $target"
+	fi
 	echo "portmaster-abi-compat: source check ok; built libraries not in $target"
 	exit 0
 fi
@@ -79,6 +98,9 @@ for sym in xmlFreeDoc xmlGetProp xmlStrcmp xmlNodeGetContent xmlParseMemory \
 done
 if [ -e "$target/usr/lib/libxml2.so.2" ]; then
 	fail "system directory has libxml2.so.2"
+fi
+if [ "$built" -eq 1 ] && [ ! -f "$target/usr/lib/libxml2.so.16" ]; then
+	fail "full-build acceptance is missing system libxml2.so.16"
 fi
 if [ -f "$target/usr/lib/libxml2.so.16" ]; then
 	"$re" -d "$target/usr/lib/libxml2.so.16" | grep -q 'SONAME.*\[libxml2\.so\.16\]' ||

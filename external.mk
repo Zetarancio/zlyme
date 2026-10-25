@@ -19,6 +19,11 @@ endif
 
 # libtool writes the build sysroot into DT_RPATH and the .la file.
 # The loader must not search that path, and the .la is not used on target.
+# host-patchelf is an explicit dependency: this file is included after
+# sdl2_net.mk has already turned its dependency list into a rule, so the
+# order-only edge is added again on the configure stamp.
+SDL2_NET_DEPENDENCIES += host-patchelf
+$(SDL2_NET_TARGET_CONFIGURE): | host-patchelf
 define SDL2_NET_DROP_SYSROOT_RPATH
 	find $(TARGET_DIR)/usr/lib -name 'libSDL2_net-2.0.so.*' -type f \
 		-exec $(HOST_DIR)/bin/patchelf --remove-rpath {} \;
