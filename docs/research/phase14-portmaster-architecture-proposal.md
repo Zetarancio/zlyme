@@ -254,7 +254,7 @@ Fail: black screen or a missing done line.
 Regression risk: ports that bundle another `libGL`.
 Hardware: required on each GPU boot.
 
-2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. Aerofoil then passed on its own bundled GL4ES with `libgl_default.txt` and `LIBGL_FB=4`. That is the port-local library on libmali, not Zlyme's optional fallback and not Panfrost. X-Moto and JVGS stayed blank because the loader could not open `libxml2.so.2` and `libmodplug.so.1`. They did not reach SDL or GL. The source fallback is pushed as `5587b67` and follows the ROCKNIX pin and options. A host build passed. It is not in installed firmware, and hardware acceptance is still pending. The installed library's earlier dark-screen result stays. `ROCKNIX/packages` `691f24bc` `gl4es.tar.gz` is an older EGL-wrapper binary and is not a replacement for that source build. Gate 3 is not closed. X-Moto's loader stop is `libxml2.so.2`, and the same binary also needs `libSDL2_net-2.0.so.0`. JVGS stops on `libmodplug.so.1` inside its bundled SDL_mixer. The ROCKNIX compat archive is not the fix: it has no license text, and it lacks the latter two libraries. File-by-file coverage of that archive is in [phase14-rocknix-compat-coverage.md](phase14-rocknix-compat-coverage.md).
+2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. Aerofoil then passed on its own bundled GL4ES with `libgl_default.txt` and `LIBGL_FB=4`. That is the port-local library on libmali, not Zlyme's optional fallback and not Panfrost. X-Moto and JVGS stayed blank because the loader could not open `libxml2.so.2` and `libmodplug.so.1`. They did not reach SDL or GL. The source fallback is pushed as `5587b67` and follows the ROCKNIX pin and options. A host build passed. Installed `9acb1fc` contains that library, and hardware acceptance is still pending. The installed library's earlier dark-screen result stays. `ROCKNIX/packages` `691f24bc` `gl4es.tar.gz` is an older EGL-wrapper binary and is not a replacement for that source build. Gate 3 is not closed. X-Moto's loader stop is `libxml2.so.2`, and the same binary also needs `libSDL2_net-2.0.so.0`. JVGS stops on `libmodplug.so.1` inside its bundled SDL_mixer. The ROCKNIX compat archive is not the fix: it has no license text, and it lacks the latter two libraries. File-by-file coverage of that archive is in [phase14-rocknix-compat-coverage.md](phase14-rocknix-compat-coverage.md). On installed `9acb1fc` the 49-SONAME allowlist is present and host-validated. X-Moto and JVGS get past the loader. X-Moto stops with `fatal exception : Unable to get xmDb version:`, and JVGS segmentation-faults after the `.jvgs.xml` warning. Those later failures are deferred. Gate 3 stays open for the Zlyme fallback and Panfrost.
 
 ### Gate 4. SDL3 picture and pad
 
@@ -267,6 +267,8 @@ behavior matching the probe source.
 Fail: no picture, or events stop arriving.
 Regression risk: SDL3 SONAME used by other packages.
 Hardware: required.
+
+2026-10-25 status: installed `9acb1fc` has the same probe. `Zlyme SDL3 Validation.pak` is the owned Tools entry and was left in place. The maintainer has not run it on this image. Gate 4 is not accepted. A missing on-screen reaction to a button matches this probe: it logs the button and does not redraw the rectangle from that event.
 
 ### Gate 5. Representative engines
 

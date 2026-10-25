@@ -110,8 +110,8 @@ The source after that installed image now has:
   `2037865590d410bcd7b8d1f22b841472ed6d39ac` under
   `/usr/lib/zlyme-armhf/gl4es`. Neither replaces system GL, EGL, or
   GLES or a port-bundled GL4ES. The AArch64 change is pushed source
-  `5587b67`. A host build passed. It is not in installed firmware,
-  and hardware acceptance is still pending;
+  `5587b67`. A host build passed. Installed `9acb1fc` contains that library.
+  Hardware acceptance is still pending;
 - normal-NextUI disposable SDL3 KMSDRM/input and AArch64 GL4ES render
   probes, plus a passive bounded process/DRM/mount observer;
 - fail-closed PAK session cleanup. Incomplete `/proc` inspection,
