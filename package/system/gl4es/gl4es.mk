@@ -7,21 +7,26 @@
 # PortMaster-only OpenGL compatibility. The library and headers stay
 # in isolated paths and never replace the system GL/EGL/GLES ABI.
 
-GL4ES_VERSION = 2037865590d410bcd7b8d1f22b841472ed6d39ac
+# ROCKNIX next gl4es package.mk, pin 81547d986798e876de8b434193920b606a72363f.
+# PortMaster's bundled GL4ES is a separate contract and is not this pin.
+GL4ES_VERSION = 81547d986798e876de8b434193920b606a72363f
 GL4ES_SITE = $(call github,ptitSeb,gl4es,$(GL4ES_VERSION))
 GL4ES_LICENSE = MIT
 GL4ES_LICENSE_FILES = LICENSE
+# ROCKNIX lists only its toolchain. This Buildroot package depends
+# on mesa3d so the GLES provider the NOEGL loader opens is present.
+# That dependency does not add a GBM or EGL cmake option.
 GL4ES_DEPENDENCIES = mesa3d
 GL4ES_INSTALL_STAGING = YES
 
+# ROCKNIX configure_package: -DODROID=1 -DNOX11=1 -DNOEGL=1.
+# CMAKE_SKIP_RPATH is Buildroot isolation, not a GL4ES option.
 GL4ES_CONF_OPTS = \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_SKIP_RPATH=ON \
+	-DODROID=ON \
 	-DNOX11=ON \
-	-DGBM=ON \
-	-DDEFAULT_ES=2 \
-	-DDEFAULT_EGL=libEGL.so.1 \
-	-DDEFAULT_GLES=libGLESv2.so.2
+	-DNOEGL=ON
 
 define GL4ES_INSTALL_STAGING_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/lib/libGL.so.1 \

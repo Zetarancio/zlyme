@@ -182,8 +182,10 @@ SDL or GPU library change is in scope.
   bailing, the squashfs mount, the runtime root, or `PATH`. The
   mount source begins with `//`. That double leading slash is not
   a proven shell-expansion bug.
-- Whether GL4ES PBuffer mode can present on the panel, or whether
-  the black screen is swap/presentation while the context is valid.
+- The installed GL4ES probe's black screen remains that library's
+  record. A `NOX11` build does not compile mode 3, so that mode is
+  not PBuffer selection on this tree. The ROCKNIX-aligned fallback
+  does not assign `LIBGL_FB` and has not been run on the Flip.
   Panfrost was not booted for this probe.
 - Whether the SDL3 probe's missing picture reaction is only the
   probe's drawing, which the source suggests, or also a modeset
@@ -252,7 +254,7 @@ Fail: black screen or a missing done line.
 Regression risk: ports that bundle another `libGL`.
 Hardware: required on each GPU boot.
 
-2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. Aerofoil then passed on its own bundled GL4ES with `libgl_default.txt` and `LIBGL_FB=4`. That is the port-local library on libmali, not Zlyme's optional fallback and not Panfrost. The installed library's earlier dark-screen result stays. Gate 3 is not closed.
+2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. Aerofoil then passed on its own bundled GL4ES with `libgl_default.txt` and `LIBGL_FB=4`. That is the port-local library on libmali, not Zlyme's optional fallback and not Panfrost. X-Moto and JVGS stayed blank because the loader could not open `libxml2.so.2` and `libmodplug.so.1`. They did not reach SDL or GL. The source fallback now follows the ROCKNIX pin and options and is not installed. The installed library's earlier dark-screen result stays. Gate 3 is not closed.
 
 ### Gate 4. SDL3 picture and pad
 

@@ -1,5 +1,15 @@
 # PortMaster validation, 2026-10-23
 
+## X-Moto and JVGS, 2026-10-25
+
+Same squashfs. Boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`. GPU `libmali`. Both screens stayed blank. The failing boundary is the dynamic linker, before SDL initialization and before GL context creation.
+
+X-Moto `xmoto` is AArch64, needs `libxml2.so.2`, `libGL.so.1`, `libGLU.so.1`, and libSDL2. The system has `libxml2.so.16` only. `libs.aarch64` has no libxml2. `PORTS.log` 2026-10-25T10:29:40Z: `error while loading shared libraries: libxml2.so.2`. The script sources `libgl_default.txt` (`LIBGL_ES=2`, `LIBGL_GL=21`, `LIBGL_FB=4` when `card0` exists) and sets `SDL_VIDEO_GL_DRIVER` and `SDL_VIDEO_EGL_DRIVER` to `gl4es.aarch64`. `share/xmoto` is present. Those settings never reached a running game.
+
+JVGS `bin/jvgs` is AArch64, needs `libGL.so.1` and `libSDL-1.2.so.0`, and calls `SDL_GL_SwapBuffers`. `PORTS.log.1` 2026-10-25T10:29:16Z: `error while loading shared libraries: libmodplug.so.1`. That SONAME is not in `/usr/lib` or `jvgs/libs.aarch64`. The script uses the same `libgl_default.txt` and port `libGL.so.1`. The three ports' bundled `libGL.so.1` files share SHA-256 `b2b24ebe56b894e44b2ed8ce335ad8b1c90e8856b3b3f864561122c8ec32f970`. Aerofoil loaded its copy. X-Moto and JVGS did not.
+
+`pm_finish` then killed gptokeyb and gptokeyb2. No GL4ES init line, no GBM line, and no KMSDRM line appears in either port log. Zlyme's fallback was not involved.
+
 ## Aerofoil, 2026-10-25
 
 Same squashfs and boot `190b7a7d-150f-4bc3-bbf2-badc3dcea785`. GPU `libmali`. The maintainer launched Aerofoil from Ports and exited from the game menu. Picture, motion, pad, and audio were fine. NextUI returned. No Pak failed dialog, leftover process, save bind, or kernel Oops. The port log shows `libgl_default.txt` selecting `LIBGL_FB=4` and the port's `gl4es.aarch64` library, built Nov 12 2024, logging `using GBM` on `/dev/dri/card0`. `libGL.so.1` SHA-256 `b2b24ebe56b894e44b2ed8ce335ad8b1c90e8856b3b3f864561122c8ec32f970`. Zlyme's fallback library was not loaded. JVGS and X-Moto were not run. Panfrost was not tested.
@@ -92,9 +102,13 @@ The source after that installed image now has:
   The installed proprietary libmali is AArch64-only. ARMHF graphics
   therefore requires a Panfrost boot and remains unavailable on a
   libmali boot;
-- pinned GL4ES `2037865590d410bcd7b8d1f22b841472ed6d39ac` in isolated,
-  explicit AArch64 and ARMHF directories. It does not replace system
-  GL, EGL, or GLES and does not override a port-bundled GL4ES;
+- AArch64 GL4ES pin `81547d986798e876de8b434193920b606a72363f`, the
+  ROCKNIX `ODROID`, `NOX11`, and `NOEGL` profile, isolated under
+  `/usr/lib/portmaster/gl4es/aarch64`. ARMHF stays at
+  `2037865590d410bcd7b8d1f22b841472ed6d39ac` under
+  `/usr/lib/zlyme-armhf/gl4es`. Neither replaces system GL, EGL, or
+  GLES or a port-bundled GL4ES. The AArch64 change is a host recipe;
+  it is not the library on the installed image;
 - normal-NextUI disposable SDL3 KMSDRM/input and AArch64 GL4ES render
   probes, plus a passive bounded process/DRM/mount observer;
 - fail-closed PAK session cleanup. Incomplete `/proc` inspection,

@@ -19,6 +19,15 @@ for option in BR2_PACKAGE_GL4ES BR2_PACKAGE_ZLYME_GRAPHICS_PROBES \
 done
 grep -q '/usr/lib/portmaster/gl4es/aarch64/libGL.so.1' "$GLMK" ||
 	fail "GL4ES is not installed in its isolated path"
+grep -q '81547d986798e876de8b434193920b606a72363f' "$GLMK" ||
+	fail "AArch64 GL4ES is not the ROCKNIX pin"
+grep -q -- '-DNOEGL=ON' "$GLMK" || fail "AArch64 GL4ES is missing NOEGL"
+grep -q -- '-DODROID=ON' "$GLMK" || fail "AArch64 GL4ES is missing ODROID"
+grep -q -- '-DNOX11=ON' "$GLMK" || fail "AArch64 GL4ES is missing NOX11"
+grep -q 'GLX_STUBS\|EGL_WRAPPER\|NO_INIT_CONSTRUCTOR' "$GLMK" &&
+	fail "AArch64 GL4ES enables a rejected option"
+grep -q '2037865590d410bcd7b8d1f22b841472ed6d39ac' "$ARM_MK" ||
+	fail "ARMHF GL4ES pin changed"
 grep -q '/usr/lib/zlyme-armhf/gl4es/libGL.so.1' "$ARM_MK" ||
 	fail "ARMHF GL4ES is not installed in its isolated private path"
 grep -q -- '-DCMAKE_SKIP_RPATH=ON' "$GLMK" ||
@@ -72,6 +81,11 @@ mkdir -p "$work/gl4es"
 cat > "$work/show-path" << 'EOF'
 #!/bin/sh
 printf '%s\n' "$LD_LIBRARY_PATH"
+if [ -n "${LIBGL_FB+x}" ]; then
+	printf 'FB=%s\n' "$LIBGL_FB"
+else
+	printf 'FB=unset\n'
+fi
 EOF
 chmod 0755 "$work/show-path"
 got=$(
@@ -79,12 +93,21 @@ got=$(
 	LD_LIBRARY_PATH=/port/first:/usr/lib:/port/second:/usr/lib/compat:/storage/.config/zlyme/lib \
 		sh "$RUN" "$work/show-path"
 )
-[ "$got" = "/port/first:/port/second:$work/gl4es:/usr/lib:/usr/lib/compat:/storage/.config/zlyme/lib" ] ||
+[ "$got" = "/port/first:/port/second:$work/gl4es:/usr/lib:/usr/lib/compat:/storage/.config/zlyme/lib
+FB=unset" ] ||
 	fail "GL4ES selector precedence is $got"
-grep -q 'LIBGL_FB:=3' "$RUN" ||
-	fail "AArch64 GL4ES selector does not default to PBuffer mode"
-grep -q 'PBuffer' "$RUN" ||
-	fail "AArch64 GL4ES selector comment does not name PBuffer mode"
+got=$(
+	ZLYME_GL4ES_DIR="$work/gl4es" \
+	LIBGL_FB=4 \
+	LD_LIBRARY_PATH=/port/local:/usr/lib \
+		sh "$RUN" "$work/show-path"
+)
+[ "$got" = "/port/local:$work/gl4es:/usr/lib
+FB=4" ] || fail "preset LIBGL_FB was replaced: $got"
+grep -q 'LIBGL_FB:=3' "$RUN" &&
+	fail "AArch64 GL4ES selector still defaults to mode 3"
+grep -q 'PBuffer' "$RUN" &&
+	fail "AArch64 GL4ES selector still describes mode 3 as PBuffer"
 grep -q 'SDL_VIDEODRIVER:=kmsdrm' "$RUN" ||
 	fail "AArch64 GL4ES selector does not prefer KMSDRM"
 grep -q 'GL4ES_VIDEO_DRIVER' "$PROBES/gl4es-probe.c" ||

@@ -34,14 +34,15 @@ done
 IFS=$old_ifs
 LD_LIBRARY_PATH=${port_paths:+$port_paths:}$gl4es${system_paths:+:$system_paths}
 export LD_LIBRARY_PATH
-# Pinned GL4ES USAGE: LIBGL_FB=3 is PBuffer mode (usepbuffer=1).
-# LIBGL_FB=4 enables GBM scanout (usegbm=1) and races SDL2 KMSDRM's
-# DRM-master probe ("kmsdrm not available"). Prefer PBuffer so GL4ES
-# does not open the card for scanout while SDL owns KMSDRM.
+# This NOX11 build does not compile the mode-3 branch, so the
+# selector does not invent a framebuffer mode. A port that already
+# exported LIBGL_FB keeps that value.
 : "${LIBGL_ES:=2}"
 : "${LIBGL_GL:=21}"
-: "${LIBGL_FB:=3}"
-export LIBGL_ES LIBGL_GL LIBGL_FB
+if [ -n "${LIBGL_FB:-}" ]; then
+	export LIBGL_FB
+fi
+export LIBGL_ES LIBGL_GL
 # Prefer KMSDRM when the caller did not already choose a driver.
 : "${SDL_VIDEODRIVER:=kmsdrm}"
 export SDL_VIDEODRIVER
