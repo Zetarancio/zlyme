@@ -1,0 +1,20 @@
+config BR2_PACKAGE_PORTMASTER_ROCKNIX_COMPAT
+	bool "portmaster ROCKNIX compatibility libraries"
+	depends on BR2_PACKAGE_XORG7
+	depends on BR2_GCC_ENABLE_OPENMP
+	select BR2_PACKAGE_PANGO
+	select BR2_PACKAGE_SPEEX
+	select BR2_PACKAGE_LIBGCRYPT
+	select BR2_PACKAGE_LIBVDPAU
+	select BR2_PACKAGE_XLIB_LIBX11
+	select BR2_PACKAGE_XLIB_LIBXEXT
+	select BR2_PACKAGE_XLIB_LIBXFIXES
+	help
+	  Legacy SONAMEs from the pinned ROCKNIX PortMaster compat
+	  archive, installed only under /usr/lib/compat. System SDL2,
+	  libxml2.so.2, and libtheoradec.so.1 are not replaced.
+
+	  https://github.com/ROCKNIX/packages
+
+comment "portmaster ROCKNIX compat needs X11 libraries and OpenMP"
+	depends on !BR2_PACKAGE_XORG7 || !BR2_GCC_ENABLE_OPENMP
