@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed PortMaster image is `72916de`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, GPU `libmali`. Gates 1, 2, and 4 are accepted. Gate 5 is next, then Gate 6, then [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review). The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -307,7 +307,7 @@ Hardware acceptance is at the risky compatibility boundary, not one deferred pas
 
 ### Next decision gate
 
-**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5 has not started.**
+**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5 is next, then Gate 6, then 14P.**
 
 Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
 
@@ -558,3 +558,25 @@ The selection pill and the scrolling text use one width. The first row stops at 
 The previous pin `666ff5fdf737a01f83505b843916ac9c46da80d6` subtracted `ow` on the first row with no thumbnail, and the scroll path subtracted it again. That is the narrow first row. Host checks are `scripts/tests/test_list_width.sh`.
 
 On the installed image, the first row and a later row with no picture, a ROM thumbnail, Art Book system and tool artwork, a long name inside the pill, and the default Game art percent were accepted. `/storage/bg.png` was not a separate check.
+
+### 14P. Final reconciliation, cleanup and release-readiness review
+
+Status: PLANNED. This is the last Phase 14 development gate. It has not started.
+
+Prerequisites: the remaining Phase 14 hardware gates are accepted or excluded with a stated scope, Gate 5 and Gate 6 are done, and one final product candidate is named.
+
+Objective: `zlyme44.4` has one coherent implementation, no leftover Phase 14 experiments, documents that agree with the source, and a short user-facing changelog.
+
+A. Source. Compare `main` with `zlyme44.4-phase-14`. Review the code diff for the engineering principles, device boundaries, dependencies, stale workarounds, and regressions. Review the documentation diff separately for contradictions, repetition, and superseded decisions. Do not reimplement a feature because another design was considered.
+
+B. Dead code and experiments. List what Phase 14 added that is now unused, superseded, or test-only: tracing, debug switches, disposable PAKs, graphics probes, abandoned GL4ES experiments, superseded audio scripts, unused wrappers, orphaned package selections, obsolete post-update migrations, dead installed files, duplicated configuration, and startup work with no reason. Check real references before deleting anything. Keep useful host tests and operational diagnostics. Do not remove accepted production behavior. Review `zlyme-graphics-probes` and the three Phase 14 Tools entries. Remove a Tools PAK from storage only when its ownership marker and contents match. A user-created or changed PAK stays. A migration that removes test PAKs is narrow and idempotent, and never deletes `/storage/.config` or user data broadly.
+
+C. Documentation. Reconcile `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/DEVICE_PORTING.md`, `docs/OPERATIONS.md`, `docs/MAINTENANCE.md`, `docs/UPSTREAMS.md`, `docs/USER_GUIDE.md`, `AGENTS.md`, `docs/WRITING.md`, `README.md`, this file, and `CHANGELOG.md` with the source. Leave `docs/LOGBOOK.md` and `docs/research/` as history. Correct stale states, pins, dependencies, package owners, install paths, runtime behavior, versions, and links. Record the NextUI pin and its ancestry. Keep attributions and license records.
+
+D. Roadmap. Shorten Phase 14 to the format of the earlier closed phases: objective, final status, main implementations, architectural decisions, accepted hardware evidence, exclusions and deferrals, remaining limits, closure SHA and date, and research links. Move long chronology to research or the archive. Keep anchors that other files link to.
+
+E. Changelog and writing. Revise `docs/WRITING.md` so changelog entries use clear connected English, short paragraphs where they help, grouping by visible feature, and little repetition, in a form that works as a GitHub release body. Leave out compiler options, implementation history, test results, SHAs, and routine dependency additions. Do not force every entry into one sentence. Rewrite `Unreleased` for the accepted visible features of `zlyme44.4`, and tidy earlier sections without changing their meaning, credits, dates, or instructions. Check the release tags first. `Unreleased` compares from the `zlyme44.3` tag. The `zlyme44.3` link is a fixed range, not one that ends at `HEAD`. Known limitations names only what a user meets. The maintainer's candidate is that the internal screen stays on while HDMI is connected in normal use. Check that wording against final behavior. Port-specific failures and experimental limits stay in the engineering documents. Do not claim that every PortMaster game works.
+
+F. Release readiness. Check reproducible builds, no test artifacts in production, product and minimal package separation, no tracing on by default, boot and NextUI, no unneeded processes, migration safety, compatibility archive hashes and ownership, license and provenance records, the NextUI pin, the user guide, the documentation tests, and the Gate 6 hardware evidence. A runtime change needs its package builds and hardware checks. A documentation-only cleanup does not need a new OTA. Write one release-readiness report.
+
+Out of scope: publishing a GitHub release, creating a tag, merging into `main`, changing `ZLYME_VERSION` to `zlyme44.4`, and starting a remote build. Each needs separate maintainer approval.
