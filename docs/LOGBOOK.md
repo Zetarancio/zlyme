@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-25 — X-Moto and JVGS on the 1b74536 image
+
+The maintainer installed the local OTA built from `1b74536a35de395e72cce81336d9fb73c4081b13`. Aerofoil still runs. Its log includes the SDL2 KMSDRM hardware-cursor fallback. X-Moto's previously missing libraries resolve. Its bundled GL4ES initializes in GBM mode and reports `/dev/dri/card0`. X-Moto then fails in `SDL_Init` with `kmsdrm not available`. That line does not identify which process held the DRM device. JVGS gets past the earlier `libmodplug.so.1` loader failure, warns that `.jvgs.xml` is missing, and the game process then segmentation-faults. The missing-file warning is not the demonstrated cause of that fault.
+
 ## 2026-10-25 — PortMaster ABI gaps stay source-built
 
 `ROCKNIX/packages` `691f24bceb72228f20d41ddb4a1e76ed76a1b0b8` was inspected. `compat.tar.gz` is SHA-256 `4eba88bf7fef74489fc7d113005aec5b335519a8901e776f7d6203bbcc58b791`. `gl4es.tar.gz` is SHA-256 `141c2a0139680ca143505b4c51462b4de0b3c2bfcc62ad6a67b86c065ede15c4`. Neither archive has a license or an upstream version. The compat archive contains `libxml2.so.2` with `xmlParseFile@@LIBXML2_2.4.30`, and it does not contain `libSDL2_net-2.0.so.0` or `libmodplug.so.1`. ROCKNIX deletes both SDL2 files from that archive on install because their SONAME is `libSDL2-2.0.so.0`. The GL4ES archive is a 2021–2022 `libGL.so.1` plus an EGL wrapper with `RUNPATH` `/opt/gl4es/lib` and `/gl4es/lib:`. It is not the ROCKNIX source recipe from `5587b67`, and it is not installed.
