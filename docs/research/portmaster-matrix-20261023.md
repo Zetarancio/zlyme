@@ -1,5 +1,9 @@
 # PortMaster validation, 2026-10-23
 
+## Aerofoil, 2026-10-25
+
+Same squashfs and boot `190b7a7d-150f-4bc3-bbf2-badc3dcea785`. GPU `libmali`. The maintainer launched Aerofoil from Ports and exited from the game menu. Picture, motion, pad, and audio were fine. NextUI returned. No Pak failed dialog, leftover process, save bind, or kernel Oops. The port log shows `libgl_default.txt` selecting `LIBGL_FB=4` and the port's `gl4es.aarch64` library, built Nov 12 2024, logging `using GBM` on `/dev/dri/card0`. `libGL.so.1` SHA-256 `b2b24ebe56b894e44b2ed8ce335ad8b1c90e8856b3b3f864561122c8ec32f970`. Zlyme's fallback library was not loaded. JVGS and X-Moto were not run. Panfrost was not tested.
+
 ## Isolated GL4ES diagnostic, 2026-10-25
 
 Same installed squashfs

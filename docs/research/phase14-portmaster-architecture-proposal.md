@@ -252,7 +252,7 @@ Fail: black screen or a missing done line.
 Regression risk: ports that bundle another `libGL`.
 Hardware: required on each GPU boot.
 
-2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. The installed library's earlier dark-screen result stays. A PortMaster binary that does not call that API, and any Panfrost boot, are still open. Gate 3 is not closed.
+2026-10-25 status: one private libmali diagnostic met the visible-triangle and return checks. It called the GL4ES private API and was removed afterward. Aerofoil then passed on its own bundled GL4ES with `libgl_default.txt` and `LIBGL_FB=4`. That is the port-local library on libmali, not Zlyme's optional fallback and not Panfrost. The installed library's earlier dark-screen result stays. Gate 3 is not closed.
 
 ### Gate 4. SDL3 picture and pad
 
