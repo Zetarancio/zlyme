@@ -218,6 +218,10 @@ while IFS= read -r src; do
 					die "$base SONAME $soname has no matching symlink"
 				fi
 			fi
+			search=$(readelf -d "$src" | awk '/\(RPATH\)|\(RUNPATH\)/ {
+				sub(/.*\[/, ""); sub(/\].*/, ""); printf "%s", $0
+			}')
+			[ -z "$search" ] || die "$(basename "$src") has an RPATH or RUNPATH: $search"
 			got_interp=$(interp_of "$src")
 			if [ -n "$got_interp" ] && [ "$got_interp" != "/lib/ld-linux-armhf.so.3" ]; then
 				die "$(basename "$src") interpreter is $got_interp"

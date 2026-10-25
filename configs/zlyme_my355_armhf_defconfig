@@ -34,3 +34,17 @@ BR2_PACKAGE_MESA3D_OPENGL_EGL=y
 BR2_PACKAGE_MESA3D_OPENGL_ES=y
 BR2_PACKAGE_MESA3D_GBM=y
 BR2_PACKAGE_GL4ES_ARMHF=y
+
+# Native ARMHF PortMaster programs. GameMaker's 32-bit gmloader needs
+# SDL2, OpenAL, and FreeType, and the libzip it bundles needs libbz2.
+# The product SDL2 KMSDRM patches apply to this SDL2 too. Audio uses
+# the PulseAudio client library against pipewire-pulse; external.mk
+# builds that library without a daemon.
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/patches"
+BR2_PACKAGE_SDL2=y
+BR2_PACKAGE_SDL2_KMSDRM=y
+BR2_PACKAGE_SDL2_OPENGLES=y
+BR2_PACKAGE_OPENAL=y
+BR2_PACKAGE_FREETYPE=y
+BR2_PACKAGE_BZIP2=y
+BR2_PACKAGE_PULSEAUDIO=y

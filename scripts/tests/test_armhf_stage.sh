@@ -106,6 +106,15 @@ sys_target=$work/evil/target
 expect_fail "$root" "ELF64"
 [ "$(cat "$root/usr/lib/zlyme-armhf/libkeep.so.1")" = "keepme" ] || fail "ELF64 publish changed the destination"
 
+# A private ELF with a search path names a directory outside the runtime.
+patchelf=$ROOT/output-armhf/host/bin/patchelf
+[ -x "$patchelf" ] || blocked "ARMHF host patchelf is missing"
+prime rpath
+"$patchelf" --set-rpath /usr/lib "$work/rpath/target/usr/lib/zlyme-armhf/libgcc_s.so.1"
+root=$(new_root rpath)
+sys_target=$work/rpath/target
+expect_fail "$root" "RPATH or RUNPATH"
+
 # Wrong interpreter in libc.
 prime interp
 python3 - "$work/interp/target/usr/lib/zlyme-armhf/libc.so.6" << 'PY'

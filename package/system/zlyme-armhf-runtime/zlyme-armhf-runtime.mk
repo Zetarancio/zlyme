@@ -18,7 +18,7 @@ ZLYME_ARMHF_RUNTIME_VERSION = $(shell \
 	fi)
 ZLYME_ARMHF_RUNTIME_SITE = $(BR2_EXTERNAL_ZLYME_PATH)/package/system/zlyme-armhf-runtime
 ZLYME_ARMHF_RUNTIME_SITE_METHOD = local
-ZLYME_ARMHF_RUNTIME_LICENSE = LGPL-2.1-or-later, GPL-2.0-or-later, GPL-3.0-or-later WITH GCC-exception-3.1, MIT, SGI-B-2.0, Khronos, Apache-2.0, Zlib
+ZLYME_ARMHF_RUNTIME_LICENSE = LGPL-2.1-or-later, LGPL-2.0-or-later, GPL-2.0-or-later, GPL-3.0-or-later WITH GCC-exception-3.1, MIT, SGI-B-2.0, Khronos, Apache-2.0, Zlib, FTL OR GPL-2.0-or-later, bzip2-1.0.6, BSD-3-Clause
 ZLYME_ARMHF_RUNTIME_LICENSE_FILES = LICENSE
 # These files are ARM, on purpose. Buildroot's target check expects
 # AArch64. The exclude is this package only.

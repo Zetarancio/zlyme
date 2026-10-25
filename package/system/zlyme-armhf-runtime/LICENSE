@@ -10,6 +10,13 @@ libdrm and Expat are MIT licensed.
 SPIRV-Tools is Apache-2.0 licensed.
 zlib is Zlib licensed.
 GL4ES is MIT licensed.
+SDL2 is Zlib licensed.
+OpenAL Soft is LGPL-2.0-or-later.
+FreeType is FTL or GPL-2.0-or-later.
+bzip2 uses the bzip2-1.0.6 license.
+The PulseAudio client libraries, libsndfile, GLib, and libltdl are
+LGPL-2.1-or-later.
+libffi is MIT licensed. PCRE2 is BSD-3-Clause.
 
 The corresponding source is the source Buildroot downloads for those
 packages and versions. Target LLVM, Clang, and build-only SPIR-V utility

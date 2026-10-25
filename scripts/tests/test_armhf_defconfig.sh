@@ -15,15 +15,36 @@ for need in \
 	BR2_ARM_FPU_NEON_FP_ARMV8=y \
 	BR2_TOOLCHAIN_BUILDROOT_GLIBC=y \
 	BR2_KERNEL_HEADERS_7_1=y \
-	BR2_PACKAGE_ZLYME_ARMHF_PROBE=y
+	BR2_PACKAGE_ZLYME_ARMHF_PROBE=y \
+	BR2_PACKAGE_SDL2=y \
+	BR2_PACKAGE_SDL2_KMSDRM=y \
+	BR2_PACKAGE_SDL2_OPENGLES=y \
+	BR2_PACKAGE_OPENAL=y \
+	BR2_PACKAGE_FREETYPE=y \
+	BR2_PACKAGE_BZIP2=y \
+	BR2_PACKAGE_PULSEAUDIO=y
 do
 	grep -qx "$need" "$CFG" || fail "missing $need"
 done
-for banned in BR2_aarch64=y BR2_cortex_a55=y BR2_LINUX_KERNEL=y BR2_TARGET_UBOOT=y; do
+# An ARMHF ALSA library would load the AArch64 PipeWire ALSA plugin.
+# PulseAudio is the client library only. No X server or compositor.
+for banned in BR2_aarch64=y BR2_cortex_a55=y BR2_LINUX_KERNEL=y BR2_TARGET_UBOOT=y \
+	BR2_PACKAGE_ALSA_LIB=y BR2_PACKAGE_PULSEAUDIO_DAEMON=y \
+	BR2_PACKAGE_XSERVER_XORG_SERVER=y BR2_PACKAGE_WESTON=y BR2_PACKAGE_SDL2_X11=y
+do
 	if grep -qx "$banned" "$CFG"; then
 		fail "armhf defconfig selects $banned"
 	fi
 done
+# shellcheck disable=SC2016
+want_patch='BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_ZLYME_PATH)/board/my355/patches"'
+grep -qxF "$want_patch" "$CFG" || fail "ARMHF SDL2 does not take the board SDL2 patches only"
+for dir in "$ROOT"/board/my355/patches/*; do
+	[ "$(basename "$dir")" = sdl2 ] || fail "board patch directory also patches $(basename "$dir") for ARMHF"
+done
+grep -q -- '-Dgbm-backends-path=/usr/lib/zlyme-armhf/gbm' "$ROOT/external.mk" ||
+	fail "ARMHF GBM still searches the AArch64 backend directory"
+grep -q -- '-Ddaemon=false' "$ROOT/external.mk" || fail "ARMHF PulseAudio builds a daemon"
 if grep -q 'BR2_PACKAGE_ZLYME_ARMHF_PROBE' "$PROD"; then
 	fail "product image selects the armhf probe"
 fi

@@ -76,7 +76,9 @@ GLIBC_POST_INSTALL_STAGING_HOOKS += ZLYME_ARMHF_GLIBC_LINKER_LINKS
 # glibc's shared objects land in the private directory. libgcc and
 # libatomic are still installed in /lib by the compiler. Move those
 # into the private directory so the loader can see them. If a name is
-# already there, the /lib copy is the old layout and is removed.
+# already there, the /lib copy is the old layout and is removed. A file
+# in /usr/lib is a package that installed again, so it replaces the
+# private copy; otherwise a rebuilt library would never reach the image.
 #
 # Panfrost's Buildroot dependency graph builds target LLVM, Clang, and
 # SPIR-V tools for Mesa's precompile step. The installed EGL/GLES graph
@@ -94,10 +96,10 @@ define ZLYME_ARMHF_PRIVATE_RUNTIME
 			! -name 'os-release' \
 			\( -type f -o -type l \) -print | while IFS= read -r leftover; do \
 			base=$$(basename "$$leftover"); \
-			if [ -e "$$dest/$$base" ]; then \
+			if [ -e "$$dest/$$base" ] && [ "$$dir" = "$(TARGET_DIR)/lib" ]; then \
 				rm -f "$$leftover"; \
 			else \
-				mv "$$leftover" "$$dest/$$base"; \
+				mv -f "$$leftover" "$$dest/$$base"; \
 			fi; \
 		done; \
 	done; \
@@ -125,6 +127,41 @@ define ZLYME_ARMHF_PRIVATE_RUNTIME
 		"$$dest"/os-release
 endef
 TARGET_FINALIZE_HOOKS += ZLYME_ARMHF_PRIVATE_RUNTIME
+
+# libgbm's built-in backend directory is $libdir/gbm. On the Flip that
+# is the AArch64 /usr/lib/gbm, so a native ARMHF SDL2 could not create
+# a GBM device without an environment override.
+MESA3D_CONF_OPTS += -Dgbm-backends-path=/usr/lib/zlyme-armhf/gbm
+
+# The ALSA default PCM is the PipeWire plugin, which exists only as an
+# AArch64 module. ARMHF audio uses the PulseAudio protocol socket that
+# pipewire-pulse already serves. Only the client libraries are built.
+# libpulse's install RUNPATH is /usr/lib/pulseaudio, an AArch64 directory
+# on the Flip. libpulsecommon moves beside libpulse and the RUNPATH goes.
+# host-patchelf and pulseaudio are repeated as order-only edges because
+# this file is included after those package rules were generated.
+ifeq ($(BR2_PACKAGE_PULSEAUDIO),y)
+PULSEAUDIO_CONF_OPTS += -Ddaemon=false -Dglib=disabled -Dgsettings=disabled
+PULSEAUDIO_DEPENDENCIES += host-patchelf
+$(PULSEAUDIO_TARGET_CONFIGURE): | host-patchelf
+define ZLYME_ARMHF_PULSE_CLIENT
+	for lib in $(TARGET_DIR)/usr/lib/pulseaudio/libpulsecommon-*.so; do \
+		[ -f "$$lib" ] || continue; \
+		mv -f "$$lib" $(TARGET_DIR)/usr/lib/; \
+	done; \
+	rmdir $(TARGET_DIR)/usr/lib/pulseaudio 2>/dev/null || true; \
+	find $(TARGET_DIR)/usr/lib -maxdepth 1 -name 'libpulse*.so*' -type f \
+		-exec $(HOST_DIR)/bin/patchelf --remove-rpath {} \;
+endef
+PULSEAUDIO_POST_INSTALL_TARGET_HOOKS += ZLYME_ARMHF_PULSE_CLIENT
+
+ifeq ($(BR2_PACKAGE_SDL2),y)
+SDL2_DEPENDENCIES += pulseaudio
+$(SDL2_TARGET_CONFIGURE): | pulseaudio
+SDL2_CONF_OPTS := $(filter-out --disable-pulseaudio,$(SDL2_CONF_OPTS))
+SDL2_CONF_OPTS += --enable-pulseaudio --enable-pulseaudio-shared
+endif
+endif
 endif
 
 # Upstream sdl2.mk always passes --disable-video-vulkan. This file is
