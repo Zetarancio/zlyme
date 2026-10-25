@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-25 — ROCKNIX compat allowlist
+
+The maintainer authorized redistribution of the pinned `ROCKNIX/packages` `691f24bceb72228f20d41ddb4a1e76ed76a1b0b8` `compat.tar.gz`, SHA-256 `4eba88bf7fef74489fc7d113005aec5b335519a8901e776f7d6203bbcc58b791`, as an artifact-specific exception. `portmaster-rocknix-compat` installs 41 unmodified AArch64 files under `/usr/lib/compat`. Those 41 SONAMEs, six system SONAMEs, and the source-built `libxml2.so.2` and `libtheoradec.so.1` cover the archive's 49 distinct SONAMEs. The two SDL2 objects stay out. `gl4es.tar.gz` stays out. `libgomp.so.1`, X11, Pango, Speex, libgcrypt, and libvdpau are source-built. The package identifier is `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. `package/system/portmaster-rocknix-compat/PROVENANCE` names every imported file and says the record is not a license grant. A host check resolved every versioned undefined symbol in the installed compat files against Zlyme's libraries. The highest requirement there is `GLIBC_2.38`, from source-built libxml2 2.13.9. System libc provides `GLIBC_2.43`. The allowlist is not installed on a Flip. X-Moto's `kmsdrm not available` result and JVGS's segmentation fault remain the hardware record from `1b74536a35de`.
+
 ## 2026-10-25 — X-Moto and JVGS on the 1b74536 image
 
 The maintainer installed the local OTA built from `1b74536a35de395e72cce81336d9fb73c4081b13`. Aerofoil still runs. Its log includes the SDL2 KMSDRM hardware-cursor fallback. X-Moto's previously missing libraries resolve. Its bundled GL4ES initializes in GBM mode and reports `/dev/dri/card0`. X-Moto then fails in `SDL_Init` with `kmsdrm not available`. That line does not identify which process held the DRM device. JVGS gets past the earlier `libmodplug.so.1` loader failure, warns that `.jvgs.xml` is missing, and the game process then segmentation-faults. The missing-file warning is not the demonstrated cause of that fault.
