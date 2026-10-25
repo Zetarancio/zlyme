@@ -120,7 +120,9 @@ fi
 if [ -e "$target/usr/lib/libSDL2_net.la" ]; then
 	fail "SDL2_net left a libtool file on the target"
 fi
-"$re" -h "$xml" "$mod" "$net" | grep -q 'AArch64' || fail "a built library is not AArch64"
+for elf in "$xml" "$mod" "$net"; do
+	"$re" -h "$elf" | grep -q 'AArch64' || fail "$(basename "$elf") is not AArch64"
+done
 if [ -e "$target/usr/lib/portmaster/gl4es/aarch64/libEGL.so.1" ]; then
 	fail "AArch64 GL4ES directory gained an EGL wrapper"
 fi
