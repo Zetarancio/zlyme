@@ -44,3 +44,31 @@ Issue #3, not implemented: a session-only udev joypad selection that never hardc
 Issue #2, not implemented: no DTS edit and no global 59.187592308 setting. The smallest later change, only if a gameplay retest still shows broken audio, is a session refresh computed from the live internal-panel CRTC clock. It must not apply to HDMI. Raising latency or the resampler limit would hide the symptom without identifying the clock.
 
 The missing evidence is one gpSP session on this image: the debugfs CRTC clock and totals while the game is running, whether the sound breaks, RetroArch's reported audio rate, and PipeWire xruns. An idle frontend reading is not that test.
+
+## Phase 15C2
+
+Date: 2026-10-26. Still no RetroArch, audio, display, or GPU change.
+
+### PPSSPP source selection
+
+A visible owned mount id is not proof of the save card. `ppsspp_bind_needed` used to return success when that id was still visible, so a busy SD2 bind could be reused by a later game whose `SAVES_PATH` was `/storage`. A new session now refuses to start when either save destination is already mounted. It does not reuse or adopt that mount. Cleanup still unmounts only a recorded id that remains the visible mount. If registration fails and the rollback unmount also fails, the new id is recorded and PPSSPP does not start. Host tests cover the SD2-then-internal case. Hardware save integrity is not yet tested.
+
+### Issue #3 — source, not a new measurement
+
+Pinned RetroArch `v1.22.2`:
+
+- `input/drivers_joypad/sdl_joypad.c` `sdl_joypad_poll` calls `SDL_PumpEvents` and then `SDL_FlushEvents` from `SDL_JOYAXISMOTION` through `SDL_CONTROLLERDEVICEREMAPPED` on every poll. That is the current SDL2 joypad path. It does not by itself prove the 45.5 FPS measurement.
+- `input/drivers_joypad/udev_joypad.c` reads evdev. `udev_joypad_poll` waits for hotplug and reads events. `udev_check_device` stores each joystick in the first vacant slot as udev enumerates `ID_INPUT_JOYSTICK` devices. There is no sort by InputPlumber player order.
+- `tasks/task_autodetect.c` can reserve a player by device name or by `vid:pid`. A name reservation of `Microsoft X-Box 360 pad` does not match `Miyoo Flip Gamepad`. The same name matches every virtual Xbox pad. The first enumerated match takes the reserved player, and a later device with the same name is left in its detected slot.
+
+`zlyme_is_virtpad` distinguishes one virtual pad from the physical pad by name, `045e:028e`, and `/devices/virtual/`. It does not say which virtual pad is player 1. `zlyme-input status` prints composite names, not event nodes or `GamepadOrder`. ADR 0005 puts external controllers ahead of the built-in pad. That order is not an evdev property.
+
+No udev change is shipped. A launcher index, including a computed index 1, would still be enumeration order. A name reservation would be correct for the one-pad benchmark and arbitrary when a second virtual pad exists. Keeping SDL2 does not fix the measured joypad cost. The blocker is player identity, not the absence of a udev driver.
+
+### Issue #2 — installed image, no gameplay sample
+
+The installed squashfs is still `e3772c9f0760c494120098cddb5575e195aaa5e57212aaf14def79f68758d10b`. GPU is `libmali`. PipeWire status is `ready`. The user RetroArch file, for the audio and input keys only, is ALSA `default`, 64 ms, sync on, SDL2 joypad index 0. It has no `video_refresh_rate` line. Debugfs is not mounted, so no CRTC clock was read. No PPSSPP bind was present. No game was started.
+
+`/storage/.config/zlyme/refresh` is `40`. `S16display` accepts only 60, 50, or 40 and writes `640x480@<hz>` to the DSI connector's sysfs `mode` file at boot. The connector currently has no `mode` file while NextUI owns KMS. The available mode names are `640x480@60`, `@50`, and `@40`. The original measurement was the 60 Hz mode whose nominal clock is 32000 kHz. A session left at 40 Hz is not that measurement. The sysfs mode name is not the effective pixel clock.
+
+No refresh or audio change is made. The installed image can supply the gameplay sample before another OTA: use the 60 Hz panel setting if the original mode is the question, launch one existing gpSP game from NextUI, and record debugfs clock and totals during that session, PipeWire xruns, and whether the sound breaks. Do not copy the ROM or saves. Remove any temporary file under `/tmp` afterward. The saved refresh file was not changed.
