@@ -49,7 +49,6 @@ export PM_CAN_MOUNT="${PM_CAN_MOUNT:-Y}"
 # neither library set is added to every PortMaster process.
 export ZLYME_BOX86_RUN=/usr/bin/zlyme-box86-run
 export ZLYME_BOX86_GL4ES_RUN=/usr/bin/zlyme-box86-gl4es-run
-export ZLYME_GL4ES_RUN=/usr/bin/zlyme-gl4es-run
 
 # LÖVE 11.5 needs libtheoradec.so.1. The system libtheora is 1.2.
 # This directory is PortMaster-only. Other programs do not search it.

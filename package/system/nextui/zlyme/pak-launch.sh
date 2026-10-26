@@ -9,12 +9,8 @@
 
 # $1 is the launch.sh path. A ROM is never an argument of these checks.
 launch_is_ports() {
-	# PORTS.pak is the production path. The opt-in Phase 14 Tools
-	# validation entry only execs that same launch.sh, so it must
-	# receive the same PortMaster cleanup classification.
 	case "$1" in
 		*/PORTS.pak/launch.sh) return 0 ;;
-		*/Zlyme\ PortMaster\ Validation.pak/launch.sh) return 0 ;;
 	esac
 	return 1
 }

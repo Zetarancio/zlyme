@@ -1,121 +1,114 @@
 #!/bin/sh
-# Source/package contract for SDL3 and isolated GL4ES validation.
+# Production graphics/runtime closure after the Phase 14 probes were retired.
 # shellcheck disable=SC1007,SC2016
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 CFG=$ROOT/configs/zlyme_my355_defconfig
-GLMK=$ROOT/package/system/gl4es/gl4es.mk
-RUN=$ROOT/package/system/gl4es/zlyme-gl4es-run
+ARM_CFG=$ROOT/configs/zlyme_my355_armhf_defconfig
 ARM_MK=$ROOT/package/system/gl4es-armhf/gl4es-armhf.mk
 ARM_RUN=$ROOT/package/system/zlyme-box86/zlyme-box86-gl4es-run
-PROBES=$ROOT/package/system/zlyme-graphics-probes
-FIXTURES=$ROOT/scripts/device/phase14-probe-paks.sh
-OBSERVER=$ROOT/scripts/device/phase14-port-observer.sh
+POST=$ROOT/board/my355/post-update.sh
 fail() { echo "graphics-compat: $*" >&2; exit 1; }
 
-for option in BR2_PACKAGE_GL4ES BR2_PACKAGE_ZLYME_GRAPHICS_PROBES \
-	BR2_PACKAGE_SDL3 BR2_PACKAGE_SDL3_KMSDRM; do
+for option in BR2_PACKAGE_SDL3 BR2_PACKAGE_SDL3_KMSDRM \
+	BR2_PACKAGE_SDL3_OPENGLES BR2_PACKAGE_MESA3D_OPENGL_EGL \
+	BR2_PACKAGE_MESA3D_OPENGL_ES; do
 	grep -qx "$option=y" "$CFG" || fail "$option is not selected"
 done
-grep -q '/usr/lib/portmaster/gl4es/aarch64/libGL.so.1' "$GLMK" ||
-	fail "GL4ES is not installed in its isolated path"
-grep -q '81547d986798e876de8b434193920b606a72363f' "$GLMK" ||
-	fail "AArch64 GL4ES is not the ROCKNIX pin"
-grep -q -- '-DNOEGL=ON' "$GLMK" || fail "AArch64 GL4ES is missing NOEGL"
-grep -q -- '-DODROID=ON' "$GLMK" || fail "AArch64 GL4ES is missing ODROID"
-grep -q -- '-DNOX11=ON' "$GLMK" || fail "AArch64 GL4ES is missing NOX11"
-grep -q 'GLX_STUBS\|EGL_WRAPPER\|NO_INIT_CONSTRUCTOR' "$GLMK" &&
-	fail "AArch64 GL4ES enables a rejected option"
+grep -qx 'BR2_PACKAGE_GL4ES_ARMHF=y' "$ARM_CFG" ||
+	fail "ARMHF GL4ES is not selected"
 grep -q '2037865590d410bcd7b8d1f22b841472ed6d39ac' "$ARM_MK" ||
 	fail "ARMHF GL4ES pin changed"
 grep -q '/usr/lib/zlyme-armhf/gl4es/libGL.so.1' "$ARM_MK" ||
-	fail "ARMHF GL4ES is not installed in its isolated private path"
-grep -q -- '-DCMAKE_SKIP_RPATH=ON' "$GLMK" ||
-	fail "AArch64 GL4ES can retain a build-tree RPATH"
+	fail "ARMHF GL4ES is not installed in its private path"
 grep -q -- '-DCMAKE_SKIP_RPATH=ON' "$ARM_MK" ||
 	fail "ARMHF GL4ES can retain a build-tree RPATH"
-if grep -q '/usr/lib/compat' "$GLMK" "$ARM_MK" ||
-	grep -q '$(TARGET_DIR)/usr/lib/libGL' "$GLMK" "$ARM_MK" ||
-	grep -q '$(STAGING_DIR)/usr/lib/libGL' "$GLMK" "$ARM_MK"; then
-	fail "GL4ES is exposed as an implicit shared fallback"
-fi
-grep -q 'ZLYME_GL4ES_RUN=/usr/bin/zlyme-gl4es-run' \
-	"$ROOT/package/system/portmaster/control.txt" ||
-	fail "PortMaster has no explicit GL4ES selector"
 grep -q 'ZLYME_BOX86_NATIVE_LIBRARY_PATH=.*:\$gl4es' "$ARM_RUN" ||
 	fail "ARMHF port-bundled library precedence is not preserved"
-grep -q 'SDL_CreateWindowAndRenderer' "$PROBES/sdl3-kms-probe.c" ||
-	fail "SDL3 probe does not create a window and renderer"
-grep -q 'SDL_EVENT_GAMEPAD_BUTTON_DOWN' "$PROBES/sdl3-kms-probe.c" ||
-	fail "SDL3 probe does not observe gamepad input"
-grep -q 'glBegin(GL_TRIANGLES)' "$PROBES/gl4es-probe.c" ||
-	fail "GL4ES probe is not a desktop OpenGL workload"
-if grep -Rq '/etc/init\.d\|systemd' "$PROBES" "$ROOT/package/system/gl4es"; then
-	fail "graphics probes install a service"
+
+if grep -q '^BR2_PACKAGE_GL4ES=y\|^BR2_PACKAGE_ZLYME_GRAPHICS_PROBES=y' "$CFG"; then
+	fail "retired AArch64 GL4ES or graphics probes are selected"
 fi
-grep -q 'Zlyme SDL3 Validation\.pak' "$FIXTURES" ||
-	fail "normal NextUI SDL3 fixture is missing"
-grep -q 'Zlyme GL4ES Validation\.pak' "$FIXTURES" ||
-	fail "normal NextUI GL4ES fixture is missing"
-grep -q 'refusing non-test entry' "$FIXTURES" ||
-	fail "probe fixture removal does not verify ownership"
-grep -q 'scripts/device/phase14-probe-paks\.sh' \
-	"$PROBES/zlyme-graphics-probes.mk" ||
-	fail "probe fixtures are not installed with the diagnostics"
-if grep -Eq '(/dev/uinput|EVIOCGRAB|input_event)' "$FIXTURES"; then
-	fail "probe fixture injects or grabs input"
+if grep -Rqs 'ZLYME_GL4ES_RUN\|zlyme-gl4es-run' \
+	"$ROOT/package" "$ROOT/configs" "$ROOT/board" "$ROOT/build.sh"; then
+	fail "retired AArch64 GL4ES selector remains in production source"
 fi
-grep -Fq 'NR > 1 && $2 ~ /^[0-9]+$/ { print $2 }' "$OBSERVER" ||
-	fail "DRM observer does not read the debugfs TGID column"
+if [ -f "$ROOT/package/system/gl4es/Config.in" ] ||
+	[ -f "$ROOT/package/system/gl4es/gl4es.mk" ]; then
+	fail "retired AArch64 GL4ES recipe remains"
+fi
+if [ -f "$ROOT/package/system/zlyme-graphics-probes/Config.in" ] ||
+	[ -f "$ROOT/package/system/zlyme-graphics-probes/zlyme-graphics-probes.mk" ]; then
+	fail "retired graphics-probe recipe remains"
+fi
+[ ! -e "$ROOT/scripts/device/phase14-probe-paks.sh" ] ||
+	fail "retired probe PAK installer remains"
+[ -x "$ROOT/scripts/device/phase14-port-observer.sh" ] ||
+	fail "read-only PortMaster observer was removed"
+
+make_probe() {
+	dir=$1
+	kind=$2
+	mkdir -p "$dir"
+	printf '%s\n' phase14-graphics-v1 > "$dir/.zlyme-phase14-probe"
+	case "$kind" in
+	sdl)
+		cat > "$dir/launch.sh" << 'EOF'
+#!/bin/sh
+set -eu
+export ZLYME_PROBE_SECONDS=120
+exec /usr/libexec/zlyme-tests/zlyme-sdl3-kms-probe
+EOF
+		;;
+	gl)
+		cat > "$dir/launch.sh" << 'EOF'
+#!/bin/sh
+set -eu
+export ZLYME_PROBE_SECONDS=120
+exec /usr/bin/zlyme-gl4es-run /usr/libexec/zlyme-tests/zlyme-gl4es-probe
+EOF
+		;;
+	pm)
+		cat > "$dir/launch.sh" << 'EOF'
+#!/bin/sh
+set -eu
+VALIDATE=${ZLYME_PHASE14_VALIDATE:-/usr/libexec/zlyme-tests/phase14-portmaster-validate}
+exec "$VALIDATE" run
+EOF
+		;;
+	esac
+	chmod 0755 "$dir/launch.sh"
+}
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-cat > "$work/drm-clients" << 'EOF'
-command	tgid	dev	master	a	uid	magic
-nextui.elf	4242	0	y	y	0	1
-EOF
-got=$(awk 'NR > 1 && $2 ~ /^[0-9]+$/ { print $2 }' "$work/drm-clients")
-[ "$got" = 4242 ] || fail "DRM clients fixture parsed PID $got"
-mkdir -p "$work/gl4es"
-: > "$work/gl4es/libGL.so.1"
-cat > "$work/show-path" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$LD_LIBRARY_PATH"
-if [ -n "${LIBGL_FB+x}" ]; then
-	printf 'FB=%s\n' "$LIBGL_FB"
-else
-	printf 'FB=unset\n'
-fi
-EOF
-chmod 0755 "$work/show-path"
-got=$(
-	ZLYME_GL4ES_DIR="$work/gl4es" \
-	LD_LIBRARY_PATH=/port/first:/usr/lib:/port/second:/usr/lib/compat:/storage/.config/zlyme/lib \
-		sh "$RUN" "$work/show-path"
-)
-[ "$got" = "/port/first:/port/second:$work/gl4es:/usr/lib:/usr/lib/compat:/storage/.config/zlyme/lib
-FB=unset" ] ||
-	fail "GL4ES selector precedence is $got"
-got=$(
-	ZLYME_GL4ES_DIR="$work/gl4es" \
-	LIBGL_FB=4 \
-	LD_LIBRARY_PATH=/port/local:/usr/lib \
-		sh "$RUN" "$work/show-path"
-)
-[ "$got" = "/port/local:$work/gl4es:/usr/lib
-FB=4" ] || fail "preset LIBGL_FB was replaced: $got"
-grep -q 'LIBGL_FB:=3' "$RUN" &&
-	fail "AArch64 GL4ES selector still defaults to mode 3"
-grep -q 'PBuffer' "$RUN" &&
-	fail "AArch64 GL4ES selector still describes mode 3 as PBuffer"
-grep -q 'SDL_VIDEODRIVER:=kmsdrm' "$RUN" ||
-	fail "AArch64 GL4ES selector does not prefer KMSDRM"
-grep -q 'GL4ES_VIDEO_DRIVER' "$PROBES/gl4es-probe.c" ||
-	fail "GL4ES probe does not report the active video driver"
-[ -f "$ROOT/board/my355/patches/sdl2/0003-kmsdrm-soft-fail-move-cursor.patch" ] ||
-	fail "SDL2 KMSDRM cursor soft-fail patch is missing"
-grep -q 'disabling HW cursor' \
-	"$ROOT/board/my355/patches/sdl2/0003-kmsdrm-soft-fail-move-cursor.patch" ||
-	fail "SDL2 cursor patch does not disable HW cursor on MoveCursor failure"
+tools=$work/Tools/my355
+make_probe "$tools/Zlyme SDL3 Validation.pak" sdl
+make_probe "$tools/Zlyme GL4ES Validation.pak" gl
+make_probe "$tools/Zlyme PortMaster Validation.pak" pm
+
+changed="$work/changed"
+mkdir -p "$changed/Tools/my355"
+make_probe "$changed/Tools/my355/Zlyme SDL3 Validation.pak" sdl
+printf '# user change\n' >> \
+	"$changed/Tools/my355/Zlyme SDL3 Validation.pak/launch.sh"
+make_probe "$changed/Tools/my355/Zlyme GL4ES Validation.pak" gl
+printf 'save\n' > "$changed/Tools/my355/Zlyme GL4ES Validation.pak/user.dat"
+mkdir -p "$changed/Tools/my355/Zlyme PortMaster Validation.pak"
+printf 'user tool\n' > \
+	"$changed/Tools/my355/Zlyme PortMaster Validation.pak/launch.sh"
+
+ZLYME_STORAGE_ROOT=$work sh "$POST"
+for name in 'Zlyme SDL3 Validation.pak' 'Zlyme GL4ES Validation.pak' \
+	'Zlyme PortMaster Validation.pak'; do
+	[ ! -e "$tools/$name" ] || fail "owned probe was not removed: $name"
+done
+
+ZLYME_STORAGE_ROOT=$changed sh "$POST"
+for name in 'Zlyme SDL3 Validation.pak' 'Zlyme GL4ES Validation.pak' \
+	'Zlyme PortMaster Validation.pak'; do
+	[ -e "$changed/Tools/my355/$name" ] ||
+		fail "changed or user-created probe was removed: $name"
+done
 
 echo "graphics compatibility ok"

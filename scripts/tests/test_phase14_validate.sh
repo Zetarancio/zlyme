@@ -6,8 +6,6 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 VALIDATE=$ROOT/scripts/device/phase14-portmaster-validate.sh
 INVENTORY=$ROOT/scripts/device/phase14-portmaster-inventory.sh
-LAUNCH=$ROOT/package/system/nextui/zlyme/pak-launch.sh
-PROBE=$ROOT/scripts/device/phase14-probe-paks.sh
 SHELL_CACHE=${ZLYME_POSIX_SHELL_CACHE:-/tmp/zlyme-posix-shells}
 
 fail() {
@@ -24,8 +22,6 @@ expect_fail() {
 }
 
 [ -f "$VALIDATE" ] || fail "missing validate script"
-grep -q 'Validation.pak/launch.sh' "$LAUNCH" ||
-	fail "pak-launch does not classify the validation Tools PAK as ports"
 grep -q 'exec "\$ports" "\$script"' "$VALIDATE" ||
 	fail "validate does not exec canonical PORTS.pak"
 if grep -q 'run_ports_like' "$VALIDATE"; then
@@ -45,11 +41,8 @@ grep -q 'claimer_starttime' "$VALIDATE" || fail "validate missing starttime iden
 grep -q 'require_completion_evidence' "$VALIDATE" ||
 	fail "validate missing completion evidence gate"
 grep -q 'format=4' "$VALIDATE" || fail "validate not format=4"
-grep -q 'install_pm_validation' "$PROBE" ||
-	fail "probe-paks does not install the ports-exec validation entry"
 sh -n "$VALIDATE" || fail "validate syntax"
 sh -n "$INVENTORY" || fail "inventory syntax"
-sh -n "$PROBE" || fail "probe-paks syntax"
 
 # --- Real shell: command-substitution inherits background stdout and stalls. ---
 cs_script=$(mktemp)

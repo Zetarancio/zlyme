@@ -107,6 +107,45 @@ if [ -e "$usb_old" ] || [ -L "$usb_old" ]; then
 	fi
 fi
 
+# Phase 14 acceptance used three temporary Tools entries. Remove only
+# the exact generated two-file tree; a changed or user-created entry stays.
+phase14_marker_sum=4a0145e90ef9e5e1a5e779418668b01b3e1fab8517648d95a63da1d360e5fec4
+
+phase14_probe_is_stock() {
+	dir=$1
+	launch_sum=$2
+	[ -d "$dir" ] && [ ! -L "$dir" ] || return 1
+	[ -f "$dir/.zlyme-phase14-probe" ] &&
+		[ ! -L "$dir/.zlyme-phase14-probe" ] || return 1
+	[ -f "$dir/launch.sh" ] && [ ! -L "$dir/launch.sh" ] || return 1
+	marker_sum=$(sha256sum "$dir/.zlyme-phase14-probe" | awk '{print $1}')
+	[ "$marker_sum" = "$phase14_marker_sum" ] || return 1
+	[ "$(sha256sum "$dir/launch.sh" | awk '{print $1}')" = "$launch_sum" ] ||
+		return 1
+	n=0
+	for ent in "$dir"/* "$dir"/.[!.]* "$dir"/..?*; do
+		if [ -e "$ent" ] || [ -L "$ent" ]; then
+			n=$((n + 1))
+		fi
+	done
+	[ "$n" -eq 2 ]
+}
+
+remove_phase14_probe() {
+	dir="$root/Tools/my355/$1"
+	sum=$2
+	if under_storage "$dir" && phase14_probe_is_stock "$dir" "$sum"; then
+		rm -rf "$dir" || echo "post-update: failed to remove $dir" >&2
+	fi
+}
+
+remove_phase14_probe 'Zlyme SDL3 Validation.pak' \
+	fcb1babbec1e7975a0f48baac46de2947fbf54e73c8b91653c387eff05f560db
+remove_phase14_probe 'Zlyme GL4ES Validation.pak' \
+	05f75224e58e08747269816a38bdb39f24115a31d109d73c11b12dc1c6ea294c
+remove_phase14_probe 'Zlyme PortMaster Validation.pak' \
+	2b1078468f0ad11d118ca605b5a0df19bfd45ab2f34cc1c6c227ae5fa94b4a58
+
 # zlyme44.3 showed a picture the person put at the Recently Played
 # folder. Later candidates also left built-in renders there. Copy only
 # a file that is not one of those renders, and only when the new
