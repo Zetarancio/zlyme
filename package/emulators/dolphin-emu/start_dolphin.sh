@@ -47,19 +47,19 @@ if [ ! -f "$ini" ]; then
 	printf '%s\n' '[Core]' 'GFXBackend = OGL' > "$ini"
 fi
 # First-run GameCube port 1. A later edit of GCPadNew.ini is kept.
-# Names are Dolphin's SDL GameController face positions. On the
-# virtual xb360 pad, Button S is the south button (Xbox A).
+# Dolphin calls SDL A "Button S". On this pad SDL A is east, SDL B
+# is south, SDL X is north, and SDL Y is west. GameCube A is south.
 pad="$XDG_CONFIG_HOME/dolphin-emu/GCPadNew.ini"
 if [ ! -f "$pad" ]; then
 	cat > "$pad" <<'EOF'
 # zlyme-pad-abi=xb360
 [GCPad1]
 Device = SDL/0/Xbox 360 Controller
-Buttons/A = `Button S`
-Buttons/B = `Button W`
+Buttons/A = `Button E`
+Buttons/B = `Button N`
 Buttons/Start = `Start`
-Buttons/X = `Button E`
-Buttons/Y = `Button N`
+Buttons/X = `Button S`
+Buttons/Y = `Button W`
 Buttons/Z = `Trigger R`
 D-Pad/Down = `Pad S`
 D-Pad/Left = `Pad W`
