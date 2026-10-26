@@ -20,7 +20,6 @@ mk=$ROOT/package/system/portmaster-xml2-compat/portmaster-xml2-compat.mk
 install=$ROOT/package/system/portmaster-xml2-compat/install-compat-libs.sh
 product=$ROOT/configs/zlyme_my355_defconfig
 minimal=$ROOT/configs/zlyme_my355_minimal_defconfig
-glmk=$ROOT/package/system/gl4es/gl4es.mk
 arm=$ROOT/package/system/gl4es-armhf/gl4es-armhf.mk
 
 grep -q 'PORTMASTER_XML2_COMPAT_VERSION = 2.13.9' "$mk" || fail "xml2 pin is not 2.13.9"
@@ -40,8 +39,6 @@ grep -qx 'BR2_PACKAGE_LIBMODPLUG=y' "$product" || fail "product defconfig omits 
 if grep -q 'PORTMASTER_XML2_COMPAT\|SDL2_NET\|LIBMODPLUG' "$minimal"; then
 	fail "minimal defconfig gained a PortMaster ABI package"
 fi
-grep -q '81547d986798e876de8b434193920b606a72363f' "$glmk" || fail "AArch64 GL4ES pin changed"
-grep -q 'gl4es.tar.gz' "$glmk" && fail "AArch64 GL4ES uses the binary archive"
 grep -q '2037865590d410bcd7b8d1f22b841472ed6d39ac' "$arm" || fail "ARMHF GL4ES pin changed"
 grep -q 'SDL2_NET_DEPENDENCIES += host-patchelf' "$ROOT/external.mk" ||
 	fail "SDL2_net does not depend on host-patchelf"
@@ -123,8 +120,8 @@ fi
 for elf in "$xml" "$mod" "$net"; do
 	"$re" -h "$elf" | grep -q 'AArch64' || fail "$(basename "$elf") is not AArch64"
 done
-if [ -e "$target/usr/lib/portmaster/gl4es/aarch64/libEGL.so.1" ]; then
-	fail "AArch64 GL4ES directory gained an EGL wrapper"
+if [ -e "$target/usr/lib/portmaster/gl4es/aarch64" ]; then
+	fail "retired AArch64 GL4ES directory remains"
 fi
 
 echo "portmaster-abi-compat: built libraries ok"
