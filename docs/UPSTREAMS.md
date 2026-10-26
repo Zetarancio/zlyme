@@ -217,7 +217,9 @@ All of the following are required:
 
 Without meaningful provenance, do not ship the file. Accepted wording: `Redistribution status: maintainer-approved as-is; upstream/vendor license unspecified.` That sentence is a Zlyme distribution decision, not a legal conclusion.
 
-The current exception is `package/system/zlyme-preloader/preloader-stock.img`.
+The current exceptions are two specific artifacts. Neither record is a license grant, and neither verifies redistribution rights.
+
+`package/system/zlyme-preloader/preloader-stock.img` is the first.
 
 | Field | Record |
 | --- | --- |
@@ -226,6 +228,8 @@ The current exception is `package/system/zlyme-preloader/preloader-stock.img`.
 | Purpose | Zlyme-side restore of that one stock revision, and only when the live preloader is its paired apommel image and the DDR payloads match |
 | Metadata | `LicenseRef-Miyoo-vendor-preloader-unspecified` beside MIT for the script and checker |
 | Record | `preloader-stock.PROVENANCE`, which includes `This record is not a license grant.` |
+
+The second exception is the 41 unmodified ELF files installed from ROCKNIX `compat.tar.gz` at `691f24bceb72228f20d41ddb4a1e76ed76a1b0b8` under `/usr/lib/compat`. Their package license is `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. `package/system/portmaster-rocknix-compat/PROVENANCE` names every imported file and its SHA-256, and it says the record is not a license grant. The archive's SDL2 objects, `libxml2.so.2`, and `libtheoradec.so.1` are not imported. The comparison table below records the archive pin.
 
 The stock-side helper images `miyoo355_fw.img`, `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img` are generated from pinned `apommel/baseos-my355` `e09d37bb0f03c34e564d61bd02164f332d8515a8` plus Zlyme scripts. They are MIT. They do not contain `preloader-stock.img` or any other preloader binary.
 

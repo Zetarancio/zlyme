@@ -23,7 +23,7 @@ The README is for users and potential contributors. It says what Zlyme is, why i
 
 ## Technical documentation
 
-The canonical technical docs are listed in `AGENTS.md`. They are calmer and more literal than the README.
+The canonical technical docs are listed in `AGENTS.md`. `docs/README.md` is only the map: one line for what each document owns, with a link. Do not copy a contract into that map. The technical docs are calmer and more literal than the README.
 
 - Present tense for current behavior. Name the owner of each mechanism (a file, a package, a command).
 - Give exact versions or SHAs when state depends on them. Don't write "latest", "current" or "now" without a subject.

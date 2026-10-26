@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. Phase 15 has not started. `zlyme44.4` has not released, `ZLYME_VERSION` remains `zlyme44.3`, and no final release OTA or source SHA is named before that build exists. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is in progress. The installed candidate is `zlyme-my355-20261026-d358bf533e79.tar`, source `d358bf533e79d058bb63bfc32487bd544d8eb5de`, squashfs `e3772c9f0760c494120098cddb5575e195aaa5e57212aaf14def79f68758d10b`. The maintainer reports that this installation functions, and a read-only check matched that identity. It is not the `zlyme44.4` release. `ZLYME_VERSION` remains `zlyme44.3`. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -388,4 +388,26 @@ Runtime cleanup commit `b114755` removed the unused AArch64 GL4ES fallback, its 
 
 The OTA migration removes each of the three Phase 14 probe PAKs only when its ownership marker, exact launcher contents, and exact generated two-file tree match. A changed or user-created PAK stays.
 
-Release publication is separate work. Phase 15 has not started, `zlyme44.4` is not released, `ZLYME_VERSION` is unchanged, and this closure does not name a final OTA or source SHA before the build occurs.
+Release publication is separate work. At this closure, Phase 15 had not started. `zlyme44.4` is not released and `ZLYME_VERSION` is unchanged. The local OTA built from `d358bf5` was installed afterward; that check is in the logbook and is not a release.
+
+## Phase 15. Documentation and zlyme44.4 preparation
+
+Status: In progress, 2026-10-26. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image.
+
+Objective: correct the documentation against the Phase 14 source, then retest two measured RetroArch issues and prepare the release only after approval.
+
+### 15A. Documentation inventory and scope
+
+Status: In progress. Audit every tracked documentation file against the source, record which document owns each fact, and correct statements that describe a retired implementation as current.
+
+### 15B. Documentation reconciliation and ADRs
+
+Status: Planned. Move chronological evidence out of `docs/ARCHITECTURE.md` into its existing owner. Add ADRs for PipeWire ownership, GPU selection, and PortMaster isolation. Put upstream-first bug-fix guidance in `docs/UPSTREAMS.md`.
+
+### 15C. GitHub issues #2 and #3
+
+Status: Planned. Retest the measured RetroArch joypad throughput and gpSP audio-refresh results on the PipeWire-era image. Implement only a fix justified by that retest.
+
+### 15D. Final validation and zlyme44.4 release preparation
+
+Status: Planned. Reconcile the final source, documentation, runtime, provenance, licensing, release notes, and artifact identities. Do not publish without explicit approval.

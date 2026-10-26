@@ -1,8 +1,12 @@
 # PulseAudio on Phase 14
 
-Status, 2026-10-20: both images use PipeWire. The paragraphs below that describe one PulseAudio 17 server are the earlier candidate, not the current graph.
+Status, 2026-10-26: both images use PipeWire, WirePlumber, and `pipewire-pulse`. ALSA is the hardware backend, and PipeWire's BlueZ monitor owns A2DP. There is no PulseAudio daemon and BlueALSA is not started. The current contract is `docs/ARCHITECTURE.md`.
 
 2026-10-23, installed `74597688`, automatic output, saved volume 85: Bluetooth disconnect returned the speaker and Bluetooth reconnect returned A2DP. HDMI unplug left the speaker silent and left the external-audio mark visible. NextUI logged a restart after the HDMI change. The kernel logged ELD version 0. There is no `wpctl` or `pw-metadata` snapshot of that unplug, and no evidence that PipeWire exited. Linux 7.2 `drivers/gpu/drm/drm_sysfs.c` emits `HOTPLUG=1` on the primary card from both `drm_sysfs_hotplug_event` and `drm_sysfs_connector_hotplug_event`. DesignWare HDMI calls `drm_helper_hpd_irq_event`, which uses the single-connector variant. The image's udev rule matched `card*-HDMI-A-*`, so `zlyme-audio hdmi-event` did not run and the earlier connector-status check never saw the unplug. The rule now matches a `change` with `HOTPLUG=1` on a `drm_minor` named `card0` or `card1`. eudev 3.2.14 waits for that program and kills that pid on timeout. The ELD recheck is started with `start-stop-daemon -b`, which `setsid`s and double-forks before the handler returns. `zlyme-my355-20261022-0b35a90e9388.tar` (source `0b35a90e9388bb2aea04a4744118323a48b68f6a`) contains that rule. On 2026-10-23 the maintainer installed it and accepts HDMI television audio, disconnect back to the speaker, the external-audio mark clearing, reconnect back to the television, and Bluetooth disconnect and reconnect. Volume and mute, including sound returning after mute, are accepted on that image. The `74597688` failure above stays the record of that image. Stream migration was accepted by ear on `0b35a90`: the same playback returned to the speaker and later to the television. It was not captured with `wpctl`.
+
+## Superseded PulseAudio candidate
+
+The paragraphs below record the earlier candidate. Present-tense statements there, including a PulseAudio server, BlueALSA owning A2DP, and `zlyme-btsink` choosing the sink, describe that candidate. They are not the running system.
 
 Phase 13 (`8b4218aa`, published as `zlyme44.3`) played through ALSA. `asound.conf` made `default` a `dmix` plus one `FlipVolume` softvol. BlueALSA was the Bluetooth playback device. Programs that opened `default` shared the RK817 PCM.
 

@@ -275,7 +275,7 @@ Volume is one setting for the speaker, the headphone jack, HDMI, and Bluetooth h
 
 Settings → System → Advanced:
 
-- **GPU**: mali_kbase (the default, OpenGL ES and Vulkan) or Panfrost (OpenGL ES, plus an experimental Vulkan driver). Takes effect on the next boot.
+- **GPU**: mali_kbase (the default, OpenGL ES and Vulkan) or Panfrost (OpenGL ES). Takes effect on the next boot. Choosing Panfrost does not enable the experimental Vulkan driver. That driver is the separate saved value `panvk`, not the Panfrost OpenGL setting.
 - **CPU undervolt**: Off, L1, L2, or L3. It stays off unless you turn it on. Takes effect on the next boot.
 - **ZRAM swap**: on by default. The menu suggests turning it off if a heavy emulator feels spongy.
 - **USB OTG (top)**, **HDMI port**, and **Second SD slot**: on by default. Turning one off saves some power. Takes effect on the next boot.

@@ -1,6 +1,8 @@
 # PipeWire on Zlyme
 
-Decision: implement on the product image, using Buildroot 2026.08's packages. Not hardware-accepted. The earlier "deferred" note is the history of this file. The freezes are not claimed fixed.
+Status, 2026-10-26: both the product and minimal images select one PipeWire daemon, WirePlumber, and `pipewire-pulse`. ALSA is the hardware backend, and PipeWire's BlueZ monitor owns A2DP. Speaker, headphone, HDMI, and Bluetooth routing were later accepted on `0b35a90`; this file does not add a measurement. Sentences below that say PipeWire is not hardware-accepted, that the minimal image does not select PipeWire, or that PulseAudio 17 and BlueALSA are the mixer, are the earlier comparison. They are historical.
+
+Decision at the time of the comparison: implement on the product image, using Buildroot 2026.08's packages. The earlier "deferred" note is the history of this file. The freezes are not claimed fixed.
 
 `0d8a3cf` plays on the speaker and headphones. A connected display with LPCM in the ELD stayed on the codec because `sad_count` is tab-separated. A paired headset did not answer the page. `59c56f1` was installed and games were silent. The playback nodes on that boot published `alsa.id` and did not publish `api.alsa.card.id`. WirePlumber 0.5.14's ALSA monitor copies `alsa.*` from the parent device onto the node before it evaluates `monitor.alsa.rules` (`src/scripts/monitors/alsa.lua`). The historical fork `Zetarancio/distribution` branch `flip`, file `projects/ROCKNIX/packages/hardware/quirks/devices/Miyoo Flip/099-audio_prime`, only writes the RK817 `Playback Mux` from the headphone GPIO and uses card index 1. It does not select a PipeWire sink or restore a volume. That systemd layout was not copied.
 

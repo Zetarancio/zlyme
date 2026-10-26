@@ -19,6 +19,7 @@ DOCS = (
     "docs/ENGINEERING_PRINCIPLES.md",
     "docs/USER_GUIDE.md",
     "docs/WRITING.md",
+    "docs/README.md",
     "CONTRIBUTING.md",
     "CHANGELOG.md",
     "docs/decisions/0006-root-image-lifecycle.md",
