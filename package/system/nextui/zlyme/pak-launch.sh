@@ -531,6 +531,50 @@ flycast_bind_release() {
 	fi
 }
 
+# PSP.pak execs PPSSPPSDL, so its shell cannot unmount the save binds.
+# The record is one path per line. Only the two PPSSPP save directories
+# are owned. A busy unmount stays in the record for the next session.
+ppsspp_bind_path_ok() {
+	case "$1" in
+		""|*..*|*//*|*\ *) return 1 ;;
+		/storage|/mnt/sd2|/boot) return 1 ;;
+		*/.config/ppsspp/PSP/SAVEDATA|*/.config/ppsspp/PSP/PPSSPP_STATE) return 0 ;;
+	esac
+	return 1
+}
+
+ppsspp_bind_release() {
+	_pb_rec=${ZLYME_PPSSPP_BINDS:-/tmp/zlyme-ppsspp-binds}
+	if [ ! -e "$_pb_rec" ] && [ ! -L "$_pb_rec" ]; then
+		return 0
+	fi
+	if [ -L "$_pb_rec" ] || [ ! -f "$_pb_rec" ]; then
+		rm -f "$_pb_rec"
+		return 0
+	fi
+	_pb_keep=$(mktemp "${TMPDIR:-/tmp}/zlyme-ppsspp-binds.XXXXXX") || return 0
+	_pb_kept=0
+	while IFS= read -r _pb_mp || [ -n "$_pb_mp" ]; do
+		[ -n "$_pb_mp" ] || continue
+		if ! ppsspp_bind_path_ok "$_pb_mp"; then
+			continue
+		fi
+		if ! flycast_bind_mounted "$_pb_mp"; then
+			continue
+		fi
+		if umount "$_pb_mp" 2>/dev/null; then
+			continue
+		fi
+		printf '%s\n' "$_pb_mp" >> "$_pb_keep"
+		_pb_kept=1
+	done < "$_pb_rec"
+	if [ "$_pb_kept" = 1 ]; then
+		mv "$_pb_keep" "$_pb_rec"
+	else
+		rm -f "$_pb_keep" "$_pb_rec"
+	fi
+}
+
 # The pak session is created by zlyme-pak-spawn. BlueZ work stays in
 # this shell so a hung bluetoothctl cannot become the session leader.
 # ZLYME_PAK_BT=0 is a host-test seam. nextui-session unsets it.
@@ -546,6 +590,7 @@ run_pak_cmd() {
 		wine_prefix_cleanup
 	fi
 	flycast_bind_release
+	ppsspp_bind_release
 	_trace=0
 	_trace_exported=0
 	_tw=
@@ -642,6 +687,7 @@ run_pak_cmd() {
 		wine_prefix_cleanup
 	fi
 	flycast_bind_release
+	ppsspp_bind_release
 	if [ "$_trace" = 1 ]; then
 		_flag=${ZLYME_PAK_TRACE_FLAG:-/storage/.config/zlyme/pak-trace}
 		rm -f "$_flag"

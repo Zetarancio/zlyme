@@ -392,7 +392,7 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: In progress, 2026-10-26. 15A and 15B are closed. 15C is next. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image.
+Status: In progress, 2026-10-26. 15A and 15B are closed. 15C is next. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image. The PPSSPP save-bind correction is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
 
 Objective: correct the documentation against the Phase 14 source, then retest two measured RetroArch issues and prepare the release only after approval.
 
