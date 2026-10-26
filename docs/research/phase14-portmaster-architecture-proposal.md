@@ -289,6 +289,8 @@ Hardware: required for each class that is actually installed.
 
 2026-10-25 status on installed `9acb1fc`, libmali: the maintainer reports LÖVE (Ascent DX), Godot/FRT (A Key(s) Path), AArch64 GameMaker (Undertale, REPOSE), mkxp (LISA The Painful, Rakuen), and Abombniball with MENU+START working. Those engines are accepted by that report. No installed launcher uses WestonPack, Box86, or Box64. Bowling Cross is the native ARMHF candidate. It stopped in the loader because the private ARMHF runtime had no SDL2, OpenAL, FreeType, or bzip2, and its graphics need Panfrost. Mina's `VK_ERROR_SURFACE_LOST_KHR` is a separate, unaccepted result. The optional Zlyme GL4ES fallback stayed black on this image. Gate 3's acceptance remains Aerofoil's bundled GL4ES.
 
+2026-10-26 result on installed `0017d58`: Gate 5 is accepted for the categories that were tested. Panfrost logs and the maintainer's report accept Bowling Cross as native ARMHF GameMaker gameplay, with an unexplained `free(): invalid size` abort that is not a clean exit, and Ascent DX as LÖVE. Mina works on Panfrost through GLES after its own log finds no Vulkan device. Vulkan presentation stays unaccepted. Graphical Box86 and WestonPack have no installed client, so they are not tested and not failed. The optional Zlyme GL4ES fallback stays the black-screen result and a 14P removal candidate. Gate 6 is next.
+
 ### Gate 6. Regression
 
 Prerequisite: the gates that changed a shared component.

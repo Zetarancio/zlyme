@@ -14,7 +14,38 @@ Same image and GPU. Evidence archive `ph14-phase5.zip`, SHA-256 `ef82f24b4df58fe
 | Abombniball | PASS, maintainer report | MENU+START on the waiter-hardened image |
 | Bowling Cross | FAIL, loader | ELF32 `gmloader`; `libSDL2-2.0.so.0: wrong ELF class: ELFCLASS64` |
 | Zlyme GL4ES probe | FAIL, black | `GL4ES_READY`, no `GL4ES_DONE`, MENU+START returned |
-| Mina the Hollower | FAIL | `vkAcquireNextImageKHR` `VK_ERROR_SURFACE_LOST_KHR` |
+| Mina the Hollower | FAIL on libmali Vulkan | `vkAcquireNextImageKHR` `VK_ERROR_SURFACE_LOST_KHR` |
+
+## Panfrost on `0017d58`, 2026-10-25
+
+Archive `ph14-phase5-armhf.zip`, SHA-256 `6dea3a3aae1ef7e14bd7cdf43c1fe1a99ff6282961a2117f4ce9ca8b53849294`. Its kernel log initializes `panfrost` 1.6.0 for Mali-G52. The archive contains Bowling Cross and Ascent DX. Mina's lines are from the game log still on the card.
+
+| Case | Status | Bound |
+| --- | --- | --- |
+| Bowling Cross gameplay | PASS, maintainer report and log | KMSDRM 640×480, GLES 3.1 Mesa 26.1.8, Xbox 360 pad, main loop |
+| Bowling Cross process exit | NOT ACCEPTED | `free(): invalid size`, then `Aborted`. Cause not assigned |
+| Ascent DX | PASS, maintainer report | Log shows the LÖVE save bind |
+| Mina | PASS on Panfrost GLES, maintainer report and card log | `0 Vulkan physical device(s)`, then `backend = GLES`, renderer `Mali-G52 r1 MC1 (Panfrost)` |
+| Mina Vulkan | NOT ACCEPTED | The libmali `VK_ERROR_SURFACE_LOST_KHR` result stays |
+| GPU rollback | PASS, maintainer report | A later live boot, `b0e98535-7461-4d78-babd-051576cb8d5b`, was still Panfrost |
+
+## Gate 6 preflight
+
+Installed image `0017d58`. A result already shown on it, or unchanged since the image that accepted it, is not run again.
+
+| Check | Earlier acceptance | Change since then | Evidence on `0017d58` | Still required |
+| --- | --- | --- | --- | --- |
+| NextUI starts and launches a game | Several images | NextUI was not changed by `0017d58` | Ports launched, and the GPU setting was used | No |
+| One RetroArch game on the panel | Not this image | RetroArch was not changed by `0017d58` | None | Picture, pad, exit, and NextUI |
+| PortMaster return | `9acb1fc` and this image | ARMHF runtime added | Ascent DX and Bowling Cross | No other port |
+| MENU+START | Abombniball on `9acb1fc` | Waiter unchanged by `0017d58` | Not rerun | No |
+| Speaker, volume, and mute | `0b35a90` | Only a private ARMHF Pulse client was added | None | No |
+| Bluetooth and HDMI audio | `0b35a90` | No routing change in `0017d58` | None | No |
+| SD2 and leftover mounts | Phases 13 and 14 | Unchanged by `0017d58` | Both games came from `/mnt/sd2`; no LÖVE mount remained later | No |
+| GPU switch | This image | `gpudriver` unchanged | Maintainer saw both directions. Live boot `b0e98535` is Panfrost | Reboot to libmali only for a check that names libmali |
+| Lid suspend | Phase 6 | No suspend change | Not rerun | No |
+| Art Book and list width | `4652076`, `0b35a90` | Not changed by `0017d58` | Not rerun | No |
+| RetroArch HDMI CRTC | NextUI picture on `0b35a90`; RetroArch clock never read | `0017d58` did not change `ra-run` | None | Gated session, one game, debugfs clock 74250 kHz, DSI off, then an ungated boot |
 
 ## SDL3 probe, 2026-10-25
 

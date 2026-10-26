@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `9acb1fc`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, GPU `libmali`. Gates 1, 2, and 4 are accepted. Gate 5's AArch64 engines are accepted on libmali by maintainer report. Its native ARMHF path is open. Gate 6 and [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review) follow. The checklist is in `docs/MAINTENANCE.md`.
+Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gates 1, 2, 4, and 5 are accepted in the scope recorded on 2026-10-26. Gate 6 is next, then [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review). The checklist is in `docs/MAINTENANCE.md`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -303,11 +303,11 @@ The installed image on 2026-10-25 is `zlyme-my355-20261025-9acb1fcb30a5.tar` fro
 
 `c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is not the installed firmware. It remains the image that accepted Abombniball MENU+START. `0b35a90` remains the image that accepted volume, Wi-Fi, HDMI audio, and NextUI at HDMI 720p. `4652076` remains the image that accepted the looked-at 14O rows. Later images do not rewrite those records.
 
-Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is Gate 5. Gate 4 is accepted on libmali. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
+Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is Gate 6. Gates 4 and 5 are accepted in the recorded scope. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
 
 ### Next decision gate
 
-**Gate 0 approved Gate 1 only. Gates 1, 2, and 4 are hardware-accepted. Gate 4 is the SDL3 probe on libmali. Gate 3 remains open for Zlyme's GL4ES fallback and Panfrost. The 49-SONAME baseline is host-validated. Gate 5's AArch64 engines are accepted on libmali. Native ARMHF on Panfrost is the rest of Gate 5. Gate 6 and 14P follow.**
+**Gate 0 approved Gate 1 only. Gates 1, 2, 4, and 5 are hardware-accepted in the scope recorded on 2026-10-26. Gate 3's bundled-GL4ES result is Aerofoil. The optional Zlyme fallback stays a 14P removal candidate. Gate 6 is next. 14P has not started.**
 
 Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
 
@@ -448,6 +448,8 @@ port, stopped in the loader on `libSDL2-2.0.so.0: wrong ELF class:
 ELFCLASS64`. The private ARMHF runtime had no SDL2, OpenAL, FreeType,
 or bzip2. Native ARMHF graphics also need Panfrost.
 
+On installed `0017d58` the maintainer reports Bowling Cross and Ascent DX working on Panfrost. Bowling Cross's log shows the 32-bit loader succeeding, KMSDRM at 640×480, OpenGL ES 3.1 Mesa 26.1.8, the Xbox 360 pad on player 0, and `Entering main loop.` The process then prints `free(): invalid size` and `Aborted`. Gameplay is accepted. A clean process exit is not. Ascent DX's log records its save bind; the working report is the maintainer's. The kernel log for that boot loads `panfrost` for Mali-G52. No installed game uses Box86 or WestonPack, so those stay untested rather than failed.
+
 ### 14G. Named ports
 
 The recorded cases are Shards of God, LISA The Painful, Rakuen, Steel
@@ -489,6 +491,8 @@ and then failed with `VK_ERROR_SURFACE_LOST_KHR` from
 not accepted. Skautfold's own patch step failed (`Missing zip!`) and
 the launch then could not find `game.droid`. That is port data, not a
 runtime result. X-Moto and JVGS stay deferred.
+
+On installed `0017d58`, Panfrost, the maintainer reports Mina working. Mina's own log probes zero Vulkan devices and then selects GLES: renderer `Mali-G52 r1 MC1 (Panfrost)`, `OpenGL ES 3.1 Mesa 26.1.8`. That accepts Mina on Panfrost GLES. It does not accept Vulkan, and the libmali `VK_ERROR_SURFACE_LOST_KHR` result stays unresolved. PanVK stays off.
 
 ### 14H. Acceptance
 
@@ -536,6 +540,11 @@ MENU+START. `4652076` retains the looked-at 14O rows. `0b35a90`
 retains HDMI, volume, Wi-Fi, and panel acceptance. A user background
 was not a separate 14O check. RetroArch's own KMS path and the
 runtime matrix remain open. No `zlyme44.4` release until this pass.
+Gate 6 is the remaining hardware pass on installed `0017d58`. The check
+that has no result is RetroArch's own HDMI CRTC at 1280×720, clock
+74250 kHz, read from debugfs rather than the sysfs mode text. The
+accepted NextUI HDMI picture on `0b35a90` stays closed. 14P has not
+started.
 
 ### 14I. PortMaster platform
 

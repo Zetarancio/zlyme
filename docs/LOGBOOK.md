@@ -19,6 +19,20 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-26 — Gate 5 accepted on 0017d58
+
+Live `/boot/zlyme` is squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`, the root of `zlyme-my355-20261025-0017d580b025.tar`, source `0017d580b025f56e07a30456b64d0122fb4c9803`. The private runtime contains `libSDL2-2.0.so.0`.
+
+The Panfrost log archive is `ph14-phase5-armhf.zip`, SHA-256 `6dea3a3aae1ef7e14bd7cdf43c1fe1a99ff6282961a2117f4ce9ca8b53849294`. Its kernel log initializes `panfrost` 1.6.0 for Mali-G52. The maintainer reports Bowling Cross and Ascent DX working, then a return to libmali that brought the frontend back. Bowling Cross at 17:18:04Z loads the APK's ARM ELF, opens KMSDRM at 640×480, reports `OpenGL ES 3.1 Mesa 26.1.8`, assigns `Microsoft X-Box 360 pad` to player 0, and logs `Entering main loop.` It then prints `free(): invalid size` and the shell records `Aborted ./gmloader bowlingcross.apk`. Gameplay is accepted. A clean exit is not, and the abort is not assigned to the runtime. Ascent DX at 17:18:40Z records its save bind. The working report is the maintainer's.
+
+Mina's log is still on the card, not in that archive. It says `gothic_vk: probe: 0 Vulkan physical device(s)`, `gothic: backend = GLES`, and `OpenGL ES 3.1 Mesa 26.1.8` with renderer `Mali-G52 r1 MC1 (Panfrost)`. The maintainer reports the game working. That accepts Mina through Panfrost GLES. It does not accept Vulkan. The libmali `VK_ERROR_SURFACE_LOST_KHR` failure stays as it was. PanVK was not enabled.
+
+Gate 5 is accepted for LÖVE on both GPUs, Godot, AArch64 GameMaker, mkxp, native ARMHF GameMaker gameplay on Panfrost, Aerofoil's bundled GL4ES, Abombniball's MENU+START on `9acb1fc`, the SDL3 probe on libmali, the GPU switch by maintainer report, and Mina's Panfrost GLES path. Graphical Box86 and WestonPack have no installed game, so they are not tested. The optional Zlyme GL4ES fallback remains the black screen and a removal candidate for 14P. X-Moto and JVGS stay deferred.
+
+The same Panfrost session log says `zlyme-input` could not open `/run/dbus/system_bus_socket`, and `nextui-session` records `zlyme-input ensure failed`. `ensure` returns 1 when the bus connection itself fails, which is the state before dbus is up. The later lines say `built-in target already ready`, and Bowling Cross received the virtual pad. That is early-boot timing, not an input failure. The init order was not changed.
+
+A read-only check on 2026-10-26 found boot `b0e98535-7461-4d78-babd-051576cb8d5b`, the saved GPU file `panfrost`, the `panfrost` module loaded, and `nextui.elf` holding `/dev/dri/card0`. No LÖVE or PortMaster mount was left. This boot is not the libmali rollback the maintainer reported earlier.
+
 ## 2026-10-25 — Gate 5 engines on 9acb1fc
 
 Same installed image, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, GPU `libmali`. The maintainer reports these ports working from the Ports list: Ascent DX (LÖVE 11.5), A Key(s) Path (Godot through FRT 3.3.4), Undertale and REPOSE (AArch64 GameMaker through `gmloadernext`), LISA The Painful and Rakuen (RPG Maker through mkxp), and Abombniball, including MENU+START. This Abombniball result is on the image that has the session-waiter hardening. The log archive `ph14-phase5.zip`, SHA-256 `ef82f24b4df58fede9c4d9a2fece621fd12f7b9a7d8448c4a7799cde46dcf080`, keeps LISA's port log: RGSS 3, Mali-G52 OpenGL ES 3.2, OpenAL `ALC_SOFT_pause_device`, and a normal `Shutting down.` The other working runs are the maintainer's report; their port logs had rotated out of the archive. Audio, frame times, and other properties were not measured one by one.
