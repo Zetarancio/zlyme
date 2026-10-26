@@ -3,7 +3,8 @@
 # A bind is owned only when this launcher's mount adds exactly one
 # mountinfo id and that id is stored as "id<TAB>path". Cleanup uses the
 # PortMaster mount-identity helper and unmounts only when that id is the
-# visible mount. An already-mounted destination is not adopted.
+# visible mount. A destination that is already mounted is not reused,
+# even when the visible id is one this launcher recorded earlier.
 
 ppsspp_binds_file() {
 	printf '%s\n' "${ZLYME_PPSSPP_BINDS:-/tmp/zlyme-ppsspp-binds}"
@@ -92,33 +93,36 @@ ppsspp_bind_one() {
 		echo "ppsspp: save directory $_bo_src is missing" >&2
 		return 1
 	fi
-	if ppsspp_path_owned_visible "$_bo_dst"; then
-		return 0
-	fi
-	_bo_ids=$(ppsspp_pm pm_ids_at "$_bo_dst") || {
-		echo "ppsspp: cannot read mountinfo for $_bo_dst" >&2
-		return 1
-	}
-	if [ -n "$_bo_ids" ]; then
-		echo "ppsspp: $_bo_dst is already mounted and is not an owned PPSSPP bind" >&2
-		return 1
-	fi
 	_bo_before=$(mktemp "${TMPDIR:-/tmp}/zlyme-ppsspp-before.XXXXXX") || {
 		echo "ppsspp: cannot record a mount id for $_bo_dst" >&2
 		return 1
 	}
-	: > "$_bo_before"
+	if ! ppsspp_pm pm_ids_at "$_bo_dst" > "$_bo_before"; then
+		rm -f "$_bo_before"
+		echo "ppsspp: cannot read mountinfo for $_bo_dst" >&2
+		return 1
+	fi
+	if [ -s "$_bo_before" ]; then
+		rm -f "$_bo_before"
+		echo "ppsspp: $_bo_dst is still mounted; not starting" >&2
+		return 1
+	fi
 	if ! mount --bind "$_bo_src" "$_bo_dst"; then
 		rm -f "$_bo_before"
 		echo "ppsspp: bind failed for $_bo_dst" >&2
 		return 1
 	fi
-	ppsspp_pm pm_register_new "$_bo_dst" "$_bo_before" || true
+	# Host tests set this to exercise rollback. Runtime never sets it.
+	if [ "${ZLYME_PPSSPP_REGISTER_FAIL:-}" != 1 ]; then
+		ppsspp_pm pm_register_new "$_bo_dst" "$_bo_before" || true
+	fi
 	if ppsspp_path_owned_visible "$_bo_dst"; then
 		rm -f "$_bo_before"
 		return 0
 	fi
 	_bo_after=$(mktemp "${TMPDIR:-/tmp}/zlyme-ppsspp-after.XXXXXX") || _bo_after=
+	_bo_n=0
+	_bo_id=
 	if [ -n "$_bo_after" ]; then
 		ppsspp_pm pm_ids_at "$_bo_dst" > "$_bo_after" 2>/dev/null || : > "$_bo_after"
 		_bo_new=$(awk -v before="$_bo_before" '
@@ -126,8 +130,6 @@ ppsspp_bind_one() {
 			$0 ~ /^[0-9]+$/ && !seen[$0] { print }
 		' "$_bo_before" "$_bo_after")
 		rm -f "$_bo_after"
-		_bo_n=0
-		_bo_id=
 		while IFS= read -r _bo_one || [ -n "$_bo_one" ]; do
 			[ -n "$_bo_one" ] || continue
 			_bo_n=$((_bo_n + 1))
@@ -135,26 +137,26 @@ ppsspp_bind_one() {
 		done << EOF
 $_bo_new
 EOF
-		if [ "$_bo_n" -eq 1 ]; then
-			_bo_role=$(ppsspp_pm pm_mount_role "$_bo_dst" "$_bo_id" 2>/dev/null || true)
-			if [ "$_bo_role" = visible ]; then
-				umount "$_bo_dst" 2>/dev/null || true
-			fi
-		fi
 	fi
 	rm -f "$_bo_before"
+	if [ "$_bo_n" -eq 1 ]; then
+		_bo_role=$(ppsspp_pm pm_mount_role "$_bo_dst" "$_bo_id" 2>/dev/null || true)
+		if [ "$_bo_role" = visible ]; then
+			if umount "$_bo_dst" 2>/dev/null; then
+				echo "ppsspp: bind at $_bo_dst was not recorded; removed it" >&2
+				return 1
+			fi
+			ppsspp_pm pm_store_id "$_bo_id" "$_bo_dst" || true
+			if ppsspp_path_owned_visible "$_bo_dst"; then
+				echo "ppsspp: bind at $_bo_dst stayed mounted; record kept" >&2
+			else
+				echo "ppsspp: bind at $_bo_dst stayed mounted and was not recorded" >&2
+			fi
+			return 1
+		fi
+	fi
 	echo "ppsspp: bind at $_bo_dst was not recorded; not starting" >&2
 	return 1
-}
-
-# 0 when this call created a new owned mount. 2 when an older owned
-# mount was reused. 1 on failure.
-ppsspp_bind_needed() {
-	_bn_dst=$2
-	if ppsspp_path_owned_visible "$_bn_dst"; then
-		return 2
-	fi
-	ppsspp_bind_one "$1" "$2"
 }
 
 ppsspp_prepare() {
@@ -173,25 +175,14 @@ ppsspp_prepare() {
 		return 1
 	fi
 	ppsspp_scrub || return 1
-	_pp_made=
-	for _pp_pair in \
-		"$1|$3" \
-		"$2|$4"
-	do
-		_pp_src=${_pp_pair%%|*}
-		_pp_dst=${_pp_pair#*|}
-		_pp_rc=0
-		ppsspp_bind_needed "$_pp_src" "$_pp_dst" || _pp_rc=$?
-		if [ "$_pp_rc" -eq 1 ]; then
-			for _pp_undo in $_pp_made; do
-				ppsspp_release_path "$_pp_undo" || true
-			done
-			return 1
-		fi
-		if [ "$_pp_rc" -eq 0 ]; then
-			_pp_made="$_pp_made $_pp_dst"
-		fi
-	done
+	# A new session does not reuse a mount left by an earlier card.
+	if ! ppsspp_bind_one "$1" "$3"; then
+		return 1
+	fi
+	if ! ppsspp_bind_one "$2" "$4"; then
+		ppsspp_release_path "$3" || true
+		return 1
+	fi
 	return 0
 }
 
