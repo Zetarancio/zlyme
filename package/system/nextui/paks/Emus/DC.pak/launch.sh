@@ -24,18 +24,26 @@ for f in dc_boot.bin dc_flash.bin; do
 		break
 	done
 done
-# exec replaces this shell, so an EXIT trap would not run. The bind
-# stays up while Flycast exits, which is when it writes its autosave.
-# pak-launch is outside the process group and unmounts the recorded
-# path after wait, including when MENU+START has killed the group.
-if [ -d "$SAVES_PATH/$EMU_TAG" ]; then
-	if mount --bind "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast"; then
-		_fly_bind=/tmp/zlyme-flycast-bind
-		rm -f "$_fly_bind"
-		printf '%s\n' "$XDG_DATA_HOME/flycast" > "$_fly_bind"
-		unset _fly_bind
-	fi
+if [ -z "$ROM" ] || [ ! -e "$ROM" ]; then
+	echo "flycast: missing ROM" >&2
+	exit 1
 fi
+# exec replaces this shell. The bind stays up while Flycast exits,
+# which is when it writes its autosave. pak-launch is outside the
+# process group and releases the recorded mount id after wait,
+# including when MENU+START has killed the group.
+_flycast_binds=${ZLYME_FLYCAST_BINDS_SH:-/usr/share/nextui/bin/flycast-binds.sh}
+if [ ! -r "$_flycast_binds" ]; then
+	echo "flycast: bind helper is missing" >&2
+	exit 1
+fi
+# shellcheck disable=SC1090
+. "$_flycast_binds"
+if ! flycast_prepare "$SAVES_PATH/$EMU_TAG" "$XDG_DATA_HOME/flycast"; then
+	echo "flycast: save bind is not ready" >&2
+	exit 1
+fi
+unset _flycast_binds
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
 exec flycast "$ROM"

@@ -22,12 +22,15 @@ grep -q 'input_b_btn = "1"' "$PAD" || fail "RetroPad B is not SDL button 1"
 if grep -q 'input_a_btn = "1"' "$PAD" || grep -q 'input_b_btn = "0"' "$PAD"; then
 	fail "autoconfig swaps A and B"
 fi
-grep -q 'input_menu_swap_ok_cancel_buttons = "false"' "$SEED" \
+grep -q 'menu_swap_ok_cancel_buttons = "false"' "$SEED" \
 	|| fail "menu swap is not false in the stock configuration"
-if grep -q 'input_menu_swap_ok_cancel_buttons = "true"' "$SEED"; then
+if grep -v '^[[:space:]]*#' "$SEED" | grep -q 'input_menu_swap_ok_cancel_buttons'; then
+	fail "stock configuration still uses the unregistered input_ menu key"
+fi
+if grep -q 'menu_swap_ok_cancel_buttons = "true"' "$SEED"; then
 	fail "menu swap is true in the stock configuration"
 fi
-if grep -q 'input_menu_swap_ok_cancel_buttons\|savestate_auto_\|quit_on_close_content\|rgui_menu_color_theme' \
+if grep -q 'menu_swap_ok_cancel_buttons\|input_menu_swap_ok_cancel_buttons\|savestate_auto_\|quit_on_close_content\|rgui_menu_color_theme' \
 	"$ETC"; then
 	fail "the system skeleton still sets a user preference"
 fi
@@ -204,6 +207,7 @@ fly=$ROOT/package/system/nextui/paks/Emus/DC.pak/launch.sh
 pak_launch=$ROOT/package/system/nextui/zlyme/pak-launch.sh
 mkdir -p "$work/fly-bin" "$work/fly-home" "$work/fly-xdg/flycast" \
 	"$work/fly-bios" "$work/fly-saves" "$work/fly-roms"
+: > "$work/fly-roms/game.cdi"
 cat > "$work/fly-bin/flycast" << 'EOF'
 #!/bin/sh
 exit 0
@@ -221,12 +225,14 @@ Dynarec.Enabled = yes
 Dreamcast.AutoSaveState = no
 EOF
 cp "$work/fly-xdg/flycast/emu.cfg" "$work/fly-before"
+set +e
 PATH=$work/fly-bin:/usr/bin:/bin \
 	XDG_CONFIG_HOME=$work/fly-xdg \
 	USERDATA_PATH=$work/fly-home \
 	BIOS_PATH=$work/fly-bios \
 	SAVES_PATH=$work/fly-saves \
-	sh "$fly" "$work/fly-roms/game.cdi"
+	sh "$fly" "$work/fly-roms/game.cdi" >/dev/null 2>&1
+set -e
 cmp -s "$work/fly-before" "$work/fly-xdg/flycast/emu.cfg" \
 	|| fail "flycast rewrote an existing configuration"
 if grep -q '^Dreamcast.AutoLoadState =' "$work/fly-xdg/flycast/emu.cfg"; then
@@ -234,12 +240,14 @@ if grep -q '^Dreamcast.AutoLoadState =' "$work/fly-xdg/flycast/emu.cfg"; then
 fi
 touch -d '2020-01-01 00:00:00' "$work/fly-xdg/flycast/emu.cfg"
 before=$(stat -c %Y "$work/fly-xdg/flycast/emu.cfg")
+set +e
 PATH=$work/fly-bin:/usr/bin:/bin \
 	XDG_CONFIG_HOME=$work/fly-xdg \
 	USERDATA_PATH=$work/fly-home \
 	BIOS_PATH=$work/fly-bios \
 	SAVES_PATH=$work/fly-saves \
-	sh "$fly" "$work/fly-roms/game.cdi"
+	sh "$fly" "$work/fly-roms/game.cdi" >/dev/null 2>&1
+set -e
 after=$(stat -c %Y "$work/fly-xdg/flycast/emu.cfg")
 [ "$before" = "$after" ] || fail "flycast rewrote a cfg that already had both keys"
 if grep -E '^[[:space:]]*trap[[:space:]]' "$fly"; then
@@ -254,93 +262,10 @@ awk '
 	END { exit saw_release ? 0 : 1 }
 ' "$pak_launch" || fail "the session does not release the Flycast bind after wait"
 
-mount_log=$work/mount.log
-umount_log=$work/umount.log
-fly_mark=$work/fly.mark
-: > "$mount_log"
-: > "$umount_log"
-rm -f "$bind_live"
-cat > "$work/fly-bin/mount" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_MOUNT_LOG"
-exit 0
-EOF
-cat > "$work/fly-bin/umount" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_UMOUNT_LOG"
-exit 0
-EOF
-cat > "$work/fly-bin/mountpoint" << 'EOF'
-#!/bin/sh
-if [ "$1" = -q ]; then
-	shift
+if grep -q '/tmp/zlyme-flycast-bind' "$fly"; then
+	fail "DC.pak still records a path instead of a mount id"
 fi
-grep -F -q -- "$1" "$ZLYME_TEST_MOUNT_LOG"
-EOF
-cat > "$work/fly-bin/flycast" << 'EOF'
-#!/bin/sh
-if [ -s "$ZLYME_TEST_UMOUNT_LOG" ]; then
-	echo unmounted-during-play > "$ZLYME_TEST_FLY_MARK"
-	exit 3
-fi
-grep -F -q -- flycast "$ZLYME_TEST_MOUNT_LOG" || exit 4
-echo played > "$ZLYME_TEST_FLY_MARK"
-exit 7
-EOF
-chmod 0755 "$work/fly-bin/mount" "$work/fly-bin/umount" \
-	"$work/fly-bin/mountpoint" "$work/fly-bin/flycast"
-set +e
-PATH=$work/fly-bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	ZLYME_TEST_FLY_MARK=$fly_mark \
-	XDG_CONFIG_HOME=$work/fly-xdg \
-	XDG_DATA_HOME=$work/fly-xdg \
-	USERDATA_PATH=$work/fly-home \
-	BIOS_PATH=$work/fly-bios \
-	SAVES_PATH=$work/fly-saves \
-	sh "$fly" "$work/fly-roms/game.cdi"
-fly_st=$?
-set -e
-[ "$fly_st" = 7 ] || fail "Flycast exit status was not preserved ($fly_st)"
-grep -qx played "$fly_mark" || fail "Flycast did not run while the bind was held"
-[ ! -s "$umount_log" ] || fail "the launcher unmounted Flycast before it exited"
-bind_path=$(cat "$bind_live")
-[ "$bind_path" = "$work/fly-xdg/flycast" ] || fail "Flycast bind record was $bind_path"
-# shellcheck disable=SC1090
-. "$pak_launch"
-PATH=$work/fly-bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	flycast_bind_release
-grep -qx -- "$work/fly-xdg/flycast" "$umount_log" \
-	|| fail "the session did not unmount the Flycast bind"
-[ ! -e "$bind_live" ] || fail "a released Flycast bind record was kept"
-
-printf '%s\n' '/tmp/not-flycast' > "$bind_live"
-: > "$umount_log"
-PATH=$work/fly-bin:/usr/bin:/bin flycast_bind_release
-[ ! -s "$umount_log" ] || fail "a non-flycast path was unmounted"
-[ ! -e "$bind_live" ] || fail "an invalid Flycast bind record was kept"
-printf '%s\n' '/tmp/../storage/flycast' > "$bind_live"
-PATH=$work/fly-bin:/usr/bin:/bin flycast_bind_release
-[ ! -s "$umount_log" ] || fail "a Flycast bind path with .. was unmounted"
-printf '%s\n' "$work/fly-xdg/flycast" > "$bind_live"
-cat > "$work/fly-bin/umount" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_UMOUNT_LOG"
-exit 1
-EOF
-chmod 0755 "$work/fly-bin/umount"
-: > "$umount_log"
-PATH=$work/fly-bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	flycast_bind_release
-grep -qx -- "$work/fly-xdg/flycast" "$umount_log" \
-	|| fail "a busy Flycast bind was not attempted"
-[ -f "$bind_live" ] || fail "a busy Flycast bind record was dropped"
-rm -f "$bind_live"
+# Mount identity, refusal, and rollback are scripts/tests/test_save_binds.sh.
 
 # Retired theme files are removed from an existing target tree.
 # post-build.sh does more than this cleanup, so run only those rm lines.

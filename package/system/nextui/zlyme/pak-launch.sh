@@ -22,6 +22,20 @@ launch_is_wine() {
 	return 1
 }
 
+launch_is_dolphin() {
+	case "$1" in
+		*/GC.pak/launch.sh|*/WII.pak/launch.sh) return 0 ;;
+	esac
+	return 1
+}
+
+launch_is_flycast() {
+	case "$1" in
+		*/DC.pak/launch.sh) return 0 ;;
+	esac
+	return 1
+}
+
 launch_skip_bt() {
 	case "$1" in
 		*/Tools/*|*settings.elf*) return 0 ;;
@@ -486,50 +500,32 @@ wine_prefix_cleanup() {
 	"$_bin" cleanup || true
 }
 
-# DC.pak execs flycast, so that shell cannot unmount its save bind.
-# The record is one path on tmpfs. This launcher is outside the pak
-# session, so it still runs after a normal exit and after MENU+START.
-flycast_bind_mounted() {
-	if command -v mountpoint >/dev/null 2>&1; then
-		mountpoint -q "$1"
-		return $?
-	fi
-	awk -v p="$1" '$2 == p { found = 1 } END { exit found ? 0 : 1 }' /proc/mounts
-}
-
-flycast_bind_release() {
-	_fb_rec=/tmp/zlyme-flycast-bind
-	if [ ! -e "$_fb_rec" ] && [ ! -L "$_fb_rec" ]; then
-		return 0
-	fi
-	if [ -L "$_fb_rec" ] || [ ! -f "$_fb_rec" ]; then
-		rm -f "$_fb_rec"
-		return 0
-	fi
-	_fb_mp=
-	IFS= read -r _fb_mp < "$_fb_rec" || true
-	case "$_fb_mp" in
-		/*/flycast) ;;
-		*)
-			rm -f "$_fb_rec"
-			return 0
-			;;
-	esac
-	case "$_fb_mp" in
-		*..*|*//*|*\ *)
-			rm -f "$_fb_rec"
-			return 0
-			;;
-	esac
-	if ! flycast_bind_mounted "$_fb_mp"; then
-		rm -f "$_fb_rec"
-		return 0
-	fi
-	# A busy mount stays, and the record stays, so a later session can retry.
-	if umount "$_fb_mp" 2>/dev/null; then
-		rm -f "$_fb_rec"
-	fi
-}
+# DC.pak and start_dolphin exec the emulator. Release runs in this
+# shell, outside the pak group. Status 125 means that session's
+# ownership was not proved, so its mounts stay recorded and a later
+# launch does not release them.
+_flycast_binds_sh=${ZLYME_FLYCAST_BINDS_SH:-/usr/share/nextui/bin/flycast-binds.sh}
+if [ -r "$_flycast_binds_sh" ]; then
+	# shellcheck disable=SC1090
+	. "$_flycast_binds_sh"
+fi
+if ! command -v flycast_bind_release >/dev/null 2>&1; then
+	flycast_bind_release() { return 0; }
+	flycast_session_blocked() { return 1; }
+	flycast_mark_unresolved() { return 0; }
+fi
+unset _flycast_binds_sh
+_dolphin_binds_sh=${ZLYME_DOLPHIN_BINDS_SH:-/usr/share/zlyme/dolphin-binds.sh}
+if [ -r "$_dolphin_binds_sh" ]; then
+	# shellcheck disable=SC1090
+	. "$_dolphin_binds_sh"
+fi
+if ! command -v dolphin_bind_release >/dev/null 2>&1; then
+	dolphin_bind_release() { return 0; }
+	dolphin_session_blocked() { return 1; }
+	dolphin_mark_unresolved() { return 0; }
+fi
+unset _dolphin_binds_sh
 
 # PSP.pak execs PPSSPPSDL. Release runs in this shell, outside the pak
 # group. Status 125 means the session's ownership was not proved, so
@@ -560,7 +556,16 @@ run_pak_cmd() {
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup
 	fi
-	flycast_bind_release
+	if flycast_session_blocked; then
+		:
+	else
+		flycast_bind_release || true
+	fi
+	if dolphin_session_blocked; then
+		:
+	else
+		dolphin_bind_release || true
+	fi
 	ppsspp_bind_release
 	_trace=0
 	_trace_exported=0
@@ -657,7 +662,20 @@ run_pak_cmd() {
 	if launch_is_wine "$_exe"; then
 		wine_prefix_cleanup
 	fi
-	flycast_bind_release
+	if launch_is_flycast "$_exe" && pak_cleanup_failed "$st"; then
+		flycast_mark_unresolved
+	elif flycast_session_blocked; then
+		:
+	else
+		flycast_bind_release || true
+	fi
+	if launch_is_dolphin "$_exe" && pak_cleanup_failed "$st"; then
+		dolphin_mark_unresolved
+	elif dolphin_session_blocked; then
+		:
+	else
+		dolphin_bind_release || true
+	fi
 	if ! pak_cleanup_failed "$st"; then
 		ppsspp_bind_release || true
 	fi

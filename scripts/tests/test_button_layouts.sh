@@ -22,8 +22,16 @@ awk '
 	$0 ~ /name: B$/ { b = 1 }
 	b && /button: East/ { print "b-east"; exit }
 ' "$MAP" | grep -q b-east || fail "printed B is no longer virtual East"
-grep -q 'input_menu_swap_ok_cancel_buttons = "false"' "$RA" \
-	|| fail "RGUI no longer confirms on RetroPad A"
+if grep -v '^[[:space:]]*#' "$RA" | grep -q 'input_menu_swap_ok_cancel_buttons'; then
+	fail "stock configuration still sets the unregistered input_ menu key"
+fi
+grep -q 'menu_swap_ok_cancel_buttons = "false"' "$RA" \
+	|| fail "stock menu_swap_ok_cancel_buttons is not false"
+if grep -q 'menu_swap_ok_cancel_buttons' \
+	"$ROOT/package/system/nextui/zlyme/ra-run.sh"; then
+	fail "ra-run forces the menu swap from the session file"
+fi
+python3 "$ROOT/scripts/tests/test_retroarch_menu_key.py" || fail "upstream menu key check failed"
 grep -q 'input_a_btn = "0"' "$AUTO" || fail "RetroPad A left button 0"
 grep -q 'input_b_btn = "1"' "$AUTO" || fail "RetroPad B left button 1"
 grep -q 'input_x_btn = "2"' "$AUTO" || fail "RetroPad X left button 2"
@@ -83,9 +91,13 @@ if grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
 fi
 
 sh "$SEED" reset-ra
-grep -q 'input_menu_swap_ok_cancel_buttons = "false"' \
+grep -q 'menu_swap_ok_cancel_buttons = "false"' \
 	"$work/storage/.config/retroarch/retroarch.cfg" \
 	|| fail "Reset RetroArch configuration did not restore the menu"
+if grep -v '^[[:space:]]*#' "$work/storage/.config/retroarch/retroarch.cfg" |
+	grep -q 'input_menu_swap_ok_cancel_buttons'; then
+	fail "reset restored the unregistered menu key"
+fi
 if grep -q 'keep-me' "$work/storage/.config/retroarch/retroarch.cfg"; then
 	fail "Reset RetroArch configuration kept the custom line"
 fi
@@ -114,24 +126,34 @@ export SDCARD_PATH="$work/card"
 export BIOS_PATH="$work/card/Bios"
 export USERDATA_PATH="$work/home"
 export XDG_CONFIG_HOME="$work/cfg"
-export SAVES_PATH="$work/not-a-directory"
-: > "$SAVES_PATH"
+export SAVES_PATH="$work/saves"
+export ZLYME_DOLPHIN_BINDS_SH="$work/binds-stub.sh"
+mkdir -p "$work/bin" "$SAVES_PATH"
+: > "$work/rom.iso"
+cat > "$work/binds-stub.sh" << 'EOF'
+dolphin_prepare() { return 0; }
+EOF
+cat > "$work/bin/dolphin-emu-nogui" << 'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod 0755 "$work/bin/dolphin-emu-nogui"
 set +e
-sh "$DOL" >/dev/null 2>&1
+PATH="$work/bin:$PATH" sh "$DOL" "$work/rom.iso" >/dev/null 2>&1
 st=$?
 set -e
-[ "$st" = 1 ] || fail "dolphin launcher did not stop before the program ($st)"
+[ "$st" = 0 ] || fail "dolphin launcher did not reach the program ($st)"
 grep -q 'Buttons/A = `Button E`' "$work/cfg/dolphin-emu/GCPadNew.ini" \
 	|| fail "the first Dolphin pad is not the stock south A"
 printf '%s\n' 'Buttons/A = `Button S`' > "$work/cfg/dolphin-emu/GCPadNew.ini"
 set +e
-sh "$DOL" >/dev/null 2>&1
+PATH="$work/bin:$PATH" sh "$DOL" "$work/rom.iso" >/dev/null 2>&1
 set -e
 grep -q 'Buttons/A = `Button S`' "$work/cfg/dolphin-emu/GCPadNew.ini" \
 	|| fail "a second launch rewrote the saved Dolphin pad"
 rm -f "$work/cfg/dolphin-emu/GCPadNew.ini"
 set +e
-sh "$DOL" >/dev/null 2>&1
+PATH="$work/bin:$PATH" sh "$DOL" "$work/rom.iso" >/dev/null 2>&1
 set -e
 grep -q 'Buttons/A = `Button E`' "$work/cfg/dolphin-emu/GCPadNew.ini" \
 	|| fail "removing the Dolphin pad did not restore the stock file"

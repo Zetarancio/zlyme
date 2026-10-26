@@ -205,6 +205,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/nextui/bin/pak-launch.sh
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/ppsspp-binds.sh \
 		$(TARGET_DIR)/usr/share/nextui/bin/ppsspp-binds.sh
+	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/flycast-binds.sh \
+		$(TARGET_DIR)/usr/share/nextui/bin/flycast-binds.sh
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \
 		$(TARGET_DIR)/usr/lib/gamecontrollerdb.txt
 	$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/gamecontrollerdb.txt \

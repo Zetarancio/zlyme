@@ -5,6 +5,11 @@ SDCARD="${SDCARD_PATH:-/storage}"
 BIOS="${BIOS_PATH:-$SDCARD/Bios}"
 USERDATA="${USERDATA_PATH:-$SDCARD/.config/nextui/${PLATFORM:-my355}}"
 
+if [ -z "$ROM" ] || [ ! -e "$ROM" ]; then
+	echo "dolphin: missing ROM" >&2
+	exit 1
+fi
+
 mkdir -p "$BIOS/GC/USA" "$BIOS/GC/EUR" "$BIOS/GC/JAP" "$BIOS/WII" \
 	"$USERDATA/.local/share/dolphin-emu" \
 	"${SAVES_PATH:-$SDCARD/Saves}/GC" \
@@ -25,11 +30,6 @@ export EGL_PLATFORM="${EGL_PLATFORM:-drm}"
 mkdir -p "$XDG_DATA_HOME/dolphin-emu" "$XDG_CONFIG_HOME/dolphin-emu" \
 	"$XDG_DATA_HOME/dolphin-emu/GC" "$XDG_DATA_HOME/dolphin-emu/Wii" \
 	"${SAVES_PATH:-$SDCARD/Saves}/GC" "${SAVES_PATH:-$SDCARD/Saves}/WII"
-if [ -d "${SAVES_PATH:-$SDCARD/Saves}/GC" ]; then
-	mount --bind "${SAVES_PATH:-$SDCARD/Saves}/GC" "$XDG_DATA_HOME/dolphin-emu/GC" 2>/dev/null || true
-	mount --bind "${SAVES_PATH:-$SDCARD/Saves}/WII" "$XDG_DATA_HOME/dolphin-emu/Wii" 2>/dev/null || true
-	trap 'umount "$XDG_DATA_HOME/dolphin-emu/GC" 2>/dev/null; umount "$XDG_DATA_HOME/dolphin-emu/Wii" 2>/dev/null' EXIT
-fi
 
 # Card dumps often sit at Bios/IPL.bin. Dolphin only looks under GC/<region>/.
 for region in USA EUR JAP; do
@@ -85,10 +85,25 @@ Rumble/Motor = Motor
 EOF
 fi
 
-if [ -z "$ROM" ] || [ ! -e "$ROM" ]; then
-	echo "dolphin: missing ROM" >&2
+# exec replaces this shell. pak-launch releases the recorded mount
+# ids outside this process group, including after MENU+START.
+_dolphin_binds=${ZLYME_DOLPHIN_BINDS_SH:-/usr/share/zlyme/dolphin-binds.sh}
+if [ ! -r "$_dolphin_binds" ]; then
+	echo "dolphin: bind helper is missing" >&2
 	exit 1
 fi
+# shellcheck disable=SC1090
+. "$_dolphin_binds"
+if ! dolphin_prepare \
+	"${SAVES_PATH:-$SDCARD/Saves}/GC" \
+	"$XDG_DATA_HOME/dolphin-emu/GC" \
+	"${SAVES_PATH:-$SDCARD/Saves}/WII" \
+	"$XDG_DATA_HOME/dolphin-emu/Wii"
+then
+	echo "dolphin: save binds are not ready" >&2
+	exit 1
+fi
+unset _dolphin_binds
 
 [ -x /usr/bin/zlyme-drm-release ] && /usr/bin/zlyme-drm-release
 exec dolphin-emu-nogui -p drm -v OGL -C Dolphin.Core.GFXBackend=OGL -e "$ROM"
