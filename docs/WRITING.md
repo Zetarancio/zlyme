@@ -55,14 +55,15 @@ A gate has to match the risk. A source-only change does not automatically need a
 
 `CHANGELOG.md` is for people who use Zlyme. It is not an engineering log, a phase report, a source tour, or a hardware-test transcript. The roadmap names the phase. `docs/LOGBOOK.md` and `docs/archive/` keep the engineering history. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-- Describe the result a person can see. One sentence is the usual entry. A second sentence is for an instruction, a warning, or compatibility.
-- Group related work into one change. Do not describe the same feature under more than one heading.
+- Write natural, connected English about the result a person can see. A concise bullet is often enough, but a short paragraph is better when related behavior needs context or an instruction. Do not force a feature into sentence fragments or split it into repetitive implementation bullets.
+- Group related work by user-visible feature. Name the benefit first, then the compatibility limit or action a person needs. Do not describe the same feature under more than one heading.
 - Leave out paths, hashes, commit IDs, package internals, and rejected experiments unless a person using Zlyme needs them. A longer procedure belongs in the user guide.
 - Write the entry in GitHub Flavored Markdown. Headings, lists, and links have to stay readable when the section is copied into a GitHub Release. Use an absolute `https://github.com/Zetarancio/zlyme/blob/main/...` link for a guide page. A repository-relative link does not resolve there. Do not use HTML in place of Markdown, a branch URL, or a code fence around the release section.
-- Do not record which hardware tests were or were not run. Do not describe a feature that has not been shown to work. A limitation a person can hit stays in the entry, in plain language.
+- Do not record tests, commits, compiler options, internal symbols, package wiring, or debugging history. Do not describe a feature that has not been shown to work. A limitation a person can hit stays in the entry, in plain language.
 - Newest release first, ISO dates (`YYYY-MM-DD`), and an `Unreleased` section for work that is not in a release. Headings are Added, Changed, Deprecated, Removed, Fixed, Security, and Known limitations. Leave out empty headings.
 - Zlyme does not use Semantic Versioning. `zlymeNN` is a baseline. `zlymeNN.M` is a point release on the same major. Release and delta policy is in `docs/MAINTENANCE.md`.
 - A removal or a change in behavior goes under its own heading and says what users have to do.
+- Read the whole section as a normal gaming user before publishing it. It should explain the useful changes without requiring the roadmap, and it should be ready to paste into a GitHub Release unchanged.
 - GitHub release notes use that release's changelog wording. A raw git log or a generated compare link alone is not release notes. The release workflow prints the `## [ZLYME_VERSION]` section and fails if that section is missing or empty. It does not ask GitHub to build notes from the commit list. `Unreleased` is not a release body.
 
 ## End of a phase

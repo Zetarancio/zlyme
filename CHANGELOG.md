@@ -8,35 +8,28 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Added
 
-- Settings → Game → Orphan game preferences removes a per-ROM governor or emulator choice when that ROM is gone. A folder or system choice stays. A choice for the second card stays while that card is out.
-- The system list shows a transparent Art Book picture behind each system when you have not chosen your own image. A game list does not add a second wallpaper. Each included tool has an illustration of that tool, and the firmware draws the tool's name on it, centered like the system names. The pictures are part of the firmware. You do not download an artwork pack. Your `.media` art and `/storage/bg.png` stay in front. The pictures are CC BY-NC-SA 2.0. Settings → Appearance → Use folder background for ROMs starts on, and turning it off keeps the plain background.
-- Recently Played shows the built-in picture even when that folder is gone. Your own replacement goes in the NextUI shared art folder, and deleting it brings the built-in picture back. `/storage/bg.png` still applies when you have not set one of those. A picture left in the folder is not used. An update from zlyme44.3 keeps a picture you put there when it is not a built-in render. Names stay off the built-in picture.
-- The firmware includes SDL 3.4.12 with KMS, OpenGL ES, and Wayland. SDL 2 is unchanged. An SDL 3 game is not a promise that every SDL 3 program runs.
-- PortMaster can explicitly run a 32-bit x86 Linux program through Box86. Box64 and Wine are unchanged. This does not make every x86 game compatible.
-- PortMaster can explicitly select a firmware GL4ES runtime when a port does not bring its own. It does not replace the system OpenGL or GLES libraries.
-- Delete game removes that ROM, its matching saves, its artwork, its own governor and emulator choices, and its Recently Played entry. A folder or system choice stays. A save for another system stays. A game with the same name on another card stays. If the delete stops early, the game stays in the list.
-- SSH, Samba, and Syncthing run only while Wi-Fi is on. Turning Wi-Fi off stops them and leaves each switch as it was. Turning one on while Wi-Fi is off leaves that switch on and the service stopped.
-
-### Fixed
-
-- A PortMaster runtime squashfs whose path was written with two slashes in front of `/opt` now mounts. Steel Assault can start its Mono runtime and return to the menu.
-- Opening a game list no longer puts the previous system's picture back after you have moved on.
-- A long name in a game list scrolls inside its selection. The first row stops before the clock and battery. A ROM picture, and an Art Book picture, keep the name beside the art. Game art width shows a percent.
-- Settings → Bluetooth lists a nearby device again, including one whose type is not known yet. It does not connect until you choose Pair or Connect.
-- The volume buttons update the on-screen level without waiting for the mixer. The saved level is what the mixer applies, including when audio is not ready yet.
-- A paired headset is asked for its audio profile once BlueZ has registered that device. The request does not keep retrying, and it does not run before the device exists.
-- A port whose launcher exits before its game no longer leaves that game holding the screen. If Zlyme cannot prove that every owned process stopped, it leaves the frontend stopped instead of starting a second graphics client.
+- PortMaster has broader compatibility with older game libraries and native 32-bit ARM games. The private runtime includes the graphics, sound and font libraries those ARM games need without replacing the system's 64-bit libraries. Compatibility still depends on each port and its own data.
+- System and Tools lists gain built-in Art Book artwork, including a Recently Played picture that does not need a folder on the card. Your `.media` pictures and `/storage/bg.png` still take priority, and an update keeps a custom Recently Played picture from zlyme44.3.
+- SDL 3.4.12 is available to games with KMS, OpenGL ES and Wayland support. SDL 2 remains available.
 
 ### Changed
 
-- Sound from a game, HDMI, and Bluetooth headphones goes through one PipeWire mixer. Unplugging HDMI returns sound to the speaker and clears the headset-looking mark. Plugging it back in returns sound to the television. Disconnecting Bluetooth returns the speaker, and connecting it again returns the headset. Volume and mute, including sound coming back, were accepted. Headphones still switch themselves when the plug goes in. A saved volume number is kept. A normal boot leaves the internal screen on. Turning Wi-Fi off and on brings the enabled network services back.
-- PortMaster uses Zlyme's own platform setup. A PortMaster installation you already updated stays, including its downloaded runtimes.
-- PortMaster is told this system can run a 32-bit ARM hard-float program. That does not mean every 32-bit port runs.
-- Tools → USB Transfer is the file-copy tool. An update removes that tool's old stock folder when it still matches the copy Zlyme shipped. A folder you changed is kept outside the tool list.
+- Games, HDMI and Bluetooth headphones now share one PipeWire mixer. Audio returns to the speaker after HDMI or Bluetooth disconnects, saved volume and mute state continue to apply, and wired headphones still follow the jack.
+- Wi-Fi now owns the lifetime of SSH, Samba and Syncthing. Turning Wi-Fi off stops those services without changing their individual switches, and the enabled services return when Wi-Fi is turned on.
+- PortMaster uses Zlyme's own platform integration while keeping an installation and downloaded runtimes you already updated. Runtime mounts and game processes are cleaned up before NextUI returns; if ownership cannot be proven, Zlyme avoids starting a second graphics client.
+- Game and interface management is more complete. Delete game removes that game's matching saves, artwork, per-game choices and Recently Played entry, while Orphan game preferences removes choices for ROMs that no longer exist. Choices on a temporarily absent card are kept.
+- Tools → USB Transfer is the new name for the file-copy tool. An update removes the old stock entry only when it is unchanged; a copy you edited is preserved outside the Tools list.
+
+### Fixed
+
+- PortMaster runtime images whose paths begin with two slashes can mount correctly.
+- Long game names scroll inside the selection, rows reserve the right amount of room for artwork and status icons, and opening another game list no longer restores the previous system's picture.
+- Bluetooth discovery lists nearby devices whose type is not known yet, without connecting until you choose Pair or Connect.
+- Volume changes update the on-screen level immediately and are applied when the mixer is ready. Paired audio headsets are requested once after BlueZ has registered them instead of being retried continuously.
 
 ### Known limitations
 
-- A normal boot leaves the internal screen on. HDMI at 720p, the internal screen coming back, and Abombniball leaving on MENU+START were accepted on an installed development image. Steel Assault's Mono runtime starts on the current development image. Winter Travelers shows a picture after that game's own graphics setting is software. A copy that still asks for D3D9 does not. SDL 3 picture feedback, visible GL4ES, and graphical Box86 are still open. A connected charger has suppressed the shutdown at 0%. That delay was not measured.
+- During normal HDMI use, the internal display remains on.
 
 ## [zlyme44.3] - 2026-10-16
 
@@ -45,7 +38,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Tools → RetroArch opens RetroArch with no game. Quitting that menu returns to the list, and closing a game from inside it stays in RetroArch. Closing a game you started from the list returns to the list.
 - Settings → Game → Reset RetroArch configuration restores the stock RetroArch file. Core options, cores, saves, and BIOS stay.
 - Tools → USB File Transfer shares the data card as SDCARD1, a mounted second card as SDCARD2, and a USB stick that is already mounted as OTG, on the lower USB-C port. Details are in the [user guide](https://github.com/Zetarancio/zlyme/blob/main/docs/USER_GUIDE.md#usb-file-transfer).
-- Panfrost can load Mesa's experimental Vulkan driver. PPSSPP still uses the Mali driver.
+- The separate PanVK setting can load Mesa's experimental Vulkan driver. The Panfrost setting remains OpenGL ES, and PPSSPP still uses the Mali driver by default.
 
 ### Changed
 
@@ -160,7 +153,7 @@ The first stable release.
 - Replacement Switch-style sticks have not been tried.
 - CPU undervolt stays off unless you turn it on.
 
-[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-38098037074...HEAD
-[zlyme44.3]: https://github.com/Zetarancio/zlyme/compare/zlyme-38098037074...HEAD
+[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-38828679802...HEAD
+[zlyme44.3]: https://github.com/Zetarancio/zlyme/compare/zlyme-38098037074...zlyme-38828679802
 [zlyme44.2]: https://github.com/Zetarancio/zlyme/compare/zlyme-37164297221...zlyme-38098037074
 [zlyme44]: https://github.com/Zetarancio/zlyme/releases/tag/zlyme-37164297221
