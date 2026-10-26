@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-26 — 0017d58 still on libmali
+
+Boot `6f41d97b-465f-4917-b1e2-70da5752e5e4`. `/boot/zlyme` is still squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. `/storage/.config/zlyme/gpu` is `libmali`, `mali_kbase` is loaded, and `nextui.elf` holds `/dev/dri/card0`. `/usr/bin/pulseaudio` is absent. NextUI's `ZLYME_HDMI_ACTIVE` is 0. DRM debugfs state is not mounted, so an HDMI clock cannot be read until it is. Mina's card log still contains `gothic_vk: probe: 0 Vulkan physical device(s)`, `gothic: backend = GLES`, and `OpenGL ES 3.1 Mesa 26.1.8` with renderer `Mali-G52 r1 MC1 (Panfrost)`.
+
+## 2026-10-26 — 0017d58 still on libmali
+
+Boot `6f41d97b-465f-4917-b1e2-70da5752e5e4`. `/boot/zlyme` is still squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. `/storage/.config/zlyme/gpu` is `libmali`, `mali_kbase` is loaded, and `nextui.elf` holds `/dev/dri/card0`. `/usr/bin/pulseaudio` is absent. NextUI's `ZLYME_HDMI_ACTIVE` is 0. DRM debugfs state is not mounted, so an HDMI clock cannot be read until it is. Mina's card log still contains `gothic_vk: probe: 0 Vulkan physical device(s)`, `gothic: backend = GLES`, and `OpenGL ES 3.1 Mesa 26.1.8` with renderer `Mali-G52 r1 MC1 (Panfrost)`.
+
 ## 2026-10-26 — libmali rollback confirmed
 
 A later read-only check, boot `f288c995-64df-4829-a443-217bcc5ff22e`, found `/boot/zlyme` still squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. `/storage/.config/zlyme/gpu` is `libmali`, `mali_kbase` is loaded, and `nextui.elf` holds `/dev/dri/card0`. No PortMaster or LÖVE mount remained, and `/usr/bin/pulseaudio` is absent. This is the rollback the maintainer reported. The Panfrost boot `b0e98535-7461-4d78-babd-051576cb8d5b` stays the record of that earlier boot.
