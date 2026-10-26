@@ -1,5 +1,5 @@
 #!/bin/sh
-# PPSSPP save binds are released by pak-launch, not by the exec'd shell.
+# PPSSPP save binds are identified by mountinfo id, not by the pathname.
 # shellcheck disable=SC1007
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -9,78 +9,143 @@ fail() {
 }
 psp=$ROOT/package/system/nextui/paks/Emus/PSP.pak/launch.sh
 pak=$ROOT/package/system/nextui/zlyme/pak-launch.sh
+binds=$ROOT/package/system/nextui/zlyme/ppsspp-binds.sh
+pm=$ROOT/package/system/portmaster/zlyme-portmaster-mounts.sh
+mounts_lib=$ROOT/board/my355/fsoverlay/usr/share/zlyme/mounts.sh
 if grep -E '^[[:space:]]*trap[[:space:]]' "$psp"; then
 	fail "PSP.pak still unmounts from an EXIT trap"
 fi
 grep -q 'exec PPSSPPSDL' "$psp" || fail "PSP.pak no longer execs PPSSPPSDL"
+grep -q 'ppsspp_bind_release' "$pak" || fail "pak-launch does not release PPSSPP binds"
 awk '
 	/^run_pak_cmd\(\)/ { on = 1 }
-	on && $1 == "wait" { saw_wait = 1 }
-	on && /ppsspp_bind_release/ && saw_wait { saw_release = 1 }
+	on && /pak_cleanup_failed "\$st"/ { saw = 1 }
+	on && saw && /ppsspp_bind_release/ { guarded = 1 }
 	on && /^}/ { exit }
-	END { exit saw_release ? 0 : 1 }
-' "$pak" || fail "the session does not release PPSSPP binds after wait"
+	END { exit guarded ? 0 : 1 }
+' "$pak" || fail "status 125 still releases PPSSPP binds"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-bin=$work/bin
-mkdir -p "$bin" \
-	"$work/saves/PSP/SAVEDATA" "$work/saves/PSP/PPSSPP_STATE" \
+export PATH="$work/bin:$PATH"
+export ZLYME_PPSSPP_BINDS="$work/binds"
+export ZLYME_PPSSPP_MOUNTINFO="$work/mountinfo"
+export ZLYME_PM_MOUNTINFO="$work/mountinfo"
+export ZLYME_PM_MOUNTS="$work/mounts"
+export ZLYME_FAKE_MOUNT_SEQ="$work/seq"
+export ZLYME_FAKE_UMOUNT_LOG="$work/umount.log"
+export ZLYME_FAKE_MOUNT_ARGV="$work/mount-argv"
+export ZLYME_PORTMASTER_MOUNTS="$pm"
+export ZLYME_MOUNTS_LIB="$mounts_lib"
+export ZLYME_PPSSPP_BINDS_SH="$binds"
+export ZLYME_LIBRARIES_FILE="$work/libraries"
+printf '%s\n' /storage /mnt/sd2 > "$work/libraries"
+printf '%s\n' 10 > "$work/seq"
+: > "$work/mountinfo"
+: > "$work/mounts"
+: > "$work/umount.log"
+: > "$work/mount-argv"
+: > "$work/binds"
+mkdir -p "$work/bin" \
+	"$work/sd2/PSP/SAVEDATA" "$work/sd2/PSP/PPSSPP_STATE" \
 	"$work/card/.config/ppsspp/PSP/SAVEDATA" \
 	"$work/card/.config/ppsspp/PSP/PPSSPP_STATE" \
 	"$work/card/.config/ppsspp/PSP/SYSTEM"
 printf '%s\n' '[SystemParam]' > "$work/card/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
 : > "$work/rom.iso"
-mount_log=$work/mount.log
-umount_log=$work/umount.log
-: > "$mount_log"
-: > "$umount_log"
-cat > "$bin/mount" << 'EOF'
+save=$work/card/.config/ppsspp/PSP/SAVEDATA
+state=$work/card/.config/ppsspp/PSP/PPSSPP_STATE
+
+cat > "$work/bin/mount" << 'EOF'
 #!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_MOUNT_LOG"
-case " $* " in
-	*" --fail "*) exit 1 ;;
-esac
-exit 0
-EOF
-cat > "$bin/umount" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_UMOUNT_LOG"
-if [ "${ZLYME_TEST_UMOUNT_BUSY:-}" = 1 ]; then
+set -eu
+for arg in "$@"; do
+	printf 'ARG %s\n' "$arg" >> "$ZLYME_FAKE_MOUNT_ARGV"
+done
+printf 'END\n' >> "$ZLYME_FAKE_MOUNT_ARGV"
+dest=
+n=0
+for arg in "$@"; do
+	case "$arg" in
+		-*) continue ;;
+	esac
+	if [ "$n" -ge 1 ]; then
+		src=$dest
+	fi
+	dest=$arg
+	n=$((n + 1))
+done
+if [ -n "${ZLYME_FAKE_MOUNT_FAIL_PATH:-}" ] &&
+	[ "$dest" = "$ZLYME_FAKE_MOUNT_FAIL_PATH" ]; then
 	exit 1
 fi
-exit 0
+[ "$n" -ge 2 ] || exit 1
+# shellcheck disable=SC1090
+. "${ZLYME_PORTMASTER_MOUNTS:?}"
+parent=$(pm_new_parent "$dest") || exit 1
+id=$(cat "$ZLYME_FAKE_MOUNT_SEQ")
+printf '%s\n' "$((id + 1))" > "$ZLYME_FAKE_MOUNT_SEQ"
+printf '%s %s 0:1 / %s rw - fake %s rw\n' "$id" "$parent" "$dest" "$src" >> "$ZLYME_PM_MOUNTINFO"
+printf '%s %s fake rw 0 0\n' "$src" "$dest" >> "$ZLYME_PM_MOUNTS"
 EOF
-cat > "$bin/mountpoint" << 'EOF'
+cat > "$work/bin/umount" << 'EOF'
 #!/bin/sh
-if [ "$1" = -q ]; then
-	shift
+set -eu
+target=
+for arg in "$@"; do
+	case "$arg" in
+		-*) continue ;;
+	esac
+	target=$arg
+done
+printf '%s\n' "$target" >> "$ZLYME_FAKE_UMOUNT_LOG"
+if [ "${ZLYME_FAKE_UMOUNT_FAIL:-0}" = 1 ]; then
+	exit 1
 fi
-grep -F -q -- "$1" "$ZLYME_TEST_MOUNT_LOG"
+# shellcheck disable=SC1090
+. "${ZLYME_PORTMASTER_MOUNTS:?}"
+vid=$(pm_visible_id "$target" 2>/dev/null || true)
+[ -n "$vid" ] || exit 1
+tmp=$(mktemp)
+awk -v id="$vid" '$1 != id { print }' "$ZLYME_PM_MOUNTINFO" > "$tmp"
+mv -f "$tmp" "$ZLYME_PM_MOUNTINFO"
+tmp=$(mktemp)
+awk -v p="$target" '$2 != p { print }' "$ZLYME_PM_MOUNTS" > "$tmp"
+mv -f "$tmp" "$ZLYME_PM_MOUNTS"
 EOF
-cat > "$bin/PPSSPPSDL" << 'EOF'
+cat > "$work/bin/PPSSPPSDL" << 'EOF'
 #!/bin/sh
-if [ -s "$ZLYME_TEST_UMOUNT_LOG" ]; then
+if [ -s "$ZLYME_FAKE_UMOUNT_LOG" ]; then
 	echo unmounted-during-play > "$ZLYME_TEST_MARK"
 	exit 3
 fi
 echo played > "$ZLYME_TEST_MARK"
 exit 9
 EOF
-chmod 0755 "$bin/mount" "$bin/umount" "$bin/mountpoint" "$bin/PPSSPPSDL"
-record=$work/binds
+chmod 0755 "$work/bin/mount" "$work/bin/umount" "$work/bin/PPSSPPSDL"
+
 run_psp() {
-	PATH=$bin:/usr/bin:/bin \
-		ZLYME_TEST_MOUNT_LOG=$mount_log \
-		ZLYME_TEST_UMOUNT_LOG=$umount_log \
+	PATH=$work/bin:/usr/bin:/bin \
 		ZLYME_TEST_MARK=$work/mark \
-		ZLYME_PPSSPP_BINDS=$record \
 		XDG_CONFIG_HOME=$work/card/.config \
 		SDCARD_PATH=$work/card \
 		USERDATA_PATH=$work/home \
 		BIOS_PATH=$work/bios \
-		SAVES_PATH=$work/saves \
+		SAVES_PATH=$work/sd2 \
 		sh "$psp" "$work/rom.iso"
+}
+# shellcheck disable=SC1090
+. "$binds"
+# shellcheck disable=SC1090
+. "$pak"
+
+not_unmounted() {
+	if grep -Fxq -- "$1" "$work/umount.log"; then
+		fail "$1 was unmounted"
+	fi
+}
+id_count() {
+	awk -v p="$1" '$5 == p { n++ } END { print n + 0 }' "$work/mountinfo"
 }
 
 rm -f "$work/mark"
@@ -89,76 +154,157 @@ run_psp
 st=$?
 set -e
 [ "$st" = 9 ] || fail "PPSSPP exit status was not preserved ($st)"
-grep -qx played "$work/mark" || fail "PPSSPP did not run while the binds were held"
-[ ! -s "$umount_log" ] || fail "the launcher unmounted PPSSPP before it exited"
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$record" || fail "SAVEDATA was not recorded"
-grep -qx -- "$work/card/.config/ppsspp/PSP/PPSSPP_STATE" "$record" || fail "PPSSPP_STATE was not recorded"
-[ "$(grep -c -- '--bind' "$mount_log")" = 2 ] || fail "the first launch did not bind both directories"
-
-# A second launch must not stack another bind over a live destination.
+grep -qx played "$work/mark" || fail "PPSSPP did not run"
+[ ! -s "$work/umount.log" ] || fail "binds were released before PPSSPP exited"
+grep -q "$(printf '\t%s' "$save")" "$work/binds" || fail "SAVEDATA id was not recorded"
+grep -q "$(printf '\t%s' "$state")" "$work/binds" || fail "STATE id was not recorded"
+[ "$(id_count "$save")" = 1 ] || fail "SAVEDATA was not one mount"
+grep -q "$work/sd2/PSP/SAVEDATA" "$work/mountinfo" || fail "the bind source is not the SD2 save directory"
+before=$(id_count "$save")
 run_psp >/dev/null || true
-[ "$(grep -c -- '--bind' "$mount_log")" = 2 ] || fail "a repeated launch stacked another bind"
+[ "$(id_count "$save")" = "$before" ] || fail "a repeated launch stacked a bind"
+ppsspp_bind_release || fail "normal cleanup failed"
+[ ! -s "$work/binds" ] || fail "released records were kept"
+[ "$(id_count "$save")" = 0 ] || fail "SAVEDATA mount remained"
+[ "$(id_count "$state")" = 0 ] || fail "STATE mount remained"
+not_unmounted /storage
+not_unmounted /mnt/sd2
 
-# shellcheck disable=SC1090
-. "$pak"
-PATH=$bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	ZLYME_PPSSPP_BINDS=$record \
-	ppsspp_bind_release
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$umount_log" || fail "SAVEDATA was not released"
-grep -qx -- "$work/card/.config/ppsspp/PSP/PPSSPP_STATE" "$umount_log" || fail "PPSSPP_STATE was not released"
-[ ! -e "$record" ] || fail "a released PPSSPP record was kept"
+# Pre-existing unowned mount.
+printf '%s\n' '50 1 0:50 / '"$save"' rw - fake other rw' > "$work/mountinfo"
+printf '%s\n' "other $save fake rw 0 0" > "$work/mounts"
+: > "$work/binds"
+: > "$work/umount.log"
+rm -f "$work/mark"
+set +e
+run_psp
+st=$?
+set -e
+[ "$st" != 9 ] || fail "PPSSPP started on an unowned mount"
+[ ! -e "$work/mark" ] || fail "PPSSPP ran on an unowned mount"
+grep -q '^50'"$(printf '\t')" "$work/binds" && fail "the unowned id was adopted"
+grep -q '^50 ' "$work/mountinfo" || fail "the unowned mount was removed"
+not_unmounted "$save"
 
-# Partial failure records only the bind that succeeded.
-: > "$mount_log"
-: > "$umount_log"
-cat > "$bin/mount" << 'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >> "$ZLYME_TEST_MOUNT_LOG"
-case "$*" in
-	*PPSSPP_STATE*) exit 1 ;;
-esac
-exit 0
-EOF
-chmod 0755 "$bin/mount"
-run_psp >/dev/null || true
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$record" || fail "the successful bind was not recorded"
-if grep -q PPSSPP_STATE "$record"; then
-	fail "a failed bind was recorded"
-fi
-PATH=$bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	ZLYME_PPSSPP_BINDS=$record \
-	ppsspp_bind_release
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$umount_log" || fail "the partial bind was not released"
-if grep -q PPSSPP_STATE "$umount_log"; then
-	fail "the failed bind was unmounted"
+# Replaced mount: the recorded id is gone and a different id is visible.
+printf '%s\n' '9 1 0:9 / '"$save"' rw - fake replacement rw' > "$work/mountinfo"
+printf '7\t%s\n' "$save" > "$work/binds"
+: > "$work/umount.log"
+ppsspp_bind_release || true
+not_unmounted "$save"
+grep -q '^9 ' "$work/mountinfo" || fail "the replacement mount was removed"
+if grep -q '^7'"$(printf '\t')" "$work/binds"; then
+	fail "a missing owned id was kept"
 fi
 
-# Unowned paths, including library roots, are not unmounted.
-printf '%s\n' /storage /mnt/sd2 /boot /tmp/not-ppsspp \
-	"$work/card/.config/../ppsspp/PSP/SAVEDATA" > "$record"
-: > "$umount_log"
-PATH=$bin:/usr/bin:/bin \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	ZLYME_PPSSPP_BINDS=$record \
-	ppsspp_bind_release
-[ ! -s "$umount_log" ] || fail "an unowned path was unmounted"
-[ ! -e "$record" ] || fail "invalid PPSSPP records were kept"
+# Covered owned mount.
+printf '%s\n' \
+	'7 40 0:7 / '"$save"' rw - fake high rw' \
+	'40 1 0:40 / '"$save"' rw - fake low rw' \
+	> "$work/mountinfo"
+printf '40\t%s\n' "$save" > "$work/binds"
+: > "$work/umount.log"
+if ppsspp_bind_release; then
+	fail "a covered mount was reported free"
+fi
+not_unmounted "$save"
+grep -q '^40'"$(printf '\t')" "$work/binds" || fail "the covered id was dropped"
+grep -q '^7 ' "$work/mountinfo" || fail "the covering mount was removed"
 
-# A busy owned mount stays recorded.
-printf '%s\n' "$work/card/.config/ppsspp/PSP/SAVEDATA" > "$record"
-printf '%s\n' "--bind $work/saves/PSP/SAVEDATA $work/card/.config/ppsspp/PSP/SAVEDATA" > "$mount_log"
-: > "$umount_log"
-PATH=$bin:/usr/bin:/bin \
-	ZLYME_TEST_MOUNT_LOG=$mount_log \
-	ZLYME_TEST_UMOUNT_LOG=$umount_log \
-	ZLYME_TEST_UMOUNT_BUSY=1 \
-	ZLYME_PPSSPP_BINDS=$record \
-	ppsspp_bind_release
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$umount_log" || fail "a busy bind was not attempted"
-grep -qx -- "$work/card/.config/ppsspp/PSP/SAVEDATA" "$record" || fail "a busy bind record was dropped"
+# Hidden owned mount under a covered prefix.
+hide=/storage/.config/ppsspp/PSP/SAVEDATA
+printf '%s\n' \
+	'20 10 0:20 / /storage/.config rw - fake top rw' \
+	'10 1 0:10 / /storage/.config rw - fake base rw' \
+	'30 10 0:30 / /storage/.config/ppsspp rw - fake game rw' \
+	"40 30 0:40 / $hide rw - fake save rw" \
+	> "$work/mountinfo"
+printf '40\t%s\n' "$hide" > "$work/binds"
+: > "$work/umount.log"
+if ppsspp_bind_release; then
+	fail "a hidden mount was reported free"
+fi
+not_unmounted "$hide"
+grep -q '^40'"$(printf '\t')" "$work/binds" || fail "the hidden id was dropped"
+
+# Busy unmount, then a later retry.
+: > "$work/mountinfo"
+: > "$work/mounts"
+: > "$work/binds"
+: > "$work/umount.log"
+: > "$work/mount-argv"
+ZLYME_FAKE_MOUNT_FAIL_PATH= run_psp >/dev/null || true
+ZLYME_FAKE_UMOUNT_FAIL=1 ppsspp_bind_release || true
+grep -q "$(printf '\t%s' "$save")" "$work/binds" || fail "a busy record was dropped"
+owned=$(id_count "$save")
+: > "$work/mount-argv"
+run_psp >/dev/null || true
+if grep -q -- "--bind" "$work/mount-argv"; then
+	fail "a busy owned mount was mounted again"
+fi
+[ "$(id_count "$save")" = "$owned" ] || fail "the busy retry changed the mount"
+unset ZLYME_FAKE_UMOUNT_FAIL
+ppsspp_bind_release || fail "the busy mount was not released on retry"
+[ ! -s "$work/binds" ] || fail "the retried record was kept"
+
+# Partial failure undoes only the bind created by this attempt.
+: > "$work/mountinfo"
+: > "$work/mounts"
+: > "$work/binds"
+: > "$work/umount.log"
+rm -f "$work/mark"
+export ZLYME_FAKE_MOUNT_FAIL_PATH="$state"
+set +e
+run_psp
+st=$?
+set -e
+unset ZLYME_FAKE_MOUNT_FAIL_PATH
+[ "$st" != 9 ] || fail "PPSSPP started after a partial bind failure"
+[ ! -e "$work/mark" ] || fail "PPSSPP ran after a partial bind failure"
+[ "$(id_count "$save")" = 0 ] || fail "the partial bind was left mounted"
+[ "$(id_count "$state")" = 0 ] || fail "the failed destination was mounted"
+[ ! -s "$work/binds" ] || fail "a partial record was kept"
+
+# The record cannot be created.
+rm -rf "$work/binds"
+mkdir -p "$work/binds"
+rm -f "$work/mark"
+: > "$work/mountinfo"
+set +e
+run_psp
+st=$?
+set -e
+[ "$st" != 9 ] || fail "PPSSPP started without a bind record"
+[ ! -e "$work/mark" ] || fail "PPSSPP ran without a bind record"
+[ "$(id_count "$save")" = 0 ] || fail "a bind was created without a record"
+rmdir "$work/binds"
+: > "$work/binds"
+
+# Status 125 does not release a live owned mount.
+: > "$work/mountinfo"
+: > "$work/mounts"
+: > "$work/umount.log"
+run_psp >/dev/null || true
+st=125
+if ! pak_cleanup_failed "$st"; then
+	ppsspp_bind_release || true
+fi
+[ ! -s "$work/umount.log" ] || fail "status 125 released a PPSSPP bind"
+grep -q "$(printf '\t%s' "$save")" "$work/binds" || fail "status 125 dropped the record"
+ppsspp_bind_release || fail "cleanup after the unresolved session failed"
+
+# Unrelated mounts stay.
+printf '%s\n' \
+	'1 0 0:1 / /storage rw - fake storage rw' \
+	'2 1 0:2 / /mnt/sd2 rw - fake sd2 rw' \
+	'3 1 0:3 / /tmp/other rw - fake other rw' \
+	>> "$work/mountinfo"
+: > "$work/umount.log"
+ppsspp_bind_release || true
+not_unmounted /storage
+not_unmounted /mnt/sd2
+not_unmounted /tmp/other
+grep -q '^1 ' "$work/mountinfo" || fail "/storage left the mount table"
+grep -q '^2 ' "$work/mountinfo" || fail "/mnt/sd2 left the mount table"
 
 echo "ppsspp binds ok"
