@@ -97,7 +97,7 @@ https://github.com/Zetarancio/distribution
 
 That fork is archived. Consult it only when a historical implementation detail or commit is relevant, preferably through provenance recorded by the device wiki. Do not infer current Zlyme state from it. Do not copy its PortMaster layout into `docs/ARCHITECTURE.md` as if it were deployed.
 
-The 2026-10-23 comparison, not a new fetch, records branch `flip` at PortMaster `2026.05.04-1202`, with ROCKNIX `compat.tar.gz`, a distribution `control.txt`, mapper, `oga_controls`, gptokeyb, `/etc/profile` environment, and `runemu.sh`. Its gpudriver switches global graphics libraries and contains PortMaster-specific SDL handling. A checkout used earlier for kernel comparison is `d249b09bd95120c65555b0c56bc381f72ce073bc`. Official ROCKNIX commits already in the package table below install a PortMaster seed and, at `7cffc96617df2a051af091182e8a3d270fd794a4`, a compatibility archive. KNULLI remains a Buildroot packaging reference whose launcher generates a controller database. Batocera remains a packaging reference, not a proven Miyoo Flip runtime. A proprietary file shipped by one of those trees is not a Zlyme redistribution right. The decision proposal that cites this comparison is `docs/research/phase14-portmaster-architecture-proposal.md`. It is not approved.
+The 2026-10-23 comparison, not a new fetch, records branch `flip` at PortMaster `2026.05.04-1202`, with ROCKNIX `compat.tar.gz`, a distribution `control.txt`, mapper, `oga_controls`, gptokeyb, `/etc/profile` environment, and `runemu.sh`. Its gpudriver switches global graphics libraries and contains PortMaster-specific SDL handling. A checkout used earlier for kernel comparison is `d249b09bd95120c65555b0c56bc381f72ce073bc`. Official ROCKNIX commits already in the package table below install a PortMaster seed and, at `7cffc96617df2a051af091182e8a3d270fd794a4`, a compatibility archive. KNULLI remains a Buildroot packaging reference whose launcher generates a controller database. Batocera remains a packaging reference, not a proven Miyoo Flip runtime. A proprietary file shipped by one of those trees is not a Zlyme redistribution right. The decision proposal that cites this comparison is `docs/research/phase-14-portmaster-architecture-proposal.md`. It is not approved.
 
 ## Upstream-first changes
 
@@ -253,7 +253,7 @@ The stock-side helper images `miyoo355_fw.img`, `miyoo355_fw-multiboot.img`, `mi
 
 The installer pin above is a build dependency. Moving `MY355_FW_INSTALLER_VERSION` takes the procedure in the table: read the upstream diff, change the pin and the hash, rebuild, compare `miyoo355_fw.img`, and rerun `scripts/tests/test_fw_helpers.sh` and `scripts/tests/test_phase11c.sh`. The Phase 14 HDMI work did not move it.
 
-The HDMI comparison is only display routing. At `898590462020` that tree assigns RK3566 VOP2 plane masks so the panel and HDMI can scan out together. Zlyme did not copy those masks, the `.hdmi` device tree, or any U-Boot change. The note is in `docs/research/portmaster-capability-phase14.md`.
+The HDMI comparison is only display routing. At `898590462020` that tree assigns RK3566 VOP2 plane masks so the panel and HDMI can scan out together. Zlyme did not copy those masks, the `.hdmi` device tree, or any U-Boot change. The note is in `docs/research/phase-14-portmaster-capability.md`.
 
 A general comparison of BaseOS improvements, its U-Boot commits, and the rest of its Miyoo Flip boot work is still open. It is not a Phase 14 gate and the HDMI comparison does not close it or reject it.
 
@@ -304,9 +304,9 @@ for AArch64 and Box86 in its enabled 32-bit RK3566 side, with matching
 adopted implementation is its own ARMHF Buildroot target, private
 glibc and Mesa/Panfrost userspace, explicit runners, and no binfmt
 registration. Detailed evidence is in
-`docs/research/portmaster-capability-phase14.md`.
+`docs/research/phase-14-portmaster-capability.md`.
 
-The gpSP comparison is in `docs/research/product-phase9.md`. The RK817 dispositions are in `docs/research/kernel-patch-audit-phase5.md` and `docs/research/deep-suspend-phase6.md`. ZcrapeGoat's import is recorded below.
+The gpSP comparison is in `docs/research/phase-09-product.md`. The RK817 dispositions are in `docs/research/phase-05-kernel-patch-audit.md` and `docs/research/phase-06-deep-suspend.md`. ZcrapeGoat's import is recorded below.
 
 ### Phase 12B1 emulator source pins
 
@@ -359,7 +359,7 @@ This two-step workflow is safer than telling an agent to "update everything".
 
 ## Art Book wallpapers
 
-`package/system/zlyme-artbook` downloads Art Book Next commit `d772d07109701d9bd7c9fda305bfef6601105ab8` as `d772d07109701d9bd7c9fda305bfef6601105ab8.tar.gz`, SHA-256 `430110584bafa614b7a3f4af1891c675e58de60e6658e3758d0724554f77ebd3`. License CC BY-NC-SA 2.0, stated in that repository's README. The host composes transparent 640×480 system overlays from `_inc/systems/artwork` and `_inc/systems/logos` and installs them into the squashfs. They are firmware assets, not a runtime download. The nine Tool backgrounds are original illustrations supplied for Zlyme. RPG Maker XP is a Zlyme drawing. `resources/system-art-mask.svg` is that commit's `resources/artwork-masks/system-art-mask.svg`, viewBox 453×1080. `resources/system-art-alpha.png` is the shared alpha of the Tool backgrounds, 454×1080, not an SVG raster. The upstream image set is not vendored. Pico-8 and fake-08 share `pico8`. There is no bundled list wallpaper. Theme Manager is not shipped. The retired Timothy Bueno pack `f5fe9929148748d0d5039b993c4815818fbb921a` is recorded in `docs/research/nextui-theme-manager-phase14.md`.
+`package/system/zlyme-artbook` downloads Art Book Next commit `d772d07109701d9bd7c9fda305bfef6601105ab8` as `d772d07109701d9bd7c9fda305bfef6601105ab8.tar.gz`, SHA-256 `430110584bafa614b7a3f4af1891c675e58de60e6658e3758d0724554f77ebd3`. License CC BY-NC-SA 2.0, stated in that repository's README. The host composes transparent 640×480 system overlays from `_inc/systems/artwork` and `_inc/systems/logos` and installs them into the squashfs. They are firmware assets, not a runtime download. The nine Tool backgrounds are original illustrations supplied for Zlyme. RPG Maker XP is a Zlyme drawing. `resources/system-art-mask.svg` is that commit's `resources/artwork-masks/system-art-mask.svg`, viewBox 453×1080. `resources/system-art-alpha.png` is the shared alpha of the Tool backgrounds, 454×1080, not an SVG raster. The upstream image set is not vendored. Pico-8 and fake-08 share `pico8`. There is no bundled list wallpaper. Theme Manager is not shipped. The retired Timothy Bueno pack `f5fe9929148748d0d5039b993c4815818fbb921a` is recorded in `docs/research/phase-14-nextui-theme-manager.md`.
 
 ## ZcrapeGoat
 

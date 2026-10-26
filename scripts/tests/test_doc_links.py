@@ -27,7 +27,7 @@ DOCS = (
     "docs/decisions/0008-gpu-and-panvk.md",
     "docs/decisions/0009-portmaster-isolation.md",
     "docs/research/README.md",
-    "docs/research/documentation-audit-phase10.md",
+    "docs/research/phase-10-documentation-audit.md",
 )
 
 # Archived notes keep historical backtick paths. Their Markdown links
@@ -51,7 +51,7 @@ ARCHIVE = archive_docs()
 PATH_DOCS = set(DOCS) - {
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
-    "docs/research/documentation-audit-phase10.md",
+    "docs/research/phase-10-documentation-audit.md",
 }
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 TICK = re.compile(r"`([^`\n]+)`")

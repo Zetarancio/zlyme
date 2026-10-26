@@ -187,7 +187,7 @@ was not run. DRM debugfs clients were unavailable.
 Earlier acceptances stay on their images: Abombniball MENU+START on
 `c67692f`, volume and Wi-Fi and NextUI HDMI 720p on `0b35a90`,
 looked-at list width on `4652076`. The architecture review is
-`docs/research/phase14-portmaster-architecture-proposal.md`. It is
+`docs/research/phase-14-portmaster-architecture-proposal.md`. It is
 not approved. No implementation follows this entry.
 
 ## 2026-10-23 — Phase 14 runtime completion candidate
@@ -267,7 +267,7 @@ The maintainer installed `zlyme-my355-20261023-465207696ff8.tar`. Source `465207
 
 Abombniball was launched from the Ports list (`PORTS.pak/launch.sh`) and did not return on MENU+START. The one-shot trace in that boot is five lines: the waited pid was still in the frontend session when it was recorded, the hotkey had opened the virtual pad, and `wait` returned 0. There is no chord, no signal, and no port-cleanup line. Settings had also run in that boot, so those five lines are not proven to be the Abombniball launch. The game process was still running afterward. It was `abombniball.aarch64`, reparented to init, the only member of a session whose leader was already dead, and the only DRM holder. `SIGTERM` to that pid did not stop it. `SIGKILL` of that same pid did. The frontend session was not signaled. `nextui.elf` then held the display device. The screen was not watched over SSH. The game binary does not import `fork` or `setsid`. Its script runs it in the foreground. The session had already treated an exit status of 0 as the end of the pak and had stopped the hotkey.
 
-`zlyme-pak-spawn` is now the process the session waits on. The leader pid is published only after `setsid()`. Members that remain in that session are signaled after the leader exits. The hotkey does not signal a pid that is still in the frontend session. That correction is not in the installed image. A physical MENU+START on it has not been done. The PortMaster matrix is `docs/research/portmaster-matrix-20261023.md`.
+`zlyme-pak-spawn` is now the process the session waits on. The leader pid is published only after `setsid()`. Members that remain in that session are signaled after the leader exits. The hotkey does not signal a pid that is still in the frontend session. That correction is not in the installed image. A physical MENU+START on it has not been done. The PortMaster matrix is `docs/research/phase-14-portmaster-matrix.md`.
 
 ## 2026-10-23 — NextUI list width is in the branch pin
 
@@ -373,7 +373,7 @@ WirePlumber 0.5.14 is started with the `main-embedded` profile. ALSA matches use
 
 ## 2026-10-20 — PipeWire is the product graph, not yet heard
 
-Buildroot 2026.08 pins PipeWire 1.6.6 and WirePlumber 0.5.14. The product defconfig selects them, keeps `libpulse`, and does not select the PulseAudio daemon or BlueALSA. The minimal defconfig does not select PipeWire. `rc.late` starts the three processes after D-Bus and off the first-frame path. `zlyme-audio` reads `audio.conf` as data and applies the old displayed percent through the cubic gain `(percent/100)^3` so a stored 40 is not played as linear 40. The freeze archive was read. Its PPSSPP underruns and the OpenAL broken pipe are recorded in `docs/research/phase14-stability.md`. They are not a captured panic, and this commit does not claim they are fixed.
+Buildroot 2026.08 pins PipeWire 1.6.6 and WirePlumber 0.5.14. The product defconfig selects them, keeps `libpulse`, and does not select the PulseAudio daemon or BlueALSA. The minimal defconfig does not select PipeWire. `rc.late` starts the three processes after D-Bus and off the first-frame path. `zlyme-audio` reads `audio.conf` as data and applies the old displayed percent through the cubic gain `(percent/100)^3` so a stored 40 is not played as linear 40. The freeze archive was read. Its PPSSPP underruns and the OpenAL broken pipe are recorded in `docs/research/phase-14-stability.md`. They are not a captured panic, and this commit does not claim they are fixed.
 
 ## 2026-10-19 — e2ecc05 is not accepted, and this boot was not logged
 
@@ -385,7 +385,7 @@ The two commits after `e5e742c` are the 12-fragment codec and HDMI buffer, and t
 
 PPSSPP is v1.19.3. `AudioBackend` 0 is the auto value and the Windows backend list does not apply to this SDL build. The SDL device is opened at 44100 Hz. `AudioBufferSize` defaults to 256 samples when the ini omits it. The resampler target is 1680 samples, about 38 ms, unless the negotiated period is larger. `ExtraAudioBuffering` is false in the stock seed and is not Android-only in `StereoResampler.cpp`. `FillAudioGaps` and `AudioSyncMode` are not in this pin. The user's ini was not read and was not modified. No PPSSPP process was started.
 
-Phase 14 did not add a per-game speaker, HDMI, or Bluetooth choice. Launchers that call `zlyme-audio export` receive the sink name. `Music Player.pak` still sets `SDL_AUDIODRIVER=alsa`, which follows the default PCM into Pulse. PipeWire is deferred in `docs/research/pipewire-zlyme-assessment.md`.
+Phase 14 did not add a per-game speaker, HDMI, or Bluetooth choice. Launchers that call `zlyme-audio export` receive the sink name. `Music Player.pak` still sets `SDL_AUDIODRIVER=alsa`, which follows the default PCM into Pulse. PipeWire is deferred in `docs/research/phase-14-pipewire-assessment.md`.
 
 ## 2026-10-19 — 12-fragment buffer and a one-shot exit trace
 
@@ -471,7 +471,7 @@ The next SSH session was boot id `46be5cec-fa17-4d49-af76-97d1501264f6`, uptime 
 
 Gambatte through `GBC.pak` with `ZLYME_HDMI_720P=1` logged connector 56, then `No free CRTC for unbound connector 56` and `Couldn't find a suitable DRM device`. It did not log `Using fullscreen size`. After NextUI released DRM, HDMI video port 0 was disabled and the panel CRTC stayed active. `drmModeObjectGetProperties` on that CRTC does not list `ACTIVE` until `DRM_CLIENT_CAP_ATOMIC`. The occupancy check treats an unread property as occupied, so the only CRTC the HDMI encoder can use (`possible_crtcs` 0x1) was refused. Upstream RetroArch master still has no equivalent unbound-encoder path.
 
-A later port batch lost the route to the Flip before the last launchers were read back. The lines that were saved are in `docs/research/portmaster-capability-phase14.md`. No panic log was retrieved.
+A later port batch lost the route to the Flip before the last launchers were read back. The lines that were saved are in `docs/research/phase-14-portmaster-capability.md`. No panic log was retrieved.
 
 ## 2026-10-18 — Recently Played stock picture, port launches
 
@@ -717,15 +717,15 @@ Fifteen patches remain. The Bluetooth USB id `0bda:b733` was rebased onto the 7.
 
 The panel driver now uses `devm_drm_panel_alloc()`. Timing and power sequencing were not changed. Mali, DMC, the gamepad, and the radio-power module compiled without source changes. RTL8733BU stayed on `c46aa25` and gained a local patch for `strncpy`, the wiphy 5/10 MHz flag, and `cfg80211` wireless_dev callbacks. The next upstream commit was not taken: it calls `wdev_to_ndev()`, which 7.2.10 does not have, and it does not cover the other three failures.
 
-`zlyme.img` is still 1409306624 bytes. The OTA written by this build is `output/images/zlyme-my355-20261013-0a96c787607b-dirty.tar` because the tree was dirty. No Flip test. USB MTP was not modified and is not claimed fixed. Detail is `docs/research/linux-7.2.10-migration.md`.
+`zlyme.img` is still 1409306624 bytes. The OTA written by this build is `output/images/zlyme-my355-20261013-0a96c787607b-dirty.tar` because the tree was dirty. No Flip test. USB MTP was not modified and is not claimed fixed. Detail is `docs/research/phase-12d-linux-7.2.10-migration.md`.
 
 ## 2026-10-13 — Phase 12D documentation and kernel preflight
 
 Phase 12D stays open. No kernel pin, DTS, or DWC3 change was made. The development HEAD at the start of this pass was `132b7e04fa6eb08f93ba6938f3b320a7556c2e9b`.
 
-kernel.org listed stable Linux 7.2.10 and mainline 7.3-rc7. The RC was not taken. Official SHA-256 for `linux-7.2.10.tar.xz` is `2feaa70453e91f541be6a5c9078d8168e081af45a3d9718054850538cff2ebf3`. The stored `linux-7.0.2.tar.xz` matches the official hash and `linux.hash`. Sixteen active patches were dry-run with `patch -F0` on pristine 7.2.10. Fourteen apply. The RTL8733BU USB-id hunk does not. The DualSense Edge patch is obsolete: 7.2.10 already reports the same bits. `olddefconfig` with the Buildroot GCC kept the USB, PHY, gadget, MMC, and DRM selections. `CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT` newly defaults to 10 and has to be pinned back in a migration. Mali and DMC were not compiled. The record is `docs/research/linux-7.2.10-preflight.md`.
+kernel.org listed stable Linux 7.2.10 and mainline 7.3-rc7. The RC was not taken. Official SHA-256 for `linux-7.2.10.tar.xz` is `2feaa70453e91f541be6a5c9078d8168e081af45a3d9718054850538cff2ebf3`. The stored `linux-7.0.2.tar.xz` matches the official hash and `linux.hash`. Sixteen active patches were dry-run with `patch -F0` on pristine 7.2.10. Fourteen apply. The RTL8733BU USB-id hunk does not. The DualSense Edge patch is obsolete: 7.2.10 already reports the same bits. `olddefconfig` with the Buildroot GCC kept the USB, PHY, gadget, MMC, and DRM selections. `CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT` newly defaults to 10 and has to be pinned back in a migration. Mali and DMC were not compiled. The record is `docs/research/phase-12d-linux-7.2.10-preflight.md`.
 
-The earlier runtime-PM note that treated `pm_runtime_get_sync() == 0` as already active is wrong for this kernel. In 7.0.2, 1 means already active and 0 means a successful resume. `dwc3_gadget_pullup()` skips its own start on 0 because it assumes resume started the controller. OTG autosuspend resume does not. The ignored `__dwc3_gadget_start()` return can leave `pullups_connected` set. It is not established as the cause of Test A. Linux 7.2.10 still has that pull-up structure, and it does not contain the ODROID PHY RFC or `dwc3-rockchip.c`. An upgrade is a maintenance baseline. It is not an MTP fix. Detail is `docs/research/usb-mtp-phase12d.md`.
+The earlier runtime-PM note that treated `pm_runtime_get_sync() == 0` as already active is wrong for this kernel. In 7.0.2, 1 means already active and 0 means a successful resume. `dwc3_gadget_pullup()` skips its own start on 0 because it assumes resume started the controller. OTG autosuspend resume does not. The ignored `__dwc3_gadget_start()` return can leave `pullups_connected` set. It is not established as the cause of Test A. Linux 7.2.10 still has that pull-up structure, and it does not contain the ODROID PHY RFC or `dwc3-rockchip.c`. An upgrade is a maintenance baseline. It is not an MTP fix. Detail is `docs/research/phase-12d-usb-mtp.md`.
 
 The Test A and Test B log directories were not on disk when this entry was written. The 2026-10-12 entries below are the session reports, not a reread of those files.
 
@@ -791,7 +791,7 @@ Build run `37164297221` built `337ccbce2587393463a4b49c551f94e33e318e44` from a 
 
 ## 2026-10-04 — Phase 10 full-history documentation audit
 
-All 487 commits from `dffddba` were mapped to a phase and a subsystem, and the canonical documents were checked against source. The record is `docs/research/documentation-audit-phase10.md`. The canonical docs now describe deep suspend, DMC, the boot chain, the first-frame split, suspend paths, Wi-Fi/Bluetooth, time, Settings, and logging in present tense. The Rumble Strength default reads 40%, matching `FF_DEFAULT_GAIN_PERCENT`. The README was restructured and detailed user procedures moved to `docs/USER_GUIDE.md`. ADR 0006 records the root-image lifecycle. Stale DTS and defconfig comments were corrected without changing built content. Suspected runtime and build issues were recorded for maintainer review and not changed. The hardware wiki was read, not edited. Runtime evidence stays `337ccbce2587393463a4b49c551f94e33e318e44`.
+All 487 commits from `dffddba` were mapped to a phase and a subsystem, and the canonical documents were checked against source. The record is `docs/research/phase-10-documentation-audit.md`. The canonical docs now describe deep suspend, DMC, the boot chain, the first-frame split, suspend paths, Wi-Fi/Bluetooth, time, Settings, and logging in present tense. The Rumble Strength default reads 40%, matching `FF_DEFAULT_GAIN_PERCENT`. The README was restructured and detailed user procedures moved to `docs/USER_GUIDE.md`. ADR 0006 records the root-image lifecycle. Stale DTS and defconfig comments were corrected without changing built content. Suspected runtime and build issues were recorded for maintainer review and not changed. The hardware wiki was read, not edited. Runtime evidence stays `337ccbce2587393463a4b49c551f94e33e318e44`.
 
 ## 2026-10-04 — Phase 9 accepted, Phase 10 started
 
@@ -911,7 +911,7 @@ A built-in driver programs the RK3568 BL31 suspend ABI from a `rockchip,pm-rk356
 
 ## 2026-09-28 — Phase 6A deep-suspend research
 
-Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` files are not in this git tree. They are in the local archived ROCKNIX checkout as `.testing-disabled` patches. That driver already sends mode, wake, and `LINUX_PM_STATE` from `.prepare`, and it uses `rockchip,rk3568-suspend` rather than the stock `rockchip,pm-rk3568`. The stock DTB uses sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/deep-suspend-phase6.md`.
+Compared the commented Flip suspend node with Rockchip BSP `develop-5.10` `95a3ad83` and `develop-6.1` `77168c8d`, the stock Miyoo firmware DTB, Linux 7.0.2, and the current ROCKNIX PX30S trim. The old `1013a/b` files are not in this git tree. They are in the local archived ROCKNIX checkout as `.testing-disabled` patches. That driver already sends mode, wake, and `LINUX_PM_STATE` from `.prepare`, and it uses `rockchip,rk3568-suspend` rather than the stock `rockchip,pm-rk3568`. The stock DTB uses sleep mask `0x5ec` and wake mask `0x10`, and it turns `vdd_logic` off. Zlyme leaves that rail on. No driver, DTS, or config was activated. The note is `docs/research/phase-06-deep-suspend.md`.
 
 ## 2026-09-28 — post-Phase-5 correction image accepted
 
@@ -949,7 +949,7 @@ The Flip DTS has no `adc-keys` node. Volume and the lid are `gpio-keys`. `miyoo-
 
 ## 2026-09-28 — Phase 5 kernel-patch research started
 
-Phase 4 is on `main` at `04442328d42191a6d77eb0dcbabeb163f2244297`. Phase 5 research is on `phase-5-kernel-reduction`. The selected kernel is still Linux 7.0.2. Official ROCKNIX `next` is still `46eeb493a7532bec24b86dcd33bda3d87d463672`, 241 commits ahead of the archived fork's last official commit and 19 commits ahead of the Phase 2 pin. The note is `docs/research/kernel-patch-audit-phase5.md`. No kernel patch was added or removed.
+Phase 4 is on `main` at `04442328d42191a6d77eb0dcbabeb163f2244297`. Phase 5 research is on `phase-5-kernel-reduction`. The selected kernel is still Linux 7.0.2. Official ROCKNIX `next` is still `46eeb493a7532bec24b86dcd33bda3d87d463672`, 241 commits ahead of the archived fork's last official commit and 19 commits ahead of the Phase 2 pin. The note is `docs/research/phase-05-kernel-patch-audit.md`. No kernel patch was added or removed.
 
 ## 2026-09-28 — Phase 4D and Phase 4 complete
 
@@ -1101,7 +1101,7 @@ Not done: persistent calibration, rumble, Switch-stick validation, and userspace
 
 ## 2026-09-23 — Phase 3A gamepad research
 
-Research only. No driver, DTS, kernel patch, or userspace consumer changed. Notes are in `docs/research/joypad-driver.md`.
+Research only. No driver, DTS, kernel patch, or userspace consumer changed. Notes are in `docs/research/phase-03-joypad-driver.md`.
 
 The stick protocol is 9600 8N1, frame `FF YL XL YR XR FE`, on UART1. A 1.5 Mbaud 8250 figure is the divisor base, not the line rate. Stock `/dev/miyooio` is the vendor button path: a `gpio-keys-polled` node plus a 128-byte char device. Its GPIOs match Zlyme's seventeen gamepad lines. `joy_type` is stored and printed (`-1` none, `0` miyoo, `1` xbox) and is not read by the button path in the May 2025 stock image. No public `miyooio.c` was found. The new driver does not need that char device.
 
@@ -1147,13 +1147,13 @@ Miyoo Flip smoke passed: NextUI first frame, built-in controls, audio, `/storage
 
 Classification only. No kernel, DTS, config, or runtime change.
 
-All 45 active Linux patches now have an A–F class and a KEEP, REPLACE, REMOVE, or DEFER disposition in `docs/research/kernel-patch-audit.md`. `SYS_CAN_SD` stays the current unconditional clear. The 1992 MHz OPP is optional boost policy, not the 1.8 GHz path. The RK3568 OTP provider has no in-tree consumer; its live probe was not observed because the Flip did not answer SSH. The ROCKNIX GPU clock patch is not imported. Deep suspend, DMC extraction, and the joypad rewrite stay later.
+All 45 active Linux patches now have an A–F class and a KEEP, REPLACE, REMOVE, or DEFER disposition in `docs/research/phase-02-kernel-patch-audit.md`. `SYS_CAN_SD` stays the current unconditional clear. The 1992 MHz OPP is optional boost policy, not the 1.8 GHz path. The RK3568 OTP provider has no in-tree consumer; its live probe was not observed because the Flip did not answer SSH. The ROCKNIX GPU clock patch is not imported. Deep suspend, DMC extraction, and the joypad rewrite stay later.
 
 ## 2026-09-23 — Phase 2A kernel evidence
 
 Research only. No kernel, DTS, config, or runtime change.
 
-Phase 2 branch `phase-2-kernel-audit` is based on `56cc4c38c5189b96e724c9227d69e6b92203339d`. The selected kernel is Linux 7.0.2. Official ROCKNIX `next` was read at `3993c6bb666022c3f10b7adbc27862103dfa959f`; its handheld RK3566 kernel is also 7.0.2. The hardware wiki pin is `b08e335d31fca41383e01176390914c3d4550ec5`. Notes are in `docs/research/kernel-patch-audit.md`. Forty-five Linux patches are inventoried. None of the symbols checked in the pristine 7.0.2 tarball are already upstream. RK817 fuel-gauge work, GPU clock ownership, and a newer `rocknix-joypad` pin are recorded for later comparison. Joypad rewrite, deep suspend, and DMC extraction stay in Phases 3, 6, and 7.
+Phase 2 branch `phase-2-kernel-audit` is based on `56cc4c38c5189b96e724c9227d69e6b92203339d`. The selected kernel is Linux 7.0.2. Official ROCKNIX `next` was read at `3993c6bb666022c3f10b7adbc27862103dfa959f`; its handheld RK3566 kernel is also 7.0.2. The hardware wiki pin is `b08e335d31fca41383e01176390914c3d4550ec5`. Notes are in `docs/research/phase-02-kernel-patch-audit.md`. Forty-five Linux patches are inventoried. None of the symbols checked in the pristine 7.0.2 tarball are already upstream. RK817 fuel-gauge work, GPU clock ownership, and a newer `rocknix-joypad` pin are recorded for later comparison. Joypad rewrite, deep suspend, and DMC extraction stay in Phases 3, 6, and 7.
 
 ## 2026-09-23 — Phase 1 Weston compatibility
 
@@ -1258,7 +1258,7 @@ complete.
 Chose Buildroot Weston 14.0.2 (MIT) with the DRM backend and kiosk shell.
 No Xwayland, no desktop shell, no boot service. PortMaster's
 `weston_pkg_0.2.squashfs` stays a runtime a port downloads; it is not in
-the image. Reasoning is in `docs/research/weston.md`.
+the image. Reasoning is in `docs/research/phase-01-weston.md`.
 
 `zlyme-weston-run` drops DRM master, starts Weston with libseat's
 builtin backend, runs one client, then stops Weston. It does not start

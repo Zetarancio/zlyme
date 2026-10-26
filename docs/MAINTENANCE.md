@@ -27,7 +27,7 @@ Product status, kept separate from the procedure below:
 - Published `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
 - `ZLYME_VERSION` remains `zlyme44.3`. `zlyme44.4` is not released.
 - Phase 14 is closed. Its installed candidate is `d358bf533e79d058bb63bfc32487bd544d8eb5de`. The maintainer accepts that installation. Phase 15 is in progress. Gates, exclusions, and image hashes are in `docs/ROADMAP.md` and `docs/LOGBOOK.md`.
-- The dated product-status snapshots that used to live here are preserved in `docs/research/documentation-audit-phase15.md`. They are not the current state.
+- The dated product-status snapshots that used to live here are preserved in `docs/research/phase-15-documentation-audit.md`. They are not the current state.
 - The NextUI pin in `package/system/nextui/nextui.mk` is on NextUI `zlyme`. The rule in the NextUI section below still applies to the next pin.
 
 ## Audio on a live Flip
@@ -123,7 +123,7 @@ The installer is a separate repository, `Zetarancio/zlymeOS-Installer`, branch `
 
 ## Open validation debt
 
-Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/documentation-audit-phase10.md` ("Finding triage" and "zlyme44.1 maintenance dispositions"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read the original finding first. Published `zlyme44` (`337ccbce2587393463a4b49c551f94e33e318e44`) still has the source the original findings describe. The fixes below are in the `zlyme44.1` source at `6a398b311310246ef6a5515ed72805c6f58d787d`. That SHA was developed on `zlyme44.1-maintenance`. The branch was removed after the commit was reachable from `main`. The maintainer device-accepted that runtime. `zlyme44.1` is not published. GitHub Actions run `37375071442` is the clean-build and publication gate. Deferred items `(i)`, `(m)`, `(n)`, and `(q)` are not Phase 10 blockers.
+Every Phase 10 finding `(a)` through `(q)` is triaged in `docs/research/phase-10-documentation-audit.md` ("Finding triage" and "zlyme44.1 maintenance dispositions"). This section is that index. It is not a shorter substitute. Before a change touches one of these paths, read the original finding first. Published `zlyme44` (`337ccbce2587393463a4b49c551f94e33e318e44`) still has the source the original findings describe. The fixes below are in the `zlyme44.1` source at `6a398b311310246ef6a5515ed72805c6f58d787d`. That SHA was developed on `zlyme44.1-maintenance`. The branch was removed after the commit was reachable from `main`. The maintainer device-accepted that runtime. `zlyme44.1` is not published. GitHub Actions run `37375071442` is the clean-build and publication gate. Deferred items `(i)`, `(m)`, `(n)`, and `(q)` are not Phase 10 blockers.
 
 Fixed in the `zlyme44.1` source:
 

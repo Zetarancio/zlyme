@@ -2,9 +2,9 @@
 
 Host build on 2026-10-13. The my355 kernel pin moved from Linux 7.0.2 to Linux 7.2.10. The product image was built. It was not installed. It has not been booted on a Flip. Phase 12D stays open.
 
-That paragraph is the host-build record. Later on 2026-10-13 the dirty OTA from this build was installed and booted. The boot and the USB register session are in "Boot on 2026-10-13" below and in `usb-mtp-phase12d.md`. Phase 12D stays open. MTP did not enumerate.
+That paragraph is the host-build record. Later on 2026-10-13 the dirty OTA from this build was installed and booted. The boot and the USB register session are in "Boot on 2026-10-13" below and in `phase-12d-usb-mtp.md`. Phase 12D stays open. MTP did not enumerate.
 
-This is not an MTP fix. USB userspace, the gadget configuration, DWC3, and the Rockchip USB2 PHY were not modified. The preflight is `linux-7.2.10-preflight.md`. The enumeration record is `usb-mtp-phase12d.md`. A later source audit is `driver-source-audit-phase12d.md`. It corrects the `wdev_to_ndev()` sentence below and reviews the dirty image name.
+This is not an MTP fix. USB userspace, the gadget configuration, DWC3, and the Rockchip USB2 PHY were not modified. The preflight is `phase-12d-linux-7.2.10-preflight.md`. The enumeration record is `phase-12d-usb-mtp.md`. A later source audit is `phase-12d-driver-source-audit.md`. It corrects the `wdev_to_ndev()` sentence below and reviews the dirty image name.
 
 ## Release and hash
 
@@ -71,7 +71,7 @@ The first RTL compile failed with 16 errors: implicit `strncpy` in three files, 
 
 The following upstream commit `6821d547` was not taken. It adds similar forwarders, but they call `wdev_to_ndev()`, which 7.2.10 does not provide, and it does not fix `strncpy`, the wiphy flag, or `remain_on_channel`.
 
-That `wdev_to_ndev()` sentence is wrong. The name is a macro in the driver's own `os_dep/linux/ioctl_cfg80211.h` (`#define wdev_to_ndev(w) ((w)->netdev)`), at both `c46aa25` and `6821d547`. Linux does not provide it, and it does not need to. The rest of the sentence stands: that commit does not touch `strncpy`, the removed wiphy flag, or `remain_on_channel`. Detail is `driver-source-audit-phase12d.md`.
+That `wdev_to_ndev()` sentence is wrong. The name is a macro in the driver's own `os_dep/linux/ioctl_cfg80211.h` (`#define wdev_to_ndev(w) ((w)->netdev)`), at both `c46aa25` and `6821d547`. Linux does not provide it, and it does not need to. The rest of the sentence stands: that commit does not touch `strncpy`, the removed wiphy flag, or `remain_on_channel`. Detail is `phase-12d-driver-source-audit.md`.
 
 `/lib/modules` contains only `7.2.10`. `modules.dep` has 273 lines and no `7.0.2` path.
 
@@ -123,6 +123,6 @@ Not accepted on this image: a full pass of the panel, audio, both SD slots, game
 
 The OTA named in the build section was installed and booted. On the Flip, `uname -a` was `Linux zlyme 7.2.10 #1 SMP PREEMPT Tue Oct 13 08:43:04 UTC 2026 aarch64`. `/etc/os-release` was `zlyme44.2 (2026-10-13)`. SSH stayed on `wlan0`. The maintainer reported that ordinary use looked fine. That report is not acceptance of the subsystems listed above.
 
-USB File Transfer was exercised the same day. Cable-first and tool-first sessions both left the UDC `not attached` at speed `UNKNOWN`, and the Linux host Demetria logged no USB device. A later idle register read, with the gadget stopped, found DWC3 programmed as a device with `DCTL.RUN_STOP` clear, and found `utmi_bvalid` set in `usb2phy0_grf` while the lower PHY extcon was all zero. RK817 was online and charging. The readings and the separation of observation from inference are in `usb-mtp-phase12d.md`.
+USB File Transfer was exercised the same day. Cable-first and tool-first sessions both left the UDC `not attached` at speed `UNKNOWN`, and the Linux host Demetria logged no USB device. A later idle register read, with the gadget stopped, found DWC3 programmed as a device with `DCTL.RUN_STOP` clear, and found `utmi_bvalid` set in `usb2phy0_grf` while the lower PHY extcon was all zero. RK817 was online and charging. The readings and the separation of observation from inference are in `phase-12d-usb-mtp.md`.
 
 Status 2026-10-13: the ledger in that file is the current record. The speed-cap property is already inherited from `rk3566-base.dtsi` and was not missing. A later cable-first sample, with SDP already reported, found `DCTL.RUN_STOP` set and endpoint 0 enabled, and the host still saw no device. That sample is 12D-E17. `0007` still clears only `SYS_CAN_SD` and was not removed. Phase 12D stays open.

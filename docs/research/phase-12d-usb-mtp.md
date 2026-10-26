@@ -158,7 +158,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 - Result: boot is supported for that smoke check. Enumeration is not. Phase 12D stays open.
 - Excludes: treating this OTA as a clean rebuild of `8b06618`, `8eae061`, or `f6d57cb`, and treating boot as MTP acceptance.
 - Unknown: a full pass of panel, audio, both card slots, gamepad, Wi-Fi, Bluetooth, Mali, DMC, suspend, and the upper USB host.
-- Evidence: `linux-7.2.10-migration.md`. Section 11 names the running kernel.
+- Evidence: `phase-12d-linux-7.2.10-migration.md`. Section 11 names the running kernel.
 - Code: kernel pin and the patches required to build it. No USB experiment in the migration itself.
 
 ### 12D-E09 cable-first on 7.2.10
@@ -270,7 +270,7 @@ IDs below are assigned once. Later notes add entries. They do not renumber these
 - Result: no demonstrated software mechanism. The patch stays. It was not removed in an A/B test, so this is not an experimental elimination.
 - Excludes: a claim that the public driver and the May 2025 DTS together must clear the bit. It does not exclude an untested electrical interaction.
 - Unknown: the exact stock write path.
-- Evidence: section 15. Dated notes in `kernel-patch-audit.md` and `kernel-patch-audit-phase5.md`.
+- Evidence: section 15. Dated notes in `phase-02-kernel-patch-audit.md` and `phase-05-kernel-patch-audit.md`.
 - Code: left untouched. `0007` remains.
 
 ### 12D-E17 active DWC3 sample

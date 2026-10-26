@@ -35,6 +35,8 @@ The canonical technical docs are listed in `AGENTS.md`. `docs/README.md` is only
 
 `docs/research/`, `docs/LOGBOOK.md`, and `docs/archive/` record what was tried, measured, and decided. New logbook entries go at the top, newest date first. Entries from the same day keep the order they were written. `docs/ROADMAP.md` is the short sequencing map. How to write it is below. Don't rewrite a failure out of a historical file. When a later phase supersedes an early statement, add a short dated status note that links to the current document. Leave the old text in place.
 
+A new research file is named for the phase that first needs it: `preliminary-<topic>.md` before Phase 0, `phase-09-<topic>.md` for a numbered phase, and `phase-12d-<topic>.md` or `phase-15c-<topic>.md` for a subphase. A later phase adds a dated section to that file. It does not get a second filename. USB evidence captures and vendored files are not research documents and do not use this prefix.
+
 ## Roadmap
 
 `docs/ROADMAP.md` is non-normative. Current architecture stays in `docs/ARCHITECTURE.md` and the other owning technical documents. The roadmap answers five questions:

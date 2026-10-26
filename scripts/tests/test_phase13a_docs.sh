@@ -41,7 +41,7 @@ grep -q 'one orange frame' "$ROOT/docs/ROADMAP.md" \
 	|| fail "roadmap lost the PanVK frame"
 grep -q 'one orange frame' "$ROOT/docs/LOGBOOK.md" \
 	|| fail "logbook lost the PanVK frame"
-grep -q '7951a37668e3' "$ROOT/docs/research/usb-mtp-phase12d.md" \
+grep -q '7951a37668e3' "$ROOT/docs/research/phase-12d-usb-mtp.md" \
 	|| fail "research lost the MTP archive"
 
 echo "phase 13a docs ok"

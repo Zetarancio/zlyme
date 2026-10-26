@@ -42,7 +42,7 @@ input=1` without a visible pad reaction in the probe. Box86's legal
 console probe exited 0 with `box86-x86 4 475f677f`. DRM debugfs
 clients were unavailable. The format=3 campaign on this image is not
 an acceptance tool. The format=4 OTA is uninstalled. The decision
-note is `docs/research/phase14-portmaster-architecture-proposal.md`.
+note is `docs/research/phase-14-portmaster-architecture-proposal.md`.
 It is not approved.
 
 ## Earlier analysis — `3da3f2b`
@@ -326,7 +326,7 @@ pass. They are historical instructions. Do not install the format=4
 archive. Do not start the format=3 or format=4 validation campaign.
 Observed results for GL4ES, SDL3, Shards, Winter, and Steel are in
 the section at the top of this file and in
-`docs/research/portmaster-matrix-20261023.md`.
+`docs/research/phase-14-portmaster-matrix.md`.
 
 ### Maintainer sequence on installed `da7eb21` (historical, before the evening pass)
 

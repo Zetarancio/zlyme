@@ -1,7 +1,7 @@
 # Kernel patch audit — Phase 2A
 
 > Status: historical Phase 2 record, 2026-09-23, base `56cc4c38`. The 2A paragraphs at the top predate the 2B classification and the 2C removals further down, which took the stack from 45 to 18 Linux patches.
-> Later phases changed that stack. Phase 5 is in [kernel-patch-audit-phase5.md](kernel-patch-audit-phase5.md). Phase 6 added `1011a`/`1011b` and enabled deep suspend. Phase 7 removed `1012a`/`1012b` for `package/drivers/rk3568-dmc`, so `CONFIG_ARM_RK3568_DMC_DEVFREQ` no longer exists.
+> Later phases changed that stack. Phase 5 is in [phase-05-kernel-patch-audit.md](phase-05-kernel-patch-audit.md). Phase 6 added `1011a`/`1011b` and enabled deep suspend. Phase 7 removed `1012a`/`1012b` for `package/drivers/rk3568-dmc`, so `CONFIG_ARM_RK3568_DMC_DEVFREQ` no longer exists.
 > The shipped stack is the 16 patches under `board/my355/linux/patches/`. The procedure is [docs/MAINTENANCE.md](../MAINTENANCE.md) "Kernel and board patches".
 
 Research only. This note pins the evidence used to look at Zlyme's current my355 Linux patches. It does not classify those patches A–F, and it does not remove, replace, or import any patch.
@@ -164,7 +164,7 @@ Current ROCKNIX `next` has no `rk3568_dmc` hit under `projects/` or `packages/li
 
 ### Phase 6
 
-Phase 6 is complete. The accepted runtime is `b709719aac5c5540394d0369e5e06981b8aa00bc`. `1010` stays applied and is re-evaluated with DMC in Phase 7. RK817 `005` was evaluated and left unapplied. The PM-config driver stays built-in. The bullets below are the Phase 2 queue, not the closure record. The closure record is `docs/research/deep-suspend-phase6.md`.
+Phase 6 is complete. The accepted runtime is `b709719aac5c5540394d0369e5e06981b8aa00bc`. `1010` stays applied and is re-evaluated with DMC in Phase 7. RK817 `005` was evaluated and left unapplied. The PM-config driver stays built-in. The bullets below are the Phase 2 queue, not the closure record. The closure record is `docs/research/phase-06-deep-suspend.md`.
 
 - Zlyme `1010` rockchip-dfi suspend/resume. Keep it in the tree through Phase 2. Do not enable deep suspend. The Flip DTS suspend include stays commented out.
 - ROCKNIX rk817 gauge-across-sleep patch `005`.
@@ -266,9 +266,9 @@ Chris Morgan `5c74541b46510f2e5ca58a0a86a3678691f0c291`, carried by ROCKNIX as `
 
 Disposition: **A + KEEP**. Do not replace it in 2C. The drain fix stays.
 
-Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `usb-mtp-phase12d.md`, 12D-E16.
+Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `phase-12d-usb-mtp.md`, 12D-E16.
 
-Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `usb-mtp-phase12d.md`, 12D-E16.
+Status 2026-10-13: "matches the BSP unconditional clear" above is the pre-2021 public helper, and the ROCKNIX opt-out. The public driver since `8238cd4ec173` skips the clear when `gate_function_disable` is nonzero, and the May 2025 stock DTS sets that property to 1. Stock runtime `0xe6 = 0x42` still has bit 7 clear. The firmware write that produced that value is unknown. `0007` stays the Zlyme off-current fix. It was not shown to cause the MTP failure, and it was not removed to test that. Detail is `phase-12d-usb-mtp.md`, 12D-E16.
 
 ### 1992 MHz OPP
 
@@ -279,7 +279,7 @@ Linux treats `turbo-mode` as a boost OPP. It is not a normal scaling frequency w
 - `profile_smart`, `profile_play`, and `profile_idle` call `set_boost 0` and cap the CPU at 1.8 GHz or lower
 - `profile_overclock` calls `set_boost 1` and `set_cpu_minmax 408000 1992000`
 
-The undervolt overlays `rk3566-undervolt-cpu-l1.dts`, `l2`, and `l3` each contain `opp-1992000000`, so those overlays expect the node to exist. `docs/research/performance.md` already treats 1992 MHz as an optional overclock above the 1.8 GHz baseline.
+The undervolt overlays `rk3566-undervolt-cpu-l1.dts`, `l2`, and `l3` each contain `opp-1992000000`, so those overlays expect the node to exist. `docs/research/preliminary-performance.md` already treats 1992 MHz as an optional overclock above the 1.8 GHz baseline.
 
 This is an intentional optional Zlyme performance policy. It is not required for ordinary 1.8 GHz operation. Class **B + KEEP** because the OPP has to stay on the selected kernel for the boost profile and the overlays. 2C does not remove it and does not turn boost on.
 

@@ -2,7 +2,7 @@
 
 Read-only comparison on 2026-10-13, after the Linux 7.2.10 host build. No package pin, patch, DTS, firmware, or kernel version was changed. Phase 12D stays open. The image has still not been booted.
 
-The migration record is `linux-7.2.10-migration.md`. This file corrects one sentence in it: `wdev_to_ndev()` is a macro in the RTL driver, not a missing Linux helper.
+The migration record is `phase-12d-linux-7.2.10-migration.md`. This file corrects one sentence in it: `wdev_to_ndev()` is a macro in the RTL driver, not a missing Linux helper.
 
 ## 1. RTL8733BU: the `wdev_to_ndev()` correction
 

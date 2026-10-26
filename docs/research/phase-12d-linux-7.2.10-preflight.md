@@ -2,12 +2,12 @@
 
 Read-only review on 2026-10-13. The defconfig pin stays 7.0.2. `linux.hash` was not edited. No image was built. The temporary tree was `/tmp/zlyme-kpreflight` and is not part of the repository.
 
-Later the same day the pin moved. `docs/research/linux-7.2.10-migration.md` is that host build. This file stays the preflight. Two corrections belong here so the original text is not read as the final decision:
+Later the same day the pin moved. `docs/research/phase-12d-linux-7.2.10-migration.md` is that host build. This file stays the preflight. Two corrections belong here so the original text is not read as the final decision:
 
 - Section 3 and the decision said the migration should set `CONFIG_DRIVER_DEFERRED_PROBE_TIMEOUT=0`. That was not done. Linux 7.0.2 already uses 10 when `CONFIG_MODULES=y`. Linux 7.2.10's Kconfig default for that case is 10. The migration keeps 10.
 - The DualSense Edge patch was removed, and the Bluetooth USB-id hunk was rebased. The other fourteen patches were kept.
 
-This review does not claim that an upgrade repairs MTP. `docs/research/usb-mtp-phase12d.md` is that failure. Section 7 separates the maintenance reason from the USB reason.
+This review does not claim that an upgrade repairs MTP. `docs/research/phase-12d-usb-mtp.md` is that failure. Section 7 separates the maintenance reason from the USB reason.
 
 ## 1. Release check
 

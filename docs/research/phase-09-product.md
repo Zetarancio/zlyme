@@ -6,7 +6,7 @@ Phase 9 implementation is closed. The accepted runtime SHA is `337ccbce258739346
 
 Date of the original notes: 2026-09-30, at `baadc22b4be1e96c67e75ab94482a5f51f13d4c5`. The governor and README-gate sections were added after Phase 8 closed.
 
-Evidence labels match `docs/research/frontend-source-phase8.md`.
+Evidence labels match `docs/research/phase-08-frontend-source.md`.
 
 ## Emulator speed and governor policy
 

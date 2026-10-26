@@ -44,7 +44,7 @@ Objective: run a Wayland or X11 program without a permanent compositor.
 
 Status: Closed, 2026-09-23. Temporary Weston recovered NextUI on Panfrost and libmali. WestonPack and Wine returned the same way. No open work.
 
-Reference: [docs/research/weston.md](research/weston.md).
+Reference: [docs/research/phase-01-weston.md](research/phase-01-weston.md).
 
 ## Phase 2. Kernel patch audit
 
@@ -52,7 +52,7 @@ Objective: classify the inherited Linux patches against the selected kernel, ups
 
 Status: Closed, 2026-09-23. Evidence pin `8984f6106c99f89bde214a3beeec3ee4bc175ba7`. Eighteen Linux patches remained. Joypad, deep suspend, and DMC stayed in later phases.
 
-Reference: [docs/research/kernel-patch-audit.md](research/kernel-patch-audit.md).
+Reference: [docs/research/phase-02-kernel-patch-audit.md](research/phase-02-kernel-patch-audit.md).
 
 ## Phase 3. Built-in gamepad
 
@@ -62,7 +62,7 @@ Status: Closed, 2026-09-25. Original sticks, buttons, MENU, and rumble were acce
 
 Dependency: the hardware and protocol record. Applications were Phase 4.
 
-Reference: [docs/research/joypad-driver.md](research/joypad-driver.md), [docs/archive/roadmap-phase-3c.md](archive/roadmap-phase-3c.md).
+Reference: [docs/research/phase-03-joypad-driver.md](research/phase-03-joypad-driver.md), [docs/archive/roadmap-phase-3c.md](archive/roadmap-phase-3c.md).
 
 ## Phase 4. InputPlumber
 
@@ -70,7 +70,7 @@ Objective: give each application one virtual `xb360` pad per player. The built-i
 
 Status: Closed, 2026-09-28. Accepted image `zlyme-my355-20260927-0b139e9099ee.tar` from `0b139e9099eec699e31d1cb5313998f57f387e12`. External controllers were not part of that acceptance.
 
-Reference: [docs/research/inputplumber.md](research/inputplumber.md).
+Reference: [docs/research/phase-04-inputplumber.md](research/phase-04-inputplumber.md).
 
 ## Phase 5. Second patch reduction
 
@@ -78,7 +78,7 @@ Objective: drop kernel patches the new gamepad and the newer kernel made obsolet
 
 Status: Closed, 2026-09-28. The first accepted runtime is `7eaecf794830a15c53f6b417a1b408dd31ceee53`. The corrected stack that entered Phase 6 is `8119387e0fdb729f1f013bed9dbc48c76e37a1df`. `7eaecf79` was not rewritten as that later stack.
 
-Reference: [docs/research/kernel-patch-audit-phase5.md](research/kernel-patch-audit-phase5.md).
+Reference: [docs/research/phase-05-kernel-patch-audit.md](research/phase-05-kernel-patch-audit.md).
 
 ## Phase 6. Deep suspend
 
@@ -90,7 +90,7 @@ A later check on the installed Phase 13 candidate saw one lid open wake the devi
 
 Not a closure requirement: long cycle counts, a standby-current number, and a full USB or radio matrix. Those were not claimed.
 
-Reference: [docs/research/deep-suspend-phase6.md](research/deep-suspend-phase6.md).
+Reference: [docs/research/phase-06-deep-suspend.md](research/phase-06-deep-suspend.md).
 
 ## Phase 7. DMC module
 
@@ -106,7 +106,7 @@ Objective: fetch Zlyme's NextUI from a pinned commit, keep other-platform source
 
 Status: Closed, 2026-09-30. Hardware-equivalent runtime `7a0fc397cb5b3e0f7c4b19f4f3abe8626eaccaf8`. The profile did not justify a frontend optimization. Upstream pins were not moved.
 
-Reference: [docs/research/frontend-source-phase8.md](research/frontend-source-phase8.md).
+Reference: [docs/research/phase-08-frontend-source.md](research/phase-08-frontend-source.md).
 
 ## Phase 9. First stable release
 
@@ -114,7 +114,7 @@ Objective: finish the product surface for the first stable `zlyme44` and publish
 
 Status: Closed, 2026-10-04. Implementation `337ccbce2587393463a4b49c551f94e33e318e44`. The maintainer accepted the 2026-10-03 image, including a ZcrapeGoat cheat and a root-sized delta. Run `37164297221` published `zlyme-37164297221`.
 
-Reference: [docs/research/product-phase9.md](research/product-phase9.md).
+Reference: [docs/research/phase-09-product.md](research/phase-09-product.md).
 
 ## Phase 10. Documentation
 
@@ -122,7 +122,7 @@ Objective: make the owning documents match the source, and add the maintenance i
 
 Status: Closed, 2026-10-06. Accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. `zlyme44.1` was not published. Run `37375071442` was dispatched with `publish_release` false. Deferred findings `(i)`, `(m)`, `(n)`, and `(q)` were not Phase 10 blockers. `(i)` later changed in Phase 12A1.
 
-Reference: `docs/MAINTENANCE.md`, [docs/research/documentation-audit-phase10.md](research/documentation-audit-phase10.md).
+Reference: `docs/MAINTENANCE.md`, [docs/research/phase-10-documentation-audit.md](research/phase-10-documentation-audit.md).
 
 ## Phase 11. zlyme44.2
 
@@ -146,7 +146,7 @@ The hardware wiki was updated for the development Linux 7.2.10 boot and the lowe
 
 Dependency: published 44.2 source. No Phase 12 item waits on a wiki edit.
 
-Reference: [docs/research/usb-mtp-phase12d.md](research/usb-mtp-phase12d.md), [docs/research/linux-7.2.10-migration.md](research/linux-7.2.10-migration.md).
+Reference: [docs/research/phase-12d-usb-mtp.md](research/phase-12d-usb-mtp.md), [docs/research/phase-12d-linux-7.2.10-migration.md](research/phase-12d-linux-7.2.10-migration.md).
 
 ## Phase 13. Compatibility on this branch
 
@@ -302,11 +302,11 @@ Status: Closed, 2026-10-26. Gate 5 is accepted within its recorded scope on inst
 
 Main result: Zlyme has a private ARMHF userspace, explicit Box86, SDL3 KMSDRM, the 49-SONAME compatibility baseline, safer PortMaster process and mount ownership, one PipeWire graph, `PlatformZlyme`, Art Book defaults, Wi-Fi-owned services, game cleanup, HDMI policy, and corrected list geometry. Runtime cleanup commit `b114755` removed unused Phase 14 experiments.
 
-References: [architecture proposal](research/phase14-portmaster-architecture-proposal.md), [capability inventory](research/portmaster-capability-phase14.md), [acceptance matrix](research/portmaster-matrix-20261023.md), [ROCKNIX compatibility coverage](research/phase14-rocknix-compat-coverage.md), and [logbook](LOGBOOK.md) entries dated 2026-10-19 through 2026-10-26.
+References: [architecture proposal](research/phase-14-portmaster-architecture-proposal.md), [capability inventory](research/phase-14-portmaster-capability.md), [acceptance matrix](research/phase-14-portmaster-matrix.md), [ROCKNIX compatibility coverage](research/phase-14-rocknix-compat-coverage.md), and [logbook](LOGBOOK.md) entries dated 2026-10-19 through 2026-10-26.
 
 ### 14A. Capability baseline
 
-Status: Closed. The inventory distinguishes implemented, missing, partial, and hardware-limited capabilities against the pinned PortMaster `2026.06.23-0015` seed and named comparison trees. Comparisons remain evidence, not Zlyme implementation claims. See the [capability inventory](research/portmaster-capability-phase14.md).
+Status: Closed. The inventory distinguishes implemented, missing, partial, and hardware-limited capabilities against the pinned PortMaster `2026.06.23-0015` seed and named comparison trees. Comparisons remain evidence, not Zlyme implementation claims. See the [capability inventory](research/phase-14-portmaster-capability.md).
 
 ### 14B. ARMHF userspace
 
@@ -348,7 +348,7 @@ Gate 5 excludes graphical Box86 and WestonPack because no installed game used th
 
 Gate 6's mandatory checklist is closed by reconciling existing evidence. The forced-session RetroArch HDMI CRTC/74250 diagnostic is explicitly excluded. Normal HDMI reportedly switches NextUI to the television, but that report is not proof of timing, clock, or DSI state. No RetroArch HDMI result is claimed. One RetroArch run on the internal panel on `0017d58` remains untested and nonblocking.
 
-Earlier scoped acceptances remain evidence: volume, mute, Wi-Fi service return, HDMI audio, and the forced-session NextUI 720p/panel-return path on `0b35a90`; the looked-at list rows on `4652076`; and Abombniball after waiter hardening on `9acb1fc`. See the [matrix](research/portmaster-matrix-20261023.md) and dated logbook entries for exact limits.
+Earlier scoped acceptances remain evidence: volume, mute, Wi-Fi service return, HDMI audio, and the forced-session NextUI 720p/panel-return path on `0b35a90`; the looked-at list rows on `4652076`; and Abombniball after waiter hardening on `9acb1fc`. See the [matrix](research/phase-14-portmaster-matrix.md) and dated logbook entries for exact limits.
 
 ### 14I. PortMaster platform
 
@@ -364,7 +364,7 @@ Status: Closed and accepted on `0b35a90`. Wi-Fi off stops SSH, Samba, and Syncth
 
 ### 14L. ArtBook defaults
 
-Status: Closed and host-tested. The product image ships licensed transparent Art Book defaults for 54 systems, built-in Tools, the Tools root, and Recently Played; the minimal image does not. User `.media` and `/storage/bg.png` take priority. Updates preserve a non-built-in Recently Played picture, and ROM lists do not gain a second bundled wallpaper. See [the Art Book research](research/nextui-theme-manager-phase14.md).
+Status: Closed and host-tested. The product image ships licensed transparent Art Book defaults for 54 systems, built-in Tools, the Tools root, and Recently Played; the minimal image does not. User `.media` and `/storage/bg.png` take priority. Updates preserve a non-built-in Recently Played picture, and ROM lists do not gain a second bundled wallpaper. See [the Art Book research](research/phase-14-nextui-theme-manager.md).
 
 ### 14M. HDMI 720p
 
@@ -398,15 +398,15 @@ Objective: correct the documentation against the Phase 14 source, then retest tw
 
 ### 15A. Documentation inventory and scope
 
-Status: Closed, 2026-10-26. The inventory is `docs/research/documentation-audit-phase15.md`. Current-state contradictions it names were corrected in the owning documents. Vendored licenses, package prose, and USB evidence were not rewritten.
+Status: Closed, 2026-10-26. The inventory is `docs/research/phase-15-documentation-audit.md`. Current-state contradictions it names were corrected in the owning documents. Vendored licenses, package prose, and USB evidence were not rewritten.
 
 ### 15B. Documentation reconciliation and ADRs
 
-Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire boot and the version-independent DMC module path. The retired PulseAudio and BlueALSA text is in `docs/research/audio-phase14.md`. ADR 0007, 0008, and 0009 record the audio, GPU, and PortMaster decisions. The upstream-first procedure is in `docs/UPSTREAMS.md`.
+Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire boot and the version-independent DMC module path. The retired PulseAudio and BlueALSA text is in `docs/research/phase-14-audio.md`. ADR 0007, 0008, and 0009 record the audio, GPU, and PortMaster decisions. The upstream-first procedure is in `docs/UPSTREAMS.md`.
 
 ### 15C. GitHub issues #2 and #3
 
-Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase15c-retroarch-input-audio.md`. No RetroArch, input, audio, or panel-clock change is shipped. Joypad routing stays SDL2 because player order is not an evdev identity. Issue #2 still needs one gpSP session on the installed image.
+Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase-15c-retroarch-input-audio.md`. No RetroArch, input, audio, or panel-clock change is shipped. Joypad routing stays SDL2 because player order is not an evdev identity. Issue #2 still needs one gpSP session on the installed image.
 
 ### 15D. Final validation and zlyme44.4 release preparation
 

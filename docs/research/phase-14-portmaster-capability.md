@@ -10,7 +10,7 @@ installed image is source `da7eb2128294`, squashfs
 `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`,
 GPU `libmali`. The format=4 validator archive is uninstalled and is
 not an acceptance tool. The architecture review is
-[phase14-portmaster-architecture-proposal.md](phase14-portmaster-architecture-proposal.md).
+[phase-14-portmaster-architecture-proposal.md](phase-14-portmaster-architecture-proposal.md).
 It is not approved and it is not current architecture. Sentences
 below that still say the final candidate is uninstalled describe the
 state before that install. They are left in place.
@@ -91,7 +91,7 @@ cleanup. It never uses `killall`, never signals the frontend group, and
 refuses to restart DRM after unresolved cleanup.
 
 The installed-image and named-port evidence is in
-[portmaster-matrix-20261023.md](portmaster-matrix-20261023.md). Build
+[phase-14-portmaster-matrix.md](phase-14-portmaster-matrix.md). Build
 success, executable runtime, rendered display, physical input, audio,
 exit, cleanup, and frontend return are separate statuses there.
 
@@ -104,7 +104,7 @@ not taken, and neither was `2026.10.03-1041`.
 
 The product mixer on the installed image is PipeWire with `pipewire-pulse`. `libpulse` and `libpulse-simple` are on that image. BlueALSA is not the A2DP owner. The PulseAudio daemon row and the BlueALSA sentences later in this file are the earlier candidate.
 
-14O's looked-at rows are accepted on installed `4652076`. Abombniball MENU+START failed on that image. The pak-session waiter is in source and was not in that image. ARMHF userspace was proven earlier by `xdelta3.armhf`; that binary is not installed on `4652076`, so it was not run again. SDL3 is installed and has no Flip display test. Box86 and Box64 `BOX32` stay deferred. No GL4ES library was found in the prepared PortMaster tree or three levels under the installed Ports directory. System GLES is Mesa. The launch matrix is [portmaster-matrix-20261023.md](portmaster-matrix-20261023.md).
+14O's looked-at rows are accepted on installed `4652076`. Abombniball MENU+START failed on that image. The pak-session waiter is in source and was not in that image. ARMHF userspace was proven earlier by `xdelta3.armhf`; that binary is not installed on `4652076`, so it was not run again. SDL3 is installed and has no Flip display test. Box86 and Box64 `BOX32` stay deferred. No GL4ES library was found in the prepared PortMaster tree or three levels under the installed Ports directory. System GLES is Mesa. The launch matrix is [phase-14-portmaster-matrix.md](phase-14-portmaster-matrix.md).
 
 GitHub marks `2026.10.03-1041` as not a prerelease. The release text is `Release: 2026.10.03-1041 (alpha)`. That is not a reason to move the pin. `2026.07.28-1212` and `2026.10.01-0433` are beta. The latest release whose own text says stable, through 2026-10-16, is `2026.06.23-0015`. Review a newer stable release when one is published. A fix taken from a beta or alpha tag needs a named benefit and a named regression risk, and that fix does not move the pin by itself.
 

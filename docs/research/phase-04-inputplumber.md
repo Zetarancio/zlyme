@@ -290,7 +290,7 @@ is Anbernic gpio-keys / ADC plus YAML keyed on the DT **model**. That is
 not the Flip. The Flip pad is UART `retrogame_joypad` (ROCKNIX serial
 `.ko`, Zlyme patch 0002). Sticks are userspace `miyoo_inputd` on ttyS1
 in stock; we use the kernel driver instead. See
-`docs/research/joypad-driver.md`.
+`docs/research/phase-03-joypad-driver.md`.
 
 ## What an obscure USB/BT pad does on Zlyme today
 

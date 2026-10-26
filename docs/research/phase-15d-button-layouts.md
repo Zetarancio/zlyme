@@ -4,7 +4,7 @@ Date: 2026-10-26. This is the audit. It is not a hardware acceptance of any butt
 
 ## Physical path
 
-The Flip silk is north X, east A, south B, west Y. The kernel reports those positions as `BTN_NORTH`, `BTN_EAST`, `BTN_SOUTH`, and `BTN_WEST` (`docs/research/joypad-driver.md`).
+The Flip silk is north X, east A, south B, west Y. The kernel reports those positions as `BTN_NORTH`, `BTN_EAST`, `BTN_SOUTH`, and `BTN_WEST` (`docs/research/phase-03-joypad-driver.md`).
 
 `package/system/inputplumber/zlyme_miyoo_flip.yaml` sends the printed letters to the Xbox letters on the `xb360` target:
 
@@ -15,7 +15,7 @@ The Flip silk is north X, east A, south B, west Y. The kernel reports those posi
 | X | north | `BTN_NORTH` | North | X, id 2 | 2 |
 | Y | west | `BTN_WEST` | West | Y, id 3 | 3 |
 
-Phase 4 measured printed A as virtual button 0, B as 1, X as 2, and Y as 3 (`docs/research/inputplumber.md`). Dolphin 2503a `SDLGamepad.h` names SDL A `Button S`, SDL B `Button E`, SDL X `Button W`, and SDL Y `Button N`. Those names are the usual Xbox positions. On this pad they are the printed letters, so `Button S` is the east button.
+Phase 4 measured printed A as virtual button 0, B as 1, X as 2, and Y as 3 (`docs/research/phase-04-inputplumber.md`). Dolphin 2503a `SDLGamepad.h` names SDL A `Button S`, SDL B `Button E`, SDL X `Button W`, and SDL Y `Button N`. Those names are the usual Xbox positions. On this pad they are the printed letters, so `Button S` is the east button.
 
 RetroPad, from the libretro ids and the stock autoconfig `package/emulators/retroarch/zlyme/autoconfig/sdl2/Microsoft X-Box 360 pad.cfg`:
 

@@ -92,7 +92,7 @@ Disposition terms:
 - **Hardware acceptance:** Phase 2C: ROADMAP:320. Corrected Phase 5 stack: ROADMAP:1648, LOGBOOK:142.
 - **Canonical owner:** `docs/ARCHITECTURE.md` "Kernel extension policy"; `docs/MAINTENANCE.md` "Kernel and board patches"; `board/my355/linux/patches/README.md`. The per-patch inventory is research only.
 - **Wiki owner:** `docs/drivers-and-dts.md`, `docs/drivers-and-dts/board-dts-pmic-ddr-updates.md`; Zlyme status on `docs/implementations/zlyme.md`.
-- **Findings:** No canonical doc names Linux 7.0.2 (V6, M2). DTS `:36` and `:998` say SARADC ch0 belongs to the joypad; the sticks are on UART1. `board.mk:88-92` copies `dts-overrides/` that no patch uses (issue (l)). `kernel-patch-audit.md:3` and `kernel-patch-audit-phase5.md:3` read as current.
+- **Findings:** No canonical doc names Linux 7.0.2 (V6, M2). DTS `:36` and `:998` say SARADC ch0 belongs to the joypad; the sticks are on UART1. `board.mk:88-92` copies `dts-overrides/` that no patch uses (issue (l)). `phase-02-kernel-patch-audit.md:3` and `phase-05-kernel-patch-audit.md:3` read as current.
 - **Disposition:** fix canonical (this pass) for the version; comment corrected (this pass) for DTS `:36`, `:998`; status banner (this pass) for both research files; maintainer review (not changed) for `dts-overrides` and its `board.mk:88` comment; wiki-sync later (Phase 10E) for W1.
 
 ### 3. U-Boot, BL31, boot chain, boot filesystem
@@ -155,7 +155,7 @@ Disposition terms:
 - **Implementation:** `usr/sbin/{zlyme-storage,zlyme-storage-udev,zlyme-storage-format,zlyme-library-populate}`, `etc/udev/rules.d/99-zlyme-storage.rules`, `etc/init.d/S17sd2`, `package/system/nextui/zlyme/zlyme-game-cleanup.sh`.
 - **Invariant:** each card keeps its own games and saves. Active roots are listed in `/run/zlyme/libraries`, with no pooling. Formatting accepts only removable volumes the scanner already classified, never the OS disk.
 - **History:** `a0b049ec1ae4` mergerfs pool (superseded); `3c7f987b1d3a` per-card libraries; `bdbf8189be79` guarded formatting; `1f3c46851284` delete one ROM on its own library; `d70d39dec01f` Settings calls the format backend directly.
-- **Hardware acceptance:** LOGBOOK:667 (per-card libraries); disposable-card format on `b9f8947780ec` (`docs/research/product-phase9.md:340`); SD2 artwork on `daebc6f5dbab` (ROADMAP:1894).
+- **Hardware acceptance:** LOGBOOK:667 (per-card libraries); disposable-card format on `b9f8947780ec` (`docs/research/phase-09-product.md:340`); SD2 artwork on `daebc6f5dbab` (ROADMAP:1894).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §6; `docs/OPERATIONS.md` "Persistent state".
 - **Wiki owner:** `docs/drivers-and-dts/board-dts-pmic-ddr-updates.md:140`, `:225` (slot 2 UHS).
 - **Findings:** `package/system/mergerfs` is still sourced and selectable, and its help describes pooling (issue (k)). `merge=on` is still seeded, `zlyme-storage merge` is a no-op, and `rcS:47` names mergerfs. DTS `&sdmmc1` enables SDR50/SDR104 against the wiki, and the comments at `:1006`, `:1031` disagree with the properties under them (issue (j)). Formatting and per-ROM delete are in ROADMAP/research only. AGENTS has no per-card invariant (AG2).
@@ -166,11 +166,11 @@ Disposition terms:
 - **Implementation:** `package/system/nextui/zlyme/zlyme-library.sh` (`/usr/sbin/zlyme-library`), `board/my355/fsoverlay/usr/share/zlyme/bios-union.py`, `package/system/nextui/zlyme/ra-run.sh`.
 - **Invariant:** one tmpfs BIOS union of all libraries, with the ROM's library winning duplicates, cached per winning card and generation. One writable save root is chosen by a fixed order. Nothing is copied.
 - **History:** `3c7f987b1d3a` first per-card model; `a73f655d91c5` shared BIOS, one save root; `e21cccddcc56` resolve once and cache; `be0da7b452b9` one view per winning card; `22e115089bb6` cleanup follows the resolver.
-- **Hardware acceptance:** 9L timing, 1.519 s cold and 0.059 s cached (`docs/research/product-phase9.md:310-312`); part of `zlyme44` (ROADMAP:1898). A same-name ROM on two cards was not confirmed on the device (ROADMAP:1894).
+- **Hardware acceptance:** 9L timing, 1.519 s cold and 0.059 s cached (`docs/research/phase-09-product.md:310-312`); part of `zlyme44` (ROADMAP:1898). A same-name ROM on two cards was not confirmed on the device (ROADMAP:1894).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §6.
 - **Wiki owner:** n/a.
-- **Findings:** none against canonical text. The cache mechanism is research only. `product-phase9.md:320` keeps the superseded ROM-only rule in a dated section.
-- **Disposition:** no action; preserve historical (`product-phase9.md:320`).
+- **Findings:** none against canonical text. The cache mechanism is research only. `phase-09-product.md:320` keeps the superseded ROM-only rule in a dated section.
+- **Disposition:** no action; preserve historical (`phase-09-product.md:320`).
 
 ### 10. OTA / update / release architecture
 
@@ -224,8 +224,8 @@ Disposition terms:
 - **Hardware acceptance:** ROADMAP:1671-1680 (runtime `b709719aac5c`), LOGBOOK:104-108, :120. Not done: long cycle counts, USB/BT matrices, standby current, a lid-specific test (ROADMAP:1727).
 - **Canonical owner:** `docs/ARCHITECTURE.md` "Hardware source of truth"; `docs/OPERATIONS.md` "Hardware-wiki invariants"; the DTS.
 - **Wiki owner:** `docs/drivers-and-dts/suspend-and-vdd-logic.md`; `README.md:91`, `:104`, `:108`; `docs/drivers-and-dts.md:51`; `docs/rk3566-reference/datasheet-specs.md:103`, `:112`.
-- **Findings:** OPERATIONS:238 "Deep suspend should be validated…" predates Phase 6. ARCHITECTURE:448 uses a phase label for a present fact (A16). DTS `:331` says `vdd_logic` stays on; `:651` turns it off. `deep-suspend-phase6.md:3` says nothing was activated. The wiki says Zlyme does not ship deep suspend.
-- **Disposition:** fix canonical (this pass) for OPERATIONS:238 and A16; comment corrected (this pass) for DTS `:331`; status banner (this pass) for `deep-suspend-phase6.md`; wiki-sync later (Phase 10E) for W2, W3, W6, W11–W20.
+- **Findings:** OPERATIONS:238 "Deep suspend should be validated…" predates Phase 6. ARCHITECTURE:448 uses a phase label for a present fact (A16). DTS `:331` says `vdd_logic` stays on; `:651` turns it off. `phase-06-deep-suspend.md:3` says nothing was activated. The wiki says Zlyme does not ship deep suspend.
+- **Disposition:** fix canonical (this pass) for OPERATIONS:238 and A16; comment corrected (this pass) for DTS `:331`; status banner (this pass) for `phase-06-deep-suspend.md`; wiki-sync later (Phase 10E) for W2, W3, W6, W11–W20.
 
 ### 15. DMC/DFI packaging and runtime policy
 
@@ -246,15 +246,15 @@ Disposition terms:
 - **Hardware acceptance:** floors are static-checked only; gameplay is not a Phase 9A gate (ROADMAP:1838). DMC under Smart/Play observed in Phase 7 (ROADMAP:1733-1739). ZRAM and IRQ pinning: none recorded.
 - **Canonical owner:** `docs/DEVICE_PORTING.md` `zlyme-governor`; `docs/ARCHITECTURE.md` §12.
 - **Wiki owner:** n/a.
-- **Findings:** DEVICE_PORTING:168-184 lacks `emu <tag>` and the aliases (D2). DEVICE_PORTING:240, AGENTS:95, and OPERATIONS:117 put governor logic in the board; it ships from the generic `nextui` package (D3, AG1, O3). ARCHITECTURE's command list is incomplete (A7). The `boost` flag is seeded and `apply-boost` is a no-op. A late `apply-gov` can reset an in-game profile (issue (f)). `performance.md` reads as policy.
-- **Disposition:** fix canonical (this pass) for D2, D3/AG1/O3 (state the exception), A7; status banner (this pass) for `performance.md`; maintainer review (not changed) for moving the governor, the `boost` flag, and issue (f).
+- **Findings:** DEVICE_PORTING:168-184 lacks `emu <tag>` and the aliases (D2). DEVICE_PORTING:240, AGENTS:95, and OPERATIONS:117 put governor logic in the board; it ships from the generic `nextui` package (D3, AG1, O3). ARCHITECTURE's command list is incomplete (A7). The `boost` flag is seeded and `apply-boost` is a no-op. A late `apply-gov` can reset an in-game profile (issue (f)). `preliminary-performance.md` reads as policy.
+- **Disposition:** fix canonical (this pass) for D2, D3/AG1/O3 (state the exception), A7; status banner (this pass) for `preliminary-performance.md`; maintainer review (not changed) for moving the governor, the `boost` flag, and issue (f).
 
 ### 17. GPU stacks (libmali/Panfrost) and graphics ownership
 
 - **Implementation:** `package/system/gpudriver/{gpudriver,S15gpudriver,gpudriver.mk}`, `package/system/libmali`, `package/drivers/mali-kbase` (patch `002`), `etc/zlyme-gpu-env.sh`, `etc/modprobe.d/zlyme-gpu.conf`, `external.mk:9-21`.
 - **Invariant:** one kernel GPU driver per boot, chosen by Class A `S15gpudriver` from `/storage/.config/zlyme/gpu` (default `libmali`). For libmali the blob is bind-mounted over Mesa's sonames. Vulkan exists only with libmali. A change needs a reboot.
 - **History:** `cd153aded477` first switch; `95b9913d3d32` libmali default and bind mounts; `b80e48d74195` lowercase IRQ lookup; `50d13c36fc3f` Mesa picks Panfrost through kmsro; `f9a62947fbfb` GLES 3.0 context; `210f21f6bdad` PPSSPP Vulkan on the Mali display surface.
-- **Hardware acceptance:** both stacks in Phase 1 (ROADMAP:137); PPSSPP Vulkan live pass (`product-phase9.md:362`).
+- **Hardware acceptance:** both stacks in Phase 1 (ROADMAP:137); PPSSPP Vulkan live pass (`phase-09-product.md:362`).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §8 "Miyoo Flip GPU stacks"; `docs/OPERATIONS.md` "GPU".
 - **Wiki owner:** `docs/drivers-and-dts/drivers.md:117` (WO6, optional).
 - **Findings:** ARCHITECTURE:412-418 says board-specific packages are Kconfig-gated; `gpudriver`, `libmali`, and `mali-kbase` are not (A8). Neither ARCHITECTURE nor OPERATIONS states the libmali default (A12, O4). README:17 "only mali supports Vulkan as of now". The minimal image blacklists panfrost without `gpudriver` (issue (d)).
@@ -265,11 +265,11 @@ Disposition terms:
 - **Implementation:** `usr/sbin/zlyme-weston-run`, `package/system/nextui/zlyme/drm-release.py` (`/usr/bin/zlyme-drm-release`), `etc/profile.d/sdl-kmsdrm.sh`, `package/system/portmaster/{zlyme-portmaster-exec,zlyme-portmaster-cleanup}`, `zlyme-bcsh.c`, `configs/zlyme_my355_defconfig:315-327`.
 - **Invariant:** frontend and paks draw through SDL2 KMSDRM, and the session drops DRM master before every pak. Weston, built without Xwayland, runs only inside `zlyme-weston-run` for one client. WestonPack stays PortMaster's; the session cleans it up.
 - **History:** `4424768aa183` retry KMSDRM; `6badf288df30` `zlyme-drm-release`; `9cdca4cbd556` Weston tracer; `db84a5b8ac18` builtin libseat; `f5fe1c022eba` WestonPack DRM wrapper; `047cad5fa879` drop PPSSPP Wayland WSI; `0b139e9099ee` PPSSPP KMSDRM; `c35faf8eca49` drop Weston.pak.
-- **Hardware acceptance:** Phase 1 gate on both GPU stacks (ROADMAP:137, LOGBOOK:384); PPSSPP KMSDRM (ROADMAP:1628); Vulkan on KMSDRM (`product-phase9.md:361-362`).
+- **Hardware acceptance:** Phase 1 gate on both GPU stacks (ROADMAP:137, LOGBOOK:384); PPSSPP KMSDRM (ROADMAP:1628); Vulkan on KMSDRM (`phase-09-product.md:361-362`).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §8; `docs/OPERATIONS.md` "DRM ownership"; ADR `0002-direct-kms.md`.
 - **Wiki owner:** n/a (one status line on `zlyme.md`, W1).
-- **Findings:** README:7 "no desktop and no compositor" leaves out app-scoped Weston and WestonPack. ARCHITECTURE:278, :289 do not say the session runs the WestonPack cleanup (A10). Defconfig `:148` says "no X11/Wayland" and `:316` says "Xwayland stays off until the tracer is proven". `weston.md:41` says WestonPack and Wine are pending. ADR 0002 does not name the two runtime owners. VOP2 BCSH is not canonical.
-- **Disposition:** fix canonical (this pass) for README:7, A10, and the ADR 0002 owner note; comment corrected (this pass) for defconfig `:148`, `:316`; status banner (this pass) for `weston.md`; no action for BCSH (gap recorded).
+- **Findings:** README:7 "no desktop and no compositor" leaves out app-scoped Weston and WestonPack. ARCHITECTURE:278, :289 do not say the session runs the WestonPack cleanup (A10). Defconfig `:148` says "no X11/Wayland" and `:316` says "Xwayland stays off until the tracer is proven". `phase-01-weston.md:41` says WestonPack and Wine are pending. ADR 0002 does not name the two runtime owners. VOP2 BCSH is not canonical.
+- **Disposition:** fix canonical (this pass) for README:7, A10, and the ADR 0002 owner note; comment corrected (this pass) for defconfig `:148`, `:316`; status banner (this pass) for `phase-01-weston.md`; no action for BCSH (gap recorded).
 
 ### 19. Audio, speaker/headphones, HDMI, Bluetooth audio
 
@@ -301,8 +301,8 @@ Disposition terms:
 - **Hardware acceptance:** 3B tracer on zlyme41 (ROADMAP:552, LOGBOOK:320); 3C1 (LOGBOOK:308); 3D closure (ROADMAP:1506, LOGBOOK:264).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §10; ADR `0005-controller-ownership.md`.
 - **Wiki owner:** `docs/hardware/input.md:11-12`, `:31`.
-- **Findings:** DTS `:1115` "Phase 3B does not remove them" and `:1123-1124` "Phase 3B tracer … No calibration" describe a finished phase. AGENTS has no "do not restore the ROCKNIX joypad" invariant (AG2). `joypad-driver.md` checkpoints read as current.
-- **Disposition:** comment corrected (this pass) for DTS `:1115`, `:1123-1124`; status banner (this pass) for `joypad-driver.md`; maintainer review (not changed) for the AGENTS invariant; wiki-sync later (Phase 10E) for W8–W10.
+- **Findings:** DTS `:1115` "Phase 3B does not remove them" and `:1123-1124` "Phase 3B tracer … No calibration" describe a finished phase. AGENTS has no "do not restore the ROCKNIX joypad" invariant (AG2). `phase-03-joypad-driver.md` checkpoints read as current.
+- **Disposition:** comment corrected (this pass) for DTS `:1115`, `:1123-1124`; status banner (this pass) for `phase-03-joypad-driver.md`; maintainer review (not changed) for the AGENTS invariant; wiki-sync later (Phase 10E) for W8–W10.
 
 ### 22. Calibration / deadzone / rumble
 
@@ -312,8 +312,8 @@ Disposition terms:
 - **Hardware acceptance:** 3C2a on zlyme42/43 (ROADMAP:660, LOGBOOK:286-306); 3C3 (ROADMAP:1475-1496, LOGBOOK:272). The 40% default ships in `zlyme44` without a dedicated re-test.
 - **Canonical owner:** `docs/ARCHITECTURE.md` §10.
 - **Wiki owner:** `docs/hardware/input.md:31` (W8).
-- **Findings:** ARCHITECTURE:327 says displayed 30%; `ff_gain.h:5` is 40. `joypad-driver.md:561` and LOGBOOK:276 keep 30% in dated checkpoints.
-- **Disposition:** fix canonical (this pass) for ARCHITECTURE:327; status banner (this pass) for `joypad-driver.md`; preserve historical for LOGBOOK:276.
+- **Findings:** ARCHITECTURE:327 says displayed 30%; `ff_gain.h:5` is 40. `phase-03-joypad-driver.md:561` and LOGBOOK:276 keep 30% in dated checkpoints.
+- **Disposition:** fix canonical (this pass) for ARCHITECTURE:327; status banner (this pass) for `phase-03-joypad-driver.md`; preserve historical for LOGBOOK:276.
 
 ### 23. InputPlumber, composites, virtual xb360
 
@@ -323,8 +323,8 @@ Disposition terms:
 - **Hardware acceptance:** 4B (ROADMAP:1620); 4C on `e911db674811` (ROADMAP:1624, LOGBOOK:216); 4D on `0b139e9099ee` (ROADMAP:1628, LOGBOOK:180). External controllers were not physically validated (ADR 0005).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §10; ADR `0005-controller-ownership.md`.
 - **Wiki owner:** `docs/implementations/zlyme.md` (one line, W1); `docs/hardware/input.md:31` (W8).
-- **Findings:** OPERATIONS:150-155 "board-specific controller handling" (O2). ENGINEERING_PRINCIPLES:230 "InputPlumber may later define…" and the §14–16 migration wording (E5). ADR 0005:35 "Phase 4D still retargets emulators". AGENTS has no InputPlumber ownership invariant (AG3). `inputplumber.md:3`, `:7`, `:293` carry old dates and a pre-migration filename.
-- **Disposition:** fix canonical (this pass) for O2, E5, ADR 0005:35; status banner (this pass) for `inputplumber.md`; maintainer review (not changed) for AG3; wiki-sync later (Phase 10E) for W1, W8.
+- **Findings:** OPERATIONS:150-155 "board-specific controller handling" (O2). ENGINEERING_PRINCIPLES:230 "InputPlumber may later define…" and the §14–16 migration wording (E5). ADR 0005:35 "Phase 4D still retargets emulators". AGENTS has no InputPlumber ownership invariant (AG3). `phase-04-inputplumber.md:3`, `:7`, `:293` carry old dates and a pre-migration filename.
+- **Disposition:** fix canonical (this pass) for O2, E5, ADR 0005:35; status banner (this pass) for `phase-04-inputplumber.md`; maintainer review (not changed) for AG3; wiki-sync later (Phase 10E) for W1, W8.
 
 ### 24. Lid / power / volume input ownership
 
@@ -345,8 +345,8 @@ Disposition terms:
 - **Hardware acceptance:** Phase 8 on `7a0fc397cb5b`, recorded as hardware-equivalent with seven physical checks (ROADMAP:1828, LOGBOOK:42-44).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §11; `docs/DEVICE_PORTING.md` "Frontend platform contract"; `docs/MAINTENANCE.md` "NextUI fork", "Vendored helpers".
 - **Wiki owner:** n/a.
-- **Findings:** ARCHITECTURE:372 says the package must not hard-code `my355`; `nextui-session` does (A4, issue (m)). DEVICE_PORTING:217-223 describes the platform string as a proposal; it is done (D9). UPSTREAMS "Compared revisions" does not name the fork pin (U1). `frontend-source-phase8.md:3` reads as current.
-- **Disposition:** fix canonical (this pass) for A4, D9, U1; status banner (this pass) for `frontend-source-phase8.md`; maintainer review (not changed) for issue (m).
+- **Findings:** ARCHITECTURE:372 says the package must not hard-code `my355`; `nextui-session` does (A4, issue (m)). DEVICE_PORTING:217-223 describes the platform string as a proposal; it is done (D9). UPSTREAMS "Compared revisions" does not name the fork pin (U1). `phase-08-frontend-source.md:3` reads as current.
+- **Disposition:** fix canonical (this pass) for A4, D9, U1; status banner (this pass) for `phase-08-frontend-source.md`; maintainer review (not changed) for issue (m).
 
 ### 26. Frontend session and resource cleanup
 
@@ -364,7 +364,7 @@ Disposition terms:
 - **Implementation:** `package/system/nextui/paks/Tools/` (Files, Moonlight, Music Player, Overlays, PortMaster, Settings, ZcrapeGoat), `package/system/zcrapegoat/`, `package/system/{vtree,music-player,zmusic,ruffle-handheld}`, `board/my355/post-update.sh`, `paks-version.sh`.
 - **Invariant:** seven stock Tools paks ship. Stock Emus and Tools are copied to the card when the pak version changes. ZcrapeGoat is built from vendored ScrapeGoat v2.3.0 plus Zlyme commits, with credentials compiled from a generated header.
 - **History:** `0c72077fcd74` scraper paks; `c396b6f7d876` Files and Moonlight; `dc6015428e6e` independent pak version; `846948253570` drop redundant scrapers; `b4b16a4a8a62`/`58da92f7fa78`/`55ba2bf7901d` vendor and rename ZcrapeGoat; `4d4b110b32ea` usable git before exec.
-- **Hardware acceptance:** ROADMAP:1890-1898, including a fresh cheat under `/storage/Cheats/GB` on `zlyme44`; `product-phase9.md:520-601`.
+- **Hardware acceptance:** ROADMAP:1890-1898, including a fresh cheat under `/storage/Cheats/GB` on `zlyme44`; `phase-09-product.md:520-601`.
 - **Canonical owner:** `docs/ARCHITECTURE.md` §11; `docs/UPSTREAMS.md` "ZcrapeGoat"; `docs/MAINTENANCE.md` "Vendored helpers".
 - **Wiki owner:** n/a.
 - **Findings:** README:80, :179 put System logs under Settings → About; the pinned fork has it under System → Advanced (`workspace/all/settings/zlymemenu.cpp:361`). README:41 calls Settings a community pak. README credits miss zolek86 NextUI-Overlays, nborodikhin nextui-music-player, and SilverPsychoo Ruffle-Handheld. README Factory Reset wording differs from the UI. Files, Moonlight, Overlays, Music Player, and Ruffle ownership are not canonical.
@@ -375,19 +375,19 @@ Disposition terms:
 - **Implementation:** `package/emulators/*` (51 packages), `package/system/nextui/paks/Emus/*.pak/launch.sh` (54 paks), `package/system/nextui/{emu-defaults,emu-alts,emu-paks,rom-dirs,rom-exts}.txt`, `ra-run.sh`, `arcade-stage.sh`, `etc/retroarch.cfg`.
 - **Invariant:** one default launcher per system; alternates exist only in `emu-alts.txt` (MD, MS, GG, PICO, P8). RetroArch runs through `ra-run.sh`, which appends `/etc/retroarch.cfg`. The curated set is intentional.
 - **History:** `80f060094b8a` RetroArch and cores; `6c5d7d765985` drop unused cores; `5f0d3c3bc671` standalones; `91f8225696fe` a pak per core; `314be674ca16` AetherSX2 and Dolphin; `3e6059ff806a` gpSP at the ROCKNIX-carried revision; `93e2dba84366` Flash as FLASH.
-- **Hardware acceptance:** RetroArch, PPSSPP, Splore, PortMaster in 4D (ROADMAP:1628); PPSSPP and a GBC save on 9L/9N (`product-phase9.md:312`, `:340`). Per-emulator gameplay is not a recorded gate.
+- **Hardware acceptance:** RetroArch, PPSSPP, Splore, PortMaster in 4D (ROADMAP:1628); PPSSPP and a GBC save on 9L/9N (`phase-09-product.md:312`, `:340`). Per-emulator gameplay is not a recorded gate.
 - **Canonical owner:** `docs/ARCHITECTURE.md` §12; `docs/UPSTREAMS.md` "Package update workflow"; README systems table.
 - **Wiki owner:** n/a.
 - **Findings:** README:91 "Mednafen SuperFaust" (the core is Supafaust); README:123 Wii omits `.gcm` (`rom-exts.txt:56`); README:128 PSP Bios cell holds a renderer note; the MD/MS/GG/PICO/P8 alternates are not shown. Optional/required BIOS wording for GBA, PS, Saturn, A78, DC depends on upstream cores. UPSTREAMS:16-18 does not allow the distribution-carried commit that gpSP uses (U5).
-- **Disposition:** fix canonical (this pass) for README:91, :123, :128, the alternates, and U5; maintainer review (not changed) for the BIOS wording; no action for `emulators.md` (existing banner adequate).
+- **Disposition:** fix canonical (this pass) for README:91, :123, :128, the alternates, and U5; maintainer review (not changed) for the BIOS wording; no action for `preliminary-emulators.md` (existing banner adequate).
 
 ### 29. PICO-8 / Splore
 
 - **Implementation:** `package/system/nextui/paks/Emus/PICO.pak/launch.sh`, `usr/sbin/{zlyme-pico-splore,zlyme-pico-bbs}`, `usr/share/zlyme/pico-runtime.sh`, `package/emulators/pico8`, `package/system/pico8-data-extractor`.
 - **Invariant:** native PICO-8 is user-supplied (`pico8_64` and `pico8.dat`), searched on the ROM's library, then on every library. The Splore row exists only while that pair exists, on that library. fake08 is the fallback.
 - **History:** `bd3698460ecd` first pak; `29a861db328b` Splore on the virtual pad, no grabber; `48c824e0bcf5` runtime across libraries; `4e3a9865df21` Splore only with a runtime; `7eec83a9a957` row on the runtime's library; `f83dcf07d315` BBS carts, Splore sorted first.
-- **Hardware acceptance:** 4D Splore (ROADMAP:1628, LOGBOOK:204); BBS carts and sort on `b9f8947780ec` (`product-phase9.md:337-340`).
-- **Canonical owner:** none (ROADMAP:1841 and `product-phase9.md` only).
+- **Hardware acceptance:** 4D Splore (ROADMAP:1628, LOGBOOK:204); BBS carts and sort on `b9f8947780ec` (`phase-09-product.md:337-340`).
+- **Canonical owner:** none (ROADMAP:1841 and `phase-09-product.md` only).
 - **Wiki owner:** n/a.
 - **Findings:** no canonical text, and nothing contradicts source.
 - **Disposition:** no action (gap recorded).
@@ -430,7 +430,7 @@ Disposition terms:
 - **Implementation:** `etc/init.d/S49ntp`, `usr/sbin/zlyme-timezone`, `S15bootpart:37-39`, `usr/sbin/zlyme-card-defaults`.
 - **Invariant:** the system clock and RTC are UTC. After Wi-Fi, `S49ntp` sets the clock from an HTTP `Date` header and writes the RTC with `hwclock -u -w`. `/etc/localtime` points at `/storage/.config/nextui/shared/localtime`, which exists before NextUI starts.
 - **History:** `7c59518443b3` HTTP Date after Wi-Fi; `ef6b8a8ef7f6` persistent timezone; `bd3d6370d178` seed before the frontend; `a8ed1a6399ef` RTC in UTC; `9341bd947116` clock on by default.
-- **Hardware acceptance:** offline clock after a network sync on `b9f8947780ec` (`product-phase9.md:340`, `:367`).
+- **Hardware acceptance:** offline clock after a network sync on `b9f8947780ec` (`phase-09-product.md:340`, `:367`).
 - **Canonical owner:** none beyond "NTP is deferred" (`docs/ARCHITECTURE.md` §5, §13).
 - **Wiki owner:** n/a.
 - **Findings:** no canonical text beyond the deferral, and nothing contradicts source.
@@ -452,7 +452,7 @@ Disposition terms:
 - **Implementation:** `etc/init.d/{rcS,rc.late,S28minui,S12splash,S16display}`, `board/my355/post-build.sh:290-300`, initramfs `init` and `splash.c`, `usr/sbin/zlyme-splash-progress`, `board/my355/extlinux.conf`.
 - **Invariant:** `rcS` runs only the Class A whitelist and starts NextUI. `rc.late` waits for `nextui-first-flip` (at most 20 s), restores calibration and rumble, then starts optional services in the background. The splash runs on every product boot, and serial is the only console.
 - **History:** `2c379f8ae609` initramfs splash; `3a24625d0050` rcS/rc.late split; `c46fafbd20f5` list before Wi-Fi and udev; `3af4666f5e3c`/`a343fefaf51d` splash across `switch_root`; `d59622f484c7` udev and the pad stay Class A; `ffd468b6cd0e` drop the LCD text console.
-- **Hardware acceptance:** first flip at 10.90 s (LOGBOOK:623-625), then 9.95 s and 9.53 s (LOGBOOK:42, :62); quiet graphical boot on `b9f8947780ec` (`product-phase9.md:340`).
+- **Hardware acceptance:** first flip at 10.90 s (LOGBOOK:623-625), then 9.95 s and 9.53 s (LOGBOOK:42, :62); quiet graphical boot on `b9f8947780ec` (`phase-09-product.md:340`).
 - **Canonical owner:** `docs/ARCHITECTURE.md` §5, §13; `docs/OPERATIONS.md` "Boot classes"; ADR `0003-busybox-init.md`; `docs/DEVELOPMENT.md` "Boot-time development".
 - **Wiki owner:** n/a.
 - **Findings:** ARCHITECTURE:169 does not name the gate, its 20 s cap, or the restores after it (A19). The Class A list and splash ownership are not canonical (G4). ROADMAP:1841 lists the quiet-gated splash as done next to its removal.
@@ -463,8 +463,8 @@ Disposition terms:
 - **Implementation:** Settings UI in the pinned NextUI fork; backends `usr/sbin/{zlyme-ctl,zlyme-reset,zlyme-bootcfg,zlyme-card-defaults}`, `package/system/nextui/zlyme/{zlyme_prefs.c,zlyme_prefs.h,zlyme-game-cleanup.sh}`, `S15bootpart:62`.
 - **Invariant:** each policy flag is one file in `/storage/.config/zlyme/`. An empty file means the default, and `zlyme-ctl` defaults must match the `S15bootpart` seed. Reset Settings deletes an explicit list and never deletes user content.
 - **History:** `2a88005ffffb` replace governor pickers; `e96485ae9297` drop NTP, boost, merge rows; `3fafcf215fca` reset settings only; `8e38b7db59eb` `zlyme-reset` and `zlyme-bootcfg`; `f12fe69bbff2` `zlyme-card-defaults`; `eeb38a71e28e` confirm format.
-- **Hardware acceptance:** Settings rows on `8e8116f00969` (`product-phase9.md:368-378`); Create game folders on `f0143dd5b067` (ROADMAP:1890).
-- **Canonical owner:** none (ROADMAP:1840, `product-phase9.md:168-224`). `docs/ARCHITECTURE.md` issue (n)ames the directory only.
+- **Hardware acceptance:** Settings rows on `8e8116f00969` (`phase-09-product.md:368-378`); Create game folders on `f0143dd5b067` (ROADMAP:1890).
+- **Canonical owner:** none (ROADMAP:1840, `phase-09-product.md:168-224`). `docs/ARCHITECTURE.md` issue (n)ames the directory only.
 - **Wiki owner:** n/a.
 - **Findings:** no canonical owner for flags or reset semantics. The `boost` and `merge` flags are still seeded and reset although their rows are gone.
 - **Disposition:** no action (gap recorded); maintainer review (not changed) for the residual flags (issue (p)).
@@ -634,9 +634,9 @@ Comment-only changes. With comments and blank lines stripped, both files are ide
 - `rk3566-miyoo-flip.dts:36`: "saradc ch0 is owned by joypad" → the sticks are on UART1 (`miyoo-flip-gamepad` uses serdev on UART1).
 - `rk3566-miyoo-flip.dts:331`: "vdd_logic stays on in this image" → off in mem suspend, which needs `ARMOFF_LOGOFF` (`28675fb2dded`).
 - `rk3566-miyoo-flip.dts:998`: SARADC "used by joypad driver" → no consumer in this DTS.
-- `rk3566-miyoo-flip.dts:1115`: "Phase 3B does not remove them" → CTS pinmux and DMA match stock and are not proven removable (`joypad-driver.md`).
+- `rk3566-miyoo-flip.dts:1115`: "Phase 3B does not remove them" → CTS pinmux and DMA match stock and are not proven removable (`phase-03-joypad-driver.md`).
 - `rk3566-miyoo-flip.dts:1123-1124`: "Phase 3B tracer … No calibration" → one production input device; calibration lives in userspace files.
-- `rk3566-miyoo-flip.dts:1493`: GPIO0 D0/D1 "uart2, needed for deep sleep resume" → `uart2m0`, the debug console (`4730aec69a7c`; UART2's role in resume is not established in `deep-suspend-phase6.md`).
+- `rk3566-miyoo-flip.dts:1493`: GPIO0 D0/D1 "uart2, needed for deep sleep resume" → `uart2m0`, the debug console (`4730aec69a7c`; UART2's role in resume is not established in `phase-06-deep-suspend.md`).
 - `zlyme_my355_defconfig:65`: dtb line "in external.mk" → `board/my355/board.mk`.
 - `zlyme_my355_defconfig:129`: "S27sshd starts before NextUI" → `rc.late` starts `S50sshd` after the first frame.
 - `zlyme_my355_defconfig:148`: "no X11/Wayland" → no X11; Wayland is for the temporary Weston.
@@ -654,7 +654,7 @@ Nothing here was changed or tested on hardware. Each item is maintainer review (
 - **(c) Suspend arms a 24 h RTC wake.** Evidence: `package/system/nextui/zlyme/suspend:4-6` writes `+86400` to `rtc0/wakealarm` before every `mem` (from `083e8061c47354325e7356966541642bb3062cfe`, "Drive volume from NextUI itself and put the moon on a real mem sleep"). The comment at `:3` cites ROCKNIX `sleep.sh`. Neither NextUI nor `zlyme-keylidmon` (`zlyme-keylidmon.c:195-216`) checks the wake reason. Original inference, kept: a suspended Flip would wake after 24 h with backlight and radios on, and with a pak on screen nothing would suspend it again. That 24-hour wake itself was not run or accepted.
 - **Resolution of (c), 2026-10-04.** The `+86400` write is the timed RTC method from the 2026-09-13 LOGBOOK entry "Serial field test: BT audio, DMC, contrast, RTC mem", which records a short `echo +N` deep-suspend proof. That LOGBOOK text stays as written. No Miyoo Flip hardware maximum of 24 hours is documented. Normal wake sources stay the power button, volume keys, and lid open. `zlyme44` contains unintended RTC-alarm management inherited from that test: the production helper clears `rtc0/wakealarm` and then writes `+86400`. The maintainer decision for `zlyme44.1` is to remove all RTC-alarm manipulation from that helper. It does not read, clear, or replace `rtc0/wakealarm`, so an alarm programmed by the user or another program is preserved. RTC support stays enabled, and RTC wake remains a valid hardware wake source. `CHANGELOG.md`, `docs/ARCHITECTURE.md`, and `docs/OPERATIONS.md` describe the timer as shipped `zlyme44` software policy. Published `zlyme44` is unchanged.
 - **(d) The default minimal build is expected to fail post-build.** Evidence: `build.sh:27` defaults to `zlyme_my355_minimal_defconfig`, which selects none of `BR2_PACKAGE_MIYOO_FLIP_GAMEPAD`, `BR2_PACKAGE_ZLYME_KEYLIDMON`, `BR2_PACKAGE_GPUDRIVER`, `BR2_PACKAGE_LIBMALI` (product `:203`, `:236`, `:281-282`). `board/my355/post-build.sh:9` `note()` sets `fail=1`; `:21-23` require `miyoo-flip-gamepad.ko`; `:114` requires `zlyme-keylidmon`; `:327` exits `${fail}`. `etc/modprobe.d/zlyme-gpu.conf:3` blacklists panfrost, and only `gpudriver` lifts it. Why: the default `./build.sh` should fail; if it passed, the image would have no pad and no GPU stack, although README:195 calls it bootable. Validation: one minimal build. Source-only inference; not built.
-- **(e) `zlyme-boot-write` is not a lock.** Evidence: `holder_alive` accepts any live pid in `/run/zlyme-boot-write.pid` (`zlyme-boot-write:25-30`), and a caller then runs its command without its own remount (`:48-51`). Why: an unrelated overlapping writer can hit a read-only `/boot` when the holder closes, or make `remount,ro` fail so the holder exits 1 with `/boot` writable. OTA staging and Settings are not expected to overlap (`frontend-source-phase8.md:228`). Validation: decide whether ancestry should be checked; a host-side test with two overlapping callers.
+- **(e) `zlyme-boot-write` is not a lock.** Evidence: `holder_alive` accepts any live pid in `/run/zlyme-boot-write.pid` (`zlyme-boot-write:25-30`), and a caller then runs its command without its own remount (`:48-51`). Why: an unrelated overlapping writer can hit a read-only `/boot` when the holder closes, or make `remount,ro` fail so the holder exits 1 with `/boot` writable. OTA staging and Settings are not expected to overlap (`phase-08-frontend-source.md:228`). Validation: decide whether ancestry should be checked; a host-side test with two overlapping callers.
 - **(f) Late governor reset after the first frame.** Evidence: `S27led:23` runs `zlyme-ctl apply-gov`, which applies `smart`. `rc.late:53` starts `S27led` in the background after the gate, and `:56` starts `S29udevtrigger` (which loads `rk3568_dmc`) in parallel. After an OTA, `rc.late:92-93` and `zlyme-update:712` run `apply-gov` again. LOGBOOK:96 notes `apply-gov` may run before the DMC probe. Why: a game started in that window can drop to `smart` (2 cores, DMC 324 MHz) for the session, and DMC can keep its probe default until the next profile change. Validation: launch a game right after the first frame and after an OTA reboot, then read the governor, online CPUs, and the devfreq state. Unverified on hardware.
 - **(g) Unfingerprinted local packages keep stale binaries.** Evidence: `refresh_compiled_package` (`build.sh:327-369`) covers nextui, minui-list, minui-presenter, zcrapegoat, zlyme-keylidmon, openbor, ppsspp. These `SITE_METHOD = local` packages are not covered: zlyme-input, zlyme-jackd, miyoo-flip-gamepad, rk3568-dmc, rtl8733bu-power, gpudriver, pico8, rtl8723fu-firmware. The overlay rsync does not delete removed files. Why: a source edit can build "successfully" with the old binary; `assert-input-rootfs.sh` catches only a subset. Validation: edit one such source, run a full build, and compare the packed binary.
 - **(h) OTA pack failure is non-fatal.** Evidence: `board/my355/post-image.sh:87-90` runs `make-update-tar.sh … || echo "post-image: update tar skipped"`. In CI that becomes another stage (`build-stage.yml:121-138`). Why: a build can succeed without an OTA tar, against ENGINEERING_PRINCIPLES §8. Validation: force the pack step to fail in a local build and decide whether it must be fatal.
@@ -707,16 +707,16 @@ All rows are evidenced against runtime `337ccbce2587393463a4b49c551f94e33e318e44
 | W6 `README.md` | :104 "…carried that as an rk8xx/suspend patch set and then left it disabled." | same as W2 | `b709719aac5c` | Add a pointer that Zlyme enables it | implementation status |
 | W7 `docs/README.md` | :64 "No feature snapshot recorded here yet"; :42 "archived-fork shipping state at the end" | R1–R10 | snapshot | "Status snapshot zlyme44 / `337ccbce2587393463a4b49c551f94e33e318e44`"; :42 after W18 | implementation status |
 | W8 `docs/hardware/input.md` | :31 "does not yet record a Zlyme joypad driver or an InputPlumber policy" | `package/drivers/miyoo-flip-gamepad`, `package/system/inputplumber`; ROADMAP:1504-1531, :1626-1630 | `4d1c1d44d2a2`, `0b139e9099ee` | Two or three sentences: driver, sysfs calibration, InputPlumber as OS policy | implementation status |
-| W9 `docs/hardware/input.md` | :12 "Byte-level frames are not copied into this page" | stock `joystick_study/miyoo_inputd.c` (wiki repo); `docs/research/joypad-driver.md:22-51`; LOGBOOK:308-326 | Phase 3B/3C1 | UART1 9600 8N1, frame `FF YL XL YR XR FE`, ~66.8 frames/s on the tested unit; stock vs observed labels | generic hardware truth |
-| W10 `docs/hardware/input.md` | :11 17 GPIO switches, "not restated here" (addition) | `joypad-driver.md:53-155`; DTS `:1136-1237` | Phase 3B, 4B | L2/R2 are digital; stock `gpio-keys-polled`; edge IRQs with 10 ms debounce on the tested unit; Switch-stick reports unvalidated | generic hardware truth |
+| W9 `docs/hardware/input.md` | :12 "Byte-level frames are not copied into this page" | stock `joystick_study/miyoo_inputd.c` (wiki repo); `docs/research/phase-03-joypad-driver.md:22-51`; LOGBOOK:308-326 | Phase 3B/3C1 | UART1 9600 8N1, frame `FF YL XL YR XR FE`, ~66.8 frames/s on the tested unit; stock vs observed labels | generic hardware truth |
+| W10 `docs/hardware/input.md` | :11 17 GPIO switches, "not restated here" (addition) | `phase-03-joypad-driver.md:53-155`; DTS `:1136-1237` | Phase 3B, 4B | L2/R2 are digital; stock `gpio-keys-polled`; edge IRQs with 10 ms debounce on the tested unit; Switch-stick reports unvalidated | generic hardware truth |
 | W11 `docs/drivers-and-dts/suspend-and-vdd-logic.md` | :10 "Zlyme has not been recorded here as shipping deep suspend." | same as W2 | `b709719aac5c` | Zlyme ships it as of that revision; link the W18 section | implementation status |
-| W12 same | :16, :20, :60-62 driver named `rk3568-suspend`, `rk3568` namespace | stock DTB `miyoo355_20250527_0.dts:652-658`, `:1260-1273`; `deep-suspend-phase6.md:94-153`; DTS `:333-334` | `b709719aac5c` | Lead with SIP `0x82000003` and the stock/BSP DT shape; move archived names into a labelled subsection | generic + implementation |
-| W13 same | :70 `late_initcall_sync`, `rk3568,pm-config`; :78 re-send config | `deep-suspend-phase6.md:136-160`, `:395-408`; LOGBOOK:134 | `ff92191bb51c`, `b709719aac5c` | BSP lifecycle as the protocol; a built-in driver with the same `.prepare` works (observed in Zlyme) | generic hardware truth |
-| W14 same | :154-164 SIP table without `0x09` | `deep-suspend-phase6.md:125-133`, `:415-455`; ROADMAP:1673 | `b709719aac5c`, `21de8081d6e6` | Add `LINUX_PM_STATE 0x09`; BL31 v1.44 returned `res.a0=0` for `0x09`, `0x01`, `0x02`, and `0x05`=0 | generic hardware truth |
+| W12 same | :16, :20, :60-62 driver named `rk3568-suspend`, `rk3568` namespace | stock DTB `miyoo355_20250527_0.dts:652-658`, `:1260-1273`; `phase-06-deep-suspend.md:94-153`; DTS `:333-334` | `b709719aac5c` | Lead with SIP `0x82000003` and the stock/BSP DT shape; move archived names into a labelled subsection | generic + implementation |
+| W13 same | :70 `late_initcall_sync`, `rk3568,pm-config`; :78 re-send config | `phase-06-deep-suspend.md:136-160`, `:395-408`; LOGBOOK:134 | `ff92191bb51c`, `b709719aac5c` | BSP lifecycle as the protocol; a built-in driver with the same `.prepare` works (observed in Zlyme) | generic hardware truth |
+| W14 same | :154-164 SIP table without `0x09` | `phase-06-deep-suspend.md:125-133`, `:415-455`; ROADMAP:1673 | `b709719aac5c`, `21de8081d6e6` | Add `LINUX_PM_STATE 0x09`; BL31 v1.44 returned `res.a0=0` for `0x09`, `0x01`, `0x02`, and `0x05`=0 | generic hardware truth |
 | W15 same | :91 "ARM cores and OP-TEE secondary CPUs reinitialize." | no BL32 in the Zlyme FIT; `docs/archive/NOTES.md:66` | `b709719aac5c` | "OP-TEE, when the FIT carries one"; stronger label only after a serial capture | generic hardware truth |
-| W16 same | :168-176 "Historical capture … 1013 patches" | `deep-suspend-phase6.md:430-444`; ROADMAP:1673-1675; LOGBOOK:120 | `b709719aac5c` | Keep it; add a Zlyme block (7.0.2, BL31 v1.44, `.prepare` lines, recovered devices); no standby current measured | generic (observed in Zlyme) |
+| W16 same | :168-176 "Historical capture … 1013 patches" | `phase-06-deep-suspend.md:430-444`; ROADMAP:1673-1675; LOGBOOK:120 | `b709719aac5c` | Keep it; add a Zlyme block (7.0.2, BL31 v1.44, `.prepare` lines, recovered devices); no standby current measured | generic (observed in Zlyme) |
 | W17 same | :215 suspend and DMC "independent but complementary" (fork only) | ROADMAP:1739; LOGBOOK:72 | `21de8081d6e6` | DMC with `center-supply = <&vdd_logic>` coexists with `vdd_logic` off and settles at 324 MHz; DFI patch present in every test | generic hardware truth |
-| W18 same | after :229-240, no Zlyme section; :240 battery estimates are fork-only | `deep-suspend-phase6.md:446-455` | `b709719aac5c` | "Zlyme implementation" section; open questions (PMIC_LP vs `SLPPIN_SLP_FUN`; standby current unmeasured); no 100–120 h claim | implementation + generic |
+| W18 same | after :229-240, no Zlyme section; :240 battery estimates are fork-only | `phase-06-deep-suspend.md:446-455` | `b709719aac5c` | "Zlyme implementation" section; open questions (PMIC_LP vs `SLPPIN_SLP_FUN`; standby current unmeasured); no 100–120 h claim | implementation + generic |
 | W19 `docs/drivers-and-dts.md` | :51 "Not claimed for Zlyme." | same as W2 | `b709719aac5c` | Zlyme enables deep suspend as of that revision | implementation status |
 | W20 `docs/rk3566-reference/datasheet-specs.md` | :103 "understood, but not enabled"; :112 "Zlyme's choice is not recorded here." | DTS `:635-653`; stock DTB `:1260-1273` | `b709719aac5c` | Retitle; stock off, archived fork on, Zlyme off with `ARMOFF_LOGOFF` | implementation (+ stock) |
 | W21 `docs/stock-firmware-and-findings/bsp-and-ddr-findings.md` | :181 "Zlyme's packaging of the same mechanism is not recorded here." | `package/drivers/rk3568-dmc/README.md` | `21de8081d6e6` | External module, modalias autoload, refuses SIP API below `0x101`; 324–1056 MHz and resume observed | implementation status |
@@ -748,7 +748,7 @@ Before the wiki edit: fill in the Phase 10 documentation SHA, land the Zlyme-sid
 - **SD slot 2 UHS (conflict; Zlyme side).** Wiki `board-dts-pmic-ddr-updates.md:140`, `:225`: SDR50 removed from slot 2 because the shared vqmmc limits UHS. Stock DTB: no UHS mode on `fe2c0000`. Zlyme DTS `&sdmmc1` `:1040-1043` enables SDR12–SDR104, and its own comment at `:1031` says "no UHS modes". A runtime change needs Flip testing (issue (j)). On `zlyme44.1-maintenance` those `sd-uhs-*` properties are removed from `&sdmmc1` and `&sdmmc0` is unchanged. The wiki warning stays. Both-slot Flip checks are still required.
 - **Analog stick source in Zlyme comments.** Wiki `docs/hardware/input.md:12`: UART1, not an ADC stick. Zlyme DTS `:36` and `:998` named SARADC ch0 as the joypad source. Comment corrected (this pass).
 - **`vdd_logic` comment in Zlyme DTS.** `:331` "vdd_logic stays on in this image" vs `:651` off in mem suspend, which matches the wiki and stock. Comment corrected (this pass).
-- **Archived suspend driver identity.** Wiki `suspend-and-vdd-logic.md:62`, `:70` and `patch-portability.md:129-171` describe an `rk3568-suspend` node, `rk3568,pm-config`, and `late_initcall_sync`. Zlyme `deep-suspend-phase6.md:56-68`, reading the archived fork at its recorded stamp `d249b09bd9`, found `rockchip,rk3568-suspend` and `module_platform_driver()`. Both cannot describe the same file. This is historical implementation evidence, not physical hardware. Both sides agree on the stock/BSP ABI (`rockchip-suspend`, `rockchip,pm-rk3568`). Wiki-sync later (Phase 10E): the wiki agent re-reads the archive.
+- **Archived suspend driver identity.** Wiki `suspend-and-vdd-logic.md:62`, `:70` and `patch-portability.md:129-171` describe an `rk3568-suspend` node, `rk3568,pm-config`, and `late_initcall_sync`. Zlyme `phase-06-deep-suspend.md:56-68`, reading the archived fork at its recorded stamp `d249b09bd9`, found `rockchip,rk3568-suspend` and `module_platform_driver()`. Both cannot describe the same file. This is historical implementation evidence, not physical hardware. Both sides agree on the stock/BSP ABI (`rockchip-suspend`, `rockchip,pm-rk3568`). Wiki-sync later (Phase 10E): the wiki agent re-reads the archive.
 - **BL31 version label inside the wiki.** `spi-and-boot-chain.md:48` "ROCKNIX BL31 (rkbin v1.44)" vs `stock-firmware-and-findings.md:57` "BL31 v1.45". Zlyme uses v1.44, and all Zlyme suspend and DMC evidence is v1.44. Wiki-internal.
 - Evidence gaps, no conflict: UART1 CTS stays pinned in Zlyme until the wiki has a measurement; `vdd_logic` off without `ARMOFF_LOGOFF` was never tried by Zlyme; the loader/trust match (WO3); OP-TEE (W25). `rtl8733bu.mk:10` and the wiki name different GitHub owners for the same commit `c46aa25e237c`; cite the commit. The `zlyme-radios:13-14` DMC kick comment is not a hardware fact.
 
@@ -798,13 +798,13 @@ On 2026-10-05 the `zlyme44.1-maintenance` column was corrected again for the loc
 
 These were left unchanged on purpose:
 
-- The Phase 9 failure chain in ROADMAP, LOGBOOK, and `product-phase9.md`: the root-sized decode OOM on `7796b98ae752` before `--mmap-dict`, the `4d4b110b32ea` DNS failure during the cheat test, and the per-image acceptance records.
+- The Phase 9 failure chain in ROADMAP, LOGBOOK, and `phase-09-product.md`: the root-sized decode OOM on `7796b98ae752` before `--mmap-dict`, the `4d4b110b32ea` DNS failure during the cheat test, and the per-image acceptance records.
 - `zlyme43` notes: the ROADMAP:13 caveat, ROADMAP:660, and LOGBOOK entries such as :48, :60, :288.
 - Old package, file, and patch names in ROADMAP, LOGBOOK, and research: `rocknix-joypad`, `retrogame_joypad`, `flip-jackd`, `keymon.elf`, `mergerfs`, `Update.pak`, `zlyme_defconfig`, `1012a/b`, archived `1013a/b`, `9998`, `9999`, `RESEARCH-*.md`.
-- Dated defaults in checkpoints: LOGBOOK:276 and `joypad-driver.md:561` (30% rumble), ROADMAP:1841 (quiet-gated splash), `product-phase9.md:320` (ROM-only BIOS rule).
+- Dated defaults in checkpoints: LOGBOOK:276 and `phase-03-joypad-driver.md:561` (30% rumble), ROADMAP:1841 (quiet-gated splash), `phase-09-product.md:320` (ROM-only BIOS rule).
 - `board/my355/post-update.sh:18-23` removals of `Autocal.pak`, `Weston.pak`, `Artwork Scraper.pak`, `Cheat Downloader.pak`, `ScrapeGoat.pak`, and `.config/miyoo-serial-joypad`; `nextui-session:88`, `:377` remove `Update.pak`.
 - `RUFFLE.pak` cleanup: `nextui.mk:146` and `nextui-session:378`.
 - The vendored ZcrapeGoat source keeps upstream ScrapeGoat names (`package/system/zcrapegoat/src`, `src/UPSTREAM`).
 - Archived ROCKNIX notes: `docs/archive/NOTES.md`, `docs/archive/PLAN.md`, `docs/MIGRATION_FROM_NOTES.md`, and the wiki's `docs/implementations/rocknix.md`.
-- Research bodies under their new banners: `performance.md` and `emulators.md` recommendations that were not adopted.
+- Research bodies under their new banners: `preliminary-performance.md` and `preliminary-emulators.md` recommendations that were not adopted.
 - Developer LAN addresses and local paths inside LOGBOOK, research, and archive captures. They stay as capture context and must not be copied into canonical docs or the wiki.
