@@ -113,3 +113,7 @@ Positions below are the Flip silk. "Current" is the stock Zlyme file or the pinn
 ## What this pass changes
 
 PPSSPP, Dolphin's GameCube pad, and AetherSX2's first-run DualShock faces. Shoulders, sticks, Start, and Select stay. Existing user files stay. The global capability map and the RetroArch autoconfig stay.
+
+## After the stock edit
+
+The three stock maps above were corrected in source. `scripts/tests/test_button_layouts.sh` checks the positions, that a custom file survives seeding, that standalone reset restores the PPSSPP seed and leaves a save, and that a second Dolphin launch does not rewrite a saved pad. That test did not press a button on a Flip.

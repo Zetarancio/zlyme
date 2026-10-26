@@ -26,6 +26,8 @@ DOCS = (
     "docs/decisions/0007-pipewire-audio.md",
     "docs/decisions/0008-gpu-and-panvk.md",
     "docs/decisions/0009-portmaster-isolation.md",
+    "docs/decisions/0010-multi-library-ownership.md",
+    "docs/decisions/0011-context-sensitive-button-layouts.md",
     "docs/research/README.md",
     "docs/research/phase-10-documentation-audit.md",
 )

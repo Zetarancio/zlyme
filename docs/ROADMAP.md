@@ -392,9 +392,9 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: In progress, 2026-10-26. 15A and 15B are closed. 15C is next. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image. The PPSSPP save-bind correction, including the source-selection refusal, is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
+Status: In progress, 2026-10-26. 15A, 15B, and 15E are closed. 15C and 15D are open. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image. The PPSSPP save-bind correction, including the source-selection refusal, is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
 
-Objective: correct the documentation against the Phase 14 source, then retest two measured RetroArch issues and prepare the release only after approval.
+Objective: correct the documentation against the Phase 14 source, retest two measured RetroArch issues, match original-system face buttons where the mapping is proved, and prepare the release only after approval.
 
 ### 15A. Documentation inventory and scope
 
@@ -406,8 +406,16 @@ Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire bo
 
 ### 15C. GitHub issues #2 and #3
 
-Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase-15c-retroarch-input-audio.md`. No RetroArch, input, audio, or panel-clock change is shipped. Joypad routing stays SDL2 because player order is not an evdev identity. Issue #2 still needs one gpSP session on the installed image.
+Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase-15c-retroarch-input-audio.md`. No RetroArch, input, audio, or panel-clock change is shipped. Joypad routing stays SDL2 because player order is not an evdev identity. SDL2 is not an accepted performance result. The saved panel setting is 60 Hz. That is the requested mode name, not a measured scanout rate. Issue #2 still needs one gpSP session on the installed image.
 
-### 15D. Final validation and zlyme44.4 release preparation
+### 15D. Original-system button layouts
+
+Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. Stock PPSSPP, GameCube, and PlayStation 2 faces were corrected in source and covered by `scripts/tests/test_button_layouts.sh`. That is not a button test on the Flip. Flycast's generated map and the cores marked not verified are still open. ADR 0011 stays proposed.
+
+### 15E. Research names and architectural decisions
+
+Status: Closed, 2026-10-26. Research files use the phase prefix in `docs/WRITING.md`. ADR 0010 records per-library ownership. ADR 0011 records contextual face buttons and remains proposed.
+
+### 15F. Final validation and zlyme44.4 release preparation
 
 Status: Planned. Reconcile the final source, documentation, runtime, provenance, licensing, release notes, and artifact identities. Do not publish without explicit approval.
