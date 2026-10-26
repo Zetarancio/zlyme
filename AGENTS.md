@@ -126,6 +126,8 @@ Do not create a generic abstraction solely because a second device might exist s
 
 Before changing code:
 
+For a nontrivial bug fix or design choice, follow the upstream-first procedure in `docs/UPSTREAMS.md`. A typo, a comment, or an obviously local mistake does not require that comparison.
+
 1. Read the relevant implementation and adjacent files.
 2. Search for existing helpers and conventions.
 3. Identify the smallest change that solves the problem.

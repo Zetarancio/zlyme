@@ -392,21 +392,21 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: In progress, 2026-10-26. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image.
+Status: In progress, 2026-10-26. 15A and 15B are closed. 15C is next. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image.
 
 Objective: correct the documentation against the Phase 14 source, then retest two measured RetroArch issues and prepare the release only after approval.
 
 ### 15A. Documentation inventory and scope
 
-Status: In progress. Audit every tracked documentation file against the source, record which document owns each fact, and correct statements that describe a retired implementation as current.
+Status: Closed, 2026-10-26. The inventory is `docs/research/documentation-audit-phase15.md`. Current-state contradictions it names were corrected in the owning documents. Vendored licenses, package prose, and USB evidence were not rewritten.
 
 ### 15B. Documentation reconciliation and ADRs
 
-Status: Planned. Move chronological evidence out of `docs/ARCHITECTURE.md` into its existing owner. Add ADRs for PipeWire ownership, GPU selection, and PortMaster isolation. Put upstream-first bug-fix guidance in `docs/UPSTREAMS.md`.
+Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire boot and the version-independent DMC module path. The retired PulseAudio and BlueALSA text is in `docs/research/audio-phase14.md`. ADR 0007, 0008, and 0009 record the audio, GPU, and PortMaster decisions. The upstream-first procedure is in `docs/UPSTREAMS.md`.
 
 ### 15C. GitHub issues #2 and #3
 
-Status: Planned. Retest the measured RetroArch joypad throughput and gpSP audio-refresh results on the PipeWire-era image. Implement only a fix justified by that retest.
+Status: Next. The first step is a read-only investigation of GitHub issues #2 and #3 on the installed `d358bf5` PipeWire image. No fix is proposed until that investigation is done.
 
 ### 15D. Final validation and zlyme44.4 release preparation
 

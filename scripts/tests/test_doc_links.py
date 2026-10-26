@@ -23,6 +23,9 @@ DOCS = (
     "CONTRIBUTING.md",
     "CHANGELOG.md",
     "docs/decisions/0006-root-image-lifecycle.md",
+    "docs/decisions/0007-pipewire-audio.md",
+    "docs/decisions/0008-gpu-and-panvk.md",
+    "docs/decisions/0009-portmaster-isolation.md",
     "docs/research/README.md",
     "docs/research/documentation-audit-phase10.md",
 )
