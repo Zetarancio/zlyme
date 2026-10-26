@@ -29,6 +29,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 export PATH="$work/bin:$PATH"
 export ZLYME_PPSSPP_BINDS="$work/binds"
+export ZLYME_PPSSPP_UNRESOLVED="$work/unresolved"
 export ZLYME_PPSSPP_MOUNTINFO="$work/mountinfo"
 export ZLYME_PM_MOUNTINFO="$work/mountinfo"
 export ZLYME_PM_MOUNTS="$work/mounts"
@@ -352,18 +353,44 @@ grep -q "$work/sd2/PSP/SAVEDATA" "$work/mountinfo" || fail "rollback changed the
 ppsspp_bind_release || fail "the retained bind could not be released later"
 [ "$(id_count "$save")" = 0 ] || fail "the retained bind remained after retry"
 
-# Status 125 does not release a live owned mount.
+# Status 125 marks the session. A later outer launch must not release it.
 : > "$work/mountinfo"
 : > "$work/mounts"
 : > "$work/umount.log"
-run_psp >/dev/null || true
-st=125
-if ! pak_cleanup_failed "$st"; then
-	ppsspp_bind_release || true
-fi
+rm -f "$work/unresolved" "$work/mark"
+cat > "$work/bin/zlyme-pak-spawn" << 'EOF'
+#!/bin/sh
+exit 125
+EOF
+chmod 0755 "$work/bin/zlyme-pak-spawn"
+ZLYME_PAK_SPAWN=$work/bin/zlyme-pak-spawn ZLYME_PAK_BT=0 \
+	run_pak_cmd "$psp" "$work/rom.iso" || true
+[ -e "$work/unresolved" ] || fail "status 125 did not mark the PSP session"
 [ ! -s "$work/umount.log" ] || fail "status 125 released a PPSSPP bind"
-grep -q "$(printf '\t%s' "$save")" "$work/binds" || fail "status 125 dropped the record"
+rm -f "$work/unresolved"
+run_psp >/dev/null || true
+owned=$(id_count "$save")
+[ "$owned" = 1 ] || fail "the PSP session did not acquire a save bind"
+ppsspp_mark_unresolved
+: > "$work/umount.log"
+mkdir -p "$work/GB.pak"
+printf '%s\n' '#!/bin/sh' 'exit 0' > "$work/GB.pak/launch.sh"
+chmod 0755 "$work/GB.pak/launch.sh"
+ZLYME_PAK_SPAWN=$work/bin/zlyme-pak-spawn ZLYME_PAK_BT=0 \
+	run_pak_cmd "$work/GB.pak/launch.sh" || true
+[ ! -s "$work/umount.log" ] || fail "a later pak released the unproved PSP binds"
+[ "$(id_count "$save")" = "$owned" ] || fail "a later pak changed the PSP bind"
+[ -e "$work/unresolved" ] || fail "a later pak cleared the unproved PSP session"
+rm -f "$work/mark"
+set +e
+run_psp
+st=$?
+set -e
+[ "$st" != 9 ] || fail "PPSSPP started during an unproved session"
+[ "$(id_count "$save")" = "$owned" ] || fail "the refused PSP launch changed the bind"
+ppsspp_clear_unresolved
 ppsspp_bind_release || fail "cleanup after the unresolved session failed"
+[ "$(id_count "$save")" = 0 ] || fail "the confirmed cleanup left a PSP bind"
 
 # Unrelated mounts stay.
 printf '%s\n' \

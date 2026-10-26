@@ -100,6 +100,7 @@ files=(
 	usr/bin/aethersx2
 	usr/share/drastic/config/drastic.cfg
 	usr/share/zlyme/emu-defaults/ppsspp.ini
+	usr/share/zlyme/emu-defaults/controls.ini
 	usr/share/zlyme/emu-defaults/flycast/emu.cfg
 	usr/share/nextui/paks/Emus/PSP.pak/launch.sh
 	usr/share/nextui/paks/Emus/DC.pak/launch.sh
@@ -128,6 +129,7 @@ check_copy package/emulators/dolphin-emu/start_dolphin.sh usr/bin/start_dolphin
 check_copy package/emulators/aethersx2/start_aethersx2.sh usr/bin/aethersx2
 check_copy package/emulators/drastic/config/drastic.cfg usr/share/drastic/config/drastic.cfg
 check_copy board/my355/fsoverlay/usr/share/zlyme/emu-defaults/ppsspp.ini usr/share/zlyme/emu-defaults/ppsspp.ini
+check_copy board/my355/fsoverlay/usr/share/zlyme/emu-defaults/controls.ini usr/share/zlyme/emu-defaults/controls.ini
 check_copy board/my355/fsoverlay/usr/share/zlyme/emu-defaults/flycast/emu.cfg usr/share/zlyme/emu-defaults/flycast/emu.cfg
 check_copy package/system/nextui/paks/Emus/PSP.pak/launch.sh usr/share/nextui/paks/Emus/PSP.pak/launch.sh
 check_copy package/system/nextui/paks/Emus/DC.pak/launch.sh usr/share/nextui/paks/Emus/DC.pak/launch.sh

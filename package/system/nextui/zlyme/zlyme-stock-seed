@@ -85,6 +85,8 @@ seed_standalones() {
 		"$STORAGE/.config/nextui/$_plat/.config/flycast/emu.cfg" 0
 	install_cfg "$SHARE/emu-defaults/ppsspp.ini" \
 		"$STORAGE/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" 0
+	install_cfg "$SHARE/emu-defaults/controls.ini" \
+		"$STORAGE/.config/ppsspp/PSP/SYSTEM/controls.ini" 0
 	_drastic=${ZLYME_DRASTIC_SEED:-/usr/share/drastic/config/drastic.cfg}
 	install_cfg "$_drastic" "$STORAGE/.config/drastic/drastic.cfg" 0
 }

@@ -36,6 +36,13 @@ launch_is_flycast() {
 	return 1
 }
 
+launch_is_psp() {
+	case "$1" in
+		*/PSP.pak/launch.sh) return 0 ;;
+	esac
+	return 1
+}
+
 launch_skip_bt() {
 	case "$1" in
 		*/Tools/*|*settings.elf*) return 0 ;;
@@ -536,9 +543,9 @@ if [ -r "$_ppsspp_binds_sh" ]; then
 	. "$_ppsspp_binds_sh"
 fi
 if ! command -v ppsspp_bind_release >/dev/null 2>&1; then
-	ppsspp_bind_release() {
-		return 0
-	}
+	ppsspp_bind_release() { return 0; }
+	ppsspp_session_blocked() { return 1; }
+	ppsspp_mark_unresolved() { return 0; }
 fi
 unset _ppsspp_binds_sh
 
@@ -566,7 +573,11 @@ run_pak_cmd() {
 	else
 		dolphin_bind_release || true
 	fi
-	ppsspp_bind_release
+	if ppsspp_session_blocked; then
+		:
+	else
+		ppsspp_bind_release || true
+	fi
 	_trace=0
 	_trace_exported=0
 	_tw=
@@ -676,7 +687,11 @@ run_pak_cmd() {
 	else
 		dolphin_bind_release || true
 	fi
-	if ! pak_cleanup_failed "$st"; then
+	if launch_is_psp "$_exe" && pak_cleanup_failed "$st"; then
+		ppsspp_mark_unresolved
+	elif ppsspp_session_blocked; then
+		:
+	else
 		ppsspp_bind_release || true
 	fi
 	if [ "$_trace" = 1 ]; then

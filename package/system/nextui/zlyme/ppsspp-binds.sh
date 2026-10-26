@@ -10,6 +10,24 @@ ppsspp_binds_file() {
 	printf '%s\n' "${ZLYME_PPSSPP_BINDS:-/tmp/zlyme-ppsspp-binds}"
 }
 
+ppsspp_unresolved_file() {
+	printf '%s\n' "${ZLYME_PPSSPP_UNRESOLVED:-/tmp/zlyme-ppsspp-unresolved}"
+}
+
+ppsspp_session_blocked() {
+	[ -e "$(ppsspp_unresolved_file)" ]
+}
+
+ppsspp_mark_unresolved() {
+	_pu=$(ppsspp_unresolved_file)
+	mkdir -p "$(dirname "$_pu")" || return 1
+	: > "$_pu"
+}
+
+ppsspp_clear_unresolved() {
+	rm -f "$(ppsspp_unresolved_file)"
+}
+
 ppsspp_load_pm() {
 	if command -v pm_cleanup_owned >/dev/null 2>&1; then
 		return 0
@@ -161,6 +179,10 @@ EOF
 
 ppsspp_prepare() {
 	ppsspp_load_pm || return 1
+	if ppsspp_session_blocked; then
+		echo "ppsspp: previous session was not proved; not starting" >&2
+		return 1
+	fi
 	_pp_reg=$(ppsspp_binds_file)
 	if [ -L "$_pp_reg" ] || [ -d "$_pp_reg" ]; then
 		echo "ppsspp: cannot create the bind record" >&2
@@ -206,6 +228,10 @@ ppsspp_release_path() {
 
 ppsspp_bind_release() {
 	ppsspp_load_pm || return 1
+	if ppsspp_session_blocked; then
+		echo "ppsspp: not releasing an unproved session" >&2
+		return 1
+	fi
 	_br_reg=$(ppsspp_binds_file)
 	if [ -L "$_br_reg" ]; then
 		echo "ppsspp: bind record is a symlink; leaving it" >&2

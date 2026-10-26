@@ -9,6 +9,7 @@ MAP=$ROOT/package/system/inputplumber/zlyme_miyoo_flip.yaml
 RA=$ROOT/board/my355/fsoverlay/usr/share/zlyme/retroarch/retroarch.cfg
 AUTO=$ROOT/package/emulators/retroarch/zlyme/autoconfig/sdl2/Microsoft\ X-Box\ 360\ pad.cfg
 PP=$ROOT/board/my355/fsoverlay/usr/share/zlyme/emu-defaults/ppsspp.ini
+CTRL=$ROOT/board/my355/fsoverlay/usr/share/zlyme/emu-defaults/controls.ini
 DOL=$ROOT/package/emulators/dolphin-emu/start_dolphin.sh
 AE=$ROOT/package/emulators/aethersx2/start_aethersx2.sh
 SEED=$ROOT/package/system/nextui/zlyme/zlyme-stock-seed
@@ -40,11 +41,16 @@ if grep -q input_menu_swap_ok_cancel_buttons "$AUTO"; then
 	fail "the gameplay autoconfig carries the menu swap"
 fi
 
-grep -q 'Circle = 10-189' "$PP" || fail "PPSSPP Circle is not the east button"
-grep -q 'Cross = 10-190' "$PP" || fail "PPSSPP Cross is not the south button"
-grep -q 'Square = 10-188' "$PP" || fail "PPSSPP Square is not the west button"
-grep -q 'Triangle = 10-191' "$PP" || fail "PPSSPP Triangle is not the north button"
-if grep -q 'Cross = 10-189' "$PP"; then
+python3 "$ROOT/scripts/tests/test_ppsspp_controls.py" || fail "upstream controls.ini check failed"
+grep -q 'ButtonPreference = 1' "$PP" || fail "PPSSPP confirm preference is not Cross"
+if grep -q '^\[ControlMapping\]' "$PP"; then
+	fail "ppsspp.ini still carries the controller map"
+fi
+grep -q 'Circle = 10-189' "$CTRL" || fail "PPSSPP Circle is not the east button"
+grep -q 'Cross = 10-190' "$CTRL" || fail "PPSSPP Cross is not the south button"
+grep -q 'Square = 10-188' "$CTRL" || fail "PPSSPP Square is not the west button"
+grep -q 'Triangle = 10-191' "$CTRL" || fail "PPSSPP Triangle is not the north button"
+if grep -q 'Cross = 10-189' "$CTRL"; then
 	fail "PPSSPP Cross is still the east button"
 fi
 grep -q 'Buttons/A = `Button E`' "$DOL" || fail "GameCube A is not south"
@@ -70,8 +76,10 @@ export ZLYME_DRASTIC_SEED="$ROOT/package/emulators/drastic/config/drastic.cfg"
 mkdir -p "$work/storage/.config/ppsspp/PSP/SYSTEM" \
 	"$work/storage/.config/retroarch/config/remaps" \
 	"$work/storage/Saves"
-printf '%s\n' 'CPUSpeed = 222' 'Cross = 10-1' \
+printf '%s\n' 'CPUSpeed = 222' \
 	> "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
+printf '%s\n' 'Cross = 10-1' \
+	> "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"
 printf '%s\n' 'audio_latency = "9"' 'keep-me' \
 	> "$work/storage/.config/retroarch/retroarch.cfg"
 printf '%s\n' 'user remap' \
@@ -80,15 +88,30 @@ printf '%s\n' 'save' > "$work/storage/Saves/game.sav"
 sh "$SEED" seed
 grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
 	|| fail "seed rewrote a custom PPSSPP ini"
+grep -qx 'Cross = 10-1' "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini" \
+	|| fail "seed rewrote a custom controls.ini"
 grep -q 'keep-me' "$work/storage/.config/retroarch/retroarch.cfg" \
 	|| fail "seed rewrote a custom RetroArch configuration"
-rm -f "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
+rm -f "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"
 sh "$SEED" seed
-grep -q 'Cross = 10-190' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
-	|| fail "a missing PPSSPP ini was not restored"
-if grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"; then
-	fail "the restored PPSSPP ini kept the custom speed"
-fi
+grep -q 'Cross = 10-190' "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini" \
+	|| fail "a missing controls.ini was not restored"
+grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
+	|| fail "restoring controls.ini rewrote ppsspp.ini"
+rm -f "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"
+mkdir -p "$work/badshare/emu-defaults"
+cp "$CTRL" "$PP" "$work/badshare/emu-defaults/"
+chmod a-r "$work/badshare/emu-defaults/controls.ini"
+set +e
+ZLYME_STOCK_SHARE="$work/badshare" sh "$SEED" seed >/dev/null 2>&1
+bad=$?
+set -e
+[ "$bad" != 0 ] || fail "an unreadable controls seed was reported as success"
+[ ! -e "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini" ] \
+	|| fail "a failed controls seed left a file"
+grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
+	|| fail "a failed controls seed rewrote ppsspp.ini"
+chmod u+r "$work/badshare/emu-defaults/controls.ini" || true
 
 sh "$SEED" reset-ra
 grep -q 'menu_swap_ok_cancel_buttons = "false"' \
@@ -104,19 +127,21 @@ fi
 grep -q 'user remap' "$work/storage/.config/retroarch/config/remaps/custom.cfg" \
 	|| fail "Reset RetroArch configuration deleted a remap"
 
-printf '%s\n' 'CPUSpeed = 222' \
-	> "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"
+printf '%s\n' 'Cross = 10-1' \
+	> "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"
 mkdir -p "$work/storage/.config/dolphin-emu"
 printf '%s\n' 'custom pad' > "$work/storage/.config/dolphin-emu/GCPadNew.ini"
 export ZLYME_CLEANUP_ROOT="$work/storage"
 export ZLYME_STOCK_SEED="$SEED"
 export ZLYME_LIBRARIES_FILE="$work/none"
 sh "$CLEAN" standalones >/dev/null
-grep -q 'Cross = 10-190' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
-	|| fail "standalone reset did not restore PPSSPP"
-if grep -q 'CPUSpeed = 222' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini"; then
-	fail "standalone reset kept the custom PPSSPP speed"
+grep -q 'Cross = 10-190' "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini" \
+	|| fail "standalone reset did not restore controls.ini"
+if grep -qx 'Cross = 10-1' "$work/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"; then
+	fail "standalone reset kept the custom controller map"
 fi
+grep -q 'ButtonPreference = 1' "$work/storage/.config/ppsspp/PSP/SYSTEM/ppsspp.ini" \
+	|| fail "standalone reset did not restore the Cross preference"
 grep -q 'save' "$work/storage/Saves/game.sav" || fail "standalone reset removed a save"
 if [ -e "$work/storage/.config/dolphin-emu/GCPadNew.ini" ]; then
 	fail "standalone reset left the Dolphin pad file"

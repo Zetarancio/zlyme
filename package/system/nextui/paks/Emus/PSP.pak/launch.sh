@@ -13,14 +13,20 @@ export USERDATA_PATH XDG_CONFIG_HOME
 mkdir -p "$BIOS_PATH/$EMU_TAG" "$SAVES_PATH/$EMU_TAG"
 HOME="$USERDATA_PATH"
 export HOME
-# The stock ini is also copied by zlyme-stock-seed. An existing ini stays.
+# The stock ini and controls.ini are also copied by zlyme-stock-seed.
+# An existing file stays. controls.ini is the controller map.
 SEED=/usr/share/zlyme/emu-defaults/ppsspp.ini
+CTRL=/usr/share/zlyme/emu-defaults/controls.ini
 INI="$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM/ppsspp.ini"
+CONTROLS="$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM/controls.ini"
 mkdir -p "$XDG_CONFIG_HOME/ppsspp/PSP/SYSTEM" \
 	"$SAVES_PATH/PSP/SAVEDATA" "$SAVES_PATH/PSP/PPSSPP_STATE" \
 	"$XDG_CONFIG_HOME/ppsspp/PSP/SAVEDATA" "$XDG_CONFIG_HOME/ppsspp/PSP/PPSSPP_STATE"
 if [ -f "$SEED" ] && [ ! -s "$INI" ]; then
 	cp "$SEED" "$INI"
+fi
+if [ -f "$CTRL" ] && [ ! -s "$CONTROLS" ]; then
+	cp "$CTRL" "$CONTROLS"
 fi
 # exec replaces this shell, so an EXIT trap would not run. pak-launch
 # releases the recorded mount ids outside this process group. A
