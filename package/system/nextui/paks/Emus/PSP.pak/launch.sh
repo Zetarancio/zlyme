@@ -23,8 +23,8 @@ if [ -f "$SEED" ] && [ ! -s "$INI" ]; then
 	cp "$SEED" "$INI"
 fi
 # exec replaces this shell, so an EXIT trap would not run. pak-launch
-# releases the recorded mount ids outside this process group. An
-# A destination that is already mounted refuses the session. It is not adopted.
+# releases the recorded mount ids outside this process group. A
+# destination that is already mounted refuses the session. It is not adopted.
 _ppsspp_binds=${ZLYME_PPSSPP_BINDS_SH:-/usr/share/nextui/bin/ppsspp-binds.sh}
 if [ ! -r "$_ppsspp_binds" ]; then
 	echo "ppsspp: bind helper is missing" >&2
