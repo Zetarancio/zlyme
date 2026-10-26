@@ -406,7 +406,7 @@ Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire bo
 
 ### 15C. GitHub issues #2 and #3
 
-Status: Next. The first step is a read-only investigation of GitHub issues #2 and #3 on the installed `d358bf5` PipeWire image. No fix is proposed until that investigation is done.
+Status: In progress. 15C1 is the read-only investigation in `docs/research/phase15c-retroarch-input-audio.md`. It does not change RetroArch, input, audio, or the panel clock. Implementation waits for a separate decision.
 
 ### 15D. Final validation and zlyme44.4 release preparation
 

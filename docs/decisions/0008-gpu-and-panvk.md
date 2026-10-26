@@ -14,7 +14,7 @@ Direct DRM/KMS remains the normal graphics path (`docs/decisions/0002-direct-kms
 
 Settings → System → Advanced → GPU offers `mali_kbase` and `panfrost`. The default is `mali_kbase`. The choice is `/storage/.config/zlyme/gpu`, and it takes effect on the next boot. `S15gpudriver` loads one kernel module and, for libmali, bind-mounts that stack's EGL, GLES, and GBM libraries over the shared sonames.
 
-`panvk` is not a Settings choice. `zlyme-gpu-env.sh` exports PanVK's Vulkan ICD and `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER` only when the saved value is exactly `panvk`. The `panfrost` value selects Panfrost OpenGL ES and does not export that flag. libmali exports only the Mali ICD.
+`panvk` is not a Settings choice. `zlyme-gpu-env.sh` exports the Mesa PanVK ICD when the saved value is `panfrost` or `panvk` and that ICD file is present. Only `panvk` also exports `PAN_I_WANT_A_BROKEN_VULKAN_DRIVER`. `panfrost` selects Panfrost OpenGL ES and does not export that opt-in. `libmali` exports only the Mali ICD.
 
 The minimal image builds Panfrost GLES and does not build PanVK.
 
