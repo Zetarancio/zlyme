@@ -30,7 +30,9 @@ RetroPad, from the libretro ids and the stock autoconfig `package/emulators/retr
 
 ## Menu convention already in source
 
-RetroArch 1.22.2 `menu/menu_driver.c` uses RetroPad A as OK and RetroPad B as Cancel when `input_menu_swap_ok_cancel_buttons` is false. The stock file sets that to false. OK is east and Cancel is south. Gameplay remaps are not required for the menu.
+RetroArch 1.22.2 registers the file key `menu_swap_ok_cancel_buttons` in `configuration.c`. The C field is `input_menu_swap_ok_cancel_buttons`. A file line that uses the C field name is ignored. `config.def.h` sets `DEFAULT_MENU_SWAP_OK_CANCEL_BUTTONS` to true. `menu/menu_driver.c` then uses RetroPad B as OK and RetroPad A as Cancel. The stock file now sets `menu_swap_ok_cancel_buttons = "false"`, so OK is RetroPad A (east) and Cancel is RetroPad B (south). `ra-run.sh` does not put that key in `--appendconfig`. There is no theme file that sets it. An existing user `retroarch.cfg` is not rewritten by an update. Reset RetroArch configuration copies the stock file over that user file.
+
+Correction, 2026-10-26: the audit above originally said that `input_menu_swap_ok_cancel_buttons = false` already made the menu confirm on the east button. That was wrong. The maintainer played the installed Phase 14P image and saw south confirm and east back, in the standalone RetroArch menu and in the menu while a Game Boy game was loaded. The pinned 1.22.2 sources show why: the shipped key is not registered, so the default true stays in force. That observation is the menu, not a measurement of Game Boy A and B during play. The stock key is corrected in source. It is not hardware-accepted until a candidate that contains it is installed. A saved configuration from the old stock file still has the ignored key until that reset, or until that one line is edited. Reset also replaces the rest of the main RetroArch file.
 
 NextUI confirms on the virtual A button. That is SDL id 0, the east printed A. Settings and the tool presenter use the same A confirm and B back. This pass does not change NextUI or the capability map.
 
@@ -103,7 +105,7 @@ Positions below are the Flip silk. "Current" is the stock Zlyme file or the pinn
 | OpenBOR | OpenBOR v7533 | per game | none | no single pad | no packaged face map | none | no stock file | do not invent one | `openbor.mk` | AMBIGUOUS |
 | Daphne | Hypseus Singe | per game | none | no single pad | no face change in this pass | none | no stock face file | do not invent one | `hypseus-singe.mk` | AMBIGUOUS |
 | Windows | Wine | per program | none | no single pad | no packaged face map | none | prefix is not a controller reset | do not invent one | `wine-amd64.mk` | AMBIGUOUS |
-| RetroArch menu | RGUI | menu, not a console | east confirm, south back | east OK, south Cancel | `input_menu_swap_ok_cancel_buttons = false` | `retroarch.cfg` | Reset RetroArch configuration | none | RetroArch `menu/menu_driver.c` | CORRECT |
+| RetroArch menu | RGUI | menu, not a console | east confirm, south back | east OK, south Cancel | stock `menu_swap_ok_cancel_buttons = false`; the old `input_` key is ignored | `retroarch.cfg` | Reset RetroArch configuration | the registered key, false | `configuration.c`, `config.def.h`, `menu/menu_driver.c` | INCORRECT on the installed image; corrected in source, not yet installed |
 | NextUI and Settings | NextUI | menu | east confirm, south back | east A, south B | virtual button 0 | NextUI and the capability map | not a controller-file reset | none | `zlyme_miyoo_flip.yaml` | CORRECT |
 
 ## Flycast blocker
@@ -113,6 +115,12 @@ Positions below are the Flip silk. "Current" is the stock Zlyme file or the pinn
 ## What this pass changes
 
 PPSSPP, Dolphin's GameCube pad, and AetherSX2's first-run DualShock faces. Shoulders, sticks, Start, and Select stay. Existing user files stay. The global capability map and the RetroArch autoconfig stay.
+
+## Save binds
+
+`start_dolphin.sh` used to bind both save directories and unmount them from an EXIT trap, then `exec` Dolphin. The trap does not run. A later game could keep the previous card's save directories. `DC.pak` stored only the Flycast destination path and the outer cleanup unmounted that path without proving the mount id. Both now use a private mount-id record and the PortMaster identity helper. A destination that is already mounted refuses the launch. Cleanup runs in `pak-launch.sh`, outside the emulator process, and does not run when `zlyme-pak-spawn` returns 125. That 125 also marks the session unresolved so a later launch does not release a session that may still be alive. Host coverage is `scripts/tests/test_save_binds.sh`. Dolphin was not run on the Flip. No Dolphin ROM is required. Flycast's face-button map is still the separate, unfinished item above.
+
+`start_drastic.sh` bind-mounts backup and savestate directories under `/tmp/drastic-run` and unmounts them after DraStic returns. It does not `exec`, so a normal exit unmounts. MENU+START can kill the group before that unmount. That is not the same persistent cross-card config bind, and it is not changed in this pass.
 
 ## After the stock edit
 

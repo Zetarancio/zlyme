@@ -14,7 +14,7 @@ NextUI and Settings confirm on that east button and go back on the south button.
 
 Keep the capability map. Do not swap Xbox A and B globally.
 
-NextUI, Settings, and the RetroArch menu confirm on the east button and go back on the south button.
+NextUI and Settings confirm on the east button and go back on the south button. The RetroArch menu does the same when `menu_swap_ok_cancel_buttons` is false. RetroArch 1.22.2 does not read a file key named `input_menu_swap_ok_cancel_buttons`. Its default for the real key is true, which confirms on the south button. The stock file sets the real key to false. A configuration saved before that change keeps the ignored key until Reset RetroArch configuration, or until that line is edited.
 
 RetroArch gameplay uses the RetroPad positions the core already assigns. A core remap is added only when that core's positions are wrong. The menu swap stays in the main configuration, separate from a core remap.
 

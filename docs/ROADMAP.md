@@ -410,7 +410,7 @@ Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase-15c-retr
 
 ### 15D. Original-system button layouts
 
-Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. Stock PPSSPP, GameCube, and PlayStation 2 faces were corrected in source and covered by `scripts/tests/test_button_layouts.sh`. That is not a button test on the Flip. Flycast's generated map and the cores marked not verified are still open. ADR 0011 stays proposed.
+Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. The RetroArch menu confirmed on the south button on the installed Phase 14P image because the stock file set an unregistered key and the 1.22.2 default is true. The stock file now sets `menu_swap_ok_cancel_buttons = false`. That correction is not hardware-accepted until the candidate that contains it is installed. An existing user file is kept until Reset RetroArch configuration. Stock PPSSPP, GameCube, and PlayStation 2 faces were corrected in source. Dolphin and Flycast save binds are owned by mount id and covered by `scripts/tests/test_save_binds.sh`. Dolphin was not run on the Flip. Flycast's face-button map and the cores marked not verified are still open. ADR 0011 stays proposed.
 
 ### 15E. Research names and architectural decisions
 
