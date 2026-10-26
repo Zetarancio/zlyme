@@ -28,7 +28,7 @@ MENU+START, external-controller priority, and one virtual pad per player stay as
 
 ## Consequences
 
-The stock PPSSPP, GameCube, and PlayStation 2 faces follow this decision. The shared RetroArch autoconfig already places RetroPad A east and B south. DraStic's stock map already places the Nintendo DS diamond on those positions.
+The RetroArch menu half of this decision was observed on installed `a26f96b` after Reset RetroArch configuration: east confirms and south goes back, in NextUI, in the standalone menu, and in the menu while a Game Boy game is loaded. Game Boy gameplay used the same faces. PPSSPP on that image still confirmed on east. It loads `controls.ini`, and the corrected map had been placed in `ppsspp.ini`. That PPSSPP result is a failure of the previous stock file, not acceptance of the PSP layout.
 
 Flycast generates its Dreamcast faces from SDL button names and does not yet follow the Dreamcast positions. Several libretro cores have not had their descriptors read. This decision stays proposed until those gaps are closed or explicitly left as exceptions.
 

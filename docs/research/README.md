@@ -49,4 +49,5 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-14-portmaster-matrix.md](phase-14-portmaster-matrix.md) | 14, 2026-10-23 | PortMaster launch results from the Phase 14 gates. |
 | [phase-14-device-log.md](phase-14-device-log.md) | 14, 2026-10-23 | Device-log reading from the Phase 14 gates. |
 | [phase-14-nextui-theme-manager.md](phase-14-nextui-theme-manager.md) | 14 | Art Book picture ownership. |
-| [phase-15d-button-layouts.md](phase-15d-button-layouts.md) | 15D, 2026-10-26 | Face-button audit. Source reading, not a hardware button test. |
+| [phase-15d-button-layouts.md](phase-15d-button-layouts.md) | 15D, 2026-10-26 | Face-button audit. The RetroArch menu result on a26f96b is in the logbook. PPSSPP's map was not accepted. |
+| [phase-15d-save-bind-ownership.md](phase-15d-save-bind-ownership.md) | 15D, 2026-10-27 | Why the three save-bind scripts stay separate in this pass. |

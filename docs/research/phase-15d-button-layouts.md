@@ -122,6 +122,16 @@ PPSSPP, Dolphin's GameCube pad, and AetherSX2's first-run DualShock faces. Shoul
 
 `start_drastic.sh` bind-mounts backup and savestate directories under `/tmp/drastic-run` and unmounts them after DraStic returns. It does not `exec`, so a normal exit unmounts. MENU+START can kill the group before that unmount. That is not the same persistent cross-card config bind, and it is not changed in this pass.
 
+## PPSSPP controls.ini
+
+Correction, 2026-10-27. The stock `[ControlMapping]` block in `ppsspp.ini` is not the file PPSSPP 1.19.3 loads. `Config::UpdateIniLocation` selects `controls.ini`, and `LoadStandardControllerIni` passes that file to `KeyMap::LoadFromIni`. On the installed `a26f96b` image, after Reset standalone settings, the live `controls.ini` still had `Cross = 10-189`, which is SDL A, the east button. The maintainer saw east confirm and south back in the PPSSPP menu and in play. `ButtonPreference = 1` is `PSP_SYSTEMPARAM_BUTTON_CROSS`. That chooses Cross as the menu confirm button. It does not move Cross onto the south button. A per-game ini can override `ButtonPreference`. The seed does not write those files.
+
+The packaged controller map is now `controls.ini`. Cross is `10-190`, Circle `10-189`, Square `10-188`, Triangle `10-191`. Shoulders, d-pad, Start, Select, and the sticks use the SDL joystick codes from `SDLJoystick.cpp`. A nonempty user `controls.ini` is left in place. Reset standalone settings deletes the PPSSPP system directory and the seed copies both stock files again. This correction is not hardware-accepted.
+
+## Save-bind helper
+
+The three emulator bind scripts still each contain the mount-id sequence. The comparison is `docs/research/phase-15d-save-bind-ownership.md`. PortMaster's helper stays where it is. A later change can put the duplicated emulator sequence in one Zlyme script. This pass only gives PPSSPP the same unresolved-session marker Dolphin and Flycast already use, so a status-125 PSP session is not released by the next pak.
+
 ## After the stock edit
 
 The three stock maps above were corrected in source. `scripts/tests/test_button_layouts.sh` checks the positions, that a custom file survives seeding, that standalone reset restores the PPSSPP seed and leaves a save, and that a second Dolphin launch does not rewrite a saved pad. That test did not press a button on a Flip.

@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-27 — a26f96b menu accepted, PPSSPP map failed
+
+The maintainer installed `zlyme-my355-20261026-a26f96b71ade.tar`. `/boot/zlyme` is `edb12962678dbaa3c41b6d3fe7fd0ca55a97e189bb3bf850df749f6d662c5a8f`. After Reset RetroArch configuration, NextUI, the standalone RetroArch menu, and the RetroArch menu while a Game Boy game was loaded confirm on east A and go back on south B. Game Boy gameplay buttons also behaved as expected. PPSSPP, after Reset standalone settings, still confirms on east and goes back on south in its menu and in play. Its live `controls.ini` maps Cross to `10-189`. That file is what PPSSPP 1.19.3 loads. The stock `ppsspp.ini` map is not. Debugfs was not mounted, so no panel clock was read. No PSP, Dolphin, or Flycast save bind was mounted. This is not acceptance of Issue #2, Issue #3, or the PPSSPP faces.
+
 ## 2026-10-26 — d358bf5 installed
 
 The maintainer installed `zlyme-my355-20261026-d358bf533e79.tar` and reports that it appears to function. A read-only check found `/boot/zlyme` squashfs `e3772c9f0760c494120098cddb5575e195aaa5e57212aaf14def79f68758d10b`, the version string still `zlyme44.3 (2026-10-26)`, and NextUI pin `b0960dcde4d69d32871d6605c354b1b901621eb5`. `libmali` was selected and `mali_kbase` was loaded. InputPlumber was running and the virtual `Microsoft X-Box 360 pad` was present. PipeWire, WirePlumber, and `pipewire-pulse` were ready. No `pulseaudio` or `bluealsa` process was running. `/storage` and `/mnt/sd2` were mounted. The retired AArch64 GL4ES fallback, probe binaries, and unchanged validation PAKs were absent. Settings was the open session, so `nextui.elf` was not the foreground process. DRM debugfs clients were not readable. No kernel oops was present. This is not a game, audio, or controller measurement, and it is not the `zlyme44.4` release.
