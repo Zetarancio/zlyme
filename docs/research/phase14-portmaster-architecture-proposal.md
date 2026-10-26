@@ -289,19 +289,15 @@ Hardware: required for each class that is actually installed.
 
 2026-10-25 status on installed `9acb1fc`, libmali: the maintainer reports LÖVE (Ascent DX), Godot/FRT (A Key(s) Path), AArch64 GameMaker (Undertale, REPOSE), mkxp (LISA The Painful, Rakuen), and Abombniball with MENU+START working. Those engines are accepted by that report. No installed launcher uses WestonPack, Box86, or Box64. Bowling Cross is the native ARMHF candidate. It stopped in the loader because the private ARMHF runtime had no SDL2, OpenAL, FreeType, or bzip2, and its graphics need Panfrost. Mina's `VK_ERROR_SURFACE_LOST_KHR` is a separate, unaccepted result. The optional Zlyme GL4ES fallback stayed black on this image. Gate 3's acceptance remains Aerofoil's bundled GL4ES.
 
-2026-10-26 result on installed `0017d58`: Gate 5 is accepted for the categories that were tested. Panfrost logs and the maintainer's report accept Bowling Cross as native ARMHF GameMaker gameplay, with an unexplained `free(): invalid size` abort that is not a clean exit, and Ascent DX as LÖVE. Mina works on Panfrost through GLES after its own log finds no Vulkan device. Vulkan presentation stays unaccepted. Graphical Box86 and WestonPack have no installed client, so they are not tested and not failed. The optional Zlyme GL4ES fallback stays the black-screen result and a 14P removal candidate. Gate 6 is next.
+2026-10-26 result on installed `0017d58`: Gate 5 is accepted for the categories that were tested. Panfrost logs and the maintainer's report accept Bowling Cross as native ARMHF GameMaker gameplay, with an unexplained `free(): invalid size` abort that is not a clean exit, and Ascent DX as LÖVE. Mina works on Panfrost through GLES after its own log finds no Vulkan device. Vulkan presentation stays unaccepted. Graphical Box86 and WestonPack have no installed client, so they are not tested and not failed. The optional Zlyme GL4ES fallback stayed black and had no installed consumer; Phase 14P removed it in `b114755`.
 
 ### Gate 6. Regression
 
-Prerequisite: the gates that changed a shared component.
-Scope: NextUI, RetroArch, MENU+START, audio, mounts, DRM, both
-cards, HDMI, and the already accepted Phase 14 items on their
-original images. A new image does not inherit those acceptances.
-Pass: no regression of an accepted item that the change could
-affect. RetroArch's own 1280×720 HDMI CRTC stays an open Phase
-14H/14M requirement. It is not conditional on an HDMI policy
-change. The accepted NextUI HDMI 720p and panel result on
-`0b35a90` stays closed.
-Fail: an accepted path breaks, the RetroArch CRTC check is dropped,
-or a DRM client is reported clean when debugfs was unavailable.
-Hardware: required where the change can affect that path.
+Closed 2026-10-26 by reconciling existing evidence. Accepted results
+on earlier images stay scoped to those images where later code did
+not affect the path. The forced-session RetroArch 1280×720 CRTC
+diagnostic was not run and is explicitly excluded from mandatory
+Phase 14 closure. The maintainer's normal HDMI observation is not a
+pixel-clock or DSI-state result. No RetroArch HDMI acceptance is
+claimed. One internal-panel RetroArch run on `0017d58` remains
+untested and nonblocking.

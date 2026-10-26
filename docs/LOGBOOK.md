@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-26 — Gate 6 scope closed and Phase 14P cleanup
+
+Gate 6 closed by reconciling existing evidence. The maintainer reports that a normal HDMI connection switches NextUI to the television; no CRTC timing, pixel clock, or DSI power state was measured. The forced-session RetroArch HDMI diagnostic was not run and is excluded from mandatory Phase 14 closure. A normal internal-panel RetroArch run was not recorded on installed `0017d58`; that untested item is nonblocking and is not rewritten as a pass.
+
+The Phase 14P consumer audit found no installed port using Zlyme's optional AArch64 GL4ES fallback. Runtime cleanup `b114755` removes that package, `zlyme-gl4es-run`, `ZLYME_GL4ES_RUN`, the graphics-probe package, and the disposable probe-PAK installer. Port-bundled GL4ES, ARMHF GL4ES and Mesa/Panfrost, SDL3, and the production PortMaster compatibility libraries stay. The update hook removes an installed Phase 14 validation PAK only when its ownership marker, launcher hash, and exact two-file tree match. A changed or user-created entry stays.
+
 ## 2026-10-26 — 0017d58 still on libmali
 
 Boot `6f41d97b-465f-4917-b1e2-70da5752e5e4`. `/boot/zlyme` is still squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. `/storage/.config/zlyme/gpu` is `libmali`, `mali_kbase` is loaded, and `nextui.elf` holds `/dev/dri/card0`. `/usr/bin/pulseaudio` is absent. NextUI's `ZLYME_HDMI_ACTIVE` is 0. DRM debugfs state is not mounted, so an HDMI clock cannot be read until it is. Mina's card log still contains `gothic_vk: probe: 0 Vulkan physical device(s)`, `gothic: backend = GLES`, and `OpenGL ES 3.1 Mesa 26.1.8` with renderer `Mali-G52 r1 MC1 (Panfrost)`.

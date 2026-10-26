@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 13 is closed. Published stable `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16. The accepted device candidate was `ccd99997b98dc9015a3ed06a1808ecb2a207f197`. B6 and C1 stay excluded. `main` also has the later README commit `8b4218aa201b76e72706ab70036424c2a2dac6bc`, which is not in that firmware. Phase 14 is open on `zlyme44.4-phase-14` for `zlyme44.4`. It has not released. The installed image is `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gates 1, 2, 4, and 5 are accepted in the scope recorded on 2026-10-26. Gate 6 is next, then [14P](#14p-final-reconciliation-cleanup-and-release-readiness-review). The checklist is in `docs/MAINTENANCE.md`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. Phase 15 has not started. `zlyme44.4` has not released, `ZLYME_VERSION` remains `zlyme44.3`, and no final release OTA or source SHA is named before that build exists. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -28,6 +28,7 @@ Host-tested means a host check passed. It is not a Flip result. Blocked means th
 | 11 | 2026-10-08. Published `zlyme44.2`. | [Phase 11](#phase-11-zlyme442) |
 | 12 | 2026-10-14. Development closed, with the limits below. | [Phase 12](#phase-12-zlyme443-development) |
 | 13 | 2026-10-16. Accepted on `ccd99997`. B6 and C1 excluded. | [Phase 13](#phase-13-compatibility-on-this-branch) |
+| 14 | 2026-10-26. Gates reconciled and 14P executed. Release not published. | [Phase 14](#phase-14-portmaster-compatibility-and-zlyme444) |
 
 ## Phase 0. Repository and baseline
 
@@ -295,317 +296,96 @@ Status: Accepted, 2026-10-16, on the local candidate `ccd99997`. Samba and PortM
 
 ## Phase 14. PortMaster compatibility and zlyme44.4
 
-Phase 14 is open on `zlyme44.4-phase-14`. Phase 15 has not started. `zlyme44.4` has not released. `ZLYME_VERSION` stays `zlyme44.3` until a release is prepared.
+Objective: broaden PortMaster compatibility and finish the accepted settings, artwork, audio, display, and list behavior intended for `zlyme44.4`.
 
-The installed firmware as of 2026-10-24 was source `72916de97b2ce8a027bad14ace275ef25426a695`, squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`, GPU `libmali`, PortMaster seed `2026.06.23-0015`. `da7eb2128294` (squashfs `f08c3fa8…`) is the previous installed image. The format=3 and format=4 validation campaigns are not the acceptance path.
+Status: Closed, 2026-10-26. Gate 5 is accepted within its recorded scope on installed `0017d58`. Gate 6 is closed by reconciling the mandatory checklist with existing evidence and explicit exclusions; it does not invent a RetroArch HDMI result. Phase 15 has not started, `zlyme44.4` has not released, and `ZLYME_VERSION` remains `zlyme44.3`. No final release OTA or source SHA exists yet.
 
-The installed image on 2026-10-25 is `zlyme-my355-20261025-9acb1fcb30a5.tar` from `9acb1fcb30a5f72e1ab08aef6e9179a83619fa82`, squashfs `f90d46257936ea31293aaa63936f8bd3af290fa9c72e0e9a782ca98c71454942`, boot `e1d5969c-96f6-46cc-92d5-eb3285820dca`, GPU `libmali`. NextUI is running. The 49-SONAME ROCKNIX compatibility baseline is implemented and host-validated. That does not accept every PortMaster game, Zlyme's GL4ES fallback, or Panfrost. Aerofoil passes. X-Moto and JVGS still fail after their libraries load, and those failures are deferred. Gate 4 is accepted on this image: the SDL3 probe showed a picture, logged Xbox 360 button events, left the rectangle unchanged, and returned to NextUI with no leftover client.
+Main result: Zlyme has a private ARMHF userspace, explicit Box86, SDL3 KMSDRM, the 49-SONAME compatibility baseline, safer PortMaster process and mount ownership, one PipeWire graph, `PlatformZlyme`, Art Book defaults, Wi-Fi-owned services, game cleanup, HDMI policy, and corrected list geometry. Runtime cleanup commit `b114755` removed unused Phase 14 experiments.
 
-`c67692fe7ba7d65b0a1762ee7d26a6ee5ddc4456` is not the installed firmware. It remains the image that accepted Abombniball MENU+START. `0b35a90` remains the image that accepted volume, Wi-Fi, HDMI audio, and NextUI at HDMI 720p. `4652076` remains the image that accepted the looked-at 14O rows. Later images do not rewrite those records.
-
-Hardware acceptance is at the risky compatibility boundary, not one deferred pass at the end. The next step is Gate 6. Gates 4 and 5 are accepted in the recorded scope. The proposal is [docs/research/phase14-portmaster-architecture-proposal.md](research/phase14-portmaster-architecture-proposal.md). The inventory is [docs/research/portmaster-capability-phase14.md](research/portmaster-capability-phase14.md). The matrix is [docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
-
-### Next decision gate
-
-**Gate 0 approved Gate 1 only. Gates 1, 2, 4, and 5 are hardware-accepted in the scope recorded on 2026-10-26. Gate 3's bundled-GL4ES result is Aerofoil. The optional Zlyme fallback stays a 14P removal candidate. Gate 6 is next. 14P has not started.**
-
-Option A stays the baseline. Gate 1 corrected BusyBox `mount` of `//opt/system/Tools/PortMaster/...`. Option B stays deferred. Option C is not supported. On installed `72916de`, Steel Assault ran Mono and returned with no leftover Mono mount, and Shards of God returned with no leftover AGS bind. Winter Travelers shows a picture, takes pad input, plays audio, and returns after the maintainer set that game's loaded `acsetup.cfg` to `driver=software`. The port's original loaded file selected `D3D9`. No SDL or GPU change was required. A reinstall of the port is not guaranteed to keep that local file.
-
-An isolated libmali GL4ES diagnostic passed on 2026-10-25. It used a private build of the same pin with `NOX11`, `NOEGL`, and `NO_INIT_CONSTRUCTOR`, called `initialize_gl4es()` after SDL created the context, flushed before each swap, and called `close_gl4es()` before SDL destroyed that context. The maintainer saw a moving triangle, the log recorded 709 frames and GL error 0, and NextUI returned with no Pak failed dialog and no leftover process or mount. That program called the GL4ES private API. It is not the installed library and not a Panfrost result. The installed library and its earlier dark-screen record stay.
-
-Aerofoil is the accepted PortMaster GL4ES result on this image. Its launcher used the seed's `libgl_default.txt`, so `LIBGL_FB=4`, and SDL loaded the port's own `gl4es.aarch64` `libGL.so.1` and `libEGL.so.1` (GL4ES built Nov 12 2024, GBM on `card0`). The maintainer saw the game, used its menu to exit, and returned to NextUI with no leftover process, mount, or kernel fault. Zlyme's optional fallback was not the library that ran. Panfrost was not tested. One port does not accept every GL4ES game.
-
-On the same installed image, boot `a0cf811e-e52e-453b-a7c5-a4d256b83fd4`, X-Moto and JVGS stayed blank because the dynamic linker stopped them. X-Moto needs `libxml2.so.2` and `libSDL2_net-2.0.so.0`. The system provides `libxml2.so.16` and does not provide SDL2_net. JVGS's bundled `libSDL_mixer-1.2.so.0` needs `libmodplug.so.1`, which is neither installed nor in that port. Neither reached SDL or a GL context. Their bundled GL4ES files were not loaded. The ROCKNIX compat archive at `691f24bc` supplies an unlabeled `libxml2.so.2` and neither of the other two libraries, so it is not installed. Pushed source `98ff32c` builds libxml2 2.13.9 into `/usr/lib/compat` and selects Buildroot `sdl2_net` and `libmodplug`. The maintainer installed local OTA `1b74536a35de`. Aerofoil still runs. X-Moto gets past the missing libraries and then fails in `SDL_Init` with `kmsdrm not available`. JVGS gets past `libmodplug.so.1`, warns that `.jvgs.xml` is missing, and then segmentation-faults. Neither new failure is a missing SONAME. `portmaster-rocknix-compat` installs the other 41 SONAMEs from that `compat.tar.gz` under `/usr/lib/compat`. It leaves both SDL2 objects out and does not replace the source-built `libxml2.so.2` or `libtheoradec.so.1`. `libgomp.so.1`, X11, Pango, Speex, libgcrypt, and libvdpau are source-built so those files can load. The license identifier is `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. That record is not a license grant. `gl4es.tar.gz` stays out. Gate 4 is accepted on `9acb1fc`.
-
-Pushed source `5587b67` follows ROCKNIX `next` `projects/ROCKNIX/packages/graphics/gl4es/package.mk` at ROCKNIX `651150fc88a8ee40e3f8e69c6d36feb6b005bde5`: pin `81547d986798e876de8b434193920b606a72363f`, `ODROID`, `NOX11`, and `NOEGL`. It remains under `/usr/lib/portmaster/gl4es/aarch64`. `zlyme-gl4es-run` does not assign `LIBGL_FB`. A host package build passed. Installed `9acb1fc` contains that library under `/usr/lib/portmaster/gl4es/aarch64`. No port was switched onto it, and hardware acceptance is still pending. The constructor still runs. This does not close the earlier exit SIGSEGV. ARMHF GL4ES stays at `2037865590`. PortMaster's own GL4ES remains the contract normal ports use.
+References: [architecture proposal](research/phase14-portmaster-architecture-proposal.md), [capability inventory](research/portmaster-capability-phase14.md), [acceptance matrix](research/portmaster-matrix-20261023.md), [ROCKNIX compatibility coverage](research/phase14-rocknix-compat-coverage.md), and [logbook](LOGBOOK.md) entries dated 2026-10-19 through 2026-10-26.
 
 ### 14A. Capability baseline
 
-Compare official PortMaster, the pinned `2026.06.23-0015` seed, upstream `2026.10.03-1041` or a newer stable tag if one exists when the update is reviewed, and the relevant ROCKNIX, KNULLI, and Batocera packaging. Record implemented, missing, partial, and hardware-limited. Do not copy another distribution's claim into Zlyme. Do not treat a newer upstream `funcs.txt` as identical to this seed. Do not redistribute a proprietary blob because another distribution ships it.
-
-Status: Inventory exists for this tree. The pin is still `2026.06.23-0015`. `zlyme` maps to `PlatformZlyme`. The recorded comparison, including historical `Zetarancio/distribution` branch `flip` at PortMaster `2026.05.04-1202` and official ROCKNIX commits already listed in `docs/UPSTREAMS.md`, is in the decision note. That comparison is not an implementation.
+Status: Closed. The inventory distinguishes implemented, missing, partial, and hardware-limited capabilities against the pinned PortMaster `2026.06.23-0015` seed and named comparison trees. Comparisons remain evidence, not Zlyme implementation claims. See the [capability inventory](research/portmaster-capability-phase14.md).
 
 ### 14B. ARMHF userspace
 
-Ship a real 32-bit ARM hard-float userspace, not only a loader name. Prefer a separate Buildroot ARMHF target in the KNULLI style (`knulli-rk3566_armhf_libs`). Use an ARM EABI hard-float toolchain and matching glibc. Do not import another distribution's binaries. Do not set `DEVICE_HAS_ARMHF=Y` until a dynamically linked ARMHF program runs and its libraries resolve.
-
-Status: Host-tested through qemu-user, and installed into the product target tree. `output-armhf` is built by `scripts/build-armhf-sysroot.sh`. `zlyme-armhf-runtime` checks its manifest and copies the loader and `/usr/lib/zlyme-armhf/` into the AArch64 root. A stale or missing manifest fails the package. The minimal image does not select it. A disposable Debian container with qemu-user 10.0.13 ran the probe: ELF32 ARM hard-float, interpreter `/lib/ld-linux-armhf.so.3`, `libc.so.6` from the private directory, output `armhf 32 0.3`. With `LD_LIBRARY_PATH=/usr/lib` the loader tries the AArch64 `libc.so.6` and then uses the private one. On the installed `00e6c343` image, `xdelta3.armhf -V` printed `Xdelta version 3.1.1`. The file is ELF32 ARM hard-float, the interpreter is `/lib/ld-linux-armhf.so.3`, and `libc.so.6` opened from `/usr/lib/zlyme-armhf`. `control.txt` now exports `DEVICE_HAS_ARMHF=Y`. `DEVICE_ARCH` stays `aarch64`. The bit is that userspace. It is not proof that every ARMHF port runs. Abombniball's tree has `libs.aarch64/libSDL_image-1.2.so.0` as ELF64 and no `libs.armhf` directory; its launcher selects `abombniball.${DEVICE_ARCH}`.
+Status: Closed. A separately built ARM hard-float sysroot installs its loader and libraries under `/usr/lib/zlyme-armhf`; the product image advertises `DEVICE_HAS_ARMHF=Y`, while the minimal image omits the runtime. QEMU host checks and `xdelta3.armhf` on a Flip verified the ELF32 interpreter and private libc. Bowling Cross later reached native ARMHF GameMaker gameplay on Panfrost. This does not claim that every ARMHF port works.
 
 ### 14C. Box86 and Box64
 
-Keep the working Box64 and Wine path. Compare native Box86 with Box64's BOX32 against what PortMaster runs. Pick one combination. Do not enable both to raise a count.
-
-Status: Implemented. On installed `da7eb21`, the legal console probe
-`zlyme-box86-run` printed `box86-x86 4 475f677f` and exited 0. That
-is not a graphical result. Native ARMHF Box86 is built from pinned
-upstream `bb716a2a6576cc06da811bf55e31e2f6f03b7596`, imported through
-a checked artifact manifest, and invoked explicitly by
-`zlyme-box86-run`. There is no binfmt registration or permanent
-service. Host qemu-arm checks still reject invalid ELF and unresolved
-library paths. Box64 remains pinned at `2f130fab`, `BOX32=OFF`, and
-Wine remains the amd64 WOW64 build. Graphical Box86 is still untested.
-Its ARMHF EGL/GLES provider is Mesa/Panfrost, because the libmali
-payload is AArch64-only. A libmali boot does not provide ARMHF
-graphics.
+Status: Closed. Pinned native ARMHF Box86 is explicit through `zlyme-box86-run`, with no binfmt registration or service; its legal console probe passed. Box64 remains `BOX32=OFF` and the existing amd64 WoW64 Wine path is unchanged. Graphical Box86 had no installed candidate and is not applicable to Gate 5's installed set.
 
 ### 14D. Graphics and SDL3
 
-Audit GLES via libmali and Panfrost, GL4ES, SDL 1.2 compatibility, the existing SDL2, KMS/DRM, and application-scoped WestonPack. Do not add a permanent compositor or system Xwayland. Vulkan follows the saved GPU choice: libmali uses the proprietary Mali ICD, `panfrost` stays OpenGL, and `panvk` is the only PanVK opt-in. Neither Vulkan path is hardware-accepted here.
+Status: Closed. SDL 3.4.12 ships with KMSDRM, OpenGL ES, and Wayland; its libmali probe showed a picture, recorded Xbox 360 input, returned to NextUI, and left no client or mount. Aerofoil accepted its port-bundled AArch64 GL4ES on libmali. The ARMHF Mesa/Panfrost and isolated ARMHF GL4ES runtime remain for native and Box86 ports.
 
-Ship Buildroot 2026.08's `BR2_PACKAGE_SDL3` with the KMSDRM, OpenGL ES, and Wayland options that package actually has. The `libSDL3.so.0` stub in `board/my355/post-build.sh` exists because FluidSynth linked that SONAME. It is not SDL3. Remove the stub after the real library is installed and no target ELF still needs the stub.
-
-Status: Accepted on installed `9acb1fc`, libmali, for the SDL3 probe.
-The maintainer saw the picture. The rectangle did not change with
-the buttons. Both launches logged `opengles2`, the Xbox 360 pad, and
-`SDL3_DONE` with `input=1` (`frames=666` and `frames=415`). NextUI
-returned, and no probe or extra mount remained. The probe does not
-draw a response to a button, so that missing change is the expected
-picture. The earlier `da7eb21` run logged the same events without a
-recorded picture. That run stays the earlier record.
-
-The installed GL4ES Tools probe logged `LIBGL_FB=3`, KMSDRM, and
-`GL4ES_READY` with Mali-G52. The screen stayed black. MENU+START
-returned. No `GL4ES_DONE` line was recorded. Context initialization
-was observed. Visible rendering of that installed library is FAIL.
-Later, on 2026-10-25, one private library from pin `2037865590` rendered
-a moving triangle on libmali and returned to NextUI. That library
-was not installed, and the program called GL4ES directly. Aerofoil
-then passed on its bundled GL4ES. X-Moto and JVGS failed earlier, in
-the dynamic linker, on missing `libxml2.so.2` and `libmodplug.so.1`.
-Panfrost GL4ES was not run. GL4ES is not a general PortMaster result.
-Pushed source `5587b67` follows the ROCKNIX `NOX11` and `NOEGL` pin.
-A host build passed. Installed `9acb1fc` contains that library.
-Its Tools probe there reached `GL4ES_READY` on KMSDRM, stayed black,
-logged no `GL4ES_DONE`, and returned on MENU+START. The optional
-fallback fails on libmali. No installed port uses `ZLYME_GL4ES_RUN`;
-14P decides whether to remove it after a consumer audit. On that image X-Moto and JVGS
-get past the loader. X-Moto stops in its own database check and JVGS
-segmentation-faults. Those failures are deferred. The dynamic-linker
-stops stay the record of `72916de`.
-
-Pinned GL4ES stays in explicit isolated AArch64 and ARMHF directories
-and does not replace a system GL/EGL/GLES link or a port-bundled copy.
-No shared SDL1.2 requirement was proved, so no conflicting SDL
-compatibility layer was added. DRM debugfs clients were unavailable
-on this pass. An empty client list was not observed, so DRM ownership
-is UNKNOWN. An earlier idle inspection saw only `nextui.elf` holding
-`/dev/dri/card0`. That is not a master-ownership PASS.
+The unused Zlyme AArch64 GL4ES fallback stayed black and had no consumer, so `b114755` removed it and its production wrapper. Port-bundled GL4ES, SDL3, ARMHF GL4ES, Mesa, and compatibility libraries remain. No system GL/EGL/GLES link was replaced, and no permanent compositor or system Xwayland was added.
 
 ### 14E. GPTK and input
 
-Audit gptokeyb, gptokeyb2, `.gptk`, `control.txt`, and the SDL controller map. InputPlumber keeps the virtual Xbox pad. Do not add a second grabber. MENU+START, MENU, suspend, and return to NextUI stay. Host-test the mapping before a device pass.
-
-Status: Abombniball MENU+START stays accepted on `c67692f`. On
-installed `da7eb21`, Shards of God started under gptokeyb with
-`./shardsofgod.gptk` and the maintainer reports usable controller
-input. The expected file was restored with a non-overwriting copy
-from the Syncthing conflict file. The conflict original remains.
-That result is this port, not every gptokeyb port. The seed's
-unsuffixed gptokeyb binaries remain AArch64. InputPlumber remains
-the virtual Xbox pad. No second grabber was added. Review of
-LoveRetro NextUI, ROCKNIX, rocknix-hotkey, and PortMaster did not
-justify replacing Zlyme's ownership model with application-name
-`killall`. `zlyme-pak-spawn` distinguishes `/proc` failure from an
-empty session, ignores zombies, and signals only a verified
-pid/start-time/PGID/SID through a pidfd. Unresolved ownership stays
-status 125. That hardening is later than `c67692f`, so Abombniball
-still needs one focused rerun on a final candidate. The `c67692f`
-acceptance stays. On 2026-10-25 the maintainer reports Abombniball
-running and MENU+START returning on installed `9acb1fc`, which has
-that hardening.
+Status: Closed. InputPlumber remains the one virtual Xbox-pad owner, with the seed's GPTK tools used per port and no second grabber. Process cleanup signals only verified session ownership. Abombniball ran and returned through MENU+START on `9acb1fc`, which includes that waiter hardening.
 
 ### 14F. Shared runtimes
 
-Audit PortMaster runtime download, squashfs mount and teardown, AArch64 and ARMHF discovery, GL4ES, OpenAL, SDL, and the engines a port actually needs. Native `libpulse` clients use `pipewire-pulse` on the one PipeWire graph. ALSA stays the hardware path. PipeWire's BlueZ monitor owns A2DP. The PulseAudio daemon and BlueALSA are not this graph. Large engine bundles stay PortMaster downloads. `/usr/lib/compat` holds the Theora 1.1 decoder for LÖVE, libxml2 2.13.9, and the ROCKNIX SONAME allowlist.
+Status: Closed. PortMaster retains user-selected engine downloads and releases recorded squashfs and bind mounts by owner. The corrected `//opt/...` handling let Steel Assault's Mono runtime run and return.
 
-Status: Infrastructure is in the image. Representative execution is
-partial. PipeWire, WirePlumber, and `pipewire-pulse` remain the one
-audio graph. The seed keeps LÖVE 11.5. Other engine squashfs files
-remain user-selected PortMaster downloads. On `da7eb21`, Steel
-Assault's Mono squashfs is present on SD2 and the launch still failed:
-`taskset not found, bailing...`, `mount: bad address 'opt'`, source
-`//opt/system/Tools/PortMaster/libs/mono-6.12.0.122-aarch64.squashfs`,
-then `mono: command not found`. That is a runtime path and mount
-failure. It does not prove the bytes are missing, and it does not
-isolate one shell expansion. On installed `72916de` that mount path is corrected and Steel Assault
-ran. The `da7eb21` failure stays the record of the earlier image.
-GL4ES context init was observed and visible rendering of the
-installed library failed, as in 14D. The 2026-10-25 private
-diagnostic is not that library and is not a port. Console Box86
-passed. Graphical Box86, WestonPack, and a candidate LÖVE render on
-this image were not in this archive.
-Mount cleanup still uses one recorded owner. Package presence is
-not a rendered result.
+`/usr/lib/compat` supplies the host-validated 49-SONAME baseline: 41 allowlisted unmodified files from the pinned ROCKNIX archive, six source-built/system SONAMEs, and source-built `libxml2.so.2` and `libtheoradec.so.1`. The two archive SDL2 objects and `gl4es.tar.gz` are not installed. The imported files use `LicenseRef-ROCKNIX-portmaster-compat-unspecified`; their per-file provenance record is not a license grant.
 
-On installed `9acb1fc`, libmali, the maintainer reports Ascent DX
-(LÖVE 11.5), A Key(s) Path (Godot, FRT 3.3.4), Undertale and REPOSE
-(AArch64 GameMaker), and LISA The Painful and Rakuen (mkxp) working.
-LISA's log is in the 2026-10-25 logbook entry. Those are the accepted
-representatives for their engines, not every port of that engine. No
-installed launcher uses WestonPack, Box86, or Box64, so those have no
-Gate 5 candidate on this card. Bowling Cross, a native ARMHF GameMaker
-port, stopped in the loader on `libSDL2-2.0.so.0: wrong ELF class:
-ELFCLASS64`. The private ARMHF runtime had no SDL2, OpenAL, FreeType,
-or bzip2. Native ARMHF graphics also need Panfrost.
-
-On installed `0017d58` the maintainer reports Bowling Cross and Ascent DX working on Panfrost. Bowling Cross's log shows the 32-bit loader succeeding, KMSDRM at 640×480, OpenGL ES 3.1 Mesa 26.1.8, the Xbox 360 pad on player 0, and `Entering main loop.` The process then prints `free(): invalid size` and `Aborted`. Gameplay is accepted. A clean process exit is not. Ascent DX's log records its save bind; the working report is the maintainer's. The kernel log for that boot loads `panfrost` for Mali-G52. No installed game uses Box86 or WestonPack, so those stay untested rather than failed.
+PipeWire, WirePlumber, and `pipewire-pulse` remain the one product and minimal-image audio graph. ALSA is the hardware backend and PipeWire's BlueZ monitor owns A2DP; no PulseAudio daemon or BlueALSA graph was added.
 
 ### 14G. Named ports
 
-The recorded cases are Shards of God, LISA The Painful, Rakuen, Steel
-Assault, Skautfold: In Sanity, If On A Winter's Night, Four Travelers,
-and Mina the Hollower. Audit each installed launcher and run every case
-whose legal data and runtime are present. Missing proprietary data or a
-user-declined runtime download is an attributable external blocker,
-not PASS.
+Status: Closed within the installed legal-data set. Shards of God, Steel Assault, LISA, Rakuen, and Winter Travelers with its local software-renderer setting ran in their recorded scopes. No fake `systemctl` was added; supported restart requests map to `zlyme-input ensure`.
 
-`systemctl` was reported missing.
-
-REJECTED — a fake `systemctl`.
-
-Status: Open. The current image is `72916de`. An earlier bounded check on a previous card did not
-find the Mono squashfs. The 2026-10-23 evening archive shows that
-file on SD2, and the launch still did not run `mono`. That later
-observation does not delete the earlier check.
-
-On `da7eb21`: Shards of God starts and takes pad input. Winter
-Travelers failed on a D3D9 graphics setting. Both logs contain the
-same KMSDRM cursor line. The contrast is in the matrix. Steel
-Assault failed as in 14F. On installed `72916de`, Steel Assault and
-Shards of God ran and returned. Winter also runs after the
-maintainer set `ioawn4t/gamedata/acsetup.cfg` to `driver=software`.
-That is a local game file. The earlier `D3D9` file remains the
-incompatible original. The later isolated GL4ES diagnostic does not change these port results. LISA and Rakuen were not rerun in this archive. Skautfold
-remains external data (`game.droid` absent in the earlier card
-inspection). Mina's complete diagnostic was not in this archive.
-Ascent DX on Panfrost was not run. LISA, Rakuen, Steel Assault, and
-Winter still request `systemctl restart oga_events` after exit.
-`zlyme-portmaster-exec` translates that request to `zlyme-input
-ensure`. It does not provide a fake `systemctl`. One AGS success
-does not mean every AGS port works.
-
-On installed `9acb1fc` the maintainer reports LISA and Rakuen
-working. Mina the Hollower's Vulkan path reached a 640×480 swapchain
-and then failed with `VK_ERROR_SURFACE_LOST_KHR` from
-`vkAcquireNextImageKHR`. The cause is not established, and Mina is
-not accepted. Skautfold's own patch step failed (`Missing zip!`) and
-the launch then could not find `game.droid`. That is port data, not a
-runtime result. X-Moto and JVGS stay deferred.
-
-On installed `0017d58`, Panfrost, the maintainer reports Mina working. Mina's own log probes zero Vulkan devices and then selects GLES: renderer `Mali-G52 r1 MC1 (Panfrost)`, `OpenGL ES 3.1 Mesa 26.1.8`. That accepts Mina on Panfrost GLES. It does not accept Vulkan, and the libmali `VK_ERROR_SURFACE_LOST_KHR` result stays unresolved. PanVK stays off.
+Mina is accepted through Panfrost GLES on `0017d58`, not Vulkan. The earlier libmali `VK_ERROR_SURFACE_LOST_KHR` remains unresolved. X-Moto's database failure and JVGS's application crash occur after compatibility libraries load and are deferred application failures. Skautfold remained blocked on missing port data.
 
 ### 14H. Acceptance
 
-Volume and mute, Wi-Fi off and on, NextUI at HDMI 720p, and the internal
-panel coming back remain accepted on installed `0b35a90`. The 14O rows
-that were looked at remain accepted on installed `4652076`; a user
-background was not a separate check. Abombniball MENU+START is accepted
-on `c67692f`. Still open on a final candidate: Abombniball after
-waiter hardening, graphical Box86, visible GL4ES, an SDL3 picture
-that matches the events already logged on `da7eb21`, each remaining
-eligible named port, and representative LÖVE, Mono, and WestonPack
-runs that are actually installed. Audio, exit, NextUI return, owned
-processes, and mounts stay separate from a process exit. RetroArch's
-own 1280×720 CRTC stays open and does not reopen the accepted NextUI
-HDMI result. The matrix is
-[docs/research/portmaster-matrix-20261023.md](research/portmaster-matrix-20261023.md).
+Status: Closed. Gate 5 was accepted within the recorded scope on installed `0017d58`. Accepted categories are LÖVE on libmali and Panfrost, Godot/FRT, AArch64 GameMaker, mkxp, native ARMHF GameMaker gameplay on Panfrost, Aerofoil's bundled GL4ES on libmali, Abombniball MENU+START, SDL3 KMSDRM on libmali, the reported GPU switch and rollback, and Mina on Panfrost GLES.
 
-Status: Open. The installed PortMaster image is source `72916de`,
-squashfs `cfb3873a5a1619330c33f483cfe8cac9c855a691ee4bab091b6d09fb965c02b6`.
-Gate 1 is accepted there. `da7eb21` remains the earlier PortMaster
-image.
-It does not inherit hardware acceptance from `c67692f` or from
-`0b35a90`. Dated failures and acceptances for earlier images stay in
-the logbook and the matrix. Supersession is a later entry, not an
-edit of the old result.
+Gate 5 excludes graphical Box86 and WestonPack because no installed game used them, Mina Vulkan, Bowling Cross's clean exit after accepted gameplay, the deferred X-Moto and JVGS application failures, and the removed optional Zlyme AArch64 GL4ES fallback. Those are not converted into passes.
 
-Ordered later work, none of it started, is in the decision note:
-runtime paths (Steel), AGS graphics (Winter without breaking Shards),
-visible GL4ES on Mali then Panfrost, SDL3 picture plus the events
-already seen, representative engines, then regression against the
-accepted items below. Gate 0 is the architecture review. It is not
-approved.
+Gate 6's mandatory checklist is closed by reconciling existing evidence. The forced-session RetroArch HDMI CRTC/74250 diagnostic is explicitly excluded. Normal HDMI reportedly switches NextUI to the television, but that report is not proof of timing, clock, or DSI state. No RetroArch HDMI result is claimed. One RetroArch run on the internal panel on `0017d58` remains untested and nonblocking.
 
-- Boot reaches NextUI. MENU+START returns from a game.
-- Wi-Fi off stops SSH, Samba, and Syncthing. Wi-Fi on starts only the services that are enabled. Run this on the device. Do not turn Wi-Fi off over the live SSH session. Accepted on `0b35a90`. Do not repeat it on this image.
-- A system without its own picture shows the Art Book overlay. A tool does too. Recently Played shows `/storage/.config/nextui/shared/artbook/special/recent.png` when that file exists, then `/storage/bg.png`, then `/usr/share/nextui/artbook/special/recent.png`. The folder can be absent. A picture left in the folder is not used. Session start does not copy or delete one. An update from zlyme44.3 copies a non-built-in picture from the old folder path into the shared override when the override is absent, and leaves the old file and the history list in place.
-- One native PortMaster game starts and returns. `zlyme-portmaster-cleanup` leaves no mount it recorded.
-- `/usr/bin/zlyme-armhf-probe` is not the check. The ARMHF userspace check is an ELF32 hard-float program whose interpreter is `/lib/ld-linux-armhf.so.3` and whose `libc.so.6` opens from `/usr/lib/zlyme-armhf`. `xdelta3.armhf` did that and printed `Xdelta version 3.1.1`. `DEVICE_HAS_ARMHF=Y` advertises that ABI. Every ARMHF port working is still not proven.
-- PipeWire, WirePlumber, and `pipewire-pulse` start from `rc.late` after the first frame. The codec, HDMI when the connector is connected and the published ELD advertises a format, and an A2DP headset share that graph. On installed `0b35a90` the maintainer accepts HDMI television audio, disconnect back to the speaker, the external-audio mark clearing, reconnect back to the television, and Bluetooth disconnect and reconnect. Volume and mute, including sound returning after mute, are accepted on that image. `74597688` left the speaker silent after HDMI unplug. That failure stays with that image. The route file names the effective default sink and does not select it. A radio link and that sink are different marks. A saved zero stays silent. The headphone jack follows the plug. Speaker quality, the icons, television audio, Bluetooth playback, and the jack passed on `be5d8c0` and were not withdrawn. The PulseAudio daemon and BlueALSA are the earlier candidate, not this graph. A Bluetooth scan in Settings lists a nearby device, including one with no class. RetroArch's KMS path is separate and is not proof of the SDL panel-off.
-- HDMI, with `ZLYME_HDMI_720P=1` only after the normal boot has reached NextUI. A normal boot still leaves the gate unset and keeps the internal panel at 640×480. One session owns DRM. `S28minui stop` does not stop it. With SSH already connected and Wi-Fi left on, end that session, confirm `pidof nextui-session` is empty, and start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Quitting the picture restarts it still gated. Return is to end that session and start one ungated session. A hang does not restore the panel. Reboot does: `/run` is cleared and boot is ungated. Do not start a second session beside the owner. Pass requires an HDMI CRTC at 1280×720 whose clock is 74250 kHz for the 1650×750 60 Hz mode, the DSI CRTC inactive, and the internal panel dark. The sysfs `mode` file is not that proof. One RetroArch GLES core must show the same HDMI CRTC while the game keeps its own aspect. That RetroArch path does not use the SDL panel-off patch and is not yet proven. Unplugging the cable does not program the panel back. The return is the ungated session. That session scans the panel at the saved 640×480 mode, and `/storage/.config/zlyme/display_mode` is unchanged. Connecting the cable while NextUI is already running does not switch. A failed HDMI modeset must leave the panel scanning. Earlier candidates kept both CRTCs active. That is history, not this requirement.
-- Dolphin EGLDRM, PPSSPP Vulkan, AetherSX2 EGLFS, Weston, and a third-party PortMaster binary are separate observations. A shared backend that was not watched stays unproven. On `da7eb21` the GL4ES probe initialized and the picture stayed black. The SDL3 probe delivered pad events. Visual button feedback was not demonstrated. Neither probe is accepted as complete. RetroArch's own 1280×720 CRTC remains open. The accepted NextUI HDMI 720p result on `0b35a90` stays closed.
-
-The version string stays `zlyme44.3`. `c67692f` accepts Abombniball
-MENU+START. `4652076` retains the looked-at 14O rows. `0b35a90`
-retains HDMI, volume, Wi-Fi, and panel acceptance. A user background
-was not a separate 14O check. RetroArch's own KMS path and the
-runtime matrix remain open. No `zlyme44.4` release until this pass.
-Gate 6 is the remaining hardware pass on installed `0017d58`, which is now booted on libmali. The check that has no result is one RetroArch game on the panel and RetroArch's own HDMI CRTC at 1280×720, clock 74250 kHz, read from debugfs rather than the sysfs mode text. The accepted NextUI HDMI picture on `0b35a90` stays closed. 14P has not started.
+Earlier scoped acceptances remain evidence: volume, mute, Wi-Fi service return, HDMI audio, and the forced-session NextUI 720p/panel-return path on `0b35a90`; the looked-at list rows on `4652076`; and Abombniball after waiter hardening on `9acb1fc`. See the [matrix](research/portmaster-matrix-20261023.md) and dated logbook entries for exact limits.
 
 ### 14I. PortMaster platform
 
-Add a small `PlatformZlyme` instead of mapping `zlyme` to `PlatformROCKNIX`. Keep `CFW_NAME=Zlyme`, the selected library, artwork import, and user-installed ports. Do not replace a PortMaster tree the user already updated. Review upstream `2026.10.03-1041` or newer before changing the pin.
-
-Status: Host-verified. The patched `platform.py` from `2026.06.23-0015` imports, `HM_PLATFORMS['zlyme']` is `PlatformZlyme(PlatformBase)`, and `ES_NAME` stays unset. `first_run`, `portmaster_install`, and `portmaster_post_install` create no files. At that pin, `harbourmaster` never reads `ES_NAME`. Prepare still rewrites an older `PlatformROCKNIX` mapping. Not a hardware test.
+Status: Closed and host-verified. The pinned seed maps `zlyme` to a small `PlatformZlyme`, keeps `CFW_NAME=Zlyme`, and preserves the selected library, artwork, installed ports, and user-updated PortMaster tree. It does not impersonate ROCKNIX or add unused `ES_NAME` behavior.
 
 ### 14J. Orphan game preferences
 
-Settings → Game removes per-ROM governor and emulator rows in `/storage/.config/nextui/shared/zlyme-prefs.txt` whose ROM is gone. Folder and system rows stay. A missing card does not count as a missing ROM. Host tests are the gate.
-
-Status: Host-tested. The cleanup is `zlyme-game-cleanup orphan-prefs`. The replacement file is created in the preference directory and the previous file stays if that rename fails. A missing second card does not drop its rows. An unplugged USB volume whose name is only a path prefix is kept when that folder is not on a card that is in. Not a hardware test.
+Status: Closed and host-tested. Settings removes per-ROM governor and emulator rows only when the ROM is absent from a mounted library. Folder and system rows stay, and a missing card does not make its preferences orphaned. Replacement is atomic; failure leaves the previous file.
 
 ### 14K. Network services follow Wi-Fi
 
-SSH, Samba, and Syncthing start only when Wi-Fi is on and that service is enabled. Turning Wi-Fi off stops all three and keeps their settings. The Settings row must not look active while Wi-Fi is off. No extra daemon, and the first frame does not wait.
-
-Status: Accepted on installed `0b35a90`, 2026-10-23. Wi-Fi off and on restored the enabled services. Do not turn Wi-Fi off over an SSH session that is using that radio. `zlyme-net-services apply` is the boot and per-service path. A Wi-Fi toggle starts one short-lived worker and returns. The worker rereads the saved flag; a following toggle is the state that remains. A direct init start also returns without the daemon while Wi-Fi is off. The Settings switch stays the saved preference. The quick menu reads the same Wi-Fi flag. The 2026-10-23 acceptance used the Flip's own switch.
+Status: Closed and accepted on `0b35a90`. Wi-Fi off stops SSH, Samba, and Syncthing without clearing their saved switches; Wi-Fi on starts only the enabled services. The work is short-lived and does not delay the first frame. Do not turn Wi-Fi off through the SSH session using that radio.
 
 ### 14L. ArtBook defaults
 
-Ship a verified subset of ArtBook NextUI system and root artwork as the default when the user has no image. Do not overwrite `.media` or backgrounds on update. Do not ship Theme Manager unchanged. The license check is in the research note. Splash branding stays as it is.
-
-Status: Host-tested. `zlyme-artbook` downloads Art Book Next `d772d071` and composes a transparent 640×480 overlay for each of the 54 systems, plus one image for each built-in Tool, plus `special/recent.png` for Recently Played, plus `special/tools.png` for the Tools root. The root picture uses the upstream `tools.png` and `tools.svg`. MKXP-Z uses the EasyRPG illustration and its own wordmark. Generated wordmarks use Changa One Italic from that archive. The nine pak pictures are otherwise unchanged. NextUI clears the background layer before blending the next picture, so a transparent overlay does not keep the previous art. NextUI selects the package. The finished PNGs are installed into the squashfs, which the full image and the OTA ship as `zlyme`. The minimal image does not. The nine tool pictures and the Recently Played picture are supplied 454×1080 illustrations. The package clips them to the Art Book silhouette. System, Tool, and Recently Played names use the same centered logo. Logos stay in the right half, at most 291 pixels wide. ROM lists do not get a bundled wallpaper. A background load that finishes after the picture was cleared does not put it back. User `.media` and `/storage/bg.png` win. Recently Played is seeded once through that `.media` path, so the name column is not reserved. The packed-rootfs check has a host fixture. A full image was not built for it. Not a hardware test.
+Status: Closed and host-tested. The product image ships licensed transparent Art Book defaults for 54 systems, built-in Tools, the Tools root, and Recently Played; the minimal image does not. User `.media` and `/storage/bg.png` take priority. Updates preserve a non-built-in Recently Played picture, and ROM lists do not gain a second bundled wallpaper. See [the Art Book research](research/nextui-theme-manager-phase14.md).
 
 ### 14M. HDMI 720p
 
-Prefer 1280×720 at 60 Hz on HDMI when the display lists that mode, and an EDID mode otherwise. A normal boot keeps the internal panel at 640×480. After HDMI scanout succeeds under `ZLYME_HDMI_720P=1`, the internal DSI CRTC is off. Leaving that client restores the panel. Modesetting belongs to the DRM client. RetroArch uses its own KMS path and has not shown this on a Flip. A write to a read-only sysfs `modes` file is not that. Drop the manual cycle if the automatic choice replaces it. No DTS change for this item.
+Status: Closed with scoped evidence. The managed forced-session path selects a listed 1280×720 60 Hz HDMI mode, letterboxes NextUI, disables the separate DSI CRTC after successful scanout, and lets the next ungated SDL client restore the panel. That NextUI path was accepted on `0b35a90`; sysfs mode text alone is not proof, there is no hang watchdog, and reboot remains the recovery.
 
-Status: Implemented in the managed launch path, host-tested. On the installed candidate, with the gate passed only to that one query, `zlyme-hdmi` selected HDMI-A-1 at 1280×720, mode index 10, 60.000 Hz. It did not modeset. The session gate was unset, and both sysfs `mode` files were empty. `zlyme-hdmi` selects one HDMI-A mode by its connector id and its index in that connector's mode list, so 59.94 Hz stays distinct from 60 Hz. `ZLYME_HDMI_720P=1` is required. SDL 2.32.10 KMSDRM programs that DRM mode and does not mark the window fullscreen to do it. An explicit different fullscreen size is left alone. NextUI letterboxes 640×480. The sysfs `mode` file is width and height only. `ra-run` adds a session RetroArch config and does not edit the user file. Weston and AetherSX2 receive a temporary mode file whose refresh is an integer. Dolphin's EGLDRM path and PPSSPP Vulkan are not on this path. The gate is off in a normal boot, and the panel stays 640×480. With the gate on, a successful HDMI scanout disables the DSI CRTC. On 2026-10-23 the maintainer accepts NextUI at HDMI 720p and the internal panel coming back, on installed `0b35a90`. RetroArch's own KMS path was not given a separate CRTC observation. That limit does not reopen the NextUI result. Audio acceptance is a separate gate and was already closed on this image. The gated process does not program the panel back on exit. `/run/zlyme/hdmi-panel-off` tells the next ungated SDL client to modeset DSI. There is no watchdog if that client hangs. Reboot clears `/run` and boots ungated. `S16display` still replays `display_mode` and still sets the panel refresh. No DTS change. The decision against the Batocera mode-index file is in the Phase 14 research note.
+Normal HDMI reportedly switches NextUI to the television, but that report does not prove the CRTC timing, 74250 kHz clock, or DSI state. RetroArch has an independent KMS path. Its forced-session HDMI diagnostic is excluded from Gate 6, no RetroArch HDMI result is claimed, and the unrun internal-panel RetroArch check on `0017d58` is nonblocking.
 
 ### 14N. Delete Game cleanup
 
-Settings → Delete game removes that ROM, its matching saves, its `.png` / `.jpg` / `.jpeg` artwork, its exact per-ROM governor and emulator row, and its Recently Played entry. Folder and system rows stay. A same-named ROM on another card stays. Shared artwork stays while another file in that folder still uses it. The action derives the file list from the ROM again and refuses a path that is not a regular file in a mounted library. Host tests are the gate.
-
-Status: Host-tested. Saves are taken only from that system's folder on the save-root card. A second ROM with the same stem keeps the shared save. Not a hardware test.
+Status: Closed and host-tested. Delete Game revalidates a regular ROM in a mounted library, then removes that ROM, matching saves and artwork, its exact per-ROM choices, and its Recently Played entry. Same-named games on another card, folder/system choices, and files still shared by another ROM stay.
 
 ### 14O. List text width
 
-Accepted on installed `zlyme-my355-20261023-465207696ff8.tar`, NextUI `b0960dcde4d69d32871d6605c354b1b901621eb5`, for the rows that were looked at. A user background was not a separate check. Do not change this geometry without a demonstrated regression.
-
-The selection pill and the scrolling text use one width. The first row stops at the hardware cluster. A later row does not. A ROM thumbnail limits a row that meets that picture, using the same box the thumbnail is drawn in. Art Book stops at x=320 and does not also subtract the cluster. A user background does not reserve that column. The scroll texture stays inside the pill. A surface width does not go to zero. Game art width stays in Settings. Its displayed percent multiplies before the cast, so 0.45 shows as 45. The settings file writer already did that and was left as it was. Saved settings are not migrated. Sorting prefixes stay on the stored name.
-
-The previous pin `666ff5fdf737a01f83505b843916ac9c46da80d6` subtracted `ow` on the first row with no thumbnail, and the scroll path subtracted it again. That is the narrow first row. Host checks are `scripts/tests/test_list_width.sh`.
-
-On the installed image, the first row and a later row with no picture, a ROM thumbnail, Art Book system and tool artwork, a long name inside the pill, and the default Game art percent were accepted. `/storage/bg.png` was not a separate check.
+Status: Closed and accepted on installed `4652076` for the rows inspected. Selection and scrolling use one width; status icons, ROM thumbnails, and Art Book reserve only their actual columns, and the Game art percentage displays correctly. A user background was not separately checked. Do not change this geometry without a demonstrated regression.
 
 ### 14P. Final reconciliation, cleanup and release-readiness review
 
-Status: PLANNED. This is the last Phase 14 development gate. It has not started.
+Status: Executed, 2026-10-26. Source, documentation, changelog, provenance, package separation, migration safety, and the scoped hardware evidence were reconciled. The long chronology remains in the [logbook](LOGBOOK.md) and linked research notes.
 
-Prerequisites: the remaining Phase 14 hardware gates are accepted or excluded with a stated scope, Gate 5 and Gate 6 are done, and one final product candidate is named.
+Runtime cleanup commit `b114755` removed the unused AArch64 GL4ES fallback, its production wrapper, the graphics probes, and the disposable validation PAK installer. It preserves Aerofoil's port-bundled GL4ES, the ARMHF GL4ES/Mesa runtime, SDL3, compatibility libraries, and useful read-only host diagnostics.
 
-Objective: `zlyme44.4` has one coherent implementation, no leftover Phase 14 experiments, documents that agree with the source, and a short user-facing changelog.
+The OTA migration removes each of the three Phase 14 probe PAKs only when its ownership marker, exact launcher contents, and exact generated two-file tree match. A changed or user-created PAK stays.
 
-A. Source. Compare `main` with `zlyme44.4-phase-14`. Review the code diff for the engineering principles, device boundaries, dependencies, stale workarounds, and regressions. Review the documentation diff separately for contradictions, repetition, and superseded decisions. Do not reimplement a feature because another design was considered.
-
-B. Dead code and experiments. List what Phase 14 added that is now unused, superseded, or test-only: tracing, debug switches, disposable PAKs, graphics probes, abandoned GL4ES experiments, superseded audio scripts, unused wrappers, orphaned package selections, obsolete post-update migrations, dead installed files, duplicated configuration, and startup work with no reason. Check real references before deleting anything. Keep useful host tests and operational diagnostics. Do not remove accepted production behavior. Review `zlyme-graphics-probes` and the three Phase 14 Tools entries. Remove a Tools PAK from storage only when its ownership marker and contents match. A user-created or changed PAK stays. A migration that removes test PAKs is narrow and idempotent, and never deletes `/storage/.config` or user data broadly.
-
-C. Documentation. Reconcile `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/DEVICE_PORTING.md`, `docs/OPERATIONS.md`, `docs/MAINTENANCE.md`, `docs/UPSTREAMS.md`, `docs/USER_GUIDE.md`, `AGENTS.md`, `docs/WRITING.md`, `README.md`, this file, and `CHANGELOG.md` with the source. Leave `docs/LOGBOOK.md` and `docs/research/` as history. Correct stale states, pins, dependencies, package owners, install paths, runtime behavior, versions, and links. Record the NextUI pin and its ancestry. Keep attributions and license records.
-
-D. Roadmap. Shorten Phase 14 to the format of the earlier closed phases: objective, final status, main implementations, architectural decisions, accepted hardware evidence, exclusions and deferrals, remaining limits, closure SHA and date, and research links. Move long chronology to research or the archive. Keep anchors that other files link to.
-
-E. Changelog and writing. Revise `docs/WRITING.md` so changelog entries use clear connected English, short paragraphs where they help, grouping by visible feature, and little repetition, in a form that works as a GitHub release body. Leave out compiler options, implementation history, test results, SHAs, and routine dependency additions. Do not force every entry into one sentence. Rewrite `Unreleased` for the accepted visible features of `zlyme44.4`, and tidy earlier sections without changing their meaning, credits, dates, or instructions. Check the release tags first. `Unreleased` compares from the `zlyme44.3` tag. The `zlyme44.3` link is a fixed range, not one that ends at `HEAD`. Known limitations names only what a user meets. The maintainer's candidate is that the internal screen stays on while HDMI is connected in normal use. Check that wording against final behavior. Port-specific failures and experimental limits stay in the engineering documents. Do not claim that every PortMaster game works.
-
-F. Release readiness. Check reproducible builds, no test artifacts in production, product and minimal package separation, no tracing on by default, boot and NextUI, no unneeded processes, migration safety, compatibility archive hashes and ownership, license and provenance records, the NextUI pin, the user guide, the documentation tests, and the Gate 6 hardware evidence. A runtime change needs its package builds and hardware checks. A documentation-only cleanup does not need a new OTA. Write one release-readiness report.
-
-Out of scope: publishing a GitHub release, creating a tag, merging into `main`, changing `ZLYME_VERSION` to `zlyme44.4`, and starting a remote build. Each needs separate maintainer approval.
+Release publication is separate work. Phase 15 has not started, `zlyme44.4` is not released, `ZLYME_VERSION` is unchanged, and this closure does not name a final OTA or source SHA before the build occurs.

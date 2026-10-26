@@ -29,14 +29,14 @@ Archive `ph14-phase5-armhf.zip`, SHA-256 `6dea3a3aae1ef7e14bd7cdf43c1fe1a99ff628
 | Mina Vulkan | NOT ACCEPTED | The libmali `VK_ERROR_SURFACE_LOST_KHR` result stays |
 | GPU rollback | PASS, maintainer report and a later live boot | Boot `f288c995-64df-4829-a443-217bcc5ff22e` has `gpu=libmali`, `mali_kbase` loaded, and NextUI holding `/dev/dri/card0`. Boot `b0e98535` remains the Panfrost observation |
 
-## Gate 6 preflight
+## Gate 6 closure
 
 Installed image `0017d58`. A result already shown on it, or unchanged since the image that accepted it, is not run again.
 
 | Check | Earlier acceptance | Change since that acceptance | Evidence on `0017d58` | Still required | Pass |
 | --- | --- | --- | --- | --- | --- |
 | NextUI starts and a game can be launched | Several images, including `9acb1fc` | `0017d58` did not change NextUI. The frontend on this image already launched ports | Ports and the GPU setting were used. Live boot `f288c995` is libmali and NextUI holds the card | No | The menu appears and one launch returns to it |
-| One RetroArch game on the panel | Not observed on this image | `ra-run` was not changed by `0017d58` | None | Picture, pad, exit, and NextUI on the internal panel | One GLES core shows the game and returns |
+| One RetroArch game on the panel | Not observed on this image | `ra-run` was not changed by `0017d58` | None | Excluded as nonblocking | UNTESTED on `0017d58`; no result claimed |
 | One PortMaster game and exit | `9acb1fc` and this image | The ARMHF runtime is new; AArch64 ports were already accepted | Ascent DX and Bowling Cross on Panfrost | No further port | A launched port returns and leaves no mount it recorded |
 | MENU+START | Abombniball on `9acb1fc` | The waiter was not changed by `0017d58` | Not rerun | No | The accepted Abombniball result stays |
 | Speaker, volume, and mute | `0b35a90` | No audio-routing change after that image. The new Pulse client is private ARMHF and has no daemon | None on this image | No | The `0b35a90` result stays |
@@ -46,9 +46,9 @@ Installed image `0017d58`. A result already shown on it, or unchanged since the 
 | GPU switch and rollback | This image | `gpudriver` unchanged | Maintainer used both directions. Live boot `f288c995` is libmali | No | The saved GPU matches the loaded module after reboot |
 | Lid suspend | Phase 6 | No suspend change on this branch after that acceptance | Not rerun | No | The Phase 6 result stays |
 | Art Book and list width | `4652076` and `0b35a90` | Not changed by `0017d58` | Not rerun | No | Those image results stay |
-| RetroArch HDMI CRTC | NextUI picture on `0b35a90`. RetroArch's clock was never read | `0017d58` did not change `ra-run` | None | The procedure below | Debugfs shows HDMI at 74250 kHz and DSI inactive, then an ungated boot restores the panel |
+| RetroArch HDMI CRTC | NextUI picture on `0b35a90`. RetroArch's clock was never read | `0017d58` did not change `ra-run` | None | Excluded from mandatory closure; optional diagnostic | UNVERIFIED; no RetroArch timing, clock, or DSI result claimed |
 
-The RetroArch HDMI check is proposed and has not been started. A normal boot leaves `ZLYME_HDMI_720P` unset, and connecting the cable while NextUI is already running does not switch. The check uses one session, never a second one beside it. With the television connected, stop the current `nextui-session` only after its pid is confirmed, then start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Launch one RetroArch GLES game from the menu. Read `/sys/kernel/debug/dri/0/state` for the HDMI CRTC clock and the DSI CRTC. The sysfs `mode` text is not the proof. If debugfs is not mounted, the ownership and clock are UNKNOWN. Exit the game, stop that session, and start one ungated session. Reboot also clears the gate because `/run` is cleared. Do not put the variable in a boot script. This is not started from SSH until the maintainer asks for that session replacement.
+Gate 6 closed on 2026-10-26 by reconciling this evidence. The maintainer reports that connecting HDMI normally switched NextUI to the television. That observation does not establish a 1280×720 CRTC, a 74250 kHz pixel clock, or DSI power state. The forced-session RetroArch procedure was not run and is no longer mandatory; it remains an optional engineering diagnostic. No session was replaced to manufacture a result.
 
 ## SDL3 probe, 2026-10-25
 

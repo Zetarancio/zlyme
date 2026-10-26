@@ -119,7 +119,6 @@ Buildroot copies a local package's source once and does not notice a later edit.
 | `zlyme-armhf-runtime` | `package/system/zlyme-armhf-runtime` |
 | `zlyme-armhf-probe` | `package/system/zlyme-armhf-probe` |
 | `zlyme-box86` | `package/system/zlyme-box86` |
-| `zlyme-graphics-probes` | `package/system/zlyme-graphics-probes`, `scripts/device/phase14-probe-paks.sh`, `scripts/device/phase14-port-observer.sh`, `scripts/device/phase14-portmaster-inventory.sh`, `scripts/device/phase14-portmaster-validate.sh` |
 
 When the hash of a package's listed paths changes, `build.sh` runs that package's `-dirclean` before the image build. The downloaded NextUI tree is not fingerprinted. Package-only targets do not run this refresh. A missing fingerprint file also dircleans that package once, so the first image build after the entry is added installs the current files.
 

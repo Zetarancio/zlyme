@@ -93,7 +93,7 @@ Folders sit under `Roms/` on any library. BIOS names are inside `Bios/` on any m
 | Windows                 | Wine 11.6 WoW64 via Box64, temporary Weston | `Roms/Windows (WINE)/`                            | `.exe` `.msi` `.bat` `.cmd`                                                  | —                                                                                           |
 
 
-- **PSP:** PPSSPP renders with OpenGL. Vulkan is available when the Mali driver is active and you pick it in PPSSPP. Panfrost turns on Mesa's experimental Vulkan driver. PPSSPP on that driver does not attach the display, so a PSP game was not shown that way.
+- **PSP:** PPSSPP renders with OpenGL. Vulkan is available when the Mali driver is active and you pick it in PPSSPP. The **Panfrost** setting is Mesa OpenGL ES only. The separate experimental **PanVK** setting enables Mesa's Vulkan driver; PPSSPP on that driver did not attach the display, so a PSP game was not shown that way.
 - **Dreamcast:** a new Flycast setup writes a savestate when you quit and loads it the next time that game starts. A Flycast configuration you already have is left as it is, including a setup that does not resume. Hardcore achievements, when that mode is on, leave the savestate unloaded. MENU+START does not write that savestate.
 
 
