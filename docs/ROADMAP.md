@@ -540,11 +540,7 @@ MENU+START. `4652076` retains the looked-at 14O rows. `0b35a90`
 retains HDMI, volume, Wi-Fi, and panel acceptance. A user background
 was not a separate 14O check. RetroArch's own KMS path and the
 runtime matrix remain open. No `zlyme44.4` release until this pass.
-Gate 6 is the remaining hardware pass on installed `0017d58`. The check
-that has no result is RetroArch's own HDMI CRTC at 1280×720, clock
-74250 kHz, read from debugfs rather than the sysfs mode text. The
-accepted NextUI HDMI picture on `0b35a90` stays closed. 14P has not
-started.
+Gate 6 is the remaining hardware pass on installed `0017d58`, which is now booted on libmali. The check that has no result is one RetroArch game on the panel and RetroArch's own HDMI CRTC at 1280×720, clock 74250 kHz, read from debugfs rather than the sysfs mode text. The accepted NextUI HDMI picture on `0b35a90` stays closed. 14P has not started.
 
 ### 14I. PortMaster platform
 

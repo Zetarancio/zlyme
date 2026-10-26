@@ -27,25 +27,28 @@ Archive `ph14-phase5-armhf.zip`, SHA-256 `6dea3a3aae1ef7e14bd7cdf43c1fe1a99ff628
 | Ascent DX | PASS, maintainer report | Log shows the LÖVE save bind |
 | Mina | PASS on Panfrost GLES, maintainer report and card log | `0 Vulkan physical device(s)`, then `backend = GLES`, renderer `Mali-G52 r1 MC1 (Panfrost)` |
 | Mina Vulkan | NOT ACCEPTED | The libmali `VK_ERROR_SURFACE_LOST_KHR` result stays |
-| GPU rollback | PASS, maintainer report | A later live boot, `b0e98535-7461-4d78-babd-051576cb8d5b`, was still Panfrost |
+| GPU rollback | PASS, maintainer report and a later live boot | Boot `f288c995-64df-4829-a443-217bcc5ff22e` has `gpu=libmali`, `mali_kbase` loaded, and NextUI holding `/dev/dri/card0`. Boot `b0e98535` remains the Panfrost observation |
 
 ## Gate 6 preflight
 
 Installed image `0017d58`. A result already shown on it, or unchanged since the image that accepted it, is not run again.
 
-| Check | Earlier acceptance | Change since then | Evidence on `0017d58` | Still required |
-| --- | --- | --- | --- | --- |
-| NextUI starts and launches a game | Several images | NextUI was not changed by `0017d58` | Ports launched, and the GPU setting was used | No |
-| One RetroArch game on the panel | Not this image | RetroArch was not changed by `0017d58` | None | Picture, pad, exit, and NextUI |
-| PortMaster return | `9acb1fc` and this image | ARMHF runtime added | Ascent DX and Bowling Cross | No other port |
-| MENU+START | Abombniball on `9acb1fc` | Waiter unchanged by `0017d58` | Not rerun | No |
-| Speaker, volume, and mute | `0b35a90` | Only a private ARMHF Pulse client was added | None | No |
-| Bluetooth and HDMI audio | `0b35a90` | No routing change in `0017d58` | None | No |
-| SD2 and leftover mounts | Phases 13 and 14 | Unchanged by `0017d58` | Both games came from `/mnt/sd2`; no LÖVE mount remained later | No |
-| GPU switch | This image | `gpudriver` unchanged | Maintainer saw both directions. Live boot `b0e98535` is Panfrost | Reboot to libmali only for a check that names libmali |
-| Lid suspend | Phase 6 | No suspend change | Not rerun | No |
-| Art Book and list width | `4652076`, `0b35a90` | Not changed by `0017d58` | Not rerun | No |
-| RetroArch HDMI CRTC | NextUI picture on `0b35a90`; RetroArch clock never read | `0017d58` did not change `ra-run` | None | Gated session, one game, debugfs clock 74250 kHz, DSI off, then an ungated boot |
+| Check | Earlier acceptance | Change since that acceptance | Evidence on `0017d58` | Still required | Pass |
+| --- | --- | --- | --- | --- | --- |
+| NextUI starts and a game can be launched | Several images, including `9acb1fc` | `0017d58` did not change NextUI. The frontend on this image already launched ports | Ports and the GPU setting were used. Live boot `f288c995` is libmali and NextUI holds the card | No | The menu appears and one launch returns to it |
+| One RetroArch game on the panel | Not observed on this image | `ra-run` was not changed by `0017d58` | None | Picture, pad, exit, and NextUI on the internal panel | One GLES core shows the game and returns |
+| One PortMaster game and exit | `9acb1fc` and this image | The ARMHF runtime is new; AArch64 ports were already accepted | Ascent DX and Bowling Cross on Panfrost | No further port | A launched port returns and leaves no mount it recorded |
+| MENU+START | Abombniball on `9acb1fc` | The waiter was not changed by `0017d58` | Not rerun | No | The accepted Abombniball result stays |
+| Speaker, volume, and mute | `0b35a90` | No audio-routing change after that image. The new Pulse client is private ARMHF and has no daemon | None on this image | No | The `0b35a90` result stays |
+| Bluetooth and HDMI audio | `0b35a90` | No routing change after that image | None | No | The `0b35a90` result stays |
+| DRM owner after a port | This image | Unchanged ownership model | NextUI held the card after the Panfrost runs and on the libmali boot | No | `nextui.elf` holds `/dev/dri/card0` and the game process is gone |
+| SD2 and leftover mounts | Phases 13 and 14 | Unchanged by `0017d58` | Both Panfrost games came from `/mnt/sd2`; no LÖVE mount remained | No | A port mount recorded by the wrapper is gone after return |
+| GPU switch and rollback | This image | `gpudriver` unchanged | Maintainer used both directions. Live boot `f288c995` is libmali | No | The saved GPU matches the loaded module after reboot |
+| Lid suspend | Phase 6 | No suspend change on this branch after that acceptance | Not rerun | No | The Phase 6 result stays |
+| Art Book and list width | `4652076` and `0b35a90` | Not changed by `0017d58` | Not rerun | No | Those image results stay |
+| RetroArch HDMI CRTC | NextUI picture on `0b35a90`. RetroArch's clock was never read | `0017d58` did not change `ra-run` | None | The procedure below | Debugfs shows HDMI at 74250 kHz and DSI inactive, then an ungated boot restores the panel |
+
+The RetroArch HDMI check is proposed and has not been started. A normal boot leaves `ZLYME_HDMI_720P` unset, and connecting the cable while NextUI is already running does not switch. The check uses one session, never a second one beside it. With the television connected, stop the current `nextui-session` only after its pid is confirmed, then start one `ZLYME_HDMI_720P=1 /usr/sbin/nextui-session`. Launch one RetroArch GLES game from the menu. Read `/sys/kernel/debug/dri/0/state` for the HDMI CRTC clock and the DSI CRTC. The sysfs `mode` text is not the proof. If debugfs is not mounted, the ownership and clock are UNKNOWN. Exit the game, stop that session, and start one ungated session. Reboot also clears the gate because `/run` is cleared. Do not put the variable in a boot script. This is not started from SSH until the maintainer asks for that session replacement.
 
 ## SDL3 probe, 2026-10-25
 

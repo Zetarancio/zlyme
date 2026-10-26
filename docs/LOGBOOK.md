@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-26 — libmali rollback confirmed
+
+A later read-only check, boot `f288c995-64df-4829-a443-217bcc5ff22e`, found `/boot/zlyme` still squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. `/storage/.config/zlyme/gpu` is `libmali`, `mali_kbase` is loaded, and `nextui.elf` holds `/dev/dri/card0`. No PortMaster or LÖVE mount remained, and `/usr/bin/pulseaudio` is absent. This is the rollback the maintainer reported. The Panfrost boot `b0e98535-7461-4d78-babd-051576cb8d5b` stays the record of that earlier boot.
+
 ## 2026-10-26 — Gate 5 accepted on 0017d58
 
 Live `/boot/zlyme` is squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`, the root of `zlyme-my355-20261025-0017d580b025.tar`, source `0017d580b025f56e07a30456b64d0122fb4c9803`. The private runtime contains `libSDL2-2.0.so.0`.
