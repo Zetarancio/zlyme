@@ -146,7 +146,7 @@ The Miyoo Flip can use:
 - Panfrost/Mesa;
 - vendor Mali/libmali.
 
-The default is libmali (`mali_kbase`). Settings → System → Advanced → GPU writes `/storage/.config/zlyme/gpu`. `S15gpudriver` reads it and loads one stack before the frontend.
+The default is libmali (`mali_kbase`). Settings → System → Advanced → GPU offers `mali_kbase` and Panfrost and writes that choice to `/storage/.config/zlyme/gpu`. `S15gpudriver` reads it and loads one stack before the frontend. `panvk` is not one of those Settings choices. `zlyme-gpu-env.sh` enables the experimental PanVK driver only when the saved value is exactly `panvk`. Selecting Panfrost does not do that.
 
 They cannot bind the GPU simultaneously.
 
