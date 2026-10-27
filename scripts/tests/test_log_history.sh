@@ -618,4 +618,204 @@ PATH="$nf" ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$nfroot" ZLYME_LOG_MARK="$nfmark" \
 test ! -d "$nfroot/system-0"
 test ! -f "$nfmark"
 
+realflock=$(command -v flock)
+mkdir -p "$work/flockbin"
+cat > "$work/flockbin/flock" << EOF
+#!/bin/sh
+if [ "\${ZLYME_FLOCK_FAIL:-}" = 1 ]; then
+	exit 1
+fi
+exec $realflock "\$@"
+EOF
+chmod 0755 "$work/flockbin/flock"
+
+# Both session files: a failed enable watermark does not copy OFF.
+# The next success records the size. Text written after that is copied.
+both=$work/both-sess
+mkdir -p "$both"
+printf '%s\n' 'OFF-WRAP' > "$both/wrap.log"
+printf '%s\n' 'OFF-TEXT' > "$both/text.txt"
+broot=$work/both-root
+bmark=$work/both-mark
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/both.lock" \
+	ZLYME_SESSION_WRAP="$both/wrap.log" ZLYME_SESSION_TEXT="$both/text.txt" \
+	"$LOGS" start
+test -f "$bmark.wrap.unread"
+test -f "$bmark.text.unread"
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/both.lock" \
+	ZLYME_SESSION_WRAP="$both/wrap.log" ZLYME_SESSION_TEXT="$both/text.txt" \
+	"$LOGS" start
+test ! -f "$bmark.wrap.unread"
+test ! -f "$bmark.text.unread"
+if [ -f "$broot/system-0/session.txt" ]; then
+	grep -q 'OFF-WRAP' "$broot/system-0/session.txt" && exit 1
+fi
+if [ -f "$broot/system-0/next.txt" ]; then
+	grep -q 'OFF-TEXT' "$broot/system-0/next.txt" && exit 1
+fi
+printf '%s\n' 'ON-WRAP' >> "$both/wrap.log"
+printf '%s\n' 'ON-TEXT' >> "$both/text.txt"
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/both.lock" \
+	ZLYME_SESSION_WRAP="$both/wrap.log" ZLYME_SESSION_TEXT="$both/text.txt" \
+	"$LOGS" start
+grep -q 'ON-WRAP' "$broot/system-0/session.txt"
+grep -q 'ON-TEXT' "$broot/system-0/next.txt"
+grep -q 'OFF-WRAP' "$broot/system-0/session.txt" && exit 1
+grep -q 'OFF-TEXT' "$broot/system-0/next.txt" && exit 1
+test ! -d "$broot/system-1"
+
+# A cursor from an earlier on-interval is not a license to copy the
+# off gap after a failed re-enable watermark.
+prior=$work/prior-sess
+mkdir -p "$prior"
+: > "$prior/wrap.log"
+proot=$work/prior-root
+pmark=$work/prior-mark
+penv() {
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$proot" ZLYME_LOG_MARK="$pmark" \
+		ZLYME_LOG_LOCK="$work/prior.lock" \
+		ZLYME_SESSION_WRAP="$prior/wrap.log" ZLYME_SESSION_TEXT="$prior/wrap.log" \
+		"$@"
+}
+penv "$LOGS" start
+printf '%s\n' 'ON-A' >> "$prior/wrap.log"
+penv "$LOGS" start
+grep -q 'ON-A' "$proot/system-0/session.txt"
+penv "$LOGS" stop
+printf '%s\n' 'OFF-GAP' >> "$prior/wrap.log"
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" penv "$LOGS" start
+PATH="$work/wcbin:$PATH" penv "$LOGS" start
+grep -q 'ON-A' "$proot/system-0/session.txt"
+[ "$(grep -c 'ON-A' "$proot/system-0/session.txt")" = 1 ]
+grep -q 'OFF-GAP' "$proot/system-0/session.txt" && exit 1
+printf '%s\n' 'ON-B' >> "$prior/wrap.log"
+PATH="$work/wcbin:$PATH" penv "$LOGS" start
+grep -q 'ON-B' "$proot/system-0/session.txt"
+grep -q 'OFF-GAP' "$proot/system-0/session.txt" && exit 1
+test ! -d "$proot/system-1"
+
+# A stop that cannot lock does not leave the old interval open.
+lost=$work/lost-sess
+mkdir -p "$lost"
+: > "$lost/wrap.log"
+lroot=$work/lost-root
+lmark=$work/lost-mark
+lenv() {
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$lroot" ZLYME_LOG_MARK="$lmark" \
+		ZLYME_LOG_LOCK="$work/lost.lock" \
+		ZLYME_SESSION_WRAP="$lost/wrap.log" ZLYME_SESSION_TEXT="$lost/wrap.log" \
+		"$@"
+}
+lenv "$LOGS" start
+printf '%s\n' 'ON-A' >> "$lost/wrap.log"
+lenv "$LOGS" start
+grep -q 'ON-A' "$lroot/system-0/session.txt"
+ZLYME_FLOCK_FAIL=1 PATH="$work/flockbin:$PATH" lenv "$LOGS" stop
+test -f "$lmark.incomplete"
+test -f "$lmark.on"
+printf '%s\n' 'OFF' >> "$lost/wrap.log"
+PATH="$work/flockbin:$PATH" lenv "$LOGS" start
+grep -q 'ON-A' "$lroot/system-0/session.txt"
+grep -q 'OFF' "$lroot/system-0/session.txt" && exit 1
+test ! -f "$lmark.incomplete"
+printf '%s\n' 'ON-B' >> "$lost/wrap.log"
+PATH="$work/flockbin:$PATH" lenv "$LOGS" start
+grep -q 'ON-B' "$lroot/system-0/session.txt"
+grep -q 'OFF' "$lroot/system-0/session.txt" && exit 1
+[ "$(grep -c 'ON-A' "$lroot/system-0/session.txt")" = 1 ]
+test ! -d "$lroot/system-1"
+
+# weston-closed could not drop the cursor. The next log is not read
+# from that old offset, and the first run stays saved.
+w1=$work/wseq.log
+: > "$w1"
+wroot=$work/wseq-root
+wmark=$work/wseq-mark
+wenv() {
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$wroot" ZLYME_LOG_MARK="$wmark" \
+		ZLYME_LOG_LOCK="$work/wseq.lock" ZLYME_WESTON_LOG="$w1" \
+		"$@"
+}
+wenv "$LOGS" start
+printf '%s\n' 'RUN1-END' > "$w1"
+wenv "$LOGS" start
+grep -q 'RUN1-END' "$wroot/system-0/services/weston.log"
+rm -f "$w1"
+ZLYME_FLOCK_FAIL=1 PATH="$work/flockbin:$PATH" wenv "$LOGS" weston-closed
+test -f "$wmark.weston.stale"
+printf '%s\n' 'RUN2-BEGIN extra' > "$w1"
+PATH="$work/flockbin:$PATH" wenv "$LOGS" start
+grep -q 'RUN1-END' "$wroot/system-0/services/weston.log"
+grep -q 'RUN2-BEGIN' "$wroot/system-0/services/weston.log"
+test ! -f "$wmark.weston.stale"
+
+# Failed weston-closed, then logs off, then logs on over a file that
+# already contains OFF-WESTON. The new watermark must win.
+w2=$work/wgap.log
+: > "$w2"
+groot=$work/wgap-root
+gmark=$work/wgap-mark
+genv() {
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$groot" ZLYME_LOG_MARK="$gmark" \
+		ZLYME_LOG_LOCK="$work/wgap.lock" ZLYME_WESTON_LOG="$w2" \
+		"$@"
+}
+genv "$LOGS" start
+printf '%s\n' 'RUN1-END' > "$w2"
+genv "$LOGS" start
+grep -q 'RUN1-END' "$groot/system-0/services/weston.log"
+rm -f "$w2"
+ZLYME_FLOCK_FAIL=1 PATH="$work/flockbin:$PATH" genv "$LOGS" weston-closed
+test -f "$gmark.weston.stale"
+genv "$LOGS" stop
+printf '%s\n' 'OFF-WESTON' > "$w2"
+genv "$LOGS" start
+genv "$LOGS" start
+grep -q 'OFF-WESTON' "$groot/system-0/services/weston.log" && exit 1
+grep -q 'RUN1-END' "$groot/system-0/services/weston.log"
+printf '%s\n' 'ON-WESTON' >> "$w2"
+genv "$LOGS" start
+grep -q 'ON-WESTON' "$groot/system-0/services/weston.log"
+grep -q 'OFF-WESTON' "$groot/system-0/services/weston.log" && exit 1
+test ! -d "$groot/system-1"
+
+# A normal stop still ends the interval, and a normal weston-closed
+# still drops the cursor.
+ok=$work/ok-sess
+mkdir -p "$ok"
+: > "$ok/wrap.log"
+oroot=$work/ok-root
+omark=$work/ok-mark
+oenv() {
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$oroot" ZLYME_LOG_MARK="$omark" \
+		ZLYME_LOG_LOCK="$work/ok.lock" \
+		ZLYME_SESSION_WRAP="$ok/wrap.log" ZLYME_SESSION_TEXT="$ok/wrap.log" \
+		ZLYME_WESTON_LOG="$work/ok-weston.log" \
+		"$@"
+}
+: > "$work/ok-weston.log"
+oenv "$LOGS" start
+printf '%s\n' 'OK-ON' >> "$ok/wrap.log"
+printf '%s\n' 'OK-W' > "$work/ok-weston.log"
+oenv "$LOGS" start
+grep -q 'OK-ON' "$oroot/system-0/session.txt"
+grep -q 'OK-W' "$oroot/system-0/services/weston.log"
+oenv "$LOGS" stop
+printf '%s\n' 'OK-OFF' >> "$ok/wrap.log"
+oenv "$LOGS" start
+grep -q 'OK-OFF' "$oroot/system-0/session.txt" && exit 1
+rm -f "$work/ok-weston.log"
+oenv "$LOGS" weston-closed
+test ! -f "$omark.weston"
+test ! -f "$omark.weston.stale"
+printf '%s\n' 'OK-W2' > "$work/ok-weston.log"
+oenv "$LOGS" start
+grep -q 'OK-W2' "$oroot/system-0/services/weston.log"
+
 echo "log history ok"

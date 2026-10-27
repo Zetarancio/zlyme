@@ -106,6 +106,13 @@ append_since() {
 	if ! as_size=$(read_size "$as_src"); then
 		return 0
 	fi
+	# Enable could not watermark this file. Record the size and do not
+	# copy the gap, including text from before logging was on.
+	if [ -f "$as_state.unread" ]; then
+		printf '%s\n' "$as_size" > "$as_state"
+		rm -f "$as_state.unread"
+		return 0
+	fi
 	as_off=$(read_off "$as_state")
 	if [ "$as_size" -le "$as_off" ]; then
 		printf '%s\n' "$as_size" > "$as_state"
@@ -288,7 +295,15 @@ capture_weston() {
 		rm -f "$MARK.weston"
 		return 0
 	fi
+	# weston-closed could not drop the previous run's cursor. This file
+	# is a new instance: do not skip its beginning.
+	if [ -f "$MARK.weston.stale" ]; then
+		rm -f "$MARK.weston"
+	fi
 	capture_stream "$_w" "$LOGDIR/system-0/services/weston.log" "$MARK.weston"
+	if [ -f "$MARK.weston" ]; then
+		rm -f "$MARK.weston.stale"
+	fi
 }
 
 # First start of an on-interval discards bytes already in the tmpfs
@@ -299,7 +314,14 @@ begin_capture() {
 	[ -n "$TEXT" ] && note_size "$TEXT" "$MARK.text"
 	for_streams note
 	_w=$(weston_src)
-	[ -n "$_w" ] && note_size "$_w" "$MARK.weston"
+	if [ -n "$_w" ]; then
+		note_size "$_w" "$MARK.weston"
+		# This interval owns the cursor. A stale marker from an earlier
+		# close must not discard it and copy the off-period prefix.
+		if [ ! -f "$MARK.weston.unread" ]; then
+			rm -f "$MARK.weston.stale"
+		fi
+	fi
 	: > "$MARK.on"
 }
 
@@ -550,6 +572,13 @@ start() {
 		: > "$MARK" || true
 		_fresh=1
 	fi
+	# stop could not finish. Drop the old interval and watermark again.
+	# The generation marker stays, so this boot does not rotate twice.
+	if [ -f "$MARK.incomplete" ]; then
+		rm -f "$MARK.on" "$MARK.wrap" "$MARK.text" "$MARK.weston" \
+			"$MARK.weston.stale" "$MARK".svc.* "$MARK".*.unread \
+			"$MARK.incomplete"
+	fi
 	if [ ! -f "$MARK.on" ]; then
 		# `start boot` is only the seed, and only when logs were already
 		# on. Session bytes that exist then were written with logging on.
@@ -596,9 +625,13 @@ stop() {
 	# not copied when logs come back on.
 	if [ -d "$(dirname "$MARK")" ] || mkdir -p "$(dirname "$MARK")" 2>/dev/null; then
 		if ! lock_begin; then
+			# The on-interval is unfinished. The next locked start
+			# watermarks again instead of copying the gap.
+			: > "$MARK.incomplete" 2>/dev/null || true
 			clear_boot_flag
 			return 0
 		fi
+		rm -f "$MARK.incomplete"
 		if [ -f "$MARK.on" ]; then
 			follow_capture || true
 			cap_generation || true
@@ -628,8 +661,11 @@ case "${1:-start}" in
 	start) start "${2:-}" ;;
 	stop) stop ;;
 	weston-closed)
-		lock_begin || exit 0
-		rm -f "$MARK.weston"
+		if ! lock_begin; then
+			: > "$MARK.weston.stale" 2>/dev/null || true
+			exit 0
+		fi
+		rm -f "$MARK.weston" "$MARK.weston.stale"
 		lock_end
 		;;
 	apply) apply ;;
