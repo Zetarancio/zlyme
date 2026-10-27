@@ -23,7 +23,15 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 The maintainer installed `zlyme-my355-20261026-a420f0c00a78.tar` and ran Reset standalone settings. PPSSPP's menu and gameplay now use the south Cross and east Circle layout on the built-in pad. `/boot/zlyme` was `a8c1a8323063ed41fde48ee245300d55d487d5d5d6aff48de992eb35d75e7f17` before the following joypad change. A gpSP log from that image reports no ALSA underrun. It does not measure the panel clock or a PipeWire xrun.
 
-The local candidate that contains the udev joypad path is `zlyme-my355-20261027-e2c80ec6d4eb.tar`, rootfs `3188f2d4a7a7fda6bbfcfa888bc6acbffbf92c22982528a7a73587b9ffe3be96`. It is not installed. No new gameplay sample was taken on it.
+The local candidate that contains the udev joypad path is `zlyme-my355-20261027-e2c80ec6d4eb.tar`, rootfs `3188f2d4a7a7fda6bbfcfa888bc6acbffbf92c22982528a7a73587b9ffe3be96`. It is installed. The source commit `fb0382f` only names that image. It is not the commit the image was built from.
+
+## 2026-10-27 — live launches on e2c80ec
+
+Personal games stay on `/mnt/sd2`. The PSP directory's file count was 12 before and after a launch. One existing PSP file was started from that directory and was not copied. While it ran, PPSSPP's save and state directories were mounts from `mmcblk1p1`, the second card. They were gone after MENU+START. `controls.ini` was unchanged. No unresolved marker remained. The menu-only PPSSPP launch also returned to NextUI.
+
+Legal fixtures created on `/storage/Roms` were `cpu_instrs.gb`, `arm.gba`, and `hbmenu.nds`. Gambatte loaded the Game Boy file. gpSP loaded and ran 4 seconds without an `-EPIPE` line. DraStic, Files, and PortMaster returned to NextUI. PortMaster's `pugwash` checksum did not change. Splore is accepted from the maintainer's report. The same `nextui-session` process stayed up. SIGTERM does not exit `nextui.elf`, because that signal becomes an ignored `SDL_QUIT`. The harness then stopped only that verified frontend pid.
+
+Flycast's Dreamcast face map is deferred past this phase. A correct file would replace the whole generated map, and the joystick name it would have to match was not proven.
 
 ## 2026-10-27 — a26f96b menu accepted, PPSSPP map failed
 

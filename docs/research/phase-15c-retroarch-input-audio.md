@@ -105,3 +105,9 @@ These launchers were compared with their own sources, not by copying RetroArch's
 | Moonlight | SDL gamecontroller | Keep. libevdev is a dependency, not a selected pad backend. |
 
 AetherSX2's `RawInput` key stays false. That switch is the Windows input source. It is not a Linux udev backend. ROCKNIX, KNULLI, and Batocera use udev for RetroArch's normal path. That does not make an SDL application a udev application. No launcher in this list exposes a Linux evdev controller selector that is already the upstream default, so none was added.
+
+## 2026-10-27 — installed image and player 1
+
+`/boot/zlyme` on the Flip is `3188f2d4a7a7fda6bbfcfa888bc6acbffbf92c22982528a7a73587b9ffe3be96`, the `e2c80ec` image. The virtual pad is `/sys/devices/virtual/input/input5`. It has no `device` symlink. `readlink -f` of that missing path still contains `/devices/virtual/`, so the installed `ra-run` selects udev. A RetroArch log from that image says the joypad driver is udev, the physical pad is udev pad 0 (`event4`, `Miyoo Flip Gamepad`, not configured), and `Microsoft X-Box 360 pad` is configured in port 2 (`event5`). There is no reservation reassignment in the log, and the saved configuration still has player 1 at index 0. The session file now also sets `input_player1_joypad_index` to the virtual pad's place in the joystick syspath order. With the corrected `ra-run` bind-mounted, that index was `1`, matching port 2. A second controller with the same name was not connected.
+
+A gpSP launch loaded `gpsp_libretro.so`, initialized ALSA, ran for 4 seconds, and logged no `-EPIPE`. Debugfs was not mounted. `pw-top` is not on the image. That is not a measurement of the pixel clock and not a count of PipeWire xruns.

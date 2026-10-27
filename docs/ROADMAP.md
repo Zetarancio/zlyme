@@ -392,7 +392,7 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: In progress, 2026-10-27. 15A, 15B, 15C, and 15E are closed. 15D stays open for the layouts that are not accepted. 15F is planned. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed image is `zlyme-my355-20261026-a420f0c00a78.tar`. The local candidate `zlyme-my355-20261027-e2c80ec6d4eb.tar` is not installed and is not the release image. The PPSSPP save-bind correction, including the source-selection refusal, is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
+Status: Closed with limitations, 2026-10-27. 15A through 15F are closed. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed image is `zlyme-my355-20261027-e2c80ec6d4eb.tar`, rootfs `3188f2d4a7a7fda6bbfcfa888bc6acbffbf92c22982528a7a73587b9ffe3be96`, built from `e2c80ec6d4eba0549a4b09499961789b4f2aaa87`. Documentation-only `fb0382f` is not that image. On that installed image the udev driver starts, and player 1 stays on udev slot 0, which is the physical pad. The correction that points player 1 at the virtual pad's slot is a later local OTA and was exercised on the device by running that `ra-run` before the image was packed. Flycast's Dreamcast faces stay deferred. A second controller that shares the Xbox name still uses the SDL2 joypad driver for that session, and that arrangement was not replayed with a second physical controller.
 
 Objective: correct the documentation against the Phase 14 source, retest two measured RetroArch issues, match original-system face buttons where the mapping is proved, and prepare the release only after approval.
 
@@ -406,11 +406,11 @@ Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire bo
 
 ### 15C. GitHub issues #2 and #3
 
-Status: Closed, 2026-10-27. Issue #2 is not currently reproduced on the PipeWire image. The supplied gpSP logs report no ALSA underrun. They do not measure the effective panel clock or a PipeWire xrun, and the historical 31,578,948 Hz divider is not claimed to be fixed. Issue #3's joypad path is udev when the only Xbox-named pad is one virtual target, with SDL2 input kept. Another pad with that name keeps the SDL2 joypad driver for that session. The 45.5 / 124.6 figures stay the earlier measurement. No new benchmark was taken.
+Status: Closed, 2026-10-27. Issue #2 is not currently reproduced. A gpSP launch on the installed image initialized ALSA and did not log `-EPIPE`. Debugfs was not mounted, so the effective pixel clock was not read, and no PipeWire xrun count was taken. The historical 31,578,948 Hz divider is not claimed to be fixed. Issue #3's joypad driver is udev. On the installed `e2c80ec` image the virtual pad was autoconfigured on udev port 2 and player 1 stayed at index 0, the physical pad. The session now sets the index from joystick syspath order. Another pad with the Xbox name still keeps the SDL2 joypad driver for that session. The 45.5 / 124.6 figures stay the earlier measurement.
 
 ### 15D. Original-system button layouts
 
-Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. On installed `a420f0c`, after Reset standalone settings, PPSSPP's menu and gameplay use the south Cross and east Circle layout. That built-in-pad result is accepted. RetroArch's menu confirms on east A and goes back on south B, including while a Game Boy game is loaded, and Game Boy gameplay matches that layout. Dolphin has no hardware gate. Flycast's face map and the unread cores stay open. ADR 0011 stays proposed.
+Status: Closed with limitations, 2026-10-27. Accepted on the built-in pad: NextUI and the RetroArch menu confirm on east A and go back on south B, Game Boy gameplay matches that layout, and PPSSPP's menu and gameplay use south Cross and east Circle after Reset standalone settings. Splore is accepted from the maintainer's report. Dolphin has no hardware gate. Flycast's Dreamcast faces stay deferred: a mapping file replaces the whole SDL map, and `SDL_JoystickName` was not shown to be the evdev name. Other cores were not each observed. ADR 0011 stays proposed.
 
 ### 15E. Research names and architectural decisions
 
@@ -418,4 +418,8 @@ Status: Closed, 2026-10-26. Research files use the phase prefix in `docs/WRITING
 
 ### 15F. Final validation and zlyme44.4 release preparation
 
-Status: Planned. Reconcile the final source, documentation, runtime, provenance, licensing, release notes, and artifact identities. Do not publish without explicit approval.
+Status: Closed, 2026-10-27, as an engineering review. This is not publication. The installed rootfs, the live launches, the save-bind result, the deferred Flycast map, and the unchanged version pin are recorded in this phase. Provenance for the preloader is unchanged and is not a new license grant.
+
+## Phase 16. Publication
+
+Status: Not started. Phase 15's engineering review is closed. A version bump, a merge to `main`, a tag, and a published release are not started.

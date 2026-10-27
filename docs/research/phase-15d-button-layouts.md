@@ -110,7 +110,7 @@ Positions below are the Flip silk. "Current" is the stock Zlyme file or the pinn
 
 ## Flycast blocker
 
-`sdl_gamepad.cpp` builds the Dreamcast map from SDL button names when no mapping file is found. `emu.cfg` cannot name the four faces. A replacement file is `SDL_<SDL_JoystickName>.cfg` under the writable mappings directory, or a system config directory, and it replaces the whole map, including the hat and axis codes. Phase 4 recorded the gamecontroller name `Xbox 360 Controller` and the evdev name `Microsoft X-Box 360 pad`. Flycast calls `SDL_JoystickName`. Those two strings were not shown to be the same call. A file under the wrong name would leave the generated map in place. No Flycast face file is added.
+Deferred past Phase 15. `sdl_gamepad.cpp` builds the Dreamcast map from SDL button names when no mapping file is found. `emu.cfg` cannot name the four faces. A replacement file is `SDL_<SDL_JoystickName>.cfg` under the writable mappings directory, or a system config directory, and it replaces the whole map, including the hat and axis codes. Phase 4 recorded the gamecontroller name `Xbox 360 Controller` and the evdev name `Microsoft X-Box 360 pad`. Flycast calls `SDL_JoystickName`. Those two strings were not shown to be the same call. A file under the wrong name would leave the generated map in place. No Flycast face file is added.
 
 ## What this pass changes
 
