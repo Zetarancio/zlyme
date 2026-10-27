@@ -33,6 +33,8 @@ Legal fixtures created on `/storage/Roms` were `cpu_instrs.gb`, `arm.gba`, and `
 
 Flycast's Dreamcast face map is deferred past this phase. A correct file would replace the whole generated map, and the joystick name it would have to match was not proven.
 
+The player-1 correction is packed as `zlyme-my355-20261027-7bed507b0e4b.tar`, SHA-256 `eee0097ca7f39be6d290a6262b1d8a87b01980574ca993b0af5e638e54445f91`, rootfs `f00c1077e210242da5556557c5d5073d736b0e70b0b294fe096957b5bd4d261e`. It is not installed. The device still runs the `e2c80ec` image until that archive is copied onto the card.
+
 ## 2026-10-27 — a26f96b menu accepted, PPSSPP map failed
 
 The maintainer installed `zlyme-my355-20261026-a26f96b71ade.tar`. `/boot/zlyme` is `edb12962678dbaa3c41b6d3fe7fd0ca55a97e189bb3bf850df749f6d662c5a8f`. After Reset RetroArch configuration, NextUI, the standalone RetroArch menu, and the RetroArch menu while a Game Boy game was loaded confirm on east A and go back on south B. Game Boy gameplay buttons also behaved as expected. PPSSPP, after Reset standalone settings, still confirms on east and goes back on south in its menu and in play. Its live `controls.ini` maps Cross to `10-189`. That file is what PPSSPP 1.19.3 loads. The stock `ppsspp.ini` map is not. Debugfs was not mounted, so no panel clock was read. No PSP, Dolphin, or Flycast save bind was mounted. This is not acceptance of Issue #2, Issue #3, or the PPSSPP faces.
