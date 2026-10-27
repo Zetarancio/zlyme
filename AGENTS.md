@@ -141,6 +141,14 @@ For a nontrivial bug fix or design choice, follow the upstream-first procedure i
 5. Validate with the narrowest useful test.
 6. Inspect the final diff for unrelated modifications.
 
+After a nontrivial implementation change, and after the relevant tests, invoke the `zlyme-code-reviewer` subagent before finalizing or committing. Its specification is `.cursor/agents/zlyme-code-reviewer.md`. A high-risk change, as named in `docs/AUDITING.md`, requires this review. A typo, a comment, a documentation-only edit, or a behavior-neutral metadata change may skip it. Say why it was skipped.
+
+That review is not a dedicated audit. `docs/AUDITING.md` applies only when its own trigger conditions are met.
+
+Pass the baseline SHA, the worktree state, and the review scope. Do not pass findings, rationale, or a suggested fix. A fresh context is not independent when the prompt already contains the conclusion. Report whether the reviewer ran. If it did not, say so. Do not describe the change as independently reviewed.
+
+Verify an actionable finding against the source. Correct only a defect the task authorizes. Rerun the relevant checks, then invoke a fresh reviewer after a substantive correction. A serious confirmed finding is not waived silently. Deferral follows `docs/AUDITING.md`: an explicit decision and a recorded limitation.
+
 Do not perform drive-by refactors.
 
 Do not rename, reformat, reorganize, or modernize unrelated code while implementing another feature.
@@ -335,7 +343,7 @@ If a validation step cannot be run, say so.
 
 Never fabricate results.
 
-A defect investigation follows `docs/AUDITING.md`. Compiling, running a test, or explaining a path does not by itself accept behavior on the Flip.
+A defect investigation follows `docs/AUDITING.md`. The post-change reviewer is the change-policy step above. Compiling, running a test, or explaining a path does not by itself accept behavior on the Flip.
 
 ## Hardware payload transfer
 

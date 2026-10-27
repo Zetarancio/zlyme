@@ -2,22 +2,24 @@
 
 This file is the procedure for an AI-assisted search for defects. It says how a finding is discovered, checked, classified, and, after authorization, fixed.
 
-It does not own architecture, release policy, package intake, or the ordinary change review. Those stay in `docs/ARCHITECTURE.md`, `docs/MAINTENANCE.md`, `docs/UPSTREAMS.md`, and `AGENTS.md`. Prose rules stay in `docs/WRITING.md`. Design priorities stay in `docs/ENGINEERING_PRINCIPLES.md`.
+It does not own architecture, release policy, package intake, or how a change is made. Those stay in `docs/ARCHITECTURE.md`, `docs/MAINTENANCE.md`, `docs/UPSTREAMS.md`, and `AGENTS.md`. Prose rules stay in `docs/WRITING.md`. Design priorities stay in `docs/ENGINEERING_PRINCIPLES.md`.
 
-## When this procedure applies
+## Two reviews
 
-The ordinary pre-commit review is the change policy in `AGENTS.md`: read the implementation, search for an existing helper, make the smallest change, run the narrowest test, and inspect the diff. That review is part of every code change. It is not a dedicated audit, and this procedure does not add another pass on top of it.
+Ordinary change review is the change policy in `AGENTS.md`: read the implementation, search for an existing helper, make the smallest change, run the narrowest test, and inspect the diff.
 
-Use a dedicated audit when one of these is true:
+After a nontrivial implementation change, `AGENTS.md` also requires a post-change review by `zlyme-code-reviewer` before the change is finalized or committed. The reviewer specification is `.cursor/agents/zlyme-code-reviewer.md`. That review reads one named diff from a fresh context. It is not a dedicated audit, and a clean review is not proof that the tree is free of defects.
+
+Use the dedicated audit in the rest of this file only when one of these is true:
 
 - a suspected defect is not yet understood;
 - the change touches the bootloader, kernel, DTS, persistent storage, OTA or initramfs, power, suspend, the NAND preloader, or recovery;
 - the change crosses two of those boundaries;
 - the maintainer asks for an audit of a named area.
 
-A typo, a comment, a documentation edit, a pin that does not change behavior, or a focused fix whose call path and test are already known does not need this procedure. A source-only change stays at source depth. It does not acquire a hardware gate, a full image build, or a pass over the rest of the repository.
+A typo, a comment, a documentation edit, a pin that does not change behavior, or a focused fix whose call path and test are already known does not need a dedicated audit. That exemption does not skip the post-change reviewer when `AGENTS.md` requires it. A source-only change stays at source depth. It does not acquire a hardware gate, a full image build, or a pass over the rest of the repository.
 
-Do not audit the whole tree as a precondition for a change. Name the paths and the contract being examined. Leave the rest unread, and say so.
+Start with a narrow subsystem or diff. Follow the callers, dependencies, or ownership boundary that the finding actually depends on. Report a meaningful exclusion or an execution path that was not completed. Do not list every unread file.
 
 ## Stages
 
@@ -31,7 +33,6 @@ Discovery is read-only. Record the commit that was read. If the worktree is dirt
 - Trace that path from a real entry point: an init script, a `zlyme-*` command, a PAK launch, the updater, or a board hook.
 - Compare the path with the contract that owns it. Architecture, board files, and the command's own interface are the contracts. A research note or an old logbook entry is history unless the owning document still says the same thing.
 - State a hypothesis a current image can reach: the precondition, the path, and the behavior that would be wrong.
-- Name the files that were not read.
 
 A hypothesis is not a finding. "The code could" is not a call path.
 
@@ -40,38 +41,61 @@ A hypothesis is not a finding. "The code could" is not a call path.
 Verification tries to falsify the hypothesis.
 
 - Reachability: the precondition occurs on the current init, command, or update path. A branch that no caller takes is unreachable.
-- Reproduction: an existing test under `scripts/tests/`, a command whose output was captured from the tree that was read, or a device observation already recorded with its image identity in `docs/LOGBOOK.md` or `docs/OPERATIONS.md`.
-- Static checks already used by the tree, when they match the change: ShellCheck, compiler warnings, and the package and kconfig checks in `docs/DEVELOPMENT.md`. A new scanner, CI job, or generated report is outside this procedure.
+- Reproduction: a discriminating test with a defined expected result, a command whose output was captured from the tree that was read, or a device observation already recorded with its image identity. A test that merely exits successfully, without exercising the suspected defect, is not evidence.
+- An existing check under `scripts/tests/`, ShellCheck, compiler warnings, or the package and kconfig checks in `docs/DEVELOPMENT.md`, when that check actually covers the path.
+- A temporary isolated harness, fault injection, sanitizer, fuzzer, or targeted reproduction, when it fits the risk. These are techniques, not infrastructure to add to the tree. They must not modify production code or endanger hardware. A read-only reviewer describes the reproduction. A separately authorized isolated worktree, or the implementation agent, runs it.
 - Safeguards: the early return, the ownership check, the fail-closed path, and the test that already rejects the case.
+- A historical observation in `docs/LOGBOOK.md` or `docs/OPERATIONS.md` is evidence for the image and conditions it records. Use it for a defect in current source only after checking that the relevant code and conditions still match.
 
-A successful compile, a test that does not exercise the path, and a coherent explanation are each one input. None of them is confirmation. None of them is hardware acceptance. Host execution and on-device inspection are different claims, and `docs/WRITING.md` keeps built, booted, launched, and tested apart. `AGENTS.md` keeps that rule for agents.
+A successful compile and a coherent explanation are inputs. Neither is confirmation. Neither is hardware acceptance. Host execution and on-device inspection are different claims, and `docs/WRITING.md` keeps built, booted, launched, and tested apart. `AGENTS.md` keeps that rule for agents.
 
 If a required piece of evidence is missing, report the gap. Do not invent a SHA, a command result, a measurement, or a Flip outcome.
 
+### Independent verification
+
+The author of a hypothesis does not become an independent reviewer by rereading it.
+
+An independent reviewer starts in a fresh context and does not receive the original conclusion, rationale, or suggested fix. A separate context is useful. It is not independent when the prompt that starts it already contains that conclusion. The parent reports whether a separate reviewer actually ran. A skipped or failed invocation is not an independent review.
+
+An independent, discriminating test can verify a claim without a second reviewer. The test needs a defined expected result for the suspected defect. A passing suite that does not exercise that defect does not.
+
+A trivial edit, a documentation change, and a hypothesis that such a test already falsifies do not need a second reviewer. If a separate review is not practical, say so and leave the finding at the evidence that exists.
+
 ### Remediation
 
-Remediation starts only when the task or the review asks for a fix. Discovery and verification do not edit the tree.
+Remediation starts only when the task or the review asks for a fix. Discovery and verification do not edit the production tree.
 
 - Change the smallest span that restores the violated invariant.
 - Follow the change policy in `AGENTS.md` and, for a nontrivial bug, the upstream-first procedure in `docs/UPSTREAMS.md`.
-- Add or extend the narrowest existing regression test that fails on the defect and passes on the fix.
+- Prefer a regression check that fails on the defect and passes after the correction. When a meaningful check cannot be built safely or practically, record why, and record the strongest evidence that was actually obtained.
 - Review the diff for unrelated edits.
-- Validate at the depth in the next section. An audit does not by itself build an OTA, dispatch a release, or start a hardware experiment.
+- Validate at the depth below. An audit does not by itself build an OTA, dispatch a release, or start a hardware experiment.
+- After a substantive correction, the post-change review in `AGENTS.md` is run again from a fresh context. A serious confirmed finding is not waived silently.
 
 Kernel-patch classification stays the procedure in `docs/MAINTENANCE.md`. This file does not add a second scheme.
 
 ## Classification
 
-Confidence and severity are separate. Say both.
+Evidence status, remediation disposition, and severity are three separate statements.
 
-Confidence is one of:
+Evidence status is one of:
 
 | Status | Meaning |
 | --- | --- |
 | Confirmed | The invariant, the reachable path, and the expected-versus-actual evidence are all in hand. |
 | Probable/unverified | The source reading is coherent, and at least one required piece of evidence is still missing. |
 | Rejected | The path is unreachable, a safeguard already holds, or a reproduction attempt contradicted the hypothesis. |
-| Explicitly deferred | The finding remains open, and a named decision leaves it unfixed. The limit is recorded. Deferral is not acceptance. |
+
+Remediation disposition is one of:
+
+| Disposition | Meaning |
+| --- | --- |
+| Open | The finding is not yet fixed, deferred, or superseded. |
+| Fixed | The authorized correction is in the tree, with the evidence from Remediation. |
+| Deferred | An explicit decision leaves a confirmed or still-unverified finding unfixed. The limitation is recorded. Deferral is not acceptance. |
+| Superseded | A later change or a recorded decision replaces the finding. The old evidence stays where it was written. |
+
+A confirmed defect can remain deferred. Deferred requires the decision and the limitation, not a lower evidence status.
 
 Confirmed on the host, or confirmed by reading source, is not hardware acceptance. Hardware acceptance is a separate claim and requires a Miyoo Flip run that covered the claim, or an existing acceptance record that already covers it. Quote that record. A new reading does not reopen an acceptance whose evidence still covers the claim.
 
@@ -103,15 +127,7 @@ Match the work to the risk of the paths being examined. A change that crosses su
 | Userspace with an existing test that exercises the path | Trace the path, run that test, and read the safeguard that would falsify the hypothesis. |
 | Bootloader, kernel, DTS, persistent storage, OTA, initramfs, power, suspend, preloader, recovery, or a cross of those | Trace the path across the boundary. Name the invariant from `docs/ARCHITECTURE.md` or `docs/OPERATIONS.md`. Read the existing safeguard. State which device evidence would be required before calling the result hardware-accepted. |
 
-The stronger row asks for a deeper reading and an honest hardware gap. It does not authorize a new device experiment, and it does not pull unrelated subsystems into the audit.
-
-## Independent challenge
-
-A high-risk finding is challenged by a reader that did not produce the hypothesis, when that is practical. A maintainer, a fresh reading of the cited source, or an existing test that would fail if the claim were wrong can be that challenge.
-
-A second prompt in the same conversation is not an independent review. It still has the earlier conclusion in front of it.
-
-A trivial edit, a documentation change, and a hypothesis that an existing test already falsifies do not need a second AI review. If a separate challenge is not practical, say so. Leave the finding at the evidence that exists. Do not describe the same conversation as a second reviewer.
+The third row is the high-risk set. `AGENTS.md` requires the post-change reviewer for a change in that set. The row asks for a deeper reading and an honest hardware gap. It does not authorize a new device experiment, and it does not pull unrelated subsystems into the audit.
 
 ## Boundaries that stay where they are
 
@@ -120,8 +136,8 @@ A trivial edit, a documentation change, and a hypothesis that an existing test a
 - Accepted behavior stays accepted inside the scope of its record. Superseded designs in `AGENTS.md` stay superseded.
 - Release, delta, and publication decisions stay in `docs/MAINTENANCE.md`.
 - A result that fixes, accepts, supersedes, or defers a validation finding updates the Open validation debt index in the same change. `docs/WRITING.md` owns that rule. A dated logbook entry is for evidence worth keeping, under the same file. This procedure does not add an audit log, a template, a tracker, or a generated report.
-- Add a script or a CI check only after the same manual check has been needed again and the script would replace that repetition. The checks in `scripts/tests/` are the current automation.
+- Add a permanent script or a CI check only after the same manual check has been needed again and the script would replace that repetition. The checks in `scripts/tests/` are the current automation. A temporary harness used to verify one finding is not that addition.
 
 ## Report
 
-Report the classification, the severity, the nine evidence items, and any verification gap. Also report what was read, what was rejected, and which checks were not run. A gap is part of the result.
+Report the evidence status, the remediation disposition, the severity, the nine evidence items, and any verification gap. Also report a meaningful exclusion, an incomplete path, and which checks were not run. A gap is part of the result.
