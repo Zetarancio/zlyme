@@ -172,6 +172,7 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 - A huge debt to the other bigs in the biz [Knulli](https://github.com/knulli-cfw/knulli-linux), [Rocknix](https://github.com/ROCKNIX/distribution) and [Batocera](https://github.com/batocera-linux/).
 - [Anthony Caccese](https://github.com/anthonycaccese) and the contributors to [Art Book Next](https://github.com/anthonycaccese/art-book-next-es-de) for the artwork and visual inspiration used in Zlyme's system and Tools backgrounds.
+- Discord user `lazydog` for the Wine compatibility suggestion behind the WoW64 prefix.
 
 ## License
 

@@ -127,4 +127,11 @@ printf '%s\n' "$rel43" | grep -q 'https://github.com/Zetarancio/zlyme/blob/main/
 printf '%s\n' "$rel43" | grep -q 'Icy_Mammoth1805' \
 	|| fail "real zlyme44.3 dropped the suggestion credit"
 
+rel44=$(notes "$ROOT/CHANGELOG.md" zlyme44.4)
+printf '%s\n' "$rel44" | head -n 1 | grep -Fx '## [zlyme44.4] - 2026-10-27' >/dev/null \
+	|| fail "real zlyme44.4 heading mismatch"
+printf '%s\n' "$rel44" | grep -q 'Quickswitcher controls stay visible' \
+	|| fail "real zlyme44.4 dropped the Quickswitcher note"
+printf '%s\n' "$rel44" | grep -q '## \[zlyme44.3\]' && fail "real zlyme44.4 included 44.3"
+
 echo "changelog release notes ok"

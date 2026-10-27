@@ -130,4 +130,4 @@ Still deferred:
 - Flycast's Dreamcast faces follow Xbox letters. A mapping file would replace the whole stick and shoulder map, and the joystick name it must match is not proven. `docs/research/phase-15d-button-layouts.md`.
 - The three emulator save-bind scripts still repeat the mount-id sequence. `docs/research/phase-15d-save-bind-ownership.md`. Extract them only as their own change.
 - PortMaster still waits `0.4` s before the GUI. Replace that wait when the readiness condition is known.
-- Publishing `zlyme44.4` still has to decide the preloader and the ROCKNIX compatibility objects whose licenses are unspecified. The records are above and in `docs/UPSTREAMS.md`. The player-1 udev slot correction has to be in the image that gets that decision. The installed `e2c80ec` image does not contain it.
+- Publishing `zlyme44.4` still has to decide the preloader and the ROCKNIX compatibility objects whose licenses are unspecified. The records are above and in `docs/UPSTREAMS.md`. The changelog section is prepared. `ZLYME_VERSION` is still `zlyme44.3`, so the release job does not print that section until the version file says `zlyme44.4`.

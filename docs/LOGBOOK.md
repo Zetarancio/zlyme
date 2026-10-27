@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-27 — 14ad723 player 1 accepted
+
+The maintainer installed `zlyme-my355-20261027-14ad7238a42e.tar`. `/boot/zlyme` is `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. A dry run of the installed `ra-run` wrote `input_driver = "sdl2"`, `input_joypad_driver = "udev"`, and `input_player1_joypad_index = "1"`. That index is `event5`, the InputPlumber virtual pad. The physical pad remains `event4`. The maintainer accepts built-in player 1. A second controller with the same name was not connected.
+
 ## 2026-10-27 — a420f0c PPSSPP accepted
 
 The maintainer installed `zlyme-my355-20261026-a420f0c00a78.tar` and ran Reset standalone settings. PPSSPP's menu and gameplay now use the south Cross and east Circle layout on the built-in pad. `/boot/zlyme` was `a8c1a8323063ed41fde48ee245300d55d487d5d5d6aff48de992eb35d75e7f17` before the following joypad change. A gpSP log from that image reports no ALSA underrun. It does not measure the panel clock or a PipeWire xrun.

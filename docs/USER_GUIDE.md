@@ -244,7 +244,7 @@ Besides its game options, this page holds cleanup actions. Each one asks before 
 - **Clean junk**: desktop metadata and trash folders.
 - **Orphan saves / states**: saves whose ROM is missing from that same card.
 - **Orphan boxart**: artwork whose ROM is missing.
-- **Orphan game preferences**: per-ROM governor and emulator choices whose ROM is missing. A choice for a whole folder or a whole system stays. A choice for the second card stays while that card is out.
+- **Orphan game preferences**: the row says "Remove settings for games that no longer exist." It removes per-ROM governor and emulator choices whose ROM is missing. A choice for a whole folder or a whole system stays. A choice for the second card stays while that card is out.
 - **Clear Recents**: the Recently Played list.
 - **Reset RetroArch core options** removes per-core option files and restores the stock option files. It does not remove core libraries, saves, or the main RetroArch configuration.
 - **Reset RetroArch configuration** restores the main RetroArch configuration from the stock file. It does not remove core options, core libraries, saves, or BIOS files. An update leaves a configuration you already have. A session uses the udev controller driver when the built-in pad is the only Xbox-style controller, and player 1 is that virtual controller. If another controller with that same name is connected, that session keeps the SDL controller driver, so player 1 is not guessed. The stock menu confirms with the east A button and goes back with the south B button. A file saved before that stock line existed still has the old line, which RetroArch ignores, until you run this reset or change that one line. The reset replaces the rest of the main RetroArch file too.
