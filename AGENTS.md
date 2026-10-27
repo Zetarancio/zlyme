@@ -345,6 +345,8 @@ Never fabricate results.
 
 A defect investigation follows `docs/AUDITING.md`. The post-change reviewer is the change-policy step above. Compiling, running a test, or explaining a path does not by itself accept behavior on the Flip.
 
+Diagnostic logging follows `docs/decisions/0012-diagnostic-logging.md`. `docs/ARCHITECTURE.md` keeps the current paths.
+
 ## Hardware payload transfer
 
 Do not transfer OTAs, images, runtime archives, libraries, emulator binaries, large logs, or other bulk payloads to or from the Miyoo Flip over Wi-Fi, SSH, SCP, or rsync. Use a physical SD card mounted on the development host. SSH over Wi-Fi is for commands, inspection, and small text diagnostics. If the required card is not mounted on the host, stop and say which card and path are needed. Do not fall back to a network copy. This does not stop PortMaster from downloading its own catalogue or runtimes when a person uses it.

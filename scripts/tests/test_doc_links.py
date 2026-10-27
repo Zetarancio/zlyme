@@ -29,6 +29,7 @@ DOCS = (
     "docs/decisions/0009-portmaster-isolation.md",
     "docs/decisions/0010-multi-library-ownership.md",
     "docs/decisions/0011-context-sensitive-button-layouts.md",
+    "docs/decisions/0012-diagnostic-logging.md",
     "docs/research/README.md",
     "docs/research/phase-10-documentation-audit.md",
 )
