@@ -437,9 +437,17 @@ fi
 # which asks zlyme-pak-spawn to perform bounded TERM/KILL cleanup.
 # RetroArch 1.22.2's Unix handler does not turn one SIGTERM into a quit, so that
 # chord does not run retroarch_main_quit. Quit from the menu does.
+# System logs already point stdout and stderr at the PAK file. -v sends
+# RARCH_LOG and the libretro log callback there. --log-file is not used:
+# the first open in v1.22.2 is "wb" and would truncate that file.
+# A saved log_to_file would move that stream to RetroArch's own file
+# after config load. This session file forces it off and is not saved.
 if [ -n "$ZLYME_PAK_LOG" ]; then
+	_ra_log_cfg=${ZLYME_RA_LOG_CFG:-/tmp/zlyme-ra-log.cfg}
+	printf '%s\n' 'log_to_file = "false"' > "$_ra_log_cfg"
+	APPEND="${APPEND}|${_ra_log_cfg}"
 	mkdir -p "$(dirname "$ZLYME_PAK_LOG")"
-	exec retroarch -v --log-file "$ZLYME_PAK_LOG" --appendconfig "$APPEND" "$@"
+	exec retroarch -v --appendconfig "$APPEND" "$@"
 fi
 if [ -n "$ZLYME_RA_DEBUG" ]; then
 	exec retroarch -v --log-file /tmp/ra-debug.log --appendconfig "$APPEND" "$@"

@@ -14,7 +14,7 @@ Scope: the product image's NextUI launchers, `zlyme-logs`, `zlyme-ctl`, `nextui-
 
 A game or tool is `launch.sh`, started by `zlyme-pak-spawn` through `pak-launch.sh`. The spawn helper returns the leader's exit status. A leader exit of 125 is reported as 126 so it is not mistaken for the helper's own cleanup failure. The helper returns 125 when it cannot prove the session is gone. `nextui-session` treats 0, 2, 3, 137, and 143 as success and stops the frontend on 125. That path is source. It was not replayed on a Flip for this note.
 
-`pak-log.sh` runs only when the launcher sources it, and only the lines before `EMU_EXE` is set decide the redirect. Logs on and no `EMU_EXE`: rotate three files, write a header, and `exec >>` the PAK log for stdout and stderr. Logs on and `EMU_EXE` already set: header only, no shell redirect. `ra-run.sh` then passes RetroArch `--log-file` to that PAK log. Logs off: the helper creates nothing. Sourcing the helper is not the same as capturing the program.
+`pak-log.sh` runs only when the launcher sources it. Logs on: it rotates three files, writes a header, and redirects that shell's stdout and stderr onto the PAK file whether or not `EMU_EXE` is set. `ra-run.sh` then execs `retroarch -v` and does not pass `--log-file`. Logs off: the helper creates nothing. The section below records why `--log-file` was dropped. Sourcing the helper is still not, by itself, a capture of a program that leaves the session.
 
 With logs on, the spawn is not redirected, so a launcher that does not redirect inherits `nextui-session`'s stdout. With logs off, the spawn is appended to `SESSION_LOG`, which is the tmpfs file.
 
@@ -30,11 +30,11 @@ Paths are `package/system/nextui/paks/Emus/<name>.pak/launch.sh` and `paks/Tools
 
 ### Libretro, including Tools → RetroArch with no ROM
 
-Shared path: `ra-run.sh`, then `retroarch`. Logs on: a header in `paks/<tag>.log`, RetroArch's own `-v` log on that same file through `--log-file`, and the process stdout and stderr inherited from `nextui-session`. That inheritance is `system-0/session.txt` when logs were on at `S28minui` start, and `/tmp/nextui-session.log` when they were off. Logs off inside `ra-run`: no `--log-file`, unless `ZLYME_RA_DEBUG` is set, which writes `/tmp/ra-debug.log` and is not the System logs switch. The core's own stdout is not the RetroArch log facility. `test_pak_logging.sh` expects that stdout to escape the PAK file.
+Shared path: `ra-run.sh`, then `retroarch`. Logs on: the header and the process stdout and stderr, including RetroArch's verbose lines, are the PAK file. `ra-run.sh` passes `-v` and does not pass `--log-file`. Logs off: no PAK file. `ZLYME_RA_DEBUG` still passes `--log-file /tmp/ra-debug.log` and is not the System logs switch. While that capture is on, the session append sets `log_to_file = "false"` so a saved true does not move `RARCH_LOG` to RetroArch's own file. The user file is not rewritten. `ZLYME_RA_DEBUG` does not add that line.
 
-Tools → RetroArch (`RetroArch.pak`) execs `ra-run` with no ROM and no `EMU_EXE`, so the shell redirect does apply when logs are on. RetroArch then also gets `--log-file` on that same PAK file. Logs off: no PAK file, and the process inherits the session redirect onto the tmpfs session log.
+Tools → RetroArch (`RetroArch.pak`) execs `ra-run` with no ROM. Logs on, that is the same redirect and `-v`, with no `--log-file`. Logs off: no PAK file.
 
-P8 is in the libretro class because `EMU_EXE=fake08` is set before `pak-log.sh`. `ZLYME_EMU_CORE=native` execs `pico8` with no shell redirect and no `--log-file`. That native branch is not captured by the PAK redirect.
+P8 sets `EMU_EXE=fake08` before `pak-log.sh`. Logs on, both the fake08 `ra-run` path and `ZLYME_EMU_CORE=native` (`pico8`) inherit the redirect. The core choice is unchanged.
 
 ### Standalones
 
@@ -135,7 +135,7 @@ Ruffle's `/storage/.config/ruffle/logs` and the HDMI trace flag are separate. Th
 
 A. Leave runtime text in tmpfs and copy bounded snapshots into `.logs`. This is what `zlyme-logs` already does for dmesg, boot timing, and `nextui.txt`. A copy does not hold an exFAT descriptor for the whole boot, which matches `zlyme-halt`. A copy also misses whatever is written after the snapshot, and it writes the card again for text that already exists in RAM. The six `rc.late` copies are that cost on a small file.
 
-B. Append the stream straight to a bounded file under `.logs` while logs are on. This is what `pak-log.sh` and RetroArch `--log-file` already do for a launch. The failure at the end of the run is in the file. The descriptor stays on the card until the process exits. That is acceptable for a launch `zlyme-pak-spawn` waits for, and it is the problem `zlyme-halt` already handles for the session. It is a poor fit for InputPlumber, PipeWire, Bluetooth, storage, LED, and Wi-Fi, which outlive one launch and must not pin `/storage` for the whole boot.
+B. Append the stream straight to a bounded file under `.logs` while logs are on. 16B1 does that with the shell redirect, not with RetroArch `--log-file`. The failure at the end of the run is in the file. The descriptor stays on the card until the process exits. That is acceptable for a launch `zlyme-pak-spawn` waits for, and it is the problem `zlyme-halt` already handles for the session. It is a poor fit for InputPlumber, PipeWire, Bluetooth, storage, LED, and Wi-Fi, which outlive one launch and must not pin `/storage` for the whole boot.
 
 Selected design: B for waited launches, A for long-lived services. No new daemon and no systemd. `pak-log.sh` remains the launch switch. `zlyme-logs` remains the boot generation and the service copy. 16B makes the launch capture include the streams that currently miss the PAK file, caps each file, and copies a bounded tail of the service tmpfs logs into the current generation at the existing snapshot points and once more before halt. It does not open those service logs directly on exFAT.
 
@@ -153,17 +153,24 @@ Past the cap, the oldest bytes of that file go. A generation rotate still drops 
 
 ## Tests that exist
 
-`scripts/tests/test_log_history.sh` checks five generations, one rotate per boot, and three PAK files. `scripts/tests/test_pak_logging.sh` checks that all 63 launchers source the helper, that a tool stdout is captured, and that a core stdout is not. `scripts/tests/test_portmaster_log.sh` checks `portmaster.txt` versus `/tmp/portmaster.log`. None of them toggle the setting under a live session, and none of them are a Flip run.
+`scripts/tests/test_log_history.sh` checks five generations, one rotate per boot, and three PAK files. `scripts/tests/test_pak_logging.sh` checks that all 63 launchers source the helper, that logs off creates nothing, and that a core's stdout and stderr stay in the PAK file with the header. The RetroArch check uses a stub. `scripts/tests/test_portmaster_log.sh` checks `portmaster.txt` versus `/tmp/portmaster.log`. None of them toggle the setting under a live session, and none of them are a Flip run.
+
+## 16B1 file-log semantics
+
+Read from the build tree `output/build/retroarch-v1.22.2`, which is the pin `RETROARCH_VERSION = v1.22.2`. `retro_main_log_file_init` opens the path with `fopen_utf8(path, append ? "ab" : "wb")`. `rarch_log_file_init` passes append false on the first open of a session. The comment in that function says the log file is overwritten when RetroArch is launched. `retroarch_main_init` first calls `retro_main_log_file_init(NULL, false)`, which sets the log stream to stderr. `--log-file` together with `-v` then replaces that stream with the file. `DEFAULT_LOG_TO_FILE` is false. `libretro_log_cb` calls `RARCH_LOG_V` and the other `RARCH_*` writers, and those write the verbosity stream.
+
+A host check opens a file with Python `"wb"` after a header is written. The header is gone and the new bytes remain. That is the open mode, not a run of the RetroArch binary. The same test then launches `ra-run` through `pak-log.sh` with a stub `retroarch` that truncates if it is given `--log-file`, writes stdout and stderr, and exits 7. The PAK file keeps the header, the ROM text, and both streams, the arguments contain `-v` and not `--log-file`, and the status is 7. The stub line is not a RetroArch diagnostic. The binary was not executed. What the pinned source shows is that `-v` without `--log-file` leaves `RARCH_LOG` on stderr, which the redirect already owns, and that `--log-file` on the PAK path would truncate it.
+
+Chosen capture: redirect the waited shell, and pass `-v` without `--log-file`. A separate RetroArch log file was the other option. It would keep the header only by writing somewhere else, and it would still miss stdout unless the redirect existed too. The redirect plus `-v` is the smaller path and does not add a process or a pipe. `exec retroarch` is unchanged, so the spawn leader and MENU+START ownership stay the waited RetroArch process. If the PAK file cannot be opened, an ordinary probe fails and the redirect is skipped, so the launch still starts. A failed `exec` redirection is fatal in a POSIX shell, and that case was not run under BusyBox. Input and the other `--appendconfig` entries are unchanged. One session line, `log_to_file = "false"`, is appended only for this capture so a saved true cannot move `RARCH_LOG` off stderr. It is not written back. `ZLYME_RA_DEBUG` is unchanged.
 
 ## 16B work, not started
 
-- Point core stdout and stderr at the PAK log when System logs are on, and change the test that currently requires them to escape.
-- Give the P8 native branch the same redirect as other standalones.
-- Cap PAK files, the OpenBOR directory, and each system generation at the limits above.
+- Service-log tails, the live logging toggle, byte caps, and the total budget. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced.
+- Cap PAK files, the OpenBOR directory, and each system generation only after that approval, and not by truncating a file another process still has open.
 - Copy bounded tails of the late service logs into `system-0` from `zlyme-logs`, including a copy on the halt path, without a new daemon.
 - On toggle off, stop appending to `session.txt`. The source gap is the fd opened by `S28minui`.
 - Keep the two `rc.late` copies.
 - Leave HDMI trace and `ZLYME_RA_DEBUG` on their own flags.
 - Do not log ScreenScraper URLs, Wi-Fi PSKs, or git commands that carry credentials.
 
-A Flip check belongs to the build that contains those changes. It is the log-on and log-off launch of one core, one standalone, RetroArch with no game, and PortMaster, plus one shutdown with logs on. It is not a new pass over behavior this inventory did not change.
+A Flip check still has to show that a real RetroArch 1.22.2 `-v` line, and a core log callback, land in the PAK file without losing the header. The host stub does not do that. The same later pass covers one standalone, RetroArch with no game, PortMaster, and one shutdown with logs on.

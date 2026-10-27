@@ -429,25 +429,23 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-10-27. 16A is the inventory and the 16B design. 16B, 16C, and 16D have not started. No logging code has changed.
+Status: In progress, 2026-10-27. 16A is closed. 16B has started at the PAK stream capture. 16C and 16D have not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
 Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
 
-Blocker: 16B waits for approval of the design in [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+Blocker: the rest of 16B is not started. The record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 ### 16A. Logging inventory and contract
 
-Status: In progress, 2026-10-27. The source reading and the selected 16B design are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md). This milestone does not change runtime code.
-
-The switch stays Settings → System → Advanced → System logs, off by default. The 63 shipped launchers, the streams that do not reach a PAK log, and the selected 16B design are in that record. The two `rc.late` copies that already run with logs off stay, as a named exception. 16B has not started.
+Status: Closed, 2026-10-27. The inventory and the RetroArch `wb` open result are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md). The two `rc.late` copies that run with logs off stay a named exception.
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: Planned. The design is selected in the 16A record. Implementation has not started.
+Status: In progress, 2026-10-27. The first slice redirects every waited PAK shell when logs are on, and RetroArch is launched with `-v` and without `--log-file`. Service logs, the live toggle, retention, OpenBOR, Ruffle, privacy, and shutdown are not done.
 
-Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. This milestone adds a per-file bound and a total bound.
+Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. A per-file bound and a total bound are still only a proposal. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced. Truncating a file another process has open, or deleting user files to meet a cap, is not the implementation.
 
 Diagnostic text that currently stays in tmpfs is the collection list to verify, not a migration order: the late InputPlumber and `zlyme-input` capture, the late PipeWire capture, the late Bluetooth capture, `zlyme-storage.log`, `zlyme-led.log`, boot timing, the frontend and session text, the Wi-Fi async log, and the tmpfs copies of OpenBOR, RetroArch debug, and PortMaster. Anything found in the same pass is included only when it is a diagnostic. Locks, PID files, sockets, temporary configuration, update markers, and runtime state stay where they are. A file in `/tmp` is not a log because of its directory.
 

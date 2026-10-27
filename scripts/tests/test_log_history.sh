@@ -58,10 +58,17 @@ paks=$work/paks-root
 launch() {
 	tag=$1
 	id=$2
-	EMU_TAG=$tag EMU_EXE=core ROM= \
-		ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$paks" \
-		. "$PAK"
-	printf 'LAUNCH %s\n' "$id" >> "$ZLYME_PAK_LOG"
+	# pak-log redirects the shell that sources it. Keep that inside
+	# this command so the test runner's own stdout stays put.
+	sh -c '
+		EMU_TAG=$1
+		EMU_EXE=core
+		ROM=
+		ZLYME_LOG_FORCE=1
+		ZLYME_LOG_ROOT=$2
+		. "$3"
+		printf "LAUNCH %s\n" "$4" >> "$ZLYME_PAK_LOG"
+	' sh "$tag" "$paks" "$PAK" "$id"
 }
 
 i=1
@@ -86,8 +93,7 @@ grep -q 'LAUNCH 1' "$paks/paks/PSP.log.1"
 grep -q 'LAUNCH 5' "$paks/paks/GBA.log"
 
 quiet=$work/quiet
-unset ZLYME_LOG_FORCE
-EMU_TAG=GBA EMU_EXE=core ROM= ZLYME_LOG_ROOT="$quiet" . "$PAK"
+sh -c 'EMU_TAG=GBA EMU_EXE=core ROM= ZLYME_LOG_ROOT=$1 . "$2"' sh "$quiet" "$PAK"
 test ! -e "$quiet/paks/GBA.log"
 
 echo "log history ok"

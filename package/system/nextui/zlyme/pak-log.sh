@@ -1,6 +1,8 @@
 # Sourced from launch.sh. Comment that line out to silence one pak.
-# About → System logs. RetroArch cores (EMU_EXE set) get --log-file via
-# ra-run. Standalones and Tools inherit stdout/stderr on the same file.
+# About → System logs. Logs on, this shell's stdout and stderr become
+# the PAK file, including a libretro launch whose EMU_EXE is already
+# set. ra-run adds -v and does not pass --log-file: RetroArch 1.22.2
+# opens that path with "wb" and would erase this header.
 #
 # Three files per tag: TAG.log is this launch, TAG.log.1 and TAG.log.2
 # are the two before it. Rotation is once, here, before anything writes.
@@ -43,10 +45,13 @@ if logs_wanted; then
 	export ZLYME_PAK_LOG="$LOGS_PATH/${tag}.log"
 	zlyme_pak_rotate "$ZLYME_PAK_LOG"
 	printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
-	if [ -z "$EMU_EXE" ]; then
+	unset _logroot
+	# A failed exec redirection is fatal in BusyBox ash. Probe with an
+	# ordinary command first so a missing or full log does not abort
+	# the launch. The game then keeps the caller's stdout and stderr.
+	if cat /dev/null >>"$ZLYME_PAK_LOG" 2>/dev/null; then
 		exec >>"$ZLYME_PAK_LOG" 2>&1
 	fi
-	unset _logroot
 fi
 
 if [ -n "${ROM:-}" ] && [ -r /usr/share/nextui/bin/zlyme-library.sh ]; then

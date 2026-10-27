@@ -67,10 +67,21 @@ sh -c '
 	EMU_TAG=GB EMU_EXE=gambatte ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$1
 	. "$2"
 	echo core-stdout
-' sh "$on" "$PAK" > "$work/core-on.out"
+	echo core-stderr >&2
+' sh "$on" "$PAK" > "$work/core-on.out" 2>"$work/core-on.err"
 grep -q '=== GB' "$on/paks/GB.log" || fail "core header missing"
-grep -q 'core-stdout' "$work/core-on.out" || fail "core stdout was swallowed"
+grep -q 'core-stdout' "$on/paks/GB.log" || fail "core stdout was not logged"
+grep -q 'core-stderr' "$on/paks/GB.log" || fail "core stderr was not logged"
+[ ! -s "$work/core-on.out" ] || fail "core stdout escaped the pak log"
+[ ! -s "$work/core-on.err" ] || fail "core stderr escaped the pak log"
 [ -n "${ZLYME_PAK_LOG:-}" ] && fail "pak log variable leaked" || true
+printf '%s\n' x > "$work/notdir"
+sh -c '
+	EMU_TAG=GB EMU_EXE=gambatte ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$1
+	. "$2"
+	echo survived
+' sh "$work/notdir" "$PAK" > "$work/notdir.out" 2>"$work/notdir.err"
+grep -q survived "$work/notdir.out" || fail "unwritable log aborted the launch"
 sh -c '
 	EMU_TAG=Moonlight ZLYME_LOG_ROOT=$1
 	. "$2"
@@ -192,13 +203,175 @@ ra_call "$work/ra-off" off
 grep -q -- '--log-file' "$work/ra-off/ra-args" && fail "logging off passed --log-file" || true
 [ ! -e "$work/card-logs/ra-debug.log" ] || fail "debug log was written to LOGS_PATH"
 ra_call "$work/ra-on" pak
-grep -q -- "--log-file=$work/gb-on-logs/paks/GB.log" "$work/ra-on/ra-args" \
-	|| grep -q -- '--log-file' "$work/ra-on/ra-args" || fail "pak log was not passed to retroarch"
-# --log-file and the path may be one argv or two. Either must name the pak log.
-grep -q "$work/gb-on-logs/paks/GB.log" "$work/ra-on/ra-args" || fail "retroarch log path"
+grep -q -- '--log-file' "$work/ra-on/ra-args" && fail "pak log was passed as --log-file" || true
+grep -q -- '^-v$' "$work/ra-on/ra-args" || fail "pak log did not pass -v"
 ra_call "$work/ra-debug" debug
 grep -q '/tmp/ra-debug.log' "$work/ra-debug/ra-args" || fail "manual debug log left tmpfs"
 [ ! -e "$work/card-logs/ra-debug.log" ] || fail "manual debug log used LOGS_PATH"
+
+# RetroArch v1.22.2 opens the first --log-file with "wb". This is that
+# open. It is not the RetroArch binary, and it does not claim the binary
+# emitted a log line.
+trunc=$work/trunc.log
+printf '%s\n' '=== header ===' > "$trunc"
+python3 -c 'import sys; open(sys.argv[1], "wb").write(b"VERBOSE\n")' "$trunc"
+grep -q '=== header ===' "$trunc" && fail "wb open kept the header" || true
+grep -q '^VERBOSE$' "$trunc" || fail "wb open did not replace the file"
+
+# The waited launch redirects first, then execs retroarch. A stub that
+# would truncate on --log-file must not be given that argument. Its own
+# stdout and stderr are the stream under test, not RetroArch's logger.
+cat > "$work/bin/retroarch" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$@" > "$OUT/ra-args"
+for a in "$@"; do
+	case "$a" in
+		--log-file=*)
+			python3 -c 'import sys; open(sys.argv[1], "wb").write(b"VERBOSE\n")' "${a#--log-file=}"
+			;;
+	esac
+done
+echo core-stdout
+echo core-stderr >&2
+echo verbose-line
+exit "${ZLYME_STUB_RC:-0}"
+EOF
+chmod 0755 "$work/bin/retroarch"
+q=$(printf '\047')
+rom="/r/Player${q}s game.gb"
+OUT=$work/stream
+mkdir -p "$OUT"
+export OUT
+set +e
+ZLYME_STUB_RC=7 ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$work/stream-logs \
+	ZLYME_RA_LOG_CFG=$work/stream-logs/ra-log.cfg \
+	XDG_CONFIG_HOME=$work/xdg SHARED_USERDATA_PATH=$work/shared \
+	BIOS_PATH=$work/bios SAVES_PATH=$work/saves USERDATA_PATH=$work/home \
+	HOME=$work/home \
+	sh -c '
+		EMU_TAG=GB
+		EMU_EXE=gambatte
+		ROM=$1
+		ZLYME_LOG_FORCE=1
+		ZLYME_LOG_ROOT=$2
+		. "$3"
+		exec "$4" -L /cores/gambatte_libretro.so "$1"
+	' sh "$rom" "$work/stream-logs" "$PAK" "$RA" \
+	> "$OUT/stdout" 2>"$OUT/stderr"
+stream_st=$?
+set -e
+[ "$stream_st" -eq 7 ] || fail "core launch returned $stream_st"
+log=$work/stream-logs/paks/GB.log
+grep -q '=== GB' "$log" || fail "stream launch lost the header"
+grep -q "Player${q}s game.gb" "$log" || fail "stream launch dropped the rom"
+grep -q 'core-stdout' "$log" || fail "stream launch missed stdout"
+grep -q 'core-stderr' "$log" || fail "stream launch missed stderr"
+grep -q 'verbose-line' "$log" || fail "stream launch missed the stub verbose line"
+grep -q '^VERBOSE$' "$log" && fail "stream launch truncated the pak log" || true
+grep -q -- '--log-file' "$OUT/ra-args" && fail "stream launch passed --log-file" || true
+grep -q -- '^-v$' "$OUT/ra-args" || fail "stream launch did not pass -v"
+grep -q 'log_to_file = "false"' "$work/stream-logs/ra-log.cfg" \
+	|| fail "stream launch did not force log_to_file off"
+grep -q "$work/stream-logs/ra-log.cfg" "$OUT/ra-args" \
+	|| fail "stream launch did not append the log_to_file session file"
+[ ! -s "$OUT/stdout" ] || fail "stream stdout escaped"
+[ ! -s "$OUT/stderr" ] || fail "stream stderr escaped"
+
+# Tools → RetroArch, no ROM. Same redirect, no core argument.
+# The earlier GB cases stub ra-run. This one must reach retroarch.
+cat > "$work/bin/ra-run" << EOF
+#!/bin/sh
+exec "$RA" "\$@"
+EOF
+chmod 0755 "$work/bin/ra-run"
+ra_tool=$work/RetroArch.pak
+copy_launch "$TOOLS/RetroArch.pak/launch.sh" "$ra_tool"
+OUT=$work/ra-tool
+mkdir -p "$OUT"
+export OUT
+set +e
+ZLYME_STUB_RC=0 ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$work/ra-tool-logs \
+	ZLYME_RA_LOG_CFG=$work/ra-tool-logs/ra-log.cfg \
+	XDG_CONFIG_HOME=$work/xdg SHARED_USERDATA_PATH=$work/shared \
+	BIOS_PATH=$work/bios SAVES_PATH=$work/saves USERDATA_PATH=$work/home \
+	HOME=$work/home \
+	sh "$ra_tool/launch.sh" > "$OUT/stdout" 2>"$OUT/stderr"
+tool_st=$?
+set -e
+[ "$tool_st" -eq 0 ] || fail "RetroArch tool returned $tool_st"
+tlog=$work/ra-tool-logs/paks/RetroArch.log
+grep -q '=== RetroArch' "$tlog" || fail "RetroArch tool lost the header"
+grep -q 'core-stdout' "$tlog" || fail "RetroArch tool missed stdout"
+grep -q -- '--log-file' "$OUT/ra-args" && fail "RetroArch tool passed --log-file" || true
+grep -q -- '^-v$' "$OUT/ra-args" || fail "RetroArch tool did not pass -v"
+[ ! -s "$OUT/stdout" ] || fail "RetroArch tool stdout escaped"
+
+# P8 keeps fake08 unless ZLYME_EMU_CORE=native. Both branches log.
+cat > "$work/bin/pico8" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" > "$OUT/pico-args"
+echo pico-stdout
+echo pico-stderr >&2
+exit 9
+EOF
+cat > "$work/bin/ra-run" << 'EOF'
+#!/bin/sh
+printf '%s\n' "$*" > "$OUT/p8-ra"
+echo ra-stdout
+exit 3
+EOF
+chmod 0755 "$work/bin/pico8" "$work/bin/ra-run"
+p8=$work/P8.pak
+copy_launch "$EMUS/P8.pak/launch.sh" "$p8"
+OUT=$work/p8-native
+mkdir -p "$OUT" "$work/bios" "$work/saves" "$work/home"
+export OUT
+set +e
+ZLYME_EMU_CORE=native ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$work/p8-native-logs \
+	BIOS_PATH=$work/bios SAVES_PATH=$work/saves USERDATA_PATH=$work/home \
+	HOME=$work/home \
+	sh "$p8/launch.sh" "/carts/Player${q}s Splore.p8" \
+	> "$OUT/stdout" 2>"$OUT/stderr"
+p8_st=$?
+set -e
+[ "$p8_st" -eq 9 ] || fail "native pico8 returned $p8_st"
+nlog=$work/p8-native-logs/paks/P8.log
+grep -q '=== P8' "$nlog" || fail "native pico8 lost the header"
+grep -q "Player${q}s Splore.p8" "$nlog" || fail "native pico8 dropped the rom"
+grep -q 'pico-stdout' "$nlog" || fail "native pico8 missed stdout"
+grep -q 'pico-stderr' "$nlog" || fail "native pico8 missed stderr"
+grep -q "Player${q}s Splore.p8" "$OUT/pico-args" || fail "native pico8 argv"
+[ ! -e "$OUT/p8-ra" ] || fail "native pico8 called ra-run"
+[ ! -s "$OUT/stdout" ] || fail "native pico8 stdout escaped"
+OUT=$work/p8-core
+mkdir -p "$OUT"
+export OUT
+set +e
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT=$work/p8-core-logs \
+	BIOS_PATH=$work/bios SAVES_PATH=$work/saves USERDATA_PATH=$work/home \
+	HOME=$work/home \
+	sh "$p8/launch.sh" /carts/game.p8 > "$OUT/stdout" 2>"$OUT/stderr"
+p8c_st=$?
+set -e
+[ "$p8c_st" -eq 3 ] || fail "fake08 branch returned $p8c_st"
+grep -q 'fake08_libretro.so' "$OUT/p8-ra" || fail "fake08 branch left the core"
+grep -q '=== P8' "$work/p8-core-logs/paks/P8.log" || fail "fake08 branch lost the header"
+grep -q 'ra-stdout' "$work/p8-core-logs/paks/P8.log" || fail "fake08 branch missed stdout"
+[ ! -e "$OUT/pico-args" ] || fail "fake08 branch called pico8"
+unset ZLYME_EMU_CORE
+OUT=$work/p8-off
+mkdir -p "$OUT"
+export OUT
+set +e
+ZLYME_EMU_CORE=native ZLYME_LOG_ROOT=$work/p8-off-logs \
+	BIOS_PATH=$work/bios SAVES_PATH=$work/saves USERDATA_PATH=$work/home \
+	HOME=$work/home \
+	sh "$p8/launch.sh" /carts/game.p8 > "$OUT/stdout" 2>"$OUT/stderr"
+p8off_st=$?
+set -e
+[ "$p8off_st" -eq 9 ] || fail "pico8 logs-off returned $p8off_st"
+grep -q 'pico-stdout' "$OUT/stdout" || fail "pico8 logs-off hid stdout"
+[ ! -e "$work/p8-off-logs/paks/P8.log" ] || fail "pico8 logs-off created a pak log"
 
 # Moonlight: the old private log is not created or truncated. The UI error still shows.
 card=$work/card-logs
