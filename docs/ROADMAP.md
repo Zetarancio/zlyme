@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-publication) is the publication of `zlyme44.4` and is not finished. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16, until that workflow succeeds.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is planned and has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16, and its workflow has not finished. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16, until that workflow succeeds.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -29,6 +29,7 @@ Host-tested means a host check passed. It is not a Flip result. Blocked means th
 | 12 | 2026-10-14. Development closed, with the limits below. | [Phase 12](#phase-12-zlyme443-development) |
 | 13 | 2026-10-16. Accepted on `ccd99997`. B6 and C1 excluded. | [Phase 13](#phase-13-compatibility-on-this-branch) |
 | 14 | 2026-10-26. Gates reconciled and 14P executed. Release not published. | [Phase 14](#phase-14-portmaster-compatibility-and-zlyme444) |
+| 15 | 2026-10-27. Engineering closed with the recorded limits. Publication is separate. | [Phase 15](#phase-15-documentation-and-zlyme444-preparation) |
 
 ## Phase 0. Repository and baseline
 
@@ -392,7 +393,7 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: Closed with limitations, 2026-10-27. 15A through 15F are closed. `ZLYME_VERSION` is `zlyme44.4`. Publication is Phase 16 and is not finished by this sentence. The installed image is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`, built from `14ad7238a42e61dd8660d76a5e50699de8fe51b1`. The session file on that image sets `input_joypad_driver` to udev and player 1 index `1`, which is the virtual pad at `event5`. The maintainer accepts built-in player 1. A second controller with the same name was not part of that acceptance. The Quickswitcher and orphan-text NextUI pin is local OTA `zlyme-my355-20261027-c67613b766ee.tar`, rootfs `0f86cc108bf0c83606f31062f633de6e5b745feac0443dcc83255b66bbbd860b`. It is not installed and is not a release. Flycast's Dreamcast faces stay deferred. A second controller that shares the Xbox name still uses the SDL2 joypad driver for that session, and that arrangement was not replayed with a second physical controller.
+Status: Closed with limitations, 2026-10-27. 15A through 15F are closed. `ZLYME_VERSION` is `zlyme44.4`. Publication is the release operation below. It is not Phase 16, and it is not finished by this sentence. The installed image is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`, built from `14ad7238a42e61dd8660d76a5e50699de8fe51b1`. The session file on that image sets `input_joypad_driver` to udev and player 1 index `1`, which is the virtual pad at `event5`. The maintainer accepts built-in player 1. A second controller with the same name was not part of that acceptance. The Quickswitcher and orphan-text NextUI pin is local OTA `zlyme-my355-20261027-c67613b766ee.tar`, rootfs `0f86cc108bf0c83606f31062f633de6e5b745feac0443dcc83255b66bbbd860b`. It is not installed and is not a release. Flycast's Dreamcast faces stay deferred. A second controller that shares the Xbox name still uses the SDL2 joypad driver for that session, and that arrangement was not replayed with a second physical controller.
 
 Objective: correct the documentation against the Phase 14 source, retest two measured RetroArch issues, match original-system face buttons where the mapping is proved, and prepare the release only after approval.
 
@@ -418,8 +419,68 @@ Status: Closed, 2026-10-26. Research files use the phase prefix in `docs/WRITING
 
 ### 15F. Final validation and zlyme44.4 release preparation
 
-Status: Closed, 2026-10-27, as an engineering review. The installed rootfs, the live launches, the save-bind result, and the deferred Flycast map are recorded in this phase. The version move and publication are Phase 16.
+Status: Closed, 2026-10-27, as an engineering review. The installed rootfs, the live launches, the save-bind result, and the deferred Flycast map are recorded in this phase. The version move is recorded here. Publication is the release operation below, not Phase 16. The audit procedure and the read-only reviewer that landed after this closure are documentation. They do not reopen 15A through 15F.
 
-## Phase 16. Publication
+## Release operation for zlyme44.4
 
-Status: In progress. This is the publication of `zlyme44.4`, not new feature work. `ZLYME_VERSION` is `zlyme44.4`. The Quickswitcher and orphan-text candidate was not installed. The maintainer waived a hardware pass for those two settings changes. The two unknown-license exceptions are retained, and redistribution rights remain unverified. A successful release workflow is what makes the release public. This status does not say that workflow has finished.
+Status: In progress. This is not a phase and it is not Phase 16. `ZLYME_VERSION` is `zlyme44.4`. The release workflow is [run 40439819817](https://github.com/Zetarancio/zlyme/actions/runs/40439819817), source `cb9770424011c1ccfc32cd99457364ca97ac19ea`, and it was still running when this note was written. That run is what can publish the release. This note does not say it has succeeded. Published stable remains `zlyme44.3` until it does.
+
+The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.tar`, was not installed. The maintainer waived a hardware pass for those two settings changes. `zlyme44.4` retains the two existing unknown-license exceptions, the Miyoo vendor preloader image and the 41 ROCKNIX PortMaster compatibility files. Redistribution rights remain unverified. The records are not license grants.
+
+## Phase 16. Diagnostics and defect discovery
+
+Status: Planned. Not started. Awaiting maintainer and ChatGPT approval of this roadmap. No logging change, audit, or reviewer pass has been done for this phase.
+
+Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
+
+Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
+
+Blocker: this plan is not approved. Implementation waits for that approval.
+
+### 16A. Logging inventory and contract
+
+Status: Planned.
+
+Inventory the producers, destinations, switches, and consumers that exist now. The switch is Settings → System → Advanced → System logs, off by default. `zlyme-ctl want logs` is the check. When it is on, `zlyme-logs` keeps five boot generations under `/storage/.logs`, and `pak-log.sh` keeps three files per PAK tag. When it is off, `pak-log.sh` creates nothing and does not rotate. The end state keeps that: logs off does not create a persistent diagnostic log and does not add a routine storage write.
+
+The shipped set is the launchers under `package/system/nextui/paks/Emus` and `paks/Tools`. `scripts/tests/test_pak_logging.sh` already requires each of those files to source `pak-log.sh` and not open a second diagnostic file. That check is the starting inventory, not proof that every running program is captured. The phase still has to show capture for every shipped Tool, every shipped emulator PAK, RetroArch with no game (`Tools/RetroArch.pak`), RetroArch through a libretro core, and each shipped standalone. PPSSPP, Flycast, and Dolphin are in that shipped set. The other standalones are whichever launchers the tree actually ships. No extra emulator is added to the list because it might exist.
+
+Current capture, which 16A has to confirm rather than assume, is split. A Tool or standalone with no `EMU_EXE` redirects its own stdout and stderr onto the PAK log. A core launch writes a header and leaves stdout alone; `ra-run.sh` passes `--log-file` only when `ZLYME_PAK_LOG` is set. `ZLYME_RA_DEBUG` is a separate tmpfs file, not the System logs switch. PortMaster's GUI transcript follows `ZLYME_PAK_LOG` into `portmaster.txt`, and otherwise stays in `/tmp/portmaster.log`. OpenBOR's own log directory follows the PAK log when logs are on and stays in tmpfs when they are off.
+
+A user-installed PAK is covered when its launcher uses that same contract and the process stays attached to it. A script that bypasses the launcher, or that detaches after start, is outside the guarantee. The phase does not promise capture it cannot actually keep.
+
+One existing write happens with logs off. `rc.late` copies boot timing and `nextui.txt` onto the card so a hung panel still leaves evidence. `docs/ARCHITECTURE.md` records that copy. 16A decides whether it remains a named exception or stops. It is not silently kept and not deleted before that decision. The opt-in HDMI audio trace is a different flag and is not the System logs switch. The inventory names it and does not fold it into the default.
+
+### 16B. Unified diagnostics and bounded retention
+
+Status: Planned.
+
+Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. This milestone adds a per-file bound and a total bound.
+
+Diagnostic text that currently stays in tmpfs is the collection list to verify, not a migration order: the late InputPlumber and `zlyme-input` capture, the late PipeWire capture, the late Bluetooth capture, `zlyme-storage.log`, `zlyme-led.log`, boot timing, the frontend and session text, the Wi-Fi async log, and the tmpfs copies of OpenBOR, RetroArch debug, and PortMaster. Anything found in the same pass is included only when it is a diagnostic. Locks, PID files, sockets, temporary configuration, update markers, and runtime state stay where they are. A file in `/tmp` is not a log because of its directory.
+
+Collection has to cover the window the program actually runs, including a failure after startup. `zlyme-logs` today copies a snapshot. A second rotation of the same boot or the same launch is a defect. Turning logs on and off in one boot must not consume another system generation. Log text must not contain credentials or tokens. New work stays off the first-frame path. Shutdown and the `/storage` unmount stay as they are. A launch's exit status stays the program's exit status.
+
+Keeping early evidence across a freeze is in scope when it can be done without those regressions. Persistence after a hard reset is not promised. That behavior has not been shown.
+
+### 16C. Bug-finding and independent review
+
+Status: Planned.
+
+`docs/AUDITING.md` is the procedure for a dedicated search of a named subsystem. `.cursor/agents/zlyme-code-reviewer.md` is a read-only reviewer of one named implementation diff. The reviewer is not a whole-repository auditor. A review that finds nothing is not proof that Zlyme has no defects.
+
+The campaign starts from high-risk and recently modified interfaces, and from the open debt already named in `docs/MAINTENANCE.md`. Priority follows the code that changed, the debt that is still open, and the consequence of a failure. Candidate areas are launch and process cleanup, log ownership and rotation, RetroArch and standalone launch, input and audio lifecycle, storage and update safety, and boot and shutdown ownership. That list is not a mandatory pass over the tree.
+
+A reviewer pass names a real change, its pre-change baseline SHA, the worktree state, and a narrow scope. The prompt carries those identifiers and not a conclusion or a suggested fix. The scope includes the committed, staged, unstaged, and relevant untracked files in that change. The reviewer stays read-only. The logging implementation, once authorized, gets its own post-change pass. Code that is not part of a named diff is examined with `docs/AUDITING.md`, not by pretending an empty diff is a repository audit.
+
+A reported defect names the source SHA, the path and line or function, a reachable path, the requirement it breaks, the expected behavior, the actual behavior, the evidence and the attempt to falsify it, the severity, the confirmation state, the disposition, and any gap. Confirmation is confirmed, probable/unverified, or rejected. Disposition is open, fixed, deferred, or superseded. Severity is separate from both. Discovery, verification, and remediation stay separate. A serious confirmed finding is not dropped and is not edited until a fix is authorized.
+
+### 16D. Planned validation and closure
+
+Status: Planned.
+
+Logging acceptance is an inventory of every shipped PAK and emulator launcher, host tests for log-on coverage and log-off behavior, a check that the log names the launch that wrote it, capture for RetroArch with and without a core and for the shipped standalones, rotation and the byte and disk-write limits, an unchanged process exit status, logs a person can still read, and the boot and shutdown behavior left intact. A later functional logging change needs Miyoo Flip validation of the behavior and the risk that change creates. It does not repeat acceptance that already covers an untouched path.
+
+Bug-finding acceptance is a written scope for each pass, an honest report of whether the reviewer ran, evidence on each actionable finding, no speculative mass refactor, and an explicit disposition for each serious finding. Documentation and the open-debt index move with a finding that is fixed, deferred, or superseded.
+
+A source-only audit does not by itself require a release build. An OTA, a hardware gate, or a release is a separate decision after the change that needs it exists.
