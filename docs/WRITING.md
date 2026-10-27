@@ -84,6 +84,7 @@ Before a phase is called closed:
 - Keep licenses, attribution, and provenance.
 - Name a remaining limitation. Do not write that support is complete when it is not.
 - When a validation finding is fixed, accepted, superseded, or deferred, reconcile the Open validation debt index in `docs/MAINTENANCE.md` in the same change. Do not carry a finished finding forward as open debt. The history stays in the research file or the logbook.
+- The Systems and emulators table in `docs/USER_GUIDE.md` is alphabetically sorted by the displayed System name.
 
 Do not rewrite every document after every commit, copy the same explanation into each file, or invent a test result.
 

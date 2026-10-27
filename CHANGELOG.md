@@ -22,7 +22,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
-- RetroArch uses the udev controller driver when the built-in pad is the only Xbox-style controller, and player 1 is that virtual controller rather than the physical pad underneath it. The general input path stays SDL. If another controller with the same name is connected, or the virtual controller cannot be placed in the joystick list, that session keeps the SDL controller driver instead of guessing which pad is player 1. Thanks to the Miyoo Flip user who reported the RetroArch slowdown and helped verify the controller mappings.
+- RetroArch uses the udev controller driver when the built-in pad is the only Xbox-style controller, and player 1 is that virtual controller rather than the physical pad underneath it. The general input path stays SDL. If another controller with the same name is connected, or the virtual controller cannot be placed in the joystick list, that session keeps the SDL controller driver instead of guessing which pad is player 1. Thanks to [@bair82](https://github.com/bair82) for the detailed audio and performance investigations in [#2](https://github.com/Zetarancio/zlyme/issues/2) and [#3](https://github.com/Zetarancio/zlyme/issues/3). Their measurements helped isolate RetroArch's SDL2 joypad slowdown and led to the udev implementation.
 - PPSSPP's face buttons follow the PlayStation layout on the built-in pad: Cross is the south button and Circle is the east button, in the menu and in play.
 - The Quickswitcher controls stay visible, including when an older saved setting had hidden them.
 - Orphan game preferences now reads "Remove settings for games that no longer exist."

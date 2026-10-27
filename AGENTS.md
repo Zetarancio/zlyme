@@ -309,7 +309,7 @@ A third-party or vendor binary with no usable license text may be redistributed 
 
 If there is no meaningful provenance, do not ship the file because its license is unknown. The wording for an accepted exception is: redistribution status, maintainer-approved as-is; upstream/vendor license unspecified. That is a Zlyme distribution decision, not a legal conclusion.
 
-`package/system/zlyme-preloader/preloader-stock.img` is the current exception. `preloader-stock.PROVENANCE` and `docs/UPSTREAMS.md` are the records. `ZLYME_PRELOADER_LICENSE` uses `LicenseRef-Miyoo-vendor-preloader-unspecified` for that file. The script and checker stay MIT.
+Two artifacts are the current exceptions. `package/system/zlyme-preloader/preloader-stock.img` is recorded in `preloader-stock.PROVENANCE`. `ZLYME_PRELOADER_LICENSE` uses `LicenseRef-Miyoo-vendor-preloader-unspecified` for that file. The script and checker stay MIT. `package/system/portmaster-rocknix-compat` installs the 41 unmodified files named in `PROVENANCE` and `allowlist.sha256`, under `LicenseRef-ROCKNIX-portmaster-compat-unspecified`. `docs/UPSTREAMS.md` records both. Neither record is a license grant, and neither exception covers any other file.
 
 ## Validation
 

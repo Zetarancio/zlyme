@@ -25,10 +25,10 @@ Product status, kept separate from the procedure below:
 - Published `zlyme44` is tag `zlyme-37164297221`, from `337ccbce2587393463a4b49c551f94e33e318e44`.
 - Published `zlyme44.2` is tag `zlyme-38098037074`, from `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`.
 - Published `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
-- `ZLYME_VERSION` remains `zlyme44.3`. `zlyme44.4` is not released.
-- Phase 14 is closed. Its installed candidate is `d358bf533e79d058bb63bfc32487bd544d8eb5de`. The maintainer accepts that installation. Phase 15 is in progress. Gates, exclusions, and image hashes are in `docs/ROADMAP.md` and `docs/LOGBOOK.md`.
+- `ZLYME_VERSION` is `zlyme44.4`. Published stable remains `zlyme44.3` until the release workflow succeeds.
+- Phase 14 and Phase 15 are closed. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`. The Quickswitcher candidate is not installed. Gates and image hashes are in `docs/ROADMAP.md` and `docs/LOGBOOK.md`.
 - The dated product-status snapshots that used to live here are preserved in `docs/research/phase-15-documentation-audit.md`. They are not the current state.
-- The NextUI pin in `package/system/nextui/nextui.mk` is on NextUI `zlyme`. The rule in the NextUI section below still applies to the next pin.
+- The NextUI pin in `package/system/nextui/nextui.mk` is `f595d7862d8f5dac722aaa9960307609be903db8` on NextUI `zlyme44.4-phase-14` and has to be reachable from NextUI `zlyme` before it is the pin on Zlyme `main`. The rule in the NextUI section below still applies.
 
 ## Audio on a live Flip
 
@@ -113,7 +113,7 @@ This section owns the release and delta policy. The code is `scripts/zlyme_relea
 
 `./build.sh` writes a full OTA only. A GitHub `Build` dispatch can produce that same kind of clean candidate and upload the stage artifacts without publishing a release. The `publish_release` input defaults to false. Setting it true runs the release job, which writes `release-manifest.json` and any deltas and publishes the stable/latest release (`prerelease: false`, `make_latest: true`). The release assets include `zlyme.img`, `zlyme.img.sha256`, the OTA and its checksum, `release-manifest.json`, `miyoo355_fw.img`, and the standalone helpers `miyoo355_fw-multiboot.img`, `miyoo355_fw-maskrom.img`, and `miyoo355_fw-restore.img`, each with a `.sha256`. `zlyme.img.sha256` is the card image checksum in the same two-space `sha256sum` format as the helpers. It is not an OTA member and it is not added to `release-manifest.json`. Those helpers are not OTA members and are not added to `release-manifest.json`. A clean build candidate is not hardware acceptance. Only an explicitly published, validated release is the public stable/latest release. Release notes describe accepted user behavior, not this log. They are the `CHANGELOG.md` section whose heading is `ZLYME_VERSION`, under the rules in `docs/WRITING.md`. The release job fails if that section is missing. It does not publish GitHub's generated commit list. Architecture of the apply path is in `docs/ARCHITECTURE.md`. The device runbook is in `docs/OPERATIONS.md`.
 
-The preloader image and the 41 imported ROCKNIX compatibility ELF files are the two unknown-license exceptions. Their provenance records are not license grants, and `LicenseRef-...-unspecified` does not authorize redistribution. Whether `zlyme44.4` ships them remains a release decision. The records are in `docs/UPSTREAMS.md`.
+`zlyme44.4` retains the two existing unknown-license exceptions: `preloader-stock.img` and the 41 ROCKNIX compatibility files named in `package/system/portmaster-rocknix-compat/PROVENANCE`. Each provenance record says maintainer-approved as-is. Redistribution rights remain unverified. The records are not license grants, and they do not cover any other file. `docs/UPSTREAMS.md` names both.
 
 Published `zlyme44` is `zlyme-37164297221`, built by run `37164297221` from `337ccbce2587393463a4b49c551f94e33e318e44`, with zero deltas. Its root differs from the locally accepted image because the build dates differ (`docs/DEVELOPMENT.md`, Release artifacts).
 
@@ -130,4 +130,4 @@ Still deferred:
 - Flycast's Dreamcast faces follow Xbox letters. A mapping file would replace the whole stick and shoulder map, and the joystick name it must match is not proven. `docs/research/phase-15d-button-layouts.md`.
 - The three emulator save-bind scripts still repeat the mount-id sequence. `docs/research/phase-15d-save-bind-ownership.md`. Extract them only as their own change.
 - PortMaster still waits `0.4` s before the GUI. Replace that wait when the readiness condition is known.
-- Publishing `zlyme44.4` still has to decide the preloader and the ROCKNIX compatibility objects whose licenses are unspecified. The records are above and in `docs/UPSTREAMS.md`. The changelog section is prepared. `ZLYME_VERSION` is still `zlyme44.3`, so the release job does not print that section until the version file says `zlyme44.4`.
+- `zlyme44.4` keeps the two unknown-license exceptions named above. Redistribution rights remain unverified. The Quickswitcher and orphan-text image was not installed. The maintainer waived a hardware pass for those two settings changes.
