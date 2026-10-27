@@ -1,7 +1,14 @@
 #!/bin/sh
-# Launch every Tools pak and every Emus pak that has a ROM, then return
-# with MENU+Start. Run on the device as root.
+# Historical full sweep. It writes a shell command into /tmp/next,
+# kills nextui-session, and can record a force-kill as success.
+# scripts/phase15-live.sh is the ZLYME1 handoff. This file stays for
+# the old inventory and does not run unless asked.
 set -u
+if [ "${1:-}" != "--unsafe-legacy" ]; then
+	echo "pak-live-test: refusing the old sweep. Use scripts/phase15-live.sh" >&2
+	exit 2
+fi
+shift
 
 LOG=/storage/.config/zlyme/pak-live-test.log
 RES=/storage/.config/zlyme/pak-live-test.txt

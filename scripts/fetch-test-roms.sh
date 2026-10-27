@@ -4,6 +4,8 @@
 # Soft-fail per system (SKIP + why).
 #
 # Dest: ZLYME_ROMS, else /storage/Roms on device, else a mounted ZLYME/Roms on the host.
+# --only TAG may be repeated. An existing destination file is kept.
+# Created paths are appended to the fixture manifest.
 set -u
 
 log() { printf '%s\n' "$*"; }
@@ -18,6 +20,21 @@ die() {
 	log "ERROR: $*"
 	exit 1
 }
+
+ONLY=
+MANIFEST=${ZLYME_FIXTURE_MANIFEST:-}
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--only)
+			[ -n "${2:-}" ] || die "--only needs a tag"
+			ONLY="$ONLY $2"
+			shift 2
+			;;
+		*)
+			die "unknown argument: $1"
+			;;
+	esac
+done
 
 find_dest() {
 	if [ -n "${ZLYME_ROMS:-}" ]; then
@@ -47,6 +64,11 @@ find_dest() {
 DEST=$(find_dest) || die "no ROM dest (set ZLYME_ROMS= or mount ZLYME)"
 mkdir -p "$DEST" || die "cannot mkdir $DEST"
 log "dest=$DEST"
+if [ -z "$MANIFEST" ] && [ -d /storage/.config ]; then
+	mkdir -p /storage/.config/zlyme
+	MANIFEST=/storage/.config/zlyme/phase15-fixture-manifest.txt
+fi
+[ -n "$MANIFEST" ] && log "manifest=$MANIFEST"
 
 command -v curl >/dev/null 2>&1 || die "curl is missing"
 
@@ -78,13 +100,35 @@ PY
 	return 1
 }
 
+is_html() {
+	_html=$1
+	[ -s "$_html" ] || return 1
+	head -c 512 "$_html" | tr -d '\000' | grep -qiE '<!doctype|<html|<head' 
+}
+
 put_file() {
 	pretty=$1
 	src=$2
 	name=$3
 	dir="$DEST/$pretty"
+	dest="$dir/$name"
+	if is_html "$src"; then
+		log "SKIP $pretty: $name is an HTML page"
+		return 1
+	fi
 	mkdir -p "$dir"
-	cp -f "$src" "$dir/$name"
+	if [ -e "$dest" ]; then
+		if cmp -s "$src" "$dest"; then
+			log "KEEP $pretty <- $name"
+			return 0
+		fi
+		log "SKIP $pretty: $name already exists and differs"
+		return 1
+	fi
+	cp "$src" "$dest" || return 1
+	if [ -n "$MANIFEST" ]; then
+		printf '%s\n' "$dest" >> "$MANIFEST"
+	fi
 	log "OK $pretty <- $name"
 }
 
@@ -130,7 +174,7 @@ try_file() {
 	url=$4
 	secs=${5:-240}
 	if fetch "$url" "$TMP/$name" "$secs"; then
-		put_file "$pretty" "$TMP/$name" "$name"
+		put_file "$pretty" "$TMP/$name" "$name" || return 1
 		return 0
 	fi
 	skip "$tag" "download failed ($name)"
@@ -158,8 +202,33 @@ try_zip_member() {
 		skip "$tag" "zip had no $pat"
 		return 1
 	fi
-	put_file "$pretty" "$src" "$name"
+	put_file "$pretty" "$src" "$name" || return 1
 }
+
+if [ -n "$ONLY" ]; then
+	for _only in $ONLY; do
+		case "$_only" in
+			GB)
+				try_file GB "Game Boy (GB)" "cpu_instrs.gb" \
+					"https://github.com/retrio/gb-test-roms/raw/master/cpu_instrs/cpu_instrs.gb"
+				;;
+			GBA)
+				try_file GBA "Game Boy Advance (GBA)" "arm.gba" \
+					"https://github.com/jsmolka/gba-tests/raw/master/arm/arm.gba"
+				;;
+			NDS)
+				try_zip_member NDS "Nintendo DS (NDS)" "hbmenu.nds" \
+					"https://github.com/devkitPro/nds-hb-menu/releases/download/v0.11.0/hbmenu-0.11.0.zip" \
+					"*.nds" 300
+				;;
+			*)
+				skip "$_only" "not in the short fixture list"
+				;;
+		esac
+	done
+	log "done"
+	exit 0
+fi
 
 # --- already-pinned legal tests ---
 
