@@ -62,13 +62,13 @@ if logs_wanted; then
 	export ZLYME_PAK_LOG="$LOGS_PATH/${tag}.log"
 	trim_completed "$ZLYME_PAK_LOG"
 	zlyme_pak_rotate "$ZLYME_PAK_LOG"
-	printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
 	unset _logroot
-	# A failed exec redirection is fatal in BusyBox ash. Probe with an
-	# ordinary command first. The probe only checks that the file can
-	# be opened. It writes no data and does not prove a later write.
-	# If the open fails, the launch keeps the caller's stdout and stderr.
+	# A failed redirection is fatal in BusyBox ash. Probe before any
+	# write, including the header. The probe writes no data and does
+	# not prove a later write. If the open fails, the launch keeps the
+	# caller's stdout and stderr.
 	if cat /dev/null >>"$ZLYME_PAK_LOG" 2>/dev/null; then
+		printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
 		exec >>"$ZLYME_PAK_LOG" 2>&1
 	fi
 fi

@@ -230,3 +230,9 @@ RetroArch `-v` is unchanged from 16B1. No other launcher gained a verbose flag. 
 ### What the host tests do not prove
 
 They do not run RetroArch, OpenBOR, Ruffle, or PortMaster's real GUI. They do not fill an exFAT volume. They do not show that the seed's `start boot` finishes before `S28` on a Flip. They do not show a long PAK fd staying open across the trim, because the trim is ordered before the new open and the live-descriptor check is a separate replacement of a path.
+
+## 16B3 correction
+
+The service, frontend, and Weston copies keep a byte offset. Bytes already in the tmpfs file when logs turn on are not copied. A failed `tail` leaves the previous saved file in place and does not move the offset. `dmesg` is still the kernel ring at snapshot time. The PAK header is written only after the log-open probe, so a failed redirection is not reached when the file cannot be opened. The target `busybox` in `output/target/bin/busybox` is aarch64 and does not run on this host, so that ash rule was not executed here.
+
+The v4.2 tree at `output/build/ruffle-handheld-4.2` was read, not launched. `entrypoint.sh` points the layout `logs` links and `RUFFLE_FLASH_LOG` at `RUFFLE_AUX_LOG_DIR`. The native launcher tees to `$GAMEDIR/logs/native/<swf>.log`, and the adapter sets `GAMEDIR` to the compat directory whose `logs` link is that auxiliary directory. Logs off, that file is under `/tmp/zlyme-ruffle/logs`. The image symlink `rufflehandheld/logs` still needs `/storage/.config/ruffle/logs` to exist or the entrypoint's `mkdir` exits 3. The binary was not run. A Flip launch with logs off is still open. The native tee can grow for the whole launch. OpenBOR's distinct native names can do the same. Neither is a hard 32 MiB cap.

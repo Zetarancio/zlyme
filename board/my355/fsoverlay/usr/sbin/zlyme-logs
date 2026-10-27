@@ -77,20 +77,47 @@ note_size() {
 # live file; this never renames or truncates it, so an open writer fd
 # keeps appending to the same inode.
 append_since() {
-	_src=$1
-	_dest=$2
-	_state=$3
-	regular_file "$_src" || return 0
-	_size=$(file_size "$_src")
-	_off=$(read_off "$_state")
-	if [ "$_size" -le "$_off" ]; then
-		printf '%s\n' "$_size" > "$_state"
+	as_src=$1
+	as_dest=$2
+	as_state=$3
+	regular_file "$as_src" || return 0
+	# A failed size read must not rewind the cursor to zero.
+	if ! as_raw=$(wc -c < "$as_src" 2>/dev/null); then
 		return 0
 	fi
-	_skip=$((_off + 1))
-	if tail -c "+$_skip" "$_src" >> "$_dest" 2>/dev/null; then
-		printf '%s\n' "$_size" > "$_state"
+	as_size=$(printf '%s\n' "$as_raw" | tr -d ' ')
+	case "$as_size" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+	as_off=$(read_off "$as_state")
+	if [ "$as_size" -le "$as_off" ]; then
+		printf '%s\n' "$as_size" > "$as_state"
+		return 0
 	fi
+	mkdir -p "$(dirname "$as_dest")" || return 0
+	as_piece=$(mktemp "${as_dest}.piece.XXXXXX") || return 0
+	as_skip=$((as_off + 1))
+	if ! tail -c "+$as_skip" "$as_src" > "$as_piece"; then
+		rm -f "$as_piece"
+		return 0
+	fi
+	as_out=$(mktemp "${as_dest}.out.XXXXXX") || { rm -f "$as_piece"; return 0; }
+	if [ -f "$as_dest" ]; then
+		if ! cat "$as_dest" > "$as_out"; then
+			rm -f "$as_piece" "$as_out"
+			return 0
+		fi
+	fi
+	if ! cat "$as_piece" >> "$as_out"; then
+		rm -f "$as_piece" "$as_out"
+		return 0
+	fi
+	if mv -f "$as_out" "$as_dest"; then
+		printf '%s\n' "$as_size" > "$as_state"
+	else
+		rm -f "$as_out"
+	fi
+	rm -f "$as_piece"
 }
 
 session_sources() {
@@ -112,6 +139,114 @@ weston_src() {
 	fi
 }
 
+# Append $1 onto $2. The previous $2 stays in place until the new
+# bytes are in a temporary file and that file has been renamed.
+append_file() {
+	af_add=$1
+	af_dst=$2
+	af_out=$(mktemp "${af_dst}.out.XXXXXX") || return 1
+	if [ -f "$af_dst" ]; then
+		cat "$af_dst" > "$af_out" || { rm -f "$af_out"; return 1; }
+	fi
+	cat "$af_add" >> "$af_out" || { rm -f "$af_out"; return 1; }
+	af_osz=$(file_size "$af_out")
+	if [ "$af_osz" -gt "$SERVICE_TAIL" ]; then
+		af_cap=$(mktemp "${af_dst}.cap.XXXXXX") || { rm -f "$af_out"; return 1; }
+		if tail -c "$SERVICE_TAIL" "$af_out" > "$af_cap"; then
+			mv -f "$af_cap" "$af_out" || { rm -f "$af_cap" "$af_out"; return 1; }
+		else
+			rm -f "$af_cap" "$af_out"
+			return 1
+		fi
+	fi
+	mv -f "$af_out" "$af_dst"
+}
+
+# Copy new bytes of a live tmpfs file. The offset moves only after
+# those bytes are in the saved file. A failed tail leaves both alone.
+capture_stream() {
+	cs_src=$1
+	cs_dest=$2
+	cs_state=$3
+	regular_file "$cs_src" || return 0
+	cs_size=$(file_size "$cs_src")
+	cs_off=$(read_off "$cs_state")
+	mkdir -p "$(dirname "$cs_dest")" || return 0
+	if [ -f "$cs_state" ] && [ "$cs_size" -eq "$cs_off" ]; then
+		return 0
+	fi
+	cs_piece=$(mktemp "${cs_dest}.piece.XXXXXX") || return 0
+	if [ ! -f "$cs_state" ] || [ "$cs_size" -lt "$cs_off" ]; then
+		if ! copy_tail "$cs_src" "$cs_piece"; then
+			rm -f "$cs_piece"
+			return 0
+		fi
+	else
+		cs_skip=$((cs_off + 1))
+		if ! tail -c "+$cs_skip" "$cs_src" > "$cs_piece"; then
+			rm -f "$cs_piece"
+			return 0
+		fi
+	fi
+	if append_file "$cs_piece" "$cs_dest"; then
+		printf '%s\n' "$cs_size" > "$cs_state"
+	fi
+	rm -f "$cs_piece"
+}
+
+apply_stream() {
+	case $4 in
+		note) note_size "$1" "$3" ;;
+		zero) printf '%s\n' 0 > "$3" ;;
+		copy) capture_stream "$1" "$2" "$3" ;;
+	esac
+}
+
+# Service and frontend text. A byte already in the file when logging
+# turns on is not copied. dmesg stays a kernel-ring snapshot.
+for_streams() {
+	_act=$1
+	if [ -n "${ZLYME_SERVICE_DIR:-}" ]; then
+		for _svc in "$ZLYME_SERVICE_DIR"/*; do
+			regular_file "$_svc" || continue
+			_bn=$(basename "$_svc")
+			apply_stream "$_svc" "$LOGDIR/system-0/services/$_bn" \
+				"$MARK.svc.$_bn" "$_act"
+		done
+		unset _svc _bn
+		return 0
+	fi
+	[ -z "${ZLYME_LOG_ROOT:-}" ] || return 0
+	apply_stream /tmp/boot-timing "$LOGDIR/system-0/boot-timing.txt" \
+		"$MARK.boot-timing" "$_act"
+	apply_stream /tmp/nextui.txt "$LOGDIR/system-0/nextui.txt" \
+		"$MARK.nextui" "$_act"
+	apply_stream /tmp/zlyme-input-late.log \
+		"$LOGDIR/system-0/services/input-late.log" \
+		"$MARK.svc.input-late" "$_act"
+	apply_stream /tmp/inputplumber.log \
+		"$LOGDIR/system-0/services/inputplumber.log" \
+		"$MARK.svc.inputplumber" "$_act"
+	apply_stream /tmp/zlyme-input.log \
+		"$LOGDIR/system-0/services/zlyme-input.log" \
+		"$MARK.svc.zlyme-input" "$_act"
+	apply_stream /tmp/zlyme-pipewire-late.log \
+		"$LOGDIR/system-0/services/pipewire-late.log" \
+		"$MARK.svc.pipewire-late" "$_act"
+	apply_stream /tmp/zlyme-bt-late.log \
+		"$LOGDIR/system-0/services/bluetooth-late.log" \
+		"$MARK.svc.bluetooth-late" "$_act"
+	apply_stream /tmp/zlyme-storage.log \
+		"$LOGDIR/system-0/services/storage.log" \
+		"$MARK.svc.storage" "$_act"
+	apply_stream /tmp/zlyme-led.log \
+		"$LOGDIR/system-0/services/led.log" \
+		"$MARK.svc.led" "$_act"
+	apply_stream /tmp/zlyme-net-async.log \
+		"$LOGDIR/system-0/services/wifi-async.log" \
+		"$MARK.svc.wifi-async" "$_act"
+}
+
 # A new Weston run replaces the file, so a smaller size is a new log,
 # not a shrink of the one we already copied.
 capture_weston() {
@@ -123,25 +258,7 @@ capture_weston() {
 		rm -f "$MARK.weston"
 		return 0
 	fi
-	_size=$(file_size "$_w")
-	_off=$(read_off "$MARK.weston")
-	_dest=$LOGDIR/system-0/services/weston.log
-	mkdir -p "$(dirname "$_dest")" || return 0
-	# No saved offset, or the file shrank: this is a new log. Append it
-	# and keep the newest 64 KiB, so a short run does not erase the
-	# previous capture and a long run is not read from the old offset.
-	if [ ! -f "$MARK.weston" ] || [ "$_size" -lt "$_off" ]; then
-		_wt=$(mktemp "${_dest}.src.XXXXXX") || return 0
-		if tail -c "$SERVICE_TAIL" "$_w" > "$_wt"; then
-			cat "$_wt" >> "$_dest"
-		fi
-		rm -f "$_wt"
-		cap_one "$_dest" "$SERVICE_TAIL"
-		printf '%s\n' "$_size" > "$MARK.weston"
-		return 0
-	fi
-	append_since "$_w" "$_dest" "$MARK.weston"
-	cap_one "$_dest" "$SERVICE_TAIL"
+	capture_stream "$_w" "$LOGDIR/system-0/services/weston.log" "$MARK.weston"
 }
 
 # First start of an on-interval discards bytes already in the tmpfs
@@ -150,6 +267,7 @@ begin_capture() {
 	session_sources
 	[ -n "$WRAP" ] && note_size "$WRAP" "$MARK.wrap"
 	[ -n "$TEXT" ] && note_size "$TEXT" "$MARK.text"
+	for_streams note
 	_w=$(weston_src)
 	[ -n "$_w" ] && note_size "$_w" "$MARK.weston"
 	: > "$MARK.on"
@@ -161,15 +279,22 @@ follow_capture() {
 	session_sources
 	[ -n "$WRAP" ] && append_since "$WRAP" "$cur/session.txt" "$MARK.wrap"
 	[ -n "$TEXT" ] && append_since "$TEXT" "$cur/next.txt" "$MARK.text"
+	for_streams copy
 	capture_weston
 }
 
 copy_tail() {
-	_src=$1
-	_dest=$2
-	regular_file "$_src" || return 0
-	mkdir -p "$(dirname "$_dest")" || return 0
-	tail -c "$SERVICE_TAIL" "$_src" > "$_dest" 2>/dev/null || true
+	ct_src=$1
+	ct_dest=$2
+	regular_file "$ct_src" || return 1
+	mkdir -p "$(dirname "$ct_dest")" || return 1
+	ct_tmp=$(mktemp "${ct_dest}.new.XXXXXX") || return 1
+	if tail -c "$SERVICE_TAIL" "$ct_src" > "$ct_tmp"; then
+		mv -f "$ct_tmp" "$ct_dest"
+	else
+		rm -f "$ct_tmp"
+		return 1
+	fi
 }
 
 refresh_snapshots() {
@@ -182,32 +307,10 @@ refresh_snapshots() {
 	if [ -f /boot/zlyme-dmesg.txt ] && [ ! -L /boot/zlyme-dmesg.txt ]; then
 		cp -f /boot/zlyme-dmesg.txt "$cur/dmesg-boot.txt" 2>/dev/null || true
 	fi
-	if [ -f /tmp/boot-timing ] && [ ! -L /tmp/boot-timing ]; then
-		copy_tail /tmp/boot-timing "$cur/boot-timing.txt"
-	fi
-	if [ -f /tmp/nextui.txt ] && [ ! -L /tmp/nextui.txt ]; then
-		copy_tail /tmp/nextui.txt "$cur/nextui.txt"
-	fi
-	if [ -n "${ZLYME_SERVICE_DIR:-}" ]; then
-		for _svc in "$ZLYME_SERVICE_DIR"/*; do
-			regular_file "$_svc" || continue
-			copy_tail "$_svc" "$cur/services/$(basename "$_svc")"
-		done
-		unset _svc
-	elif [ -z "${ZLYME_LOG_ROOT:-}" ]; then
-		# Live destinations stay on tmpfs. These are tails, not extra
-		# descriptors on the card. syslogd and klogd are not here:
-		# Zlyme does not own a file for them, and the stream is not
-		# known to be free of unrelated messages.
-		copy_tail /tmp/zlyme-input-late.log "$cur/services/input-late.log"
-		copy_tail /tmp/inputplumber.log "$cur/services/inputplumber.log"
-		copy_tail /tmp/zlyme-input.log "$cur/services/zlyme-input.log"
-		copy_tail /tmp/zlyme-pipewire-late.log "$cur/services/pipewire-late.log"
-		copy_tail /tmp/zlyme-bt-late.log "$cur/services/bluetooth-late.log"
-		copy_tail /tmp/zlyme-storage.log "$cur/services/storage.log"
-		copy_tail /tmp/zlyme-led.log "$cur/services/led.log"
-		copy_tail /tmp/zlyme-net-async.log "$cur/services/wifi-async.log"
-	fi
+	# boot-timing, nextui.txt, and the service files are copied by
+	# for_streams, and only for bytes written while logging is on.
+	# syslogd and klogd are not here: Zlyme does not own a file for
+	# them, and the stream is not known to be free of unrelated messages.
 }
 
 # Oldest generation is deleted, then each directory moves up one index.
@@ -425,6 +528,7 @@ start() {
 			session_sources
 			[ -n "$WRAP" ] && printf '%s\n' 0 > "$MARK.wrap"
 			[ -n "$TEXT" ] && printf '%s\n' 0 > "$MARK.text"
+			for_streams zero
 			_w=$(weston_src)
 			[ -n "$_w" ] && printf '%s\n' 0 > "$MARK.weston"
 			: > "$MARK.on"

@@ -399,4 +399,84 @@ if [ -f "$gap/system-0/session.txt" ]; then
 	grep -q 'OFF-GAP' "$gap/system-0/session.txt" && exit 1
 fi
 
+# A failed tail leaves the saved Weston copy and does not advance the
+# cursor. The next successful copy can still save the new bytes.
+realtail=$(command -v tail)
+mkdir -p "$work/tailbin"
+cat > "$work/tailbin/tail" << EOF
+#!/bin/sh
+if [ "\${ZLYME_TAIL_FAIL:-}" = 1 ]; then
+	exit 1
+fi
+exec $realtail "\$@"
+EOF
+chmod 0755 "$work/tailbin/tail"
+failroot=$work/fail-weston
+failmark=$work/fail-mark
+mkdir -p "$failroot/system-0/services"
+printf '%s\n' 'KEEP-WESTON' > "$failroot/system-0/services/weston.log"
+printf '%s\n' 'NEW-WESTON' > "$wlog"
+: > "$failmark"
+: > "$failmark.on"
+ZLYME_TAIL_FAIL=1 PATH="$work/tailbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$failroot" ZLYME_LOG_MARK="$failmark" \
+	ZLYME_LOG_LOCK="$work/fail.lock" ZLYME_WESTON_LOG="$wlog" \
+	"$LOGS" start
+grep -q 'KEEP-WESTON' "$failroot/system-0/services/weston.log"
+test ! -f "$failmark.weston"
+PATH="$work/tailbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$failroot" ZLYME_LOG_MARK="$failmark" \
+	ZLYME_LOG_LOCK="$work/fail.lock" ZLYME_WESTON_LOG="$wlog" \
+	"$LOGS" start
+grep -q 'KEEP-WESTON' "$failroot/system-0/services/weston.log"
+grep -q 'NEW-WESTON' "$failroot/system-0/services/weston.log"
+
+# Text already in a service file when logs turn on is not copied.
+offsvc=$work/offsvc
+mkdir -p "$offsvc"
+printf '%s\n' 'OFF-SVC' > "$offsvc/input-late.log"
+osroot=$work/offsvc-root
+osmark=$work/offsvc-mark
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$osroot" ZLYME_LOG_MARK="$osmark" \
+	ZLYME_LOG_LOCK="$work/offsvc.lock" ZLYME_SERVICE_DIR="$offsvc" \
+	"$LOGS" start
+if [ -f "$osroot/system-0/services/input-late.log" ]; then
+	grep -q 'OFF-SVC' "$osroot/system-0/services/input-late.log" && exit 1
+fi
+printf '%s\n' 'ON-SVC' >> "$offsvc/input-late.log"
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$osroot" ZLYME_LOG_MARK="$osmark" \
+	ZLYME_LOG_LOCK="$work/offsvc.lock" ZLYME_SERVICE_DIR="$offsvc" \
+	"$LOGS" start
+grep -q 'ON-SVC' "$osroot/system-0/services/input-late.log"
+grep -q 'OFF-SVC' "$osroot/system-0/services/input-late.log" && exit 1
+
+# A failed size read does not rewind the session cursor.
+realwc=$(command -v wc)
+mkdir -p "$work/wcbin"
+cat > "$work/wcbin/wc" << EOF
+#!/bin/sh
+if [ "\${ZLYME_WC_FAIL:-}" = 1 ]; then
+	exit 1
+fi
+exec $realwc "\$@"
+EOF
+chmod 0755 "$work/wcbin/wc"
+wcroot=$work/wc-root
+wcmark=$work/wc-mark
+wcsess=$work/wc-sess
+mkdir -p "$wcroot/system-0" "$wcsess"
+printf '%s\n' 'ON-A' > "$wcsess/wrap.log"
+wclen=$(wc -c < "$wcsess/wrap.log" | tr -d ' ')
+printf '%s\n' "$wclen" > "$wcmark.wrap"
+cp "$wcsess/wrap.log" "$wcroot/system-0/session.txt"
+: > "$wcmark"
+: > "$wcmark.on"
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$wcroot" ZLYME_LOG_MARK="$wcmark" \
+	ZLYME_LOG_LOCK="$work/wc.lock" \
+	ZLYME_SESSION_WRAP="$wcsess/wrap.log" ZLYME_SESSION_TEXT="$wcsess/wrap.log" \
+	"$LOGS" start
+[ "$(tr -d ' \n' < "$wcmark.wrap")" = "$wclen" ]
+[ "$(grep -c 'ON-A' "$wcroot/system-0/session.txt")" = 1 ]
+
 echo "log history ok"

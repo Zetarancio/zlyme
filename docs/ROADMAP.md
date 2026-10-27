@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress at 16A. 16B, 16C, and 16D have not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A is closed. 16B is in progress at the B3 checkpoint and its correction. 16C and 16D have not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,7 +429,7 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-10-27. 16A is closed. 16B3 is in source and covered by host tests. It has not been run on a Flip. 16C and 16D have not started.
+Status: In progress, 2026-10-27. 16A is closed. 16B is in progress at the B3 checkpoint and its correction. Host tests cover that correction. It has not been run on a Flip. 16C and 16D have not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
@@ -443,7 +443,7 @@ Status: Closed, 2026-10-27. The inventory and the RetroArch `wb` open result are
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: In progress, 2026-10-27. PAK capture, the tmpfs session, one rotation per logged boot, the on/off session boundary, service tails, and a safe retention subset are in source. Host tests cover them. None of that has been run on a Flip. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md). The implementation notes are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+Status: In progress, 2026-10-27. PAK capture, the tmpfs session, one rotation per logged boot, the on/off session boundary, service tails, and a safe retention subset are in source. A failed copy does not replace a saved tail or advance its cursor. Service and frontend copies skip bytes written while logs were off. The PAK header is written only after the log opens. Host tests cover that correction. None of it has been run on a Flip. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md). The implementation notes are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 `/storage/.logs` stays. Logs stay off by default, with five boot generations and three launches per PAK. A finished PAK log, a finished PortMaster transcript, and a previous OpenBOR native log are trimmed to the last 1 MiB before the next launch. Session copies in a generation are shortened toward 2 MiB. Past 32 MiB of files `zlyme-logs` owns, it removes `system-4`, then `system-3`, then old PAK generations. It leaves the current PAK log, which a game may still have open, and it leaves names it does not own. That current-log set can exceed 32 MiB. There is no supervisor and no `SIGXFSZ` cap. Ruffle's auxiliary log follows the switch. Its save directory does not. RetroArch `-v` is still the only verbose flag this phase turns on. Third-party output is not filtered. The two `rc.late` copies stay.
 
