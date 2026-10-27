@@ -33,7 +33,7 @@ Legal fixtures created on `/storage/Roms` were `cpu_instrs.gb`, `arm.gba`, and `
 
 Flycast's Dreamcast face map is deferred past this phase. A correct file would replace the whole generated map, and the joystick name it would have to match was not proven.
 
-`zlyme-my355-20261027-7bed507b0e4b.tar` counted every event node that had a `js` directory. A dry run of the later script on the installed sysfs wrote `input_player1_joypad_index = "1"` for the virtual `event5`, and it stays on the SDL2 joypad driver when that joystick record is missing. The device still runs the `e2c80ec` image.
+`zlyme-my355-20261027-7bed507b0e4b.tar` is superseded by `zlyme-my355-20261027-14ad7238a42e.tar`, SHA-256 `98ed2fd8d130eaabbabe8038ff54f7b99e2828d32ca6700f9610d9d90fd7fda7`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. A dry run on the installed sysfs wrote index `1`. That archive is not installed, and the button result has not been seen from a packed boot. The device still runs the `e2c80ec` image.
 
 ## 2026-10-27 — a26f96b menu accepted, PPSSPP map failed
 
