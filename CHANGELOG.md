@@ -22,7 +22,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
-- PortMaster runtime images whose paths begin with two slashes can mount correctly.
+- RetroArch uses the udev controller driver when the built-in pad is the only Xbox-style controller. The general input path stays SDL. If another controller with the same name is connected, that session keeps the SDL controller driver instead of guessing which pad is player 1. Thanks to the Miyoo Flip user who reported the RetroArch slowdown and helped verify the controller mappings.
+- PPSSPP's face buttons follow the PlayStation layout on the built-in pad: Cross is the south button and Circle is the east button, in the menu and in play.
 - Long game names scroll inside the selection, rows reserve the right amount of room for artwork and status icons, and opening another game list no longer restores the previous system's picture.
 - Bluetooth discovery lists nearby devices whose type is not known yet, without connecting until you choose Pair or Connect.
 - Volume changes update the on-screen level immediately and are applied when the mixer is ready. Paired audio headsets are requested once after BlueZ has registered them instead of being retried continuously.

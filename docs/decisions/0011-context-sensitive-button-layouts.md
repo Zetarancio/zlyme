@@ -28,7 +28,7 @@ MENU+START, external-controller priority, and one virtual pad per player stay as
 
 ## Consequences
 
-The RetroArch menu half of this decision was observed on installed `a26f96b` after Reset RetroArch configuration: east confirms and south goes back, in NextUI, in the standalone menu, and in the menu while a Game Boy game is loaded. Game Boy gameplay used the same faces. PPSSPP on that image still confirmed on east. It loads `controls.ini`, and the corrected map had been placed in `ppsspp.ini`. That PPSSPP result is a failure of the previous stock file, not acceptance of the PSP layout.
+The RetroArch menu half of this decision was observed on installed `a26f96b` after Reset RetroArch configuration: east confirms and south goes back, in NextUI, in the standalone menu, and in the menu while a Game Boy game is loaded. Game Boy gameplay used the same faces. PPSSPP on installed `a420f0c`, after Reset standalone settings, uses that layout in the menu and in play. That built-in-pad result is accepted. The mapping in `controls.ini` stays.
 
 Flycast generates its Dreamcast faces from SDL button names and does not yet follow the Dreamcast positions. Several libretro cores have not had their descriptors read. This decision stays proposed until those gaps are closed or explicitly left as exceptions.
 

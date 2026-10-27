@@ -76,3 +76,32 @@ No refresh or audio change is made. The installed image can supply the gameplay 
 ### Issue #2 — saved refresh is 60, still no gameplay sample
 
 Later the same day the saved refresh file was `60`. The squashfs, GPU file `libmali`, and PipeWire `ready` state were unchanged. The DSI connector was connected and enabled. Its mode list was `640x480@60`, `@50`, and `@40`. It still had no current `mode` file while NextUI owned KMS. Debugfs was not mounted, so no CRTC clock or totals were read. No game was started, and no user RetroArch file was edited. A requested 60 Hz mode name is not a measurement of 59.976 Hz or 59.1876 Hz. PipeWire xruns were not sampled because no gpSP session ran. No audio or DTS change follows from this idle reading.
+
+## 2026-10-27 — Issue #2 is not currently reproduced
+
+The maintainer does not currently hear the periodic interruptions. A gpSP log from installed squashfs `a8c1a8323063ed41fde48ee245300d55d487d5d5d6aff48de992eb35d75e7f17` reports RetroArch 1.22.2, gpSP nominal 59.73 FPS, an advertised 640×480 mode at 59.976761 Hz, audio input rate 32917.50 Hz, ALSA `default` initialized, 41 seconds of content, 2562 threaded video frames pushed and 38 dropped, saves written, and a normal exit. It does not report `-EPIPE` or an underrun. Threaded video drops are not PipeWire xruns. Debugfs was still not mounted, so the effective pixel clock was not read. The historical measurement of 31,578,948 Hz against a 32,000,000 Hz request remains in the earlier sections. PipeWire is not claimed to have changed that divider. No latency, rate, or DTS change is made. The saved refresh stays 60.
+
+## 2026-10-27 — Issue #3 joypad driver
+
+The earlier uncapped figures stay historical: SDL2 joypad about 45.5 FPS, udev joypad about 124.6 FPS, with SDL2 kept as the general input driver. RetroArch 1.22.2 is already built with udev. The stock file and `ra-run.sh` select `input_joypad_driver = udev` when the only pad named `Microsoft X-Box 360 pad` is one InputPlumber virtual pad. Player 1 reserves that name (`input_player1_device_reservation_type = 2`). The physical `Miyoo Flip Gamepad` does not match the name. A second pad with the same Xbox name cannot be ranked by that name, so that session keeps the SDL2 joypad driver and index 0. The udev autoconfig uses evdev indexes from the live key bitmap: A 0, B 1, X 2, Y 3, L 4, R 5, Select 6, Start 7, Guide 8, sticks on axes 0/1 and 3/4, triggers on axes 2 and 5. Rumble uses the device's force-feedback bits. No new FPS sample was taken.
+
+## Standalone input
+
+These launchers were compared with their own sources, not by copying RetroArch's udev key. None of them gains a new controller backend in this pass.
+
+| Program | API in the Zlyme launcher | Decision |
+| --- | --- | --- |
+| PPSSPP 1.19.3 | SDL gamecontroller, `controls.ini` | Keep. Hardware-accepted on the built-in pad. |
+| Dolphin 2503a | SDL GameController names in `GCPadNew.ini` | Keep. No hardware gate. |
+| Flycast `5aa091f` | SDL gamecontroller | Keep. Dreamcast face positions remain a separate gap. |
+| DraStic | Numeric joystick map in `drastic.cfg` | Keep. No udev config key in the launcher. |
+| AetherSX2 1.0.0 | SDL-0 binds in `PCSX2.ini` | Keep. |
+| Amiberry 7.1.0 | SDL | Keep. |
+| ScummVM 2.9.1 | SDL | Keep. |
+| GZDoom g4.14.2 | SDL | Keep. |
+| OpenBOR v7533 | SDL | Keep. |
+| Hypseus Singe 2.11.5 | SDL gamepad | Keep. |
+| PICO-8 | SDL controller database | Keep. |
+| Moonlight | SDL gamecontroller | Keep. libevdev is a dependency, not a selected pad backend. |
+
+AetherSX2's `RawInput` key stays false. That switch is the Windows input source. It is not a Linux udev backend. ROCKNIX, KNULLI, and Batocera use udev for RetroArch's normal path. That does not make an SDL application a udev application. No launcher in this list exposes a Linux evdev controller selector that is already the upstream default, so none was added.

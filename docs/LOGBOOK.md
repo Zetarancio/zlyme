@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-27 — a420f0c PPSSPP accepted
+
+The maintainer installed `zlyme-my355-20261026-a420f0c00a78.tar` and ran Reset standalone settings. PPSSPP's menu and gameplay now use the south Cross and east Circle layout on the built-in pad. `/boot/zlyme` was `a8c1a8323063ed41fde48ee245300d55d487d5d5d6aff48de992eb35d75e7f17` before the following joypad change. A gpSP log from that image reports no ALSA underrun. It does not measure the panel clock or a PipeWire xrun.
+
 ## 2026-10-27 — a26f96b menu accepted, PPSSPP map failed
 
 The maintainer installed `zlyme-my355-20261026-a26f96b71ade.tar`. `/boot/zlyme` is `edb12962678dbaa3c41b6d3fe7fd0ca55a97e189bb3bf850df749f6d662c5a8f`. After Reset RetroArch configuration, NextUI, the standalone RetroArch menu, and the RetroArch menu while a Game Boy game was loaded confirm on east A and go back on south B. Game Boy gameplay buttons also behaved as expected. PPSSPP, after Reset standalone settings, still confirms on east and goes back on south in its menu and in play. Its live `controls.ini` maps Cross to `10-189`. That file is what PPSSPP 1.19.3 loads. The stock `ppsspp.ini` map is not. Debugfs was not mounted, so no panel clock was read. No PSP, Dolphin, or Flycast save bind was mounted. This is not acceptance of Issue #2, Issue #3, or the PPSSPP faces.

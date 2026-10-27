@@ -406,11 +406,11 @@ Status: Closed, 2026-10-26. `docs/ARCHITECTURE.md` now describes the PipeWire bo
 
 ### 15C. GitHub issues #2 and #3
 
-Status: In progress. 15C1 and 15C2 are recorded in `docs/research/phase-15c-retroarch-input-audio.md`. No RetroArch, input, audio, or panel-clock change is shipped. Joypad routing stays SDL2 because player order is not an evdev identity. SDL2 is not an accepted performance result. The saved panel setting is 60 Hz. That is the requested mode name, not a measured scanout rate. Issue #2 still needs one gpSP session on the installed image.
+Status: Closed, 2026-10-27. Issue #2 is not currently reproduced on the PipeWire image. The supplied gpSP logs report no ALSA underrun. They do not measure the effective panel clock or a PipeWire xrun, and the historical 31,578,948 Hz divider is not claimed to be fixed. Issue #3's joypad path is udev when the only Xbox-named pad is one virtual target, with SDL2 input kept. Another pad with that name keeps the SDL2 joypad driver for that session. The 45.5 / 124.6 figures stay the earlier measurement. No new benchmark was taken.
 
 ### 15D. Original-system button layouts
 
-Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. On installed `a26f96b`, after Reset RetroArch configuration, NextUI and the RetroArch menu confirm on east A and go back on south B, including while a Game Boy game is loaded. Game Boy gameplay buttons matched that layout. PPSSPP still confirms on east because it loads `controls.ini`, and the stock map had been written into `ppsspp.ini`. The packaged `controls.ini` correction is host-tested and is not hardware-accepted. Dolphin and Flycast save binds are host-tested. Dolphin has no hardware gate. A status-125 PSP session now blocks a later automatic release, host-tested. Flycast's face map and the unread cores stay open. The shared save-bind helper is recorded and not extracted in this pass. ADR 0011 stays proposed.
+Status: In progress. The audit is `docs/research/phase-15d-button-layouts.md`. On installed `a420f0c`, after Reset standalone settings, PPSSPP's menu and gameplay use the south Cross and east Circle layout. That built-in-pad result is accepted. RetroArch's menu confirms on east A and goes back on south B, including while a Game Boy game is loaded, and Game Boy gameplay matches that layout. Dolphin has no hardware gate. Flycast's face map and the unread cores stay open. ADR 0011 stays proposed.
 
 ### 15E. Research names and architectural decisions
 
