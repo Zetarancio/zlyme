@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is planned and has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16, and its workflow has not finished. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16, until that workflow succeeds.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress at 16A. 16B, 16C, and 16D have not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16, and its workflow has not finished. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`. Published stable `zlyme44.3` remains tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16, until that workflow succeeds.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,31 +429,23 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: Planned. Not started. Awaiting maintainer and ChatGPT approval of this roadmap. No logging change, audit, or reviewer pass has been done for this phase.
+Status: In progress, 2026-10-27. 16A is the inventory and the 16B design. 16B, 16C, and 16D have not started. No logging code has changed.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
 Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
 
-Blocker: this plan is not approved. Implementation waits for that approval.
+Blocker: 16B waits for approval of the design in [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 ### 16A. Logging inventory and contract
 
-Status: Planned.
+Status: In progress, 2026-10-27. The source reading and the selected 16B design are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md). This milestone does not change runtime code.
 
-Inventory the producers, destinations, switches, and consumers that exist now. The switch is Settings → System → Advanced → System logs, off by default. `zlyme-ctl want logs` is the check. When it is on, `zlyme-logs` keeps five boot generations under `/storage/.logs`, and `pak-log.sh` keeps three files per PAK tag. When it is off, `pak-log.sh` creates nothing and does not rotate. The end state keeps that: logs off does not create a persistent diagnostic log and does not add a routine storage write.
-
-The shipped set is the launchers under `package/system/nextui/paks/Emus` and `paks/Tools`. `scripts/tests/test_pak_logging.sh` already requires each of those files to source `pak-log.sh` and not open a second diagnostic file. That check is the starting inventory, not proof that every running program is captured. The phase still has to show capture for every shipped Tool, every shipped emulator PAK, RetroArch with no game (`Tools/RetroArch.pak`), RetroArch through a libretro core, and each shipped standalone. PPSSPP, Flycast, and Dolphin are in that shipped set. The other standalones are whichever launchers the tree actually ships. No extra emulator is added to the list because it might exist.
-
-Current capture, which 16A has to confirm rather than assume, is split. A Tool or standalone with no `EMU_EXE` redirects its own stdout and stderr onto the PAK log. A core launch writes a header and leaves stdout alone; `ra-run.sh` passes `--log-file` only when `ZLYME_PAK_LOG` is set. `ZLYME_RA_DEBUG` is a separate tmpfs file, not the System logs switch. PortMaster's GUI transcript follows `ZLYME_PAK_LOG` into `portmaster.txt`, and otherwise stays in `/tmp/portmaster.log`. OpenBOR's own log directory follows the PAK log when logs are on and stays in tmpfs when they are off.
-
-A user-installed PAK is covered when its launcher uses that same contract and the process stays attached to it. A script that bypasses the launcher, or that detaches after start, is outside the guarantee. The phase does not promise capture it cannot actually keep.
-
-One existing write happens with logs off. `rc.late` copies boot timing and `nextui.txt` onto the card so a hung panel still leaves evidence. `docs/ARCHITECTURE.md` records that copy. 16A decides whether it remains a named exception or stops. It is not silently kept and not deleted before that decision. The opt-in HDMI audio trace is a different flag and is not the System logs switch. The inventory names it and does not fold it into the default.
+The switch stays Settings → System → Advanced → System logs, off by default. The 63 shipped launchers, the streams that do not reach a PAK log, and the selected 16B design are in that record. The two `rc.late` copies that already run with logs off stay, as a named exception. 16B has not started.
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: Planned.
+Status: Planned. The design is selected in the 16A record. Implementation has not started.
 
 Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. This milestone adds a per-file bound and a total bound.
 

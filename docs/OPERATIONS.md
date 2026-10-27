@@ -124,11 +124,11 @@ Every boot, `rc.late` copies `/tmp/boot-timing` to `/storage/.config/zlyme/boot-
 
 Full logs are off by default. Settings → System → Advanced → System logs turns them on. With logs on:
 
-- `zlyme-logs` keeps five boot generations, `/storage/.logs/system-0` through `system-4`. `system-0` is the newest. It holds a kernel log snapshot and the session log `session.txt`.
+- `zlyme-logs` keeps five boot generations, `/storage/.logs/system-0` through `system-4`. `system-0` is the newest. It holds a kernel log snapshot. `S28minui` appends the `nextui-session` process to `system-0/session.txt` when logs are already on at start. `nextui-session` writes its own lines to `system-0/next.txt`. Those are two files. `zlyme-logs` also copies `/tmp/nextui.txt` to `system-0/nextui.txt`.
 - Each PAK keeps its last three launches as `/storage/.logs/paks/<tag>.log`, `.log.1`, and `.log.2`.
 - The initramfs writes its kernel log to `/boot/zlyme-dmesg.txt` and `/storage/.logs/dmesg-init.txt`.
 
-With logs off, the session log stays in `/tmp`.
+With logs off at start, `S28minui` uses `/tmp/nextui-session.log` and `nextui-session` uses `/tmp/nextui-session.txt`. Turning the setting on later does not move those already-open files.
 
 ## Boot classes
 

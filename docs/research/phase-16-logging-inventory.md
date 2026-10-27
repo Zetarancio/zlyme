@@ -1,0 +1,169 @@
+# Phase 16A logging inventory
+
+Date: 2026-10-27. Read at `92d85f9b818dbb11d1a94941a2e5757fc680ad28` on `zlyme44.4-phase-16`. This is a source reading. It is not a Miyoo Flip result, and it does not change runtime code.
+
+Scope: the product image's NextUI launchers, `zlyme-logs`, `zlyme-ctl`, `nextui-session`, `pak-launch.sh`, `zlyme-pak-spawn`, `S28minui`, `rc.late`, the initramfs log flag, and the service scripts that write diagnostic text. The minimal defconfig does not select NextUI, so it has none of these PAKs.
+
+`package/system/nextui/nextui.mk` copies `paks/Emus` and `paks/Tools` onto the product image and then deletes Update, Autocal, Joystick Calibration, and `RUFFLE.pak`. Those four names are not in this tree. The shipped set is the 63 `launch.sh` files that are.
+
+## Launch contract
+
+`S28minui` starts `nextui-session` in the background. If `zlyme-ctl want logs` is already true, that process is appended to `/storage/.logs/system-0/session.txt`. Otherwise it is appended to `/tmp/nextui-session.log`. The redirect is fixed for the life of the process.
+
+`nextui-session` reads `/storage/.config/zlyme/logs` once. On means `SESSION_LOG` is `system-0/next.txt` after `zlyme-logs start`. Off means `SESSION_LOG` is `/tmp/nextui-session.txt`. A later toggle does not change `SESSION_LOG` or the `S28minui` file.
+
+A game or tool is `launch.sh`, started by `zlyme-pak-spawn` through `pak-launch.sh`. The spawn helper returns the leader's exit status. A leader exit of 125 is reported as 126 so it is not mistaken for the helper's own cleanup failure. The helper returns 125 when it cannot prove the session is gone. `nextui-session` treats 0, 2, 3, 137, and 143 as success and stops the frontend on 125. That path is source. It was not replayed on a Flip for this note.
+
+`pak-log.sh` runs only when the launcher sources it, and only the lines before `EMU_EXE` is set decide the redirect. Logs on and no `EMU_EXE`: rotate three files, write a header, and `exec >>` the PAK log for stdout and stderr. Logs on and `EMU_EXE` already set: header only, no shell redirect. `ra-run.sh` then passes RetroArch `--log-file` to that PAK log. Logs off: the helper creates nothing. Sourcing the helper is not the same as capturing the program.
+
+With logs on, the spawn is not redirected, so a launcher that does not redirect inherits `nextui-session`'s stdout. With logs off, the spawn is appended to `SESSION_LOG`, which is the tmpfs file.
+
+## Shipped launchers
+
+| Class | Count | Members |
+| --- | --- | --- |
+| Libretro, `EMU_EXE` set before `pak-log.sh` | 39 | 32X, 3DO, A26, A5200, A78, A800, COLECO, DOS, EASYRPG, FBNEO, FC, GB, GBA, GBC, GG, INTV, LYNX, MAME, MD, MKXPZ, MS, MSX, N64, NEOCD, NGP, O2, P8, PCE, PKM, PS, SATURN, SFC, SG1000, SGX, ST, TIC, VB, VEC, WS |
+| Standalone, no `EMU_EXE` | 15 | AMIGA, DAPHNE, DC, DOOM, FLASH, GC, NDS, OPENBOR, PICO, PORTS, PS2, PSP, SCUMMVM, WII, WINE |
+| Tool, no `EMU_EXE` | 9 | Files, Moonlight, Music Player, Overlays, PortMaster, RetroArch, Settings, USB Transfer, ZcrapeGoat |
+
+Paths are `package/system/nextui/paks/Emus/<name>.pak/launch.sh` and `paks/Tools/<name>.pak/launch.sh`. Every one of the 63 sources `pak-log.sh`. `scripts/tests/test_pak_logging.sh` checks that, and it also checks that a core launch does not swallow stdout. That test records the current gap. It does not prove RetroArch output arrived in the PAK file.
+
+### Libretro, including Tools → RetroArch with no ROM
+
+Shared path: `ra-run.sh`, then `retroarch`. Logs on: a header in `paks/<tag>.log`, RetroArch's own `-v` log on that same file through `--log-file`, and the process stdout and stderr inherited from `nextui-session`. That inheritance is `system-0/session.txt` when logs were on at `S28minui` start, and `/tmp/nextui-session.log` when they were off. Logs off inside `ra-run`: no `--log-file`, unless `ZLYME_RA_DEBUG` is set, which writes `/tmp/ra-debug.log` and is not the System logs switch. The core's own stdout is not the RetroArch log facility. `test_pak_logging.sh` expects that stdout to escape the PAK file.
+
+Tools → RetroArch (`RetroArch.pak`) execs `ra-run` with no ROM and no `EMU_EXE`, so the shell redirect does apply when logs are on. RetroArch then also gets `--log-file` on that same PAK file. Logs off: no PAK file, and the process inherits the session redirect onto the tmpfs session log.
+
+P8 is in the libretro class because `EMU_EXE=fake08` is set before `pak-log.sh`. `ZLYME_EMU_CORE=native` execs `pico8` with no shell redirect and no `--log-file`. That native branch is not captured by the PAK redirect.
+
+### Standalones
+
+No `EMU_EXE`. Logs on: stdout and stderr of the launcher shell, and of the program it execs, go to `paks/<tag>.log`. Logs off: no PAK file; the spawn appends to the tmpfs session log. The exit status is the exec'd program's status, subject to the spawn rules above.
+
+| PAK | Program | Native log |
+| --- | --- | --- |
+| PSP | `PPSSPPSDL` | No log path in the launcher or the shipped ini. stderr follows the shell. |
+| DC | `flycast` | No log path in the launcher. stderr follows the shell. |
+| GC, WII | `start_dolphin` → `dolphin-emu-nogui` | No log path in `start_dolphin.sh`. stderr follows the shell. |
+| NDS | `start_drastic` | Not opened by the launcher. stderr follows the shell. |
+| PS2 | `aethersx2` | Not opened by the launcher. stderr follows the shell. |
+| AMIGA | `amiberry` | stderr follows the shell. |
+| SCUMMVM | `scummvm` | stderr follows the shell. |
+| DOOM | `gzdoom` | stderr follows the shell. |
+| DAPHNE | `hypseus` | stderr follows the shell. |
+| WINE | `zlyme-weston-run wine` | Weston writes `$XDG_RUNTIME_DIR/weston.log`, not the PAK log. |
+| FLASH | Ruffle `entrypoint.sh` | `RUFFLE_AUX_LOG_DIR` is `/storage/.config/ruffle/logs` even when System logs are off. stderr follows the shell. |
+| OPENBOR | `OpenBOR` | `OPENBOR_LOGS_DIR` is `paks/OPENBOR` when logs are on and `/tmp/zlyme-openbor/Logs` when off. That directory is not the three-file rotation. |
+| PICO | `pico8` (`start_pico8.sh`) | The wrapper execs `pico8_64`. A cart whose name matches `Splore.p8` uses `-splore`. stdout follows the shell because this launcher does not set `EMU_EXE`. The wrapper does not detach. |
+| PORTS | the selected port script or binary | stdout follows the shell only while the port stays in that process. `exec` replaces the shell, so the launcher's EXIT trap does not unmount. A port that leaves the session escapes both the log fd and the waiter. That is outside the guarantee. |
+
+### Tools
+
+Same redirect rule as standalones, except where a tool opens another file.
+
+| Tool | Program | Notes |
+| --- | --- | --- |
+| PortMaster | `/usr/bin/portmaster` → `portmaster-launch` | GUI stdout and stderr go to `LOGS_PATH/portmaster.txt` when `ZLYME_PAK_LOG` is set, else `/tmp/portmaster.log`. The file is truncated each GUI start. A port installed from the GUI is not this process. Playing it later is `PORTS.pak`. |
+| Settings | `settings.elf` | stderr follows the shell. |
+| Files | `vtree` | stderr follows the shell. |
+| Moonlight | `./moonlight-pak` | stderr follows the shell. `/tmp/stay_awake` is a flag, not a log. |
+| Music Player | `musicplayer.elf` | stderr follows the shell. |
+| Overlays | the pak's own shell, no `exec` | stdout follows the shell. The script echoes a launch line. |
+| USB Transfer | `zlyme-usb-transfer` and `minui-presenter` in a loop | No `exec` of the transfer daemon as the leader. Presenter and helper stdout follow the shell. The waiter sees this shell's exit. |
+| ZcrapeGoat | `zcrapegoat` | stderr follows the shell. The ScreenScraper URL is built with the developer password and the user password. This reading did not find a `printf` of that URL. A library that prints the request would land in the PAK log. `cheats.c` does print git arguments to stderr. |
+
+### Custom PAKs
+
+A PAK that sources `pak-log.sh` and stays in the spawned session gets the same rule as its `EMU_EXE` choice. A PAK that does not source it, or that detaches from the session, is not covered. This phase does not promise those processes.
+
+## System producers
+
+| Producer | Path when logs are off | Enters `.logs` today |
+| --- | --- | --- |
+| `zlyme-logs` snapshots | none until logs are on | `system-0/dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, `nextui.txt` |
+| `S28minui` session process | `/tmp/nextui-session.log` | `system-0/session.txt` only if logs were on at start |
+| `nextui-session` `SESSION_LOG` | `/tmp/nextui-session.txt` | `system-0/next.txt` only if the flag was on at session start |
+| `nextui.elf` | `/tmp/nextui.txt` always | copied to `system-0/nextui.txt` when logs are on, and also to `/storage/.config/nextui/my355/logs/nextui.txt` by `rc.late` regardless |
+| Boot timing | `/tmp/boot-timing` | copied to `system-0/boot-timing.txt` when logs are on, and to `/storage/.config/zlyme/boot-timing` by `rc.late` regardless |
+| Initramfs | no dmesg file unless `/boot/zlyme-logs` exists | `/boot/zlyme-dmesg.txt` and `/storage/.logs/dmesg-init.txt` |
+| InputPlumber and `zlyme-input` late start | `/tmp/zlyme-input-late.log` | no |
+| PipeWire late start | `/tmp/zlyme-pipewire-late.log` | no |
+| Bluetooth late start | `/tmp/zlyme-bt-late.log` | no |
+| `zlyme-storage` | `/tmp/zlyme-storage.log` | no |
+| `zlyme-led` | `/tmp/zlyme-led.log` | no |
+| `zlyme-wifi` async worker | `/tmp/zlyme-net-async.log` | no |
+| `rc.late` syslogd and klogd | no Zlyme config found that copies them | no |
+| HDMI audio trace | not created unless `/storage/.config/zlyme/hdmi-audio-trace` exists | `/storage/.logs/hdmi-audio-trace.log`, independent of System logs |
+| PAK trace | `/tmp/zlyme-pak-trace.txt` when the trace flag is set | no |
+| RetroArch manual debug | `/tmp/ra-debug.log` when `ZLYME_RA_DEBUG` is set | no |
+
+Not logs, and not migration candidates: `/tmp/zlyme-minui-ra.cfg` and the other RetroArch append files, PPSSPP and Flycast bind markers, Bluetooth info files, leader files, locks, `/tmp/stay_awake`, splash flags, and `/tmp/samba-lib`.
+
+`zlyme-ctl apply-logs` calls `zlyme-logs apply`. On creates a generation only when `/run/zlyme-logs-generation` is absent, then copies the snapshots. Off removes `/boot/zlyme-logs` and keeps the marker, so on again in the same boot does not rotate. Reboot clears `/run`, so the next boot with logs on rotates. Reboot with logs off does not call `start`, so it does not rotate. The initramfs writes dmesg only when the boot flag is still present, which is the previous boot's logs-on state, not a logs-off boot.
+
+`zlyme-logs` copies once per `start`. It does not follow a service that keeps writing after that copy. A PAK file is the live file for that launch, so a long RetroArch `-v` session grows without a byte cap. OpenBOR's directory is outside the three-file rotation. Nothing in `zlyme-logs` or `pak-log.sh` limits bytes. The kernel ring is `CONFIG_LOG_BUF_SHIFT=18`, 256 KiB, so one `dmesg` snapshot is on that order. The PAK and service files have no measured ceiling.
+
+`zlyme-halt` is exec'd from `nextui-session` on poweroff or reboot. It moves stdout to the console and closes inherited descriptors that point at `/storage`, because the session fd is the log file when logs were on at start. A PAK that has already exited has closed its log fd. A service that had been given a direct `.logs` fd for the whole boot would still be outside that one process. That is why long-lived services stay on tmpfs until a copy.
+
+## Toggle, from the source
+
+Off to on while NextUI is running: the next launcher re-reads `zlyme-ctl want logs` and can open a PAK file. `zlyme-logs apply` takes one generation if this boot has not had one. The session fd stays on `/tmp/nextui-session.log`. Core stdout stays there. `SESSION_LOG` stays `/tmp/nextui-session.txt`.
+
+On to off while NextUI is running: new PAK files stop. The session fd stays on `system-0/session.txt`, and a new core or an unredirected child still inherits it. Turning logs off does not stop that already-open card file.
+
+On, off, on in one boot: one generation, because the `/run` marker survives `stop`.
+
+These transitions were not toggled on a Flip.
+
+## Privacy
+
+Do not copy a file into `.logs` until its contents are known.
+
+- `zlyme-wifi` takes a PSK and sends it to `wpa_cli`. The async log line read here is the word `reconcile`, not the PSK. The log is still not a candidate until the whole writer is checked.
+- ZcrapeGoat builds a ScreenScraper URL that includes passwords. stderr is the PAK log when System logs are on. The URL itself was not found in a log statement. Git arguments are printed.
+- HDMI trace lines are ELD and sink choice, behind their own flag.
+- PAK trace is process identity, behind its own flag.
+- PortMaster's GUI log can contain a Python traceback from pugwash. It was not shown to contain a token.
+
+## Logs-off card writes
+
+`rc.late` copies boot timing and `nextui.txt` onto `/storage/.config` six times, 5 s apart, with logs off. Both destinations are one file, replaced, not a growing set. `docs/ARCHITECTURE.md` records them so a hung panel still leaves evidence after the card is pulled. This pass keeps them. Removing them is not safer on the evidence in tree: the replacement would be the same two files, or nothing. They stay a named exception. They are not System logs.
+
+Ruffle's `/storage/.config/ruffle/logs` and the HDMI trace flag are separate. They are not folded into the System logs switch.
+
+## Two designs
+
+A. Leave runtime text in tmpfs and copy bounded snapshots into `.logs`. This is what `zlyme-logs` already does for dmesg, boot timing, and `nextui.txt`. A copy does not hold an exFAT descriptor for the whole boot, which matches `zlyme-halt`. A copy also misses whatever is written after the snapshot, and it writes the card again for text that already exists in RAM. The six `rc.late` copies are that cost on a small file.
+
+B. Append the stream straight to a bounded file under `.logs` while logs are on. This is what `pak-log.sh` and RetroArch `--log-file` already do for a launch. The failure at the end of the run is in the file. The descriptor stays on the card until the process exits. That is acceptable for a launch `zlyme-pak-spawn` waits for, and it is the problem `zlyme-halt` already handles for the session. It is a poor fit for InputPlumber, PipeWire, Bluetooth, storage, LED, and Wi-Fi, which outlive one launch and must not pin `/storage` for the whole boot.
+
+Selected design: B for waited launches, A for long-lived services. No new daemon and no systemd. `pak-log.sh` remains the launch switch. `zlyme-logs` remains the boot generation and the service copy. 16B makes the launch capture include the streams that currently miss the PAK file, caps each file, and copies a bounded tail of the service tmpfs logs into the current generation at the existing snapshot points and once more before halt. It does not open those service logs directly on exFAT.
+
+Rejected as the only method: snapshot-only for PAKs, because the interesting failure is the end of the run and the snapshot has already happened. Rejected as the only method: direct files for the late services, because those descriptors would outlive the halt fix that closes only the session's own fds.
+
+## Retention proposal
+
+The kernel ring is 256 KiB. Five generations and three PAK files are the existing counts and they stay.
+
+- One system-generation directory: 2 MiB. That holds a 256 KiB dmesg, the boot and frontend text, `session.txt`, `next.txt`, and a bounded tail of each service log.
+- One PAK generation file: 1 MiB, including OpenBOR's directory counted against the OPENBOR tag. 1 MiB is four kernel rings. It is a cap for an uncapped `-v` session, not a Flip measurement.
+- `/storage/.logs` total: 32 MiB. Five directories at 2 MiB are 10 MiB. The rest is PAK history.
+
+Past the cap, the oldest bytes of that file go. A generation rotate still drops the oldest boot. These numbers are the proposal. They are not implemented.
+
+## Tests that exist
+
+`scripts/tests/test_log_history.sh` checks five generations, one rotate per boot, and three PAK files. `scripts/tests/test_pak_logging.sh` checks that all 63 launchers source the helper, that a tool stdout is captured, and that a core stdout is not. `scripts/tests/test_portmaster_log.sh` checks `portmaster.txt` versus `/tmp/portmaster.log`. None of them toggle the setting under a live session, and none of them are a Flip run.
+
+## 16B work, not started
+
+- Point core stdout and stderr at the PAK log when System logs are on, and change the test that currently requires them to escape.
+- Give the P8 native branch the same redirect as other standalones.
+- Cap PAK files, the OpenBOR directory, and each system generation at the limits above.
+- Copy bounded tails of the late service logs into `system-0` from `zlyme-logs`, including a copy on the halt path, without a new daemon.
+- On toggle off, stop appending to `session.txt`. The source gap is the fd opened by `S28minui`.
+- Keep the two `rc.late` copies.
+- Leave HDMI trace and `ZLYME_RA_DEBUG` on their own flags.
+- Do not log ScreenScraper URLs, Wi-Fi PSKs, or git commands that carry credentials.
+
+A Flip check belongs to the build that contains those changes. It is the log-on and log-off launch of one core, one standalone, RetroArch with no game, and PortMaster, plus one shutdown with logs on. It is not a new pass over behavior this inventory did not change.
