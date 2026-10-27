@@ -98,17 +98,15 @@ mkdir -p "$changed/Tools/my355/Zlyme PortMaster Validation.pak"
 printf 'user tool\n' > \
 	"$changed/Tools/my355/Zlyme PortMaster Validation.pak/launch.sh"
 
+# Those probes were never in a published image. The 44.4 hook does
+# not delete them. A card that still has one keeps it.
 ZLYME_STORAGE_ROOT=$work sh "$POST"
 for name in 'Zlyme SDL3 Validation.pak' 'Zlyme GL4ES Validation.pak' \
 	'Zlyme PortMaster Validation.pak'; do
-	[ ! -e "$tools/$name" ] || fail "owned probe was not removed: $name"
+	[ -d "$tools/$name" ] || fail "development probe was deleted: $name"
 done
-
 ZLYME_STORAGE_ROOT=$changed sh "$POST"
-for name in 'Zlyme SDL3 Validation.pak' 'Zlyme GL4ES Validation.pak' \
-	'Zlyme PortMaster Validation.pak'; do
-	[ -e "$changed/Tools/my355/$name" ] ||
-		fail "changed or user-created probe was removed: $name"
-done
+[ -f "$changed/Tools/my355/Zlyme GL4ES Validation.pak/user.dat" ] ||
+	fail "a user file beside a probe was deleted"
 
 echo "graphics compatibility ok"

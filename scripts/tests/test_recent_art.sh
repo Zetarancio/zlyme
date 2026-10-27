@@ -128,5 +128,19 @@ run_update "$owned"
 [ "$(cat "$owned/.config/nextui/shared/artbook/special/recent.png")" = "kept" ] \
 	|| fail "existing override was replaced"
 
-rm -rf "$old" "$keep" "$stock" "$stub" "$owned"
+empty=$(mktemp -d)
+run_update "$empty"
+[ ! -e "$empty/.config/nextui/shared/artbook/special/recent.png" ] ||
+	fail "an empty card grew a Recently Played override"
+
+linked=$(mktemp -d)
+mkdir -p "$linked/Recently Played/.media" "$linked/outside"
+printf 'secret\n' > "$linked/outside/bg.png"
+ln -s "$linked/outside/bg.png" "$linked/Recently Played/.media/bg.png"
+run_update "$linked"
+[ ! -e "$linked/.config/nextui/shared/artbook/special/recent.png" ] ||
+	fail "a symlinked Recently Played picture was copied"
+[ "$(cat "$linked/outside/bg.png")" = secret ] || fail "the symlink target changed"
+
+rm -rf "$old" "$keep" "$stock" "$stub" "$owned" "$empty" "$linked"
 echo "recent art ok"
