@@ -39,4 +39,4 @@ Feed the repository's `docs/` folder to your coding assistant, or read it yourse
 
 ## AI-assisted work
 
-Welcome. Give your tool the repository and the `docs/` folder. Then check what it produced the same way you'd check your own work: against the source, the tests and, for anything hardware-facing, a real Flip. A generated claim that nobody verified is not evidence.
+Welcome. Give your tool the repository and the `docs/` folder. Then check what it produced the same way you'd check your own work: against the source, the tests and, for anything hardware-facing, a real Flip. A generated claim that nobody verified is not evidence. A search for a defect follows [docs/AUDITING.md](docs/AUDITING.md). Writing the change still follows the review in [AGENTS.md](AGENTS.md).

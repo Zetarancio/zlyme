@@ -15,6 +15,7 @@ This is a map. The fact lives in the linked document, and `AGENTS.md` remains th
 | [Maintenance](MAINTENANCE.md) | Package updates, the NextUI pin, and releases |
 | [Upstreams](UPSTREAMS.md) | Upstream hierarchy, pins, and provenance |
 | [Engineering principles](ENGINEERING_PRINCIPLES.md) | How to change the code |
+| [Auditing](AUDITING.md) | How an AI-assisted audit finds and classifies a defect |
 | [Roadmap](ROADMAP.md) | Which phase is current and what is next |
 | [Logbook](LOGBOOK.md) | Dated evidence |
 | [Research](research/README.md) | Experiments, comparisons, and rejected alternatives |

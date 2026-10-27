@@ -5,6 +5,7 @@ This is the maintainer index. The documents below own the detail. This page says
 | Question | Document |
 | --- | --- |
 | How an agent should change this tree | `AGENTS.md` |
+| How an AI-assisted audit finds and classifies a defect | `docs/AUDITING.md` |
 | Design priorities | `docs/ENGINEERING_PRINCIPLES.md` |
 | What the system is | `docs/ARCHITECTURE.md` |
 | How a device is isolated | `docs/DEVICE_PORTING.md` |

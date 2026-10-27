@@ -359,6 +359,8 @@ Host-side tests live in `scripts/tests/`. Run one directly, for example `sh scri
 
 Do not claim hardware validation based on compilation.
 
+An AI-assisted search for a defect follows `docs/AUDITING.md`. The gates above are the ordinary pre-commit checks.
+
 ## Hardware payload transfer
 
 Do not transfer OTAs, images, runtime archives, libraries, emulator binaries, large logs, or other bulk payloads to or from the Miyoo Flip over Wi-Fi, SSH, SCP, or rsync. Mount the card on the development host and copy there. SSH over Wi-Fi is for commands, inspection, and small text diagnostics. If the required card is not mounted, stop and say which card and path are needed. Do not fall back to a network copy. PortMaster may still download its catalogue and runtimes when someone uses it on the device.
@@ -378,6 +380,7 @@ Use:
 - `USER_GUIDE.md` for detailed end-user operation;
 - `../CHANGELOG.md` for user-visible changes per release;
 - `WRITING.md` for how all of the above is written. It owns the README and changelog rules.
+- `AUDITING.md` for an AI-assisted defect investigation. The ordinary pre-commit review stays in `../AGENTS.md`.
 
 Research records alternatives.
 

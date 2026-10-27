@@ -17,6 +17,7 @@ DOCS = (
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
     "docs/ENGINEERING_PRINCIPLES.md",
+    "docs/AUDITING.md",
     "docs/USER_GUIDE.md",
     "docs/WRITING.md",
     "docs/README.md",

@@ -65,6 +65,12 @@ For live-device and recovery work also read:
 
 - `docs/OPERATIONS.md`
 
+For an AI-assisted defect investigation, also read:
+
+- `docs/AUDITING.md`
+
+That procedure is separate from the ordinary change review below. A dedicated audit is not part of every change.
+
 For sequencing project work, read:
 
 - `docs/ROADMAP.md`
@@ -328,6 +334,8 @@ Never claim hardware testing unless it was performed on the Miyoo Flip.
 If a validation step cannot be run, say so.
 
 Never fabricate results.
+
+A defect investigation follows `docs/AUDITING.md`. Compiling, running a test, or explaining a path does not by itself accept behavior on the Flip.
 
 ## Hardware payload transfer
 
