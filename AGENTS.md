@@ -285,7 +285,7 @@ Update documentation when changing:
 - package layout;
 - user-visible behavior.
 
-A phase is not closed until the documents that own the changed behavior match the final source. That check is in `docs/WRITING.md`. It is not a second pass over every sentence after every commit.
+A phase is not closed until the documents that own the changed behavior match the final source. That check is in `docs/WRITING.md`. It is not a second pass over every sentence after every commit. The same file requires the Open validation debt index in `docs/MAINTENANCE.md` to move with a finding that is fixed, accepted, superseded, or deferred.
 
 ## Licensing
 

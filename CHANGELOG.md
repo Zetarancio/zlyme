@@ -22,7 +22,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Fixed
 
-- RetroArch uses the udev controller driver when the built-in pad is the only Xbox-style controller, and player 1 is that virtual controller rather than the physical pad underneath it. The general input path stays SDL. If another controller with the same name is connected, that session keeps the SDL controller driver instead of guessing which pad is player 1. Thanks to the Miyoo Flip user who reported the RetroArch slowdown and helped verify the controller mappings.
+- RetroArch uses the udev controller driver when the built-in pad is the only Xbox-style controller, and player 1 is that virtual controller rather than the physical pad underneath it. The general input path stays SDL. If another controller with the same name is connected, or the virtual controller cannot be placed in the joystick list, that session keeps the SDL controller driver instead of guessing which pad is player 1. Thanks to the Miyoo Flip user who reported the RetroArch slowdown and helped verify the controller mappings.
 - PPSSPP's face buttons follow the PlayStation layout on the built-in pad: Cross is the south button and Circle is the east button, in the menu and in play.
 - Long game names scroll inside the selection, rows reserve the right amount of room for artwork and status icons, and opening another game list no longer restores the previous system's picture.
 - Bluetooth discovery lists nearby devices whose type is not known yet, without connecting until you choose Pair or Connect.
