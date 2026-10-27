@@ -61,6 +61,22 @@ An independent, discriminating test can verify a claim without a second reviewer
 
 A trivial edit, a documentation change, and a hypothesis that such a test already falsifies do not need a second reviewer. If a separate review is not practical, say so and leave the finding at the evidence that exists.
 
+## Review cadence and stopping rules
+
+Ordinary implementation uses this cadence. It does not replace a dedicated audit, and it is not a waiver of a confirmed defect.
+
+The implementation agent runs focused tests that can tell the changed behavior from the old one. Related corrections are grouped, and the relevant tests are run, before an independent post-change review. That review normally happens once for a coherent change, not after every edit.
+
+When the reviewer confirms a defect, the implementation agent reproduces it, applies the smallest correction, and runs the tests that cover that correction. One fresh follow-up review then looks at the correction and the ownership or calling boundary it affects. It does not automatically repeat the whole baseline-to-HEAD search.
+
+An ordinary implementation task has a default budget of one comprehensive reviewer pass plus one follow-up pass. The budget is not an evidence threshold and it is not permission to ignore a defect. If a further substantial or safety-critical problem remains, stop, checkpoint the work, and report it. Another review needs a fresh scope from the maintainer.
+
+A confirmed serious defect is not silently accepted, dismissed, or described as fixed without the evidence in Remediation. The independent reviewer still starts in a fresh context. Its prompt carries the baseline, the worktree state, and the scope. It does not carry the author's verdict, a hypothesis, a proposed fix, or an earlier review's conclusion.
+
+The baseline stays the recorded pre-change commit. A later checkpoint does not replace it. The scope includes committed, staged, unstaged, and relevant untracked changes. The reviewer inspects the Git diff against that baseline and the current worktree. If that comparison cannot be made, the review says its coverage is incomplete. A source reading is not a substitute for the diff.
+
+The implementation agent may reuse its own context and the tests that already falsified a hypothesis. That reuse does not make the agent the independent reviewer. After a focused correction, run the affected tests. Do not rerun an unrelated host test unless its contract or a dependency it checks has changed. A host result is not hardware acceptance.
+
 ### Remediation
 
 Remediation starts only when the task or the review asks for a fix. Discovery and verification do not edit the production tree.
@@ -70,7 +86,7 @@ Remediation starts only when the task or the review asks for a fix. Discovery an
 - Prefer a regression check that fails on the defect and passes after the correction. When a meaningful check cannot be built safely or practically, record why, and record the strongest evidence that was actually obtained.
 - Review the diff for unrelated edits.
 - Validate at the depth below. An audit does not by itself build an OTA, dispatch a release, or start a hardware experiment.
-- After a substantive correction, the post-change review in `AGENTS.md` is run again from a fresh context. A serious confirmed finding is not waived silently.
+- After a substantive correction, one follow-up review covers that correction and the boundary it affects, as in Review cadence and stopping rules. A serious confirmed finding is not waived silently. The follow-up does not restart the whole baseline search, and a remaining safety-critical problem stops for the maintainer.
 
 Kernel-patch classification stays the procedure in `docs/MAINTENANCE.md`. This file does not add a second scheme.
 

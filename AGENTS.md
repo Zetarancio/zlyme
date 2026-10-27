@@ -147,7 +147,7 @@ That review is not a dedicated audit. `docs/AUDITING.md` applies only when its o
 
 Pass the baseline SHA, the worktree state, and the review scope. Do not pass findings, rationale, or a suggested fix. A fresh context is not independent when the prompt already contains the conclusion. Report whether the reviewer ran. If it did not, say so. Do not describe the change as independently reviewed.
 
-Verify an actionable finding against the source. Correct only a defect the task authorizes. Rerun the relevant checks, then invoke a fresh reviewer after a substantive correction. A serious confirmed finding is not waived silently. Deferral follows `docs/AUDITING.md`: an explicit decision and a recorded limitation.
+Verify an actionable finding against the source. Correct only a defect the task authorizes. Rerun the affected checks. The review cadence in `docs/AUDITING.md` is one comprehensive post-change review and one follow-up after a substantive correction. A serious confirmed finding is not waived silently. Deferral follows `docs/AUDITING.md`: an explicit decision and a recorded limitation.
 
 Do not perform drive-by refactors.
 

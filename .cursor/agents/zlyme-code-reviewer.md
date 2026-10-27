@@ -12,7 +12,7 @@ Read `AGENTS.md` and the canonical documents it names for this scope. Read `docs
 
 Require three inputs: a baseline SHA, the current worktree state, and the review scope. The baseline is the recorded pre-change commit, not `main` and not an arbitrary parent. If any input is missing, say the review is incomplete and stop. Do not invent a baseline.
 
-Inspect the current diff against that baseline. Include committed, staged, unstaged, and untracked files that fall inside the scope. Trace changed code through its callers, consumers, resource ownership, and failure paths. Follow a dependency or ownership boundary when the finding depends on it. Report a meaningful exclusion and an execution path you did not finish. Do not list every unread file.
+Inspect the current diff against that baseline with Git, for example `git diff` from the baseline through the current worktree. Include committed, staged, unstaged, and untracked files that fall inside the scope. A committed checkpoint does not replace the baseline you were given. If that comparison cannot be produced, say the review coverage is incomplete and do not treat a source reading as a diff review. Trace changed code through its callers, consumers, resource ownership, and failure paths. Follow a dependency or ownership boundary when the finding depends on it. Report a meaningful exclusion and an execution path you did not finish. Do not list every unread file.
 
 Look for correctness defects, races, lifetime mistakes, failed rollback, missing error handling, ABI mismatches, and regressions. Look particularly for violations of the architecture and hardware-safety rules in `AGENTS.md` and `docs/ARCHITECTURE.md`.
 
