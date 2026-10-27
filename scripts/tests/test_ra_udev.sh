@@ -77,6 +77,7 @@ run() {
 	rm -f "$work/args" "$work/ac"
 	PATH=$work/bin:/usr/bin:/bin \
 		ZLYME_INPUT_SYS=$sys \
+		ZLYME_UDEV_DATA=${ZLYME_UDEV_DATA:-$work/nodev} \
 		ZLYME_TEST_RA_ARGS=$work/args \
 		XDG_CONFIG_HOME=$work/cfg \
 		BIOS_PATH=$work/bios \
@@ -88,15 +89,10 @@ run() {
 pad 4 "Miyoo Flip Gamepad" 0
 pad 5 "Microsoft X-Box 360 pad" 1
 run
-grep -q 'input_joypad_driver = "udev"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "one virtual pad did not select udev"
-grep -q 'input_player1_reserved_device = "Microsoft X-Box 360 pad"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "one virtual pad did not reserve the name"
-grep -q 'input_player1_device_reservation_type = "2"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "one virtual pad did not reserve the slot"
-if grep -q 'input_player1_joypad_index' /tmp/zlyme-ra-ac.cfg; then
-	fail "udev session hardcoded a joypad index"
-fi
+grep -q 'input_joypad_driver = "sdl2"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "a virtual pad without a joystick event selected udev"
+grep -q 'input_player1_joypad_index = "0"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "the unresolved case lost the SDL index"
 after=$(cksum "$work/cfg/retroarch/retroarch.cfg")
 [ "$before" = "$after" ] || fail "ra-run wrote the user configuration"
 [ "$remap" = "$(cksum "$work/cfg/retroarch/config/Gambatte/game.rmp")" ] \
@@ -119,8 +115,8 @@ grep -q 'input_player1_joypad_index = "0"' /tmp/zlyme-ra-ac.cfg \
 
 rm -rf "$sys/input6"
 run
-grep -q 'input_joypad_driver = "udev"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "removing the second pad did not return to udev"
+grep -q 'input_joypad_driver = "sdl2"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "a pad without a joystick event returned to udev"
 
 pad 7 "Microsoft X-Box 360 pad" 0
 run
@@ -134,19 +130,23 @@ run
 grep -q 'input_joypad_driver = "sdl2"' /tmp/zlyme-ra-ac.cfg \
 	|| fail "no virtual pad selected udev"
 
-# The live uinput node is /sys/devices/virtual/input/inputN and has
-# no device symlink. readlink -f of the missing device path still
-# ends under that virtual node.
+# Live shape: input5 -> /devices/virtual/input/input5, no device
+# symlink. event5/device points at that node. udev data marks both
+# event nodes as joysticks. eudev orders those syspaths with memcmp.
 real=$work/real
-mkdir -p "$real/devices/virtual/input/input5" "$real/devices/platform/serial/input4" "$real/class"
+db=$work/udev
+mkdir -p "$real/devices/virtual/input/input5" \
+	"$real/devices/platform/serial/input4/event4" \
+	"$real/devices/virtual/input/input5/event5" \
+	"$real/class" "$db"
 printf '%s\n' "Microsoft X-Box 360 pad" > "$real/devices/virtual/input/input5/name"
 printf '%s\n' "Miyoo Flip Gamepad" > "$real/devices/platform/serial/input4/name"
+printf '%s\n' '13:68' > "$real/devices/platform/serial/input4/event4/dev"
+printf '%s\n' '13:69' > "$real/devices/virtual/input/input5/event5/dev"
+printf '%s\n' 'E:ID_INPUT_JOYSTICK=1' > "$db/c13:68"
+printf '%s\n' 'E:ID_INPUT_JOYSTICK=1' > "$db/c13:69"
 ln -s "$real/devices/virtual/input/input5" "$real/class/input5"
 ln -s "$real/devices/platform/serial/input4" "$real/class/input4"
-mkdir -p "$real/devices/platform/serial/input4/event4" \
-	"$real/devices/platform/serial/input4/js0" \
-	"$real/devices/virtual/input/input5/event5" \
-	"$real/devices/virtual/input/input5/js1"
 ln -s "$real/devices/platform/serial/input4" \
 	"$real/devices/platform/serial/input4/event4/device"
 ln -s "$real/devices/virtual/input/input5" \
@@ -154,15 +154,19 @@ ln -s "$real/devices/virtual/input/input5" \
 ln -s "$real/devices/platform/serial/input4/event4" "$real/class/event4"
 ln -s "$real/devices/virtual/input/input5/event5" "$real/class/event5"
 if [ -e "$real/class/input5/device" ]; then
-	fail "the real-shape fixture invented a device node"
+	fail "the real-shape fixture invented an input device symlink"
 fi
 sys=$real/class
+ZLYME_UDEV_DATA=$db
 run
+unset ZLYME_UDEV_DATA
 grep -q 'input_joypad_driver = "udev"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "a virtual pad without a device symlink did not select udev"
-grep -q 'input_player1_reserved_device = "Microsoft X-Box 360 pad"' /tmp/zlyme-ra-ac.cfg \
-	|| fail "the real-shape pad was not reserved"
+	|| fail "the live-shaped virtual pad did not select udev"
 grep -q 'input_player1_joypad_index = "1"' /tmp/zlyme-ra-ac.cfg \
 	|| fail "player 1 was not the virtual pad's udev slot"
+rm -f "$db/c13:69"
+run
+grep -q 'input_joypad_driver = "sdl2"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "a missing joystick record still selected udev"
 
 echo "ra udev ok"

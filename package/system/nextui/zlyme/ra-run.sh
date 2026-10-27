@@ -262,49 +262,66 @@ RA_AC=/tmp/zlyme-ra-ac.cfg
 # physical Flip pad is a different name. A second pad with the same
 # Xbox name, virtual or not, cannot be told apart by that name, so
 # that session keeps the SDL2 joypad driver. The SDL device filter
-# does not apply to udev.
+# does not apply to udev. The virtual input node itself lives under
+# /devices/virtual/input. This kernel does not add a device symlink.
 _ra_virt=0
 _ra_same=0
 _ra_sys=${ZLYME_INPUT_SYS:-/sys/class/input}
+_ra_db=${ZLYME_UDEV_DATA:-/run/udev/data}
 for _ra_d in "$_ra_sys"/input*; do
 	[ -r "$_ra_d/name" ] || continue
 	_ra_name=$(tr -d '\r\n' < "$_ra_d/name")
 	[ "$_ra_name" = "Microsoft X-Box 360 pad" ] || continue
 	_ra_same=$((_ra_same + 1))
-	_ra_link=$(readlink -f "$_ra_d/device" 2>/dev/null || true)
-	case "$_ra_link" in
-		*/devices/virtual/*) _ra_virt=$((_ra_virt + 1)) ;;
+	_ra_node=$(readlink -f "$_ra_d" 2>/dev/null || true)
+	case "$_ra_node" in
+		*/devices/virtual/input/*) _ra_virt=$((_ra_virt + 1)) ;;
 	esac
 done
-# RetroArch's reservation did not move player 1 off udev slot 0
-# on this pad: the virtual pad was configured on the later slot
-# and the saved index stayed 0. Count joystick event nodes in
-# syspath order, which is the order the udev driver opened them,
-# and point player 1 at the virtual pad's slot.
+# eudev 3.2.14 sorts enumerate results with memcmp of the syspath.
+# RetroArch opens ID_INPUT_JOYSTICK devnodes in that order and keeps
+# a slot only when the node speaks EV_KEY. js nodes fail that open.
+# A path that is a prefix of another makes strcmp and memcmp disagree,
+# so that case does not guess a slot.
 _ra_slot=
 _ra_list=$(mktemp "${TMPDIR:-/tmp}/zlyme-ra-joy.XXXXXX") || _ra_list=
 if [ -n "$_ra_list" ]; then
 	for _ra_ev in "$_ra_sys"/event*; do
 		[ -e "$_ra_ev" ] || continue
+		[ -r "$_ra_ev/dev" ] || continue
+		_ra_dev=$(tr -d '\r\n' < "$_ra_ev/dev")
+		_ra_major=${_ra_dev%%:*}
+		_ra_minor=${_ra_dev#*:}
+		[ -n "$_ra_major" ] && [ -n "$_ra_minor" ] && [ "$_ra_major" != "$_ra_dev" ] || continue
+		[ -r "$_ra_db/c${_ra_major}:${_ra_minor}" ] || continue
+		grep -q 'ID_INPUT_JOYSTICK=1' "$_ra_db/c${_ra_major}:${_ra_minor}" || continue
 		_ra_parent=$(readlink -f "$_ra_ev/device" 2>/dev/null || true)
 		if [ -z "$_ra_parent" ] || [ ! -r "$_ra_parent/name" ]; then
 			continue
 		fi
-		_ra_js=
-		for _ra_js in "$_ra_parent"/js*; do
-			[ -e "$_ra_js" ] || _ra_js=
-			break
-		done
-		[ -n "$_ra_js" ] || continue
 		_ra_evpath=$(readlink -f "$_ra_ev" 2>/dev/null || true)
 		[ -n "$_ra_evpath" ] || continue
 		_ra_name=$(tr -d '\r\n' < "$_ra_parent/name")
 		printf '%s\t%s\n' "$_ra_evpath" "$_ra_name" >> "$_ra_list"
 	done
+	_ra_prefix=0
 	if [ -s "$_ra_list" ]; then
+		while IFS=$(printf '\t') read -r _ra_evpath _ra_name; do
+			while IFS=$(printf '\t') read -r _ra_other _ra_skip; do
+				[ "$_ra_evpath" = "$_ra_other" ] && continue
+				case "$_ra_other" in
+					"$_ra_evpath"/*) _ra_prefix=1 ;;
+				esac
+				case "$_ra_evpath" in
+					"$_ra_other"/*) _ra_prefix=1 ;;
+				esac
+			done < "$_ra_list"
+		done < "$_ra_list"
+	fi
+	if [ "$_ra_prefix" = 0 ] && [ -s "$_ra_list" ]; then
 		_ra_sorted=$(mktemp "${TMPDIR:-/tmp}/zlyme-ra-joy.XXXXXX") || _ra_sorted=
 		if [ -n "$_ra_sorted" ]; then
-			sort "$_ra_list" > "$_ra_sorted"
+			LC_ALL=C sort "$_ra_list" > "$_ra_sorted"
 			_ra_i=0
 			while IFS=$(printf '\t') read -r _ra_evpath _ra_name; do
 				[ -n "$_ra_evpath" ] || continue
@@ -329,14 +346,14 @@ if [ -r /usr/share/zlyme/pak-input.sh ]; then
 else
 	export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 fi
-if [ "$_ra_virt" -eq 1 ] && [ "$_ra_same" -eq 1 ]; then
+# No slot means the virtual pad was not found in the joystick list.
+# Udev without an index leaves player 1 on slot 0, the physical pad.
+if [ "$_ra_virt" -eq 1 ] && [ "$_ra_same" -eq 1 ] && [ -n "$_ra_slot" ]; then
 	{
 		printf 'input_driver = "sdl2"\ninput_joypad_driver = "udev"\n'
 		printf 'input_player1_reserved_device = "Microsoft X-Box 360 pad"\n'
 		printf 'input_player1_device_reservation_type = "2"\n'
-		if [ -n "$_ra_slot" ]; then
-			printf 'input_player1_joypad_index = "%s"\n' "$_ra_slot"
-		fi
+		printf 'input_player1_joypad_index = "%s"\n' "$_ra_slot"
 	} >> "$RA_AC"
 else
 	{
@@ -345,8 +362,9 @@ else
 		printf 'input_player1_device_reservation_type = "0"\n'
 	} >> "$RA_AC"
 fi
-unset _ra_virt _ra_same _ra_sys _ra_d _ra_name _ra_link \
-	_ra_slot _ra_list _ra_ev _ra_parent _ra_js _ra_evpath _ra_sorted _ra_i
+unset _ra_virt _ra_same _ra_sys _ra_db _ra_d _ra_name _ra_node \
+	_ra_slot _ra_list _ra_ev _ra_dev _ra_major _ra_minor _ra_parent \
+	_ra_evpath _ra_prefix _ra_other _ra_skip _ra_sorted _ra_i
 printf 'notification_show_autoconfig = "false"\nnotification_show_autoconfig_fails = "false"\n' >> "$RA_AC"
 
 # Session-only output size. A non-zero video_fullscreen_x in the user
