@@ -46,9 +46,22 @@ regular_file() {
 	[ ! -L "$1" ]
 }
 
+# Accounting only. A failed read becomes 0, which under-counts and
+# does not delete or trim. Cursor decisions use read_size instead.
 file_size() {
 	_sz=$(wc -c < "$1" 2>/dev/null) || _sz=0
 	printf '%s\n' "$_sz" | tr -d ' '
+}
+
+# Print the byte size. Return 1 when the size cannot be read.
+# A failure is not a zero-length file.
+read_size() {
+	rs_raw=$(wc -c < "$1" 2>/dev/null) || return 1
+	rs_size=$(printf '%s\n' "$rs_raw" | tr -d ' ')
+	case "$rs_size" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	printf '%s\n' "$rs_size"
 }
 
 read_off() {
@@ -63,14 +76,22 @@ read_off() {
 }
 
 # Remember how far a live tmpfs file had been written. No copy.
+# A failed read leaves any existing cursor alone and marks the stream
+# unread, so the next success records the size without copying the gap.
 note_size() {
-	_src=$1
-	_state=$2
-	if [ -f "$_src" ] && [ ! -L "$_src" ]; then
-		file_size "$_src" > "$_state"
-	else
-		printf '%s\n' 0 > "$_state"
+	ns_src=$1
+	ns_state=$2
+	if ! regular_file "$ns_src"; then
+		printf '%s\n' 0 > "$ns_state"
+		rm -f "$ns_state.unread"
+		return 0
 	fi
+	if ! ns_size=$(read_size "$ns_src"); then
+		: > "$ns_state.unread"
+		return 0
+	fi
+	printf '%s\n' "$ns_size" > "$ns_state"
+	rm -f "$ns_state.unread"
 }
 
 # Append only bytes written since the saved offset. The source is the
@@ -82,13 +103,9 @@ append_since() {
 	as_state=$3
 	regular_file "$as_src" || return 0
 	# A failed size read must not rewind the cursor to zero.
-	if ! as_raw=$(wc -c < "$as_src" 2>/dev/null); then
+	if ! as_size=$(read_size "$as_src"); then
 		return 0
 	fi
-	as_size=$(printf '%s\n' "$as_raw" | tr -d ' ')
-	case "$as_size" in
-		''|*[!0-9]*) return 0 ;;
-	esac
 	as_off=$(read_off "$as_state")
 	if [ "$as_size" -le "$as_off" ]; then
 		printf '%s\n' "$as_size" > "$as_state"
@@ -149,7 +166,11 @@ append_file() {
 		cat "$af_dst" > "$af_out" || { rm -f "$af_out"; return 1; }
 	fi
 	cat "$af_add" >> "$af_out" || { rm -f "$af_out"; return 1; }
-	af_osz=$(file_size "$af_out")
+	# Do not treat an unreadable size as "under the cap" and install it.
+	if ! af_osz=$(read_size "$af_out"); then
+		rm -f "$af_out"
+		return 1
+	fi
 	if [ "$af_osz" -gt "$SERVICE_TAIL" ]; then
 		af_cap=$(mktemp "${af_dst}.cap.XXXXXX") || { rm -f "$af_out"; return 1; }
 		if tail -c "$SERVICE_TAIL" "$af_out" > "$af_cap"; then
@@ -169,7 +190,16 @@ capture_stream() {
 	cs_dest=$2
 	cs_state=$3
 	regular_file "$cs_src" || return 0
-	cs_size=$(file_size "$cs_src")
+	if ! cs_size=$(read_size "$cs_src"); then
+		return 0
+	fi
+	# The enable-time read failed. Record this size and copy nothing,
+	# including bytes from before logging was on.
+	if [ -f "$cs_state.unread" ]; then
+		printf '%s\n' "$cs_size" > "$cs_state"
+		rm -f "$cs_state.unread"
+		return 0
+	fi
 	cs_off=$(read_off "$cs_state")
 	mkdir -p "$(dirname "$cs_dest")" || return 0
 	if [ -f "$cs_state" ] && [ "$cs_size" -eq "$cs_off" ]; then
@@ -462,8 +492,9 @@ reclaim() {
 
 lock_begin() {
 	mkdir -p "$(dirname "$LOCK")" 2>/dev/null || return 1
+	# No snapshot without the lock. A missing applet must not rotate.
 	if ! command -v flock >/dev/null 2>&1; then
-		return 0
+		return 1
 	fi
 	exec 8>>"$LOCK" || return 1
 	flock 8 || return 1
@@ -564,7 +595,10 @@ stop() {
 	# still on, then drop the capture flag. Text written after this is
 	# not copied when logs come back on.
 	if [ -d "$(dirname "$MARK")" ] || mkdir -p "$(dirname "$MARK")" 2>/dev/null; then
-		lock_begin || true
+		if ! lock_begin; then
+			clear_boot_flag
+			return 0
+		fi
 		if [ -f "$MARK.on" ]; then
 			follow_capture || true
 			cap_generation || true

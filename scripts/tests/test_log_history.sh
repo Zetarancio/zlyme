@@ -458,6 +458,17 @@ cat > "$work/wcbin/wc" << EOF
 if [ "\${ZLYME_WC_FAIL:-}" = 1 ]; then
 	exit 1
 fi
+if [ "\${ZLYME_WC_FAIL_LARGE:-}" = 1 ]; then
+	_wctmp=\$(mktemp)
+	cat > "\$_wctmp"
+	_wcn=\$($realwc -c < "\$_wctmp" | tr -d ' ')
+	rm -f "\$_wctmp"
+	if [ "\$_wcn" -gt 65536 ]; then
+		exit 1
+	fi
+	printf '%s\n' "\$_wcn"
+	exit 0
+fi
 exec $realwc "\$@"
 EOF
 chmod 0755 "$work/wcbin/wc"
@@ -478,5 +489,133 @@ ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
 	"$LOGS" start
 [ "$(tr -d ' \n' < "$wcmark.wrap")" = "$wclen" ]
 [ "$(grep -c 'ON-A' "$wcroot/system-0/session.txt")" = 1 ]
+
+# Enable cannot watermark while wc fails. The next success records the
+# size and still does not copy the earlier text.
+notesrc=$work/note-src
+mkdir -p "$notesrc"
+printf '%s\n' 'OFF-NOTE' > "$notesrc/input-late.log"
+nroot=$work/note-root
+nmark=$work/note-mark
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$nroot" ZLYME_LOG_MARK="$nmark" \
+	ZLYME_LOG_LOCK="$work/note.lock" ZLYME_SERVICE_DIR="$notesrc" \
+	"$LOGS" start
+test -f "$nmark.svc.input-late.log.unread"
+if [ -f "$nroot/system-0/services/input-late.log" ]; then
+	grep -q 'OFF-NOTE' "$nroot/system-0/services/input-late.log" && exit 1
+fi
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$nroot" ZLYME_LOG_MARK="$nmark" \
+	ZLYME_LOG_LOCK="$work/note.lock" ZLYME_SERVICE_DIR="$notesrc" \
+	"$LOGS" start
+if [ -f "$nroot/system-0/services/input-late.log" ]; then
+	grep -q 'OFF-NOTE' "$nroot/system-0/services/input-late.log" && exit 1
+fi
+test ! -f "$nmark.svc.input-late.log.unread"
+printf '%s\n' 'ON-NOTE' >> "$notesrc/input-late.log"
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$nroot" ZLYME_LOG_MARK="$nmark" \
+	ZLYME_LOG_LOCK="$work/note.lock" ZLYME_SERVICE_DIR="$notesrc" \
+	"$LOGS" start
+grep -q 'ON-NOTE' "$nroot/system-0/services/input-late.log"
+grep -q 'OFF-NOTE' "$nroot/system-0/services/input-late.log" && exit 1
+
+# A failed size read during a service copy does not take the new bytes
+# and does not move the cursor. The following success copies only those
+# new bytes.
+capsrc=$work/cap-src
+mkdir -p "$capsrc"
+printf '%s\n' 'BASE' > "$capsrc/led.log"
+croot=$work/cap-root
+cmark=$work/cap-mark
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$croot" ZLYME_LOG_MARK="$cmark" \
+	ZLYME_LOG_LOCK="$work/cap.lock" ZLYME_SERVICE_DIR="$capsrc" \
+	"$LOGS" start
+clen=$(wc -c < "$capsrc/led.log" | tr -d ' ')
+printf '%s\n' 'NEW-SVC' >> "$capsrc/led.log"
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$croot" ZLYME_LOG_MARK="$cmark" \
+	ZLYME_LOG_LOCK="$work/cap.lock" ZLYME_SERVICE_DIR="$capsrc" \
+	"$LOGS" start
+[ "$(tr -d ' \n' < "$cmark.svc.led.log")" = "$clen" ]
+if [ -f "$croot/system-0/services/led.log" ]; then
+	grep -q 'NEW-SVC' "$croot/system-0/services/led.log" && exit 1
+	grep -q 'BASE' "$croot/system-0/services/led.log" && exit 1
+fi
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$croot" ZLYME_LOG_MARK="$cmark" \
+	ZLYME_LOG_LOCK="$work/cap.lock" ZLYME_SERVICE_DIR="$capsrc" \
+	"$LOGS" start
+grep -q 'NEW-SVC' "$croot/system-0/services/led.log"
+grep -q 'BASE' "$croot/system-0/services/led.log" && exit 1
+
+# The same failed read on a Weston file leaves the saved tail and cursor.
+wfail=$work/wfail.log
+printf '%s\n' 'WBASE' > "$wfail"
+wfroot=$work/wfail-root
+wfmark=$work/wfail-mark
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$wfroot" ZLYME_LOG_MARK="$wfmark" \
+	ZLYME_LOG_LOCK="$work/wfail.lock" ZLYME_WESTON_LOG="$wfail" \
+	"$LOGS" start
+wlen=$(wc -c < "$wfail" | tr -d ' ')
+printf '%s\n' 'WNEW' >> "$wfail"
+ZLYME_WC_FAIL=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$wfroot" ZLYME_LOG_MARK="$wfmark" \
+	ZLYME_LOG_LOCK="$work/wfail.lock" ZLYME_WESTON_LOG="$wfail" \
+	"$LOGS" start
+[ "$(tr -d ' \n' < "$wfmark.weston")" = "$wlen" ]
+if [ -f "$wfroot/system-0/services/weston.log" ]; then
+	grep -q 'WNEW' "$wfroot/system-0/services/weston.log" && exit 1
+fi
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$wfroot" ZLYME_LOG_MARK="$wfmark" \
+	ZLYME_LOG_LOCK="$work/wfail.lock" ZLYME_WESTON_LOG="$wfail" \
+	"$LOGS" start
+grep -q 'WNEW' "$wfroot/system-0/services/weston.log"
+grep -q 'WBASE' "$wfroot/system-0/services/weston.log" && exit 1
+
+# The 64 KiB decision does not install a combined file when its size
+# cannot be read. The earlier saved bytes stay.
+big=$work/big-src
+mkdir -p "$big"
+printf '%s\n' 'BBASE' > "$big/storage.log"
+broot=$work/big-root
+bmark=$work/big-mark
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/big.lock" ZLYME_SERVICE_DIR="$big" \
+	"$LOGS" start
+mkdir -p "$broot/system-0/services"
+printf '%s\n' 'KEEP-HEAD' > "$broot/system-0/services/storage.log"
+dd if=/dev/zero bs=1024 count=70 >> "$broot/system-0/services/storage.log" 2>/dev/null
+printf '%s\n' 'BIG-NEW' >> "$big/storage.log"
+ZLYME_WC_FAIL_LARGE=1 PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/big.lock" ZLYME_SERVICE_DIR="$big" \
+	"$LOGS" start
+grep -q 'KEEP-HEAD' "$broot/system-0/services/storage.log"
+grep -q 'BIG-NEW' "$broot/system-0/services/storage.log" && exit 1
+PATH="$work/wcbin:$PATH" \
+	ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$broot" ZLYME_LOG_MARK="$bmark" \
+	ZLYME_LOG_LOCK="$work/big.lock" ZLYME_SERVICE_DIR="$big" \
+	"$LOGS" start
+grep -q 'BIG-NEW' "$broot/system-0/services/storage.log"
+_bigsz=$(wc -c < "$broot/system-0/services/storage.log" | tr -d ' ')
+[ "$_bigsz" -le 65536 ]
+
+# Without flock, start does not rotate a generation.
+nf=$work/nof
+mkdir -p "$nf"
+for _cmd in mkdir wc tail cat mv mktemp basename dirname chmod sleep date cp rm tr grep; do
+	ln -s "$(command -v "$_cmd")" "$nf/$_cmd"
+done
+unset _cmd
+nfroot=$work/nof-root
+nfmark=$work/nof-mark
+PATH="$nf" ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$nfroot" ZLYME_LOG_MARK="$nfmark" \
+	ZLYME_LOG_LOCK="$work/nof.lock" \
+	"$LOGS" start
+test ! -d "$nfroot/system-0"
+test ! -f "$nfmark"
 
 echo "log history ok"
