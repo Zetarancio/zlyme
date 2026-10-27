@@ -6,7 +6,7 @@
 # This script does not create or edit that file.
 #
 # --appendconfig is session data only: NextUI achievements, the ROM
-# card's save and BIOS directories, SDL2 pad routing, and a content
+# card's save and BIOS directories, joypad routing, and a content
 # overlay. Theme, automatic savestates, quit-on-close, and
 # config_save_on_exit stay in the user file. The stock file sets
 # config_save_on_exit false so a quit does not write those session
@@ -258,9 +258,24 @@ if [ ! -f "$AC/sdl2/Microsoft X-Box 360 pad.cfg" ]; then
 	fi
 fi
 RA_AC=/tmp/zlyme-ra-ac.cfg
-# SDL2 is the driver this image has. pak-input.sh hides the physical
-# pad, so the virtual pad is SDL index 0. A saved index of 1 pointed
-# at nothing. These lines are session routing, not a saved preference.
+# One InputPlumber virtual pad uses the udev joypad driver. The
+# physical Flip pad is a different name. A second pad with the same
+# Xbox name, virtual or not, cannot be told apart by that name, so
+# that session keeps the SDL2 joypad driver. The SDL device filter
+# does not apply to udev.
+_ra_virt=0
+_ra_same=0
+_ra_sys=${ZLYME_INPUT_SYS:-/sys/class/input}
+for _ra_d in "$_ra_sys"/input*; do
+	[ -r "$_ra_d/name" ] || continue
+	_ra_name=$(tr -d '\r\n' < "$_ra_d/name")
+	[ "$_ra_name" = "Microsoft X-Box 360 pad" ] || continue
+	_ra_same=$((_ra_same + 1))
+	_ra_link=$(readlink -f "$_ra_d/device" 2>/dev/null || true)
+	case "$_ra_link" in
+		*/devices/virtual/*) _ra_virt=$((_ra_virt + 1)) ;;
+	esac
+done
 printf 'joypad_autoconfig_dir = "%s"\ninput_autodetect_enable = "true"\n' "$AC" > "$RA_AC"
 if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	# shellcheck disable=SC1091
@@ -268,8 +283,20 @@ if [ -r /usr/share/zlyme/pak-input.sh ]; then
 else
 	export SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT:-0x045e/0x028e}"
 fi
-printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\n' >> "$RA_AC"
-printf 'input_player1_joypad_index = "0"\n' >> "$RA_AC"
+if [ "$_ra_virt" -eq 1 ] && [ "$_ra_same" -eq 1 ]; then
+	{
+		printf 'input_driver = "sdl2"\ninput_joypad_driver = "udev"\n'
+		printf 'input_player1_reserved_device = "Microsoft X-Box 360 pad"\n'
+		printf 'input_player1_device_reservation_type = "2"\n'
+	} >> "$RA_AC"
+else
+	{
+		printf 'input_driver = "sdl2"\ninput_joypad_driver = "sdl2"\n'
+		printf 'input_player1_joypad_index = "0"\n'
+		printf 'input_player1_device_reservation_type = "0"\n'
+	} >> "$RA_AC"
+fi
+unset _ra_virt _ra_same _ra_sys _ra_d _ra_name _ra_link
 printf 'notification_show_autoconfig = "false"\nnotification_show_autoconfig_fails = "false"\n' >> "$RA_AC"
 
 # Session-only output size. A non-zero video_fullscreen_x in the user
