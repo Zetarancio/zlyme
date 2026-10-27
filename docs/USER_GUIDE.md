@@ -324,7 +324,7 @@ Tools → Files is the file browser. Hidden files are shown until you turn that 
 Logs are off by default. Turn on Settings → System → Advanced → System logs, and Zlyme writes `/storage/.logs`:
 
 - `README.txt` explains the layout.
-- `system-0/` is the newest logged boot. `system-1/` to `system-4/` are earlier ones. Each holds files such as `dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, and `nextui.txt`.
+- `system-0/` is the newest logged boot. `system-1/` to `system-4/` are earlier ones. Each holds files such as `dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, `nextui.txt`, `session.txt`, and `next.txt`. Those session files are copies taken while logs are on. The live session text stays in temporary files.
 - `paks/TAG.log` is the newest run of that pak (`FC.log`, `PS2.log`, `Settings.log`, …). `TAG.log.1` and `TAG.log.2` are the two runs before it.
 - Tools → PortMaster writes `paks/portmaster.txt` when system logs are on. When they are off, that transcript stays in a temporary file and an error on screen still comes from it.
 

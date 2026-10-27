@@ -47,8 +47,9 @@ if logs_wanted; then
 	printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
 	unset _logroot
 	# A failed exec redirection is fatal in BusyBox ash. Probe with an
-	# ordinary command first so a missing or full log does not abort
-	# the launch. The game then keeps the caller's stdout and stderr.
+	# ordinary command first. The probe only checks that the file can
+	# be opened. It writes no data and does not prove a later write.
+	# If the open fails, the launch keeps the caller's stdout and stderr.
 	if cat /dev/null >>"$ZLYME_PAK_LOG" 2>/dev/null; then
 		exec >>"$ZLYME_PAK_LOG" 2>&1
 	fi

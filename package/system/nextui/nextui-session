@@ -28,23 +28,17 @@ export SHARED_USERDATA_PATH=/storage/.config/nextui/shared
 # this with /storage/.logs/paks only while system logs are on.
 # OpenBOR reads it when that pak log is already enabled. Leave it set.
 export LOGS_PATH=$USERDATA_PATH/logs
-# Diagnostic logging off: routine session lines stay in tmpfs.
+# The session's own lines stay on tmpfs. zlyme-logs copies them into
+# the boot generation only while System logs are on. LOGS_ON is the
+# value at start. A PAK re-reads the switch itself.
 LOGS_ON=0
 SESSION_LOG=/tmp/nextui-session.txt
 _logs=
 [ -r /storage/.config/zlyme/logs ] && _logs=$(tr -d ' \t\r\n' < /storage/.config/zlyme/logs)
 case "$_logs" in
-	on|1|yes)
-		LOGS_ON=1
-		if [ -x /usr/sbin/zlyme-logs ]; then
-			/usr/sbin/zlyme-logs start
-			_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=
-			if [ -n "$_cur" ]; then
-				SESSION_LOG=$_cur/next.txt
-			fi
-		fi
-		;;
+	on|1|yes) LOGS_ON=1 ;;
 esac
+export LOGS_ON
 export HOOKS_PATH=$USERDATA_PATH/.hooks
 export SDL_VIDEODRIVER=kmsdrm
 export SDL_GAMECONTROLLERCONFIG_FILE=/usr/lib/gamecontrollerdb.txt
@@ -70,6 +64,14 @@ boot_mark() {
 	_up=0
 	read -r _up _rest < /proc/uptime || true
 	echo "$_up $*" >> /tmp/boot-timing
+}
+
+# Copy tmpfs diagnostics into the current generation. start is a no-op
+# when System logs are off, and it does not rotate again in this boot.
+snapshot_logs() {
+	_logs_bin=${ZLYME_LOGS_BIN:-/usr/sbin/zlyme-logs}
+	[ -x "$_logs_bin" ] || return 0
+	"$_logs_bin" start || true
 }
 mkdir -p /storage/.config/zlyme
 boot_mark session-start
@@ -421,12 +423,7 @@ while [ -f "$EXEC_PATH" ]; do
 		zlyme_hdmi_apply || true
 	fi
 	nextui.elf >> /tmp/nextui.txt 2>&1
-	if [ "$LOGS_ON" = 1 ] && [ -f /tmp/nextui.txt ] && [ -x /usr/sbin/zlyme-logs ]; then
-		_cur=$(/usr/sbin/zlyme-logs current 2>/dev/null) || _cur=
-		if [ -n "$_cur" ]; then
-			cp -f /tmp/nextui.txt "$_cur/nextui.txt" 2>/dev/null || true
-		fi
-	fi
+	snapshot_logs
 	if [ -f "$NEXT_PATH" ]; then
 		rm -f /tmp/poweroff /tmp/reboot
 		if ! read_launch "$NEXT_PATH" 2>>"$SESSION_LOG"; then
@@ -455,6 +452,7 @@ while [ -f "$EXEC_PATH" ]; do
 				echo "pak cleanup unresolved; frontend stopped" >> "$SESSION_LOG"
 				printf '%s\n' "$st" > /run/zlyme/pak-cleanup-failed
 				rm -f "$EXEC_PATH"
+				snapshot_logs
 				break
 			fi
 			# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
@@ -463,12 +461,14 @@ while [ -f "$EXEC_PATH" ]; do
 				echo "pak exit $st" >> "$SESSION_LOG"
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 			fi
+			snapshot_logs
 			killall -9 pico8_64 minui-list minui-presenter zcrapegoat 2>/dev/null || true
 			sleep 0.2
 			# Settings/paks use the same /tmp/reboot flag as nextui.elf.
 			# Honor it here; continue would restart NextUI with the panel off.
 			if [ -f /tmp/poweroff ]; then
 				rm -f /tmp/poweroff
+				snapshot_logs
 				if [ -x /usr/sbin/zlyme-halt ]; then
 					exec /usr/sbin/zlyme-halt poweroff
 				fi
@@ -477,6 +477,7 @@ while [ -f "$EXEC_PATH" ]; do
 			fi
 			if [ -f /tmp/reboot ]; then
 				rm -f /tmp/reboot
+				snapshot_logs
 				if [ -x /usr/sbin/zlyme-halt ]; then
 					exec /usr/sbin/zlyme-halt reboot
 				fi
@@ -488,6 +489,7 @@ while [ -f "$EXEC_PATH" ]; do
 	fi
 	if [ -f /tmp/poweroff ]; then
 		rm -f /tmp/poweroff
+		snapshot_logs
 		if [ -x /usr/sbin/zlyme-halt ]; then
 			exec /usr/sbin/zlyme-halt poweroff
 		fi
@@ -496,6 +498,7 @@ while [ -f "$EXEC_PATH" ]; do
 	fi
 	if [ -f /tmp/reboot ]; then
 		rm -f /tmp/reboot
+		snapshot_logs
 		if [ -x /usr/sbin/zlyme-halt ]; then
 			exec /usr/sbin/zlyme-halt reboot
 		fi

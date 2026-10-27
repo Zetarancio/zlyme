@@ -96,4 +96,51 @@ quiet=$work/quiet
 sh -c 'EMU_TAG=GBA EMU_EXE=core ROM= ZLYME_LOG_ROOT=$1 . "$2"' sh "$quiet" "$PAK"
 test ! -e "$quiet/paks/GBA.log"
 
+# Session text stays on tmpfs. A logs-on start copies it. A second start
+# in the same boot refreshes the copy and does not rotate. Logs off does
+# not create a generation.
+sess=$work/session-src
+mkdir -p "$sess"
+printf '%s\n' 'wrap-1' > "$sess/wrap.log"
+printf '%s\n' 'text-1' > "$sess/text.txt"
+snap=$work/snap
+snapmark=$work/snap-mark
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$snap" ZLYME_LOG_MARK="$snapmark" \
+	ZLYME_SESSION_WRAP="$sess/wrap.log" ZLYME_SESSION_TEXT="$sess/text.txt" \
+	"$LOGS" start
+cur=$(ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$snap" ZLYME_LOG_MARK="$snapmark" \
+	ZLYME_SESSION_WRAP="$sess/wrap.log" ZLYME_SESSION_TEXT="$sess/text.txt" \
+	"$LOGS" current)
+grep -q 'wrap-1' "$cur/session.txt"
+grep -q 'text-1' "$cur/next.txt"
+printf '%s\n' 'wrap-2' > "$sess/wrap.log"
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$snap" ZLYME_LOG_MARK="$snapmark" \
+	ZLYME_SESSION_WRAP="$sess/wrap.log" ZLYME_SESSION_TEXT="$sess/text.txt" \
+	"$LOGS" start
+grep -q 'wrap-2' "$snap/system-0/session.txt"
+test ! -d "$snap/system-1"
+# stop does not write another snapshot
+printf '%s\n' 'wrap-3' > "$sess/wrap.log"
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$snap" ZLYME_LOG_MARK="$snapmark" \
+	ZLYME_SESSION_WRAP="$sess/wrap.log" ZLYME_SESSION_TEXT="$sess/text.txt" \
+	"$LOGS" stop
+grep -q 'wrap-2' "$snap/system-0/session.txt"
+grep -q 'wrap-3' "$snap/system-0/session.txt" && exit 1
+# on again still does not rotate
+ZLYME_LOG_FORCE=1 ZLYME_LOG_ROOT="$snap" ZLYME_LOG_MARK="$snapmark" \
+	ZLYME_SESSION_WRAP="$sess/wrap.log" ZLYME_SESSION_TEXT="$sess/text.txt" \
+	"$LOGS" start
+grep -q 'wrap-3' "$snap/system-0/session.txt"
+test ! -d "$snap/system-1"
+
+# The session process is not pointed at the card log.
+s28=$ROOT/board/my355/fsoverlay/etc/init.d/S28minui
+grep -q '! -e /boot/zlyme-logs' "$LOGS"
+grep -q '/tmp/nextui-session.log' "$s28"
+grep -q 'session.txt' "$s28" && exit 1
+grep -q 'SESSION_LOG=/tmp/nextui-session.txt' \
+	"$ROOT/package/system/nextui/nextui-session"
+grep -F -q 'SESSION_LOG=$_cur/next.txt' \
+	"$ROOT/package/system/nextui/nextui-session" && exit 1
+
 echo "log history ok"

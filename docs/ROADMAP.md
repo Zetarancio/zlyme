@@ -443,7 +443,7 @@ Status: Closed, 2026-10-27. The inventory and the RetroArch `wb` open result are
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: In progress, 2026-10-27. The first slice redirects every waited PAK shell when logs are on, and RetroArch is launched with `-v` and without `--log-file`. Service logs, the live toggle, retention, OpenBOR, Ruffle, privacy, and shutdown are not done.
+Status: In progress, 2026-10-27. PAK capture and the session descriptor are in. The session process stays on tmpfs, and `zlyme-logs` copies it only while System logs are on. Service-log tails, retention, OpenBOR, Ruffle, and privacy filtering are not done. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md).
 
 Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. A per-file bound and a total bound are still only a proposal. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced. Truncating a file another process has open, or deleting user files to meet a cap, is not the implementation.
 

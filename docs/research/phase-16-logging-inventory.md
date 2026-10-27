@@ -8,9 +8,7 @@ Scope: the product image's NextUI launchers, `zlyme-logs`, `zlyme-ctl`, `nextui-
 
 ## Launch contract
 
-`S28minui` starts `nextui-session` in the background. If `zlyme-ctl want logs` is already true, that process is appended to `/storage/.logs/system-0/session.txt`. Otherwise it is appended to `/tmp/nextui-session.log`. The redirect is fixed for the life of the process.
-
-`nextui-session` reads `/storage/.config/zlyme/logs` once. On means `SESSION_LOG` is `system-0/next.txt` after `zlyme-logs start`. Off means `SESSION_LOG` is `/tmp/nextui-session.txt`. A later toggle does not change `SESSION_LOG` or the `S28minui` file.
+`S28minui` starts `nextui-session` in the background with stdout and stderr on `/tmp/nextui-session.log`. That descriptor stays there. `nextui-session` writes its own lines to `/tmp/nextui-session.txt`. While System logs are on, `zlyme-logs start` copies those files to `system-0/session.txt` and `system-0/next.txt`. It does not copy them while the switch is off.
 
 A game or tool is `launch.sh`, started by `zlyme-pak-spawn` through `pak-launch.sh`. The spawn helper returns the leader's exit status. A leader exit of 125 is reported as 126 so it is not mistaken for the helper's own cleanup failure. The helper returns 125 when it cannot prove the session is gone. `nextui-session` treats 0, 2, 3, 137, and 143 as success and stops the frontend on 125. That path is source. It was not replayed on a Flip for this note.
 
@@ -81,8 +79,8 @@ A PAK that sources `pak-log.sh` and stays in the spawned session gets the same r
 | Producer | Path when logs are off | Enters `.logs` today |
 | --- | --- | --- |
 | `zlyme-logs` snapshots | none until logs are on | `system-0/dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, `nextui.txt` |
-| `S28minui` session process | `/tmp/nextui-session.log` | `system-0/session.txt` only if logs were on at start |
-| `nextui-session` `SESSION_LOG` | `/tmp/nextui-session.txt` | `system-0/next.txt` only if the flag was on at session start |
+| `S28minui` session process | `/tmp/nextui-session.log` always | copied to `system-0/session.txt` only while logs are on |
+| `nextui-session` `SESSION_LOG` | `/tmp/nextui-session.txt` always | copied to `system-0/next.txt` only while logs are on |
 | `nextui.elf` | `/tmp/nextui.txt` always | copied to `system-0/nextui.txt` when logs are on, and also to `/storage/.config/nextui/my355/logs/nextui.txt` by `rc.late` regardless |
 | Boot timing | `/tmp/boot-timing` | copied to `system-0/boot-timing.txt` when logs are on, and to `/storage/.config/zlyme/boot-timing` by `rc.late` regardless |
 | Initramfs | no dmesg file unless `/boot/zlyme-logs` exists | `/boot/zlyme-dmesg.txt` and `/storage/.logs/dmesg-init.txt` |
@@ -107,9 +105,9 @@ Not logs, and not migration candidates: `/tmp/zlyme-minui-ra.cfg` and the other 
 
 ## Toggle, from the source
 
-Off to on while NextUI is running: the next launcher re-reads `zlyme-ctl want logs` and can open a PAK file. `zlyme-logs apply` takes one generation if this boot has not had one. The session fd stays on `/tmp/nextui-session.log`. Core stdout stays there. `SESSION_LOG` stays `/tmp/nextui-session.txt`.
+Off to on while NextUI is running: the next launcher re-reads `zlyme-ctl want logs` and can open a PAK file. `zlyme-logs apply` takes one generation if this boot has not had one, and copies the tmpfs session files. The session descriptor stays on `/tmp`.
 
-On to off while NextUI is running: new PAK files stop. The session fd stays on `system-0/session.txt`, and a new core or an unredirected child still inherits it. Turning logs off does not stop that already-open card file.
+On to off while NextUI is running: new PAK files stop, and `zlyme-logs` does not copy the session files. A launch that already opened its PAK log keeps that descriptor until the process exits. The session descriptor was never on the card.
 
 On, off, on in one boot: one generation, because the `/run` marker survives `stop`.
 
@@ -168,7 +166,7 @@ Chosen capture: redirect the waited shell, and pass `-v` without `--log-file`. A
 - Service-log tails, the live logging toggle, byte caps, and the total budget. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced.
 - Cap PAK files, the OpenBOR directory, and each system generation only after that approval, and not by truncating a file another process still has open.
 - Copy bounded tails of the late service logs into `system-0` from `zlyme-logs`, including a copy on the halt path, without a new daemon.
-- On toggle off, stop appending to `session.txt`. The source gap is the fd opened by `S28minui`.
+- Verbose modes other than RetroArch `-v` are not enabled. The launch scripts and `start_*.sh` files do not show a safe, source-grounded debug switch for the other shipped standalones or tools. Dolphin's `-v` is the video backend, not a log level. Port scripts are not given a flag. Anything that would be unbounded waits for the retention slice.
 - Keep the two `rc.late` copies.
 - Leave HDMI trace and `ZLYME_RA_DEBUG` on their own flags.
 - Do not log ScreenScraper URLs, Wi-Fi PSKs, or git commands that carry credentials.

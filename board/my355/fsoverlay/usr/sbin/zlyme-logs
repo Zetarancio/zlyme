@@ -50,6 +50,23 @@ refresh_snapshots() {
 	if [ -f /tmp/nextui.txt ]; then
 		cp -f /tmp/nextui.txt "$cur/nextui.txt" 2>/dev/null || true
 	fi
+	# Live session text stays on tmpfs. These copies are the generation's
+	# snapshot. A host test sets ZLYME_LOG_ROOT and does not want the
+	# machine's session files unless it names them. A symlink is left alone.
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] || [ -n "${ZLYME_SESSION_WRAP:-}" ]; then
+		_wrap=${ZLYME_SESSION_WRAP:-/tmp/nextui-session.log}
+		if [ -f "$_wrap" ] && [ ! -L "$_wrap" ]; then
+			cp -f "$_wrap" "$cur/session.txt" 2>/dev/null || true
+		fi
+		unset _wrap
+	fi
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] || [ -n "${ZLYME_SESSION_TEXT:-}" ]; then
+		_text=${ZLYME_SESSION_TEXT:-/tmp/nextui-session.txt}
+		if [ -f "$_text" ] && [ ! -L "$_text" ]; then
+			cp -f "$_text" "$cur/next.txt" 2>/dev/null || true
+		fi
+		unset _text
+	fi
 }
 
 # Oldest generation is deleted, then each directory moves up one index.
@@ -78,7 +95,10 @@ start() {
 		: > "$MARK" || return 0
 	fi
 	refresh_snapshots || return 0
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -x /usr/sbin/zlyme-boot-write ]; then
+	# The initramfs only checks that this file exists. Touching it again
+	# remounts the boot volume, so a later snapshot must not repeat that.
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ ! -e /boot/zlyme-logs ] \
+		&& [ -x /usr/sbin/zlyme-boot-write ]; then
 		zlyme-boot-write touch /boot/zlyme-logs || true
 	fi
 	return 0
