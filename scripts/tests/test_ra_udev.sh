@@ -134,4 +134,35 @@ run
 grep -q 'input_joypad_driver = "sdl2"' /tmp/zlyme-ra-ac.cfg \
 	|| fail "no virtual pad selected udev"
 
+# The live uinput node is /sys/devices/virtual/input/inputN and has
+# no device symlink. readlink -f of the missing device path still
+# ends under that virtual node.
+real=$work/real
+mkdir -p "$real/devices/virtual/input/input5" "$real/devices/platform/serial/input4" "$real/class"
+printf '%s\n' "Microsoft X-Box 360 pad" > "$real/devices/virtual/input/input5/name"
+printf '%s\n' "Miyoo Flip Gamepad" > "$real/devices/platform/serial/input4/name"
+ln -s "$real/devices/virtual/input/input5" "$real/class/input5"
+ln -s "$real/devices/platform/serial/input4" "$real/class/input4"
+mkdir -p "$real/devices/platform/serial/input4/event4" \
+	"$real/devices/platform/serial/input4/js0" \
+	"$real/devices/virtual/input/input5/event5" \
+	"$real/devices/virtual/input/input5/js1"
+ln -s "$real/devices/platform/serial/input4" \
+	"$real/devices/platform/serial/input4/event4/device"
+ln -s "$real/devices/virtual/input/input5" \
+	"$real/devices/virtual/input/input5/event5/device"
+ln -s "$real/devices/platform/serial/input4/event4" "$real/class/event4"
+ln -s "$real/devices/virtual/input/input5/event5" "$real/class/event5"
+if [ -e "$real/class/input5/device" ]; then
+	fail "the real-shape fixture invented a device node"
+fi
+sys=$real/class
+run
+grep -q 'input_joypad_driver = "udev"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "a virtual pad without a device symlink did not select udev"
+grep -q 'input_player1_reserved_device = "Microsoft X-Box 360 pad"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "the real-shape pad was not reserved"
+grep -q 'input_player1_joypad_index = "1"' /tmp/zlyme-ra-ac.cfg \
+	|| fail "player 1 was not the virtual pad's udev slot"
+
 echo "ra udev ok"
