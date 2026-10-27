@@ -392,7 +392,7 @@ Release publication is separate work. At this closure, Phase 15 had not started.
 
 ## Phase 15. Documentation and zlyme44.4 preparation
 
-Status: In progress, 2026-10-26. 15A, 15B, and 15E are closed. 15C and 15D are open. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed candidate named above is the firmware under test, not the release image. The PPSSPP save-bind correction, including the source-selection refusal, is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
+Status: In progress, 2026-10-27. 15A, 15B, 15C, and 15E are closed. 15D stays open for the layouts that are not accepted. 15F is planned. `zlyme44.4` is not released. `ZLYME_VERSION` remains `zlyme44.3`. The installed image is `zlyme-my355-20261026-a420f0c00a78.tar`. The local candidate `zlyme-my355-20261027-e2c80ec6d4eb.tar` is not installed and is not the release image. The PPSSPP save-bind correction, including the source-selection refusal, is host-tested and is not hardware-accepted. A later image still has to launch one PSP game from SD2, keep its saves, return normally, return with MENU+START, and leave no PSP bind mounted, including for USB File Transfer.
 
 Objective: correct the documentation against the Phase 14 source, retest two measured RetroArch issues, match original-system face buttons where the mapping is proved, and prepare the release only after approval.
 
