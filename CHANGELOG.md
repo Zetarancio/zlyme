@@ -30,6 +30,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 - Bluetooth discovery lists nearby devices whose type is not known yet, without connecting until you choose Pair or Connect.
 - Volume changes update the on-screen level immediately and are applied when the mixer is ready. Paired audio headsets are requested once after BlueZ has registered them instead of being retried continuously.
 
+After you update to zlyme44.4, Settings → Game → Reset RetroArch configuration and Reset standalone settings are there if you want the new default controller and button mappings. Each one replaces the emulator preferences it owns. Games and saves stay. Skip both when you want to keep the settings you already chose. Those configurations remain valid.
+
 ### Known limitations
 
 - During normal HDMI use, the internal display remains on.
@@ -157,7 +159,8 @@ The first stable release.
 - Replacement Switch-style sticks have not been tried.
 - CPU undervolt stays off unless you turn it on.
 
-[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-38828679802...HEAD
+[Unreleased]: https://github.com/Zetarancio/zlyme/compare/zlyme-40439819817...HEAD
+[zlyme44.4]: https://github.com/Zetarancio/zlyme/releases/tag/zlyme-40439819817
 [zlyme44.3]: https://github.com/Zetarancio/zlyme/compare/zlyme-38098037074...zlyme-38828679802
 [zlyme44.2]: https://github.com/Zetarancio/zlyme/compare/zlyme-37164297221...zlyme-38098037074
 [zlyme44]: https://github.com/Zetarancio/zlyme/releases/tag/zlyme-37164297221

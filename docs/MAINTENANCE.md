@@ -26,7 +26,7 @@ Product status, kept separate from the procedure below:
 - Published `zlyme44` is tag `zlyme-37164297221`, from `337ccbce2587393463a4b49c551f94e33e318e44`.
 - Published `zlyme44.2` is tag `zlyme-38098037074`, from `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`.
 - Published `zlyme44.3` is tag `zlyme-38828679802`, from `1ce2f56af1ec91a1087a01b23f741464fc6c34f6`, published 2026-10-16.
-- `ZLYME_VERSION` is `zlyme44.4`. Published stable remains `zlyme44.3` until the release workflow succeeds.
+- Published `zlyme44.4` is tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, published 2026-10-27. `ZLYME_VERSION` is `zlyme44.4`. Phase 16 commits after that source are not part of the published release.
 - Phase 14 and Phase 15 are closed. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`. The Quickswitcher candidate is not installed. Gates and image hashes are in `docs/ROADMAP.md` and `docs/LOGBOOK.md`.
 - The dated product-status snapshots that used to live here are preserved in `docs/research/phase-15-documentation-audit.md`. They are not the current state.
 - The NextUI pin in `package/system/nextui/nextui.mk` is `f595d7862d8f5dac722aaa9960307609be903db8` on NextUI `zlyme44.4-phase-14` and has to be reachable from NextUI `zlyme` before it is the pin on Zlyme `main`. The rule in the NextUI section below still applies.
