@@ -3,17 +3,24 @@
 # About → System logs. Off by default.
 #
 # system-0 is the newest logged boot. Ordering is rotation, not the clock.
-# /run is cleared on reboot, so the marker allows one rotation per boot
-# even if start runs again after Settings toggles logs.
+# /run is cleared on reboot. A flock makes the one-rotation marker safe
+# when S15's seed and a later start overlap.
 #
-# ZLYME_LOG_ROOT and ZLYME_LOG_MARK are test seams. ZLYME_LOG_FORCE=1
-# skips zlyme-ctl. Production leaves them unset.
+# ZLYME_LOG_ROOT, ZLYME_LOG_MARK, ZLYME_LOG_LOCK, and ZLYME_LOG_FORCE=1
+# are test seams. ZLYME_LOG_RACE is a barrier used only by the overlap
+# test. Production leaves them unset.
 
 [ -r /etc/zlyme.conf ] && . /etc/zlyme.conf
 
 SYSTEM_LOG_GENERATIONS=5
+# Provisional budgets. An open writer can still grow past them until
+# the next completed-file trim. See the Phase 16 inventory.
+GEN_MAX=2097152
+TOTAL_MAX=33554432
+SERVICE_TAIL=65536
 LOGDIR=${ZLYME_LOG_ROOT:-/storage/.logs}
 MARK=${ZLYME_LOG_MARK:-/run/zlyme-logs-generation}
+LOCK=${ZLYME_LOG_LOCK:-$(dirname "$MARK")/zlyme-logs.lock}
 
 want_logs() {
 	[ "${ZLYME_LOG_FORCE:-}" = 1 ] && return 0
@@ -34,6 +41,137 @@ write_readme() {
 		> "$LOGDIR/README.txt"
 }
 
+regular_file() {
+	[ -f "$1" ] || return 1
+	[ ! -L "$1" ]
+}
+
+file_size() {
+	_sz=$(wc -c < "$1" 2>/dev/null) || _sz=0
+	printf '%s\n' "$_sz" | tr -d ' '
+}
+
+read_off() {
+	_off=0
+	if [ -f "$1" ]; then
+		_off=$(tr -d ' \t\r\n' < "$1" 2>/dev/null) || _off=0
+	fi
+	case "$_off" in
+		''|*[!0-9]*) _off=0 ;;
+	esac
+	printf '%s\n' "$_off"
+}
+
+# Remember how far a live tmpfs file had been written. No copy.
+note_size() {
+	_src=$1
+	_state=$2
+	if [ -f "$_src" ] && [ ! -L "$_src" ]; then
+		file_size "$_src" > "$_state"
+	else
+		printf '%s\n' 0 > "$_state"
+	fi
+}
+
+# Append only bytes written since the saved offset. The source is the
+# live file; this never renames or truncates it, so an open writer fd
+# keeps appending to the same inode.
+append_since() {
+	_src=$1
+	_dest=$2
+	_state=$3
+	regular_file "$_src" || return 0
+	_size=$(file_size "$_src")
+	_off=$(read_off "$_state")
+	if [ "$_size" -le "$_off" ]; then
+		printf '%s\n' "$_size" > "$_state"
+		return 0
+	fi
+	_skip=$((_off + 1))
+	if tail -c "+$_skip" "$_src" >> "$_dest" 2>/dev/null; then
+		printf '%s\n' "$_size" > "$_state"
+	fi
+}
+
+session_sources() {
+	WRAP=${ZLYME_SESSION_WRAP:-/tmp/nextui-session.log}
+	TEXT=${ZLYME_SESSION_TEXT:-/tmp/nextui-session.txt}
+	if [ -n "${ZLYME_LOG_ROOT:-}" ] && [ -z "${ZLYME_SESSION_WRAP:-}" ]; then
+		WRAP=
+	fi
+	if [ -n "${ZLYME_LOG_ROOT:-}" ] && [ -z "${ZLYME_SESSION_TEXT:-}" ]; then
+		TEXT=
+	fi
+}
+
+weston_src() {
+	if [ -n "${ZLYME_WESTON_LOG:-}" ]; then
+		printf '%s\n' "$ZLYME_WESTON_LOG"
+	elif [ -z "${ZLYME_LOG_ROOT:-}" ]; then
+		printf '%s\n' /run/zlyme-weston/weston.log
+	fi
+}
+
+# A new Weston run replaces the file, so a smaller size is a new log,
+# not a shrink of the one we already copied.
+capture_weston() {
+	_w=$(weston_src)
+	[ -n "$_w" ] || return 0
+	# The live file is gone. Forget its size so the next run is not
+	# measured against it. Leave the copy already saved.
+	if ! regular_file "$_w"; then
+		rm -f "$MARK.weston"
+		return 0
+	fi
+	_size=$(file_size "$_w")
+	_off=$(read_off "$MARK.weston")
+	_dest=$LOGDIR/system-0/services/weston.log
+	mkdir -p "$(dirname "$_dest")" || return 0
+	# No saved offset, or the file shrank: this is a new log. Append it
+	# and keep the newest 64 KiB, so a short run does not erase the
+	# previous capture and a long run is not read from the old offset.
+	if [ ! -f "$MARK.weston" ] || [ "$_size" -lt "$_off" ]; then
+		_wt=$(mktemp "${_dest}.src.XXXXXX") || return 0
+		if tail -c "$SERVICE_TAIL" "$_w" > "$_wt"; then
+			cat "$_wt" >> "$_dest"
+		fi
+		rm -f "$_wt"
+		cap_one "$_dest" "$SERVICE_TAIL"
+		printf '%s\n' "$_size" > "$MARK.weston"
+		return 0
+	fi
+	append_since "$_w" "$_dest" "$MARK.weston"
+	cap_one "$_dest" "$SERVICE_TAIL"
+}
+
+# First start of an on-interval discards bytes already in the tmpfs
+# files. Those were written while logging was off.
+begin_capture() {
+	session_sources
+	[ -n "$WRAP" ] && note_size "$WRAP" "$MARK.wrap"
+	[ -n "$TEXT" ] && note_size "$TEXT" "$MARK.text"
+	_w=$(weston_src)
+	[ -n "$_w" ] && note_size "$_w" "$MARK.weston"
+	: > "$MARK.on"
+}
+
+follow_capture() {
+	cur=$LOGDIR/system-0
+	mkdir -p "$cur" || return 0
+	session_sources
+	[ -n "$WRAP" ] && append_since "$WRAP" "$cur/session.txt" "$MARK.wrap"
+	[ -n "$TEXT" ] && append_since "$TEXT" "$cur/next.txt" "$MARK.text"
+	capture_weston
+}
+
+copy_tail() {
+	_src=$1
+	_dest=$2
+	regular_file "$_src" || return 0
+	mkdir -p "$(dirname "$_dest")" || return 0
+	tail -c "$SERVICE_TAIL" "$_src" > "$_dest" 2>/dev/null || true
+}
+
 refresh_snapshots() {
 	cur=$LOGDIR/system-0
 	mkdir -p "$cur" || return 1
@@ -41,31 +179,34 @@ refresh_snapshots() {
 	if [ -z "${ZLYME_LOG_ROOT:-}" ]; then
 		dmesg > "$cur/dmesg.txt" 2>/dev/null || true
 	fi
-	if [ -f /boot/zlyme-dmesg.txt ]; then
+	if [ -f /boot/zlyme-dmesg.txt ] && [ ! -L /boot/zlyme-dmesg.txt ]; then
 		cp -f /boot/zlyme-dmesg.txt "$cur/dmesg-boot.txt" 2>/dev/null || true
 	fi
-	if [ -f /tmp/boot-timing ]; then
-		cp -f /tmp/boot-timing "$cur/boot-timing.txt" 2>/dev/null || true
+	if [ -f /tmp/boot-timing ] && [ ! -L /tmp/boot-timing ]; then
+		copy_tail /tmp/boot-timing "$cur/boot-timing.txt"
 	fi
-	if [ -f /tmp/nextui.txt ]; then
-		cp -f /tmp/nextui.txt "$cur/nextui.txt" 2>/dev/null || true
+	if [ -f /tmp/nextui.txt ] && [ ! -L /tmp/nextui.txt ]; then
+		copy_tail /tmp/nextui.txt "$cur/nextui.txt"
 	fi
-	# Live session text stays on tmpfs. These copies are the generation's
-	# snapshot. A host test sets ZLYME_LOG_ROOT and does not want the
-	# machine's session files unless it names them. A symlink is left alone.
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] || [ -n "${ZLYME_SESSION_WRAP:-}" ]; then
-		_wrap=${ZLYME_SESSION_WRAP:-/tmp/nextui-session.log}
-		if [ -f "$_wrap" ] && [ ! -L "$_wrap" ]; then
-			cp -f "$_wrap" "$cur/session.txt" 2>/dev/null || true
-		fi
-		unset _wrap
-	fi
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] || [ -n "${ZLYME_SESSION_TEXT:-}" ]; then
-		_text=${ZLYME_SESSION_TEXT:-/tmp/nextui-session.txt}
-		if [ -f "$_text" ] && [ ! -L "$_text" ]; then
-			cp -f "$_text" "$cur/next.txt" 2>/dev/null || true
-		fi
-		unset _text
+	if [ -n "${ZLYME_SERVICE_DIR:-}" ]; then
+		for _svc in "$ZLYME_SERVICE_DIR"/*; do
+			regular_file "$_svc" || continue
+			copy_tail "$_svc" "$cur/services/$(basename "$_svc")"
+		done
+		unset _svc
+	elif [ -z "${ZLYME_LOG_ROOT:-}" ]; then
+		# Live destinations stay on tmpfs. These are tails, not extra
+		# descriptors on the card. syslogd and klogd are not here:
+		# Zlyme does not own a file for them, and the stream is not
+		# known to be free of unrelated messages.
+		copy_tail /tmp/zlyme-input-late.log "$cur/services/input-late.log"
+		copy_tail /tmp/inputplumber.log "$cur/services/inputplumber.log"
+		copy_tail /tmp/zlyme-input.log "$cur/services/zlyme-input.log"
+		copy_tail /tmp/zlyme-pipewire-late.log "$cur/services/pipewire-late.log"
+		copy_tail /tmp/zlyme-bt-late.log "$cur/services/bluetooth-late.log"
+		copy_tail /tmp/zlyme-storage.log "$cur/services/storage.log"
+		copy_tail /tmp/zlyme-led.log "$cur/services/led.log"
+		copy_tail /tmp/zlyme-net-async.log "$cur/services/wifi-async.log"
 	fi
 }
 
@@ -84,32 +225,249 @@ rotate_system() {
 	mkdir -p "$LOGDIR/system-0"
 }
 
-start() {
-	want_logs || return 0
-	storage_ready || return 0
-	mkdir -p "$LOGDIR" || return 0
-	write_readme || return 0
-	if [ ! -f "$MARK" ]; then
-		rotate_system || return 0
-		mkdir -p "$(dirname "$MARK")" 2>/dev/null || true
-		: > "$MARK" || return 0
+# Names zlyme-logs itself writes. A user file with another name is not
+# part of the budget and is not deleted.
+snapshot_names() {
+	printf '%s\n' dmesg.txt dmesg-boot.txt boot-timing.txt nextui.txt \
+		session.txt next.txt
+}
+
+service_names() {
+	printf '%s\n' input-late.log inputplumber.log zlyme-input.log \
+		pipewire-late.log bluetooth-late.log storage.log led.log \
+		wifi-async.log weston.log
+}
+
+owned_bytes() {
+	_sum=0
+	_gen=0
+	_name=
+	_f=
+	while [ "$_gen" -le 4 ]; do
+		for _name in $(snapshot_names); do
+			_f=$LOGDIR/system-$_gen/$_name
+			regular_file "$_f" || continue
+			_sum=$((_sum + $(file_size "$_f")))
+		done
+		for _name in $(service_names); do
+			_f=$LOGDIR/system-$_gen/services/$_name
+			regular_file "$_f" || continue
+			_sum=$((_sum + $(file_size "$_f")))
+		done
+		_gen=$((_gen + 1))
+	done
+	for _f in "$LOGDIR"/paks/*.log "$LOGDIR"/paks/*.log.[12] \
+		"$LOGDIR"/paks/portmaster.txt "$LOGDIR"/paks/OPENBOR/*; do
+		regular_file "$_f" || continue
+		_sum=$((_sum + $(file_size "$_f")))
+	done
+	printf '%s\n' "$_sum"
+}
+
+generation_bytes() {
+	_sum=0
+	_name=
+	_f=
+	for _name in $(snapshot_names); do
+		_f=$LOGDIR/system-0/$_name
+		regular_file "$_f" || continue
+		_sum=$((_sum + $(file_size "$_f")))
+	done
+	for _name in $(service_names); do
+		_f=$LOGDIR/system-0/services/$_name
+		regular_file "$_f" || continue
+		_sum=$((_sum + $(file_size "$_f")))
+	done
+	printf '%s\n' "$_sum"
+}
+
+cap_one() {
+	_cf=$1
+	_max=$2
+	regular_file "$_cf" || return 0
+	_csz=$(file_size "$_cf")
+	[ "$_csz" -gt "$_max" ] || return 0
+	_ctmp=$(mktemp "${_cf}.trim.XXXXXX") || return 0
+	if tail -c "$_max" "$_cf" > "$_ctmp"; then
+		mv -f "$_ctmp" "$_cf"
+	else
+		rm -f "$_ctmp"
 	fi
-	refresh_snapshots || return 0
-	# The initramfs only checks that this file exists. Touching it again
-	# remounts the boot volume, so a later snapshot must not repeat that.
+}
+
+# Our copies only. The tmpfs files the session and the services still
+# have open are different paths, so this does not replace those inodes.
+cap_generation() {
+	_gmax=${ZLYME_LOG_GEN_MAX:-$GEN_MAX}
+	cur=$LOGDIR/system-0
+	cap_one "$cur/session.txt" 1048576
+	cap_one "$cur/next.txt" 1048576
+	_gsz=$(generation_bytes)
+	[ "$_gsz" -le "$_gmax" ] && return 0
+	_over=$((_gsz - _gmax))
+	for _cf in "$cur/session.txt" "$cur/next.txt"; do
+		regular_file "$_cf" || continue
+		_csz=$(file_size "$_cf")
+		[ "$_csz" -gt 65536 ] || continue
+		_room=$((_csz - 65536))
+		if [ "$_over" -ge "$_room" ]; then
+			_keep=65536
+			_over=$((_over - _room))
+		else
+			_keep=$((_csz - _over))
+			_over=0
+		fi
+		cap_one "$_cf" "$_keep"
+		[ "$_over" -le 0 ] && return 0
+	done
+}
+
+drop_generation_files() {
+	_gen=$1
+	_name=
+	_f=
+	for _name in $(snapshot_names); do
+		_f=$LOGDIR/system-$_gen/$_name
+		regular_file "$_f" || continue
+		rm -f "$_f"
+	done
+	for _name in $(service_names); do
+		_f=$LOGDIR/system-$_gen/services/$_name
+		regular_file "$_f" || continue
+		rm -f "$_f"
+	done
+	rmdir "$LOGDIR/system-$_gen/services" "$LOGDIR/system-$_gen" 2>/dev/null || true
+}
+
+# Oldest owned history first. The current pak log stays: a launch may
+# still have it open, and deleting it would drop the newest run.
+# Anything left over the total is the unresolved budget.
+reclaim() {
+	_tcap=${ZLYME_LOG_TOTAL_MAX:-$TOTAL_MAX}
+	[ "$(owned_bytes)" -gt "$_tcap" ] || return 0
+	drop_generation_files 4
+	[ "$(owned_bytes)" -gt "$_tcap" ] || return 0
+	drop_generation_files 3
+	[ "$(owned_bytes)" -gt "$_tcap" ] || return 0
+	_f=
+	for _f in "$LOGDIR"/paks/*.log.2 "$LOGDIR"/paks/*.log.1; do
+		regular_file "$_f" || continue
+		rm -f "$_f"
+		[ "$(owned_bytes)" -gt "$_tcap" ] || return 0
+	done
+}
+
+lock_begin() {
+	mkdir -p "$(dirname "$LOCK")" 2>/dev/null || return 1
+	if ! command -v flock >/dev/null 2>&1; then
+		return 0
+	fi
+	exec 8>>"$LOCK" || return 1
+	flock 8 || return 1
+}
+
+lock_end() {
+	if command -v flock >/dev/null 2>&1; then
+		flock -u 8 2>/dev/null || true
+	fi
+}
+
+clear_boot_flag() {
+	# The initramfs writes a boot dmesg while this file exists.
+	# A failed removal is tried again on the next seed, not on every
+	# snapshot, so a stuck boot volume is not remounted all day.
+	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -e /boot/zlyme-logs ] \
+		&& [ -x /usr/sbin/zlyme-boot-write ]; then
+		zlyme-boot-write rm -f /boot/zlyme-logs || true
+	fi
+}
+
+start() {
+	_mode=${1:-}
+	if ! want_logs; then
+		if [ "$_mode" = boot ]; then
+			clear_boot_flag
+		fi
+		return 0
+	fi
+	storage_ready || return 0
+	mkdir -p "$LOGDIR" "$(dirname "$MARK")" || return 0
+	lock_begin || return 0
+	# stop may have finished while this start waited for the lock.
+	# Do not open a capture or copy snapshots after the switch is off.
+	if ! want_logs; then
+		rm -f "$MARK.on"
+		clear_boot_flag
+		lock_end
+		return 0
+	fi
+	write_readme || true
+	_fresh=0
+	if [ ! -f "$MARK" ]; then
+		# Test barrier. Held under the lock, so a second start waits
+		# and then sees the marker.
+		if [ -n "${ZLYME_LOG_RACE:-}" ]; then
+			echo $$ >> "$ZLYME_LOG_RACE"
+			while [ ! -f "${ZLYME_LOG_RACE}.go" ]; do
+				sleep 0.05
+			done
+		fi
+		rotate_system || true
+		: > "$MARK" || true
+		_fresh=1
+	fi
+	if [ ! -f "$MARK.on" ]; then
+		# `start boot` is only the seed, and only when logs were already
+		# on. Session bytes that exist then were written with logging on.
+		# A later enable in the same boot uses begin_capture and skips
+		# the bytes already in the tmpfs files.
+		if [ "$_mode" = boot ] && [ "$_fresh" = 1 ]; then
+			session_sources
+			[ -n "$WRAP" ] && printf '%s\n' 0 > "$MARK.wrap"
+			[ -n "$TEXT" ] && printf '%s\n' 0 > "$MARK.text"
+			_w=$(weston_src)
+			[ -n "$_w" ] && printf '%s\n' 0 > "$MARK.weston"
+			: > "$MARK.on"
+			follow_capture || true
+		else
+			begin_capture
+		fi
+	else
+		follow_capture || true
+	fi
+	refresh_snapshots || true
+	cap_generation || true
+	reclaim || true
+	# Re-read the switch under the lock. A stop that landed while this
+	# start was waiting must not leave the boot flag behind.
+	if ! want_logs; then
+		clear_boot_flag
+		lock_end
+		return 0
+	fi
+	# The initramfs only checks that this file exists. Touching it
+	# again remounts the boot volume, so a later snapshot must not.
 	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ ! -e /boot/zlyme-logs ] \
 		&& [ -x /usr/sbin/zlyme-boot-write ]; then
 		zlyme-boot-write touch /boot/zlyme-logs || true
 	fi
+	lock_end
 	return 0
 }
 
 stop() {
-	# Keep the runtime marker. Off then On in the same boot must not
-	# consume another generation. The initramfs flag is the only thing
-	# this turns off.
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -e /boot/zlyme-logs ] && [ -x /usr/sbin/zlyme-boot-write ]; then
-		zlyme-boot-write rm -f /boot/zlyme-logs || true
+	# Keep the rotation marker. Copy the bytes written while logging was
+	# still on, then drop the capture flag. Text written after this is
+	# not copied when logs come back on.
+	if [ -d "$(dirname "$MARK")" ] || mkdir -p "$(dirname "$MARK")" 2>/dev/null; then
+		lock_begin || true
+		if [ -f "$MARK.on" ]; then
+			follow_capture || true
+			cap_generation || true
+			rm -f "$MARK.on"
+		fi
+		clear_boot_flag
+		lock_end
 	fi
 	return 0
 }
@@ -129,9 +487,14 @@ current() {
 }
 
 case "${1:-start}" in
-	start) start ;;
+	start) start "${2:-}" ;;
 	stop) stop ;;
+	weston-closed)
+		lock_begin || exit 0
+		rm -f "$MARK.weston"
+		lock_end
+		;;
 	apply) apply ;;
 	current) current ;;
-	*) echo "usage: $0 {start|stop|apply|current}" >&2; exit 1 ;;
+	*) echo "usage: $0 {start|stop|apply|current|weston-closed}" >&2; exit 1 ;;
 esac

@@ -95,6 +95,11 @@ start() {
 }
 
 seed() {
+	# Before the rest of this seed, and before S28 starts the session.
+	# `start boot` is off the first-frame path because seed is backgrounded.
+	# A later snapshot must not pass `boot`: that would copy session text
+	# written while logs were off.
+	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start boot
 	for d in "$ZLYME_CFG" "$ZLYME_CFG/ssh" "$ZLYME_CFG/seedrng" \
 		"$ZLYME_CFG/retroarch" "$ZLYME_CFG/zlyme" \
 		"$ZLYME_CFG/samba" "$ZLYME_CFG/syncthing"; do
@@ -128,7 +133,6 @@ seed() {
 	done
 	# seedrng waits for crng. rc.late S01seedrng owns it after
 	# the list is up.
-	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs start
 }
 
 stop() {

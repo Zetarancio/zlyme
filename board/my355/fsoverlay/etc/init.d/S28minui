@@ -31,13 +31,10 @@ start() {
 		/usr/sbin/zlyme-core-sync || echo "libretro core sync failed"
 	fi
 	mkdir -p /storage/.config/zlyme /tmp
-	# The session descriptor stays on tmpfs for the life of the process.
-	# zlyme-logs copies it into the boot generation only while System
-	# logs are on. Do not append the legacy card log.
+	# The session descriptor stays on tmpfs. S15's seed already calls
+	# zlyme-logs in the background. Doing it here would sit on the
+	# first-frame path and could remount the boot volume.
 	_session_log=/tmp/nextui-session.log
-	if [ -x /usr/sbin/zlyme-ctl ] && zlyme-ctl want logs && [ -x /usr/sbin/zlyme-logs ]; then
-		/usr/sbin/zlyme-logs start
-	fi
 	if [ -x /usr/sbin/nextui-session ]; then
 		nextui-session >> "$_session_log" 2>&1 &
 	else

@@ -429,13 +429,13 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-10-27. 16A is closed. 16B has started at the PAK stream capture. 16C and 16D have not started.
+Status: In progress, 2026-10-27. 16A is closed. 16B3 is in source and covered by host tests. It has not been run on a Flip. 16C and 16D have not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
 Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
 
-Blocker: the rest of 16B is not started. The record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+Blocker: 16C has not started. The logging paths still need a Flip pass. The record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 ### 16A. Logging inventory and contract
 
@@ -443,9 +443,9 @@ Status: Closed, 2026-10-27. The inventory and the RetroArch `wb` open result are
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: In progress, 2026-10-27. PAK capture and the session descriptor are in. The session process stays on tmpfs, and `zlyme-logs` copies it only while System logs are on. Service-log tails, retention, OpenBOR, Ruffle, and privacy filtering are not done. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md).
+Status: In progress, 2026-10-27. PAK capture, the tmpfs session, one rotation per logged boot, the on/off session boundary, service tails, and a safe retention subset are in source. Host tests cover them. None of that has been run on a Flip. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md). The implementation notes are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
-Extend `/storage/.logs`. Do not replace it. Keep logs off by default, five boot generations, three launches per PAK, readable text, and the rule that a log write does not replace unrelated user content. Do not add routine writes to the exFAT card. Today the bound is a generation count, not a byte cap. A per-file bound and a total bound are still only a proposal. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced. Truncating a file another process has open, or deleting user files to meet a cap, is not the implementation.
+`/storage/.logs` stays. Logs stay off by default, with five boot generations and three launches per PAK. A finished PAK log, a finished PortMaster transcript, and a previous OpenBOR native log are trimmed to the last 1 MiB before the next launch. Session copies in a generation are shortened toward 2 MiB. Past 32 MiB of files `zlyme-logs` owns, it removes `system-4`, then `system-3`, then old PAK generations. It leaves the current PAK log, which a game may still have open, and it leaves names it does not own. That current-log set can exceed 32 MiB. There is no supervisor and no `SIGXFSZ` cap. Ruffle's auxiliary log follows the switch. Its save directory does not. RetroArch `-v` is still the only verbose flag this phase turns on. Third-party output is not filtered. The two `rc.late` copies stay.
 
 Diagnostic text that currently stays in tmpfs is the collection list to verify, not a migration order: the late InputPlumber and `zlyme-input` capture, the late PipeWire capture, the late Bluetooth capture, `zlyme-storage.log`, `zlyme-led.log`, boot timing, the frontend and session text, the Wi-Fi async log, and the tmpfs copies of OpenBOR, RetroArch debug, and PortMaster. Anything found in the same pass is included only when it is a diagnostic. Locks, PID files, sockets, temporary configuration, update markers, and runtime state stay where they are. A file in `/tmp` is not a log because of its directory.
 

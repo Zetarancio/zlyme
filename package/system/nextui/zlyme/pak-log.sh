@@ -11,6 +11,23 @@
 # ZLYME_LOG_ROOT and ZLYME_LOG_FORCE=1 are test seams.
 
 PAK_LOG_GENERATIONS=3
+# Completed files only. The new launch has not opened the log yet.
+PAK_LOG_MAX=1048576
+
+trim_completed() {
+	_tf=$1
+	[ -f "$_tf" ] || return 0
+	[ ! -L "$_tf" ] || return 0
+	_tsz=$(wc -c < "$_tf" 2>/dev/null) || return 0
+	_tsz=$(printf '%s\n' "$_tsz" | tr -d ' ')
+	[ "$_tsz" -gt "$PAK_LOG_MAX" ] || return 0
+	_tmp=$(mktemp "${_tf}.trim.XXXXXX") || return 0
+	if tail -c "$PAK_LOG_MAX" "$_tf" > "$_tmp"; then
+		mv -f "$_tmp" "$_tf"
+	else
+		rm -f "$_tmp"
+	fi
+}
 
 zlyme_pak_rotate() {
 	_rot_base=$1
@@ -43,6 +60,7 @@ if logs_wanted; then
 	mkdir -p "$_logroot/paks"
 	export LOGS_PATH="$_logroot/paks"
 	export ZLYME_PAK_LOG="$LOGS_PATH/${tag}.log"
+	trim_completed "$ZLYME_PAK_LOG"
 	zlyme_pak_rotate "$ZLYME_PAK_LOG"
 	printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
 	unset _logroot

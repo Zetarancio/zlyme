@@ -22,7 +22,7 @@ An application turns on a verbose or debug mode only when the switch is on, the 
 
 Logging must not decide whether a launch succeeds. A log that cannot be opened does not replace the program's exit status, its process id, or the process group MENU+START cleans up. An in-flight launch that already opened a PAK log keeps that descriptor until the process exits. A launch that starts after the switch is off does not open one.
 
-Persistent diagnostics do not grow without a bound. The bound is part of `zlyme-logs` and `pak-log.sh`, not a second logger. The numeric caps are not in force yet.
+Persistent diagnostics do not grow without a bound. The bound is part of `zlyme-logs` and `pak-log.sh`, not a second logger. Completed files and snapshot copies are trimmed. An open writer can still grow past the number.
 
 Logs do not deliberately record a password, a token, or a full URL that carries either. Output from a program we do not control is not claimed to be clean.
 
@@ -36,7 +36,7 @@ A new service or launcher brings a host test for logs on and logs off. A host te
 
 BusyBox init stays. ADR 0003 is unchanged.
 
-Byte caps, service-log tails, and filtering of third-party output are still open Phase 16 work. This decision does not mark them done.
+Service tails are copied from the tmpfs files named in `docs/ARCHITECTURE.md`. A hard total ceiling is not in force: current PAK logs stay while a launch may hold them, and one file per shipped PAK at the trim size is already over 32 MiB. Third-party output is still not filtered. This decision does not mark Phase 16 done.
 
 ## Alternatives
 

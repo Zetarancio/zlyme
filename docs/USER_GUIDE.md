@@ -324,11 +324,11 @@ Tools → Files is the file browser. Hidden files are shown until you turn that 
 Logs are off by default. Turn on Settings → System → Advanced → System logs, and Zlyme writes `/storage/.logs`:
 
 - `README.txt` explains the layout.
-- `system-0/` is the newest logged boot. `system-1/` to `system-4/` are earlier ones. Each holds files such as `dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, `nextui.txt`, `session.txt`, and `next.txt`. Those session files are copies taken while logs are on. The live session text stays in temporary files.
-- `paks/TAG.log` is the newest run of that pak (`FC.log`, `PS2.log`, `Settings.log`, …). `TAG.log.1` and `TAG.log.2` are the two runs before it.
+- `system-0/` is the newest logged boot. `system-1/` to `system-4/` are earlier ones. Each holds files such as `dmesg.txt`, `dmesg-boot.txt`, `boot-timing.txt`, `nextui.txt`, `session.txt`, and `next.txt`. Session text is copied only for the time logs are on. Turning them on does not go back and save what the system wrote while they were off. The live session text stays in temporary files.
+- `paks/TAG.log` is the newest run of that pak (`FC.log`, `PS2.log`, `Settings.log`, …). `TAG.log.1` and `TAG.log.2` are the two runs before it. A finished log keeps its newest 1 MiB. A game that is still running can write past that until it exits.
 - Tools → PortMaster writes `paks/portmaster.txt` when system logs are on. When they are off, that transcript stays in a temporary file and an error on screen still comes from it.
 
-When something fails, copy that folder off the card, or fetch `/storage/.logs` over SSH.
+When something fails, copy that folder off the card, or fetch `/storage/.logs` over SSH. Zlyme removes its own older logs when the folder gets large. It leaves files it does not recognize.
 
 ## Custom paks
 

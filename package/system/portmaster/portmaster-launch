@@ -104,6 +104,23 @@ run_pugwash() {
 	fi
 }
 
+# pugwash has closed the transcript. Shorten a finished file. Do not
+# do this while pugwash is still running.
+trim_closed_log() {
+	[ -f "$log" ] || return 0
+	[ ! -L "$log" ] || return 0
+	_pmsz=$(wc -c < "$log" 2>/dev/null) || return 0
+	_pmsz=$(printf '%s\n' "$_pmsz" | tr -d ' ')
+	[ "$_pmsz" -gt 1048576 ] || return 0
+	_pmtmp=$(mktemp "${log}.trim.XXXXXX") || return 0
+	if tail -c 1048576 "$log" > "$_pmtmp"; then
+		mv -f "$_pmtmp" "$log"
+	else
+		rm -f "$_pmtmp"
+	fi
+	unset _pmsz _pmtmp
+}
+
 # A leftover flag means the new files are already installed. Prepare
 # already refreshed Zlyme integration, so drop the flag and open the GUI.
 if [ -f "$root/.pugwash-reboot" ]; then
@@ -111,19 +128,32 @@ if [ -f "$root/.pugwash-reboot" ]; then
 fi
 
 st=1
+log_open=0
 while true; do
-	run_pugwash "$@" >"$log" 2>&1
-	st=$?
+	# A failed open must not skip the GUI. The probe writes nothing.
+	# Later appends stay inside this success path: a failed redirect is
+	# fatal in BusyBox ash, and the probe already knows the file is closed.
+	if cat /dev/null >>"$log" 2>/dev/null; then
+		log_open=1
+		run_pugwash "$@" >"$log" 2>&1
+		st=$?
+	else
+		log_open=0
+		run_pugwash "$@"
+		st=$?
+	fi
 	if [ ! -f "$root/.pugwash-reboot" ]; then
 		break
 	fi
 	rm -f "$root/.pugwash-reboot"
 	err=$(mktemp)
 	if ! "$DEST_PREPARE" 2>"$err"; then
+		trim_closed_log
 		fail_prepare "$err"
 	fi
 	rm -f "$err"
 	hm=$("$DEST_ROOT" export) || {
+		trim_closed_log
 		msg "PortMaster disk is not inserted"
 		exit 1
 	}
@@ -132,7 +162,10 @@ while true; do
 	root=$HM_TOOLS_DIR/PortMaster
 	export controlfolder="$root"
 	export PYTHONPATH="$root/exlibs:$root/pylibs${PYTHONPATH:+:$PYTHONPATH}"
-	cd "$root" || exit 1
+	if ! cd "$root"; then
+		trim_closed_log
+		exit 1
+	fi
 done
 
 # pugwash has returned, so an install's files are on the selected card.
@@ -143,11 +176,21 @@ if [ -x "$_art" ]; then
 fi
 unset _art
 
-if [ "$st" -ne 0 ]; then
-	echo "portmaster exit $st" >>"$log"
-	tail -n 8 "$log"
-	err=$(grep -E 'Error|Error:|ModuleNotFound|ValueError|Traceback' "$log" | tail -n 1)
-	[ -n "$err" ] || err="PortMaster failed ($st)"
-	msg "$err"
+# Take the on-screen line from the full transcript, then shorten the
+# file. A match that sits more than 1 MiB before the end still shows.
+if [ "$log_open" = 1 ]; then
+	shown=
+	if [ "$st" -ne 0 ]; then
+		shown=$(grep -E 'Error|Error:|ModuleNotFound|ValueError|Traceback' "$log" 2>/dev/null | tail -n 1)
+		[ -n "$shown" ] || shown="PortMaster failed ($st)"
+	fi
+	trim_closed_log
+	if [ "$st" -ne 0 ]; then
+		echo "portmaster exit $st" >>"$log"
+		tail -n 8 "$log"
+		msg "$shown"
+	fi
+elif [ "$st" -ne 0 ]; then
+	msg "PortMaster failed ($st)"
 fi
 exit "$st"

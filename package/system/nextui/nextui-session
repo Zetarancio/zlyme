@@ -348,6 +348,7 @@ else
 		if [ ! -f /storage/.config/zlyme/paks-copy-reboot ]; then
 			: > /storage/.config/zlyme/paks-copy-reboot
 			sync
+			snapshot_logs
 			if [ -x /usr/sbin/zlyme-halt ]; then
 				exec /usr/sbin/zlyme-halt reboot
 			fi

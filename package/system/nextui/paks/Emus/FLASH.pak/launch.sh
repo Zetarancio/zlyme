@@ -37,7 +37,8 @@ fi
 
 data=$library/Saves/FLASH/flash_data
 flash=$(dirname "$ROM")
-# Profiles and logs are application state on the OS card.
+# Profiles stay in the config directory. The auxiliary log follows
+# the system-logs switch and is not save data.
 os=${ZLYME_STATE_ROOT:-/storage}
 cfg=${ZLYME_RUFFLE_CONFIG:-$os/.config/ruffle}
 
@@ -46,7 +47,13 @@ export RUFFLE_CFW_NAME=nextui
 export RUFFLE_ROM_ROOT=$library
 export RUFFLE_DATA_DIR=$data
 export RUFFLE_FLASH_DIR=$flash
-export RUFFLE_AUX_LOG_DIR=$cfg/logs
+# Saves stay in RUFFLE_DATA_DIR. The auxiliary log is a diagnostic.
+# Logs off keeps it on tmpfs so the config directory is not a log.
+if [ -n "${ZLYME_PAK_LOG:-}" ]; then
+	export RUFFLE_AUX_LOG_DIR=$cfg/logs
+else
+	export RUFFLE_AUX_LOG_DIR=${ZLYME_RUFFLE_LOG:-/tmp/zlyme-ruffle/logs}
+fi
 export RUFFLE_BASH=/bin/bash
 unset WAYLAND_DISPLAY
 unset DISPLAY
@@ -60,7 +67,29 @@ if [ "${ZLYME_RUFFLE_DRY:-}" = 1 ]; then
 	exit 0
 fi
 
-mkdir -p "$data" "$cfg/logs"
+# The image links rufflehandheld/logs at $cfg/logs. The runtime
+# mkdir's that path and exits if the symlink is dangling. Create the
+# directory either way. The auxiliary files follow RUFFLE_AUX_LOG_DIR,
+# which is tmpfs while system logs are off.
+mkdir -p "$data" "$cfg/logs" "$RUFFLE_AUX_LOG_DIR"
+# Previous run's auxiliary logs. The save tree is RUFFLE_DATA_DIR.
+if [ -n "${ZLYME_PAK_LOG:-}" ]; then
+	for _rf in "$RUFFLE_AUX_LOG_DIR"/*; do
+		[ -f "$_rf" ] || continue
+		[ ! -L "$_rf" ] || continue
+		_rfsz=$(wc -c < "$_rf" 2>/dev/null) || continue
+		_rfsz=$(printf '%s\n' "$_rfsz" | tr -d ' ')
+		if [ "$_rfsz" -gt 1048576 ]; then
+			_rftmp=$(mktemp "${_rf}.trim.XXXXXX") || continue
+			if tail -c 1048576 "$_rf" > "$_rftmp"; then
+				mv -f "$_rftmp" "$_rf"
+			else
+				rm -f "$_rftmp"
+			fi
+		fi
+	done
+	unset _rf _rfsz _rftmp
+fi
 /bin/bash "$APP/runtime/entrypoint.sh" --rom-root "$library" "$ROM"
 rc=$?
 # The frozen save helper used to mkdir $ROMROOT/flash_data. If that

@@ -19,6 +19,26 @@ else
 	logs=/tmp/zlyme-openbor/Logs
 fi
 mkdir -p "$logs"
+# Previous run's native logs only. Saves and screenshots are other
+# directories. A file OpenBOR still has open is not trimmed here:
+# this runs before exec, after the previous process has exited.
+if [ -n "${ZLYME_PAK_LOG:-}" ]; then
+	for _ob in "$logs"/*; do
+		[ -f "$_ob" ] || continue
+		[ ! -L "$_ob" ] || continue
+		_obsz=$(wc -c < "$_ob" 2>/dev/null) || continue
+		_obsz=$(printf '%s\n' "$_obsz" | tr -d ' ')
+		if [ "$_obsz" -gt 1048576 ]; then
+			_obtmp=$(mktemp "${_ob}.trim.XXXXXX") || continue
+			if tail -c 1048576 "$_ob" > "$_obtmp"; then
+				mv -f "$_obtmp" "$_ob"
+			else
+				rm -f "$_obtmp"
+			fi
+		fi
+	done
+	unset _ob _obsz _obtmp
+fi
 export OPENBOR_PAKS_DIR="$state/Paks"
 export OPENBOR_SAVES_DIR="$SAVES_PATH/$EMU_TAG"
 export OPENBOR_LOGS_DIR="$logs"

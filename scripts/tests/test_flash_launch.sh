@@ -35,6 +35,7 @@ check() {
 	printf '%s\n' "$out" | grep -F -q "data=$root/Saves/FLASH/flash_data"
 	test -f "$root/Roms/Flash (FLASH)/Game.swf"
 	test ! -e "$root/Saves/FLASH/flash"
+	test ! -d "$work/os/.config/ruffle/logs"
 }
 out=$(launch "$work/storage/Roms/Flash (FLASH)/Game.swf")
 check "$work/storage" "$out"
@@ -42,4 +43,7 @@ out=$(launch "$work/sd2/Roms/Flash (FLASH)/Game.swf")
 check "$work/sd2" "$out"
 out=$(launch "$work/media/OTG/Roms/Flash (FLASH)/Game.swf")
 check "$work/media/OTG" "$out"
+grep -q '/tmp/zlyme-ruffle/logs' "$pak"
+grep -q 'RUFFLE_AUX_LOG_DIR=$cfg/logs' "$pak"
+grep -q 'mkdir -p "$data" "$cfg/logs" "$RUFFLE_AUX_LOG_DIR"' "$pak"
 echo "flash launch ok"

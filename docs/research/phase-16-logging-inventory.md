@@ -1,6 +1,8 @@
 # Phase 16A logging inventory
 
-Date: 2026-10-27. Read at `92d85f9b818dbb11d1a94941a2e5757fc680ad28` on `zlyme44.4-phase-16`. This is a source reading. It is not a Miyoo Flip result, and it does not change runtime code.
+Date: 2026-10-27. Read at `92d85f9b818dbb11d1a94941a2e5757fc680ad28` on `zlyme44.4-phase-16`. This is a source reading. It is not a Miyoo Flip result.
+
+16B3, later on this date, changed the runtime. The section at the end is that implementation. Where this 16A reading and that section disagree, the 16B3 section is the source.
 
 Scope: the product image's NextUI launchers, `zlyme-logs`, `zlyme-ctl`, `nextui-session`, `pak-launch.sh`, `zlyme-pak-spawn`, `S28minui`, `rc.late`, the initramfs log flag, and the service scripts that write diagnostic text. The minimal defconfig does not select NextUI, so it has none of these PAKs.
 
@@ -50,7 +52,7 @@ No `EMU_EXE`. Logs on: stdout and stderr of the launcher shell, and of the progr
 | DOOM | `gzdoom` | stderr follows the shell. |
 | DAPHNE | `hypseus` | stderr follows the shell. |
 | WINE | `zlyme-weston-run wine` | Weston writes `$XDG_RUNTIME_DIR/weston.log`, not the PAK log. |
-| FLASH | Ruffle `entrypoint.sh` | `RUFFLE_AUX_LOG_DIR` is `/storage/.config/ruffle/logs` even when System logs are off. stderr follows the shell. |
+| FLASH | Ruffle `entrypoint.sh` | 16A found `RUFFLE_AUX_LOG_DIR` under `/storage/.config/ruffle/logs` with logs off. 16B3 keeps saves there and puts the auxiliary log on `/tmp/zlyme-ruffle/logs` unless `ZLYME_PAK_LOG` is set. stderr follows the shell. |
 | OPENBOR | `OpenBOR` | `OPENBOR_LOGS_DIR` is `paks/OPENBOR` when logs are on and `/tmp/zlyme-openbor/Logs` when off. That directory is not the three-file rotation. |
 | PICO | `pico8` (`start_pico8.sh`) | The wrapper execs `pico8_64`. A cart whose name matches `Splore.p8` uses `-splore`. stdout follows the shell because this launcher does not set `EMU_EXE`. The wrapper does not detach. |
 | PORTS | the selected port script or binary | stdout follows the shell only while the port stays in that process. `exec` replaces the shell, so the launcher's EXIT trap does not unmount. A port that leaves the session escapes both the log fd and the waiter. That is outside the guarantee. |
@@ -127,7 +129,7 @@ Do not copy a file into `.logs` until its contents are known.
 
 `rc.late` copies boot timing and `nextui.txt` onto `/storage/.config` six times, 5 s apart, with logs off. Both destinations are one file, replaced, not a growing set. `docs/ARCHITECTURE.md` records them so a hung panel still leaves evidence after the card is pulled. This pass keeps them. Removing them is not safer on the evidence in tree: the replacement would be the same two files, or nothing. They stay a named exception. They are not System logs.
 
-Ruffle's `/storage/.config/ruffle/logs` and the HDMI trace flag are separate. They are not folded into the System logs switch.
+The HDMI trace flag stays separate from the System logs switch. 16B3 folded Ruffle's auxiliary log into that switch. The 16A sentence that left `/storage/.config/ruffle/logs` in place is the reading, not the implementation.
 
 ## Two designs
 
@@ -161,9 +163,11 @@ A host check opens a file with Python `"wb"` after a header is written. The head
 
 Chosen capture: redirect the waited shell, and pass `-v` without `--log-file`. A separate RetroArch log file was the other option. It would keep the header only by writing somewhere else, and it would still miss stdout unless the redirect existed too. The redirect plus `-v` is the smaller path and does not add a process or a pipe. `exec retroarch` is unchanged, so the spawn leader and MENU+START ownership stay the waited RetroArch process. If the PAK file cannot be opened, an ordinary probe fails and the redirect is skipped, so the launch still starts. A failed `exec` redirection is fatal in a POSIX shell, and that case was not run under BusyBox. Input and the other `--appendconfig` entries are unchanged. One session line, `log_to_file = "false"`, is appended only for this capture so a saved true cannot move `RARCH_LOG` off stderr. It is not written back. `ZLYME_RA_DEBUG` is unchanged.
 
-## 16B work, not started
+## 16B proposal, before 16B3
 
-- Service-log tails, the live logging toggle, byte caps, and the total budget. The 2 MiB, 1 MiB, and 32 MiB figures are not approved and are not enforced.
+The list below is the proposal this reading made. The 16B3 section records what was implemented and which bound is still not a hard cap.
+
+- Service-log tails, the live logging toggle, byte caps, and the total budget. The 2 MiB, 1 MiB, and 32 MiB figures were a proposal at this point in the file.
 - Cap PAK files, the OpenBOR directory, and each system generation only after that approval, and not by truncating a file another process still has open.
 - Copy bounded tails of the late service logs into `system-0` from `zlyme-logs`, including a copy on the halt path, without a new daemon.
 - Verbose modes other than RetroArch `-v` are not enabled. The launch scripts and `start_*.sh` files do not show a safe, source-grounded debug switch for the other shipped standalones or tools. Dolphin's `-v` is the video backend, not a log level. Port scripts are not given a flag. Anything that would be unbounded waits for the retention slice.
@@ -172,3 +176,57 @@ Chosen capture: redirect the waited shell, and pass `-v` without `--log-file`. A
 - Do not log ScreenScraper URLs, Wi-Fi PSKs, or git commands that carry credentials.
 
 A Flip check still has to show that a real RetroArch 1.22.2 `-v` line, and a core log callback, land in the PAK file without losing the header. The host stub does not do that. The same later pass covers one standalone, RetroArch with no game, PortMaster, and one shutdown with logs on.
+
+## 16B3 implementation
+
+Date: 2026-10-27. Host tests only. No Flip run. No OTA was built.
+
+### Rotation
+
+`S15bootpart` backgrounds `seed`, and `seed` calls `zlyme-logs start boot` before its other work. `S28minui` does not call `zlyme-logs`. The first frame does not wait on a snapshot. Later copies are the ones `nextui-session` already took after the frontend, after a PAK, before halt, and on the pak-copy failure reboot.
+
+The marker `/run/zlyme-logs-generation` is still one generation per logged boot. It is now taken under `flock`. A host model without the lock records two passes of a missing marker. The same overlap through `zlyme-logs` records one pass and creates `system-0` only. That is the reproduction and the correction. It was not timed on a Flip, so the device window is the source order, not a measured race.
+
+`start boot` copies session bytes that already exist, because the switch was on at boot. Any other first `start` in that boot records the current sizes and copies nothing that is already there. `stop` appends the bytes written while the switch was still on, then clears the capture flag and keeps the rotation marker. Text appended after `stop` is absent from the next copy. A second `start` in the same boot does not create `system-1`.
+
+### Retention
+
+Completed PAK files are trimmed to the last 1 MiB before rotation, which is before the new launch opens the file. OpenBOR trims regular files in its log directory the same way, and the test leaves a save and a screenshot in place. PortMaster trims `portmaster.txt` after pugwash has returned, including when prepare, the root export, or the directory change fails inside the restart loop. The on-screen error is read from the full transcript before that trim. `zlyme-logs stop` copies the Weston bytes written up to the switch and remembers that offset. A later `start` does not replace that copy with bytes written afterward. If `zlyme-boot-write` cannot remove `/boot/zlyme-logs`, the next `start boot` tries once while logs are still off. A PortMaster transcript that cannot be opened does not skip pugwash. Ruffle's logs-on auxiliary directory is trimmed to the last 1 MiB of each regular file before the runtime starts. The v4.2 entrypoint still `mkdir`s the appliance `logs` path and exits 3 if that fails. The image symlinks that path to `/storage/.config/ruffle/logs`, so the launcher creates the directory even when the auxiliary files are on tmpfs. Exit 3 would otherwise look like a normal menu return. A replacement of a path does not redirect a descriptor that was already open, which is why none of these trims run against the live file.
+
+`system-0` session copies are shortened so the known files in that generation move toward 2 MiB, and a session copy is also capped at 1 MiB. Service tails are 64 KiB. Past 32 MiB of files `zlyme-logs` itself accounts, it deletes its own files in `system-4`, then `system-3`, then `paks/*.log.2` and `paks/*.log.1`. A user file in `system-4`, a user directory, the current `paks/*.log`, and an unrecognized file under `paks/OPENBOR/` stayed in the host test.
+
+The 32 MiB figure is not a hard ceiling. The current `paks/*.log` is left alone because a launch may hold it, and 63 such files at 1 MiB are already past 32 MiB. An open writer can grow past 1 MiB until the next completed-file trim. There is no `ulimit` and no supervisor. A full card was not simulated. An unwritable directory makes `start` return success and create no generation.
+
+The fifth-generation rotate still removes the `system-4` directory. That is the existing generation slot, separate from the budget deletion, which only removes names `zlyme-logs` writes.
+
+### Service tails
+
+Copied, as tails, only while logs are on:
+
+| Source | Copy | Why it is included |
+| --- | --- | --- |
+| `/tmp/zlyme-input-late.log` | `services/input-late.log` | startup transcript for InputPlumber, `zlyme-input`, and the Bluetooth start wrapper |
+| `/tmp/inputplumber.log` | `services/inputplumber.log` | the daemon's own append, including lines after startup |
+| `/tmp/zlyme-input.log` | `services/zlyme-input.log` | the policy daemon's own append |
+| `/tmp/zlyme-pipewire-late.log` | `services/pipewire-late.log` | PipeWire startup transcript |
+| `/tmp/zlyme-bt-late.log` | `services/bluetooth-late.log` | Bluetooth startup transcript |
+| `/tmp/zlyme-storage.log` | `services/storage.log` | later mount failures, not only boot |
+| `/tmp/zlyme-led.log` | `services/led.log` | missing sysfs and failed writes |
+| `/tmp/zlyme-net-async.log` | `services/wifi-async.log` | the word `reconcile` |
+| `/run/zlyme-weston/weston.log` | `services/weston.log` | copied from `zlyme-weston-run` cleanup, before the directory is removed |
+
+PipeWire and `bluetoothd` are not given a new log file. Their later daemon output is not in a Zlyme-owned path after the startup transcript. syslogd and klogd are excluded: there is no Zlyme file, and the stream is not known to be free of unrelated messages. HDMI trace and `ZLYME_RA_DEBUG` stay on their own flags.
+
+### Applications
+
+Ruffle's `RUFFLE_DATA_DIR` is unchanged. `RUFFLE_AUX_LOG_DIR` is `$cfg/logs` only when `ZLYME_PAK_LOG` is set. Otherwise it is `/tmp/zlyme-ruffle/logs`, and the launcher does not create the config log directory on the dry path. That was the logs-off write the 16A table recorded.
+
+RetroArch `-v` is unchanged from 16B1. No other launcher gained a verbose flag. Dolphin's `-v` remains the video backend.
+
+### Privacy
+
+`zlyme-wifi` appends `reconcile` to the async log. The PSK is not in that line. ZcrapeGoat builds a ScreenScraper URL that contains the developer password and the user password. This reading still found no `printf` of that URL. `cheats.c` does print the git argv. The clone URL in that argv is `https://github.com/libretro/libretro-database.git`. Git stderr lines containing `Authorization:` are dropped before they are printed again. PortMaster's transcript is whatever pugwash writes. None of this is a claim that third-party output is clean. No ZcrapeGoat source was changed.
+
+### What the host tests do not prove
+
+They do not run RetroArch, OpenBOR, Ruffle, or PortMaster's real GUI. They do not fill an exFAT volume. They do not show that the seed's `start boot` finishes before `S28` on a Flip. They do not show a long PAK fd staying open across the trim, because the trim is ordered before the new open and the live-descriptor check is a separate replacement of a path.

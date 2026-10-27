@@ -124,11 +124,11 @@ Every boot, `rc.late` copies `/tmp/boot-timing` to `/storage/.config/zlyme/boot-
 
 Full logs are off by default. Settings → System → Advanced → System logs turns them on. With logs on:
 
-- `zlyme-logs` keeps five boot generations, `/storage/.logs/system-0` through `system-4`. `system-0` is the newest. It holds a kernel log snapshot, plus copies of the session files when logs are on: `session.txt` from `/tmp/nextui-session.log` and `next.txt` from `/tmp/nextui-session.txt`. The session process itself stays on those tmpfs files. `zlyme-logs` also copies `/tmp/nextui.txt` to `system-0/nextui.txt`.
-- Each PAK keeps its last three launches as `/storage/.logs/paks/<tag>.log`, `.log.1`, and `.log.2`. A launch that already has that file open keeps writing it until it exits. The next launch sees the switch as it is then.
+- `zlyme-logs` keeps five boot generations, `/storage/.logs/system-0` through `system-4`. `system-0` is the newest. The background seed in `S15bootpart` takes that generation. `S28minui` does not. The session process stays on `/tmp/nextui-session.log` and `/tmp/nextui-session.txt`. While logs are on, new bytes from those files are appended to `system-0/session.txt` and `system-0/next.txt`. Text that was already in the tmpfs files when logs were turned on is left out. `system-0` also holds a kernel snapshot, a tail of `/tmp/nextui.txt`, and 64 KiB tails of the service logs named in `docs/ARCHITECTURE.md`.
+- Each PAK keeps its last three launches as `/storage/.logs/paks/<tag>.log`, `.log.1`, and `.log.2`. A launch that already has that file open keeps writing it until it exits. The next launch trims the completed file to 1 MiB and then rotates. The same trim applies to a finished PortMaster transcript and to OpenBOR's native log files. Saves and screenshots are not in those directories.
 - The initramfs writes its kernel log to `/boot/zlyme-dmesg.txt` and `/storage/.logs/dmesg-init.txt`.
 
-Turning logs off does not open a new PAK log and does not copy the session files again. Turning them on in the same boot does not rotate a second generation.
+Turning logs off appends the last on-period session bytes, then stops new copies and new PAK files. Turning them on again in the same boot does not rotate a second generation and does not copy the text written while they were off. A game that is still running can grow its open log past 1 MiB. The 32 MiB figure for the whole directory is the point where old generations are removed. It is not a ceiling on files a process still has open. `zlyme-logs` does not delete a file whose name it does not own.
 
 ## Boot classes
 

@@ -30,8 +30,18 @@ cleanup() {
 		wait "$WESTON_PID" 2>/dev/null || true
 		WESTON_PID=
 	fi
+	# The log is removed with the runtime directory. Copy the tail first,
+	# while logs are on. start is a no-op when they are off.
+	_logs=${ZLYME_LOGS_BIN:-/usr/sbin/zlyme-logs}
+	if [ -x "$_logs" ]; then
+		"$_logs" start || true
+	fi
 	rm -rf "$RUN"
 	rm -f /tmp/zlyme-weston.log
+	# The offset belonged to the file just removed.
+	if [ -x "$_logs" ]; then
+		"$_logs" weston-closed || true
+	fi
 }
 
 trap cleanup EXIT INT TERM
