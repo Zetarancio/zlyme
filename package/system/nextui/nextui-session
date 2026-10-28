@@ -33,8 +33,11 @@ export LOGS_PATH=$USERDATA_PATH/logs
 # value at start. A PAK re-reads the switch itself.
 LOGS_ON=0
 SESSION_LOG=/tmp/nextui-session.txt
+# Effective state for this boot, latched by S15. The Settings file is
+# the request for the next boot and is not read here.
+_eff=${ZLYME_LOG_EFFECTIVE:-/run/zlyme/logs-effective}
 _logs=
-[ -r /storage/.config/zlyme/logs ] && _logs=$(tr -d ' \t\r\n' < /storage/.config/zlyme/logs)
+[ -r "$_eff" ] && _logs=$(tr -d ' \t\r\n' < "$_eff")
 case "$_logs" in
 	on|1|yes) LOGS_ON=1 ;;
 esac
@@ -63,7 +66,11 @@ boot_mark() {
 	# /tmp only. rc.late copies onto ZLYME after first-flip.
 	_up=0
 	read -r _up _rest < /proc/uptime || true
-	echo "$_up $*" >> /tmp/boot-timing
+	if [ -x /usr/bin/zlyme-logstamp ]; then
+		echo "$(/usr/bin/zlyme-logstamp) $*" >> /tmp/boot-timing
+	else
+		echo "$_up $*" >> /tmp/boot-timing
+	fi
 }
 
 # Copy tmpfs diagnostics into the current generation. start is a no-op
@@ -412,7 +419,7 @@ while [ -f "$EXEC_PATH" ]; do
 	# ensure repairs it when InputPlumber is available and is a no-op when
 	# InputPlumber is not up yet, so first-frame startup is not delayed.
 	if [ -x /usr/sbin/zlyme-input ]; then
-		/usr/sbin/zlyme-input ensure || echo "zlyme-input ensure failed" >> "$SESSION_LOG"
+		/usr/sbin/zlyme-input ensure || echo "$(/usr/bin/zlyme-logstamp) zlyme-input ensure failed" >> "$SESSION_LOG"
 	fi
 	# Leave fb0 splash running. nextui.elf drops it when KMSDRM
 	# takes the panel. Do not replay the gif in SDL.
@@ -434,7 +441,7 @@ while [ -f "$EXEC_PATH" ]; do
 			exe="$LAUNCH_EXE"
 			rom="$LAUNCH_ROM"
 			rm -f "$NEXT_PATH"
-			echo "RUN $exe" >> "$SESSION_LOG"
+			echo "$(/usr/bin/zlyme-logstamp) RUN $exe" >> "$SESSION_LOG"
 			# Splash still holds fb0 on the first game after boot.
 			# NextUI dropping DRM then lets RA modeset fail with
 			# "Error when switching mode".
@@ -450,7 +457,7 @@ while [ -f "$EXEC_PATH" ]; do
 			# process it owns is gone. Do not start another KMS client
 			# against an unresolved game or an unreadable /proc.
 			if pak_cleanup_failed "$st"; then
-				echo "pak cleanup unresolved; frontend stopped" >> "$SESSION_LOG"
+				echo "$(/usr/bin/zlyme-logstamp) pak cleanup unresolved; frontend stopped" >> "$SESSION_LOG"
 				printf '%s\n' "$st" > /run/zlyme/pak-cleanup-failed
 				rm -f "$EXEC_PATH"
 				snapshot_logs
@@ -459,7 +466,7 @@ while [ -f "$EXEC_PATH" ]; do
 			# minui-list B/menu is 2/3, not a crash. 143/137 is MENU+Start.
 			# shellcheck disable=SC2154 # st is set by run_pak_cmd
 			if ! pak_exit_ok "$st"; then
-				echo "pak exit $st" >> "$SESSION_LOG"
+				echo "$(/usr/bin/zlyme-logstamp) pak exit $st" >> "$SESSION_LOG"
 				command -v show.elf >/dev/null 2>&1 && show.elf "Pak failed ($st)" 3
 			fi
 			snapshot_logs

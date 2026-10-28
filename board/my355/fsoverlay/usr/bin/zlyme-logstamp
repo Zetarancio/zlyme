@@ -1,0 +1,9 @@
+#!/bin/sh
+# UTC wall clock and monotonic seconds since boot.
+# The wall clock can be wrong until NTP. The monotonic value does not
+# jump when the RTC is corrected. Call this at an event, not in a
+# frame or audio loop.
+up=0
+read -r up _rest < /proc/uptime 2>/dev/null || up=0
+wall=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) || wall=unknown
+printf '%s %s\n' "$wall" "$up"

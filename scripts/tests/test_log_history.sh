@@ -325,7 +325,9 @@ s28=$ROOT/board/my355/fsoverlay/etc/init.d/S28minui
 # The seed asks for one boot capture. S28 does not call zlyme-logs.
 grep -q 'zlyme-logs start boot' "$ROOT/board/my355/fsoverlay/etc/init.d/S15bootpart"
 grep -q '/usr/sbin/zlyme-logs' "$s28" && exit 1
-grep -q '! -e /boot/zlyme-logs' "$LOGS"
+grep -q 'ZLYME_BOOT_WRITE:-/usr/sbin/zlyme-boot-write' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl"
+grep -F -q '"$writer" touch "$flag"' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl"
+grep -q 'zlyme-boot-write' "$LOGS" && exit 1
 grep -q '/tmp/nextui-session.log' "$s28"
 grep -q 'session.txt' "$s28" && exit 1
 grep -q 'SESSION_LOG=/tmp/nextui-session.txt' \

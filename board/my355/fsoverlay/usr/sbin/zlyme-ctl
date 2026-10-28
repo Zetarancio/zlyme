@@ -52,7 +52,36 @@ get() {
 	fi
 }
 
+saved_on() {
+	val=$(get "$1")
+	[ "$val" = "on" ] || [ "$val" = "1" ] || [ "$val" = "yes" ]
+}
+
+# Effective System logs for this boot. Absent means off. The file is
+# written once by latch-logs and is not updated when Settings changes.
+logs_effective() {
+	eff=${ZLYME_LOG_EFFECTIVE:-/run/zlyme/logs-effective}
+	[ -r "$eff" ] || return 1
+	val=$(tr -d ' \t\r\n' < "$eff")
+	[ "$val" = "on" ] || [ "$val" = "1" ] || [ "$val" = "yes" ]
+}
+
+latch_logs() {
+	eff=${ZLYME_LOG_EFFECTIVE:-/run/zlyme/logs-effective}
+	[ -f "$eff" ] && return 0
+	mkdir -p "$(dirname "$eff")" 2>/dev/null || return 1
+	if saved_on logs; then
+		printf '%s\n' on > "$eff"
+	else
+		printf '%s\n' off > "$eff"
+	fi
+}
+
 want() {
+	if [ "$1" = logs ]; then
+		logs_effective
+		return
+	fi
 	val=$(get "$1")
 	[ "$val" = "on" ] || [ "$val" = "1" ] || [ "$val" = "yes" ]
 }
@@ -73,6 +102,16 @@ toggle() {
 	if retired "$name"; then
 		rm -f "$DIR/$name"
 		echo off
+		return 0
+	fi
+	if [ "$name" = logs ]; then
+		if saved_on logs; then
+			setv logs off
+			echo off
+		else
+			setv logs on
+			echo on
+		fi
 		return 0
 	fi
 	if want "$name"; then
@@ -169,8 +208,64 @@ apply_hdmi_mode() {
 	return 0
 }
 
+# The saved flag is the next boot. This only prepares the initramfs
+# marker. It does not start or stop capture in the running boot.
+# A failed boot write leaves the saved request as Settings stored it.
 apply_logs() {
-	[ -x /usr/sbin/zlyme-logs ] && /usr/sbin/zlyme-logs apply
+	flag=${ZLYME_BOOT_LOG_FLAG:-/boot/zlyme-logs}
+	if [ -z "${ZLYME_BOOT_WRITE:-}" ] && [ -n "${ZLYME_BOOT_LOG_FLAG:-}" ]; then
+		if saved_on logs; then
+			: > "$flag" || return 1
+		else
+			rm -f "$flag" || return 1
+		fi
+		return 0
+	fi
+	writer=${ZLYME_BOOT_WRITE:-/usr/sbin/zlyme-boot-write}
+	if [ ! -x "$writer" ]; then
+		echo "zlyme-ctl: boot write is not available" >&2
+		return 1
+	fi
+	if saved_on logs; then
+		[ -e "$flag" ] && return 0
+		"$writer" touch "$flag"
+		return $?
+	fi
+	[ -e "$flag" ] || return 0
+	"$writer" rm -f "$flag"
+	return $?
+}
+
+# Inside zlyme-boot-write. The saved value is read again under that
+# lock, so a marker armed for the next boot is not removed.
+reconcile_boot_logs_locked() {
+	flag=${ZLYME_BOOT_LOG_FLAG:-/boot/zlyme-logs}
+	if saved_on logs; then
+		return 0
+	fi
+	[ -e "$flag" ] || return 0
+	rm -f "$flag"
+}
+
+# Once per boot, from the background seed, when the saved request is
+# off and the marker is still there. The effective latch is not the
+# authority: this boot may still be recording.
+reconcile_boot_logs() {
+	flag=${ZLYME_BOOT_LOG_FLAG:-/boot/zlyme-logs}
+	if saved_on logs; then
+		return 0
+	fi
+	[ -e "$flag" ] || return 0
+	if [ -z "${ZLYME_BOOT_WRITE:-}" ] && [ -n "${ZLYME_BOOT_LOG_FLAG:-}" ]; then
+		reconcile_boot_logs_locked
+		return $?
+	fi
+	writer=${ZLYME_BOOT_WRITE:-/usr/sbin/zlyme-boot-write}
+	if [ ! -x "$writer" ]; then
+		echo "zlyme-ctl: boot write is not available" >&2
+		return 1
+	fi
+	"$writer" "$0" reconcile-boot-logs-locked
 }
 
 apply_settings() {
@@ -194,6 +289,9 @@ case "$cmd" in
 	apply-gov) apply_gov ;;
 	apply-zram) apply_zram ;;
 	apply-logs) apply_logs ;;
+	latch-logs) latch_logs ;;
+	reconcile-boot-logs) reconcile_boot_logs ;;
+	reconcile-boot-logs-locked) reconcile_boot_logs_locked ;;
 	apply-hdmi-mode) apply_hdmi_mode ;;
 	apply-settings) apply_settings ;;
 	status)
@@ -202,7 +300,7 @@ case "$cmd" in
 		done
 		;;
 	*)
-		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-logs|apply-hdmi-mode|apply-settings|status} [name] [value]" >&2
+		echo "usage: zlyme-ctl {get|want|set|toggle|apply-refresh|apply-undervolt|apply-overlays|apply-led|apply-gov|apply-zram|apply-logs|latch-logs|reconcile-boot-logs|apply-hdmi-mode|apply-settings|status} [name] [value]" >&2
 		exit 1
 		;;
 esac

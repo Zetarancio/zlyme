@@ -162,7 +162,7 @@ choose_mountpoint() {
 		printf '%s\n' "$try"
 		return 0
 	fi
-	echo "mountpoint busy $MEDIA/$comp" >> /tmp/zlyme-storage.log
+	echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) mountpoint busy $MEDIA/$comp" >> /tmp/zlyme-storage.log
 	return 1
 }
 
@@ -300,16 +300,16 @@ mount_fs() {
 	case "$typ" in
 		exfat|vfat|msdos|ext4|ext3|ext2|ntfs|f2fs)
 			if mount -t "$typ" -o rw,noatime "$dev" "$mp"; then
-				echo "mount $dev $mp type=$typ" >> /tmp/zlyme-storage.log
+				echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) mount $dev $mp type=$typ" >> /tmp/zlyme-storage.log
 				return 0
 			fi
 			;;
 	esac
 	if mount -o rw,noatime "$dev" "$mp"; then
-		echo "mount $dev $mp type=${typ:-guess}" >> /tmp/zlyme-storage.log
+		echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) mount $dev $mp type=${typ:-guess}" >> /tmp/zlyme-storage.log
 		return 0
 	fi
-	echo "mount fail $dev type=${typ:-empty}" >> /tmp/zlyme-storage.log
+	echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) mount fail $dev type=${typ:-empty}" >> /tmp/zlyme-storage.log
 	return 1
 }
 
@@ -341,7 +341,7 @@ place_volume() {
 	case "$mp" in
 		"$MEDIA"/*) ;;
 		*)
-			echo "refusing mountpoint $mp" >> /tmp/zlyme-storage.log
+			echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) refusing mountpoint $mp" >> /tmp/zlyme-storage.log
 			umount "$tmp" 2>/dev/null || true
 			rmdir "$tmp" 2>/dev/null || true
 			return 1
@@ -351,7 +351,7 @@ place_volume() {
 	rest=${mp#"$MEDIA"/}
 	case "$rest" in
 		*/*|"."|"..")
-			echo "refusing mountpoint $mp" >> /tmp/zlyme-storage.log
+			echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) refusing mountpoint $mp" >> /tmp/zlyme-storage.log
 			umount "$tmp" 2>/dev/null || true
 			rmdir "$tmp" 2>/dev/null || true
 			return 1

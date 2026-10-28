@@ -69,7 +69,7 @@ led_state() {
 	local name=$1 val=$2 path on
 	path="$LED_PATH/$name"
 	[ -e "$path/brightness" ] || {
-		echo "missing $path" >>"$LOG"
+		echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) missing $path" >>"$LOG"
 		return 0
 	}
 	printf 'none\n' >"$path/trigger" 2>/dev/null || true
@@ -77,7 +77,7 @@ led_state() {
 	if ! printf '%s\n' "$val" >"$path/brightness" 2>/dev/null; then
 		on=$(led_on_val "$name")
 		if ! printf '%s\n' "$on" >"$path/brightness" 2>/dev/null; then
-			echo "write fail $name val=$val on=$on" >>"$LOG"
+			echo "$(/usr/bin/zlyme-logstamp 2>/dev/null) write fail $name val=$val on=$on" >>"$LOG"
 		fi
 	fi
 }

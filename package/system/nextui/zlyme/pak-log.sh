@@ -68,7 +68,9 @@ if logs_wanted; then
 	# not prove a later write. If the open fails, the launch keeps the
 	# caller's stdout and stderr.
 	if cat /dev/null >>"$ZLYME_PAK_LOG" 2>/dev/null; then
-		printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) $ROM ===" >> "$ZLYME_PAK_LOG"
+		_up=0
+		read -r _up _rest < /proc/uptime 2>/dev/null || _up=0
+		printf '%s\n' "=== ${tag} $(date -u +%Y-%m-%dT%H:%M:%SZ) ${_up} $ROM ===" >> "$ZLYME_PAK_LOG"
 		exec >>"$ZLYME_PAK_LOG" 2>&1
 	fi
 fi

@@ -103,7 +103,7 @@ net_services() {
 		trap '' HUP
 		while :; do
 			rm -f "$state/dirty"
-			printf 'reconcile\n' >> "$log"
+			printf '%s reconcile\n' "$(/usr/bin/zlyme-logstamp 2>/dev/null)" >> "$log"
 			"$cmd" apply >/dev/null 2>&1 || true
 			if [ -f "$state/dirty" ]; then
 				continue

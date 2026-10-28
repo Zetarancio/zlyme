@@ -528,22 +528,12 @@ lock_end() {
 	fi
 }
 
-clear_boot_flag() {
-	# The initramfs writes a boot dmesg while this file exists.
-	# A failed removal is tried again on the next seed, not on every
-	# snapshot, so a stuck boot volume is not remounted all day.
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ -e /boot/zlyme-logs ] \
-		&& [ -x /usr/sbin/zlyme-boot-write ]; then
-		zlyme-boot-write rm -f /boot/zlyme-logs || true
-	fi
-}
-
 start() {
 	_mode=${1:-}
+	# /boot/zlyme-logs belongs to the next boot. apply-logs writes it
+	# when Settings changes. A seed while this boot is off must not
+	# remove a flag that was just prepared for the following boot.
 	if ! want_logs; then
-		if [ "$_mode" = boot ]; then
-			clear_boot_flag
-		fi
 		return 0
 	fi
 	storage_ready || return 0
@@ -553,7 +543,6 @@ start() {
 	# Do not open a capture or copy snapshots after the switch is off.
 	if ! want_logs; then
 		rm -f "$MARK.on"
-		clear_boot_flag
 		lock_end
 		return 0
 	fi
@@ -602,18 +591,10 @@ start() {
 	refresh_snapshots || true
 	cap_generation || true
 	reclaim || true
-	# Re-read the switch under the lock. A stop that landed while this
-	# start was waiting must not leave the boot flag behind.
+	# A stop that landed while this start waited must not copy further.
 	if ! want_logs; then
-		clear_boot_flag
 		lock_end
 		return 0
-	fi
-	# The initramfs only checks that this file exists. Touching it
-	# again remounts the boot volume, so a later snapshot must not.
-	if [ -z "${ZLYME_LOG_ROOT:-}" ] && [ ! -e /boot/zlyme-logs ] \
-		&& [ -x /usr/sbin/zlyme-boot-write ]; then
-		zlyme-boot-write touch /boot/zlyme-logs || true
 	fi
 	lock_end
 	return 0
@@ -628,7 +609,6 @@ stop() {
 			# The on-interval is unfinished. The next locked start
 			# watermarks again instead of copying the gap.
 			: > "$MARK.incomplete" 2>/dev/null || true
-			clear_boot_flag
 			return 0
 		fi
 		rm -f "$MARK.incomplete"
@@ -637,7 +617,6 @@ stop() {
 			cap_generation || true
 			rm -f "$MARK.on"
 		fi
-		clear_boot_flag
 		lock_end
 	fi
 	return 0

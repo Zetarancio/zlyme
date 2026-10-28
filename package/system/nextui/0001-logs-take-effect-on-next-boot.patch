@@ -1,0 +1,46 @@
+--- a/workspace/all/settings/zlymemenu.cpp
++++ b/workspace/all/settings/zlymemenu.cpp
+@@ -51,6 +51,22 @@
+ 	system(cmd.c_str());
+ }
+ 
++static void logs_apply_notice()
++{
++	std::string out;
++	std::string err;
++	int rc = zlyme_tool_exec("/usr/sbin/zlyme-ctl",
++		{"apply-logs"}, nullptr, &out, &err);
++	if (rc == 0)
++		return;
++	std::string msg = out + err;
++	while (!msg.empty() && (msg.back() == '\n' || msg.back() == '\r'))
++		msg.pop_back();
++	if (msg.empty())
++		msg = "Early boot log was not updated.";
++	MenuList::showOverlay(msg, OverlayDismissMode::DismissOnA);
++}
++
+ static int g_leave_settings = 0;
+ 
+ void Zlyme_requestLeave(void)
+@@ -1035,16 +1051,17 @@
+ 			system("zlyme-ctl apply-overlays");
+ 		}});
+ 	advanced.push_back(new MenuItem{ListItemType::Generic, "System logs",
+-		"Write boot and per-pak logs under /storage/.logs.",
++		"Write boot and per-pak logs under /storage/.logs.\n"
++		"Takes effect on next boot. Recording continues until you restart.",
+ 		on_off_v, on_off,
+ 		[]() -> std::any { return ctl_on("logs"); },
+ 		[](const std::any &v) {
+ 			ctl_set("logs", std::any_cast<bool>(v) ? "on" : "off");
+-			system("zlyme-ctl apply-logs");
++			logs_apply_notice();
+ 		},
+ 		[]() {
+ 			ctl_set("logs", "off");
+-			system("zlyme-ctl apply-logs");
++			logs_apply_notice();
+ 		}});
+ 	const char *restore_desc =
+ 		"Restores the original Miyoo preloader.\n"

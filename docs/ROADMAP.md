@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A is closed. 16B is in progress at the B3 checkpoint and its correction. 16C and 16D have not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A is closed. 16B is in progress at reboot-scoped logging. 16C and 16D have not started. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The last accepted installed firmware is `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,7 +429,7 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-10-27. 16A is closed. 16B is in progress at the B3 checkpoint and its correction. Host tests cover that correction. It has not been run on a Flip. 16C and 16D have not started.
+Status: In progress, 2026-10-27. 16A is closed. 16B is in progress at reboot-scoped logging. The local OTA `zlyme-my355-20261027-03c0fee7c302.tar` was installed and produced the logs named in `docs/research/phase-16-logging-inventory.md`. That is evidence for those paths only. 16C and 16D have not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
@@ -443,13 +443,13 @@ Status: Closed, 2026-10-27. The inventory and the RetroArch `wb` open result are
 
 ### 16B. Unified diagnostics and bounded retention
 
-Status: In progress, 2026-10-27. PAK capture, the tmpfs session, one rotation per logged boot, the on/off session boundary, service tails, and a safe retention subset are in source. A failed copy does not replace a saved tail or advance its cursor. Service and frontend copies skip bytes written while logs were off. The PAK header is written only after the log opens. Host tests cover that correction. None of it has been run on a Flip. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md). The implementation notes are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+Status: In progress, 2026-10-27. PAK capture, the tmpfs session, one rotation per logged boot, service tails, and a safe retention subset are in source. The effective state is latched once per boot. Settings does not start or stop capture. A failed copy does not replace a saved tail or advance its cursor. The PAK header is written only after the log opens. The local OTA `zlyme-my355-20261027-03c0fee7c302.tar` produced the logs named in the research inventory. That image is not this reboot-scoped change, and it is not acceptance of every launcher. The contract is [ADR 0012](decisions/0012-diagnostic-logging.md). The implementation notes are [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 `/storage/.logs` stays. Logs stay off by default, with five boot generations and three launches per PAK. A finished PAK log, a finished PortMaster transcript, and a previous OpenBOR native log are trimmed to the last 1 MiB before the next launch. Session copies in a generation are shortened toward 2 MiB. Past 32 MiB of files `zlyme-logs` owns, it removes `system-4`, then `system-3`, then old PAK generations. It leaves the current PAK log, which a game may still have open, and it leaves names it does not own. That current-log set can exceed 32 MiB. There is no supervisor and no `SIGXFSZ` cap. Ruffle's auxiliary log follows the switch. Its save directory does not. RetroArch `-v` is still the only verbose flag this phase turns on. Third-party output is not filtered. The two `rc.late` copies stay.
 
 Diagnostic text that currently stays in tmpfs is the collection list to verify, not a migration order: the late InputPlumber and `zlyme-input` capture, the late PipeWire capture, the late Bluetooth capture, `zlyme-storage.log`, `zlyme-led.log`, boot timing, the frontend and session text, the Wi-Fi async log, and the tmpfs copies of OpenBOR, RetroArch debug, and PortMaster. Anything found in the same pass is included only when it is a diagnostic. Locks, PID files, sockets, temporary configuration, update markers, and runtime state stay where they are. A file in `/tmp` is not a log because of its directory.
 
-Collection has to cover the window the program actually runs, including a failure after startup. `zlyme-logs` today copies a snapshot. A second rotation of the same boot or the same launch is a defect. Turning logs on and off in one boot must not consume another system generation. Log text must not contain credentials or tokens. New work stays off the first-frame path. Shutdown and the `/storage` unmount stay as they are. A launch's exit status stays the program's exit status.
+Collection has to cover the window the program actually runs, including a failure after startup. `zlyme-logs` today copies a snapshot. A second rotation of the same boot or the same launch is a defect. One logged boot has one system generation. Log text must not contain credentials or tokens. New work stays off the first-frame path. Shutdown and the `/storage` unmount stay as they are. A launch's exit status stays the program's exit status.
 
 Keeping early evidence across a freeze is in scope when it can be done without those regressions. Persistence after a hard reset is not promised. That behavior has not been shown.
 
@@ -458,6 +458,8 @@ Keeping early evidence across a freeze is in scope when it can be done without t
 Status: Planned.
 
 `docs/AUDITING.md` is the procedure for a dedicated search of a named subsystem. `.cursor/agents/zlyme-code-reviewer.md` is a read-only reviewer of one named implementation diff. The reviewer is not a whole-repository auditor. A review that finds nothing is not proof that Zlyme has no defects.
+
+One planned investigation, not started: the installed `03c0fee` boot printed a `mali_kbase` workqueue warning at about 3.624 seconds. `mali_mmu0` is using neither `WQ_PERCPU` nor `WQ_UNBOUND`, and the kernel chooses `WQ_PERCPU`. The source is the out-of-tree Mali DDK. The question for that pass is whether the warning recurs and whether the DDK's workqueue flags need a change. The warning alone is not a DTS, GPU, or shutdown regression.
 
 The campaign starts from high-risk and recently modified interfaces, and from the open debt already named in `docs/MAINTENANCE.md`. Priority follows the code that changed, the debt that is still open, and the consequence of a failure. Candidate areas are launch and process cleanup, log ownership and rotation, RetroArch and standalone launch, input and audio lifecycle, storage and update safety, and boot and shutdown ownership. That list is not a mandatory pass over the tree.
 
@@ -474,3 +476,9 @@ Logging acceptance is an inventory of every shipped PAK and emulator launcher, h
 Bug-finding acceptance is a written scope for each pass, an honest report of whether the reviewer ran, evidence on each actionable finding, no speculative mass refactor, and an explicit disposition for each serious finding. Documentation and the open-debt index move with a finding that is fixed, deferred, or superseded.
 
 A source-only audit does not by itself require a release build. An OTA, a hardware gate, or a release is a separate decision after the change that needs it exists.
+
+## Phase 17 — NDS
+
+Status: Planned. Not started.
+
+Nintendo DS games have not worked in the maintainer's testing. The root cause is uninvestigated and unverified. This is a reported functional issue. It is not a diagnosed emulator defect. When this phase begins, the work is the NDS launcher, the packaged emulator, content and BIOS requirements, graphics, audio, dependencies, configuration, and a run on the Miyoo Flip. No diagnostic archive is evidence for this item.

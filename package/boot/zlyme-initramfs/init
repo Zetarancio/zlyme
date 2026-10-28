@@ -15,7 +15,7 @@ fi
 log() {
 	echo "zlyme-init: $*"
 	# Do not scribble on the panel while the lockup is up.
-	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
+	if [ -n "${ZLYME_INIT_TEST:-}" ]; then
 		return 0
 	fi
 	if [ -f /zlyme-splash.progress ] || [ -f /boot_root/zlyme-splash.progress ]; then
@@ -148,6 +148,50 @@ select_os_volumes() {
 	return 0
 }
 
+# on, 1, and yes match zlyme-ctl. Anything else, including an empty
+# or unreadable file, is off. No other volume is consulted.
+logs_saved_on() {
+	cfg=$1
+	[ -f "$cfg" ] && [ -r "$cfg" ] || return 1
+	read -r val < "$cfg" || return 1
+	cr=$(printf '\r')
+	val=${val%"$cr"}
+	while [ "${val# }" != "$val" ]; do val=${val# }; done
+	while [ "${val% }" != "$val" ]; do val=${val% }; done
+	while [ "${val#	}" != "$val" ]; do val=${val#	}; done
+	while [ "${val%	}" != "$val" ]; do val=${val%	}; done
+	[ "$val" = on ] || [ "$val" = 1 ] || [ "$val" = yes ]
+}
+
+# Both are required. A leftover FAT marker does not authorize a dump
+# and does not by itself remount the boot volume.
+early_dmesg_wanted() {
+	boot=${ZLYME_INIT_BOOT:-/boot_root}
+	stor=${ZLYME_INIT_STORAGE:-/storage_root}
+	[ -f "$boot/zlyme-logs" ] || return 1
+	grep -F -q " ${stor} " "$MOUNTS" || return 1
+	logs_saved_on "$stor/.config/zlyme/logs"
+}
+
+# pending and logs are the result. An update and an early dmesg can
+# share one read-write window. Diagnostics never open it alone unless
+# early_dmesg_wanted is true.
+classify_boot_rw() {
+	stor=${ZLYME_INIT_STORAGE:-/storage_root}
+	pending=0
+	logs=0
+	if grep -F -q " ${stor} " "$MOUNTS"; then
+		if [ -f "$stor/.update/pending/zlyme" ]; then
+			pending=1
+		fi
+	else
+		log "ZLYME not mounted (ok if no pending update)"
+	fi
+	if early_dmesg_wanted; then
+		logs=1
+	fi
+}
+
 commit_update() {
 	src=/storage_root/.update/pending/zlyme
 	[ -f "$src" ] || return 0
@@ -185,6 +229,24 @@ commit_update() {
 }
 
 do_root() {
+	if [ "${ZLYME_INIT_TEST:-}" = logs ]; then
+		classify_boot_rw
+		if [ "$logs" -eq 1 ]; then
+			echo "capture=yes"
+		else
+			echo "capture=no"
+		fi
+		if [ "$pending" -eq 1 ] && [ "$logs" -eq 1 ]; then
+			echo "remount=update+logs"
+		elif [ "$pending" -eq 1 ]; then
+			echo "remount=update"
+		elif [ "$logs" -eq 1 ]; then
+			echo "remount=logs"
+		else
+			echo "remount=none"
+		fi
+		return 0
+	fi
 	if [ "${ZLYME_INIT_TEST:-}" = 1 ]; then
 		if ! select_os_volumes; then
 			return 1
@@ -240,21 +302,9 @@ do_root() {
 		splash_progress
 	fi
 
-	pending=0
-	if grep -q " /storage_root " "$MOUNTS"; then
-		if [ -f /storage_root/.update/pending/zlyme ]; then
-			pending=1
-		fi
-	else
-		log "ZLYME not mounted (ok if no pending update)"
-	fi
-
-	# zlyme-logs plants this flag so the ramdisk can dump dmesg.
-	# The copy itself lands on /storage/.logs after S15.
-	logs=0
-	if [ -f /boot_root/zlyme-logs ]; then
-		logs=1
-	fi
+	# The FAT marker is only a request. The saved System logs value on
+	# the storage volume selected above has to be on as well.
+	classify_boot_rw
 
 	if [ "$pending" -eq 1 ] || [ "$logs" -eq 1 ]; then
 		if ! boot_open_rw; then
