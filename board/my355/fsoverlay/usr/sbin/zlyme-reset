@@ -12,6 +12,7 @@ shared=$cfg/nextui/shared
 
 reset_flags() {
 	mkdir -p "$zlyme" || return 1
+	rc=0
 	for n in \
 		wifi bluetooth ssh samba syncthing \
 		gpu display_mode refresh undervolt led \
@@ -20,43 +21,54 @@ reset_flags() {
 	do
 		# Flags are files. Do not follow a directory that shares a name.
 		if [ -f "$zlyme/$n" ]; then
-			rm -f "$zlyme/$n"
+			rm -f "$zlyme/$n" || rc=1
 		fi
 	done
 	# Proxy is one multi-field file, not a zlyme-ctl flag.
 	if [ -f "$zlyme/proxy.conf" ]; then
-		rm -f "$zlyme/proxy.conf"
+		rm -f "$zlyme/proxy.conf" || rc=1
 	fi
-	# The SSH password is not a flag. Delete it even when the helper
-	# is absent, then ask the helper to put an empty shadow back.
-	rm -f "$zlyme/ssh.password"
+	# The SSH password is not a flag. A missing file is not a failure.
+	# Delete it even when the helper is absent, then ask the helper to
+	# put an empty shadow back.
+	if [ -f "$zlyme/ssh.password" ]; then
+		rm -f "$zlyme/ssh.password" || rc=1
+	fi
 	auth=${ZLYME_SSH_AUTH_BIN:-/usr/sbin/zlyme-ssh-auth}
 	if [ -x "$auth" ]; then
-		ZLYME_CFG="$cfg" ZLYME_SSH_SKIP_RELOAD=1 "$auth" clear || return 1
+		ZLYME_CFG="$cfg" ZLYME_SSH_SKIP_RELOAD=1 "$auth" clear || rc=1
 	fi
+	return "$rc"
 }
 
 reset_ui() {
-	rm -f "$shared/minuisettings.txt" "$shared/.zlyme-clock-on-default"
-	rm -f "$shared/localtime" "$shared/localtime.zone"
+	rc=0
+	rm -f "$shared/minuisettings.txt" "$shared/.zlyme-clock-on-default" || rc=1
+	rm -f "$shared/localtime" "$shared/localtime.zone" || rc=1
 	tz=${ZLYME_TZ_BIN:-/usr/sbin/zlyme-timezone}
 	if [ -x "$tz" ]; then
-		ZLYME_TZ_FILE=$shared/localtime "$tz" ensure || return 1
+		ZLYME_TZ_FILE=$shared/localtime "$tz" ensure || rc=1
 	fi
-	rm -f "$shared/vtree/config.ini" "$shared/vtree/.zlyme-vtree-v1"
+	rm -f "$shared/vtree/config.ini" "$shared/vtree/.zlyme-vtree-v1" || rc=1
 	card=${ZLYME_CARD_DEFAULTS:-/usr/sbin/zlyme-card-defaults}
 	if [ -x "$card" ]; then
 		SHARED_USERDATA_PATH=$shared \
 		BIOS_PATH=$root/storage/Bios \
 		SAVES_PATH=$root/storage/Saves \
 		CHEATS_PATH=$root/storage/Cheats \
-			"$card" || return 1
+			"$card" || rc=1
 	fi
+	return "$rc"
 }
 
 run_apply() {
 	if [ -n "${ZLYME_RESET_APPLY_LOG:-}" ]; then
 		printf '%s\n' "$*" >> "$ZLYME_RESET_APPLY_LOG"
+		if [ -n "${ZLYME_RESET_APPLY_FAIL:-}" ]; then
+			case " $* " in
+				*" ${ZLYME_RESET_APPLY_FAIL} "*) return 1 ;;
+			esac
+		fi
 		return 0
 	fi
 	[ "${ZLYME_RESET_SKIP_APPLY:-}" = 1 ] && return 0
@@ -83,14 +95,17 @@ apply_now() {
 	apply_service ssh /etc/init.d/S50sshd || return 1
 	apply_service samba /etc/init.d/S70samba || return 1
 	apply_service syncthing /etc/init.d/S75syncthing || return 1
-	run_apply zlyme-ctl apply-led || return 1
-	run_apply zlyme-ctl apply-zram || return 1
-	run_apply zlyme-ctl apply-refresh || return 1
-	run_apply zlyme-ctl apply-hdmi-mode || return 1
-	run_apply zlyme-ctl apply-logs || return 1
-	run_apply zlyme-ctl apply-gov || return 1
+	rc=0
+	run_apply zlyme-ctl apply-led || rc=1
+	run_apply zlyme-ctl apply-zram || rc=1
+	run_apply zlyme-ctl apply-refresh || rc=1
+	run_apply zlyme-ctl apply-hdmi-mode || rc=1
+	run_apply zlyme-ctl apply-logs || rc=1
+	run_apply zlyme-ctl apply-gov || rc=1
 	# Boot-time flags. Writing the overlay line now does not reboot.
-	run_apply zlyme-ctl apply-overlays || return 1
+	# A failed log-marker update does not skip this write.
+	run_apply zlyme-ctl apply-overlays || rc=1
+	return "$rc"
 }
 
 settings_reset() {
@@ -100,9 +115,11 @@ settings_reset() {
 }
 
 factory_reset() {
+	# The marker queues a stock Tools and Emus refresh. It is written
+	# only after the settings reset has succeeded.
 	settings_reset || return 1
 	mkdir -p "$zlyme" || return 1
-	: > "$zlyme/factory-reset"
+	: > "$zlyme/factory-reset" || return 1
 }
 
 # Removes the selected PortMaster installation and its Zlyme config.

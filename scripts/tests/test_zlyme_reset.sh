@@ -127,4 +127,98 @@ grep -q 'network={' "$cfg/wpa_supplicant.conf"
 grep -q paired "$cfg/bluetooth.tar"
 grep -q rom "$work/storage/Roms/game.gba"
 
+# A failed boot-log update is still a failure. Governor and overlay
+# restores still run. Factory Reset does not arm its marker.
+: > "$work/apply.log"
+export ZLYME_RESET_APPLY_FAIL=apply-logs
+rm -f "$zlyme/factory-reset"
+printf '%s\n' on > "$zlyme/logs"
+set +e
+"$BIN" settings
+st=$?
+set -e
+[ "$st" -ne 0 ]
+test ! -e "$zlyme/logs"
+grep -q 'zlyme-ctl apply-logs' "$work/apply.log"
+grep -q 'zlyme-ctl apply-gov' "$work/apply.log"
+grep -q 'zlyme-ctl apply-overlays' "$work/apply.log"
+awk '
+	/apply-logs/ { logs = NR }
+	/apply-gov/ { gov = NR }
+	/apply-overlays/ { ovl = NR }
+	END { if (!(logs && gov > logs && ovl > gov)) exit 1 }
+' "$work/apply.log"
+test ! -e "$zlyme/factory-reset"
+
+: > "$work/apply.log"
+set +e
+"$BIN" factory
+st=$?
+set -e
+[ "$st" -ne 0 ]
+test ! -e "$zlyme/factory-reset"
+grep -q 'zlyme-ctl apply-gov' "$work/apply.log"
+grep -q 'zlyme-ctl apply-overlays' "$work/apply.log"
+
+# Governor failure still reaches the overlay line, and still fails.
+: > "$work/apply.log"
+export ZLYME_RESET_APPLY_FAIL=apply-gov
+set +e
+"$BIN" settings
+st=$?
+set -e
+[ "$st" -ne 0 ]
+awk '
+	/apply-gov/ { gov = NR }
+	/apply-overlays/ { ovl = NR }
+	END { if (!(gov && ovl > gov)) exit 1 }
+' "$work/apply.log"
+test ! -e "$zlyme/factory-reset"
+
+# Overlay failure does not arm Factory Reset.
+: > "$work/apply.log"
+export ZLYME_RESET_APPLY_FAIL=apply-overlays
+set +e
+"$BIN" factory
+st=$?
+set -e
+[ "$st" -ne 0 ]
+grep -q 'zlyme-ctl apply-overlays' "$work/apply.log"
+test ! -e "$zlyme/factory-reset"
+unset ZLYME_RESET_APPLY_FAIL
+
+# A failed flag deletion fails the reset and does not newly arm Factory Reset.
+# An existing marker is left in place.
+mkdir -p "$work/rmbin"
+cat > "$work/rmbin/rm" << 'EOF'
+#!/bin/sh
+for a in "$@"; do
+	case "$a" in
+		*/logs|*/minuisettings.txt) exit 1 ;;
+	esac
+done
+exec /bin/rm "$@"
+EOF
+chmod 0755 "$work/rmbin/rm"
+printf '%s\n' on > "$zlyme/logs"
+: > "$zlyme/factory-reset"
+set +e
+PATH="$work/rmbin:$PATH" "$BIN" factory
+st=$?
+set -e
+[ "$st" -ne 0 ]
+test -f "$zlyme/logs"
+test -f "$zlyme/factory-reset"
+
+# A failed UI file removal has the same contract. No marker yet.
+rm -f "$zlyme/factory-reset" "$zlyme/logs"
+printf '%s\n' color > "$shared/minuisettings.txt"
+set +e
+PATH="$work/rmbin:$PATH" "$BIN" factory
+st=$?
+set -e
+[ "$st" -ne 0 ]
+test -f "$shared/minuisettings.txt"
+test ! -e "$zlyme/factory-reset"
+
 echo "reset ok"
