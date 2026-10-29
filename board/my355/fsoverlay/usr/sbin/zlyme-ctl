@@ -214,26 +214,31 @@ apply_hdmi_mode() {
 apply_logs() {
 	flag=${ZLYME_BOOT_LOG_FLAG:-/boot/zlyme-logs}
 	if [ -z "${ZLYME_BOOT_WRITE:-}" ] && [ -n "${ZLYME_BOOT_LOG_FLAG:-}" ]; then
-		if saved_on logs; then
-			: > "$flag" || return 1
-		else
-			rm -f "$flag" || return 1
-		fi
-		return 0
+		apply_logs_locked
+		return $?
 	fi
 	writer=${ZLYME_BOOT_WRITE:-/usr/sbin/zlyme-boot-write}
 	if [ ! -x "$writer" ]; then
 		echo "zlyme-ctl: boot write is not available" >&2
 		return 1
 	fi
+	# Always take the boot-write lock. A marker that is present now can
+	# still be removed by a reconcile that already passed its off check.
+	"$writer" "$0" apply-logs-locked
+	return $?
+}
+
+# Inside zlyme-boot-write. The saved value is read again under that lock.
+# A marker that already matches the saved value is left unchanged.
+apply_logs_locked() {
+	flag=${ZLYME_BOOT_LOG_FLAG:-/boot/zlyme-logs}
 	if saved_on logs; then
 		[ -e "$flag" ] && return 0
-		"$writer" touch "$flag"
-		return $?
+		: > "$flag" || return 1
+		return 0
 	fi
 	[ -e "$flag" ] || return 0
-	"$writer" rm -f "$flag"
-	return $?
+	rm -f "$flag" || return 1
 }
 
 # Inside zlyme-boot-write. The saved value is read again under that
@@ -244,6 +249,14 @@ reconcile_boot_logs_locked() {
 		return 0
 	fi
 	[ -e "$flag" ] || return 0
+	# Test barrier after the off decision and before the remove.
+	# Unset on a device. Holds the boot-write lock while it waits.
+	if [ -n "${ZLYME_BOOT_LOG_BARRIER:-}" ]; then
+		printf '%s\n' "$$" >> "$ZLYME_BOOT_LOG_BARRIER"
+		while [ ! -f "${ZLYME_BOOT_LOG_BARRIER}.go" ]; do
+			sleep 0.05
+		done
+	fi
 	rm -f "$flag"
 }
 
@@ -289,6 +302,7 @@ case "$cmd" in
 	apply-gov) apply_gov ;;
 	apply-zram) apply_zram ;;
 	apply-logs) apply_logs ;;
+	apply-logs-locked) apply_logs_locked ;;
 	latch-logs) latch_logs ;;
 	reconcile-boot-logs) reconcile_boot_logs ;;
 	reconcile-boot-logs-locked) reconcile_boot_logs_locked ;;

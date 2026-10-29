@@ -313,4 +313,53 @@ grep -q 'Early boot log was not updated.' \
 	"$ROOT/package/system/nextui/0001-logs-take-effect-on-next-boot.patch" \
 	|| fail "settings does not report a failed boot write"
 
+# Saved on and the marker already present: the locked command does not
+# rewrite the file. The writer still runs, so the lock is not skipped.
+printf '%s\n' on > "$work/storage/.config/zlyme/logs"
+printf '%s\n' keep > "$work/boot-flag"
+cat > "$work/passwrite" << 'EOF'
+#!/bin/sh
+"$@"
+EOF
+chmod 0755 "$work/passwrite"
+ZLYME_BOOT_WRITE="$work/passwrite" "$CTL" apply-logs
+grep -qx keep "$work/boot-flag" || fail "an already-correct marker was rewritten"
+
+# Reconcile has decided the marker is stale. Settings turns logs on
+# and apply-logs must wait for that boot-write lock, then put the
+# marker back. Returning early because the marker still exists loses it.
+printf '%s\n' off > "$work/storage/.config/zlyme/logs"
+: > "$work/boot-flag"
+rm -f "$work/barrier" "$work/barrier.go" "$work/bwlock"
+cat > "$work/lockwrite" << EOF
+#!/bin/sh
+exec 9>>"$work/bwlock"
+flock 9
+"\$@"
+EOF
+chmod 0755 "$work/lockwrite"
+ZLYME_BOOT_WRITE="$work/lockwrite" ZLYME_BOOT_LOG_BARRIER="$work/barrier" \
+	"$CTL" reconcile-boot-logs &
+_rp=$!
+_i=0
+while [ ! -s "$work/barrier" ]; do
+	_i=$((_i + 1))
+	if [ "$_i" -gt 80 ]; then
+		fail "reconcile did not reach the remove"
+	fi
+	sleep 0.05
+done
+printf '%s\n' on > "$work/storage/.config/zlyme/logs"
+ZLYME_BOOT_WRITE="$work/lockwrite" "$CTL" apply-logs &
+_ap=$!
+sleep 0.2
+if ! kill -0 "$_ap" 2>/dev/null; then
+	fail "apply-logs returned while reconcile still held the boot lock"
+fi
+: > "$work/barrier.go"
+wait "$_rp" || fail "reconcile failed"
+wait "$_ap" || fail "apply-logs failed"
+grep -qx on "$work/storage/.config/zlyme/logs"
+[ -f "$work/boot-flag" ] || fail "the next boot lost its marker"
+
 echo "log boot scope ok"

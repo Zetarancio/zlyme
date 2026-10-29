@@ -326,7 +326,7 @@ s28=$ROOT/board/my355/fsoverlay/etc/init.d/S28minui
 grep -q 'zlyme-logs start boot' "$ROOT/board/my355/fsoverlay/etc/init.d/S15bootpart"
 grep -q '/usr/sbin/zlyme-logs' "$s28" && exit 1
 grep -q 'ZLYME_BOOT_WRITE:-/usr/sbin/zlyme-boot-write' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl"
-grep -F -q '"$writer" touch "$flag"' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl"
+grep -F -q '"$writer" "$0" apply-logs-locked' "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-ctl"
 grep -q 'zlyme-boot-write' "$LOGS" && exit 1
 grep -q '/tmp/nextui-session.log' "$s28"
 grep -q 'session.txt' "$s28" && exit 1
