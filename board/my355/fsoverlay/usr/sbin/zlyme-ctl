@@ -249,14 +249,6 @@ reconcile_boot_logs_locked() {
 		return 0
 	fi
 	[ -e "$flag" ] || return 0
-	# Test barrier after the off decision and before the remove.
-	# Unset on a device. Holds the boot-write lock while it waits.
-	if [ -n "${ZLYME_BOOT_LOG_BARRIER:-}" ]; then
-		printf '%s\n' "$$" >> "$ZLYME_BOOT_LOG_BARRIER"
-		while [ ! -f "${ZLYME_BOOT_LOG_BARRIER}.go" ]; do
-			sleep 0.05
-		done
-	fi
 	rm -f "$flag"
 }
 

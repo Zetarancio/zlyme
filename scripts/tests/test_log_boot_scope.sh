@@ -7,7 +7,28 @@ LOGS=$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-logs
 STAMP=$ROOT/board/my355/fsoverlay/usr/bin/zlyme-logstamp
 S15=$ROOT/board/my355/fsoverlay/etc/init.d/S15bootpart
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+_rp=
+_ap=
+cleanup() {
+	# Release a host rm wrapper, then stop any race children.
+	if [ -n "${work:-}" ]; then
+		: > "$work/barrier.go" 2>/dev/null || true
+	fi
+	if [ -n "${_rp:-}" ]; then
+		kill "$_rp" 2>/dev/null || true
+	fi
+	if [ -n "${_ap:-}" ]; then
+		kill "$_ap" 2>/dev/null || true
+	fi
+	if [ -n "${_rp:-}" ]; then
+		wait "$_rp" 2>/dev/null || true
+	fi
+	if [ -n "${_ap:-}" ]; then
+		wait "$_ap" 2>/dev/null || true
+	fi
+	rm -rf "$work"
+}
+trap cleanup EXIT
 
 cat > "$work/zlyme.conf" << EOF
 ZLYME_STORAGE=$work/storage
@@ -325,12 +346,29 @@ chmod 0755 "$work/passwrite"
 ZLYME_BOOT_WRITE="$work/passwrite" "$CTL" apply-logs
 grep -qx keep "$work/boot-flag" || fail "an already-correct marker was rewritten"
 
-# Reconcile has decided the marker is stale. Settings turns logs on
-# and apply-logs must wait for that boot-write lock, then put the
-# marker back. Returning early because the marker still exists loses it.
-printf '%s\n' off > "$work/storage/.config/zlyme/logs"
-: > "$work/boot-flag"
-rm -f "$work/barrier" "$work/barrier.go" "$work/bwlock"
+# Host-only pause. The wrapper stops on the fixture marker while
+# lockwrite still holds the flock, then removes it after release.
+mkdir -p "$work/rmbin"
+cat > "$work/rmbin/rm" << EOF
+#!/bin/sh
+i=0
+for a in "\$@"; do
+	if [ "\$a" = "$work/boot-flag" ]; then
+		printf '%s\n' reached > "$work/barrier"
+		while [ ! -f "$work/barrier.go" ]; do
+			i=\$((i + 1))
+			if [ "\$i" -gt 200 ]; then
+				echo "boot-marker rm wait expired" >&2
+				exit 1
+			fi
+			sleep 0.05
+		done
+		break
+	fi
+done
+exec /bin/rm "\$@"
+EOF
+chmod 0755 "$work/rmbin/rm"
 cat > "$work/lockwrite" << EOF
 #!/bin/sh
 exec 9>>"$work/bwlock"
@@ -338,28 +376,56 @@ flock 9
 "\$@"
 EOF
 chmod 0755 "$work/lockwrite"
-ZLYME_BOOT_WRITE="$work/lockwrite" ZLYME_BOOT_LOG_BARRIER="$work/barrier" \
-	"$CTL" reconcile-boot-logs &
-_rp=$!
-_i=0
-while [ ! -s "$work/barrier" ]; do
-	_i=$((_i + 1))
-	if [ "$_i" -gt 80 ]; then
-		fail "reconcile did not reach the remove"
+
+# expect=kept: apply waits, then the marker is present.
+# expect=lost: apply returns while the remove is held, then the marker is gone.
+race_once() {
+	_ctl=$1
+	_expect=$2
+	printf '%s\n' off > "$work/storage/.config/zlyme/logs"
+	: > "$work/boot-flag"
+	rm -f "$work/barrier" "$work/barrier.go" "$work/bwlock"
+	_rp=
+	_ap=
+	PATH="$work/rmbin:$PATH" ZLYME_BOOT_WRITE="$work/lockwrite" \
+		"$_ctl" reconcile-boot-logs &
+	_rp=$!
+	_i=0
+	while [ ! -s "$work/barrier" ]; do
+		_i=$((_i + 1))
+		if [ "$_i" -gt 80 ]; then
+			fail "reconcile did not reach the remove"
+		fi
+		sleep 0.05
+	done
+	printf '%s\n' on > "$work/storage/.config/zlyme/logs"
+	PATH="$work/rmbin:$PATH" ZLYME_BOOT_WRITE="$work/lockwrite" \
+		"$_ctl" apply-logs &
+	_ap=$!
+	sleep 0.2
+	_alive=0
+	if kill -0 "$_ap" 2>/dev/null; then
+		_alive=1
 	fi
-	sleep 0.05
-done
-printf '%s\n' on > "$work/storage/.config/zlyme/logs"
-ZLYME_BOOT_WRITE="$work/lockwrite" "$CTL" apply-logs &
-_ap=$!
-sleep 0.2
-if ! kill -0 "$_ap" 2>/dev/null; then
-	fail "apply-logs returned while reconcile still held the boot lock"
-fi
-: > "$work/barrier.go"
-wait "$_rp" || fail "reconcile failed"
-wait "$_ap" || fail "apply-logs failed"
-grep -qx on "$work/storage/.config/zlyme/logs"
-[ -f "$work/boot-flag" ] || fail "the next boot lost its marker"
+	: > "$work/barrier.go"
+	wait "$_rp" || fail "reconcile failed"
+	wait "$_ap" || fail "apply-logs failed"
+	_rp=
+	_ap=
+	grep -qx on "$work/storage/.config/zlyme/logs" || fail "saved request changed"
+	if [ "$_expect" = kept ]; then
+		[ "$_alive" -eq 1 ] || fail "apply-logs returned while reconcile held the lock"
+		[ -f "$work/boot-flag" ] || fail "the next boot lost its marker"
+	else
+		[ "$_alive" -eq 0 ] || fail "the old apply waited for the lock"
+		[ ! -e "$work/boot-flag" ] || fail "the old apply kept the marker"
+	fi
+}
+
+git -C "$ROOT" show 86b204a429bc5066b863cd179658f9f4b7317901:board/my355/fsoverlay/usr/sbin/zlyme-ctl \
+	> "$work/baseline-ctl"
+chmod 0755 "$work/baseline-ctl"
+race_once "$work/baseline-ctl" lost
+race_once "$CTL" kept
 
 echo "log boot scope ok"
