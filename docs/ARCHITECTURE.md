@@ -320,7 +320,7 @@ A delta tar carries `DELTA-MANIFEST` and `zlyme.patch.zst` in place of the squas
 zstd -d --memory=2048MB --mmap-dict --patch-from
 ```
 
-The reconstructed file is kept only when its SHA-256 and size match the manifest. That file is `/storage/.update/pending/zlyme`. A `zlyme.new` file is not a pending update. `/boot/zlyme` is not patched in place.
+The reconstructed file is kept only when its SHA-256 and size match the manifest. That match does not establish the SquashFS format. `zlyme-update` then reads the SquashFS 4 little-endian superblock with BusyBox `hexdump` and `awk`, which both images already include, and publishes the file as `/storage/.update/pending/zlyme` only when that check passes. The same check gates a full extract and a `pending/zlyme` reused by `ensure_pending` before boot files are copied. It rejects a short file, a file without SquashFS 4 little-endian magic, an unsupported version or compression, a block size that does not match `block_log`, a `bytes_used` value past the end of the file, and a required table start outside that length. It does not decompress blocks or walk inode tables. A rejection quarantines the tar, does not leave the candidate as the pending root, and does not reboot. A `zlyme.new` file is not a pending update. `/boot/zlyme` is not patched in place. The initramfs copy remains one in-place replacement of the only live root. The superblock check does not make that copy atomic. Recovery after a partially overwritten `/boot/zlyme` has not been established on hardware.
 
 Full and delta staging then share one commit path:
 

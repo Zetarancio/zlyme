@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A and 16B are closed. 16B closed on 2026-10-30 on the local OTA `zlyme-my355-20261029-c8f952407098.tar`. 16C is next and has not started. 16D is planned. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16 candidate `zlyme-my355-20261029-c8f952407098.tar`, rootfs `51653daec4d5dc53ff155b4b0079784f2bfe7c7d62d677c3fb912fe3916bbda8`. It is not published. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A and 16B are closed. 16B closed on 2026-10-30 on the local OTA `zlyme-my355-20261029-c8f952407098.tar`. 16C has a host-confirmed correction for staged root acceptance and is not closed. 16D is planned. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16 candidate `zlyme-my355-20261029-c8f952407098.tar`, rootfs `51653daec4d5dc53ff155b4b0079784f2bfe7c7d62d677c3fb912fe3916bbda8`. It is not published. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,13 +429,13 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-10-30. 16A and 16B are closed. 16C is next and has not started. 16D is planned. Phase 17 has not started. The published release remains tag `zlyme-40439819817`. The local Phase 16B candidate is not that release.
+Status: In progress, 2026-10-30. 16A and 16B are closed. 16C has a host-confirmed correction for staged root acceptance and is not closed. 16D is planned. Phase 17 has not started. The published release remains tag `zlyme-40439819817`. The local Phase 16B candidate is not that release.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
 Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
 
-Blocker: 16C has not started. The record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+Blocker: 16C is not closed. The logging record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
 
 ### 16A. Logging inventory and contract
 
@@ -449,7 +449,9 @@ The hardware paths accepted here are Game Boy in RetroArch, PSP standalone, and 
 
 ### 16C. Bug-finding and independent review
 
-Status: Planned.
+Status: In progress, 2026-10-30. One host-confirmed finding is corrected in source. The rest of this campaign is not closed, and 16C3 has not started.
+
+On `39aea25`, `zlyme-update test-stage` accepted a full OTA whose `zlyme` member was arbitrary non-SquashFS bytes, returned 0, and published `pending/zlyme`. The updater now reads the SquashFS 4 superblock before publishing that file. A full extract, a reused pending root, and a delta whose manifest hash matches all go through the check. The check does not decompress the image. The initramfs still copies the one live root in place. That copy is not atomic, and recovery after a partial overwrite has not been established on hardware. No OTA was built for this correction. The installed image remains `zlyme-my355-20261029-c8f952407098.tar`.
 
 `docs/AUDITING.md` is the procedure for a dedicated search of a named subsystem. `.cursor/agents/zlyme-code-reviewer.md` is a read-only reviewer of one named implementation diff. The reviewer is not a whole-repository auditor. A review that finds nothing is not proof that Zlyme has no defects.
 

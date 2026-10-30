@@ -10,9 +10,15 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 System logs, under Settings → System → Advanced, stay off until you turn them on. The change takes effect the next time the device starts. While they are on, Zlyme keeps a few recent boot logs and a log for each game or tool you launch, under a folder you can copy off the card. Recording that is already running continues until you restart. Games and saves are not in that folder.
 
+### Fixed
+
+An update is refused when its system image is not a SquashFS file the device can recognize from the image header. Zlyme stays on the installed system and does not restart into that file.
+
 ### Known limitations
 
 System logs have been tried on a device with Game Boy in RetroArch, a PSP game, and PortMaster. Other emulators use the same logging switch, and they have not each been tried on a device. A game that is still running can leave a larger log than the amount kept after it exits. A program Zlyme does not write can put its own text in the log.
+
+Checking an update before restart does not make replacement of the system image crash-safe. A power cut while that file is being replaced can still leave it incomplete. Recovery from that has not been tried on a device.
 
 ## [zlyme44.4] - 2026-10-27
 

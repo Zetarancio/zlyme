@@ -20,7 +20,9 @@ In Phase 9 `d12503e` added delta reconstruction, and `a951706` raised the zstd `
 
 The root is a read-only squashfs file named `zlyme` on the FAT `ZLYMEBOOT` volume. The initramfs mounts that volume read-only and loop-mounts `/boot/zlyme` with `loop,ro`. Persistent state is `/storage`.
 
-An update first stages a complete root at `/storage/.update/pending/zlyme`. A full OTA extracts it from the tar after the member checks. A delta checks the installed root's SHA-256 against the manifest base, reconstructs under `/storage/.update/reconstruct` with `zstd -d --memory=2048MB --mmap-dict --patch-from` against `/boot/zlyme`, and keeps the result only when its SHA-256 and size match the manifest.
+An update first stages a complete root at `/storage/.update/pending/zlyme`. A full OTA extracts it from the tar after the member checks. A delta checks the installed root's SHA-256 against the manifest base, reconstructs under `/storage/.update/reconstruct` with `zstd -d --memory=2048MB --mmap-dict --patch-from` against `/boot/zlyme`, and keeps the result only when its SHA-256 and size match the manifest. That hash and size do not establish the SquashFS format.
+
+Before the file is published as `pending/zlyme`, `zlyme-update` reads its SquashFS 4 little-endian superblock with BusyBox `hexdump` and `awk`. Both the product image and the minimal image already include those applets. The target image has no `unsquashfs`, and this check does not add one. The check rejects a regular file that is not that format, a superblock shorter than 96 bytes, a version or compression the my355 kernel does not mount, a block size that does not match its log, a `bytes_used` value that does not fit in the file, or a required table start outside that length. A full extract, a delta reconstruction, and an existing `pending/zlyme` reused in the same boot all go through it. A rejection is an apply failure: the candidate is not left as the pending root, the tar is quarantined, and the updater does not reboot. The check does not decompress blocks or walk inode tables. A file can pass and still fail to mount.
 
 On the next boot, before the loop exists, the initramfs copies `pending/zlyme` over `/boot/zlyme` in one read-write window and closes the volume read-only again. Runtime code does not patch, `dd`, or rewrite `/boot/zlyme`. Runtime writes to other ZLYMEBOOT files go through `zlyme-boot-write`.
 
@@ -30,7 +32,7 @@ Artifacts are device-qualified. The update prefix and DTB name come from `/usr/s
 
 ## Consequences
 
-There is no fallback root. That is the size trade. The initramfs removes `pending/` only after the copy and `sync` succeed, so an interrupted copy is attempted again on the next boot. That retry follows from the code. It has not been tested on hardware.
+There is no fallback root. That is the size trade. Validating the staged superblock does not make the in-place copy atomic. The initramfs still copies `pending/zlyme` over the only installed root before it tries to mount the result. A power loss or an interrupted copy can leave `/boot/zlyme` partially overwritten. The initramfs removes `pending/` only after the copy and `sync` succeed, so an interrupted copy is attempted again on the next boot. That retry follows from the code. Recovery after a partially overwritten root has not been established by a hardware test.
 
 The updater refuses a root that does not fit in ZLYMEBOOT free space plus the live file.
 

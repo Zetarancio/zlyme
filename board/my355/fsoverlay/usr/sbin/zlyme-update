@@ -8,10 +8,13 @@
 #      (update.tar, versioned, or -dirty; newest mtime wins).
 #      Incomplete downloads must be named *.tar.part — this script ignores them.
 #   2. reboot
-# S18 extracts to /storage/.update/pending, copies Image.gz/dtb/overlays
-# to /boot, then reboots. Initramfs commits the squashfs from ZLYME.
-# A structurally OK tar that fails to apply is moved to .update/failed/.
-# Junk archives are deleted.
+# S18 extracts to a private incoming directory, checks the SquashFS 4
+# superblock, and only then publishes /storage/.update/pending. It copies
+# Image.gz/dtb/overlays to /boot, then reboots. Initramfs commits the
+# squashfs from ZLYME. A root that fails the superblock check is an apply
+# failure: it is not published, the tar is quarantined, and this script
+# does not reboot. A structurally OK tar that fails to apply is moved to
+# .update/failed/. Junk archives are deleted.
 #
 # Do not dd a partition. Do not rewrite GPT.
 # A delta tar reconstructs a complete squashfs on storage. It never
@@ -384,20 +387,129 @@ stage_delta() {
 	cleanup_tar_list
 	rm -f "$work/DELTA-MANIFEST"
 	sync
+	# Hash and size matched the manifest. That is not a SquashFS check.
+	# Publish only after the superblock check, so a reject leaves no pending root.
+	verify_dir "$work"
+	squashfs_fits "$work/zlyme"
 	rm -rf "$PENDING"
 	mv "$work" "$PENDING"
 	sync
-	verify_dir "$PENDING"
-	squashfs_fits "$PENDING/zlyme"
 	log "delta reconstructed $PENDING/zlyme"
+}
+
+# A rejected root must not stay pending. apply exits on failure, so the
+# removal has to happen before mark_fail, not only in boot-apply's handler.
+reject_root() {
+	dir=$1
+	shift
+	case "$dir" in
+		"$PENDING"|"$PENDING"/*)
+			rm -rf "$PENDING"
+			;;
+		"$STAGEDIR/incoming"|"$STAGEDIR/incoming"/*)
+			rm -rf "$STAGEDIR/incoming"
+			;;
+		"$STAGEDIR/reconstruct"|"$STAGEDIR/reconstruct"/*)
+			rm -rf "$STAGEDIR/reconstruct"
+			;;
+	esac
+	mark_fail apply "$*"
+}
+
+# SquashFS 4 little-endian superblock. These are fields the my355 kernel
+# rejects before it walks the filesystem. BusyBox hexdump and awk read the
+# bytes. Both images already have them. This does not decompress blocks or
+# walk inode tables. A file can pass and still fail to mount.
+check_squashfs_root() {
+	file=$1
+	if [ ! -f "$file" ]; then
+		reject_root "$(dirname "$file")" "root image: not a regular file"
+	fi
+	need_cmd hexdump
+	need_cmd awk
+	size=$(wc -c <"$file")
+	size=$((size))
+	if [ "$size" -lt 96 ]; then
+		reject_root "$(dirname "$file")" "root image: truncated squashfs"
+	fi
+	if ! reason=$(hexdump -v -n 96 -e '1/1 "%u\n"' "$file" | awk -v size="$size" '
+function u16(off) { return raw[off + 1] + raw[off + 2] * 256 }
+function u32(off) { return raw[off + 1] + raw[off + 2] * 256 + raw[off + 3] * 65536 + raw[off + 4] * 16777216 }
+function invalid(off) {
+	for (i = 0; i < 8; i++) if (raw[off + 1 + i] != 255) return 0
+	return 1
+}
+function u64(off) {
+	if (invalid(off)) return -1
+	hi = u32(off + 4)
+	if (hi > 2147483647) return -2
+	lo = u32(off)
+	return lo + hi * 4294967296
+}
+function pow2(n) {
+	v = 1
+	for (i = 0; i < n; i++) v *= 2
+	return v
+}
+function table_ok(start, required) {
+	if (start == -1) { if (required) return 0; return 1 }
+	if (start < 96 || start >= bytes) return 0
+	return 1
+}
+{
+	for (i = 1; i <= NF; i++) raw[++n] = $i + 0
+}
+END {
+	if (n < 96) { print "truncated squashfs"; exit 1 }
+	if (raw[1] != 104 || raw[2] != 115 || raw[3] != 113 || raw[4] != 115) {
+		print "not a squashfs"
+		exit 1
+	}
+	inodes = u32(4)
+	block = u32(12)
+	fragments = u32(16)
+	comp = u16(20)
+	blog = u16(22)
+	ids = u16(26)
+	major = u16(28)
+	minor = u16(30)
+	root_off = u16(32)
+	bytes = u64(40)
+	id_table = u64(48)
+	inode_table = u64(64)
+	dir_table = u64(72)
+	frag_table = u64(80)
+	if (major != 4 || minor != 0 || (comp != 1 && comp != 3 && comp != 4 && comp != 5 && comp != 6)) {
+		print "unsupported squashfs"
+		exit 1
+	}
+	if (inodes < 1 || ids < 1 || blog > 20 || block < 4096 || block > 1048576 || block != pow2(blog) || root_off > 8192) {
+		print "unsupported squashfs"
+		exit 1
+	}
+	if (bytes < 96 || bytes == -1 || bytes == -2 || bytes > size) {
+		print "squashfs length"
+		exit 1
+	}
+	if (!table_ok(inode_table, 1) || !table_ok(dir_table, 1) || !table_ok(id_table, 1) || !table_ok(frag_table, fragments != 0)) {
+		print "unsupported squashfs"
+		exit 1
+	}
+	exit 0
+}
+'); then
+		[ -n "$reason" ] || reason="not a squashfs"
+		reject_root "$(dirname "$file")" "root image: $reason"
+	fi
 }
 
 verify_dir() {
 	dir=$1
-	[ -s "$dir/$ZLYME_DTB" ] || mark_fail apply "missing $dir/$ZLYME_DTB"
-	[ -s "$dir/zlyme" ] || mark_fail apply "missing $dir/zlyme"
-	[ -s "$dir/VERSION" ] || mark_fail apply "missing $dir/VERSION"
-	[ -s "$dir/Image.gz" ] || mark_fail apply "missing $dir/Image.gz"
+	[ -s "$dir/$ZLYME_DTB" ] || reject_root "$dir" "missing $dir/$ZLYME_DTB"
+	[ -s "$dir/zlyme" ] || reject_root "$dir" "missing $dir/zlyme"
+	[ -s "$dir/VERSION" ] || reject_root "$dir" "missing $dir/VERSION"
+	[ -s "$dir/Image.gz" ] || reject_root "$dir" "missing $dir/Image.gz"
+	check_squashfs_root "$dir/zlyme"
 }
 
 boot_free_bytes() {
@@ -416,7 +528,7 @@ squashfs_fits() {
 		now=$(wc -c <"$BOOT/zlyme")
 	fi
 	if [ $((free + now)) -lt "$sz" ]; then
-		mark_fail apply "squashfs ($sz) does not fit on $BOOT (free $free + live $now)"
+		reject_root "$(dirname "$sq")" "squashfs ($sz) does not fit on $BOOT (free $free + live $now)"
 		return 1
 	fi
 	log "squashfs $sz bytes, $BOOT free $free + live $now"
@@ -435,14 +547,21 @@ stage_tar() {
 	fi
 	cleanup_tar_list
 	verify_tar "$tarf"
-	rm -rf "$PENDING"
-	mkdir -p "$PENDING"
-	log "extracting $(basename "$tarf") to $PENDING"
 	# The downloaded tar stays until apply finishes, so storage must hold both.
 	storage_has_room $(( $(wc -c <"$tarf") + 67108864 ))
-	tar -xf "$tarf" -C "$PENDING" || mark_fail apply "extract failed"
-	verify_dir "$PENDING"
-	squashfs_fits "$PENDING/zlyme"
+	incoming=$STAGEDIR/incoming
+	rm -rf "$incoming"
+	mkdir -p "$incoming"
+	log "extracting $(basename "$tarf") to $incoming"
+	tar -xf "$tarf" -C "$incoming" || {
+		rm -rf "$incoming"
+		mark_fail apply "extract failed"
+	}
+	verify_dir "$incoming"
+	squashfs_fits "$incoming/zlyme"
+	rm -rf "$PENDING"
+	mv "$incoming" "$PENDING"
+	sync
 }
 
 ensure_pending() {
@@ -936,7 +1055,13 @@ case "$cmd" in
 		if [ -n "${1:-}" ]; then
 			queue_tar "$1"
 		fi
-		apply_files
+		# Same failure contract as boot-apply. A rejected pending root is
+		# removed here; apply_files would otherwise exit and leave it.
+		if ( apply_files ); then
+			exit 0
+		fi
+		handle_apply_failure
+		exit 1
 		;;
 	boot-apply | apply-pending)
 		boot_apply
