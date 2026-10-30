@@ -8,7 +8,7 @@ It does not own architecture, release policy, package intake, or how a change is
 
 Ordinary change review is the change policy in `AGENTS.md`: read the implementation, search for an existing helper, make the smallest change, run the narrowest test, and inspect the diff.
 
-After a nontrivial implementation change, `AGENTS.md` also requires a post-change review by `zlyme-code-reviewer` before the change is finalized or committed. The reviewer specification is `.cursor/agents/zlyme-code-reviewer.md`. That review reads one named diff from a fresh context. It is not a dedicated audit, and a clean review is not proof that the tree is free of defects.
+After a nontrivial implementation change, `AGENTS.md` also requires a post-change review by `zlyme-code-reviewer` before the change is finalized or committed. The Cursor and OpenCode implementations are named there. That review reads one named diff from a fresh context. It is not a dedicated audit, and a clean review is not proof that the tree is free of defects.
 
 Use the dedicated audit in the rest of this file only when one of these is true:
 

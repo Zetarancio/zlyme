@@ -31,7 +31,7 @@ Prefer explicit code and narrow interfaces over framework-building.
 
 ## Required context
 
-This section is the agent reading list. `.cursor/rules/zlyme-core.mdc` keeps only a short summary that defers to it.
+This section is the agent reading list. Cursor and OpenCode V2 both follow this file. `.cursor/rules/zlyme-core.mdc` keeps only a short summary that defers to it. The shared workflow is in `docs/DEVELOPMENT.md`.
 
 Before making code changes, read:
 
@@ -141,11 +141,13 @@ For a nontrivial bug fix or design choice, follow the upstream-first procedure i
 5. Validate with the narrowest useful test.
 6. Inspect the final diff for unrelated modifications.
 
-After a nontrivial implementation change, and after the relevant tests, invoke the `zlyme-code-reviewer` subagent before finalizing or committing. Its specification is `.cursor/agents/zlyme-code-reviewer.md`. A high-risk change, as named in `docs/AUDITING.md`, requires this review. A typo, a comment, a documentation-only edit, or a behavior-neutral metadata change may skip it. Say why it was skipped.
+After a nontrivial implementation change, and after the relevant tests, perform an independent post-change review against the recorded baseline before finalizing or committing. A high-risk change, as named in `docs/AUDITING.md`, requires this review. A typo, a comment, a documentation-only edit, or a behavior-neutral metadata change may skip it. Say why it was skipped.
 
 That review is not a dedicated audit. `docs/AUDITING.md` applies only when its own trigger conditions are met.
 
-Pass the baseline SHA, the worktree state, and the review scope. Do not pass findings, rationale, or a suggested fix. A fresh context is not independent when the prompt already contains the conclusion. Report whether the reviewer ran. If it did not, say so. Do not describe the change as independently reviewed.
+The review is one named diff. Cursor implements it with `.cursor/agents/zlyme-code-reviewer.md`. OpenCode V2 implements it with `.opencode/agents/zlyme-code-reviewer.md`. Both follow this file and `docs/AUDITING.md`.
+
+Use a fresh reviewer context. Pass the baseline SHA, the current worktree state, and the review scope. Do not pass findings, rationale, a suggested fix, or a previous reviewer's verdict. A fresh context is not independent when the prompt already contains the conclusion. A fresh context that uses the same model is a separate context. It is not a second model. Report whether the reviewer ran. If it was unavailable, blocked, or not actually invoked, say so. Do not describe the change as independently reviewed.
 
 Verify an actionable finding against the source. Correct only a defect the task authorizes. Rerun the affected checks. The review cadence in `docs/AUDITING.md` is one comprehensive post-change review and one follow-up after a substantive correction. A serious confirmed finding is not waived silently. Deferral follows `docs/AUDITING.md`: an explicit decision and a recorded limitation.
 
@@ -350,6 +352,18 @@ Diagnostic logging follows `docs/decisions/0012-diagnostic-logging.md`. `docs/AR
 ## Hardware payload transfer
 
 Do not transfer OTAs, images, runtime archives, libraries, emulator binaries, large logs, or other bulk payloads to or from the Miyoo Flip over Wi-Fi, SSH, SCP, or rsync. Use a physical SD card mounted on the development host. SSH over Wi-Fi is for commands, inspection, and small text diagnostics. If the required card is not mounted on the host, stop and say which card and path are needed. Do not fall back to a network copy. This does not stop PortMaster from downloading its own catalogue or runtimes when a person uses it.
+
+## Source investigation
+
+Confirm the repository root, branch, and HEAD before substantive work. Read the instructions in Required context that apply to the task.
+
+Reuse a path the source already established. Prefer `git grep` and `git ls-files` for tracked files, and keep each search inside the relevant path. Do not search the filesystem root or a generated output tree without a task-specific reason. Read a line range of a large file. Do not dump the whole file again to recover a line already in hand.
+
+Use the search the environment actually provides. Do not invent a tool name.
+
+Inspected source, an executed test, host validation, and hardware acceptance are different claims. A test that was only read did not pass. Trace a lock to the resource it covers and the owner that acquires and releases it. A background command is independent only when later work does not need its result. A plausible execution story is a hypothesis until a reachable path and an observation support it.
+
+Stop when the bounded task has the evidence it needs, or when further calls will not produce it. Say which evidence is missing. `docs/AUDITING.md` remains the standard for a defect investigation.
 
 ## Agent behavior
 

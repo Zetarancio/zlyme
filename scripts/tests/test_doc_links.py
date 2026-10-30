@@ -66,6 +66,7 @@ REPO_PREFIXES = (
     "scripts/",
     ".github/",
     ".cursor/",
+    ".opencode/",
     "configs/",
 )
 

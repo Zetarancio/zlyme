@@ -389,3 +389,29 @@ Architecture records decisions.
 Operations records procedures and known physical-device behavior.
 
 Logbook records history.
+
+## Agent environments
+
+Cursor and OpenCode V2 both follow `AGENTS.md`. This repository does not pin a model, and it does not require either environment. Personal model, provider, and GPU settings stay outside the tree.
+
+Cursor loads `.cursor/rules/` with this repository. Its post-change reviewer is the `zlyme-code-reviewer` subagent in `.cursor/agents/zlyme-code-reviewer.md`. Invoke that subagent from a fresh context. Pass the baseline SHA, the worktree state, and the scope. Do not pass a verdict, a rationale, a suggested fix, or an earlier reviewer's conclusion.
+
+OpenCode V2 loads the root `AGENTS.md`. It does not read `CLAUDE.md`. Its reviewer is `.opencode/agents/zlyme-code-reviewer.md`, agent id `zlyme-code-reviewer`, `mode: subagent`. The file does not set `model`, so the reviewer uses the model selected for that session. A personal agent named `reviewer` is a different agent and does not merge with this one.
+
+Start a new OpenCode session and run the reviewer directly:
+
+```text
+opencode run --agent zlyme-code-reviewer
+```
+
+The message carries the baseline SHA, the worktree state, and the scope, and nothing else about the author's conclusion. A primary session can launch the same subagent. That launch is a fresh reviewer context only when the launch prompt does not already contain the conclusion. The same model in a new context is a separate context, not a second model.
+
+OpenCode permissions are an ordered list. The last matching rule wins. Agent rules are appended after global rules. `opencode debug agents` prints the effective list for `zlyme-code-reviewer`. The project reviewer denies edits, writes, patches, network research, SSH, and directories outside the project, and it allows `read`, `glob`, `grep`, and a short list of read-only git commands. Run each git command by itself. A joined command is checked as every part, and one denied part rejects the line. A sentence in the prompt does not enforce those limits. Inspect the effective rules.
+
+`opencode debug config` lists the configuration sources that were loaded. This repository does not add a global allow. An action whose effective rule is `ask` waits for an explicit decision. Commit, push, and any change to the tree still require a task that authorizes that change. The reviewer does not commit or push.
+
+A read-only investigation, including the post-change review and the discovery stage in `docs/AUDITING.md`, does not edit the tree. Implementation is a separate authorized change. Remediation starts only when a fix is authorized.
+
+`opencode session export <session-id>` writes the session JSON, including the tool calls and their results. Add `--sanitize` before sharing it. The useful record is the baseline, the scope, the commands that actually ran, and the output those commands returned. A prose summary without that record is not verification.
+
+A larger context window or a different model does not supply a missing diff, a test that was not run, or a device observation that was not made. `docs/AUDITING.md` keeps those claims apart.
