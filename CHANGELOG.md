@@ -4,6 +4,16 @@ What changed for people who run Zlyme. The format follows [Keep a Changelog](htt
 
 Earlier development builds were published as GitHub prereleases. Their history is in [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/LOGBOOK.md](docs/LOGBOOK.md), not here.
 
+## [Unreleased]
+
+### Added
+
+System logs, under Settings → System → Advanced, stay off until you turn them on. The change takes effect the next time the device starts. While they are on, Zlyme keeps a few recent boot logs and a log for each game or tool you launch, under a folder you can copy off the card. Recording that is already running continues until you restart. Games and saves are not in that folder.
+
+### Known limitations
+
+System logs have been tried on a device with Game Boy in RetroArch, a PSP game, and PortMaster. Other emulators use the same logging switch, and they have not each been tried on a device. A game that is still running can leave a larger log than the amount kept after it exits. A program Zlyme does not write can put its own text in the log.
+
 ## [zlyme44.4] - 2026-10-27
 
 ### Added

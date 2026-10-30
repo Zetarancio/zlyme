@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-30 — Phase 16B accepted on c8f9524
+
+Local OTA `zlyme-my355-20261029-c8f952407098.tar`, rootfs `51653daec4d5dc53ff155b4b0079784f2bfe7c7d62d677c3fb912fe3916bbda8`, source `c8f95240709811a00e740402bc1975dfe62f5b64`. The maintainer ran Game Boy in RetroArch, PPSSPP, and PortMaster, and each returned to NextUI. SSH on the logged boot matched those logs and one generation. An off reboot created no generation and left `PSP.log` at its `2026-10-29T23:02:55Z` header. The following on reboot, S15 `2026-10-30T00:10:54Z`, created a new `system-0` and an early kernel copy. This image is not the published `zlyme44.4` release. The documentation commit that records the closure is not installed firmware.
+
+The same image, and the earlier `03c0fee` boot, printed `mali_kbase`: `mali_mmu0` is using neither `WQ_PERCPU` nor `WQ_UNBOUND`, and the kernel chooses `WQ_PERCPU`. That warning is not part of Phase 16. It is not a diagnosed DTS, GPU, or shutdown defect, and the message is not suppressed.
+
+The launch boot of `c8f9524` reached `rcS` at about monotonic 50.6 s. The boots before and after it reached userspace at about 3 s. That delay is not diagnosed.
+
 ## 2026-10-27 — 14ad723 player 1 accepted
 
 The maintainer installed `zlyme-my355-20261027-14ad7238a42e.tar`. `/boot/zlyme` is `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. A dry run of the installed `ra-run` wrote `input_driver = "sdl2"`, `input_joypad_driver = "udev"`, and `input_player1_joypad_index = "1"`. That index is `event5`, the InputPlumber virtual pad. The physical pad remains `event4`. The maintainer accepts built-in player 1. A second controller with the same name was not connected.
