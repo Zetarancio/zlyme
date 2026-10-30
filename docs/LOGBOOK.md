@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-10-30 — Phase 16C2 accepted on 90a22fa
+
+Local OTA `zlyme-my355-20261030-90a22fa47825.tar`, rootfs `042c873a0a1f8485883feceb4868ff09626cf0926031337b50480f6d93be2868`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `90a22fa47825a7e2756967bb7529599eecb01372`. SSH on that boot found `/boot` read-only on `/dev/mmcblk0p2` (`ZLYMEBOOT`), `/storage` read-write on `/dev/mmcblk0p3` (`ZLYME`), `/usr/sbin/zlyme-update` matching that source, and `queued=no` with no pending root or `FAILED` file. The maintainer saw NextUI with its artwork, no blank or frozen screen. The D-pad and buttons responded while navigating. One Game Boy game launched and returned to NextUI with MENU+START. Other emulators, shutdown, reboot, and a corrupt OTA were not part of this pass. The in-place root copy is still not atomic, and recovery after a partial overwrite has not been established on hardware. This image is not the published `zlyme44.4` release. The Phase 16B image remains `zlyme-my355-20261029-c8f952407098.tar`.
+
 ## 2026-10-30 — Phase 16B accepted on c8f9524
 
 Local OTA `zlyme-my355-20261029-c8f952407098.tar`, rootfs `51653daec4d5dc53ff155b4b0079784f2bfe7c7d62d677c3fb912fe3916bbda8`, source `c8f95240709811a00e740402bc1975dfe62f5b64`. The maintainer ran Game Boy in RetroArch, PPSSPP, and PortMaster, and each returned to NextUI. SSH on the logged boot matched those logs and one generation. An off reboot created no generation and left `PSP.log` at its `2026-10-29T23:02:55Z` header. The following on reboot, S15 `2026-10-30T00:10:54Z`, created a new `system-0` and an early kernel copy. This image is not the published `zlyme44.4` release. The documentation commit that records the closure is not installed firmware.
