@@ -143,6 +143,9 @@ grep -q 'tar ok' "$work/out" "$work/err" || fail "valid tar was not accepted $(c
 run test-stage "$good" >"$work/out" 2>"$work/err"
 cmp "$storage/.update/pending/zlyme" "$work/full/zlyme" || fail "valid extract mismatch"
 test -s "$storage/.update/pending/Image.gz" || fail "valid extract omitted Image.gz"
+if [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "valid extract published a symlink"
+fi
 python3 - "$work/full/zlyme" <<'PY' || fail "valid fixture is not a SquashFS image"
 import sys
 data = open(sys.argv[1], "rb").read(4)
@@ -283,6 +286,104 @@ if [ -e "$storage/.update/pending/zlyme" ]; then
 fi
 grep -q 'not a squashfs' "$storage/.update/FAILED" "$storage/.update/apply.log" || fail "apply reason $(cat "$storage/.update/FAILED" "$storage/.update/apply.log")"
 cmp "$boot/zlyme" "$work/live" || fail "apply changed the live root"
+
+# A symlink to a valid SquashFS is not a staged root.
+link_root=$work/link-root.sq
+write_squashfs "$link_root" linkroot
+python3 - "$link_root" <<'PY' || fail "symlink target is not a SquashFS image"
+import sys
+if open(sys.argv[1], "rb").read(4) != b"hsqs":
+    raise SystemExit("fixture magic")
+PY
+link_dir=$work/link-stage
+rm -rf "$link_dir" "$storage/.update"
+mkdir -p "$link_dir" "$storage/.update"
+printf 'kernel' >"$link_dir/Image.gz"
+printf 'dtb' >"$link_dir/rk3566-miyoo-flip.dtb"
+printf 'ver\n20261008\n' >"$link_dir/VERSION"
+ln -s "$link_root" "$link_dir/zlyme"
+tar -C "$link_dir" -cf "$work/link.tar" Image.gz rk3566-miyoo-flip.dtb zlyme VERSION
+tar -tvf "$work/link.tar" zlyme | grep -q 'zlyme -> ' || fail "fixture did not store a symlink"
+set +e
+run test-stage "$work/link.tar" >"$work/out" 2>"$work/err"
+rc=$?
+set -e
+[ "$rc" != 0 ] || fail "symlink test-stage was accepted (rc $rc)"
+grep -q 'symlink' "$work/out" "$work/err" || fail "symlink test-stage reason $(cat "$work/out" "$work/err")"
+if [ -e "$storage/.update/pending/zlyme" ] || [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "symlink test-stage published pending/zlyme"
+fi
+cp "$work/link.tar" "$storage/.update/zlyme-my355-link.tar"
+printf 'live\n' >"$boot/zlyme"
+printf 'live\n' >"$work/live"
+set +e
+timeout 5 sh -c '
+	ZLYME_UPDATE_TEST=1 \
+	ZLYME_DEVICE_CONF="$1" \
+	ZLYME_STORAGE="$2" \
+	ZLYME_BOOT="$3" \
+		"$4" boot-apply
+' sh "$conf" "$storage" "$boot" "$UPDATE" >"$work/out" 2>"$work/err"
+rc=$?
+set -e
+[ "$rc" = 0 ] || fail "symlink boot-apply rc $rc"
+if [ -e "$storage/.update/pending/zlyme" ] || [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "symlink boot-apply left pending/zlyme"
+fi
+test -f "$storage/.update/failed/zlyme-my355-link.tar" || fail "symlink boot-apply was not quarantined"
+if [ -e "$storage/.update/zlyme-my355-link.tar" ]; then
+	fail "symlink boot-apply left the tar queued"
+fi
+grep -q 'symlink' "$storage/.update/FAILED" "$storage/.update/apply.log" || fail "symlink boot-apply reason"
+cmp "$boot/zlyme" "$work/live" || fail "symlink boot-apply changed the live root"
+rm -rf "$storage/.update"
+mkdir -p "$storage/.update"
+cp "$work/link.tar" "$storage/.update/zlyme-my355-link.tar"
+set +e
+timeout 5 sh -c '
+	ZLYME_UPDATE_TEST=1 \
+	ZLYME_DEVICE_CONF="$1" \
+	ZLYME_STORAGE="$2" \
+	ZLYME_BOOT="$3" \
+		"$4" apply
+' sh "$conf" "$storage" "$boot" "$UPDATE" >"$work/out" 2>"$work/err"
+rc=$?
+set -e
+[ "$rc" != 0 ] || fail "symlink apply was accepted"
+[ "$rc" != 124 ] || fail "symlink apply rebooted"
+if [ -e "$storage/.update/pending/zlyme" ] || [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "symlink apply left pending/zlyme"
+fi
+test -f "$storage/.update/failed/zlyme-my355-link.tar" || fail "symlink apply was not quarantined"
+grep -q 'symlink' "$storage/.update/FAILED" "$storage/.update/apply.log" || fail "symlink apply reason"
+cmp "$boot/zlyme" "$work/live" || fail "symlink apply changed the live root"
+
+# Replacing pending must not publish a link to the root that replacement removes.
+rm -rf "$storage/.update"
+run test-stage "$good" >"$work/out" 2>"$work/err"
+cmp "$storage/.update/pending/zlyme" "$work/full/zlyme" || fail "pre-link pending mismatch"
+if [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "pre-link pending was already a symlink"
+fi
+cp "$storage/.update/pending/zlyme" "$work/pre-link-root"
+self_dir=$work/self-stage
+rm -rf "$self_dir"
+mkdir -p "$self_dir"
+printf 'kernel' >"$self_dir/Image.gz"
+printf 'dtb' >"$self_dir/rk3566-miyoo-flip.dtb"
+printf 'ver\n20261008\n' >"$self_dir/VERSION"
+ln -s "$storage/.update/pending/zlyme" "$self_dir/zlyme"
+tar -C "$self_dir" -cf "$work/self.tar" Image.gz rk3566-miyoo-flip.dtb zlyme VERSION
+set +e
+run test-stage "$work/self.tar" >"$work/out" 2>"$work/err"
+rc=$?
+set -e
+[ "$rc" != 0 ] || fail "self-symlink test-stage was accepted (rc $rc)"
+grep -q 'symlink' "$work/out" "$work/err" || fail "self-symlink reason $(cat "$work/out" "$work/err")"
+if [ -h "$storage/.update/pending/zlyme" ]; then
+	fail "self-symlink replaced pending with a symlink"
+fi
+cmp "$storage/.update/pending/zlyme" "$work/pre-link-root" || fail "self-symlink changed the existing root"
 
 # A listing that exits 0 can still fail extraction. That stays a quarantine.
 rm -rf "$storage/.update"

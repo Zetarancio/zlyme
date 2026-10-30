@@ -422,6 +422,10 @@ reject_root() {
 # walk inode tables. A file can pass and still fail to mount.
 check_squashfs_root() {
 	file=$1
+	# -f follows a symlink. The staged name itself has to be a regular file.
+	if [ -h "$file" ]; then
+		reject_root "$(dirname "$file")" "root image: symlink"
+	fi
 	if [ ! -f "$file" ]; then
 		reject_root "$(dirname "$file")" "root image: not a regular file"
 	fi
