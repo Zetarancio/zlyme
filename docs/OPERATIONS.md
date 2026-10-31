@@ -102,7 +102,7 @@ Per-library user content stays on that library: `Roms`, `Saves`, and `Bios`. Use
 
 `/storage` is SD card 1. A card in the second SD slot (`sdmmc1`, `mmc@fe2c0000`) is mounted at `/mnt/sd2` and shown as SD card 2, including when the card is blank. USB disks are mounted at `/mnt/media/<name>` and shown as `USB: <name>`. `<name>` is the volume label with spaces and ordinary punctuation kept. `/` and control characters are replaced with `-`, so the mount cannot leave `/mnt/media`. An empty result, `.`, or `..` uses the kernel device name. A second disk that would reuse the same path is mounted at `/mnt/media/<name>-<device>` and is not stacked on the first. `/run/zlyme/libraries` lists that decoded path. Slot identity does not depend on a `Roms` directory already being present.
 
-`/storage` is exFAT. Shutdown syncs it and unmounts it with a normal `umount` before `reboot -f` or `poweroff -f`. Filesystem repair is an offline maintenance operation.
+`/storage` is exFAT. Frontend shutdown syncs it and unmounts it with a normal `umount` before `reboot -f` or `poweroff -f`. If that unmount fails, the forced reboot or poweroff still runs. A shell `reboot` or `poweroff` without `-f` goes through `rcK` first. `S90minui stop` removes `/tmp/nextui_exec` so the session does not start NextUI again. Filesystem repair is an offline maintenance operation.
 
 Important classes include:
 - Zlyme flags;

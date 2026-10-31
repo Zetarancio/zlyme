@@ -2,24 +2,52 @@
 #
 # Stop NextUI on shutdown (busybox init stops higher S## first).
 # Start is S28minui so the panel is up before WiFi/BT waits.
+#
+# rcK calls stop while nextui-session is still in its loop. Killing
+# nextui.elf alone makes that loop start it again. Drop the relaunch
+# permit first. restart and reload do not: the same session starts the
+# frontend again, and S28 then sees that session.
+
+EXEC=${ZLYME_NEXTUI_EXEC:-/tmp/nextui_exec}
+POWER=${ZLYME_POWEROFF_FLAG:-/tmp/poweroff}
+REBOOT=${ZLYME_REBOOT_FLAG:-/tmp/reboot}
+S28=${ZLYME_S28:-/etc/init.d/S28minui}
 
 start() {
 	return 0
 }
 
-stop() {
-	# Session already exec'd zlyme-halt. Killing it mid-unmount leaves
-	# squashfs busy and the board never powers off.
-	if [ -f /tmp/poweroff ] || [ -f /tmp/reboot ]; then
+# Session already exec'd zlyme-halt. Killing it mid-unmount leaves
+# squashfs busy and the board never powers off.
+halt_in_progress() {
+	[ -f "$POWER" ] || [ -f "$REBOOT" ]
+}
+
+stop_frontend() {
+	if halt_in_progress; then
 		return 0
 	fi
-	killall -9 nextui.elf settings.elf minui.elf 2>/dev/null
+	killall -9 nextui.elf settings.elf minui.elf 2>/dev/null || true
 	return 0
 }
 
 case "$1" in
-	start) start ;;
-	stop) stop ;;
-	restart|reload) stop; /etc/init.d/S28minui start ;;
-	*) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+	start)
+		start
+		;;
+	stop)
+		if halt_in_progress; then
+			exit 0
+		fi
+		rm -f "$EXEC"
+		stop_frontend
+		;;
+	restart|reload)
+		stop_frontend
+		"$S28" start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart|reload}" >&2
+		exit 1
+		;;
 esac
