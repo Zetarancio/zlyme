@@ -19,13 +19,17 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-11-02 — mounted exFAT check is not offline evidence
+
+The maintainer ran `fsck.exfat -n` on `/dev/sdb3` while the host still had the `ZLYME` volume mounted. The tool was reported clean. No exit code or transcript was kept. That is not an offline consistency check, and `-n` does not repair or clear `VOLUME_DIRTY`. The unmounted check of that partition is still outstanding. The dirty-bit origin, the untested direct `reboot` without `-f`, the failed-unmount continuation in `zlyme-halt`, and PAK waiter status 125 stay open.
+
 ## 2026-11-02 — 16C3 frontend shutdown accepted; exFAT dirty bit open
 
 Local OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. The maintainer saw NextUI with its artwork and working controls, launched one Game Boy game, and returned with MENU+START. A NextUI reboot and a NextUI power-off both worked, and the device started again. A direct BusyBox `reboot` without `-f` was not run.
 
 SSH on boot `90ee6f74-8261-408d-8418-49d817c0c1c8`, up about 97 seconds, found `/boot` read-only on `/dev/mmcblk0p2` (`ZLYMEBOOT`) and `/storage` read-write on `/dev/mmcblk0p3` (`ZLYME`). `/etc/init.d/S90minui` matched that source. `queued=no`. No pending root and no `FAILED` file. At kernel time 2.412 s the log said `exFAT-fs (mmcblk0p3): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.` Every non-empty retained early kernel log has that line. `system-1` logs are zero bytes. No saved log has `umount /storage failed` or an exFAT I/O error. `nextui-session` and `nextui.elf` had `/storage` as their working directory. No process had an open file there. `/mnt/sd2` is a separate ext4 mount.
 
-Linux 7.2.10 `fs/exfat/super.c` warns when the on-disk `VOLUME_DIRTY` bit is set. That bit is copied into `vol_flags_persistent` at mount. `exfat_clear_volume_dirty`, used from `exfat_put_super`, ORs those persistent flags back, so a volume that was already dirty stays dirty after unmount. `sync` does not clear it. The warning does not prove damaged files and does not identify the shutdown that first set the bit. No `fsck` was run. This image is not the published `zlyme44.4` release.
+Linux 7.2.10 `fs/exfat/super.c` warns when the on-disk `VOLUME_DIRTY` bit is set. That bit is copied into `vol_flags_persistent` at mount. `exfat_clear_volume_dirty`, used from `exfat_put_super`, ORs those persistent flags back, so a volume that was already dirty stays dirty after unmount. `sync` does not clear it. The warning does not prove damaged files and does not identify the shutdown that first set the bit. This image is not the published `zlyme44.4` release.
 
 ## 2026-10-31 — direct shutdown no longer relaunches NextUI
 
