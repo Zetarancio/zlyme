@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The missing `docs/DEVICE_PORTING.md` read stays open as a 17E check. 17D is in progress. 17D1 is accepted, 2026-11-02, for one explicit Cursor load of the corrected documentation skill and the read-only README application that followed. Cursor automatic selection remains unverified. The 17D2 preflight recommends keeping `.cursor/rules/knulli-packages.mdc` always applied. The rule was not changed. 17E and 17F have not started. The Cursor OTA preflight in 17E item 8 remains not run. Phase 17 is not closed. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The missing `docs/DEVICE_PORTING.md` read stays open as a 17E check. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is in progress. The Cursor OTA preflight in 17E item 8 remains not run. 17F has not started. Phase 17 is not closed. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -216,6 +216,20 @@ The rule's instructions, and where the same point already lives:
 `package/` holds 91 `.mk` files, 95 `Config.in` files, 18 `.hash` files, and those 47 patches. `package/emulators` has 50 recipes. `package/system` also has 100 shell scripts and 130 extensionless files. Preloader packaging includes `preloader-stock.img`, `preloader-stock.PROVENANCE`, and `preloader_image.py`. The PortMaster compatibility package includes `PROVENANCE`, `allowlist.sha256`, and `sonames.tsv`. `external.mk` discovers `package/*/*/*.mk` and carries global package hooks outside those directories. Board overlays are under `board/my355/fsoverlay` (131 tracked files). Package selection also lives in the defconfigs named by `docs/DEVELOPMENT.md`.
 
 A glob on existing `.mk` files misses a new package directory, a patch or hash edited alone, a launcher or provenance file, `external.mk`, a board overlay, and a defconfig change. It also misses an upstream comparison made before any recipe file is open. The plan already names the risk: a scoped rule disappears on an unrelated edit, and a package task still has to receive the comparison rule. Dropping this rule from those tasks can skip the patch-directory requirement, which has no current home in the owning documents, and can skip the reminder to open those documents before the comparison. The rule is short. Keeping it always applied is the smaller and safer choice.
+
+Phase 17D closure, 2026-11-02. The records above stay. This later decision closes 17D only for the scope below. It does not close Phase 17.
+
+Accepted:
+
+- One corrected documentation skill exists at `.agents/skills/zlyme-documentation/SKILL.md`. It defers to `AGENTS.md`. No universal safety contract depends on loading it.
+- A fresh Cursor Agent session explicitly loaded that skill and then applied it to a read-only README question. One explicit load is not evidence that every Cursor session loads it. Cursor automatic selection was not tested.
+- OpenCode loaded the corrected skill and applied it. An earlier OpenCode session selected the previous skill revision automatically. The corrected text was not retested for automatic selection.
+- `.cursor/rules/knulli-packages.mdc` stays always applied. A file glob cannot safely represent every package-maintenance task. The rule was not changed. No second package skill was created.
+- No canonical technical document moved.
+
+Still open for 17E: package-policy equivalence on both tools. The patch-placement requirement is in the Cursor rule and in `package/emulators/gzdoom/gzdoom.mk`. It is not in `AGENTS.md`, `docs/MAINTENANCE.md`, `docs/UPSTREAMS.md`, or `docs/DEVELOPMENT.md`.
+
+17E is in progress. 17F has not started. Phase 18 remains proposed.
 
 Depends on: 17B. It does not start from an outline alone.
 
