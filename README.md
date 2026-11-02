@@ -62,6 +62,14 @@ Download `zlyme.img` from the latest [Zlyme release](https://github.com/Zetaranc
 
 Put the OS card in the **right** slot, next to power, and turn the Flip on. The first boot grows the storage partition to fill the card and reboots once by itself.
 
+## Update
+
+**Settings → Update** checks the newest release on the channel you chose (Releases or Prereleases) and shows its notes, which scroll. It downloads the update and queues it only after the SHA-256 matches. If that version is already installed, or the card already has that exact firmware, it says so and still lets you download it again. If your system exactly matches the base of a smaller delta update, it may grab that instead, rebuild a complete system image from it, and check that image too. Nothing on the running system changes until the reboot that installs it. Games, BIOS, saves and settings stay.
+
+Doing it by hand: copy the full `zlyme-my355-<date>-<sha>.tar` from a release (not a delta) into `/storage/.update` and reboot.
+
+Builds you make yourself produce full updates only. What an update does to paks you've edited is under [the Right to Experiment](#user-systems-and-tools-and-the-right-to-experiment).
+
 ## Load your games
 
 The OS card is a game library, and so is a second SD card in the left slot or a USB disk on OTG. Each library has `Roms/`, `Bios/` and `Saves/`.
@@ -74,14 +82,6 @@ The OS card is a game library, and so is a second SD card in the left slot or a 
 Pulling the card every time gets old. Turn on SSH (it does SFTP) or Samba in Settings and copy over Wi-Fi instead. Your settings live in `/storage/.config` on the OS card.
 
 Which BIOS copy wins, where new saves go, multi-disc playlists and box art are in the [user guide](docs/USER_GUIDE.md#libraries-and-storage).
-
-## Update
-
-**Settings → Update** checks the newest release on the channel you chose (Releases or Prereleases) and shows its notes, which scroll. It downloads the update and queues it only after the SHA-256 matches. If that version is already installed, or the card already has that exact firmware, it says so and still lets you download it again. If your system exactly matches the base of a smaller delta update, it may grab that instead, rebuild a complete system image from it, and check that image too. Nothing on the running system changes until the reboot that installs it. Games, BIOS, saves and settings stay.
-
-Doing it by hand: copy the full `zlyme-my355-<date>-<sha>.tar` from a release (not a delta) into `/storage/.update` and reboot.
-
-Builds you make yourself produce full updates only. What an update does to paks you've edited is under [the Right to Experiment](#user-systems-and-tools-and-the-right-to-experiment).
 
 ## Controls
 
@@ -172,7 +172,7 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 - A huge debt to the other bigs in the biz [Knulli](https://github.com/knulli-cfw/knulli-linux), [Rocknix](https://github.com/ROCKNIX/distribution) and [Batocera](https://github.com/batocera-linux/).
 - [Anthony Caccese](https://github.com/anthonycaccese) and the contributors to [Art Book Next](https://github.com/anthonycaccese/art-book-next-es-de) for the artwork and visual inspiration used in Zlyme's system and Tools backgrounds.
-- Discord user `lazydog` for the Wine compatibility suggestion behind the WoW64 prefix.
+- [@lazydogP](https://github.com/lazydogP) and [@bair82](https://github.com/bair82).
 
 ## License
 

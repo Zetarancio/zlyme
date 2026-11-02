@@ -223,8 +223,8 @@ if grep -R --include='test_phase11b.sh' -l test_phase11b "$ROOT/package" "$ROOT/
 fi
 
 thanks=$(awk '/^## Thanks$/{f=1; next} /^## License$/{f=0} f' "$README")
-printf '%s\n' "$thanks" | grep -q 'lazydog' || fail "lazydog credit"
-printf '%s\n' "$thanks" | grep -q 'Wine' || fail "lazydog credit is not the Wine note"
+printf '%s\n' "$thanks" | grep -q 'https://github.com/lazydogP' || fail "lazydog credit"
+printf '%s\n' "$thanks" | grep -q 'https://github.com/bair82' || fail "bair82 credit"
 
 # OpenBOR SDL helpers format into a bounded buffer. The non-SDL branch
 # still has the upstream strcpy macros.
