@@ -1,6 +1,8 @@
 # Phase 17B preservation decisions
 
-Status: first unit only, 2026-11-02. Not an extraction. Not 17B closure.
+Status, first unit, 2026-11-02: first unit only. Not an extraction. Not 17B closure. That status belongs to the retain decision below. It is not the final result.
+
+Status, 2026-11-02: 17B is closed. The later [final disposition](#final-disposition-2026-11-02) supersedes the section 9 retain sentence only.
 
 Baseline: `7d38db090c203fdcc002349ee6ea35a7ee1fb492` on branch docs/phase-17a-inventory. The headings below were read in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md` at that commit. No sentence in those files was moved or rewritten.
 
@@ -21,6 +23,8 @@ It is the NextUI session and the ownership of a PAK launch, including return to 
 `## 8. Graphics` and `## 9. Audio` are not extracted.
 
 They meet the session in section 11, and they meet HDMI, application launch, and return to the frontend. A later extraction has to list incoming references, those cross-section dependencies, and a preservation record before any move. This unit does not authorize that assessment's conclusion.
+
+That retain decision still stands for graphics. The accepted audio move superseded it for section 9 only. The [final disposition](#final-disposition-2026-11-02) records the distinction.
 
 ## Operations: no move
 
@@ -43,3 +47,16 @@ The original body and the body after the new title are both 5294 bytes. SHA-256 
 Sections 8 and 9 were not both moved. Graphics stays in `docs/ARCHITECTURE.md`. A later graphics extraction is still not authorized.
 
 `scripts/tests/test_doc_links.py` and `scripts/tests/test_doc_contracts.py` were run after the move. The named reviewer agent was not invoked for this unit.
+
+## Final disposition, 2026-11-02
+
+17B is closed on the 17A inventory, the retain decisions in this file, the lossless audio move, and the link and contract coverage of that moved file. This disposition is later than the section 8 and 9 retain decision. It does not erase that decision.
+
+- `## 8. Graphics` remains in `docs/ARCHITECTURE.md`.
+- `## 9. Audio` was extracted unchanged to `docs/architecture/audio.md`.
+- The original `## 9. Audio` heading remains in `docs/ARCHITECTURE.md`.
+- Sections 5–7 and 11 remain in `docs/ARCHITECTURE.md`.
+- `docs/OPERATIONS.md` was not moved.
+- No other architecture extraction is authorized.
+
+The byte comparison stays in the audio relocation section above. This disposition does not restate the audio contract.

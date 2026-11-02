@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is in progress. 17C through 17F have not started. Phase 18 remains proposed.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is in progress, starting with routing. 17D through 17F have not started. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -66,11 +66,15 @@ Exclusions: no file moves. No firmware change. This planning note is not 17A.
 
 The read-only inventory for that review is [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md). It is not approval and not 17A closure. The first 17B retain decision is [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). Extraction has not started.
 
+That last sentence is the planning note. 17B later closed on the retain decisions and one unchanged audio move, recorded in the preservation file. No other extraction is authorized.
+
 Done when: the maintainer has reviewed and approved the ownership and dependency inventory.
 
 Depends on: nothing else in this phase.
 
 ## 17B. Canonical document restructuring
+
+Closed, 2026-11-02. The result is the retain decisions and one lossless audio move in [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). Link and contract coverage include that file. No other extraction is authorized. The plan text below stays as written.
 
 Purpose: move a section only when the new file is a clearer owner, and only under the preservation contract.
 
@@ -93,6 +97,8 @@ Done when: every authorized move is complete, references resolve, contracts are 
 Depends on: 17A.
 
 ## 17C. Universal agent instructions
+
+In progress, 2026-11-02, starting with routing. `AGENTS.md` is not shortened in that step. The plan text below stays as written.
 
 Purpose: implement a smaller `AGENTS.md` only after 17B's owners are stable. Cursor and OpenCode both follow that file. Critical rules stay in it, not in an optional skill.
 
