@@ -458,7 +458,7 @@ Records: [docs/LOGBOOK.md](LOGBOOK.md), [docs/MAINTENANCE.md](MAINTENANCE.md), [
 
 ## Phase 17. Documentation and local agents
 
-Status: Proposed. Not started. The draft is [docs/research/phase-17-plan.md](research/phase-17-plan.md). It covers document ownership, a smaller shared `AGENTS.md`, careful splits of long contracts, portable skills, and a functional check that agents still follow the safety rules. It does not change firmware. No subphase has started.
+Status: Proposed. Not started. The draft is [docs/research/phase-17-plan.md](research/phase-17-plan.md). The order is 17A ownership inventory, 17B document moves, 17C a smaller `AGENTS.md`, 17D skills and rule routing, 17E a functional safety check, and 17F reconciliation. `AGENTS.md` is not shortened before the document owners are stable. It does not change firmware. No subphase has started.
 
 ## Phase 18. Zlyme 45
 
