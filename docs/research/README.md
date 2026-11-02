@@ -40,13 +40,14 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-12d-driver-source-audit.md](phase-12d-driver-source-audit.md) | 12D, 2026-10-13 | RTL, libmali, and mali-kbase source comparison after the 7.2.10 host build. Pins were not moved. |
 | [phase-15-documentation-audit.md](phase-15-documentation-audit.md) | 15, 2026-10-26 | Documentation inventory and the contradictions corrected in Phase 15A. Includes the former maintenance status snapshots. |
 | [phase-16-logging-inventory.md](phase-16-logging-inventory.md) | 16A, 2026-10-27 | Shipped-launch and system-log inventory. 16B and 16D are closed. The device record is the logbook. |
-| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B closed after the accepted audio move. 17C in progress, starting with routing. 17D through 17F have not started. |
+| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B closed. 17C in progress. The clause ledger is underway. 17C is not complete. |
 | [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Accepted ownership inventory, after the recorded corrections. Not a document move. |
 | [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md) | 17B, 2026-11-02 | Closed. Sections 5–7, 8, and 11 stay. Section 9 moved unchanged. No other extraction is authorized. |
 | [phase-17c-agent-instruction-map.md](phase-17c-agent-instruction-map.md) | 17C1, 2026-11-02 | Routing preflight for a later `AGENTS.md` reduction. Not that reduction. |
+| [phase-17c-agent-clause-ledger.md](phase-17c-agent-clause-ledger.md) | 17C2A, 2026-11-02 | Clause-level preservation ledger. Not a reduction of `AGENTS.md`. |
 | [phase-18-plan.md](phase-18-plan.md) | 18, 2026-11-02 | Proposed. The Zlyme 45 feature plan, including Nintendo DS. Not started. |
 | [phase-15c-retroarch-input-audio.md](phase-15c-retroarch-input-audio.md) | 15C1, 2026-10-26 | Read-only investigation of GitHub issues #2 and #3. Not an implementation and not a new hardware measurement of gameplay. |
-| [phase-14-audio.md](phase-14-audio.md) | 14, 2026-10-20 | Phase 14 audio experiments. Its PulseAudio and BlueALSA paragraphs are the superseded candidate. The running graph is in [docs/ARCHITECTURE.md](../ARCHITECTURE.md). |
+| [phase-14-audio.md](phase-14-audio.md) | 14, 2026-10-20 | Phase 14 audio experiments. Its PulseAudio and BlueALSA paragraphs are the superseded candidate. The current detailed contract is [docs/architecture/audio.md](../architecture/audio.md). [docs/ARCHITECTURE.md](../ARCHITECTURE.md) section 9 is the entry heading. |
 | [phase-14-pipewire-assessment.md](phase-14-pipewire-assessment.md) | 14, 2026-10-19 | PipeWire adoption comparison. Sentences that still call PulseAudio the mixer, or say the minimal image omits PipeWire, are historical. |
 | [phase-14-stability.md](phase-14-stability.md) | 14, 2026-10-20 | Notes from an unaccepted candidate's logs. Not a kernel-panic record. |
 | [phase-14-portmaster-architecture-proposal.md](phase-14-portmaster-architecture-proposal.md) | 14 | PortMaster layout comparison. The accepted decision is ADR 0009. |

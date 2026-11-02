@@ -70,6 +70,8 @@ Proposal, not an edit: keep the universal list in `AGENTS.md`. Route task detail
 
 `scripts/tests/test_doc_links.py` lines 8–35 name the files whose links and anchors are checked. The list includes the roadmap, the logbook, the research index, and the Phase 10 audit. It does not include `docs/research/phase-17-plan.md`, `docs/research/phase-18-plan.md`, or this inventory. Backtick paths are skipped for the roadmap, the logbook, and that audit (lines 55–59). Archive Markdown links are checked. A passing run does not prove a contract's meaning survived.
 
+Coverage note, 2026-11-02: the paragraph above is the original inventory's observation. 17B1 added the Phase 17 plan, the Phase 18 plan, and this inventory to that test. Later Phase 17 work also added the 17B decision record and `docs/architecture/audio.md`.
+
 `scripts/tests/test_doc_contracts.py` hardcodes the canonical list at lines 11–22. It fails if `docs/DEVELOPMENT.md` loses the baseline table row, if the upstreams NextUI row SHA drifts from `nextui.mk`, if the `device.conf` code block moves out of architecture or device porting, if architecture or the user guide stops stating the Rumble Strength default, or if `README.md` loses `## Install`. Those assertions must follow the fact if ownership moves. They must not be deleted to allow a move.
 
 `scripts/tests/test_systems_table.py` reads `docs/USER_GUIDE.md`. `scripts/tests/test_phase13a_docs.sh` locks the README GIF width and rejects a Known limitations heading in Unreleased. `scripts/tests/test_changelog_release_notes.sh` locks published changelog headings.

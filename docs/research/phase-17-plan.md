@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is in progress, starting with routing. 17D through 17F have not started. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is in progress. Routing is recorded, and the clause ledger is underway. 17C is not complete. 17D through 17F have not started. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -99,6 +99,8 @@ Depends on: 17A.
 ## 17C. Universal agent instructions
 
 In progress, 2026-11-02, starting with routing. `AGENTS.md` is not shortened in that step. The plan text below stays as written. That text is the original proposal. Its keep-list is not a verified inventory of sentences already present in `AGENTS.md`. A later clause map has to find each rule in the file, or record that the file does not contain that sentence.
+
+17C2A, 2026-11-02, adds the authorization rule and the clause ledger. It does not shorten `AGENTS.md`, and it does not complete 17C.
 
 Purpose: implement a smaller `AGENTS.md` only after 17B's owners are stable. Cursor and OpenCode both follow that file. Critical rules stay in it, not in an optional skill.
 
