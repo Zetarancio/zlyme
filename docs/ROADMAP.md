@@ -470,6 +470,8 @@ On the boot inspected 2026-11-02, kernel time 2.412 s, Linux printed `exFAT-fs (
 | In-place root copy | ADR 0006 | Accepted limitation | Partial root if power is lost during the copy | Staged SquashFS check before reboot | No hardware recovery test | Remains ADR 0006 | Not a 16C code fix |
 | `VOLUME_DIRTY` origin | Mount warning; unmounted `fsck.exfat -n` clean | Not a proven corruption | Repeated mount warning | Consistency check found no error | Which shutdown set the bit | Consistency accepted; origin unresolved | Not a release blocker |
 
+A source review on 2026-11-02 traced the shared `zlyme-halt` path and the status-125 flag skip. It did not change either path. The rows that still say open stay open until the maintainer keeps them or authorizes a change. The unmounted exFAT check and ADR 0006 are already recorded.
+
 `docs/AUDITING.md` is the procedure for a dedicated search of a named subsystem. `.cursor/agents/zlyme-code-reviewer.md` is a read-only reviewer of one named implementation diff. The reviewer is not a whole-repository auditor. A review that finds nothing is not proof that Zlyme has no defects.
 
 The campaign starts from high-risk and recently modified interfaces, and from the open debt already named in `docs/MAINTENANCE.md`. Priority follows the code that changed, the debt that is still open, and the consequence of a failure. Candidate areas are launch and process cleanup, log ownership and rotation, RetroArch and standalone launch, input and audio lifecycle, storage and update safety, and boot and shutdown ownership. That list is not a mandatory pass over the tree.
