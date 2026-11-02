@@ -2,7 +2,7 @@
 
 Status: research for review, 2026-11-02. Not an architecture specification. Not 17A closure. Not authorization for 17B.
 
-Audited tree: `docs/phase-17a-inventory` at `93f329b92e02e31ab54907ac730af070602124e5`, which is the parent of this report. `main` was `b9c46f428493c214e31aece13f82453e51979803` and was not moved. Phase 16 is closed. Phase 18 is the postponed feature plan.
+Audited tree: branch `phase-17a-inventory` at `93f329b92e02e31ab54907ac730af070602124e5`, which is the parent of this report. `main` was `b9c46f428493c214e31aece13f82453e51979803` and was not moved. Phase 16 is closed. Phase 18 is the postponed feature plan.
 
 Facts below were read from headings, line ranges, and tests. Proposals are marked as proposals.
 
@@ -14,7 +14,7 @@ Facts below were read from headings, line ranges, and tests. Proposals are marke
 | --- | --- | --- |
 | How to change the code | [docs/ENGINEERING_PRINCIPLES.md](../ENGINEERING_PRINCIPLES.md), sections 1–26 | `AGENTS.md`, which says how an agent applies those principles |
 | What the system is | [docs/ARCHITECTURE.md](../ARCHITECTURE.md), sections 1–16 | `docs/ROADMAP.md`, which `AGENTS.md` lines 76–78 call non-normative |
-| Why a durable choice was made | `docs/decisions/0001` through `0012` | Research files, which `docs/research/README.md` says are not normative |
+| Why a durable choice was made | `docs/decisions/` ADR 0001 through 0012 | Research files, which `docs/research/README.md` says are not normative |
 | Board boundary | [docs/DEVICE_PORTING.md](../DEVICE_PORTING.md), `## Runtime command contract` | A second-device design that does not exist |
 | Build and package | [docs/DEVELOPMENT.md](../DEVELOPMENT.md) | `docs/MAINTENANCE.md`, which owns pins, releases, and debt |
 | Live device and recovery | [docs/OPERATIONS.md](../OPERATIONS.md) | The user guide, which is task-oriented |
@@ -62,7 +62,7 @@ Observed. `AGENTS.md` headings from `## Project` through `## Rule precedence` ar
 
 Task routing already exists at `AGENTS.md` lines 36–78. A code change reads the principles. Boot, graphics, audio, storage, packaging, update, or runtime also reads architecture and device porting. Build reads development and upstreams. Maintenance, kernel patches, NextUI, and releases read maintenance. Prose reads writing. Live device reads operations. A defect investigation reads auditing. Sequencing reads the roadmap, which is not architecture.
 
-`.cursor/rules/zlyme-core.mdc` is always applied and points at that list. `.cursor/rules/knulli-packages.mdc` is also `alwaysApply: true` and restates the package-update comparison. That second rule is the candidate to scope later, under 17D, not under 17B. `.cursor/agents/zlyme-code-reviewer.md` is `readonly: true` and tells the reviewer not to assign a disposition. `.opencode/agents/zlyme-code-reviewer.md` denies every action and then allows read, glob, and grep. Those permission blocks are not interchangeable. This tree has no `.agents/skills/` directory. Whether both tools would load one was not checked.
+`.cursor/rules/zlyme-core.mdc` is always applied and points at that list. `.cursor/rules/knulli-packages.mdc` is also `alwaysApply: true` and restates the package-update comparison. That second rule is the candidate to scope later, under 17D, not under 17B. `.cursor/agents/zlyme-code-reviewer.md` is `readonly: true` and tells the reviewer not to assign a disposition. `.opencode/agents/zlyme-code-reviewer.md` denies every action first. It then allows `read`, `glob`, and `grep`, and an allowlist of read-only Git commands: `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git rev-list`, `git grep`, `git ls-files`, `git blame`, and `git symbolic-ref`. It denies edit, network fetch and search, and shell commands that write or leave the machine, including `git add`, `git commit`, `git push`, `git fetch`, and `ssh`. That permission block is OpenCode's. It is not the Cursor reviewer's `readonly: true` flag. The two adapters are not interchangeable. This tree has no `.agents/skills/` directory. Whether both tools would load one was not checked.
 
 Proposal, not an edit: keep the universal list in `AGENTS.md`. Route task detail to the owner table in section B. A skill may point at upstreams for a package update. It must not be the only copy of a safety rule.
 
@@ -78,13 +78,13 @@ Not mechanically checked: agreement between architecture and operations on shutd
 
 ## F. Candidate extractions
 
-Recommendation is a proposal. None of these are authorized.
+Retention of architecture sections 5–7 and 11 is the first 17B decision. Extraction is not authorized.
 
 | Heading | Self-contained? | Machine dependency | Recommendation |
 | --- | --- | --- | --- |
-| Architecture `## 5` through `## 7` | No. Boot, storage, shutdown, and OTA share failure behavior | `zlyme-halt`, init, `zlyme-update`; S90 test is code | Retain |
-| Architecture `## 8` and `## 9` | Partly. They cite the session in `## 11` | Rumble sentence in section 10 is tested, not these two | Investigate further before any extraction. Do not extract in the first 17B unit |
-| Architecture `## 11` | No. It is the session that graphics and audio return to | NextUI pin is upstreams, not this section | Retain |
+| Architecture `## 5` through `## 7` | No. Boot, storage, shutdown, and OTA share failure behavior | `zlyme-halt`, init, `zlyme-update`; S90 test is code | Retain. Approved |
+| Architecture `## 11` | No. It is the session that graphics and audio return to | NextUI pin is upstreams, not this section | Retain. Approved |
+| Architecture `## 8` and `## 9` | Partly. They cite the session in `## 11` | Rumble sentence in section 10 is tested, not these two | Not authorized for extraction |
 | Operations recovery sections | Procedures sit next to the same invariants as architecture | None in the doc tests | Clarify long steps in place before moving them |
 | Development `## Pinned baseline` | The table is the checked fact | `test_doc_contracts.py` lines 90–94 | Retain until the assertion moves with it |
 | Maintenance `## Open validation debt` | Yes, as an index | None | Retain. It is already the index |
@@ -107,18 +107,17 @@ The Rumble Strength default is a tested sentence in two files. Deleting either f
 
 PipeWire `1.6.6` appears in maintenance, ADR 0007, the logbook, and a research note. The ADR and maintenance are current. The research note is historical where it still calls another mixer current. That is already labeled in the research index. Do not merge those into one paragraph.
 
-The compat exception says 41 installed files (`docs/UPSTREAMS.md` line 248). `allowlist.sha256` has 41 entries. The comparison table at line 277 says the archive has fifty ELF files and then names exclusions. Those two sentences were not reconciled in this pass.
+The compat counts are already distinguished in [phase-14-rocknix-compat-coverage.md](phase-14-rocknix-compat-coverage.md). The archive has 50 regular files and 49 SONAMEs. Seven files are supplied by Zlyme. Two are supplied by source-built compatibility libraries. The imported allowlist is 41 files. `package/system/portmaster-rocknix-compat/allowlist.sha256` has 41 lines. `docs/UPSTREAMS.md` line 248 names those 41 installed files. Line 277 names the fifty files in the archive. The canonical upstream text was not changed.
 
 ## I. What 17B may do first
 
-Proposal: the first 17B unit is a written decision, under the preservation contract, for architecture sections 5–7 and 11. The expected outcome is retain. A later unit may investigate section 8 or 9 only as a pure relocation, with the session contract left in section 11 and with no contract wording change. Roadmap shortening of phases 0–15 is a separate editorial unit and only where the logbook already holds the evidence.
+The first 17B unit records retention of architecture sections 5–7 and 11 in [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). That record does not authorize extracting sections 8 or 9. A later extraction needs its own reference and preservation assessment. Roadmap shortening of phases 0–15 remains a separate editorial question.
 
 ## J. Questions for the maintainer
 
 1. Should the `device.conf` block have one prose owner, with the other file only linking to it, given the test currently requires both?
-2. Is the compat archive's "fifty" count the archive membership, with 41 the installed allowlist, or is one of those sentences stale?
-3. May 17B shorten roadmap phases 0–15, or is that out of scope until each phase's logbook entry is checked?
-4. Should `knulli-packages.mdc` stop being `alwaysApply` in 17D, or stay global?
+2. May 17B shorten roadmap phases 0–15, or is that out of scope until each phase's logbook entry is checked?
+3. Should `knulli-packages.mdc` stop being `alwaysApply` in 17D, or stay global?
 
 ## K. Not authorized inside 17B
 

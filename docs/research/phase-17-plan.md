@@ -62,7 +62,7 @@ Risks: an inventory that copies documents, or that calls a rule redundant withou
 
 Exclusions: no file moves. No firmware change. This planning note is not 17A.
 
-The read-only inventory for that review is [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md). It is not approval and not 17A closure.
+The read-only inventory for that review is [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md). It is not approval and not 17A closure. The first 17B retain decision is [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). Extraction has not started.
 
 Done when: the maintainer has reviewed and approved the ownership and dependency inventory.
 

@@ -32,6 +32,10 @@ DOCS = (
     "docs/decisions/0012-diagnostic-logging.md",
     "docs/research/README.md",
     "docs/research/phase-10-documentation-audit.md",
+    "docs/research/phase-17-plan.md",
+    "docs/research/phase-17-documentation-inventory.md",
+    "docs/research/phase-17b-preservation-decisions.md",
+    "docs/research/phase-18-plan.md",
 )
 
 # Archived notes keep historical backtick paths. Their Markdown links
