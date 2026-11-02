@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-11-02 — Phase 16 closed
+
+The maintainer accepted the current `zlyme-halt` policy: one normal `/storage` unmount, then sync and a forced shutdown. A failed unmount can leave exFAT dirty. That failure was not shown on hardware. Status 125 stays fail-closed, and a pending reboot or poweroff can be skipped. That recovery is deferred. A Flip run of `reboot` without `-f` is waived. The `S90minui` fix stays host-tested. The prelaunch window stays unverified. ADR 0006 and the unmounted exFAT consistency check are unchanged. The dirty-bit origin stays unknown. Phase 16 closes on local OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. That image is not the published `zlyme44.4` release. This closure does not publish firmware.
+
 ## 2026-11-02 — Phase 16D logging validation closed
 
 The maintainer authorized this pass while Phase 16C stayed open. Installed firmware remained `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. Those hashes did not change. System logs started on. Enabling them again did not change the current latch. Frontend-owned reboots were boot `d5a8832b-055b-44ae-9379-6700387cf20c`, then `27a5fffc-74b2-4aa7-b2d7-97d37d46ba73` with logs on, then `f20f7b3d-3177-495e-b069-feb655024dc5` with logs off, then `542686a4-e14d-4526-b417-71ab46f19fc5` after the original on setting was restored.

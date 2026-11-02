@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is in progress. 16A and 16B are closed. 16B closed on 2026-10-30 on the local OTA `zlyme-my355-20261029-c8f952407098.tar`. 16C2 is physically accepted. Frontend-owned shutdown on the later local OTA `zlyme-my355-20261031-4d1f74efea54.tar` is physically accepted. A direct `reboot` without `-f` is not. 16C is not closed. 16D is closed. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16C3 OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`. It is not published. The Phase 16C2 image `zlyme-my355-20261030-90a22fa47825.tar` and the Phase 16B image `zlyme-my355-20261029-c8f952407098.tar` remain those phases' records. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is closed, 2026-11-02, on the local OTA `zlyme-my355-20261031-4d1f74efea54.tar`. 16A, 16B, 16C, and 16D are closed. A direct `reboot` without `-f` is host-tested and is not hardware-accepted. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16C3 OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`. It is not published. The Phase 16C2 image `zlyme-my355-20261030-90a22fa47825.tar` and the Phase 16B image `zlyme-my355-20261029-c8f952407098.tar` remain those phases' records. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,13 +429,13 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: In progress, 2026-11-02. 16A and 16B are closed. 16C2 is physically accepted. Frontend-owned shutdown on the 16C3 image is physically accepted. A direct `reboot` without `-f` is not. 16C is not closed. 16D is closed. Phase 17 has not started. The published release remains tag `zlyme-40439819817`. The local Phase 16 images are not that release.
+Status: Closed, 2026-11-02. The accepted local image is `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. It is not the published `zlyme44.4` release. Documentation after that source is not firmware. Closing the phase does not publish an image. Deferred limits stay in `docs/MAINTENANCE.md`. Phase 17 has not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
 Depends on the closed Phase 15 engineering and on `docs/AUDITING.md` and `.cursor/agents/zlyme-code-reviewer.md`. Those files keep their current split: the procedure is a dedicated search of a named area, and the reviewer reads one named diff and does not edit. BusyBox init stays. A systemd migration is out of scope.
 
-Blocker: 16C is not closed. Shutdown and storage lifetime are still open. The logging record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md).
+The logging record is [docs/research/phase-16-logging-inventory.md](research/phase-16-logging-inventory.md). Integration onto `main` is a separate operation and is not part of this closure.
 
 ### 16A. Logging inventory and contract
 
@@ -449,7 +449,7 @@ The hardware paths accepted here are Game Boy in RetroArch, PSP standalone, and 
 
 ### 16C. Bug-finding and independent review
 
-Status: In progress, 2026-10-30. 16C2 is physically accepted. The rest of this campaign, including shutdown and storage lifetime, is not closed.
+Status: Closed, 2026-11-02, as a bounded audit. 16C2 and the frontend-owned shutdown on the 16C3 image stay accepted. The maintainer kept the current `zlyme-halt` unmount policy, deferred status-125 recovery, waived a Flip run of `reboot` without `-f`, and left the prelaunch window unverified. None of those deferrals is a hardware pass. ADR 0006 and the unmounted exFAT consistency check stay as already recorded.
 
 On `39aea25`, `zlyme-update test-stage` accepted a full OTA whose `zlyme` member was arbitrary non-SquashFS bytes, returned 0, and published `pending/zlyme`. `zlyme-update` now reads the SquashFS 4 superblock before publishing that file, and it rejects a symlink even when the target is a valid image. A full extract, a reused pending root, and a delta whose manifest hash matches all go through the check. The check does not decompress the image. The initramfs still copies the one live root in place. That copy is not atomic, and recovery after a partial overwrite has not been established on hardware.
 
@@ -459,18 +459,7 @@ On `39aea25`, `zlyme-update test-stage` accepted a full OTA whose `zlyme` member
 
 On the boot inspected 2026-11-02, kernel time 2.412 s, Linux printed `exFAT-fs (mmcblk0p3): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.` The same line is in every non-empty retained early kernel log. `system-1`'s saved logs are empty, so they are not a clean mount. No saved log contains `umount /storage failed` or an exFAT I/O error. The warning is the on-disk `VOLUME_DIRTY` bit at mount. In Linux 7.2.10 that bit is kept in `vol_flags_persistent` when it is already set, and `exfat_clear_volume_dirty` ORs those persistent flags back, so a later unmount does not clear it. `sync` does not clear it. The warning does not prove file corruption and does not prove which shutdown first left the bit set. It is open. A host `fsck.exfat -n` of `/dev/sdb3` was first run while that `ZLYME` volume was still mounted. That run is not an offline check. After `umount /dev/sdb3`, `findmnt --source /dev/sdb3` returned no mount entry. A second `fsck.exfat -n /dev/sdb3` then printed `exfatprogs version : 1.4.3 (2026-08-14)` and `/dev/sdb3: clean. directories 264, files 2410`. The exit code was not captured. `-n` did not repair the volume and did not clear `VOLUME_DIRTY`. This accepts the metadata consistency check for that unmounted partition. It is not a guarantee against every form of data loss. The shutdown that first set the dirty bit is still unknown, and it is not assigned to the latest Zlyme shutdown. Firmware is still `4d1f74e`.
 
-16C is not closed. The metadata check above is accepted. These items stay open and need an explicit maintainer disposition before the phase can close:
-
-| Item | Evidence | Defect | Severity | Safeguard | Missing | Proposed disposition | Class |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Direct `reboot` without `-f` | Host mock of `S90minui` | Relaunch of a running frontend is fixed in source for that case | One extra frontend start during shell shutdown | `stop` removes `/tmp/nextui_exec` before the signal | No Flip run of `reboot` without `-f` | Open as a hardware gap | Not a release blocker |
-| Session already past `while` | Source order only | Not confirmed | One frontend start after `stop` returns | Permit removed for the in-loop case | No reproduction of that window | Open | Future maintenance if reproduced |
-| Failed `/storage` unmount | `zlyme-halt` source | Not confirmed on a device | Dirty exFAT if unmount fails | `sync`, then forced power-off so a 0% battery shutdown does not wait | No captured `umount /storage failed` | Open until the maintainer keeps or changes the policy | Not a release blocker |
-| PAK waiter 125 | Session source | Conditional | A requested shutdown is skipped | Does not power off while ownership is unknown | No device case of 125 plus a shutdown flag | Open | Future maintenance |
-| In-place root copy | ADR 0006 | Accepted limitation | Partial root if power is lost during the copy | Staged SquashFS check before reboot | No hardware recovery test | Remains ADR 0006 | Not a 16C code fix |
-| `VOLUME_DIRTY` origin | Mount warning; unmounted `fsck.exfat -n` clean | Not a proven corruption | Repeated mount warning | Consistency check found no error | Which shutdown set the bit | Consistency accepted; origin unresolved | Not a release blocker |
-
-A source review on 2026-11-02 traced the shared `zlyme-halt` path and the status-125 flag skip. It did not change either path. The rows that still say open stay open until the maintainer keeps them or authorizes a change. The unmounted exFAT check and ADR 0006 are already recorded.
+The maintainer closed this campaign on 2026-11-02. `zlyme-halt` still makes one normal `/storage` unmount and then forces shutdown. That policy is accepted. A failed unmount can leave exFAT dirty, and that failure was not shown on hardware. Status 125 still skips a pending reboot or poweroff. Recovery is deferred in `docs/MAINTENANCE.md`. A direct `reboot` without `-f` stays host-tested only. The prelaunch window stays unverified. ADR 0006 and the clean unmounted `fsck.exfat -n` result are unchanged. The dirty-bit origin stays unknown.
 
 `docs/AUDITING.md` is the procedure for a dedicated search of a named subsystem. `.cursor/agents/zlyme-code-reviewer.md` is a read-only reviewer of one named implementation diff. The reviewer is not a whole-repository auditor. A review that finds nothing is not proof that Zlyme has no defects.
 
@@ -482,7 +471,7 @@ A reported defect names the source SHA, the path and line or function, a reachab
 
 ### 16D. Logging validation
 
-Status: Closed, 2026-11-02. The maintainer authorized this pass while 16C was still open. That authorization does not close 16C, and it does not close Phase 16.
+Status: Closed, 2026-11-02. The maintainer authorized this pass while 16C was still open. Phase 16C and Phase 16 closed later the same day.
 
 The installed firmware is the 16C3 image, local OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. Those hashes did not change during the pass. The documentation commit is not a firmware change. The published release remains `zlyme44.4`.
 
