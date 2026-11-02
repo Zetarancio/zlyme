@@ -2,7 +2,7 @@
 
 Status: first unit only, 2026-11-02. Not an extraction. Not 17B closure.
 
-Baseline: `7d38db090c203fdcc002349ee6ea35a7ee1fb492` on branch `phase-17a-inventory`. The headings below were read in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md` at that commit. No sentence in those files was moved or rewritten.
+Baseline: `7d38db090c203fdcc002349ee6ea35a7ee1fb492` on branch docs/phase-17a-inventory. The headings below were read in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md` at that commit. No sentence in those files was moved or rewritten.
 
 ## Architecture sections 5–7: retain
 

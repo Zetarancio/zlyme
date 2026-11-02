@@ -40,8 +40,8 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-12d-driver-source-audit.md](phase-12d-driver-source-audit.md) | 12D, 2026-10-13 | RTL, libmali, and mali-kbase source comparison after the 7.2.10 host build. Pins were not moved. |
 | [phase-15-documentation-audit.md](phase-15-documentation-audit.md) | 15, 2026-10-26 | Documentation inventory and the contradictions corrected in Phase 15A. Includes the former maintenance status snapshots. |
 | [phase-16-logging-inventory.md](phase-16-logging-inventory.md) | 16A, 2026-10-27 | Shipped-launch and system-log inventory. 16B and 16D are closed. The device record is the logbook. |
-| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | Proposed. Documentation ownership and local agent instructions. Not started. |
-| [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Ownership and dependency inventory for review. Not 17A closure and not a move. |
+| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B in progress. 17C through 17F have not started. |
+| [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Accepted ownership inventory, after the recorded corrections. Not a document move. |
 | [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md) | 17B, 2026-11-02 | Retain architecture sections 5–7 and 11. No extraction. |
 | [phase-18-plan.md](phase-18-plan.md) | 18, 2026-11-02 | Proposed. The Zlyme 45 feature plan, including Nintendo DS. Not started. |
 | [phase-15c-retroarch-input-audio.md](phase-15c-retroarch-input-audio.md) | 15C1, 2026-10-26 | Read-only investigation of GitHub issues #2 and #3. Not an implementation and not a new hardware measurement of gameplay. |

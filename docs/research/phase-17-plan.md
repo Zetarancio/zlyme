@@ -1,6 +1,8 @@
 # Phase 17 — Documentation architecture and local AI development infrastructure
 
-Status: Proposed. Not started. This file is a draft for review. It does not authorize implementation, a firmware change, an OTA, or a release.
+Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
+
+Current status: 17A is accepted. 17B is in progress. 17C through 17F have not started. Phase 18 remains proposed.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -40,7 +42,7 @@ No script rewrites the canonical set in one pass. No AI summary replaces a measu
 
 ## Documentation tests, as they stand
 
-`scripts/tests/test_doc_links.py` checks an explicit list. That list includes `docs/ROADMAP.md`, `docs/README.md`, and `docs/research/README.md`. It does not include `docs/research/phase-17-plan.md` or `docs/research/phase-18-plan.md`. It does not include most other research files. Inside the listed files it checks Markdown links and heading anchors. Backtick paths are checked only outside the roadmap, the logbook, and the Phase 10 audit. A new subdocument is invisible to this test until the list names it.
+`scripts/tests/test_doc_links.py` checks an explicit list. That list includes `docs/ROADMAP.md`, `docs/README.md`, and `docs/research/README.md`. When this plan was written, it did not include `docs/research/phase-17-plan.md` or `docs/research/phase-18-plan.md`. 17B1 added those two files, the 17A inventory, and the 17B decision record. Most other research files are still outside the list. Inside the listed files it checks Markdown links and heading anchors. Backtick paths are checked only outside the roadmap, the logbook, and the Phase 10 audit. A new subdocument is invisible to this test until the list names it.
 
 `scripts/tests/test_doc_contracts.py` checks version strings across a canonical list, the pinned baseline table in `docs/DEVELOPMENT.md`, the NextUI row in `docs/UPSTREAMS.md`, the `device.conf` blocks in `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`, and the Rumble Strength default in `docs/ARCHITECTURE.md` and `docs/USER_GUIDE.md`. It also requires `## Install` in `README.md`. Moving one of those values without moving the assertion would fail the test, or, if the assertion were deleted, would hide the drift.
 

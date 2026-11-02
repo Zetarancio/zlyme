@@ -2,7 +2,7 @@
 
 Status: research for review, 2026-11-02. Not an architecture specification. Not 17A closure. Not authorization for 17B.
 
-Audited tree: branch `phase-17a-inventory` at `93f329b92e02e31ab54907ac730af070602124e5`, which is the parent of this report. `main` was `b9c46f428493c214e31aece13f82453e51979803` and was not moved. Phase 16 is closed. Phase 18 is the postponed feature plan.
+Audited tree: branch docs/phase-17a-inventory at `93f329b92e02e31ab54907ac730af070602124e5`, which is the parent of this report. `main` was `b9c46f428493c214e31aece13f82453e51979803` and was not moved. Phase 16 is closed. Phase 18 is the postponed feature plan.
 
 Facts below were read from headings, line ranges, and tests. Proposals are marked as proposals.
 
