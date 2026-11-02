@@ -36,6 +36,7 @@ DOCS = (
     "docs/research/phase-17-plan.md",
     "docs/research/phase-17-documentation-inventory.md",
     "docs/research/phase-17b-preservation-decisions.md",
+    "docs/research/phase-17c-agent-instruction-map.md",
     "docs/research/phase-18-plan.md",
 )
 

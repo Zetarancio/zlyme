@@ -42,6 +42,8 @@ Before architectural, boot, device, graphics, audio, storage, packaging, update,
 - `docs/ARCHITECTURE.md`
 - `docs/DEVICE_PORTING.md`
 
+For audio work, also read `docs/architecture/audio.md`. That file is the authoritative detailed audio contract. `docs/ARCHITECTURE.md` remains the entry point for the surrounding architecture, and its `## 9. Audio` heading links to the detailed contract. The reads already required above still apply.
+
 For design/refactoring work also read:
 
 - `docs/ENGINEERING_PRINCIPLES.md`

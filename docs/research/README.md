@@ -43,6 +43,7 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B closed after the accepted audio move. 17C in progress, starting with routing. 17D through 17F have not started. |
 | [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Accepted ownership inventory, after the recorded corrections. Not a document move. |
 | [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md) | 17B, 2026-11-02 | Closed. Sections 5–7, 8, and 11 stay. Section 9 moved unchanged. No other extraction is authorized. |
+| [phase-17c-agent-instruction-map.md](phase-17c-agent-instruction-map.md) | 17C1, 2026-11-02 | Routing preflight for a later `AGENTS.md` reduction. Not that reduction. |
 | [phase-18-plan.md](phase-18-plan.md) | 18, 2026-11-02 | Proposed. The Zlyme 45 feature plan, including Nintendo DS. Not started. |
 | [phase-15c-retroarch-input-audio.md](phase-15c-retroarch-input-audio.md) | 15C1, 2026-10-26 | Read-only investigation of GitHub issues #2 and #3. Not an implementation and not a new hardware measurement of gameplay. |
 | [phase-14-audio.md](phase-14-audio.md) | 14, 2026-10-20 | Phase 14 audio experiments. Its PulseAudio and BlueALSA paragraphs are the superseded candidate. The running graph is in [docs/ARCHITECTURE.md](../ARCHITECTURE.md). |
