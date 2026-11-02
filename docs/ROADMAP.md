@@ -6,7 +6,7 @@ The long record that used to live here was moved on 2026-10-15 to [docs/archive/
 
 ## Where we are
 
-Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is closed, 2026-11-02, on the local OTA `zlyme-my355-20261031-4d1f74efea54.tar`. 16A, 16B, 16C, and 16D are closed. A direct `reboot` without `-f` is host-tested and is not hardware-accepted. Phase 17 has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16C3 OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`. It is not published. The Phase 16C2 image `zlyme-my355-20261030-90a22fa47825.tar` and the Phase 16B image `zlyme-my355-20261029-c8f952407098.tar` remain those phases' records. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
+Phase 14 is closed, 2026-10-26, after the final reconciliation in 14P. Gate 5 was accepted within its recorded scope on installed `0017d58`, OTA `zlyme-my355-20261025-0017d580b025.tar`, squashfs `2aecb98a91ae4f57126badc4b7e0b76c1adec8fa3f54e9c9bf66b221e1a0b7d1`. Gate 6's mandatory checklist is closed with the evidence and exclusions below. [Phase 15](#phase-15-documentation-and-zlyme444-preparation) is closed. [Phase 16](#phase-16-diagnostics-and-defect-discovery) is closed, 2026-11-02, on the local OTA `zlyme-my355-20261031-4d1f74efea54.tar`. 16A, 16B, 16C, and 16D are closed. A direct `reboot` without `-f` is host-tested and is not hardware-accepted. [Phase 17](#phase-17--zlyme-45) is proposed and has not started. [zlyme44.4 publication](#release-operation-for-zlyme444) is a release operation, not Phase 16. It is published as tag `zlyme-40439819817`, from `cb9770424011c1ccfc32cd99457364ca97ac19ea`, on 2026-10-27. That commit is the release. Phase 16 HEAD is later work and is not in it. The latest accepted locally installed image is the Phase 16C3 OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`. It is not published. The Phase 16C2 image `zlyme-my355-20261030-90a22fa47825.tar` and the Phase 16B image `zlyme-my355-20261029-c8f952407098.tar` remain those phases' records. Phase 15 acceptance stays on `zlyme-my355-20261027-14ad7238a42e.tar`, rootfs `0b1f9ae3a9b1078f979a5f6d0d48151d6d1463fc9b99ee777103f18f8e6e4daa`. `ZLYME_VERSION` is `zlyme44.4`.
 
 Host-tested means a host check passed. It is not a Flip result. Blocked means the item stopped on the limit named there. Planned means the source is not on this branch yet.
 
@@ -429,7 +429,7 @@ The Quickswitcher and orphan-text candidate, `zlyme-my355-20261027-c67613b766ee.
 
 ## Phase 16. Diagnostics and defect discovery
 
-Status: Closed, 2026-11-02. The accepted local image is `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. It is not the published `zlyme44.4` release. Documentation after that source is not firmware. Closing the phase does not publish an image. Deferred limits stay in `docs/MAINTENANCE.md`. Phase 17 has not started.
+Status: Closed, 2026-11-02. The accepted local image is `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. It is not the published `zlyme44.4` release. Documentation after that source is not firmware. Closing the phase does not publish an image. Deferred limits stay in `docs/MAINTENANCE.md`. [Phase 17](#phase-17--zlyme-45) is proposed and has not started.
 
 Objective: complete diagnostic coverage for shipped launches, and run a bounded search for defects. The two objectives stay separate. A logging change is not itself the bug-finding campaign.
 
@@ -491,8 +491,10 @@ Bug-finding acceptance is a written scope for each pass, an honest report of whe
 
 A source-only audit does not by itself require a release build. An OTA, a hardware gate, or a release is a separate decision after the change that needs it exists.
 
-## Phase 17 — NDS
+## Phase 17 — Zlyme 45
 
-Status: Planned. Not started.
+Status: Proposed. Not started. This is a plan, not implementation and not hardware acceptance. The detail is [docs/research/phase-17-plan.md](research/phase-17-plan.md). `ZLYME_VERSION` stays `zlyme44.4`.
 
-Nintendo DS games have not worked in the maintainer's testing. The root cause is uninvestigated and unverified. This is a reported functional issue. It is not a diagnosed emulator defect. When this phase begins, the work is the NDS launcher, the packaged emulator, content and BIOS requirements, graphics, audio, dependencies, configuration, and a run on the Miyoo Flip. No diagnostic archive is evidence for this item.
+Nintendo DS games have not worked in the maintainer's testing. That symptom is undiagnosed. The 2026-11-02 read-only preflight is recorded in the plan. It did not launch DraStic.
+
+The proposed order is 17A community and CI, 17B ARMHF compiler-cache investigation, 17C Unicode paths for RetroArch/GBA and Wine, 17D Nintendo DS, 17E startup governor and timezone selection, 17F NextUI engineering, and 17G review and `zlyme45`. 17F is the last implementation subphase. 17G is the release gate. No subphase has started.
