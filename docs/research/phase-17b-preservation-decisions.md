@@ -4,7 +4,7 @@ Status, first unit, 2026-11-02: first unit only. Not an extraction. Not 17B clos
 
 Status, 2026-11-02: 17B is closed. The later [final disposition](#final-disposition-2026-11-02) supersedes the section 9 retain sentence only.
 
-Baseline: `7d38db090c203fdcc002349ee6ea35a7ee1fb492` on branch docs/phase-17a-inventory. The headings below were read in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md` at that commit. No sentence in those files was moved or rewritten.
+Baseline: `7d38db090c203fdcc002349ee6ea35a7ee1fb492` on branch docs/phase-17a-inventory. The headings below were read in `docs/ARCHITECTURE.md` and `docs/OPERATIONS.md` at that commit. No sentence in those files was moved or rewritten at that commit. The accepted audio relocation later moved the section 9 body out of `docs/ARCHITECTURE.md` without rewriting it. That exception is the audio relocation section and the final disposition.
 
 ## Architecture sections 5–7: retain
 

@@ -74,7 +74,7 @@ Depends on: nothing else in this phase.
 
 ## 17B. Canonical document restructuring
 
-Closed, 2026-11-02. The result is the retain decisions and one lossless audio move in [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). Link and contract coverage include that file. No other extraction is authorized. The plan text below stays as written.
+Closed, 2026-11-02. The result is the retain decisions and one lossless audio move in [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). The link check includes that record and `docs/architecture/audio.md`. The contract scan includes `docs/architecture/audio.md`. It does not include the preservation record. No other extraction is authorized. The plan text below stays as written.
 
 Purpose: move a section only when the new file is a clearer owner, and only under the preservation contract.
 
@@ -98,7 +98,7 @@ Depends on: 17A.
 
 ## 17C. Universal agent instructions
 
-In progress, 2026-11-02, starting with routing. `AGENTS.md` is not shortened in that step. The plan text below stays as written.
+In progress, 2026-11-02, starting with routing. `AGENTS.md` is not shortened in that step. The plan text below stays as written. That text is the original proposal. Its keep-list is not a verified inventory of sentences already present in `AGENTS.md`. A later clause map has to find each rule in the file, or record that the file does not contain that sentence.
 
 Purpose: implement a smaller `AGENTS.md` only after 17B's owners are stable. Cursor and OpenCode both follow that file. Critical rules stay in it, not in an optional skill.
 
