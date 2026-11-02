@@ -41,6 +41,7 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-15-documentation-audit.md](phase-15-documentation-audit.md) | 15, 2026-10-26 | Documentation inventory and the contradictions corrected in Phase 15A. Includes the former maintenance status snapshots. |
 | [phase-16-logging-inventory.md](phase-16-logging-inventory.md) | 16A, 2026-10-27 | Shipped-launch and system-log inventory. 16B and 16D are closed. The device record is the logbook. |
 | [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | Proposed. Documentation ownership and local agent instructions. Not started. |
+| [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Ownership and dependency inventory for review. Not 17A closure and not a move. |
 | [phase-18-plan.md](phase-18-plan.md) | 18, 2026-11-02 | Proposed. The Zlyme 45 feature plan, including Nintendo DS. Not started. |
 | [phase-15c-retroarch-input-audio.md](phase-15c-retroarch-input-audio.md) | 15C1, 2026-10-26 | Read-only investigation of GitHub issues #2 and #3. Not an implementation and not a new hardware measurement of gameplay. |
 | [phase-14-audio.md](phase-14-audio.md) | 14, 2026-10-20 | Phase 14 audio experiments. Its PulseAudio and BlueALSA paragraphs are the superseded candidate. The running graph is in [docs/ARCHITECTURE.md](../ARCHITECTURE.md). |

@@ -62,6 +62,8 @@ Risks: an inventory that copies documents, or that calls a rule redundant withou
 
 Exclusions: no file moves. No firmware change. This planning note is not 17A.
 
+The read-only inventory for that review is [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md). It is not approval and not 17A closure.
+
 Done when: the maintainer has reviewed and approved the ownership and dependency inventory.
 
 Depends on: nothing else in this phase.
