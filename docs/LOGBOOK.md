@@ -19,6 +19,12 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-11-02 — Phase 16D logging validation closed
+
+The maintainer authorized this pass while Phase 16C stayed open. Installed firmware remained `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. Those hashes did not change. System logs started on. Enabling them again did not change the current latch. Frontend-owned reboots were boot `d5a8832b-055b-44ae-9379-6700387cf20c`, then `27a5fffc-74b2-4aa7-b2d7-97d37d46ba73` with logs on, then `f20f7b3d-3177-495e-b069-feb655024dc5` with logs off, then `542686a4-e14d-4526-b417-71ab46f19fc5` after the original on setting was restored.
+
+On the logs-on boot, Game Boy Advance through gpSP, Tools → RetroArch with no ROM, and OpenBOR each launched through the existing session handoff and returned with MENU+START. `GBA.log`, `RetroArch.log`, and `OPENBOR.log` name those launches. RetroArch used `-v` and did not pass `--log-file`. OpenBOR also wrote `OpenBorLog.txt` and `ScriptLog.txt` under `paks/OPENBOR`. One pre-existing `.cfg` under `Saves/OPENBOR` changed. It was not deleted. Ruffle was not launched. The logs-off boot created no system generation and did not replace the early kernel copy. A Game Boy Advance launch on that boot did not create or rotate a PAK log. The two `rc.late` copies changed. Five generations stayed the limit. The known exFAT dirty-volume warning was present, and no new I/O error appeared. The `c8f9524` Game Boy, PSP, and PortMaster results were not repeated. Phase 16C stays open. Phase 17 has not started.
+
 ## 2026-11-02 — unmounted exFAT check is clean
 
 After `umount /dev/sdb3`, `findmnt --source /dev/sdb3` returned no mount. `fsck.exfat -n /dev/sdb3` then printed `exfatprogs version : 1.4.3 (2026-08-14)` and `/dev/sdb3: clean. directories 264, files 2410`. The exit code was not captured. `-n` did not repair the volume and did not clear `VOLUME_DIRTY`. This accepts that consistency check only. It does not identify which shutdown set the dirty bit, and it does not assign the bit to the latest Zlyme shutdown. The earlier `fsck.exfat -n` while `ZLYME` was mounted stays rejected as an offline check. Firmware is still `4d1f74efea54a731ff038edb31038527a3f4590d`. The direct `reboot` without `-f`, the failed-unmount continuation, and PAK waiter status 125 stay open. Phase 16C is not closed.
