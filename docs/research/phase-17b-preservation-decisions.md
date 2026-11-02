@@ -29,3 +29,17 @@ They meet the session in section 11, and they meet HDMI, application launch, and
 ## What this unit does not do
 
 It does not shorten `AGENTS.md`. It does not change a technical contract. It does not delete evidence. It does not start Phase 18.
+
+## Audio relocation
+
+Operation: pure relocation. Baseline `06f550e37e25e538308931ba6a4519f23127345a`.
+
+Source: `docs/ARCHITECTURE.md`, heading `## 9. Audio`, lines 434–442, the body after that heading and before `## 10. Input, lid and handheld controls`. Destination: `docs/architecture/audio.md`. The heading stays in `docs/ARCHITECTURE.md` and links to the moved body. Section 10 and sections 5–8 and 11–16 were not edited.
+
+Incoming checks: no Markdown link used the `#9-audio` anchor. `AGENTS.md` tells an audio change to read `docs/ARCHITECTURE.md`, which still contains the heading. ADR 0007, `docs/OPERATIONS.md` `## Audio`, and `docs/MAINTENANCE.md` `## Audio on a live Flip` keep their own text. No test required the full body to remain inside `docs/ARCHITECTURE.md`. The contract scan now includes the new file so that text stays in the version check.
+
+The original body and the body after the new title are both 5294 bytes. SHA-256 `2ce1ad0ca0d60d151fae866a01ddcaf04671719ad22b787b326b9cd23d46921f`. They match.
+
+Sections 8 and 9 were not both moved. Graphics stays in `docs/ARCHITECTURE.md`. A later graphics extraction is still not authorized.
+
+`scripts/tests/test_doc_links.py` and `scripts/tests/test_doc_contracts.py` were run after the move. The named reviewer agent was not invoked for this unit.

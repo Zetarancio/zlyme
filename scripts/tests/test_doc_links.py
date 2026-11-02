@@ -10,6 +10,7 @@ DOCS = (
     "README.md",
     "docs/MAINTENANCE.md",
     "docs/ARCHITECTURE.md",
+    "docs/architecture/audio.md",
     "docs/DEVICE_PORTING.md",
     "docs/DEVELOPMENT.md",
     "docs/OPERATIONS.md",

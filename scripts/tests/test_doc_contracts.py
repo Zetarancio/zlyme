@@ -13,6 +13,7 @@ CANONICAL = (
     "README.md",
     "docs/USER_GUIDE.md",
     "docs/ARCHITECTURE.md",
+    "docs/architecture/audio.md",
     "docs/DEVICE_PORTING.md",
     "docs/DEVELOPMENT.md",
     "docs/OPERATIONS.md",
