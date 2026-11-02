@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The missing `docs/DEVICE_PORTING.md` read stays open as a 17E check. 17D is in progress. 17D1 is a documentation-skill pilot and is not accepted. 17E and 17F have not started. Phase 17 is not closed. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The missing `docs/DEVICE_PORTING.md` read stays open as a 17E check. 17D is in progress. 17D1 is a documentation-skill pilot and is not accepted, because Cursor native loading is still unverified. 17E and 17F have not started. Phase 17 is not closed. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -192,6 +192,12 @@ OpenCode 2.2.1. Each call was a new `opencode run --standalone --print-logs --fo
 - Automatic selection. The prompt did not name the skill or `docs/WRITING.md`. Session ses_e62afc239ffeFlVL1SP25xAtEj called the skill tool with that id, then read `README.md` and `docs/WRITING.md`. The answer kept `## Install`. No edit tool and no shell tool ran.
 
 Cursor 3.27.12. A fresh general-purpose agent, session 26184821-b53f-48b4-8803-64ad1812f9e8, reported that `zlyme-documentation` was not in its session skill list. The transcript has no skill-load event. It read `docs/WRITING.md`. It did not read `README.md` or the skill file. Native Cursor discovery and loading are not verified. The installed agent host names the shared project skill directory among its skill globs, and the installed skill-authoring note still names a project skill under the `.cursor` directory, in a `skills` folder. Neither text is a session load. The skill was not copied there.
+
+17D1B, 2026-11-02. Three skill lines were corrected. A user-facing page may keep a necessary fact the evidence supports. A protected heading changes only when the maintainer authorizes a change `docs/WRITING.md` permits. An authoritative contract is relocated only when the maintainer authorizes the move and the Phase 17 preservation, reference, and validation requirements are satisfied. That authorization does not change the contract's meaning. The earlier absolute ban on moving a contract is withdrawn. 17D1 stays unaccepted.
+
+OpenCode 2.2.1, one new `opencode run --standalone --print-logs --format json`, default agent, without `--auto`. Session ses_e629ea8a4ffeJmdO54AUFjxKnC called the skill tool with id `zlyme-documentation`. The returned text contained the corrected relocation sentence, the user-facing fact sentence, and the silent-heading sentence. It did not contain the withdrawn ban. The same session then read `README.md` and `docs/WRITING.md`. The answer kept `## Install`. No edit tool and no shell tool ran. This session did not repeat the earlier advertisement or automatic-selection tests.
+
+Cursor still has no native load of this skill. The agent host for this workspace logged its workspace path as `/home/ale/ZETAOS/` at 16:04, before the skill file existed. That path is the repository root, and the skill file is inside it. This primary session's skill list was fixed at its start and does not include `zlyme-documentation`. A new primary Agent chat was not started from here, and the Customize view's Skills tab was not opened. Those are the installed places to look: a new Agent chat, then `/zlyme-documentation` if that chat lists it, or Customize (`customize.open`) and the Skills tab. Neither was performed. No second copy was added.
 
 Depends on: 17B. It does not start from an outline alone.
 
