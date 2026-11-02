@@ -369,6 +369,8 @@ Stop when the bounded task has the evidence it needs, or when further calls will
 
 ## Agent behavior
 
+Explicit maintainer authorization is required before an agent builds or installs a firmware image or OTA, dispatches a remote firmware build, publishes a release, flashes or changes boot media, performs a destructive or potentially destructive operation on the Flip, or modifies persistent device state outside an explicitly authorized test. Source inspection, host validation, and explicitly requested non-destructive development work remain available without that authorization. Authorizing one of those operations does not change the physical-SD transfer rule or the release mechanics in `docs/MAINTENANCE.md`.
+
 Do not guess repository behavior when source can answer it.
 
 Search before adding a new implementation.
