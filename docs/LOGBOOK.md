@@ -19,6 +19,10 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-11-02 — unmounted exFAT check is clean
+
+After `umount /dev/sdb3`, `findmnt --source /dev/sdb3` returned no mount. `fsck.exfat -n /dev/sdb3` then printed `exfatprogs version : 1.4.3 (2026-08-14)` and `/dev/sdb3: clean. directories 264, files 2410`. The exit code was not captured. `-n` did not repair the volume and did not clear `VOLUME_DIRTY`. This accepts that consistency check only. It does not identify which shutdown set the dirty bit, and it does not assign the bit to the latest Zlyme shutdown. The earlier `fsck.exfat -n` while `ZLYME` was mounted stays rejected as an offline check. Firmware is still `4d1f74efea54a731ff038edb31038527a3f4590d`. The direct `reboot` without `-f`, the failed-unmount continuation, and PAK waiter status 125 stay open. Phase 16C is not closed.
+
 ## 2026-11-02 — mounted exFAT check is not offline evidence
 
 The maintainer ran `fsck.exfat -n` on `/dev/sdb3` while the host still had the `ZLYME` volume mounted. The tool was reported clean. No exit code or transcript was kept. That is not an offline consistency check, and `-n` does not repair or clear `VOLUME_DIRTY`. The unmounted check of that partition is still outstanding. The dirty-bit origin, the untested direct `reboot` without `-f`, the failed-unmount continuation in `zlyme-halt`, and PAK waiter status 125 stay open.
