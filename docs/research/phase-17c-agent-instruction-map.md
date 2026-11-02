@@ -4,7 +4,9 @@ Status: preparation for 17C2, 2026-11-02. This file does not shorten `AGENTS.md`
 
 Later note, 2026-11-02: the clause ledger is [phase-17c-agent-clause-ledger.md](phase-17c-agent-clause-ledger.md). It does not adopt the routes below. The authorization paragraph added to `AGENTS.md` is the publication and firmware ban that this map originally could not find.
 
-Discovery note, 2026-11-02: an OpenCode 2.2.1 read-only boot prompt opened `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`. It did not open `docs/OPERATIONS.md`. The boot row below still requires that runbook. The check is recorded in [phase-17-plan.md](phase-17-plan.md).
+Discovery note, 2026-11-02: an OpenCode 2.2.1 read-only boot prompt opened `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`. It did not open `docs/OPERATIONS.md`. The boot row below still requires that runbook for a live fault or recovery. The check is recorded in [phase-17-plan.md](phase-17-plan.md).
+
+Later the same day, that missing read was classified as an architectural prompt, not a live-recovery failure. A separate recovery prompt did read `docs/OPERATIONS.md`, `docs/ARCHITECTURE.md`, and `docs/DEVICE_PORTING.md`.
 
 17C1 adds one paragraph to `AGENTS.md` `## Required context`. That paragraph has four sentences: read `docs/architecture/audio.md`; that file is the authoritative detailed audio contract; `docs/ARCHITECTURE.md` remains the entry point and its `## 9. Audio` heading links to the contract; the reads already required above still apply. A later reduction keeps the whole paragraph. Line numbers below are that file after the paragraph. The same headings, two lines earlier from `## Current architecture invariants` onward, are the file at `9a52ae6e91d4e79b71c535e42e53e612f77c619d`.
 

@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C remains in progress. The clause ledger did not authorize a shorter `AGENTS.md`. Instruction discovery is not closed, so 17C is not complete. 17D through 17F have not started. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C remains in progress. OpenCode later read the recovery runbook and the writing policy. An observable Cursor session is still missing, so 17C is not complete. 17D through 17F have not started. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -143,6 +143,23 @@ OpenCode 2.2.1, from `opencode --version`. Invocation was `opencode run --standa
 - Review. Tools: read of `docs/AUDITING.md`, `docs/DEVELOPMENT.md`, and `.opencode/agents/zlyme-code-reviewer.md`. The answer separated the named-diff review from an audit and named that read-only adapter. An earlier run with `--agent zlyme-code-reviewer` returned one text event and no tool event. The text said the review was incomplete because no baseline, worktree, or diff was supplied. That run did not open the audio file.
 
 17C stays open. The blockers are the unverified Cursor task runs, the boot prompt that did not open `docs/OPERATIONS.md`, and the documentation prompt that did not open `docs/WRITING.md`.
+
+Interpretation, 2026-11-02. The traces above stay as recorded.
+
+The boot prompt asked for an architectural explanation of ownership. `AGENTS.md` requires `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md` for storage and update work. It requires `docs/OPERATIONS.md` for live-device and recovery work. Opening the first two files met the rule that applied. The missing operations read is not, by itself, a violation. A live recovery request is a separate case and still has to load `docs/OPERATIONS.md`.
+
+The documentation answer named `docs/WRITING.md` and did not open it. That result stays not verified. It does not show that the style rules were followed.
+
+The missing separate Cursor session stays not verified. Receipt of workspace rules in an already running session is not that test.
+
+Targeted checks, same day, OpenCode 2.2.1. Each call was a new `opencode run --standalone --print-logs --format json`, default agent, without `--auto`. The server subscribed to `/home/ale/ZETAOS/AGENTS.md`. That subscription is not a read. No worktree file was edited. Logs stayed outside the repository.
+
+- Live recovery. The prompt described a Flip that failed to return after an OTA and forbade recovery commands, edits, a firmware build, and device access. Reads: `docs/OPERATIONS.md`, `docs/ARCHITECTURE.md`, `docs/DEVICE_PORTING.md`, `docs/AUDITING.md`, and [ADR 0006](../decisions/0006-root-image-lifecycle.md). Grep: `docs/MAINTENANCE.md` and `docs/`. One shell event was `git status` and `git rev-parse`. No recovery command ran. `AGENTS.md` was subscribed, not read. Result: pass for the recovery documents and the safety limit. Whether the instruction file's text was injected remains unverified.
+- README policy. The prompt did not name `docs/WRITING.md`. Reads: `README.md` and `docs/WRITING.md`, with no preceding search event. One shell event was `git status` and `git rev-parse`. The answer kept `## Install` and named the evidence limit for a user-facing claim. `AGENTS.md` was subscribed, not read. Result: pass for the writing-policy route. No file was edited.
+
+`command -v agent` and `command -v cursor-agent` found neither program. Cursor 3.27.12 lists an `agent` subcommand whose installed option list is empty. The installed application text contains neither `--mode=ask` nor `--print`. No fresh Ask-mode session was started, because print mode was not available and a desktop send would enter the running session. Both Cursor prompts for these two scenarios are not verified.
+
+17C stays open on that Cursor limit. It is not a closure candidate. The OpenCode recovery and writing-policy routes were exercised. 17D has not started. The candidate skill path remains unverified on the installed Cursor tool.
 
 Phase 17D is not started. The first pilot, when authorized, should be a documentation skill that points at `docs/WRITING.md`. It should not be an OTA, flash, or device-management skill, and it should not copy the clause ledger. OpenCode 2.2.1 watched `/home/ale/.agents/skills`. Cursor 3.27.12's installed skill note names a project skill under the `.cursor` directory, in a `skills` folder. The shared project path `.agents/skills/<name>/SKILL.md` is not verified for both tools. No skill file was created.
 
