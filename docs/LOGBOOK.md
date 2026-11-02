@@ -19,6 +19,14 @@ Device serial dumps and temporary developer notes remain local/gitignored where 
 
 ---
 
+## 2026-11-02 — 16C3 frontend shutdown accepted; exFAT dirty bit open
+
+Local OTA `zlyme-my355-20261031-4d1f74efea54.tar`, rootfs `2cf9d268e5e724563c55cc7a16391425baade2b117d012874fa42962d9f8706f`, `Image.gz` `438a839b21a3220b557239c24d833bbc8fbe89bb26716bbc0ff8ef870ccdfe56`, source `4d1f74efea54a731ff038edb31038527a3f4590d`. The maintainer saw NextUI with its artwork and working controls, launched one Game Boy game, and returned with MENU+START. A NextUI reboot and a NextUI power-off both worked, and the device started again. A direct BusyBox `reboot` without `-f` was not run.
+
+SSH on boot `90ee6f74-8261-408d-8418-49d817c0c1c8`, up about 97 seconds, found `/boot` read-only on `/dev/mmcblk0p2` (`ZLYMEBOOT`) and `/storage` read-write on `/dev/mmcblk0p3` (`ZLYME`). `/etc/init.d/S90minui` matched that source. `queued=no`. No pending root and no `FAILED` file. At kernel time 2.412 s the log said `exFAT-fs (mmcblk0p3): Volume was not properly unmounted. Some data may be corrupt. Please run fsck.` Every non-empty retained early kernel log has that line. `system-1` logs are zero bytes. No saved log has `umount /storage failed` or an exFAT I/O error. `nextui-session` and `nextui.elf` had `/storage` as their working directory. No process had an open file there. `/mnt/sd2` is a separate ext4 mount.
+
+Linux 7.2.10 `fs/exfat/super.c` warns when the on-disk `VOLUME_DIRTY` bit is set. That bit is copied into `vol_flags_persistent` at mount. `exfat_clear_volume_dirty`, used from `exfat_put_super`, ORs those persistent flags back, so a volume that was already dirty stays dirty after unmount. `sync` does not clear it. The warning does not prove damaged files and does not identify the shutdown that first set the bit. No `fsck` was run. This image is not the published `zlyme44.4` release.
+
 ## 2026-10-31 — direct shutdown no longer relaunches NextUI
 
 Host only. `S90minui stop` removes `/tmp/nextui_exec` before it signals `nextui.elf`. A model of the session loop then exits instead of starting the frontend again. `restart` and `reload` leave the permit, and that model starts the frontend again. The test's `killall` is a mock. This is not a Flip shutdown. `zlyme-halt` still continues to `reboot -f` or `poweroff -f` when `umount /storage` fails. A PAK waiter status of 125 still returns before the session reads a poweroff or reboot flag. The DMC waiter in `nextui-session` is forked before `cd /storage`. The installed image remains `zlyme-my355-20261030-90a22fa47825.tar`.
