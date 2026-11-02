@@ -2,6 +2,8 @@
 
 Status: preservation ledger for a later reduction, 2026-11-02. This file does not shorten `AGENTS.md`, move a clause, add a skill, or authorize 17C2 implementation.
 
+17C2B, 2026-11-02: no disposition changed. `AGENTS.md` stayed byte-identical to `01fc5db0c0f104589cd0743edaca304aa058c6af`. The discovery record is in [phase-17-plan.md](phase-17-plan.md).
+
 Baseline for every row except AB00: `802904bf913316a26aef42a584377cfeb790dda6`. Line numbers are that file. AB00 is the authorization paragraph added after that baseline. Its line is the worktree file. `AGENTS.md` remains the authoritative source.
 
 A row is one actionable instruction or one independent constraint. A sentence with several independent bans is several rows. A conjunction that is one gate, or a closed list that is one obligation, is one row and names every item. An exception stays on the row it qualifies.

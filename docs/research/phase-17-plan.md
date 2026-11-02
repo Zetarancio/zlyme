@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is in progress. Routing is recorded, and the clause ledger is underway. 17C is not complete. 17D through 17F have not started. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C remains in progress. The clause ledger did not authorize a shorter `AGENTS.md`. Instruction discovery is not closed, so 17C is not complete. 17D through 17F have not started. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -117,6 +117,34 @@ Risks: deleting a safety rule to make the file shorter, or leaving two copies th
 Exclusions: no benchmark of load time. This planning commit does not edit `AGENTS.md`.
 
 Done when: the smaller `AGENTS.md` is implemented, the invariants above remain available without a skill, and both supported tools follow the routing.
+
+That sentence is the original proposal. It stays as written.
+
+Revised acceptance, 2026-11-02. The clause ledger has 263 clauses, 262 KEEP, no ROUTE, no DUPLICATE, and one UNCERTAIN example list. It gives no safe removal. 17C can finish with `AGENTS.md` unchanged when every one of these is shown:
+
+- Every existing safety clause remains in `AGENTS.md`.
+- The required-context routes remain.
+- Audio work has the explicit route to `docs/architecture/audio.md`, and `docs/ARCHITECTURE.md` remains the surrounding entry.
+- A universal safety instruction does not depend on an optional skill.
+- Loading a different supporting document is not a change to a technical contract.
+- File size, token count, and speed are not acceptance gates.
+- Cursor and OpenCode discover the routed documents, shown by a tool event or another host trace. A model's claim that it read a file is not that evidence.
+
+Writing this criterion does not close 17C.
+
+Instruction discovery, same day. Cursor 3.27.12, commit `df132ffba90dfc15a12e6b8f020ba4e5d026c4b0`, from `cursor --version`. The `cursor agent` subcommand is listed and has no documented non-interactive prompt options in `cursor --help`. The five discovery prompts were not run as separate Cursor sessions. This Cursor agent session did receive `AGENTS.md` through the always-applied workspace rule. That is host context for this session, not a separate-task file trace. Cursor discovery of the five prompts is not verified.
+
+OpenCode 2.2.1, from `opencode --version`. Invocation was `opencode run --standalone --format json` in this repository, default agent, without `--auto`. The server log subscribed to `/home/ale/ZETAOS/AGENTS.md` and to `/home/ale/.agents/skills`. No file in the worktree was edited.
+
+- Audio. Tools: grep of `AGENTS.md`, grep of `docs/ARCHITECTURE.md`, read of `docs/architecture/audio.md`. The answer named that audio file as the detailed contract and section 9 as the entry. No other backend was introduced. No build or device action.
+- Boot and storage. Tools: read of `docs/ARCHITECTURE.md` and `docs/DEVICE_PORTING.md`. The answer kept the read-only squashfs root and `/storage`. It did not open `docs/OPERATIONS.md`. No build or device action.
+- Release. Tools: grep of `docs/MAINTENANCE.md`, grep of `AGENTS.md`, read of `docs/MAINTENANCE.md`, read of `docs/WRITING.md`, grep of `docs/ROADMAP.md`, and reads of `.git/HEAD` and `.git/refs/heads/docs/phase-17c-finalization`. `AGENTS.md` and `docs/ROADMAP.md` were searched, not read. The answer left publication to maintainer authorization and did not dispatch a workflow.
+- Documentation. No tool call. The answer named `docs/WRITING.md` and called `docs/ROADMAP.md` non-normative. Opening `docs/WRITING.md` is not verified.
+- Review. Tools: read of `docs/AUDITING.md`, `docs/DEVELOPMENT.md`, and `.opencode/agents/zlyme-code-reviewer.md`. The answer separated the named-diff review from an audit and named that read-only adapter. An earlier run with `--agent zlyme-code-reviewer` returned one text event and no tool event. The text said the review was incomplete because no baseline, worktree, or diff was supplied. That run did not open the audio file.
+
+17C stays open. The blockers are the unverified Cursor task runs, the boot prompt that did not open `docs/OPERATIONS.md`, and the documentation prompt that did not open `docs/WRITING.md`.
+
+Phase 17D is not started. The first pilot, when authorized, should be a documentation skill that points at `docs/WRITING.md`. It should not be an OTA, flash, or device-management skill, and it should not copy the clause ledger. OpenCode 2.2.1 watched `/home/ale/.agents/skills`. Cursor 3.27.12's installed skill note names a project skill under the `.cursor` directory, in a `skills` folder. The shared project path `.agents/skills/<name>/SKILL.md` is not verified for both tools. No skill file was created.
 
 Depends on: 17B. It does not start from an outline alone.
 

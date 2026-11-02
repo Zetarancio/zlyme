@@ -40,7 +40,7 @@ Phase files are chronological. A later section in the same file, and the [ROADMA
 | [phase-12d-driver-source-audit.md](phase-12d-driver-source-audit.md) | 12D, 2026-10-13 | RTL, libmali, and mali-kbase source comparison after the 7.2.10 host build. Pins were not moved. |
 | [phase-15-documentation-audit.md](phase-15-documentation-audit.md) | 15, 2026-10-26 | Documentation inventory and the contradictions corrected in Phase 15A. Includes the former maintenance status snapshots. |
 | [phase-16-logging-inventory.md](phase-16-logging-inventory.md) | 16A, 2026-10-27 | Shipped-launch and system-log inventory. 16B and 16D are closed. The device record is the logbook. |
-| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B closed. 17C in progress. The clause ledger is underway. 17C is not complete. |
+| [phase-17-plan.md](phase-17-plan.md) | 17, 2026-11-02 | 17A accepted. 17B closed. 17C in progress. A shorter `AGENTS.md` is not the acceptance gate. Not closed. |
 | [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md) | 17A, 2026-11-02 | Accepted ownership inventory, after the recorded corrections. Not a document move. |
 | [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md) | 17B, 2026-11-02 | Closed. Sections 5–7, 8, and 11 stay. Section 9 moved unchanged. No other extraction is authorized. |
 | [phase-17c-agent-instruction-map.md](phase-17c-agent-instruction-map.md) | 17C1, 2026-11-02 | Routing preflight for a later `AGENTS.md` reduction. Not that reduction. |
