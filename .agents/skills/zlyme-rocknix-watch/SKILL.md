@@ -1,6 +1,6 @@
 ---
 name: zlyme-rocknix-watch
-description: Check newer official ROCKNIX next commits for RK3566 patches and fixes, and report candidates against Zlyme without applying them. Use when asked to watch ROCKNIX, compare RK3566 kernel or driver fixes, or update the ROCKNIX checkpoint.
+description: Check newer official ROCKNIX next commits for RK3566 patches and fixes, and propose a Zlyme adaptation without applying it. Use when asked to watch ROCKNIX, compare RK3566 kernel or driver fixes, or update the ROCKNIX checkpoint.
 ---
 
 # ROCKNIX watch
@@ -25,3 +25,11 @@ Then:
 4. Check whether selected upstream Linux or Zlyme already has the fix.
 5. Classify the candidate with the classes in `docs/UPSTREAMS.md`. Record the SHA, date, path, and upstream link.
 6. Separate a review from an implementation. Name the host checks, and name a device test only when the change is relevant. A host check is not Miyoo Flip acceptance.
+
+Keep three sets separate. Do not repeat a candidate whose recorded evidence is still valid and which upstream has not superseded. Do not turn an incomplete scan into a reviewed-through SHA. The recorded 415-commit survey and its candidate results stay in place.
+
+- New commits since the last observed HEAD.
+- Unresolved candidates already identified.
+- The unreviewed historical backlog.
+
+For each potentially useful commit, give the maintainer enough to request a separate implementation task. Include the ROCKNIX SHA, date, and paths; the problem or improvement; whether Zlyme is affected; whether selected upstream Linux or Zlyme already has it; the Zlyme paths and the smallest safe adaptation; dependencies and kernel compatibility; likely regressions; the narrow host check; a hardware test only when one is needed; and the rollback or rejection test. End with one recommendation: investigate, adapt later, already present, or do not import. Do not apply the change.
