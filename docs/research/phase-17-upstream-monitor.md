@@ -1,6 +1,6 @@
 # Phase 17 upstream monitor
 
-Status, 2026-11-03: a checkpoint format and one ROCKNIX observation. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
+Status, 2026-11-03: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
 
 ## Checkpoint fields
 
@@ -22,11 +22,11 @@ A failed or partial scan does not move "Reviewed through". A rewritten upstream 
 | Source | Last observed HEAD | Observed at | Reviewed through | Triage date | Scope | Outstanding |
 | --- | --- | --- | --- | --- | --- | --- |
 | ROCKNIX `ROCKNIX/distribution` branch `next` | `ca1093d0ae055453fcdd67f5f9515a214230de2c` | 2026-11-03T00:30:47Z | Unknown | | 415 commits enumerated after `f2148e8061e38a44d1b71bac3efeddb0c9385084`. Subjects and paths read. Diffs read for the ten named candidates, the Mali cleanup, and one RK3566 config cleanup. | See the ROCKNIX section. Not an integration point. |
-| KNULLI `knulli-linux` branch `knulli-main` | Not observed in 17G1 | | Unknown | | | |
-| Batocera `batocera.linux` branch `master` | Not observed in 17G1 | | Unknown | | | |
+| KNULLI `knulli-cfw/knulli-linux` branch `knulli-main` | `57afa662009641d181f57241bcc480119b131530` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and standalone Yabasanshiro recipes at that tip. Not a repository interval. | No PPSSPP version change. Standalone Saturn patches do not transfer. |
+| Batocera `batocera-linux/batocera.linux` branch `master` | `a89288d0979cdf578b2ce69d686a823c06c29d32` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and libretro Yabasanshiro recipes at that tip. Not a repository interval. | PPSSPP v1.20.4 is unverified. The libretro pin is a proposal. |
 | LoveRetro `NextUI` branch `main` | Not observed in 17G1 | | Unknown | | Zlyme's NextUI pin is a package pin, not this cursor. | |
 | apommel `baseos-my355` branch `main` | Not observed in 17G1 | | Unknown | | | |
-| Selected Linux | Version 7.2.10, tarball named in `board/my355/linux/patches/10-mainline/linux/linux.hash` | 2026-11-03, from the Zlyme pin, not a kernel.org git read | Unknown | | `configs/zlyme_my355_defconfig` sets `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` to 7.2.10. No kernel branch was invented. | |
+| Selected Linux | Not observed | | Unknown | | `configs/zlyme_my355_defconfig` sets `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` to 7.2.10. The tarball is named in `board/my355/linux/patches/10-mainline/linux/linux.hash`. That pin is not an upstream HEAD. No kernel branch was invented. | |
 
 `f2148e8061e38a44d1b71bac3efeddb0c9385084` is an approximate earlier ROCKNIX reference. Its subject is a DuckStation AppImage change, committed 2026-09-30T01:47:46Z. It is not evidence that every commit through that SHA was reviewed. The reviewed-through cursor stays unknown.
 
@@ -85,3 +85,41 @@ The patch is inside `mmc_sd_init_card`. A failed CID read, and a later failure t
 ## What this scan did not review
 
 The other commits in the 415 were not patch-reviewed. That includes the RK3566 InputPlumber series, non-Flip board ports, and ordinary package bumps. The reviewed-through cursor stays unknown. `ca1093d0ae055453fcdd67f5f9515a214230de2c` is only the observed tip.
+
+## Package pilot, 2026-11-03
+
+`git ls-remote` at 2026-11-03T01:09:51Z returned the KNULLI and Batocera tips in the table. Archived `knulli-cfw/distribution` was not used. The pilot read two recipe families at those tips. It did not enumerate either repository's history, so both reviewed-through cursors stay unknown. Classes below are the names in `docs/UPSTREAMS.md`. No package was changed, downloaded, or built.
+
+### PPSSPP
+
+Zlyme `package/emulators/ppsspp` is standalone PPSSPP, tag `v1.19.3`, commit `e49c0bd8836a8a8f678565357773386f1174d3f5`, from `hrydgard/ppsspp`. There is no local patch. The recipe keeps `HEADLESS` off, turns `USING_EGL` off, selects Vulkan only when the loader is present, uses `USE_VULKAN_DISPLAY_KHR`, and installs `/usr/bin/PPSSPPSDL`. License field `GPL-2.0`.
+
+KNULLI's recipe at the observed tip uses the same tag and the same upstream. Batocera's recipe uses tag `v1.20.4`, commit `fa50bb1976065c4f8b1b47af227d367fe9771555`, published 2026-05-16. That tag is 2523 commits after `v1.19.3`. Those commits were not reviewed. KNULLI did not take the bump. The component upstream is the version authority.
+
+The tag bump is unverified. It is the only PPSSPP change that could later be suitable. A package build has to keep Zlyme's flags. Upstream CMake in `v1.20.4` still turns `USING_EGL` on for an ARM device, and it still links `SDL2_ttf::SDL2_ttf`, so Zlyme's EGL override and `CMAKE_DISABLE_FIND_PACKAGE_SDL2_ttf` stay necessary. There is no Zlyme patch to conflict with. Do not rename the installed binary. Saves stay on the paths in `package/system/nextui/zlyme/ppsspp-binds.sh`.
+
+Proposed check, not run: build the `ppsspp` package with the tag changed and the current options kept. Acceptance is a built `PPSSPPSDL` and the same options in the recipe. Rollback is `v1.19.3`. The 2523-commit range stays unreviewed. A later device check is justified only after that build, because Panfrost display acquisition is already a recorded limitation. It is not authorized here, and it is not a full image rebuild as the first gate.
+
+These patches are not candidates:
+
+- `001-batocera-path.patch` and the save-state name patches hard-code `/userdata`. Distribution-specific. Inappropriate for Zlyme's storage contract.
+- `003-fullscreen_drm.patch` replaces `SDL_WINDOW_FULLSCREEN_DESKTOP` with `SDL_WINDOW_FULLSCREEN`. `v1.20.4` still has the desktop flag. It does not address Zlyme's recorded EGL blank display. Unverified, and not proposed.
+- `005-reduce_vulkan_checks.patch` forces Vulkan availability true. Inappropriate without a measured load-time defect.
+- `002-cmake-arm-conversion-fix.patch` adds `-flax-vector-conversions`. It is not in the upstream CMake at `v1.20.4`. The current Zlyme pin does not use it. Unverified.
+- `006-cmake-sdl2-ttf-fix.patch` changes the imported SDL2_ttf target. Zlyme already skips that find. Not needed.
+- `007-disable-home-pause.patch` is Batocera-only. It drops the guide button's pause mapping. Inappropriate.
+- Both trees set `HEADLESS` on, which builds the extra `PPSSPPHeadless` target. Zlyme leaves it off. Not needed.
+- Both trees install `wqy-microhei.ttc` over a Roboto filename. The comment cites wenq.org. No license file was in the recipe directory. Do not import it.
+- Batocera sets `ARM_NO_VULKAN` on for AArch64 except its Pi boards. That contradicts Zlyme's Vulkan display option. Inappropriate.
+
+### Yabasanshiro
+
+Zlyme `package/emulators/libretro-yabasanshiro` builds the libretro core from `libretro/yabause` branch `yabasanshiro` at `39535a6abcad5abf9f71c8b2a7975f005ee12ed6`, committed 2024-05-23. The recipe comment says June 2023. The commit date is the pin. AArch64 selects platform `odroid-c4` so the unix platform does not pick desktop GL. `000-makefile.patch` adds Pi 5 and RK3588 stanzas and corrects RockPro64. The selected platform is `odroid-c4`, so those stanzas are not the Zlyme build. License field `GPLv2`.
+
+Batocera's corresponding package is `package/batocera/emulators/retroarch/libretro/libretro-yabasanshiro`. It is the same core at `09ed8e5b2e97e7a848ea2514545c34c7b809e399`, committed 2026-08-23. That commit is 14 commits after Zlyme's pin, and the pin is an ancestor. Batocera's `000-makefile.patch` is the same file as Zlyme's, and Batocera applies it on the newer pin. Its RK3568 selection also uses `odroid-c4`. Its generic AArch64 selection uses `unix`, which Zlyme avoids. `001-makefile-add-sm8250.patch` is another SoC. `002-makefile-respect-arch.patch` exists because that unix path takes `uname`. Neither patch applies to Zlyme's selected platform.
+
+The 14-commit diff was read. `0c72d2e506ffb1c4e5efb3efb0c06bdb2fb55201` adds a prototype for `SH2DynShowSttaics` in `yabause.c`. Zlyme currently compiles that call with `-Wno-error=implicit-function-declaration`. That prototype is suitable to adapt by moving the pin to `09ed8e5b2e97e7a848ea2514545c34c7b809e399`. The other diffs are Apple guards, webOS, CI, or the unix dynarec path. They do not change the Linux GLES `odroid-c4` build. Proposed check, not run: build `libretro-yabasanshiro` at that pin with the current patch and confirm `odroid-c4` is still selected. Acceptance is a built `yabasanshiro_libretro.so`. No device test is justified for a prototype and Apple guards. Rollback is the current pin. The build was not run.
+
+KNULLI `package/emulators/yabasanshiro` is standalone. `YABASANSHIRO_VERSION` is the branch name `pi4-update` on `sydarn/yabause`, not a commit. That branch tip was `a40dace1ae0af3ebd45848549fdf396f40e3930f` at 2026-11-03T01:09:42Z. The recipe builds the `retro_arena` SDL binary with EGL, libcurl, Boost, and GLFW. It is not the libretro core. Its patches do not transfer: `001` and `011` are its libchdr external project, `002` is an EmulationStation path, `003` is an SDL audio normalizer, `004` through `009` are that port's NanoVG, menu, FPS, affinity, and CPU flags, and `005` is a SIGUSR1 handler in `thr-linux.cpp`. The libretro interval touches `thr-rthreads.c`, not that file. Batocera has no standalone Yabasanshiro recipe. `libretro-kronos` is a different core and was not compared.
+
+No shared Saturn behavior fix was found in the KNULLI standalone tree. The one transferable source change is the libretro prototype above.
