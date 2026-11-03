@@ -1,6 +1,6 @@
 # Phase 17 upstream monitor
 
-Status, 2026-11-03: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
+Status, 2026-11-03: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. 17G3 records the LoveRetro tip. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
 
 ## Checkpoint fields
 
@@ -15,7 +15,7 @@ Each source has two cursors. They are not the same value.
 | Scope | What the review covered, and what it did not. |
 | Outstanding | Candidates not accepted and not rejected. |
 
-A failed or partial scan does not move "Reviewed through". A rewritten upstream history is reported. It does not silently reset the cursor. The Phase 0 snapshot in `docs/UPSTREAMS.md` is historical. The Compared revisions table records specific comparisons, including pins the current tree still uses. Neither table is one of these cursors.
+A failed or partial scan does not move "Reviewed through". A rewritten upstream history is reported. It does not silently reset the cursor. A later scan separates new commits since the last observed HEAD, unresolved candidates already recorded, and the unreviewed backlog. It does not repeat a candidate investigation whose evidence is still valid and which upstream has not superseded. Zero commits after a verified base are evidence of no new candidate. They are not an audit of the history before that base. The Phase 0 snapshot in `docs/UPSTREAMS.md` is historical. The Compared revisions table records specific comparisons, including pins the current tree still uses. Neither table is one of these cursors.
 
 ## Checkpoints
 
@@ -24,7 +24,7 @@ A failed or partial scan does not move "Reviewed through". A rewritten upstream 
 | ROCKNIX `ROCKNIX/distribution` branch `next` | `ca1093d0ae055453fcdd67f5f9515a214230de2c` | 2026-11-03T00:30:47Z | Unknown | | 415 commits enumerated after `f2148e8061e38a44d1b71bac3efeddb0c9385084`. Subjects and paths read. Diffs read for the ten named candidates, the Mali cleanup, and one RK3566 config cleanup. | See the ROCKNIX section. Not an integration point. |
 | KNULLI `knulli-cfw/knulli-linux` branch `knulli-main` | `57afa662009641d181f57241bcc480119b131530` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and standalone Yabasanshiro recipes at that tip. Not a repository interval. | No PPSSPP version change. Standalone Saturn patches do not transfer. |
 | Batocera `batocera-linux/batocera.linux` branch `master` | `a89288d0979cdf578b2ce69d686a823c06c29d32` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and libretro Yabasanshiro recipes at that tip. Not a repository interval. | PPSSPP v1.20.4 is unverified. The libretro pin is a proposal. |
-| LoveRetro `NextUI` branch `main` | Not observed in 17G1 | | Unknown | | Zlyme's NextUI pin is a package pin, not this cursor. | |
+| LoveRetro `NextUI` branch `main` | `5291344b3aceae5fa197437a70824afb41e2d338` | 2026-11-03T01:58:45Z | Unknown | | Equals the `UPSTREAM` file in pin `f595d7862d8f5dac722aaa9960307609be903db8`. Zero commits after that base. History before the base was not audited. | No upstream import. |
 | apommel `baseos-my355` branch `main` | Not observed in 17G1 | | Unknown | | | |
 | Selected Linux | Not observed | | Unknown | | `configs/zlyme_my355_defconfig` sets `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` to 7.2.10. The tarball is named in `board/my355/linux/patches/10-mainline/linux/linux.hash`. That pin is not an upstream HEAD. No kernel branch was invented. | |
 
@@ -123,3 +123,13 @@ The 14-commit diff was read. `0c72d2e506ffb1c4e5efb3efb0c06bdb2fb55201` adds a p
 KNULLI `package/emulators/yabasanshiro` is standalone. `YABASANSHIRO_VERSION` is the branch name `pi4-update` on `sydarn/yabause`, not a commit. That branch tip was `a40dace1ae0af3ebd45848549fdf396f40e3930f` at 2026-11-03T01:09:42Z. The recipe builds the `retro_arena` SDL binary with EGL, libcurl, Boost, and GLFW. It is not the libretro core. Its patches do not transfer: `001` and `011` are its libchdr external project, `002` is an EmulationStation path, `003` is an SDL audio normalizer, `004` through `009` are that port's NanoVG, menu, FPS, affinity, and CPU flags, and `005` is a SIGUSR1 handler in `thr-linux.cpp`. The libretro interval touches `thr-rthreads.c`, not that file. Batocera has no standalone Yabasanshiro recipe. `libretro-kronos` is a different core and was not compared.
 
 No shared Saturn behavior fix was found in the KNULLI standalone tree. The one transferable source change is the libretro prototype above.
+
+## NextUI pilot, 2026-11-03
+
+`git ls-remote` at 2026-11-03T01:58:45Z returned LoveRetro `NextUI` `main` as `5291344b3aceae5fa197437a70824afb41e2d338`. That is the same SHA as the `UPSTREAM` file in `NEXTUI_VERSION` `f595d7862d8f5dac722aaa9960307609be903db8`. The GitHub compare of that base with itself is identical, so there are zero newer LoveRetro commits. No upstream import is recommended. Nothing in either NextUI repository was edited, and the pin was not moved.
+
+The same read returned `Zetarancio/NextUI` `zlyme` as `f595d7862d8f5dac722aaa9960307609be903db8`, which is the pin. Its subject is a my355 Quickswitcher change, committed 2026-10-27T02:12:55Z. On that fork, the pin is 99 commits ahead of `5291344b3aceae5fa197437a70824afb41e2d338` and zero behind, so the embedded base is an ancestor of the pin. Those 99 commits were not reviewed. They are fork history, not a new LoveRetro interval.
+
+`Zetarancio/NextUI` `main` was `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7` at the same time. That branch is not the pin, not `zlyme`, and not LoveRetro `main`.
+
+Reviewed-through stays unknown. A zero-commit comparison does not audit LoveRetro history before `5291344b3aceae5fa197437a70824afb41e2d338`. The ROCKNIX survey and its candidate results are unchanged.
