@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The earlier recovery session did not open `docs/DEVICE_PORTING.md`. The 17E1 OTA preflight did, once, from an agent that could edit and did not. That pass is not universal reliability. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is closed, 2026-11-03, with the limitations in the disposition below. OpenCode runtime testing is deferred to the maintainer. 17F reconciliation, 2026-11-03, found no missing Phase 17 contract. Phase 17 is not merged and is not a firmware acceptance. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The earlier recovery session did not open `docs/DEVICE_PORTING.md`. The 17E1 OTA preflight did, once, from an agent that could edit and did not. That pass is not universal reliability. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is closed, 2026-11-03, with the limitations in the disposition below. OpenCode runtime testing is deferred to the maintainer. 17F reconciliation, 2026-11-03, found no missing Phase 17 contract. Phase 17 is not merged and is not a firmware acceptance. 17G has started. Only the ROCKNIX watch exists. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -361,3 +361,13 @@ Exclusions: no Phase 18 implementation. No `ZLYME_VERSION` change.
 Done when: the preservation, link, test, ownership, and agent-configuration gates have passed, and the maintainer accepts that result. Phase 18 is still proposed. A proposal or a yes-or-no decision is not completion.
 
 Depends on: 17A through 17E.
+
+## 17G. Upstream watch
+
+Started 2026-11-03, before a final Phase 17 acceptance. 17A through 17F stay as recorded. This section does not renumber Phase 18 and does not reopen the OpenCode tests.
+
+17G1 is the shared checkpoint in [phase-17-upstream-monitor.md](phase-17-upstream-monitor.md) and one skill, `zlyme-rocknix-watch`. The skill points at `docs/UPSTREAMS.md`. It does not copy that policy. The default operation is read-only. An observed ROCKNIX HEAD is not a reviewed SHA, and a source pin is not a scan checkpoint.
+
+The other four skills are not files yet. Package watch would compare current KNULLI and Batocera recipes with upstream component versions. NextUI watch would compare LoveRetro `NextUI` with the pinned `Zetarancio/NextUI` fork and the Zlyme integration contract. BaseOS boot watch would compare `apommel/baseos-my355`, keeping U-Boot and the boot chain separate from the stock installer and HDMI work. Kernel upgrade is an integration workflow for the selected Linux pin, its patches, configuration, DTB, external modules, and userspace ABI. Creating that skill would not authorize a kernel update, a build, a flash, or a hardware test.
+
+OpenCode runtime testing stays deferred. A future nontrivial implementation change still needs the independent review required by `AGENTS.md`.

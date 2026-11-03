@@ -87,7 +87,7 @@ External upstream reference:
 https://github.com/ROCKNIX/distribution
 ```
 
-Use official ROCKNIX for generic RK3566, kernel, driver, emulator, and packaging comparisons when relevant. Use its `next` branch and pin the commit you compared.
+Use official ROCKNIX for generic RK3566, kernel, driver, emulator, and packaging comparisons when relevant. Use its `next` branch and pin the commit you compared. Watch notes for that branch are in [phase-17-upstream-monitor.md](research/phase-17-upstream-monitor.md). A row there is not a pin and does not replace this section.
 
 Historical Miyoo Flip implementation evidence:
 
