@@ -38,6 +38,16 @@ Depends on: nothing in Phase 18.
 
 `.github/workflows/artbook.yml` stays. It still checks out the pinned NextUI commit, builds the local Docker image, runs `scripts/tests/test_artbook.sh`, and uploads contact sheets. Moving that job into validation, and deleting the old workflow, waits for a green Art Book run of the replacement. 18A is not complete.
 
+## 18A2. Art Book job and logbook mismatches
+
+2026-11-04. `validation.yml` keeps the `source` job. A separate `artbook` job checks out `NEXTUI_VERSION`, builds the branch Docker image locally, runs `scripts/tests/test_artbook.sh`, requires the six contact-sheet PNGs, and uploads `artbook-sheets-<run id>` with `if-no-files-found: error`. It does not push the image. `artbook.yml` is unchanged.
+
+The Art Book job runs when the push or pull-request range touches the same paths as `artbook.yml`, or `validation.yml`. The compared commits are `github.event.before` and `github.sha` for a push, and the pull request's base SHA and `github.sha` for a pull request. A new branch with a zero base runs the job. A manual dispatch runs it. Other changes still run `source` and skip Art Book. A skipped Art Book job is not a render pass.
+
+`scripts/tests/test_logbook_order.py` fails on this tree. The introduction hash matches. There are 331 dated entries and 208 manifest rows. No listed heading is missing. Nine listed bodies differ. Each difference entered in `a3e496ea6ea1cd10e75742c3b3f8913ba97d7a03`, "docs: name research files by the phase that needed them", on 2026-10-26. That commit changes 15 lines in `docs/LOGBOOK.md`. For these nine headings the change is only the research-file name: `phase-12d-`, `phase-10-documentation-audit`, `phase-06-deep-suspend`, `phase-05-`, `phase-03-`, `phase-02-`, or `phase-01-`. The bodies have not changed since that commit. The measurements and conclusions in those entries remain. The logbook and `scripts/tests/logbook_entries.sha256` were not edited. The test stays out of the green suite until a separate authorization reconciles the manifest with that rename.
+
+The GitHub Actions result for this job is recorded after the branch push. 18A stays open. 18B through 18G have not started.
+
 ## 18B. Remote ARMHF compiler cache
 
 Purpose: find out whether the ARMHF GitHub cache actually compiles through ccache.

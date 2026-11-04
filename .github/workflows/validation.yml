@@ -1,5 +1,7 @@
 # Source and documentation checks. This workflow does not build firmware,
 # publish a release, or call the Build workflow.
+# The Art Book job renders contact sheets. It does not push a container
+# or replace .github/workflows/artbook.yml.
 
 name: Validation
 
@@ -30,3 +32,119 @@ jobs:
           sh scripts/tests/test_ci_container_image.sh
           sh scripts/tests/test_changelog_release_notes.sh
           sh scripts/tests/test_release_tag_target.sh
+
+  artbook-changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      artbook: ${{ steps.gate.outputs.artbook }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Decide whether Art Book files changed
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          is_sha() {
+            printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{40}$'
+          }
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              echo "artbook=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            pull_request)
+              from="$PR_BASE"
+              to="$HEAD_SHA"
+              ;;
+            push)
+              from="$PUSH_BEFORE"
+              to="$HEAD_SHA"
+              ;;
+            *)
+              echo "unexpected event" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$from" = "0000000000000000000000000000000000000000" ]; then
+            echo "artbook=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          is_sha "$from" || { echo "base is not a commit sha" >&2; exit 1; }
+          is_sha "$to" || { echo "head is not a commit sha" >&2; exit 1; }
+          git cat-file -e "${from}^{commit}"
+          git cat-file -e "${to}^{commit}"
+          artbook=false
+          git diff --name-only "$from" "$to" > /tmp/zlyme-changed
+          while IFS= read -r path; do
+            case "$path" in
+              package/system/zlyme-artbook/*|\
+              package/system/nextui/paks/Tools/*|\
+              package/system/nextui/rom-dirs.txt|\
+              Dockerfile|\
+              scripts/tests/test_artbook.sh|\
+              scripts/tests/test_artbook_rootfs.sh|\
+              scripts/tests/test_recent_art.sh|\
+              package/system/nextui/zlyme/zlyme-stock-seed|\
+              board/my355/assert-input-rootfs.sh|\
+              .github/workflows/artbook.yml|\
+              .github/workflows/validation.yml)
+                artbook=true
+                ;;
+            esac
+          done < /tmp/zlyme-changed
+          echo "artbook=$artbook" >> "$GITHUB_OUTPUT"
+
+  artbook:
+    needs: artbook-changes
+    if: needs.artbook-changes.outputs.artbook == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Checkout the pinned NextUI
+        run: |
+          set -eu
+          ref=$(sed -n 's/^NEXTUI_VERSION = //p' package/system/nextui/nextui.mk)
+          printf '%s' "$ref" | grep -Eq '^[0-9a-fA-F]{40}$'
+          git clone --filter=blob:none --no-checkout https://github.com/Zetarancio/NextUI.git NextUI
+          git -C NextUI fetch --depth 1 origin "$ref"
+          git -C NextUI checkout FETCH_HEAD
+      - name: Build the branch image
+        run: |
+          set -eu
+          id=$(sha256sum Dockerfile | awk '{print $1}')
+          docker build --label "zlyme.dockerfile=${id}" -t zlyme-build - < Dockerfile
+      - name: Render ArtBook inside that image
+        run: |
+          set -eu
+          mkdir -p dl artbook-sheets
+          docker run --rm \
+            -v "$PWD:/zlyme/src:ro" \
+            -v "$PWD/dl:/dl" \
+            -v "$PWD/artbook-sheets:/sheets" \
+            -w /zlyme/src \
+            -e ZLYME_ARTBOOK_DL=/dl \
+            -e ZLYME_ARTBOOK_SHEETS=/sheets \
+            -e ZLYME_NEXTUI_SRC=/zlyme/src/NextUI \
+            zlyme-build \
+            sh scripts/tests/test_artbook.sh
+      - name: Require the contact sheets
+        run: |
+          set -eu
+          for sheet in systems-light systems-dark tools-light tools-dark special-light special-dark; do
+            test -s "artbook-sheets/${sheet}.png"
+          done
+      - name: Upload contact sheets
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: artbook-sheets-${{ github.run_id }}
+          path: artbook-sheets
+          if-no-files-found: error
