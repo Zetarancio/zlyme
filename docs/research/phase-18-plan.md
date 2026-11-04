@@ -2,7 +2,7 @@
 
 Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
 
-Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B is next. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
+Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B1 is open on `zlyme45-phase-18b`. The ARMHF compiler cache is disabled. 18B is not closed. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
@@ -92,6 +92,16 @@ Exclusions: do not assume the cache works. Do not retune unrelated compiler flag
 Done when: the effective config, the wrapper, and the hit or miss counts are recorded, and any correction has a regression check.
 
 Depends on: nothing in Phase 18. It can land with 18A if both touch CI, as separate commits.
+
+## 18B1. ARMHF compiler cache is disabled
+
+2026-11-04. The ARMHF job in `.github/workflows/build.yml` restores `output-armhf-export` under `armhf-runtime-` plus a hash of the sysroot inputs. A hit that passes both manifest checks skips the compiler cache, the image build, and the sysroot build. Otherwise it restores `.ccache-armhf` with key `ccache-armhf-` plus the run id, and prefix `ccache-armhf-`. `ZLYME_CCACHE` is that directory. `scripts/build-armhf-sysroot.sh` points `build.sh` at `configs/zlyme_my355_armhf_defconfig` and `output-armhf`. `build.sh` mounts `ZLYME_CCACHE` at `/zlyme/ccache` and exports `BR2_CCACHE_DIR=/zlyme/ccache`. Buildroot 2026.08 copies that environment variable into `BR_CACHE_DIR` before it reads `.config`. The toolchain wrapper calls host ccache only when it was built with `BR_CCACHE`, and `toolchain/toolchain-wrapper.mk` adds that flag only for `BR2_CCACHE=y`. The saved cache is `.ccache-armhf` again. The runtime export stays `output-armhf-export`. The product job uses `.ccache`, the `ccache-my355-` prefix, and the `zlyme-cache` release. That path was not changed.
+
+`configs/zlyme_my355_armhf_defconfig` did not set `BR2_CCACHE`. The product and minimal defconfigs do. The local `output-armhf/.config` is Buildroot 2026.08, generated 2026-10-25, from that defconfig, external version `8579baf-dirty`. It says `# BR2_CCACHE is not set` and has no ccache directory line. `output-armhf/host/bin/ccache` is absent. `toolchain-wrapper` is a stripped host executable with no ccache string. There is no local `.ccache-armhf` directory. The product `.ccache` directory is a different cache and is not ARMHF evidence.
+
+Build [41431921792](https://github.com/Zetarancio/zlyme/actions/runs/41431921792) on 2026-11-02 hit the runtime export, about 13 MB, and did not restore `.ccache-armhf`. Build [40439819817](https://github.com/Zetarancio/zlyme/actions/runs/40439819817) on 2026-10-27 found no `ccache-armhf-` cache, set `ZLYME_CCACHE`, compiled, and saved `ccache-armhf-40439819817`. That log has no host-ccache build and no hit or miss count. No compiler-cache statistic was found.
+
+The cache is disabled. `BR2_CCACHE=y` is now in the ARMHF defconfig, which is the same switch the other two defconfigs use. `scripts/tests/test_armhf_defconfig.sh` requires that line. It does not measure a hit. The exact Actions key changes every run. A later run can restore an older prefix, and Buildroot does not purge the cache when the compiler changes. An ARMHF sysroot build that prints `ccache -s` before and after a repeat is still required. It must not build or publish a Flip image. 18B stays open. 18C through 18G have not started.
 
 ## 18C. Unicode paths
 
