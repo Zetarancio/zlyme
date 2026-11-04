@@ -1,7 +1,9 @@
-# Source and documentation checks. This workflow does not build firmware,
-# publish a release, or call the Build workflow.
-# The Art Book job renders contact sheets. It does not push a container
-# or replace .github/workflows/artbook.yml.
+# Source and documentation checks, plus Art Book contact sheets when
+# those files change. A push to any branch runs this workflow, including
+# main, zlyme45-phase-18a, and a name such as fix/audio. Tag pushes do
+# not: tags are a separate filter, and this file does not list them.
+# This workflow does not build firmware, publish a release, push a
+# container, or call the Build workflow.
 
 name: Validation
 
@@ -10,8 +12,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
-      - zlyme45-**
+      - '**'
 
 permissions:
   contents: read
@@ -22,6 +23,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Run the lightweight checks
         run: |
           set -eu
@@ -42,6 +45,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Decide whether Art Book files changed
         id: gate
         env:
@@ -78,8 +82,15 @@ jobs:
           fi
           is_sha "$from" || { echo "base is not a commit sha" >&2; exit 1; }
           is_sha "$to" || { echo "head is not a commit sha" >&2; exit 1; }
-          git cat-file -e "${from}^{commit}"
-          git cat-file -e "${to}^{commit}"
+          echo "compare $from $to"
+          git cat-file -e "${from}^{commit}" || {
+            echo "base commit is not in the checkout" >&2
+            exit 1
+          }
+          git cat-file -e "${to}^{commit}" || {
+            echo "head commit is not in the checkout" >&2
+            exit 1
+          }
           artbook=false
           git diff --name-only "$from" "$to" > /tmp/zlyme-changed
           while IFS= read -r path; do
@@ -99,6 +110,7 @@ jobs:
                 ;;
             esac
           done < /tmp/zlyme-changed
+          echo "artbook decision: $artbook"
           echo "artbook=$artbook" >> "$GITHUB_OUTPUT"
 
   artbook:
@@ -108,6 +120,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Checkout the pinned NextUI
         run: |
           set -eu
