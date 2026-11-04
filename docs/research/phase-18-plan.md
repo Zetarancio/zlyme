@@ -1,6 +1,8 @@
 # Phase 18 plan
 
-Status: Proposed. Not started. This file is not implementation and not hardware acceptance.
+Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
+
+Current status, 2026-11-04: 18A has started on `zlyme45-phase-18a`. 18B through 18G have not started. No Phase 18 firmware change is accepted. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
@@ -27,6 +29,14 @@ Exclusions: do not remove `artbook.yml` before the replacement is green. Do not 
 Done when: the templates and links exist, the consolidated workflow covers the Art Book check and the contact sheets, and `artbook.yml` is gone only because that replacement passed.
 
 Depends on: nothing in Phase 18.
+
+## 18A1. Templates and lightweight validation
+
+2026-11-04. Issue forms, a pull-request template, and contributor links are in the tree. GitHub Issues and Discussions are enabled. The discussion categories read from the repository are Announcements, General, Ideas, Polls, Q&A, and Show and tell. The SpruceOS Discord link stays.
+
+`.github/workflows/validation.yml` runs the documentation tests, the release-helper unit test, and the workflow-text checks for the publish gate, the container image name, the changelog notes helper, and the release tag target. `scripts/tests/test_logbook_order.py` was not included: on this tree it reports recorded logbook headings that no longer match `scripts/tests/logbook_entries.sha256`. That mismatch was not changed here. The workflow uses `contents: read`. It does not call the Build workflow.
+
+`.github/workflows/artbook.yml` stays. It still checks out the pinned NextUI commit, builds the local Docker image, runs `scripts/tests/test_artbook.sh`, and uploads contact sheets. Moving that job into validation, and deleting the old workflow, waits for a green Art Book run of the replacement. 18A is not complete.
 
 ## 18B. Remote ARMHF compiler cache
 
