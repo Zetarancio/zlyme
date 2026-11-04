@@ -44,9 +44,20 @@ Depends on: nothing in Phase 18.
 
 The Art Book job runs when the push or pull-request range touches the same paths as `artbook.yml`, or `validation.yml`. The compared commits are `github.event.before` and `github.sha` for a push, and the pull request's base SHA and `github.sha` for a pull request. A new branch with a zero base runs the job. A manual dispatch runs it. Other changes still run `source` and skip Art Book. A skipped Art Book job is not a render pass.
 
-`scripts/tests/test_logbook_order.py` fails on this tree. The introduction hash matches. There are 331 dated entries and 208 manifest rows. No listed heading is missing. Nine listed bodies differ. Each difference entered in `a3e496ea6ea1cd10e75742c3b3f8913ba97d7a03`, "docs: name research files by the phase that needed them", on 2026-10-26. That commit changes 15 lines in `docs/LOGBOOK.md`. For these nine headings the change is only the research-file name: `phase-12d-`, `phase-10-documentation-audit`, `phase-06-deep-suspend`, `phase-05-`, `phase-03-`, `phase-02-`, or `phase-01-`. The bodies have not changed since that commit. The measurements and conclusions in those entries remain. The logbook and `scripts/tests/logbook_entries.sha256` were not edited. The test stays out of the green suite until a separate authorization reconciles the manifest with that rename.
+`scripts/tests/test_logbook_order.py` fails on this tree. The introduction hash matches. There are 331 dated entries and 208 manifest rows. No listed heading is missing. Nine listed bodies differ. Each still matched the manifest at `726e449e23d9f8417938a6881b2cf4b0eea58326` and at `5b6be3a`. The difference entered in `a3e496ea6ea1cd10e75742c3b3f8913ba97d7a03`, "docs: name research files by the phase that needed them", on 2026-10-26. That commit renames 15 research paths inside `docs/LOGBOOK.md`. Nine of those paths sit in manifest entries:
 
-The GitHub Actions result for this job is recorded after the branch push. 18A stays open. 18B through 18G have not started.
+- 2026-10-13 Phase 12D host build: `linux-7.2.10-migration.md` became `phase-12d-linux-7.2.10-migration.md`.
+- 2026-10-13 Phase 12D preflight: `linux-7.2.10-preflight.md` became `phase-12d-linux-7.2.10-preflight.md`.
+- 2026-10-04 Phase 10 audit: `documentation-audit-phase10.md` became `phase-10-documentation-audit.md`.
+- 2026-09-28 Phase 6A: `deep-suspend-phase6.md` became `phase-06-deep-suspend.md`.
+- 2026-09-28 Phase 5: `kernel-patch-audit-phase5.md` became `phase-05-kernel-patch-audit.md`.
+- 2026-09-23 Phase 3A: `joypad-driver.md` became `phase-03-joypad-driver.md`.
+- 2026-09-23 Phase 2B and Phase 2A: `kernel-patch-audit.md` became `phase-02-kernel-patch-audit.md`.
+- 2026-09-22 Phase 1 Weston tracer: `weston.md` became `phase-01-weston.md`.
+
+The other six renames are in entries the manifest does not list. The nine bodies are unchanged from that commit through the current tree. The measurements and conclusions remain. The previous filenames remain in the parent commit. This is a research-filename correction, and the entry boundaries are unchanged. It is not lost historical prose. The logbook and `scripts/tests/logbook_entries.sha256` were not edited. The test stays out of the green suite until a separate authorization reconciles the manifest with that rename.
+
+Validation run [41832820570](https://github.com/Zetarancio/zlyme/actions/runs/41832820570) is push `c8616998c6316fd90a9b2a77b42fdb9b4970a627`. `source` succeeded. `artbook-changes` succeeded and the `artbook` job ran. It was not skipped. The job checked out NextUI `f595d7862d8f5dac722aaa9960307609be903db8`, built the branch image, and `scripts/tests/test_artbook.sh` passed. Artifact `artbook-sheets-41832820570` is 1281430 bytes, digest `sha256:24b7d7456e9c5d31c13f0181b4e4c8b9d8777d658503f5238926d07de9691ced`. The six PNGs are nonempty: `systems-light.png` and `systems-dark.png` are 960 by 1080, `tools-light.png` and `tools-dark.png` are 960 by 240, and `special-light.png` and `special-dark.png` are 960 by 120. The system and special light sheets show the rendered labels. `actionlint` is not installed here, so the workflow YAML was not linted with it. A pull request and a manual dispatch were not run. `.github/workflows/artbook.yml` remains. Removing it is later work. 18A stays open. 18B through 18G have not started.
 
 ## 18B. Remote ARMHF compiler cache
 
