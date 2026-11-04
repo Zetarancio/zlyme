@@ -1,6 +1,6 @@
 # Phase 17 upstream monitor
 
-Status, 2026-11-04: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. 17G3 records the LoveRetro tip. 17G4 records the BaseOS tip. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
+Status, 2026-11-04: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. 17G3 records the LoveRetro tip. 17G4 records the BaseOS tip. 17G5 compares Linux 7.2.10 with tag v7.2.15. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
 
 ## Checkpoint fields
 
@@ -26,7 +26,7 @@ A failed or partial scan does not move "Reviewed through". A rewritten upstream 
 | Batocera `batocera-linux/batocera.linux` branch `master` | `a89288d0979cdf578b2ce69d686a823c06c29d32` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and libretro Yabasanshiro recipes at that tip. Not a repository interval. | PPSSPP v1.20.4 is unverified. The libretro pin is a proposal. |
 | LoveRetro `NextUI` branch `main` | `5291344b3aceae5fa197437a70824afb41e2d338` | 2026-11-03T01:58:45Z | Unknown | | Equals the `UPSTREAM` file in pin `f595d7862d8f5dac722aaa9960307609be903db8`. Zero commits after that base. History before the base was not audited. | No upstream import. |
 | apommel `baseos-my355` branch `main` | `a5c0a03af843afa93d05a601ab0154fe57befb5d` | 2026-11-04T08:47:43Z | Unknown | | 20 commits after installer pin `e09d37bb0f03c34e564d61bd02164f332d8515a8`. Named boot diffs read. Release and init commits were classified from subjects and paths. History before the pin was not audited. | No import. The pin is not this cursor. |
-| Selected Linux | Not observed | | Unknown | | `configs/zlyme_my355_defconfig` sets `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` to 7.2.10. The tarball is named in `board/my355/linux/patches/10-mainline/linux/linux.hash`. That pin is not an upstream HEAD. No kernel branch was invented. | |
+| Selected Linux | Tag `v7.2.15`, peeled `497791a0a96b866d90add64041c47acdff49cae6`. Not a branch | 2026-11-04T09:10:56Z | Unknown | | Pin remains 7.2.10. Hash matches kernel.org. Selected files compared with v7.2.15. v7.3.1 was seen and is not the planning target. The commits between the tags were not fully reviewed. | Defer the pin. See the 17G5 preflight. |
 
 `f2148e8061e38a44d1b71bac3efeddb0c9385084` is an approximate earlier ROCKNIX reference. Its subject is a DuckStation AppImage change, committed 2026-09-30T01:47:46Z. It is not evidence that every commit through that SHA was reviewed. The reviewed-through cursor stays unknown.
 
@@ -157,3 +157,7 @@ Zlyme's U-Boot pin remains 2026.01. `board/my355/uboot/patches/uboot/006-cmd-add
 `898590462020249395358ab4f18758275e76979d`, 2026-10-16T15:29:15Z, changes `overlay/usr/sbin/baseos-update` so an update writes and flips only the A/B regions whose image changed. The rootfs is still always written. This is BaseOS's updater, including raw slot reads. It is not Zlyme's reconstruct path. Hardware-critical if transplanted. Do not import. The existing HDMI note in `docs/UPSTREAMS.md` is a tree snapshot at this revision. This commit's diff is the updater, not a U-Boot or plane-mask patch. That note stays as written.
 
 `9c516da7e428476da5b7a580ce5ce2bb01a6e120` adds a SpruceOS harvest manifest, `mke2fs.conf`, and `shells`. `de44a122668544c9d9f000edd73adace039363e7` edits BaseOS `rcK`. `5b70e24efd689078bfd62522b7f17e081da21744` adds EGL and GLESv2 symlinks in `build-rootfs.sh`. The other commits are release versions, checksums, and docs. Do not import. Their bodies were not line-reviewed, so the reviewed-through cursor stays unknown.
+
+## OHCI clarification, 2026-11-04
+
+The 17G4 note says `rk3566-miyoo-flip.dts` already disables `fd8c0000`. The board file's comment says that. The file has no `&usb_host1_ohci` node and does not set that node's status. No patch under `board/my355/linux/patches` names the node. In `rk356x-base.dtsi` at tags v7.2.10 and v7.2.15, `usb_host1_ohci` is `usb@fd8c0000` with `status = "disabled"`. The effective status is that upstream default. The 17G4 recommendation not to import the BaseOS DTB rewriter is unchanged. The DTS was not edited.
