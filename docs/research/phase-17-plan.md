@@ -2,7 +2,7 @@
 
 Status, as first written on 2026-11-02: proposed and not started. This file does not authorize a firmware change, an OTA, or a release.
 
-Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The earlier recovery session did not open `docs/DEVICE_PORTING.md`. The 17E1 OTA preflight did, once, from an agent that could edit and did not. That pass is not universal reliability. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is closed, 2026-11-03, with the limitations in the disposition below. OpenCode runtime testing is deferred to the maintainer. 17F reconciliation, 2026-11-03, found no missing Phase 17 contract. Phase 17 is not merged and is not a firmware acceptance. 17G1 through 17G4 are accepted. 17G5 adds the kernel planning skill and defers a pin move. 17G is not closed. Phase 18 remains proposed and has not started.
+Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The earlier recovery session did not open `docs/DEVICE_PORTING.md`. The 17E1 OTA preflight did, once, from an agent that could edit and did not. That pass is not universal reliability. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is closed, 2026-11-03, with the limitations in the disposition below. OpenCode runtime testing is deferred to the maintainer. 17F reconciliation, 2026-11-03, found no missing Phase 17 contract. Phase 17 is not merged and is not a firmware acceptance. 17G is accepted, 2026-11-04, for the five watch and planning skills and the monitoring record. Reviewed-through stays unknown. Phase 17 is closed on this development branch within that documentation and tooling scope. It is not a firmware acceptance. Integration into main is still pending. Phase 18 remains proposed and has not started.
 
 Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
@@ -415,3 +415,19 @@ The six skills are documentation, ROCKNIX, package, NextUI, BaseOS, and kernel p
 Upstream reviewed-through stays unknown for ROCKNIX, KNULLI, Batocera, LoveRetro, BaseOS, and selected Linux. The 17G4 OHCI clarification remains. kernel.org on 2026-11-04 marks 7.2.15 end of life. 7.3.1 is stable. 6.18 remains longterm. No migration is authorized. `ZLYME_VERSION` stays `zlyme44.4`. Board, package, configs, and `build.sh` are unchanged from main. `.cursor` and `.opencode` are unchanged from main. The Phase 18 plan blob is `3fed48a3be4a53f0836b4ea1978f59f01ad716a2`.
 
 Result: **CLOSURE CANDIDATE**. That is not an accepted closure. No new discrepancy required a protected edit.
+
+## Skill classification, 2026-11-04
+
+The preflight sentence that says each of the six skills stays read-only is inaccurate. The five upstream and upgrade skills default to read-only investigation or planning. `zlyme-documentation` supports documentation edits when `AGENTS.md` authorizes them, and its validation requirements stay active. None of the six overrides `AGENTS.md`. The preservation result above remains valid.
+
+## Closure, 2026-11-04
+
+Phase 17, including 17G, is closed on this development branch. Main baseline `b9c46f428493c214e31aece13f82453e51979803`. The preservation preflight is `15d9f96c6bc66b1662f3b1612fbc2b1e98899cd5`. Integration into main is still pending. This section does not name the closure commit.
+
+Accepted scope: documentation ownership, the lossless audio move, preserved agent instructions, the documented Cursor skill load and the agent-test limits, the document reconciliation, the five upstream and kernel-planning skills, and the shared monitoring record. 17A through 17F keep their earlier dispositions. 17G is accepted for that watcher infrastructure. It is not complete upstream coverage and not firmware acceptance.
+
+Reviewed-through stays unknown for ROCKNIX, KNULLI, Batocera, LoveRetro, BaseOS, and selected Linux. The ROCKNIX scan is partial. The package comparisons are bounded. No NextUI import, no BaseOS boot change, and no kernel pin change occurred. Linux stays 7.2.10. Linux 7.2.15 is end of life and remains only the same-series comparison baseline.
+
+Cursor automatic skill selection remains unverified. Explicit loading of the documentation skill was observed. OpenCode runtime testing remains deferred. The 17E4 reviewer returned HTTP 403. Reviewer permissions were not fully shown at runtime. Some historical reviews did not inspect the full requested diff. The earlier miss of `docs/DEVICE_PORTING.md` stays recorded. A later preflight opened that file once. That pass is not universal reliability. Future nontrivial implementation changes still need the independent review `AGENTS.md` requires.
+
+`ZLYME_VERSION` stays `zlyme44.4`. Phase 18 remains proposed and has not started. No kernel build, OTA, or Flip test is part of this closure.
