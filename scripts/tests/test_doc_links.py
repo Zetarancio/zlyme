@@ -38,6 +38,8 @@ DOCS = (
     "docs/research/phase-17b-preservation-decisions.md",
     "docs/research/phase-17c-agent-instruction-map.md",
     "docs/research/phase-17c-agent-clause-ledger.md",
+    "docs/research/phase-17-upstream-monitor.md",
+    "docs/research/phase-17g5-kernel-upgrade-preflight.md",
     "docs/research/phase-18-plan.md",
 )
 
@@ -63,6 +65,8 @@ PATH_DOCS = set(DOCS) - {
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
     "docs/research/phase-10-documentation-audit.md",
+    "docs/research/phase-17-upstream-monitor.md",
+    "docs/research/phase-17g5-kernel-upgrade-preflight.md",
 }
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 TICK = re.compile(r"`([^`\n]+)`")

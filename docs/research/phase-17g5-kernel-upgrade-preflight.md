@@ -87,3 +87,9 @@ Stage F. Rejection is a patch that only applies by deleting a still-required beh
 ## Open
 
 The changelog from 7.2.10 to 7.2.15 was not reviewed commit by commit. `0008`, `0021`, `1001`, `1010`, `1011a`, `1011b`, and `1013` were not diffed against 7.2.15. The composed CMA size was not measured. mali-kbase was not built. Reviewed-through stays unknown.
+
+## Maintenance status, 2026-11-04
+
+kernel.org `releases.json`, read 2026-11-04T09:26:15Z, marks Linux 7.2.15 with `iseol` true. Its moniker field is still `stable`. Linux 7.3.1 is `stable` and is not end of life. Linux 6.18.60 is the current point in the 6.18 longterm series, which is not end of life. 6.12, 6.6, 6.1, 5.15, and 5.10 are also longterm.
+
+The earlier choice stands: 7.2.15 is the immediate same-series comparison baseline. It is not an accepted pin. A move only to 7.2.15 would not put Zlyme on a series kernel.org still maintains. Staying on 7.2.10 keeps the known patches and modules, and it also stays on a series that no longer receives stable updates. A hardware-sensitive migration stays deferred until a maintained stable or longterm target is evaluated and tested. 7.3.1 and the longterm series are comparison candidates, not pins. No migration is authorized.

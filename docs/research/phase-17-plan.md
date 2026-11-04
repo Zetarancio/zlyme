@@ -401,3 +401,17 @@ Kernel upgrade remains planned. Creating that skill would not authorize a kernel
 2026-11-04. 17G4 stays accepted. This does not close 17G or Phase 17, and it does not start Phase 18.
 
 `zlyme-kernel-upgrade-plan` is an optional read-only procedure. The product pin remains Linux 7.2.10. kernel.org confirms that tarball hash. Tag v7.2.15 is the same-series release to diff later. v7.3.1 is not the preferred target. Fifteen patches were classified from their diffs and from selected files in both tags. The pin move is deferred. The detail is [phase-17g5-kernel-upgrade-preflight.md](phase-17g5-kernel-upgrade-preflight.md). Creating the skill does not authorize a build or a hardware test.
+
+## Final Phase 17 preservation preflight
+
+2026-11-04. Starting source `cef9894c8dce12deb4735db1829fe693b1a59259`. Main baseline `b9c46f428493c214e31aece13f82453e51979803`. The range is 30 commits and 24 paths. This entry does not close Phase 17 and does not start Phase 18.
+
+`AGENTS.md` against main is four added lines and no deletions: the audio route, and the authorization paragraph. Blob `bc0f7e7fbc1ebf0f4c4ef52bb3d46fab9dee9fee`. The clause ledger is 263 rows, 262 KEEP and one UNCERTAIN, blob `d29caeea3974b231954d5a1fe1b6147568ce2d18`. No accepted removal.
+
+The `## 9. Audio` body on main matches `docs/architecture/audio.md` after the new heading. The architecture heading remains and links to that file. `docs/README.md` lists both entries. The contract test includes `docs/architecture/audio.md`. ADR 0007 still names `docs/ARCHITECTURE.md` as the running contract. Section 9 is that entry. The sentence was not rewritten.
+
+The six skills are documentation, ROCKNIX, package, NextUI, BaseOS, and kernel planning. Each defers to `AGENTS.md` and stays read-only. Cursor automatic skill selection remains unverified. Explicit Cursor skill loading was observed in 17D. OpenCode runtime testing is deferred. The 17E4 OpenCode reviewer returned HTTP 403 before a review. Some reviewer runs did not inspect the requested diff. Reviewer configuration is not runtime enforcement. The earlier device-porting miss and the later preflight that opened the file both stay in the record.
+
+Upstream reviewed-through stays unknown for ROCKNIX, KNULLI, Batocera, LoveRetro, BaseOS, and selected Linux. The 17G4 OHCI clarification remains. kernel.org on 2026-11-04 marks 7.2.15 end of life. 7.3.1 is stable. 6.18 remains longterm. No migration is authorized. `ZLYME_VERSION` stays `zlyme44.4`. Board, package, configs, and `build.sh` are unchanged from main. `.cursor` and `.opencode` are unchanged from main. The Phase 18 plan blob is `3fed48a3be4a53f0836b4ea1978f59f01ad716a2`.
+
+Result: **CLOSURE CANDIDATE**. That is not an accepted closure. No new discrepancy required a protected edit.
