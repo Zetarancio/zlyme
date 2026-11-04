@@ -2,7 +2,7 @@
 
 Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
 
-Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B1 is open on `zlyme45-phase-18b`. The ARMHF compiler cache is disabled. 18B is not closed. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
+Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B is closed on `zlyme45-phase-18b`. The ARMHF sysroot build has `BR2_CCACHE=y`, and a repeat bzip2 compile hit the cache. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
@@ -102,6 +102,22 @@ Depends on: nothing in Phase 18. It can land with 18A if both touch CI, as separ
 Build [41431921792](https://github.com/Zetarancio/zlyme/actions/runs/41431921792) on 2026-11-02 hit the runtime export, about 13 MB, and did not restore `.ccache-armhf`. Build [40439819817](https://github.com/Zetarancio/zlyme/actions/runs/40439819817) on 2026-10-27 found no `ccache-armhf-` cache, set `ZLYME_CCACHE`, compiled, and saved `ccache-armhf-40439819817`. That log has no host-ccache build and no hit or miss count. No compiler-cache statistic was found.
 
 The cache is disabled. `BR2_CCACHE=y` is now in the ARMHF defconfig, which is the same switch the other two defconfigs use. `scripts/tests/test_armhf_defconfig.sh` requires that line. It does not measure a hit. The exact Actions key changes every run. A later run can restore an older prefix, and Buildroot does not purge the cache when the compiler changes. An ARMHF sysroot build that prints `ccache -s` before and after a repeat is still required. It must not build or publish a Flip image. 18B stays open. 18C through 18G have not started.
+
+## 18B2. Measured ARMHF compiler cache
+
+2026-11-04. The local sysroot command was `ZLYME_CCACHE` set to `.ccache-armhf` and `scripts/build-armhf-sysroot.sh`. That selects `configs/zlyme_my355_armhf_defconfig` and writes `output-armhf`. It does not build the product image. Buildroot is 2026.08. The Docker image label matched the Dockerfile, so the image was not rebuilt. The product `.ccache` directory was not used. Its timestamp stayed 2026-09-10.
+
+Before the build, `output-armhf/.config` was `15c18b78afcb62bf8bfe080b86b6cac0a83c65eb55683ed3973fd163bbf84eef` and said `# BR2_CCACHE is not set`. The toolchain wrapper hash was `7af6465488fbc3cd16e9870a8f55be90e9db48c0db4d4bd527b1267e482b3f24` and contained no ccache string. `.ccache-armhf` did not exist. The defconfig is newer than that saved config, so `build.sh` reapplied it. The new `.config` is `680d96fe4bed40f452104147eb5271848b3da9376c235631a21d6860ddb36da1` and has `BR2_CCACHE=y`. The Kconfig string still defaults the directory to `$(HOME)/.buildroot-ccache`. `build.sh` overrides that with `BR2_CCACHE_DIR=/zlyme/ccache`, and that mount is `.ccache-armhf`.
+
+The first sysroot pass built host ccache and finalized the existing rootfs. It did not rebuild the October wrapper. `host-gcc-final-rebuild` then recompiled the wrapper from the existing GCC build directory. The installed wrapper is now `c0edd0e9f7620176cfb4da61412f88243d07ef156e9dd00fb2da3f449fd9b32d`. Its strings name `bin/ccache`, `BR2_USE_CCACHE`, and `CCACHE_BASEDIR` `/zlyme/output`. `output-armhf/host/bin/ccache` is present.
+
+`zlyme-armhf-probe` was the first repeat candidate. Its recipe compiles and links in one command, which ccache counts as uncacheable, and `zlyme-armhf-probe-rebuild` was not a second compile of separate objects. bzip2 is the measured package. `bzip2-rebuild` left the objects up to date, so the two measured passes are `bzip2-dirclean` followed by `bzip2`.
+
+Before those passes the counters were 0 cacheable calls, 0 hits, 0 misses, and 4 uncacheable calls. The cold pass reached 16 cacheable calls, 0 hits, and 16 misses. The warm pass reached 32 cacheable calls, 16 hits, and 16 misses. The warm pass added 16 hits and no misses. `blocksort.o` is `8db27aae1ea0345d81d4b47eb9208d7917999333e6fbd6dddc36c6bd020d0f32` after both passes. `libbz2.so.1.0.8` in the build directory is `7b29cf634d3392cb8446ab1f8fb2bb34a72fa6dc4ce43a5f323bf2e6e59ce071` after both passes. `.ccache-armhf` is 6.1 MB.
+
+After `target-finalize` and the manifest scripts, both checkers passed. The stripped installed loader, libc, Box86, probe, and `libbz2.so.1.0.8` hashes match the hashes recorded before this build. The manifest files changed because they include the defconfig hash, and that file now contains `BR2_CCACHE=y`. A second empty output tree was not built. `output/` was not modified.
+
+`scripts/tests/test_armhf_defconfig.sh` now runs in the validation `source` job. It checks the defconfig line on the host. It does not compile the sysroot. 18B is closed for this compiler-cache question. 18C through 18G have not started. No Flip image or OTA was produced.
 
 ## 18C. Unicode paths
 
