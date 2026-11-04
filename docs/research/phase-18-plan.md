@@ -2,7 +2,7 @@
 
 Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
 
-Current status, 2026-11-04: 18A is closed for community templates and CI. 18B through 18G have not started. No Phase 18 firmware change is accepted. `ZLYME_VERSION` stays `zlyme44.4`.
+Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B is next. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
