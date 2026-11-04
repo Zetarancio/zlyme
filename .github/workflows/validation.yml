@@ -1,0 +1,32 @@
+# Source and documentation checks. This workflow does not build firmware,
+# publish a release, or call the Build workflow.
+
+name: Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - zlyme45-**
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run the lightweight checks
+        run: |
+          set -eu
+          python3 scripts/tests/test_doc_links.py
+          python3 scripts/tests/test_doc_contracts.py
+          python3 scripts/tests/test_zlyme_release.py
+          sh scripts/tests/test_build_publish_gate.sh
+          sh scripts/tests/test_ci_container_image.sh
+          sh scripts/tests/test_changelog_release_notes.sh
+          sh scripts/tests/test_release_tag_target.sh
