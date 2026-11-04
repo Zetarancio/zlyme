@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in Zlyme did not do what you expected.
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Zlyme supports the Miyoo Flip (`my355`). Filing this form does not mark the report verified.
+        Before you paste a log, remove Wi-Fi passwords, account tokens, SSH keys, and private paths you do not want public. Do not attach ROMs, BIOS files, or commercial software.
+  - type: input
+    id: release
+    attributes:
+      label: Release or installed update
+      description: The release name, or the update file name if you installed one. Leave blank if you do not know.
+    validations:
+      required: false
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build
+      options:
+        - Current published firmware
+        - An experimental or local build
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to see it again
+      description: The shortest path that shows the problem.
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Emulator, tool, or area
+      description: Optional. For example a system name, PortMaster, Settings, or audio.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Settings, System, Advanced, System logs, then the /storage/.logs folder. Paste only the relevant part, after redacting secrets.
+    validations:
+      required: false
+  - type: dropdown
+    id: device
+    attributes:
+      label: Did you see this on a Miyoo Flip?
+      options:
+        - Yes
+        - No, host or report only
+        - Not sure
+    validations:
+      required: true

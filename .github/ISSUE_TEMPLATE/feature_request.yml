@@ -1,0 +1,47 @@
+name: Feature request
+description: A change you want in Zlyme.
+title: "[Feature] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Filing this form does not approve the change. Zlyme supports the Miyoo Flip (`my355`).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is hard or missing
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would change
+    validations:
+      required: true
+  - type: textarea
+    id: benefit
+    attributes:
+      label: What a person would notice
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What Zlyme does today
+      description: Optional. Point at a screen, a setting, or a document if you know one.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Other ways to get the same result
+    validations:
+      required: false
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Compatibility or hardware notes
+      description: Optional. Battery, display, audio, storage, or a specific Flip behavior.
+    validations:
+      required: false

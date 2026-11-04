@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: SpruceOS Discord
+    url: https://discord.gg/KjR5uMQQt9
+    about: Zlyme discussion is hosted in the SpruceOS Discord. A template is not required.
+  - name: GitHub Discussions
+    url: https://github.com/Zetarancio/zlyme/discussions
+    about: Questions and ideas can also go in GitHub Discussions.

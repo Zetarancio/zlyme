@@ -16,7 +16,7 @@ All of these count:
 
 ## Talk first if it's big
 
-For anything larger than a fix (a new subsystem, a different kernel patch, swapping an emulator, changing how updates or storage work), open an issue or ask in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9) first. Zlyme's discussion space is kindly hosted inside the SpruceOS server. It's cheaper to argue about a design than to rewrite a branch.
+For anything larger than a fix (a new subsystem, a different kernel patch, swapping an emulator, changing how updates or storage work), open an [issue](https://github.com/Zetarancio/zlyme/issues/new/choose) or ask in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9) first. Zlyme's discussion space is kindly hosted inside the SpruceOS server. [GitHub Discussions](https://github.com/Zetarancio/zlyme/discussions) is there too. It's cheaper to argue about a design than to rewrite a branch. A blank issue is fine when the templates do not fit.
 
 ## Fork, branch, pull request
 

@@ -140,7 +140,7 @@ If an experiment turns into something good, it can ship in the OS. That's the po
 
 You don't need a finished patch to start. Forks, pull requests, a bug report with the logs attached, a fixed typo in the docs, a core that runs better, a new or improved pak, frame-time numbers, a power or current measurement off a real Flip, a design idea, a review of code that's already here, or just a question before you write any code: all welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how.
 
-Want to talk first? Zlyme hangs out in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9), where the SpruceOS team has kindly given the project a home.
+Want to talk first? Zlyme hangs out in the [SpruceOS Discord](https://discord.gg/KjR5uMQQt9), where the SpruceOS team has kindly given the project a home. Bug reports and feature requests can use [GitHub Issues](https://github.com/Zetarancio/zlyme/issues/new/choose). Questions can also go in [GitHub Discussions](https://github.com/Zetarancio/zlyme/discussions).
 
 A lot of time has gone into the documentation in this repository and into the [Miyoo Flip hardware wiki](https://github.com/Zetarancio/Miyoo-Flip-Mainline-Linux-Reverse-Engineering), so nobody has to rebuild this project from old chats and hundreds of commits. If you want to understand or fork Zlyme with an AI coding tool, clone the repository and give it the `docs/` folder. The docs were written to make the project easier to understand, change and extend. The hardware wiki is where the deeper Flip knowledge lives. AI can help you find your way around, but the source, the tests and a real Flip are still the evidence.
 
