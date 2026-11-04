@@ -1,6 +1,6 @@
 # Phase 17 upstream monitor
 
-Status, 2026-11-03: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. 17G3 records the LoveRetro tip. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
+Status, 2026-11-04: ROCKNIX remains a partial scan. 17G2 records the KNULLI and Batocera tips and a two-recipe pilot. 17G3 records the LoveRetro tip. 17G4 records the BaseOS tip. Reviewed-through stays unknown. This file does not move a pin, apply a patch, or authorize a build or a device test. Policy stays in `docs/UPSTREAMS.md`.
 
 ## Checkpoint fields
 
@@ -25,7 +25,7 @@ A failed or partial scan does not move "Reviewed through". A rewritten upstream 
 | KNULLI `knulli-cfw/knulli-linux` branch `knulli-main` | `57afa662009641d181f57241bcc480119b131530` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and standalone Yabasanshiro recipes at that tip. Not a repository interval. | No PPSSPP version change. Standalone Saturn patches do not transfer. |
 | Batocera `batocera-linux/batocera.linux` branch `master` | `a89288d0979cdf578b2ce69d686a823c06c29d32` | 2026-11-03T01:09:51Z | Unknown | | PPSSPP and libretro Yabasanshiro recipes at that tip. Not a repository interval. | PPSSPP v1.20.4 is unverified. The libretro pin is a proposal. |
 | LoveRetro `NextUI` branch `main` | `5291344b3aceae5fa197437a70824afb41e2d338` | 2026-11-03T01:58:45Z | Unknown | | Equals the `UPSTREAM` file in pin `f595d7862d8f5dac722aaa9960307609be903db8`. Zero commits after that base. History before the base was not audited. | No upstream import. |
-| apommel `baseos-my355` branch `main` | Not observed in 17G1 | | Unknown | | | |
+| apommel `baseos-my355` branch `main` | `a5c0a03af843afa93d05a601ab0154fe57befb5d` | 2026-11-04T08:47:43Z | Unknown | | 20 commits after installer pin `e09d37bb0f03c34e564d61bd02164f332d8515a8`. Named boot diffs read. Release and init commits were classified from subjects and paths. History before the pin was not audited. | No import. The pin is not this cursor. |
 | Selected Linux | Not observed | | Unknown | | `configs/zlyme_my355_defconfig` sets `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE` to 7.2.10. The tarball is named in `board/my355/linux/patches/10-mainline/linux/linux.hash`. That pin is not an upstream HEAD. No kernel branch was invented. | |
 
 `f2148e8061e38a44d1b71bac3efeddb0c9385084` is an approximate earlier ROCKNIX reference. Its subject is a DuckStation AppImage change, committed 2026-09-30T01:47:46Z. It is not evidence that every commit through that SHA was reviewed. The reviewed-through cursor stays unknown.
@@ -133,3 +133,27 @@ The same read returned `Zetarancio/NextUI` `zlyme` as `f595d7862d8f5dac722aaa996
 `Zetarancio/NextUI` `main` was `a0628cdc0cee8e173a9bb94144f5c8baa22ab8e7` at the same time. That branch is not the pin, not `zlyme`, and not LoveRetro `main`.
 
 Reviewed-through stays unknown. A zero-commit comparison does not audit LoveRetro history before `5291344b3aceae5fa197437a70824afb41e2d338`. The ROCKNIX survey and its candidate results are unchanged.
+
+## BaseOS pilot, 2026-11-04
+
+`git ls-remote` at 2026-11-04T08:47:43Z returned `apommel/baseos-my355` `main` as `a5c0a03af843afa93d05a601ab0154fe57befb5d`. The GitHub compare from installer pin `e09d37bb0f03c34e564d61bd02164f332d8515a8` is 20 commits ahead and zero behind. The earlier observation `e4504495057e21d2a63883ad6f8420a4963ccd32` is inside that range, not the tip. Two commits follow it. `docs/boot-chain.md` exists at the tip and was not in the diff. History before the installer pin was not reviewed. This scan does not close the open general BaseOS comparison in `docs/UPSTREAMS.md`. No source was edited. Recommendations use: investigate, adapt later, already present, or do not import.
+
+Zlyme's U-Boot pin remains 2026.01. `board/my355/uboot/patches/uboot/006-cmd-add-my355-boot-helpers.patch` has `my355 mark`, `log`, `cpu`, and `fg`. It has no `my355 charge` command. The DDR/TPL and BL31 filenames in `configs/zlyme_my355_defconfig` were not compared with BaseOS and were not changed.
+
+### U-Boot and boot image
+
+`4a6d9e7c4c094095f9abfeaec2aa78caa62a9e40`, 2026-10-20T19:55:20Z, changes `tools/uboot/patches/0001-cmd-add-my355-boot-helpers.patch`, `src/pwrkeyd.c`, and docs. The U-Boot charge loop's long-press constant moves from 2000 ms to 500 ms, matching the PMIC cold-boot `PWRON_ON_TIME`. `pwrkeyd` stays at 2000 ms so power-off remains a longer hold. Hardware-critical. Zlyme has no charge command to receive that constant. Selected U-Boot 2026.01 was not the source of this board command. Do not import.
+
+`363b27d560cdc58db8549c4c4540af3fa6c63b33`, 2026-10-22T19:52:08Z, changes that same U-Boot patch so `my355 charge` writes a 2500 mA input limit instead of 1500 mA, with a 4.5 V floor. The patch comment says a weaker port receives 2500 mA as well because charge mode does not detect the charger type. Hardware-critical. Zlyme's helper does not contain `my355_charge_limits`. Do not import.
+
+`da8a16a2c3116af5f29f42676e0c10dbc1a4994a`, 2026-10-07T19:54:31Z, adds `disable_wifi_ohci` in `tools/rkbootimg.py` and calls it from `tools/mkfit.py`. It sets vendor-tree node `usb@fd8c0000` to disabled and says the upper-port companion `usb@fd840000` must stay. Zlyme's `rk3566-miyoo-flip.dts` already disables `fd8c0000` and keeps `usb_host0_ohci` at `fd840000`. That is the mainline DTS, not a rewrite of a vendor FIT. Already present for that behavior. Do not import the Python rewriter. Copying it would be hardware-critical because it edits a boot DTB.
+
+### Not Zlyme's boot chain
+
+`18f65964111bf7b75bb6e724d32054066337ab4a`, 2026-10-23T18:27:16Z, stops writing `wifi_bt_vbat` in `overlay/usr/sbin/wifibt-power`. The note says that sysfs file has no `WIFI,vbat_gpio` on this tree. This is BaseOS userspace. Do not import.
+
+`7ea517f2fdae3cc147828ebbfb01e6c55393aebd`, 2026-10-18T07:31:52Z, makes `src/fatdirty.c` return 3 when the FAT device is busy, and `mount-frontend` uses that to skip a repair. This is the BaseOS boot FAT tool. Do not import.
+
+`898590462020249395358ab4f18758275e76979d`, 2026-10-16T15:29:15Z, changes `overlay/usr/sbin/baseos-update` so an update writes and flips only the A/B regions whose image changed. The rootfs is still always written. This is BaseOS's updater, including raw slot reads. It is not Zlyme's reconstruct path. Hardware-critical if transplanted. Do not import. The existing HDMI note in `docs/UPSTREAMS.md` is a tree snapshot at this revision. This commit's diff is the updater, not a U-Boot or plane-mask patch. That note stays as written.
+
+`9c516da7e428476da5b7a580ce5ce2bb01a6e120` adds a SpruceOS harvest manifest, `mke2fs.conf`, and `shells`. `de44a122668544c9d9f000edd73adace039363e7` edits BaseOS `rcK`. `5b70e24efd689078bfd62522b7f17e081da21744` adds EGL and GLESv2 symlinks in `build-rootfs.sh`. The other commits are release versions, checksums, and docs. Do not import. Their bodies were not line-reviewed, so the reviewed-through cursor stays unknown.
