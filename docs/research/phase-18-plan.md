@@ -2,7 +2,7 @@
 
 Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
 
-Current status, 2026-11-04: 18A is closed for community templates and CI and is on main at `946644aafc2c385300de0962a0af53119663a123`. That fast-forward did not change firmware. The logbook checksum mismatch stays separate. 18B is closed on `zlyme45-phase-18b`. The ARMHF sysroot build has `BR2_CCACHE=y`, and a repeat bzip2 compile hit the cache. 18C through 18G have not started. `ZLYME_VERSION` stays `zlyme44.4`.
+Current status, 2026-11-05: 18A is closed and is on main at `946644aafc2c385300de0962a0af53119663a123`. 18B is closed and is on main at `d4159da87570d8ddb60e31e7fe8968a2d078a472`. That local cache measurement does not measure the GitHub Actions cache, and a second empty ARMHF tree was not built. The logbook checksum mismatch stays separate. 18C1 is open on `zlyme45-phase-18c`. The pinned RetroArch ZIP reader keeps raw member bytes. Wine has not started. 18D through 18G have not started. No Phase 18 firmware change is accepted. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
@@ -158,6 +158,19 @@ Exclusions: do not treat the two cases as one patch unless the evidence joins th
 Done when: each case has its own diagnosis, its own regression, and, if a fix shipped, its own Flip check that did not disturb saves. A case that stays open is recorded with the evidence and the maintainer's disposition. That does not declare every Unicode path fixed.
 
 Depends on: nothing in Phase 18. It does not wait for 18D.
+
+## 18C1. GBA ZIP member names
+
+2026-11-05. `package/system/nextui/paks/Emus/GBA.pak/launch.sh` sets `ROM="$1"` and runs `ra-run` with `"$ROM"`. `package/system/nextui/zlyme/ra-run.sh` passes that argument to `retroarch`. Neither script recodes the pathname. The gPSP pin does not unzip a ROM. RetroArch `v1.22.2` owns the ZIP read in `libretro-common/file/archive_file_zlib.c`. `zip_parse_file_iterate_step_internal` copies the central-directory filename bytes and does not read the UTF-8 flag or an Info-ZIP Unicode Path extra field. Current RetroArch master still copies those bytes. Its later archive changes are ZIP64, bounds checks, and other decompressors. They are not a filename-encoding fix, and the pin stays `v1.22.2`.
+
+The host check is `scripts/tests/test_gba_zip_names.sh`. It compiles that pinned reader with `scripts/tests/gba_zip_parse.c` and feeds synthetic archives. The content is the text `ZLYMEGBA`, not a ROM. The member name used below is `洛克人.gba`.
+
+- Case A, an uncompressed file named `CN048 洛克人EXE 2.gba`. The shell assignment keeps the pathname bytes, including UTF-8 `e6b49be5858be4baba`.
+- Case B, a stored ZIP with general-purpose flag `0800` and member bytes `e6b49be5858be4baba2e676261`. The reader returns those bytes.
+- Case C, the same characters encoded as GBK, flag `0000`, member bytes `c2e5bfcbc8cb2e676261`. The reader returns those bytes. It does not turn them into UTF-8 and it does not insert `efbfbd`.
+- Case D, member `game.gba`, flag `0000`, bytes `67616d652e676261`. The reader returns those bytes.
+
+A UTF-8 display of the GBK bytes is the replacement-character appearance in the original report. The ZIP format does not say that an unset UTF-8 flag means GBK, so this pass does not guess. No RetroArch patch is added. The launcher is unchanged. The test needs the local RetroArch tree, so it is not in the lightweight validation job. A Flip check is not a gate for a change that was not made. 18C stays open. Wine is 18C2 and has not started.
 
 ## 18D. Nintendo DS
 
