@@ -172,6 +172,10 @@ The host check is `scripts/tests/test_gba_zip_names.sh`. It compiles that pinned
 
 A UTF-8 display of the GBK bytes is the replacement-character appearance in the original report. The ZIP format does not say that an unset UTF-8 flag means GBK, so this pass does not guess. No RetroArch patch is added. The launcher is unchanged. The test needs the local RetroArch tree, so it is not in the lightweight validation job. A Flip check is not a gate for a change that was not made. 18C stays open. Wine is 18C2 and has not started.
 
+## 18C1 correction. ZIP fixtures could not be read
+
+2026-11-07. The first fixtures stored `len(local)` as the central-directory relative offset. For a one-member archive the local header starts at 0, so that value pointed past the header. Python `zipfile` could list the member and then failed to read it with `BadZipFile: Bad magic number for file header`. The C harness only walks the central directory, so it still printed the filename bytes and the test passed. The offset is now 0. Each archive has matching local and central names and flags, CRC32 of `ZLYMEGBA\n`, one member, and `zipfile` reads that payload. The GBK result remains a description of the current reader, not a promise that the bytes stay raw, and it is not evidence that the reported archive uses GBK. The user-visible GBA name problem is still open.
+
 ## 18D. Nintendo DS
 
 Purpose: find out why Nintendo DS games have not worked, then apply the smallest correction that makes one real game run and return.

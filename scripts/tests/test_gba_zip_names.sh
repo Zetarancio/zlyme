@@ -1,6 +1,10 @@
 #!/bin/sh
-# Synthetic GBA names through the pinned RetroArch ZIP reader.
-# The fixtures are not ROMs. A missing RetroArch tree blocks the ZIP cases.
+# Synthetic GBA names through the pinned RetroArch ZIP directory reader.
+# The C harness reads central-directory names. It does not extract through
+# RetroArch or load gPSP. Python zipfile checks that each archive can
+# actually return its payload. The fixtures are not ROMs. A missing
+# RetroArch tree blocks the ZIP cases. The GBK case records the current
+# raw-byte result. It is not a requirement that those bytes stay raw.
 # shellcheck disable=SC1007
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
@@ -15,7 +19,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 python3 - "$work" << 'PY'
-import struct, sys, zlib
+import struct, sys, zipfile, zlib
 from pathlib import Path
 
 work = Path(sys.argv[1])
@@ -28,6 +32,7 @@ def store_zip(path, name: bytes, flags: int):
     crc = zlib.crc32(payload) & 0xFFFFFFFF
     size = len(payload)
     n = len(name)
+    # One stored member. Its local header is the first byte of the file.
     local = struct.pack(
         "<IHHHHHIIIHH",
         0x04034B50, 20, flags, 0, 0, 0, crc, size, size, n, 0,
@@ -35,13 +40,57 @@ def store_zip(path, name: bytes, flags: int):
     central = struct.pack(
         "<IHHHHHHIIIHHHHHII",
         0x02014B50, 20, 20, flags, 0, 0, 0, crc, size, size,
-        n, 0, 0, 0, 0, 0, len(local),
+        n, 0, 0, 0, 0, 0, 0,
     ) + name
     eocd = struct.pack(
         "<IHHHHIIH",
         0x06054B50, 0, 0, 1, 1, len(central), len(local), 0,
     )
     path.write_bytes(local + central + eocd)
+
+def require_archive(path: Path, flags: int, raw_name: bytes):
+    data = path.read_bytes()
+    if data[:4] != b"PK\x03\x04":
+        raise SystemExit(path.name + " local signature")
+    local_flags = struct.unpack_from("<H", data, 6)[0]
+    local_crc = struct.unpack_from("<I", data, 14)[0]
+    local_len = struct.unpack_from("<H", data, 26)[0]
+    local_name = data[30:30 + local_len]
+    eocd = data.rfind(b"PK\x05\x06")
+    if eocd < 0:
+        raise SystemExit(path.name + " has no end record")
+    central_at = struct.unpack_from("<I", data, eocd + 16)[0]
+    if central_at == 0 or data[central_at:central_at + 4] != b"PK\x01\x02":
+        raise SystemExit(path.name + " central signature")
+    rel = struct.unpack_from("<I", data, central_at + 42)[0]
+    central_flags = struct.unpack_from("<H", data, central_at + 8)[0]
+    central_len = struct.unpack_from("<H", data, central_at + 28)[0]
+    central_name = data[central_at + 46:central_at + 46 + central_len]
+    if rel != 0:
+        raise SystemExit(path.name + " local offset is %s" % rel)
+    if local_name != raw_name or central_name != raw_name:
+        raise SystemExit(path.name + " filename bytes differ")
+    if local_flags != flags or central_flags != flags:
+        raise SystemExit(path.name + " flags differ")
+    if local_crc != (zlib.crc32(payload) & 0xFFFFFFFF):
+        raise SystemExit(path.name + " crc")
+    with zipfile.ZipFile(path) as zf:
+        infos = zf.infolist()
+        if len(infos) != 1:
+            raise SystemExit(path.name + " member count")
+        info = infos[0]
+        if info.header_offset != 0 or info.flag_bits != flags:
+            raise SystemExit(path.name + " zipfile metadata")
+        if zf.read(info) != payload:
+            raise SystemExit(path.name + " payload")
+        # zipfile's displayed name is a charset decode. It is not the
+        # raw member and it is not a GBK conversion.
+        shown = zf.namelist()[0]
+        if flags & 0x800:
+            if shown.encode("utf-8") != raw_name:
+                raise SystemExit(path.name + " utf-8 name")
+        elif raw_name != b"game.gba" and shown == "洛克人.gba":
+            raise SystemExit(path.name + " was presented as decoded Chinese")
 
 def central(path: Path):
     data = path.read_bytes()
@@ -57,6 +106,9 @@ def central(path: Path):
 store_zip(work / "utf8.zip", utf8 + b".gba", 0x0800)
 store_zip(work / "gbk.zip", gbk + b".gba", 0)
 store_zip(work / "ascii.zip", b"game.gba", 0)
+require_archive(work / "utf8.zip", 0x0800, utf8 + b".gba")
+require_archive(work / "gbk.zip", 0, gbk + b".gba")
+require_archive(work / "ascii.zip", 0, b"game.gba")
 (work / "expect-utf8").write_bytes(utf8 + b".gba")
 (work / "expect-gbk").write_bytes(gbk + b".gba")
 (work / "expect-ascii").write_bytes(b"game.gba")
@@ -107,7 +159,8 @@ want_b=$(od -An -tx1 "$work/expect-utf8" | tr -d ' \n')
 [ "$got_b" = "$want_b" ] || fail "case B parser returned $got_b"
 [ -f "$work/utf8.zip" ] || fail "case B removed the archive"
 
-# Case C. GBK member, UTF-8 flag unset. The reader keeps the raw bytes.
+# Case C. GBK member, UTF-8 flag unset. This records the current reader.
+# It does not accept raw GBK as the permanent contract.
 meta_c=$(python3 -c '
 import struct, pathlib
 p=pathlib.Path("'"$work"'/gbk.zip").read_bytes()
