@@ -2,7 +2,7 @@
 
 Status, as first written: Proposed. Not started. This file is not implementation and not hardware acceptance.
 
-Current status, 2026-11-05: 18A is closed and is on main at `946644aafc2c385300de0962a0af53119663a123`. 18B is closed and is on main at `d4159da87570d8ddb60e31e7fe8968a2d078a472`. That local cache measurement does not measure the GitHub Actions cache, and a second empty ARMHF tree was not built. The logbook checksum mismatch stays separate. 18C1 is open on `zlyme45-phase-18c`. The pinned RetroArch ZIP reader keeps raw member bytes. Wine has not started. 18D through 18G have not started. No Phase 18 firmware change is accepted. `ZLYME_VERSION` stays `zlyme44.4`.
+Current status, 2026-11-07: 18A is closed and is on main at `946644aafc2c385300de0962a0af53119663a123`. 18B is closed and is on main at `d4159da87570d8ddb60e31e7fe8968a2d078a472`. That local cache measurement does not measure the GitHub Actions cache, and a second empty ARMHF tree was not built. The logbook checksum mismatch stays separate. 18C stays open on `zlyme45-phase-18c`. The GBA ZIP fixtures now read, and the reported name problem is still open. The Wine launch chain preserves a UTF-8 argument. Wine itself was not run. 18D through 18G have not started. No Phase 18 firmware change is accepted. `ZLYME_VERSION` stays `zlyme44.4`.
 
 Phase 16 is closed. This feature plan was written as Phase 17 on 2026-11-02 and renumbered to Phase 18 the same day, when a documentation phase was placed ahead of it. The next public stable release is intended to be `zlyme45`, after Phase 18 is accepted and the maintainer authorizes publication. This plan does not authorize a Phase 17 or Phase 18 release. `ZLYME_VERSION` stays `zlyme44.4` until that acceptance. The sequencing map is [docs/ROADMAP.md](../ROADMAP.md). Integration onto `main` follows [docs/MAINTENANCE.md](../MAINTENANCE.md).
 
@@ -175,6 +175,14 @@ A UTF-8 display of the GBK bytes is the replacement-character appearance in the 
 ## 18C1 correction. ZIP fixtures could not be read
 
 2026-11-07. The first fixtures stored `len(local)` as the central-directory relative offset. For a one-member archive the local header starts at 0, so that value pointed past the header. Python `zipfile` could list the member and then failed to read it with `BadZipFile: Bad magic number for file header`. The C harness only walks the central directory, so it still printed the filename bytes and the test passed. The offset is now 0. Each archive has matching local and central names and flags, CRC32 of `ZLYMEGBA\n`, one member, and `zipfile` reads that payload. The GBK result remains a description of the current reader, not a promise that the bytes stay raw, and it is not evidence that the reported archive uses GBK. The user-visible GBA name problem is still open.
+
+## 18C2. Wine UTF-8 directory names
+
+2026-11-07. `WINE.pak/launch.sh` quotes `"$ROM"` into `zlyme-weston-run wine`. `board/my355/fsoverlay/usr/sbin/zlyme-weston-run` runs `"$@"`. `package/emulators/wine-amd64/wine.sh` runs `box64` on `/usr/lib/wine-amd64/bin/wine` with `"$@"`. `wineserver.sh` does not receive the ROM path. None of those scripts recodes a pathname. The product defconfig does not generate a locale, and no board script exports `LANG`.
+
+`scripts/tests/test_wine_utf8_args.sh` runs the real launcher and the real `wine.sh` with stand-ins for the prefix helper, Weston, and Box64. The prefix stand-in only prints a temporary directory. It does not mount tmpfs or call `prepare` on `/storage`. The same `game.exe` bytes, hash `f90d0574eb75741f8d2b5ec98d8ba5542a12877d8ef5f5bc5a10fc56f40b990c`, sit in `ascii-dir` and in `大富翁4超时空之旅-zhm86平衡修改版20241209`. Both absolute arguments reach Box64 unchanged. That is argument preservation. It is not Wine opening a program.
+
+Wine 11.6 `dlls/ntdll/unix/env.c` starts `unix_cp` at UTF-8. `init_unix_codepage` calls `setlocale(LC_CTYPE, "")` and `nl_langinfo(CODESET)`. A UTF-8 codeset leaves the table as UTF-8. A non-UTF-8 codeset, including ASCII from the C locale, loads that code page when its `.nls` file is present, and `ntdll_umbstowcs` then refuses bytes that code page cannot represent. This host was `LANG=en_US.UTF-8` with `LC_ALL` unset. The device locale was not observed, and the Wine loader was not executed. No Wine, Box64, Weston, or prefix source was changed. A later Flip check needs an isolated prefix. The production `prepare` path is `/storage/.config/nextui/my355/wine-prefix`, and this task did not use it. 18C stays open.
 
 ## 18D. Nintendo DS
 
