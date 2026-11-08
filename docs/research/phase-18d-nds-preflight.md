@@ -91,3 +91,9 @@ Battery saves are `$SAVES_PATH/NDS/dsperate/<rom stem>.sav`. States are `$SAVES_
 `Saves/NDS/backup`, `Saves/NDS/savestates`, and `.config/drastic` are not mounted, renamed, converted, or deleted by installation. Reset standalone settings removes `.config/dsperate` and does not remove `.config/drastic`. Deleting one ROM removes a stem-matched `Saves/NDS/dsperate/<name>.sav`. It does not remove DraStic `.dsv` files or a game-code `.dss` state. There is no DraStic package, `start_drastic`, or `libdrastouch` in the active tree.
 
 Host checks cover the pin, the launcher, quoting, the config seed, and those legacy files. They do not show a picture, sound, or a frame time. Phase 18D stays open. The next step is a local package build and, only after that is reviewed, a diagnostic image. The Flip still has the DraStic lock and binds from the launch above. This source change does not clear them.
+
+## 18D2.2. Fullscreen KMS and retired saves
+
+Date: 2026-11-08. The launcher also passes `--fullscreen`. In the pinned frontend, that flag sets `video.fullscreen`. The SDL window is created fullscreen only when that setting is on, and the direct KMS scanout asks the display for a matching mode. Without it, the window can miss the Flip panel mode and the KMS sink can fail closed into the renderer. Software frames, `--no-gpu-present`, `--no-gpu3d`, and `--no-mic` stay.
+
+Orphan-save cleanup no longer collects DraStic `.dsv` or `.dst` files. A DSperate `.sav` whose ROM stem is gone is still an orphan. Game-code `.dss` states are not matched to a ROM name, so deleting a ROM does not remove them. The earlier paragraphs in this file stay as the record of the DraStic launcher and the first DSperate source pin.

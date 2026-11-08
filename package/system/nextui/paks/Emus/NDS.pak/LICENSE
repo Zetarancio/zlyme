@@ -1,6 +1,6 @@
-This NextUI emulator pak contains launch.sh only. It execs /usr/bin/ra-run
-(RetroArch). RetroArch and each libretro core keep their own licenses under
-package/emulators/. This file is the license for this pak's launch.sh.
+This NextUI emulator pak contains launch.sh only. It execs /usr/bin/start_dsperate
+(DSperate). The emulator recipe and license live under package/emulators/dsperate/.
+This file is the license for this pak's launch.sh. It does not license DSperate.
 
 The launch.sh follows NextUI's emu-pak layout
 (https://github.com/LoveRetro/NextUI), a fork of MinUI

@@ -153,7 +153,7 @@ The boot partition is not shared, and the tool does not unmount it. Use a comput
 - OpenBOR saves are in that library's `Saves/OPENBOR`. The engine's paks, screenshots, and log folder are not created in the ROM directory.
 - RPG Maker XP, VX, and Ace saves are in `Saves/MKXPZ`.
 - Nintendo DS battery saves are in that library's `Saves/NDS/dsperate`. Save states are in `Saves/NDS/dsperate/states`. Settings are `/storage/.config/dsperate/dsperate.ini`, created the first time a game starts and left alone when that file already has content.
-- Older DraStic files in `Saves/NDS/backup`, `Saves/NDS/savestates`, and `/storage/.config/drastic` stay where they are. Zlyme does not convert, move, or delete them when DSperate is installed.
+- Older DraStic files in `Saves/NDS/backup`, `Saves/NDS/savestates`, and `/storage/.config/drastic` stay where they are. Zlyme does not convert or move them, and orphan-save cleanup does not list them.
 
 
 

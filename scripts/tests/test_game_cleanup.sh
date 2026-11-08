@@ -312,6 +312,54 @@ test -f "$nds/Saves/NDS/backup/Quest.dsv"
 test -f "$nds/Saves/NDS/savestates/Quest_1.dss"
 test -f "$nds/.config/drastic/drastic.cfg"
 
+# A missing ROM makes the stem-matched .sav an orphan. DraStic files and
+# a game-code state stay, including when nothing names that game.
+gone=$work/gone
+mkdir -p "$gone/Roms/Nintendo DS (NDS)" \
+	"$gone/Saves/NDS/backup" "$gone/Saves/NDS/savestates" \
+	"$gone/Saves/NDS/dsperate/states"
+printf 'sav\n' >"$gone/Saves/NDS/dsperate/Gone.sav"
+printf 'old\n' >"$gone/Saves/NDS/backup/Gone.dsv"
+printf 'old\n' >"$gone/Saves/NDS/savestates/Gone.dss"
+printf 'st\n' >"$gone/Saves/NDS/dsperate/states/ZZZZ.1.dss"
+printf '%s\n' "$gone" >"$work/gone-libs"
+gout=$(ZLYME_LIBRARIES_FILE="$work/gone-libs" ZLYME_CLEANUP_ROOT="$gone" \
+	ZLYME_DEVICE_CONF= "$CLEAN" orphan-saves --dry-run)
+gcount=$(printf '%s\n' "$gout" | awk -F= '/^COUNT=/{print $2; exit}')
+[ "$gcount" = 1 ] || {
+	echo "missing-ROM NDS orphan count: $gout" >&2
+	exit 1
+}
+grep -q 'dsperate/Gone.sav' /tmp/zlyme-orph.list || {
+	echo "the orphan was not the DSperate battery save" >&2
+	exit 1
+}
+if grep -q '/backup/\|/savestates/\|ZZZZ' /tmp/zlyme-orph.list; then
+	echo "a retired or game-code file was listed" >&2
+	exit 1
+fi
+ZLYME_LIBRARIES_FILE="$work/gone-libs" ZLYME_CLEANUP_ROOT="$gone" \
+	ZLYME_DEVICE_CONF= "$CLEAN" orphan-saves >/dev/null
+test ! -e "$gone/Saves/NDS/dsperate/Gone.sav"
+test -f "$gone/Saves/NDS/backup/Gone.dsv"
+test -f "$gone/Saves/NDS/savestates/Gone.dss"
+test -f "$gone/Saves/NDS/dsperate/states/ZZZZ.1.dss"
+
+# Deleting a ROM whose name is the game code must not take that code's state.
+code=$work/code
+mkdir -p "$code/Roms/Nintendo DS (NDS)" "$code/Saves/NDS/dsperate/states"
+printf 'rom\n' >"$code/Roms/Nintendo DS (NDS)/ABCD.nds"
+printf 'rom\n' >"$code/Roms/Nintendo DS (NDS)/Other.nds"
+printf 'sav\n' >"$code/Saves/NDS/dsperate/Other.sav"
+printf 'st\n' >"$code/Saves/NDS/dsperate/states/ABCD.0.dss"
+printf '%s\n' "$code" >"$work/code-libs"
+ZLYME_LIBRARIES_FILE="$work/code-libs" ZLYME_CLEANUP_ROOT="$code" \
+	ZLYME_DEVICE_CONF= "$CLEAN" rom "$code/Roms/Nintendo DS (NDS)/ABCD.nds" >/dev/null
+test ! -e "$code/Roms/Nintendo DS (NDS)/ABCD.nds"
+test -f "$code/Roms/Nintendo DS (NDS)/Other.nds"
+test -f "$code/Saves/NDS/dsperate/Other.sav"
+test -f "$code/Saves/NDS/dsperate/states/ABCD.0.dss"
+
 ui=${ZLYME_NEXTUI_SRC:-$ROOT/../NextUI}/workspace/all/settings/zlymemenu.cpp
 if grep -n 'strncat(ask, extra' "$ui"; then
 	echo "the reset dialog still appends the path list" >&2

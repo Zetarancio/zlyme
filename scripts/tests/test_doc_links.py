@@ -82,7 +82,12 @@ REPO_PREFIXES = (
     "configs/",
 )
 
-# 18D2 removed the DraStic package. The 18D research notes still name it.
+# Former DraStic paths stay in these historical notes. A current
+# contract document that names one of them is still a broken path.
+HISTORICAL_DRASTIC_DOCS = {
+    "docs/research/phase-18-plan.md",
+    "docs/research/phase-18d-nds-preflight.md",
+}
 RETIRED_PREFIXES = (
     "package/emulators/drastic/",
     "scripts/tests/test_drastic_workdir.sh",
@@ -140,7 +145,7 @@ def main():
                 if any(ch in token for ch in "*$?<>|"):
                     continue
                 path = token.split()[0].rstrip(".,:;")
-                if path.startswith(RETIRED_PREFIXES):
+                if rel in HISTORICAL_DRASTIC_DOCS and path.startswith(RETIRED_PREFIXES):
                     continue
                 if not exists(path):
                     bad.append("%s:%s `%s`" % (rel, lineno, token))

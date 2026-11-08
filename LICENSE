@@ -58,8 +58,15 @@ control that component. In particular:
   RetroArch, libretro cores, emulators, vtree, PortMaster, Syncthing,
   and the rest: see the LICENSE next to each package and pak.
 
-  Proprietary blobs (Mali, Drastic, Realtek firmware, user-supplied
-  Pico-8) stay proprietary. This file does not license them.
+  Proprietary blobs (Mali, Realtek firmware, user-supplied Pico-8)
+  stay proprietary. This file does not license them.
+
+  DSperate        Nintendo DS emulator. GPL-3.0-or-later, with the
+                  FreeBIOS BSD-2-Clause notice, the SIL OFL 1.1 for
+                  the Noto glyphs, the GPL-3.0-or-later font exception
+                  for WenQuanYi, and MIT for vendored miniz.
+                  package/emulators/dsperate/. This MIT file does not
+                  license DSperate.
 
 Do not treat this file as relicensing MinUI, NextUI, or any fetched
 package.

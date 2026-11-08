@@ -112,14 +112,6 @@ filter_unmatched() {
 	' "$cands"
 }
 
-note_save() {
-	f=$1
-	b=$(basename "$f")
-	stem=${b%.*}
-	stem2=${stem%.*}
-	printf '%s\037%s\037%s\n' "$stem" "$stem2" "$f"
-}
-
 do_orphan_saves() {
 	n=0
 	command -v awk >/dev/null 2>&1 || return 1
@@ -163,16 +155,8 @@ do_orphan_saves() {
 			}
 			'
 		fi
-		# Legacy DraStic files. A stem that still matches a ROM stays.
-		# Installing DSperate does not list these. Game-code .dss states
-		# are not stem names, so this scan does not treat them as orphans.
-		for d in "$root/Saves/NDS/backup" "$root/Saves/NDS/savestates" "$root/Saves/NDS"; do
-			[ -d "$d" ] || continue
-			find "$d" -maxdepth 1 -type f \( -name '*.dsv' -o -name '*.dst' -o -name '*.dsv.*' \) 2>/dev/null |
-			while IFS= read -r f; do
-				note_save "$f"
-			done >> "$cands"
-		done
+		# DraStic .dsv/.dst files and DSperate game-code .dss states are
+		# not stem names. This scan does not list them.
 		# OpenBOR saves live in Saves/OPENBOR. Files left in the ROM
 		# folder are not collected and not deleted.
 		filter_unmatched "$stems" "$cands"

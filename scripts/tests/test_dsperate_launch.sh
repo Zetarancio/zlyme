@@ -73,6 +73,7 @@ fi
 # shellcheck disable=SC2016
 grep -q 'exec dsperate "$ROM"' "$start" || fail "the launcher does not exec the ROM"
 grep -q -- '--sink kms' "$start" || fail "the sink is not kms"
+grep -q -- '--fullscreen' "$start" || fail "the window is not fullscreen"
 grep -q -- '--no-gpu-present' "$start" || fail "gpu present is enabled"
 grep -q -- '--no-gpu3d' "$start" || fail "gpu 3d is enabled"
 grep -q -- '--no-mic' "$start" || fail "the microphone device is opened"
@@ -128,6 +129,7 @@ grep -Fxq "$work/card/Saves/NDS/dsperate" "$work/argv" \
 grep -Fxq "$work/card/Saves/NDS/dsperate/states" "$work/argv" \
 	|| fail "states were not directed at the DSperate directory"
 grep -Fxq kms "$work/argv" || fail "the sink is not kms"
+grep -Fxq -- --fullscreen "$work/argv" || fail "fullscreen was not passed"
 grep -Fxq -- --no-gpu-present "$work/argv" || fail "gpu present is enabled"
 grep -Fxq -- --no-gpu3d "$work/argv" || fail "gpu 3d is enabled"
 grep -Fxq -- --no-mic "$work/argv" || fail "the microphone flag was not passed"

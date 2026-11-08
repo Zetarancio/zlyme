@@ -29,10 +29,10 @@ if [ ! -s "$cfg" ]; then
 	dsperate --write-config "$cfg" || exit 1
 fi
 
-# --no-mic keeps capture off plughw:0,0. A guest that reads AUX would
-# otherwise open that device beside SDL playback.
+# Fullscreen is what makes the SDL window match the panel mode the KMS
+# sink scans out. --no-mic keeps capture off plughw:0,0.
 set -- --config "$cfg" --saves "$save_dir" --states "$state_dir" \
-	--sink kms --no-gpu-present --no-gpu3d --no-mic
+	--sink kms --fullscreen --no-gpu-present --no-gpu3d --no-mic
 if [ -f "$bios/bios9.bin" ] && [ ! -L "$bios/bios9.bin" ]; then
 	set -- "$@" --bios9 "$bios/bios9.bin"
 fi
