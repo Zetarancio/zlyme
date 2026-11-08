@@ -41,6 +41,7 @@ DOCS = (
     "docs/research/phase-17-upstream-monitor.md",
     "docs/research/phase-17g5-kernel-upgrade-preflight.md",
     "docs/research/phase-18-plan.md",
+    "docs/research/phase-18d-nds-preflight.md",
 )
 
 # Archived notes keep historical backtick paths. Their Markdown links
