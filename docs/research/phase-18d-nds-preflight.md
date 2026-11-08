@@ -63,3 +63,13 @@ The host regression is `scripts/tests/test_drastic_workdir.sh`. Its `rm` refuses
 The same regression is in the lightweight source job of `.github/workflows/validation.yml`. It does not build DraStic or an image.
 
 The check and the removal are still two steps. The lock keeps another launcher out of that window. It does not stop a different program from mounting the scratch directory in between. A killed launch leaves the lock until the tmpfs is gone. Reboot clears it. No image contains this correction, and DraStic was not launched.
+
+## 18D0.2. Test cleanup and forced termination
+
+Date: 2026-11-08. The 18D0.1 regression removed `/tmp/drastic-run` or `/tmp/drastic-run.lock` when either path appeared after the test started. The test does not own those paths. Cleanup now stops only that test's launcher and fake emulator, then removes only the directory from its own `mktemp` when the path is `/tmp/tmp.*` and is not a symlink. The function does not call `rmdir`, `mount`, or `umount`. A check of the function text rejects a cleanup that names the production scratch path.
+
+`package/system/nextui/zlyme/zlyme-pak-spawn.c` sends SIGTERM to the session leader and then to the other members. The wait is 30 polls of 50 ms, and the following signal is SIGKILL. For Nintendo DS the leader is the `package/emulators/drastic/start_drastic.sh` shell, and DraStic is its child. The shell is signaled while DraStic can still be running. The shell has no trap, so SIGTERM ends it before the unmount lines. SIGKILL cannot be trapped. A trap that unmounted on SIGTERM would start too early. None was added.
+
+`scripts/tests/test_drastic_workdir.sh` printed `drastic workdir ok`. A normal exit releases both owned mounts and the lock, and the next launch succeeds. SIGTERM and SIGKILL to the launcher leave the lock, both simulated binds, and the fake emulator. The following launch refuses and leaves the fixture saves in place. No real bind was created.
+
+After MENU+START the lock and the binds remain until the tmpfs is gone, or until a separately authorized recovery removes them. Another NDS launch refuses until then. That is the contained limitation. This branch is not a firmware candidate: the correction is not in an image, and DraStic was not launched. Phase 18D is not closed.

@@ -15,6 +15,9 @@ fail() {
 if grep -q 'ln -s' "$script"; then
 	fail "the launcher still creates a symlink"
 fi
+if grep -E '^[[:space:]]*trap[[:space:]]' "$script"; then
+	fail "the launcher traps a signal"
+fi
 RM=/bin/rm
 [ -x "$RM" ] || RM=/usr/bin/rm
 [ -x "$RM" ] || fail "host rm is missing"
@@ -30,25 +33,43 @@ fi
 holder=
 
 work=$(mktemp -d)
+case "$work" in
+	/tmp/tmp.*) ;;
+	*) fail "mktemp returned an unexpected directory" ;;
+esac
 cleanup() {
-	if [ -n "$holder" ]; then
+	# Only this test's launcher and its fake emulator. Never a process
+	# group, and never the device scratch path.
+	if [ -n "${holder:-}" ]; then
 		kill "$holder" 2>/dev/null || true
 		wait "$holder" 2>/dev/null || true
 	fi
-	if [ -f "$work/hold.pid" ]; then
+	if [ -n "${work:-}" ] && [ -f "$work/hold.pid" ]; then
 		kill "$(cat "$work/hold.pid")" 2>/dev/null || true
 	fi
-	if [ "$had_dir" = 0 ] && [ -e /tmp/drastic-run ]; then
-		if ! awk '$5 == "/tmp/drastic-run" || index($5, "/tmp/drastic-run/") == 1 { found = 1 }
-			END { exit found ? 0 : 1 }' /proc/self/mountinfo; then
-			"$RM" -rf /tmp/drastic-run
-		fi
+	if [ -n "${work:-}" ] && [ -f "$work/sleep.pid" ]; then
+		kill "$(cat "$work/sleep.pid")" 2>/dev/null || true
 	fi
-	if [ "$had_lock" = 0 ] && [ -d /tmp/drastic-run.lock ] && [ ! -L /tmp/drastic-run.lock ]; then
-		rmdir /tmp/drastic-run.lock 2>/dev/null || true
-	fi
-	"$RM" -rf "$work"
+	case "${work:-}" in
+		/tmp/tmp.*)
+			if [ -d "$work" ] && [ ! -L "$work" ]; then
+				"$RM" -rf -- "$work"
+			fi
+			;;
+	esac
 }
+cleanup_src=$(awk '
+	/^cleanup\(\) \{/ { on = 1 }
+	on { print }
+	on && /^\}/ { exit }
+' "$0")
+[ -n "$cleanup_src" ] || fail "cleanup function was not found"
+case "$cleanup_src" in
+	*drastic-run*) fail "cleanup names the production scratch path" ;;
+esac
+if printf '%s\n' "$cleanup_src" | grep -E '(^|[^[:alnum:]_])(rmdir|mount|umount)([^[:alnum:]_]|$)'; then
+	fail "cleanup calls rmdir, mount, or umount"
+fi
 trap cleanup EXIT
 
 export ZLYME_TEST_ROOT="$work"
@@ -168,7 +189,9 @@ echo played > "$ZLYME_TEST_MARK"
 if [ "${ZLYME_FAKE_HOLD:-0}" = 1 ]; then
 	echo held > "$ZLYME_TEST_MARK"
 	echo $$ > "$ZLYME_TEST_ROOT/hold.pid"
-	sleep 30
+	sleep 30 &
+	echo $! > "$ZLYME_TEST_ROOT/sleep.pid"
+	wait
 fi
 exit 0
 EOF
@@ -541,6 +564,100 @@ grep -q '^5 ' "$work/mountinfo" || fail "the storage row was removed"
 not_unmounted "$work/run-extra"
 not_unmounted /storage
 saves_intact
+
+# A normal exit can be followed by another launch.
+reset_table
+printf '%s\n' '1 0 0:1 / /tmp rw - tmpfs tmpfs rw' > "$work/mountinfo"
+set +e
+run_it
+st=$?
+set -e
+[ "$st" = 0 ] || fail "the first normal launch exited $st"
+[ ! -e "$work/run.lock" ] || fail "the first normal launch left the lock"
+: > "$work/umount.log"
+: > "$work/mark"
+set +e
+run_it
+st=$?
+set -e
+[ "$st" = 0 ] || fail "the launch after a normal exit exited $st"
+[ ! -e "$work/run.lock" ] || fail "the second normal launch left the lock"
+saves_intact
+
+# MENU+START signals the launcher shell before the emulator.
+# pak-spawn waits 30 polls of 50 ms, then may use SIGKILL.
+# This shell has no trap, so SIGTERM does not reach the unmount lines.
+signal_holder() {
+	sig=$1
+	reset_table
+	printf '%s\n' '1 0 0:1 / /tmp rw - tmpfs tmpfs rw' > "$work/mountinfo"
+	export ZLYME_FAKE_HOLD=1
+	PATH="$work/bin:$PATH" \
+		XDG_CONFIG_HOME=$work/cfg_parent \
+		SAVES_PATH=$work/saves_parent \
+		SDCARD_PATH=$work/card \
+		ZLYME_DRASTIC_WORKDIR=$work/run \
+		sh "$script" "$work/game.nds" >"$work/hold.out" 2>"$work/hold.err" &
+	holder=$!
+	i=0
+	while [ "$i" -lt 50 ]; do
+		if [ -f "$work/mark" ] && grep -qx held "$work/mark"; then
+			break
+		fi
+		i=$((i + 1))
+		sleep 0.05
+	done
+	grep -qx held "$work/mark" || fail "the $sig holder did not start"
+	[ -d "$work/run.lock" ] || fail "the $sig holder did not take the lock"
+	grep -q "$work/run/backup" "$work/mountinfo" || fail "the $sig holder did not bind backup"
+	: > "$work/umount.log"
+	: > "$work/rm.log"
+	kill "-$sig" "$holder"
+	i=0
+	while [ "$i" -lt 20 ]; do
+		if ! kill -0 "$holder" 2>/dev/null; then
+			break
+		fi
+		i=$((i + 1))
+		sleep 0.05
+	done
+	if kill -0 "$holder" 2>/dev/null; then
+		fail "$sig left the launcher running"
+	fi
+	wait "$holder" 2>/dev/null || true
+	holder=
+	if ! kill -0 "$(cat "$work/hold.pid")" 2>/dev/null; then
+		fail "$sig also stopped the emulator before a separate signal"
+	fi
+	[ -d "$work/run.lock" ] || fail "$sig released the lock"
+	grep -q "$work/run/backup" "$work/mountinfo" || fail "$sig dropped the backup mount"
+	grep -q "$work/run/savestates" "$work/mountinfo" || fail "$sig dropped the savestate mount"
+	[ ! -s "$work/umount.log" ] || fail "$sig unmounted"
+	rm_idle
+	saves_intact
+	printf '%s\n' kept > "$work/run/marker"
+	export ZLYME_FAKE_HOLD=0
+	set +e
+	run_it
+	st=$?
+	set -e
+	[ "$st" != 0 ] || fail "a launch after $sig proceeded"
+	[ -f "$work/run/marker" ] || fail "the launch after $sig deleted the work directory"
+	rm_idle
+	saves_intact
+	[ ! -s "$work/umount.log" ] || fail "the launch after $sig unmounted"
+	if [ -f "$work/hold.pid" ]; then
+		kill "$(cat "$work/hold.pid")" 2>/dev/null || true
+	fi
+	if [ -f "$work/sleep.pid" ]; then
+		kill "$(cat "$work/sleep.pid")" 2>/dev/null || true
+	fi
+	unset ZLYME_FAKE_HOLD
+}
+
+printf '%s\n' kept > "$work/run/marker" 2>/dev/null || true
+signal_holder TERM
+signal_holder KILL
 
 if [ "$had_dir" = 0 ] && { [ -e /tmp/drastic-run ] || [ -L /tmp/drastic-run ]; }; then
 	fail "the test created /tmp/drastic-run"
