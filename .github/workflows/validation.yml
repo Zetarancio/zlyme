@@ -36,6 +36,7 @@ jobs:
           sh scripts/tests/test_changelog_release_notes.sh
           sh scripts/tests/test_release_tag_target.sh
           sh scripts/tests/test_armhf_defconfig.sh
+          sh scripts/tests/test_drastic_workdir.sh
 
   artbook-changes:
     runs-on: ubuntu-24.04

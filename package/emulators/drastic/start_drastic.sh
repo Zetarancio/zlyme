@@ -3,13 +3,11 @@
 # Do not export LD_PRELOAD for mkdir/cp: libdrastouch needs SDL and
 # breaks BusyBox if it is loaded for the setup commands.
 #
-# /tmp/drastic-run is cleared only when the mount table proves that
-# neither it nor anything under it is a mount. A bind left by MENU+START
-# or SIGKILL is still a directory to rm, and rm would delete the save
-# files through it. A failed bind is not replaced with a symlink: GNU rm
-# follows a symlink when the path has a trailing slash, and this script
-# does not depend on the other form. Device numbers are not a substitute
-# for the mount table. The rootfs BusyBox rm has no one-file-system flag.
+# The scratch directory on a device is the literal path /tmp/drastic-run.
+# An override is a host-test seam. It is accepted only as a lexical
+# /tmp path with no traversal, and only after each existing component
+# is a real directory. Mounts are released by the mountinfo id this
+# launch observed, not by a count of one.
 export SDL_TOUCH_MOUSE_EVENTS="${SDL_TOUCH_MOUSE_EVENTS:-0}"
 if [ -r /usr/share/zlyme/pak-input.sh ]; then
 	# shellcheck disable=SC1091
@@ -21,17 +19,38 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$SDCARD/.config}"
 CFGDIR="$XDG_CONFIG_HOME/drastic"
 SAVES="${SAVES_PATH:-$SDCARD/Saves}/NDS"
 SEED=/usr/share/drastic/config/drastic.cfg
-WORKDIR=${ZLYME_DRASTIC_WORKDIR:-/tmp/drastic-run}
+DRASTIC_HAVE_LOCK=0
+DRASTIC_KEEP_LOCK=0
+DRASTIC_BACKUP_ID=
+DRASTIC_STATE_ID=
+
+if [ -n "${ZLYME_DRASTIC_WORKDIR+x}" ]; then
+	drastic_override=1
+	WORKDIR=$ZLYME_DRASTIC_WORKDIR
+else
+	drastic_override=0
+	WORKDIR=/tmp/drastic-run
+fi
+LOCK=${WORKDIR}.lock
+
+drastic_abandon_lock() {
+	[ "$DRASTIC_HAVE_LOCK" = 1 ] || return 0
+	[ "$DRASTIC_KEEP_LOCK" = 1 ] && return 0
+	if rmdir "$LOCK"; then
+		DRASTIC_HAVE_LOCK=0
+	else
+		echo "drastic: launch lock remained" >&2
+	fi
+}
 
 drastic_fail() {
 	echo "drastic: $*" >&2
+	drastic_abandon_lock
 	exit 1
 }
 
-# A private mount table is a host-test seam. Without a private work
-# directory it would hide a real mount at the device path.
-if [ -n "${ZLYME_DRASTIC_MOUNTINFO:-}" ]; then
-	if [ -z "${ZLYME_DRASTIC_WORKDIR:-}" ]; then
+if [ -n "${ZLYME_DRASTIC_MOUNTINFO+x}" ]; then
+	if [ "$drastic_override" != 1 ] || [ -z "$ZLYME_DRASTIC_MOUNTINFO" ]; then
 		drastic_fail "mount table override needs a private work directory"
 	fi
 	DRASTIC_MOUNTINFO=$ZLYME_DRASTIC_MOUNTINFO
@@ -39,49 +58,90 @@ else
 	DRASTIC_MOUNTINFO=/proc/self/mountinfo
 fi
 
-if [ -n "${ZLYME_DRASTIC_BIN:-}" ] && [ -z "${ZLYME_DRASTIC_WORKDIR:-}" ]; then
-	drastic_fail "binary override needs a private work directory"
+if [ -n "${ZLYME_DRASTIC_BIN+x}" ]; then
+	if [ "$drastic_override" != 1 ] || [ -z "$ZLYME_DRASTIC_BIN" ]; then
+		drastic_fail "binary override needs a private work directory"
+	fi
 fi
 
-drastic_reject_workdir() {
+# String check only. A path that fails here is not examined on disk.
+drastic_lexical_ok() {
+	if [ "$drastic_override" = 0 ]; then
+		[ "$WORKDIR" = /tmp/drastic-run ]
+		return
+	fi
 	case "$WORKDIR" in
-		""|/|.|..|/tmp|/run|/var|/storage|/mnt|/mnt/sd2|/mnt/media|/boot|/usr|/etc|/dev|/proc|/sys)
-			drastic_fail "work directory is not usable"
-			;;
+		/tmp/drastic-run|/tmp/drastic-run/*) return 1 ;;
+		/tmp/*) ;;
+		*) return 1 ;;
 	esac
 	case "$WORKDIR" in
-		/*) ;;
-		*) drastic_fail "work directory is not absolute" ;;
+		*/|*//*|*[[:space:]]*) return 1 ;;
 	esac
 	case "$WORKDIR" in
-		*[[:space:]]*)
-			drastic_fail "work directory is not usable"
-			;;
+		*[!/A-Za-z0-9._-]*) return 1 ;;
 	esac
+	_rest=${WORKDIR#/}
+	while [ -n "$_rest" ]; do
+		_comp=${_rest%%/*}
+		case "$_comp" in
+			""|.|..) return 1 ;;
+		esac
+		case "$_rest" in
+			*/*) _rest=${_rest#*/} ;;
+			*) _rest= ;;
+		esac
+	done
 	case "$SAVES" in
-		""|"$WORKDIR"|"$WORKDIR"/*)
-			drastic_fail "work directory contains the save directory"
-			;;
+		""|"$WORKDIR"|"$WORKDIR"/*) return 1 ;;
 	esac
 	case "$WORKDIR" in
-		"$SAVES"|"$SAVES"/*)
-			drastic_fail "work directory is inside the save directory"
-			;;
+		"$SAVES"|"$SAVES"/*) return 1 ;;
 	esac
 	case "$CFGDIR" in
-		""|"$WORKDIR"|"$WORKDIR"/*)
-			drastic_fail "work directory contains the config directory"
-			;;
+		""|"$WORKDIR"|"$WORKDIR"/*) return 1 ;;
 	esac
 	case "$WORKDIR" in
-		"$CFGDIR"|"$CFGDIR"/*)
-			drastic_fail "work directory is inside the config directory"
-			;;
+		"$CFGDIR"|"$CFGDIR"/*) return 1 ;;
 	esac
+	return 0
 }
 
+drastic_lexical_ok || drastic_fail "work directory is not usable"
+
+# Existing components must be real directories. A missing test directory
+# is refused. The device scratch directory may be absent.
+drastic_walk() {
+	_prefix=
+	_rest=${WORKDIR#/}
+	while [ -n "$_rest" ]; do
+		_comp=${_rest%%/*}
+		case "$_rest" in
+			*/*) _rest=${_rest#*/} ;;
+			*) _rest= ;;
+		esac
+		_prefix=${_prefix}/${_comp}
+		if [ -L "$_prefix" ]; then
+			drastic_fail "work directory path contains a symlink"
+		fi
+		if [ -n "$_rest" ]; then
+			if [ ! -d "$_prefix" ]; then
+				drastic_fail "work directory path is not a directory"
+			fi
+		elif [ -e "$_prefix" ]; then
+			if [ ! -d "$_prefix" ]; then
+				drastic_fail "work directory is not a directory"
+			fi
+		elif [ "$drastic_override" = 1 ]; then
+			drastic_fail "test work directory must already exist"
+		fi
+	done
+}
+
+drastic_walk
+
 # Field 5 is the mountpoint. Optional fields sit before " - " and do
-# not move it. The kernel octal-escapes spaces, so field 5 has none.
+# not move field 1 or field 5. The kernel octal-escapes spaces.
 # shellcheck disable=SC2016 # The program is awk, not shell.
 drastic_awk='
 function decode(s,    out, i, n, chunk, a, b, c, oct) {
@@ -118,19 +178,15 @@ NF == 0 { next }
 NF < 5 || $1 !~ /^[0-9]+$/ || $2 !~ /^[0-9]+$/ { bad = 1; next }
 {
 	mp = decode($5)
+	if (mode == "ids" && mp == want)
+		print $1
 	if (mode == "under" && under(mp, want))
 		hit = 1
-	if (mode == "count" && mp == want)
-		n++
 }
 END {
 	if (bad)
 		exit 2
-	if (mode == "count") {
-		print n + 0
-		exit 0
-	}
-	if (hit)
+	if (mode == "under" && hit)
 		exit 1
 	exit 0
 }
@@ -143,15 +199,32 @@ drastic_table() {
 	return 2
 }
 
-# 0 clear, 1 a mount is at or under the work directory, 2 unreadable.
 drastic_mounts_under() {
 	drastic_table || return 2
 	awk -v mode=under -v want="$1" "$drastic_awk" "$DRASTIC_MOUNTINFO"
 }
 
-drastic_mount_count() {
+drastic_list_ids() {
 	drastic_table || return 2
-	awk -v mode=count -v want="$1" "$drastic_awk" "$DRASTIC_MOUNTINFO"
+	awk -v mode=ids -v want="$1" "$drastic_awk" "$DRASTIC_MOUNTINFO"
+}
+
+# Sets DRASTIC_ID_N and DRASTIC_ID_ONE. 2 when the table cannot be read.
+drastic_scan_ids() {
+	DRASTIC_ID_N=0
+	DRASTIC_ID_ONE=
+	_list=$(drastic_list_ids "$1") || return 2
+	[ -n "$_list" ] || return 0
+	while IFS= read -r _one || [ -n "$_one" ]; do
+		case "$_one" in
+			""|*[!0-9]*) return 2 ;;
+		esac
+		DRASTIC_ID_N=$((DRASTIC_ID_N + 1))
+		DRASTIC_ID_ONE=$_one
+	done << EOF
+$_list
+EOF
+	return 0
 }
 
 drastic_require_clear() {
@@ -163,7 +236,6 @@ drastic_require_clear() {
 	esac
 }
 
-# Remove a symlink and not the directory it names.
 drastic_unlink_only() {
 	if [ -L "$1" ]; then
 		rm -- "$1" || drastic_fail "cannot remove symlink $1"
@@ -176,9 +248,7 @@ drastic_unlink_only() {
 drastic_clear_workdir() {
 	drastic_require_clear
 	if [ -L "$WORKDIR" ]; then
-		drastic_unlink_only "$WORKDIR"
-		drastic_require_clear
-		return 0
+		drastic_fail "work directory path contains a symlink"
 	fi
 	if [ -e "$WORKDIR" ] && [ ! -d "$WORKDIR" ]; then
 		drastic_fail "work directory is not a directory"
@@ -186,7 +256,7 @@ drastic_clear_workdir() {
 	if [ -d "$WORKDIR" ]; then
 		drastic_unlink_only "$WORKDIR/backup"
 		drastic_unlink_only "$WORKDIR/savestates"
-		if [ -L "$WORKDIR" ] || [ -L "$WORKDIR/backup" ] || [ -L "$WORKDIR/savestates" ]; then
+		if [ -L "$WORKDIR/backup" ] || [ -L "$WORKDIR/savestates" ]; then
 			drastic_fail "work directory still has a save symlink"
 		fi
 		drastic_require_clear
@@ -197,49 +267,64 @@ drastic_clear_workdir() {
 	fi
 }
 
+drastic_take_lock() {
+	if [ -L "$LOCK" ] || [ -e "$LOCK" ]; then
+		drastic_fail "work directory is already in use"
+	fi
+	if ! mkdir "$LOCK"; then
+		drastic_fail "work directory is already in use"
+	fi
+	DRASTIC_HAVE_LOCK=1
+}
+
+# Return 0 and set DRASTIC_BIND_ID when this launch added one mount id.
 drastic_bind() {
 	_src=$1
 	_dst=$2
 	_label=$3
-	_before=$(drastic_mount_count "$_dst")
-	_st=$?
-	if [ "$_st" -ne 0 ]; then
-		drastic_fail "cannot read the mount table before binding $_label"
+	if ! drastic_scan_ids "$_dst"; then
+		echo "drastic: cannot read the mount table before binding $_label" >&2
+		return 1
 	fi
-	if [ "$_before" -ne 0 ]; then
-		drastic_fail "$_label is already mounted; not starting"
+	if [ "$DRASTIC_ID_N" -ne 0 ]; then
+		echo "drastic: $_label is already mounted; not starting" >&2
+		return 1
 	fi
 	if ! mount --bind "$_src" "$_dst"; then
 		echo "drastic: bind failed for $_label; not starting" >&2
-		exit 1
+		return 1
 	fi
-	_after=$(drastic_mount_count "$_dst")
-	_st=$?
-	if [ "$_st" -ne 0 ]; then
-		drastic_fail "cannot read the mount table after binding $_label"
+	if ! drastic_scan_ids "$_dst"; then
+		DRASTIC_KEEP_LOCK=1
+		echo "drastic: cannot read the mount table after binding $_label" >&2
+		return 1
 	fi
-	if [ "$_after" -ne 1 ]; then
-		drastic_fail "$_label bind is not a single mount; not starting"
+	if [ "$DRASTIC_ID_N" -ne 1 ]; then
+		DRASTIC_KEEP_LOCK=1
+		echo "drastic: $_label bind is not a single mount; not starting" >&2
+		return 1
 	fi
+	DRASTIC_BIND_ID=$DRASTIC_ID_ONE
+	return 0
 }
 
-# Unmount only a single visible mount at the path this launch bound.
-# Any other count is left mounted.
+# Unmount only when the only id at the path is the one this launch stored.
 drastic_release() {
 	_dst=$1
 	_label=$2
-	_n=$(drastic_mount_count "$_dst")
-	_st=$?
-	if [ "$_st" -ne 0 ]; then
+	_want=$3
+	case "$_want" in
+		""|*[!0-9]*)
+			echo "drastic: $_label has no recorded mount; not unmounting" >&2
+			return 1
+			;;
+	esac
+	if ! drastic_scan_ids "$_dst"; then
 		echo "drastic: cannot read the mount table while releasing $_label" >&2
 		return 1
 	fi
-	if [ "$_n" -eq 0 ]; then
-		echo "drastic: $_label was not mounted at exit" >&2
-		return 1
-	fi
-	if [ "$_n" -ne 1 ]; then
-		echo "drastic: $_label has $_n mounts; not unmounting" >&2
+	if [ "$DRASTIC_ID_N" -ne 1 ] || [ "$DRASTIC_ID_ONE" != "$_want" ]; then
+		echo "drastic: $_label mount is not the one this launch created; not unmounting" >&2
 		return 1
 	fi
 	if ! umount "$_dst"; then
@@ -249,12 +334,10 @@ drastic_release() {
 	return 0
 }
 
-drastic_reject_workdir
-
-mkdir -p "$CFGDIR" "$SAVES/backup" "$SAVES/savestates"
+drastic_take_lock
 
 BIN=
-if [ -n "${ZLYME_DRASTIC_BIN:-}" ]; then
+if [ -n "${ZLYME_DRASTIC_BIN+x}" ]; then
 	BIN=$ZLYME_DRASTIC_BIN
 elif [ -x /usr/bin/drastic ]; then
 	BIN=/usr/bin/drastic
@@ -266,7 +349,8 @@ if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
 fi
 
 drastic_clear_workdir
-mkdir -p "$WORKDIR/backup" "$WORKDIR/savestates"
+mkdir -p "$CFGDIR" "$SAVES/backup" "$SAVES/savestates" \
+	"$WORKDIR/backup" "$WORKDIR/savestates"
 
 # An existing cfg is the user's. zlyme-stock-seed copies the stock file
 # when it is missing. This launcher does not rewrite button numbers.
@@ -279,14 +363,32 @@ elif [ -f "$SEED" ]; then
 	cp "$SEED" "$WORKDIR/drastic.cfg"
 fi
 
-cp -f "$BIN" "$WORKDIR/drastic"
-chmod 0755 "$WORKDIR/drastic"
+cp -f "$BIN" "$WORKDIR/drastic" || drastic_fail "cannot copy the binary"
+chmod 0755 "$WORKDIR/drastic" || drastic_fail "cannot mark the binary executable"
 
-drastic_bind "$SAVES/backup" "$WORKDIR/backup" backup
-drastic_bind "$SAVES/savestates" "$WORKDIR/savestates" savestates
+# Release mounts this launch recorded. A failure leaves the lock so the
+# next start cannot remove the scratch directory.
+drastic_fail_bound() {
+	if [ -n "$DRASTIC_BACKUP_ID" ]; then
+		drastic_release "$WORKDIR/backup" backup "$DRASTIC_BACKUP_ID" || DRASTIC_KEEP_LOCK=1
+	fi
+	if [ -n "$DRASTIC_STATE_ID" ]; then
+		drastic_release "$WORKDIR/savestates" savestates "$DRASTIC_STATE_ID" || DRASTIC_KEEP_LOCK=1
+	fi
+	drastic_fail "$1"
+}
 
-cd "$WORKDIR" || drastic_fail "cannot enter the work directory"
-if [ -n "${ZLYME_DRASTIC_BIN:-}" ] && [ -z "${ZLYME_DRASTIC_PRELOAD:-}" ]; then
+if ! drastic_bind "$SAVES/backup" "$WORKDIR/backup" backup; then
+	drastic_fail "backup bind failed"
+fi
+DRASTIC_BACKUP_ID=$DRASTIC_BIND_ID
+if ! drastic_bind "$SAVES/savestates" "$WORKDIR/savestates" savestates; then
+	drastic_fail_bound "savestates bind failed"
+fi
+DRASTIC_STATE_ID=$DRASTIC_BIND_ID
+
+cd "$WORKDIR" || drastic_fail_bound "cannot enter the work directory"
+if [ -n "${ZLYME_DRASTIC_BIN+x}" ] && [ -z "${ZLYME_DRASTIC_PRELOAD:-}" ]; then
 	./drastic "$@"
 else
 	LD_PRELOAD="${ZLYME_DRASTIC_PRELOAD:-/usr/lib/libdrastouch.so}" ./drastic "$@"
@@ -294,12 +396,15 @@ fi
 st=$?
 cp -f "$WORKDIR/drastic.cfg" "$CFGDIR/drastic.cfg" 2>/dev/null || true
 rel=0
-drastic_release "$WORKDIR/backup" backup || rel=1
-drastic_release "$WORKDIR/savestates" savestates || rel=1
+drastic_release "$WORKDIR/backup" backup "$DRASTIC_BACKUP_ID" || rel=1
+drastic_release "$WORKDIR/savestates" savestates "$DRASTIC_STATE_ID" || rel=1
 if [ "$rel" -ne 0 ]; then
+	DRASTIC_KEEP_LOCK=1
 	echo "drastic: save mounts were not released" >&2
 	if [ "$st" -eq 0 ]; then
 		st=1
 	fi
+else
+	drastic_abandon_lock
 fi
 exit "$st"

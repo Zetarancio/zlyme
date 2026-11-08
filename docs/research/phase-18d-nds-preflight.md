@@ -41,3 +41,25 @@ Before that launch, `/proc/self/mountinfo` must show no mount at or under `/tmp/
 With system logs on, stderr goes to the NDS pak log. The log header contains the ROM path and is not published. The useful lines are the renderer line, the shader lines, a bind or unmount refusal, and the exit status. Also record the image identity, which process holds the DRM device after the session releases it and after MENU+START, whether the default PCM opened, and whether the virtual pad was the joystick SDL saw. After return, no `drastic` or `start_drastic` process remains. If the save binds are still mounted, the next launch has to refuse. Saves and `drastic.cfg` stay except for writes DraStic itself makes. No ROM is copied. DraStic stays the proprietary binary already recorded for this package. No second Nintendo DS emulator is added.
 
 Phase 18D is not closed. Phase 18E is not started.
+
+## 18D0.1. Path proof and mount identity
+
+Date: 2026-11-08. The 18D0 launcher compared the work-directory string with mountinfo and unmounted a path when exactly one mount remained there. Two defects follow from that.
+
+`ZLYME_DRASTIC_WORKDIR=/tmp/../storage` is not one of the literal banned strings, and it is the directory `/storage` once the kernel resolves it. The mount table names `/storage`, so the string comparison would miss that mount. The removal would then run on persistent storage. The same gap covers `.`, repeated slashes, a trailing slash, and a symlink in the middle of the path. This pass did not execute that override and did not point `rm` at it.
+
+A count of one is not ownership. This launch can create mount id 10, lose it, and find id 99 alone at the same path. The 18D0 release would unmount 99.
+
+The device scratch path is the literal `/tmp/drastic-run`. A test override is accepted only when it is an absolute path under `/tmp/`, it is not that device path, and none of its components is `.`, `..`, empty, or a repeated slash. Each existing component is then a real directory. A symlink component is refused before removal. A test directory that does not already exist is refused. The check that fails is finished before `rm`.
+
+Each launch creates `/tmp/drastic-run.lock` with `mkdir`, or the matching sibling of a test directory. The second launch finds that directory and returns. It does not remove the scratch tree. There is no signal trap. MENU+START delivers SIGTERM to the shell and then SIGKILL; neither runs the release lines. The lock and any binds stay. The next launch returns at the lock. SIGKILL cannot be handled. A stale mount is still not removed and not unmounted.
+
+After each successful bind the launcher stores the single new mountinfo id. Release unmounts only when that same id is the only id at the path. A replacement id, a stack, a missing id, or an unreadable table is left mounted. The lock stays in those cases so the next launch cannot remove the tree. A failed first bind releases the lock because no mount was added. A failed second bind unmounts the first path only when its recorded id is still the only one there.
+
+A symlink-only layout was considered. The installed DraStic binary contains the formats `%s%cbackup%c%s.dsv` and `%s%csavestates%c%s_%d.dss`. It does not contain the strings `realpath`, `readlink`, or `O_NOFOLLOW`. That is not evidence the proprietary program follows a symlink, rejects one, or requires a bind. The binary was not executed. The bind mount stays. A correct symlink would be created only when `backup` and `savestates` do not already exist as directories. That layout is not shipped.
+
+The host regression is `scripts/tests/test_drastic_workdir.sh`. Its `rm` refuses every path outside the disposable root, and the path-refusal cases do not execute `rm`. It does not create a bind. It does not depend on `/tmp/drastic-run` being absent. The run printed `drastic workdir ok`. Covered cases include the traversal strings, an intermediate symlink, a symlink used as the work directory, save-slot symlinks, a replacement mount id, a held lock, a concurrent holder, a failed bind, a failed release, a stale mount, a stacked mount, a malformed table, and an unreadable table. The persistent fixture files stayed. `strace` is not installed here, so the traversal case was not traced; the refusal happened before `rm`. The target BusyBox is 1.38.0 and contains `awk`, `mkdir`, `rmdir`, `rm`, `mount`, and `umount`. It was not executed. The script does not call `realpath` or `mountpoint`.
+
+The same regression is in the lightweight source job of `.github/workflows/validation.yml`. It does not build DraStic or an image.
+
+The check and the removal are still two steps. The lock keeps another launcher out of that window. It does not stop a different program from mounting the scratch directory in between. A killed launch leaves the lock until the tmpfs is gone. Reboot clears it. No image contains this correction, and DraStic was not launched.
