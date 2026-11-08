@@ -1,0 +1,19 @@
+--- a/src/frontend/sdl/input.cpp
++++ b/src/frontend/sdl/input.cpp
+@@ -23,9 +23,13 @@
+ const char* const kButtonNames[B::BTN_COUNT] = {"a", "b", "select", "start", "right", "left", "up", "down", "r", "l", "x", "y"};
+ // Keyboard defaults follow the usual emulator layout (arrows + ZX/AS).
+ const char* const kKeyDefaults[B::BTN_COUNT] = {"x", "z", "Right Shift", "Return", "Right", "Left", "Up", "Down", "w", "q", "s", "a"};
+-// SDL's controller buttons are named by position, so the DS's B (bottom) is
+-// SDL's A and the DS's A (right) is SDL's B.
+-const char* const kPadDefaults[B::BTN_COUNT] = {"b", "a", "back", "start", "dpright", "dpleft", "dpup", "dpdown", "rightshoulder", "leftshoulder", "y", "x"};
++// SDL names the south button A and the east button B. Upstream binds the
++// DS's A to SDL B so it sits on the east button of a normal pad.
++// InputPlumber reports the Flip's printed A as that virtual pad's south
++// button and the printed B as east. The installed image's face correction
++// swapped X/Y only, so these two defaults are what put DS A and B on the
++// printed buttons. X and Y stay upstream.
++const char* const kPadDefaults[B::BTN_COUNT] = {"a", "b", "back", "start", "dpright", "dpleft", "dpup", "dpdown", "rightshoulder", "leftshoulder", "y", "x"};
+ 
+ const char* const kActionNames[static_cast<int>(Action::Count)] = {
+   "quit", "pause", "fast_forward", "fast_forward_toggle", "save_state", "load_state", "slot_next", "slot_prev",

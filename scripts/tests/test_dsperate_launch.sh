@@ -26,6 +26,13 @@ grep -q 'return {};' "$ROOT/package/emulators/dsperate/0001-omit-unlicensed-anal
 	|| fail "the analog database patch does not drop the built-in file"
 grep -q 'builtin.empty()' "$ROOT/package/emulators/dsperate/0001-omit-unlicensed-analog-database.patch" \
 	|| fail "an empty analog database is still reported as corrupt"
+ab=$ROOT/package/emulators/dsperate/0002-flip-ab-defaults.patch
+grep -F -q '{"a", "b", "back", "start"' "$ab" || fail "DS A and B are not the virtual pad A and B"
+grep -F -q '{"b", "a", "back", "start"' "$ab" || fail "the patch does not replace the upstream A and B defaults"
+grep -F -q '"y", "x"' "$ab" || fail "X and Y defaults were not kept"
+if grep -q 'face_fix_ = false' "$ab"; then
+	fail "the patch disables face correction"
+fi
 grep -q 'sdl2 alsa-lib' "$mk" || fail "dependencies changed"
 grep -q -- '-DDSPERATE_JIT=ON' "$mk" || fail "JIT is off"
 grep -q -- '-DDSPERATE_NEON=ON' "$mk" || fail "NEON is off"
