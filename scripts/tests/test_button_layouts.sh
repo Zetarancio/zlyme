@@ -72,7 +72,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 export ZLYME_STOCK_ROOT="$work/storage"
 export ZLYME_STOCK_SHARE="$ROOT/board/my355/fsoverlay/usr/share/zlyme"
-export ZLYME_DRASTIC_SEED="$ROOT/package/emulators/drastic/config/drastic.cfg"
 mkdir -p "$work/storage/.config/ppsspp/PSP/SYSTEM" \
 	"$work/storage/.config/retroarch/config/remaps" \
 	"$work/storage/Saves"

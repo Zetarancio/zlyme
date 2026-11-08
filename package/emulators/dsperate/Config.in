@@ -1,0 +1,13 @@
+config BR2_PACKAGE_DSPERATE
+	bool "dsperate"
+	depends on BR2_aarch64
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_ALSA_LIB
+	help
+	  DSperate Nintendo DS emulator, v3.4.0. Open source,
+	  GPL-3.0-or-later. The only NDS emulator in the product image.
+
+	  https://github.com/beebono/DSperate
+
+comment "dsperate needs aarch64"
+	depends on !BR2_aarch64

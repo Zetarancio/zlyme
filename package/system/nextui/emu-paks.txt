@@ -14,7 +14,7 @@ PS	pcsx_rearmed	lr
 PSP	PPSSPPSDL	bin
 DC	flycast	bin
 N64	mupen64plus-next	lr
-NDS	start_drastic	bin
+NDS	start_dsperate	bin
 PCE	mednafen_pce_fast	lr
 NGP	mednafen_ngp	lr
 WS	mednafen_wswan	lr

@@ -29,7 +29,7 @@ MKXPZ mkxp-z
 MS genesis_plus_gx
 MSX bluemsx
 N64 mupen64plus-next
-NDS drastic
+NDS dsperate
 NEOCD neocd
 NGP mednafen_ngp
 O2 o2em

@@ -82,6 +82,12 @@ REPO_PREFIXES = (
     "configs/",
 )
 
+# 18D2 removed the DraStic package. The 18D research notes still name it.
+RETIRED_PREFIXES = (
+    "package/emulators/drastic/",
+    "scripts/tests/test_drastic_workdir.sh",
+)
+
 
 def exists(path):
     return os.path.exists(os.path.join(ROOT, path))
@@ -134,6 +140,8 @@ def main():
                 if any(ch in token for ch in "*$?<>|"):
                     continue
                 path = token.split()[0].rstrip(".,:;")
+                if path.startswith(RETIRED_PREFIXES):
+                    continue
                 if not exists(path):
                     bad.append("%s:%s `%s`" % (rel, lineno, token))
     if bad:

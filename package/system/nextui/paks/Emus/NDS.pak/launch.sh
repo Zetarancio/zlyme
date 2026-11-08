@@ -8,4 +8,4 @@ HOME="$USERDATA_PATH"
 cd "$HOME"
 command -v zlyme-governor >/dev/null 2>&1 && zlyme-governor emu "$EMU_TAG" >/dev/null 2>&1 || true
 command -v zlyme-bcsh >/dev/null 2>&1 && zlyme-bcsh >/dev/null 2>&1 || true
-exec start_drastic "$ROM"
+exec start_dsperate "$ROM"

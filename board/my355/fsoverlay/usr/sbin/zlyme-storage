@@ -239,7 +239,7 @@ rescan_nextui() {
 		/usr/sbin/zlyme-pico-splore || true
 	fi
 	[ -f /tmp/zlyme-keep-emu ] && return 0
-	for p in retroarch PPSSPPSDL flycast drastic moonlight pico8_64 aethersx2 dolphin-emu-nogui; do
+	for p in retroarch PPSSPPSDL flycast dsperate moonlight pico8_64 aethersx2 dolphin-emu-nogui; do
 		pidof "$p" >/dev/null 2>&1 && return 0
 	done
 	pid=$(pidof nextui.elf 2>/dev/null) || return 0

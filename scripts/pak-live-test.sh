@@ -42,7 +42,7 @@ PY
 }
 
 nuke_paks() {
-	killall -9 retroarch ra-run PPSSPPSDL flycast drastic start_drastic scummvm pico8 \
+	killall -9 retroarch ra-run PPSSPPSDL flycast dsperate scummvm pico8 \
 		moonlight-pak moonlight moonlight-qt portmaster vtree settings.elf scrapegoat \
 		minui-list minui-presenter show.elf hypseus python3 gm gmloader \
 		ags bluetoothctl zlyme-pak-hotkey aethersx2 dolphin-emu-nogui \
@@ -64,7 +64,7 @@ wait_nextui() {
 }
 
 pak_running() {
-	pidof retroarch PPSSPPSDL flycast drastic start_drastic scummvm pico8 \
+	pidof retroarch PPSSPPSDL flycast dsperate scummvm pico8 \
 		moonlight-pak moonlight portmaster vtree settings.elf scrapegoat \
 		minui-list minui-presenter show.elf hypseus gm gmloader \
 		aethersx2 dolphin-emu-nogui start_dolphin amiberry OpenBOR \

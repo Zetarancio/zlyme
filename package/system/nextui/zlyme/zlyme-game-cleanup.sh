@@ -163,7 +163,9 @@ do_orphan_saves() {
 			}
 			'
 		fi
-		# DraStic slots (paks bind Saves/NDS/{backup,savestates})
+		# Legacy DraStic files. A stem that still matches a ROM stays.
+		# Installing DSperate does not list these. Game-code .dss states
+		# are not stem names, so this scan does not treat them as orphans.
 		for d in "$root/Saves/NDS/backup" "$root/Saves/NDS/savestates" "$root/Saves/NDS"; do
 			[ -d "$d" ] || continue
 			find "$d" -maxdepth 1 -type f \( -name '*.dsv' -o -name '*.dst' -o -name '*.dsv.*' \) 2>/dev/null |
@@ -309,7 +311,7 @@ standalone_targets() {
 		"$STORAGE/.config/flycast" \
 		"$STORAGE/.config/nextui/${plat}/.config/flycast" \
 		"$STORAGE/.config/dolphin-emu" \
-		"$STORAGE/.config/drastic/drastic.cfg" \
+		"$STORAGE/.config/dsperate" \
 		"$STORAGE/.config/aethersx2/inis" \
 		"$STORAGE/.config/gzdoom/gzdoom.ini" \
 		"$STORAGE/.config/nextui/shared/Pico-8-native/config" \

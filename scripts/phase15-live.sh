@@ -410,7 +410,7 @@ case "$one" in
 		;;
 	nds)
 		_rom=$1
-		handoff nds "/storage/Emus/$plat/NDS.pak/launch.sh" "$_rom" drastic
+		handoff nds "/storage/Emus/$plat/NDS.pak/launch.sh" "$_rom" dsperate
 		;;
 	ppsspp-menu)
 		handoff ppsspp-menu "/storage/Emus/$plat/PSP.pak/launch.sh" "" PPSSPPSDL

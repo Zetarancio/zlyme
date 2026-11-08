@@ -13,7 +13,7 @@ PS: cue chd m3u pbp iso ccd img toc
 PSP: iso cso pbp chd
 DC: cdi gdi cue chd m3u
 N64: z64 n64 v64 zip 7z
-NDS: nds zip 7z
+NDS: nds zip
 PCE: pce cue ccd iso img chd sgx zip 7z m3u
 NGP: ngp ngc zip 7z
 WS: ws wsc zip 7z

@@ -1,0 +1,46 @@
+--- a/src/core/cheat/analog_db.cpp
++++ b/src/core/cheat/analog_db.cpp
+@@ -1,24 +1,15 @@
+ // SPDX-License-Identifier: GPL-3.0-or-later
+ // DSperate - Nintendo DS emulator. Copyright (C) 2026 DSperate contributors.
+ //
+-// The analog controls database, linked in whole. The data is shocoman's CPAD
+-// codes, not under this file's licence: see analog_db/README.md.
++// The built-in catalogue is shocoman's usrcheat-analog.dat. Upstream says
++// that file is not under GPLv3. Zlyme does not link it. A database placed
++// on disk is still read.
+ #include "core/cheat/database.h"
+ 
+-// The directory comes from CMake (DSPERATE_ANALOG_DB_DIR), absolute.
+-__asm__(
+-  "\t.section .rodata.dsperate_analog_db,\"a\",%progbits\n"
+-  "\t.balign 4\n"
+-  "\t.globl dsperate_analog_db_begin\ndsperate_analog_db_begin:\n"
+-  "\t.incbin \"" DSPERATE_ANALOG_DB_DIR "/usrcheat-analog.dat\"\n"
+-  "\t.globl dsperate_analog_db_end\ndsperate_analog_db_end:\n"
+-  "\t.previous\n");
+-extern "C" const ds::u8 dsperate_analog_db_begin[], dsperate_analog_db_end[];
+-
+ namespace ds::cheat {
+ 
+ std::vector<u8> builtin_analog_database() {
+-  return std::vector<u8>(dsperate_analog_db_begin, dsperate_analog_db_end);
++  return {};
+ }
+ 
+ } // namespace ds::cheat
+--- a/src/core/cheat/database.cpp
++++ b/src/core/cheat/database.cpp
+@@ -132,8 +132,11 @@
+ 
+ bool load_analog_for_header(const std::string& path, const u8 header[512], GameCheats& out, std::string& err) {
+   if (!path.empty()) return load_for_header(path, header, out, err);
++  // No built-in catalogue. An empty buffer is not a corrupt database.
++  const std::vector<u8> builtin = builtin_analog_database();
++  if (builtin.empty()) { err.clear(); return false; }
+   Database db;
+-  if (!db.open_memory(builtin_analog_database(), "the built-in analog database", err)) return false;
++  if (!db.open_memory(builtin, "the built-in analog database", err)) return false;
+   return entry_for_header(db, header, out, err);
+ }
+ 

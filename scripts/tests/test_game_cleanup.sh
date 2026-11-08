@@ -68,6 +68,7 @@ mkdir -p "$pico/carts" "$pico/cdata" "$pico/bbs" "$pico/data" "$pico/config" \
 	"$os/.config/dolphin-emu" \
 	"$os/.config/nextui/my355/.local/share/dolphin-emu/GC" \
 	"$os/.config/drastic" \
+	"$os/.config/dsperate" \
 	"$os/.config/aethersx2/inis" \
 	"$os/.config/aethersx2/cache"
 printf 'cart\n' >"$pico/carts/user.p8"
@@ -92,6 +93,7 @@ printf 'vmu\n' >"$os/.config/nextui/my355/.local/share/flycast/vmu.bin"
 printf 'ini\n' >"$os/.config/dolphin-emu/Dolphin.ini"
 printf 'mem\n' >"$os/.config/nextui/my355/.local/share/dolphin-emu/GC/card.raw"
 printf 'cfg\n' >"$os/.config/drastic/drastic.cfg"
+printf 'cfg\n' >"$os/.config/dsperate/dsperate.ini"
 printf 'ini\n' >"$os/.config/aethersx2/inis/PCSX2.ini"
 printf 'cache\n' >"$os/.config/aethersx2/cache/keep"
 
@@ -122,7 +124,8 @@ test ! -e "$os/.config/flycast"
 test -f "$os/.config/nextui/my355/.local/share/flycast/vmu.bin"
 test ! -e "$os/.config/dolphin-emu"
 test -f "$os/.config/nextui/my355/.local/share/dolphin-emu/GC/card.raw"
-test ! -e "$os/.config/drastic/drastic.cfg"
+test -f "$os/.config/drastic/drastic.cfg"
+test ! -e "$os/.config/dsperate"
 test ! -e "$os/.config/aethersx2/inis"
 test -f "$os/.config/aethersx2/cache/keep"
 
@@ -215,8 +218,9 @@ zcount=$(printf '%s\n' "$zout" | awk -F= '/^COUNT=/{print $2; exit}')
 }
 
 one=$work/one
-mkdir -p "$one/.config/drastic"
-printf 'cfg\n' >"$one/.config/drastic/drastic.cfg"
+mkdir -p "$one/.config/dsperate" "$one/.config/drastic"
+printf 'cfg\n' >"$one/.config/dsperate/dsperate.ini"
+printf 'old\n' >"$one/.config/drastic/drastic.cfg"
 oout=$(ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
 	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run)
 ocount=$(printf '%s\n' "$oout" | awk -F= '/^COUNT=/{print $2; exit}')
@@ -224,10 +228,12 @@ ocount=$(printf '%s\n' "$oout" | awk -F= '/^COUNT=/{print $2; exit}')
 	echo "one standalone count: $oout" >&2
 	exit 1
 }
+test -f "$one/.config/dsperate/dsperate.ini"
 test -f "$one/.config/drastic/drastic.cfg"
 ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
 	ZLYME_DEVICE_CONF= "$CLEAN" standalones >/dev/null
-test ! -e "$one/.config/drastic/drastic.cfg"
+test ! -e "$one/.config/dsperate"
+test -f "$one/.config/drastic/drastic.cfg"
 
 long=$work
 n=0
@@ -235,8 +241,8 @@ while [ "${#long}" -lt 280 ]; do
 	long=$long/p$n
 	n=$((n + 1))
 done
-mkdir -p "$long/.config/drastic"
-printf 'cfg\n' >"$long/.config/drastic/drastic.cfg"
+mkdir -p "$long/.config/dsperate"
+printf 'cfg\n' >"$long/.config/dsperate/dsperate.ini"
 lout=$(ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$long" \
 	ZLYME_DEVICE_CONF= "$CLEAN" standalones --dry-run)
 lcount=$(printf '%s\n' "$lout" | awk -F= '/^COUNT=/{print $2; exit}')
@@ -249,7 +255,7 @@ llen=$(printf '%s\n' "$lout" | awk 'NR==2 { print length($0) }')
 	echo "long path was not a long line ($llen)" >&2
 	exit 1
 }
-test -f "$long/.config/drastic/drastic.cfg"
+test -f "$long/.config/dsperate/dsperate.ini"
 
 if ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$zero" \
 	ZLYME_DEVICE_CONF= "$CLEAN" not-a-cleanup --dry-run >/dev/null 2>&1; then
@@ -270,6 +276,41 @@ if ZLYME_LIBRARIES_FILE="$work/libraries" ZLYME_CLEANUP_ROOT="$one" \
 	exit 1
 fi
 rmdir /tmp/zlyme-sa.list
+
+# A present NDS ROM keeps its DSperate battery save and the old DraStic
+# files. Deleting that ROM removes the stem-matched .sav only.
+nds=$work/nds
+mkdir -p "$nds/Roms/Nintendo DS (NDS)" \
+	"$nds/Saves/NDS/backup" "$nds/Saves/NDS/savestates" \
+	"$nds/Saves/NDS/dsperate/states" \
+	"$nds/.config/drastic"
+printf 'rom\n' >"$nds/Roms/Nintendo DS (NDS)/Quest.nds"
+printf 'sav\n' >"$nds/Saves/NDS/dsperate/Quest.sav"
+printf 'st\n' >"$nds/Saves/NDS/dsperate/states/ABCD.0.dss"
+printf 'old\n' >"$nds/Saves/NDS/backup/Quest.dsv"
+printf 'old\n' >"$nds/Saves/NDS/savestates/Quest_1.dss"
+printf 'cfg\n' >"$nds/.config/drastic/drastic.cfg"
+printf '%s\n' "$nds" >"$work/nds-libs"
+nout=$(ZLYME_LIBRARIES_FILE="$work/nds-libs" ZLYME_CLEANUP_ROOT="$nds" \
+	ZLYME_DEVICE_CONF= "$CLEAN" orphan-saves --dry-run)
+ncount=$(printf '%s\n' "$nout" | awk -F= '/^COUNT=/{print $2; exit}')
+[ "$ncount" = 0 ] || {
+	echo "present NDS files were orphans: $nout" >&2
+	exit 1
+}
+test -f "$nds/Saves/NDS/dsperate/Quest.sav"
+test -f "$nds/Saves/NDS/dsperate/states/ABCD.0.dss"
+test -f "$nds/Saves/NDS/backup/Quest.dsv"
+test -f "$nds/Saves/NDS/savestates/Quest_1.dss"
+test -f "$nds/.config/drastic/drastic.cfg"
+ZLYME_LIBRARIES_FILE="$work/nds-libs" ZLYME_CLEANUP_ROOT="$nds" \
+	ZLYME_DEVICE_CONF= "$CLEAN" rom "$nds/Roms/Nintendo DS (NDS)/Quest.nds" >/dev/null
+test ! -e "$nds/Roms/Nintendo DS (NDS)/Quest.nds"
+test ! -e "$nds/Saves/NDS/dsperate/Quest.sav"
+test -f "$nds/Saves/NDS/dsperate/states/ABCD.0.dss"
+test -f "$nds/Saves/NDS/backup/Quest.dsv"
+test -f "$nds/Saves/NDS/savestates/Quest_1.dss"
+test -f "$nds/.config/drastic/drastic.cfg"
 
 ui=${ZLYME_NEXTUI_SRC:-$ROOT/../NextUI}/workspace/all/settings/zlymemenu.cpp
 if grep -n 'strncat(ask, extra' "$ui"; then

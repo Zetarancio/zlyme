@@ -190,6 +190,12 @@ Done when: one real existing NDS game starts, gameplay is visible, input works, 
 
 Depends on: the Phase 16 image and the preflight above. It does not wait for 18A–18C.
 
+### Revised direction, 2026-11-08
+
+The investigation above still stands. A later diagnostic image, `zlyme-my355-20261108-29e84c8d6527`, was installed and one Nintendo DS game was started from NextUI. The screen stayed black. MENU+START returned to the frontend and left the DraStic launch lock and two save bind mounts. The maintainer then superseded item 7: DraStic is no longer the NDS emulator. DSperate v3.4.0, commit `aabc4b065afaf582cbc43c16d579de431b808d57`, is the source replacement. spruceOS and ROCKNIX were packaging references only.
+
+That decision is source and host work. It is not a local package build, not an OTA, and not Flip acceptance. The hardware failure and the save-path contract are in [phase-18d-nds-preflight.md](phase-18d-nds-preflight.md). Phase 18D stays open. The numbered plan above is the plan that was current before this decision.
+
 ## 18E. Startup governor and timezones
 
 ### Governor
