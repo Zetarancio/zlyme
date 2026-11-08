@@ -196,6 +196,10 @@ The investigation above still stands. A later diagnostic image, `zlyme-my355-202
 
 That decision is source and host work. It is not a local package build, not an OTA, and not Flip acceptance. The hardware failure and the save-path contract are in [phase-18d-nds-preflight.md](phase-18d-nds-preflight.md). Phase 18D stays open. The numbered plan above is the plan that was current before this decision.
 
+### Installed DSperate image, 2026-11-08
+
+The maintainer installed `zlyme-my355-20261108-fd0bf6e6f21a.tar` and started one Nintendo DS game from NextUI. The picture was visible. The log recorded `video: kms scanout, KMSDRM driver, scanline scaling`, `audio: alsa driver`, and `controller: Microsoft X-Box 360 pad`. The face-correction line named X/Y only. Printed A and B did the opposite DS actions. A later source patch changes the two A/B defaults. The maintainer waived a second hardware launch for that change. The corrected package is not in this installed image. Audible play, save persistence, and a clean return to NextUI were not rechecked on the device in the follow-up pass, because the Flip did not answer SSH. Phase 18D stays open. Phase 18C stays on `zlyme45-phase-18c` and is not in this image.
+
 ## 18E. Startup governor and timezones
 
 ### Governor

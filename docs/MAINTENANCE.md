@@ -128,6 +128,9 @@ This is the current index. Historical Phase 10 findings `(a)` through `(q)`, inc
 
 Still deferred:
 
+- The installed Nintendo DS diagnostic image `zlyme-my355-20261108-fd0bf6e6f21a.tar` shows a DSperate picture on direct KMS. Printed A and B were reversed. The source default is corrected and the package was rebuilt, and the maintainer waived another hardware launch for that change. The corrected binary is not in the installed image. Audible play, a new DSperate save, and a clean return to NextUI were not rechecked after that launch because the Flip did not answer SSH. `docs/research/phase-18d-nds-preflight.md`.
+- Phase 18C stays on `zlyme45-phase-18c`. Its host tests do not accept GBA ZIP decoding or Wine arguments on the Flip. It is not in the installed image.
+- A dated `docs/LOGBOOK.md` entry for the DSperate launch and the A/B correction was not written. The checksum manifest stays as it is. That entry is a separate follow-up.
 - Flycast's Dreamcast faces follow Xbox letters. A mapping file would replace the whole stick and shoulder map, and the joystick name it must match is not proven. `docs/research/phase-15d-button-layouts.md`.
 - The three emulator save-bind scripts still repeat the mount-id sequence. `docs/research/phase-15d-save-bind-ownership.md`. Extract them only as their own change.
 - PortMaster still waits `0.4` s before the GUI. Replace that wait when the readiness condition is known.

@@ -10,6 +10,10 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - System logs can be enabled under **Settings → System → Advanced → System logs**. After a restart, recent boot diagnostics and logs from launched games and tools are available in `/storage/.logs`. The setting is off by default on a fresh installation.
 
+### Changed
+
+- Nintendo DS games run in DSperate instead of DraStic. DSperate is the open-source emulator by [@beebono](https://github.com/beebono) and the [DSperate contributors](https://github.com/beebono/DSperate). Saves and settings DraStic already wrote stay on the card. DSperate does not import them, so a game starts with a new save of its own.
+
 ### Fixed
 
 - Updates with an invalid SquashFS system-image header are rejected before installation.
