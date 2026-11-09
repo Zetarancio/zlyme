@@ -248,6 +248,17 @@ Done when: the measurements or the selector change are recorded, and existing sa
 
 The Settings row on my355 opens Common and All timezones. Both write a zone name through `TIME_setCurrentTimezone`, which stores the index in the full sorted `zone.tab` list. The row itself does not write a zone. The parent label and both rows show a name kept in Settings memory. That name is read when Settings starts and when the picker opens. A choice, including an uncommon zone appended to the short list, and System → Reset to defaults store the name just written. Drawing does not read the saved zone again. `zone.tab` is not reordered. Host checks are `scripts/tests/test_timezone_selector.py`, the NextUI source check `workspace/all/settings/test_timezone_selector.py`, and the host executable `workspace/all/settings/test_timezone_state.cpp`. That executable is not a menu draw. The development pin is `239b34a3b5fc5d8fcf0b479b03fa39bc7a48f036` on NextUI `zlyme45-phase-18e`. It is not on NextUI `zlyme`, and the selector has not been used on the Flip.
 
+### Built, not installed, 2026-11-09
+
+`zlyme-my355-20261109-c7054ed60b08.tar` was built from `c7054ed60b08cd6befe8597db9913dbd717625ca`. SHA-256 `67f5abc637de4a09f622038881bdef294bc108ac9b8b077406c3af3b4088a1ab`. The packed rootfs is SHA-256 `1872b7b6c2cb8d8644fabed0fab96623b35b5f0db9dcadfa243fd15a5d1710fa`, 712667136 bytes. It contains NextUI `239b34a3b5fc5d8fcf0b479b03fa39bc7a48f036` and DSperate v3.4.0 with the A/B default patch. It is not on the Flip. The hardware gate below has not been run.
+
+1. Install that OTA and confirm the image identity.
+2. Confirm the menu appears and accepts input. Read the existing boot markers. Leave the `smart` governor alone.
+3. Open Settings → System → Time zone. Use Common, then All timezones, including an uncommon zone. Leave the picker and open Settings again. The saved name stays. Put the original zone back. Do not use System → Reset to defaults on the device.
+4. Launch one existing Nintendo DS game. Check printed A and B, direct KMS, audible audio, a save on the selected library when the game writes one, and MENU+START back to NextUI.
+5. Confirm no leftover DSperate process or mount, and that old DraStic saves are still there.
+6. Spot-check frontend navigation, one settings value that should persist, both libraries, and one other emulator's launch and return.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
