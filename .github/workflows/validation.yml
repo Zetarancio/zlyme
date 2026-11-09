@@ -30,6 +30,11 @@ jobs:
           set -eu
           python3 scripts/tests/test_doc_links.py
           python3 scripts/tests/test_doc_contracts.py
+          if ! python3 -c 'from zoneinfo import ZoneInfo; ZoneInfo("Europe/Rome")' >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y tzdata
+          fi
+          python3 scripts/tests/test_timezone_selector.py
           python3 scripts/tests/test_zlyme_release.py
           sh scripts/tests/test_build_publish_gate.sh
           sh scripts/tests/test_ci_container_image.sh
