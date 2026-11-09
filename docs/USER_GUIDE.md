@@ -267,7 +267,7 @@ Volume is one setting for the speaker, the headphone jack, HDMI, and Bluetooth h
 - **Storage**: see [Libraries and storage](#libraries-and-storage) and [PortMaster](#portmaster).
 - **Advanced**: see below.
 - **Status LED**: Auto (green, red while charging, flashing when low), or a fixed Green, Red, or Off. At 0% with no charger connected, the Flip shuts down. Off does not disable that shutdown.
-- **Time zone**: how the clock is shown. Until you pick one, the clock stays on UTC. When a network is available, Zlyme sets and corrects the clock in the background. The menu does not wait for that.
+- **Time zone**: how the clock is shown. A opens a short list of common zones and the full list. The zone you already saved stays selected, including one that is not on the short list. Until you pick one, the clock stays on UTC. System → Reset to defaults returns it to UTC with the other system settings. When a network is available, Zlyme sets and corrects the clock in the background. The menu does not wait for that.
 - **Haptic feedback**: see [Joysticks and rumble](#joysticks-and-rumble).
 - **Backup now** saves `/storage/.config` to `/storage/zlyme-backup.tar.gz`. **Restore backup** unpacks it. Reboot afterwards.
 
