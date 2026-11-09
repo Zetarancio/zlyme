@@ -198,7 +198,7 @@ That decision is source and host work. It is not a local package build, not an O
 
 ### Installed DSperate image, 2026-11-08
 
-The maintainer installed `zlyme-my355-20261108-fd0bf6e6f21a.tar` and started one Nintendo DS game from NextUI. The picture was visible. The log recorded `video: kms scanout, KMSDRM driver, scanline scaling`, `audio: alsa driver`, and `controller: Microsoft X-Box 360 pad`. The face-correction line named X/Y only. Printed A and B did the opposite DS actions. A later source patch changes the two A/B defaults. The maintainer waived a second hardware launch for that change. The corrected package is not in this installed image. Audible play, save persistence, and a clean return to NextUI were not rechecked on the device in the follow-up pass, because the Flip did not answer SSH. Phase 18D stays open. Phase 18C stays on `zlyme45-phase-18c` and is not in this image.
+The maintainer installed `zlyme-my355-20261108-fd0bf6e6f21a.tar` and started one Nintendo DS game from NextUI. The picture was visible. The log recorded `video: kms scanout, KMSDRM driver, scanline scaling`, `audio: alsa driver`, and `controller: Microsoft X-Box 360 pad`. The face-correction line named X/Y only. Printed A and B did the opposite DS actions. A later source patch changes the two A/B defaults. The maintainer waived a second hardware launch for that change. The corrected package is not in this installed image. Audible play, save persistence, and a clean return to NextUI were not rechecked on the device in the follow-up pass, because the Flip did not answer SSH. A later read-only connection on 2026-11-09 found NextUI running, DSperate not running, no DraStic lock, and an empty DSperate save directory on the second card. The saved face bindings are comments, so they do not override the corrected defaults. Audible play is still unproven. Phase 18D stays open. Phase 18C stays on `zlyme45-phase-18c` and is not in this image.
 
 ## 18E. Startup governor and timezones
 
@@ -220,6 +220,10 @@ Hardware gates: a before-and-after Flip boot with the times above.
 
 Exclusions: do not change in-game profiles in this subphase. Do not raise clocks as a guess.
 
+### Recorded, 2026-11-09
+
+One read-only boot, with NextUI already up, had these `/tmp/boot-timing` marks: `rcS-nextui-ready` 4.20 s, `session-nextui` 4.59 s, `nextui-enter` 6.15 s, `nextui-settings` 6.23 s, `nextui-gfx` 7.33 s, `nextui-menu` 7.62 s, `nextui-first-flip` 8.33 s. `nextui-menu` is menu init. The first presented frame is `nextui-first-flip`. `libraryReload()` sits between settings and graphics init, so this log does not separate the library scan from `GFX_init`. Thumbnail workers start after the first flip. The live policy was `smart`: CPUs 0–1 online, schedutil 408–1800 MHz, DDR `powersave` at 324 MHz. CPU temperature was about 34 °C and the battery was 75% discharging. There is no second boot at another clock, and no marker for the first accepted input. `smart` is not shown to be the limiter. The governor is unchanged.
+
 ### Timezones
 
 Purpose: shorten the selector without dropping coverage or breaking a saved choice.
@@ -239,6 +243,10 @@ Hardware gates: the settings screen shows the shorter list, and a previously sav
 Exclusions: do not change the running device's timezone while investigating. Do not drop a region to make the list short.
 
 Done when: the measurements or the selector change are recorded, and existing saved timezones still resolve.
+
+### Recorded, 2026-11-09
+
+The Settings row on my355 opens Common and All timezones. Both write a zone name through `TIME_setCurrentTimezone`, which stores the index in the full sorted `zone.tab` list. The row itself does not write a zone. The full list rereads the saved name when the picker opens, before each input, and again after that input so its label matches a short-list choice before the next draw. A zone that is not on the short list is appended there, including one chosen from the full list in the same Settings session. System → Reset to defaults sets UTC. `zone.tab` is not reordered. Host checks are `scripts/tests/test_timezone_selector.py` and the NextUI `workspace/all/settings/test_timezone_selector.py`. The development pin is `a73a188a819915fa04c054ae02851a9e3f166eef` on NextUI `zlyme45-phase-18e`. It is not on NextUI `zlyme`, and the selector has not been used on the Flip.
 
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
