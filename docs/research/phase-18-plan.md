@@ -259,6 +259,14 @@ The Settings row on my355 opens Common and All timezones. Both write a zone name
 5. Confirm no leftover DSperate process or mount, and that old DraStic saves are still there.
 6. Spot-check frontend navigation, one settings value that should persist, both libraries, and one other emulator's launch and return.
 
+### Corrected, 2026-11-16
+
+The maintainer accepted `zlyme-my355-20261109-c7054ed60b08.tar` for installation, startup, navigation, direct-KMS DSperate play, audible NDS audio, controller behavior, MENU+START returning to NextUI, storage preservation, and one other emulator. Those are the maintainer's observations. The SSH record of that boot is separate: the live squashfs matched the OTA, and the NDS log showed KMS scanout, an opened ALSA device, and the virtual Xbox pad. The same log's X/Y line is not an A/B result. No battery-save file was present.
+
+MENU alone did not open the pause menu. The compiled default changes from `padhotkeys.pause = mod+start` to `mod`. The modifier stays `guide`. Zlyme's MENU+START watcher is unchanged. An existing `dsperate.ini` is not rewritten. That pause default has not been used on the Flip.
+
+The two-level timezone picker is superseded. my355 has one Time zone row. Left and right move through 65 representative names from tzdata 2026b. Two zones share a name when their UTC offset matches at 2025-01-01 UTC and after every transition of either zone before 2035-01-01 UTC. Europe/Berlin stands for Rome, Paris, and Amsterdam. America/Phoenix stays separate from America/Denver. Asia/Kathmandu, Pacific/Chatham, and Australia/Lord_Howe stay separate. A saved name that is not a representative, such as Europe/Helsinki beside Europe/Athens, stays selected and is not rewritten. The stored index remains the full sorted `zone.tab` index. Drawing still uses the name read when Settings starts. This row has not been used on the Flip. The development pin is `94a0cc951f5ab0151017091c7ad5918aa3216019` on NextUI `zlyme45-phase-18e`. It is not on NextUI `zlyme`.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering

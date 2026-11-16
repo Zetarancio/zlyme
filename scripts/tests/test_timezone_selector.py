@@ -9,24 +9,12 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from timezone_representatives import fingerprint, load_zone, representatives
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ZONE_TAB = ROOT / "package" / "system" / "nextui" / "zlyme" / "zone.tab"
-
-# Same names as common_src in the NextUI 18E settings row. A name
-# that is not in zone.tab must not be offered.
-COMMON = (
-    "UTC",
-    "Europe/London", "Europe/Dublin", "Europe/Lisbon",
-    "Europe/Paris", "Europe/Madrid", "Europe/Rome",
-    "Europe/Berlin", "Europe/Amsterdam", "Europe/Warsaw",
-    "Europe/Athens", "Europe/Helsinki", "Europe/Moscow",
-    "America/New_York", "America/Chicago", "America/Denver",
-    "America/Los_Angeles", "America/Mexico_City", "America/Sao_Paulo",
-    "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Hong_Kong",
-    "Asia/Singapore", "Asia/Tokyo", "Asia/Seoul",
-    "Australia/Sydney", "Pacific/Auckland",
-    "Africa/Cairo", "Africa/Johannesburg",
-)
+REPS = ROOT / "package" / "system" / "nextui" / "zlyme" / "timezone-representatives.txt"
 
 # Indexes from the platform parser: skip comments, take field 3, drop
 # duplicates, append UTC when absent, then strcmp order.
@@ -79,24 +67,27 @@ def local_time(zone, utc_text):
     return utc.astimezone(ZoneInfo(zone)).strftime("%Y-%m-%d %H:%M")
 
 
-def common_row(zones, saved):
-    row = []
-    have = False
-    for name in COMMON:
-        if name not in zones:
-            continue
-        if name == saved:
-            have = True
-        row.append(name)
-    if saved in zones and not have:
-        row.append(saved)
-    return row
-
-
 def choose(zones, saved, choice):
     if choice not in zones:
         return saved
     return choice
+
+
+def shown(reps, zones, saved):
+    row = [name for name in reps if name in zones]
+    if saved in zones and saved not in row:
+        row.append(saved)
+    return row
+
+
+def zone_root():
+    target = ROOT / "output/target/usr/share/zoneinfo"
+    host = pathlib.Path("/usr/share/zoneinfo")
+    if (target / "Europe/Berlin").is_file():
+        return target
+    if (host / "Europe/Berlin").is_file():
+        return host
+    return None
 
 
 def main():
@@ -109,27 +100,54 @@ def main():
             return fail("index %s is %s, not %s" % (index, got, name))
     if "Not/AZone" in zones:
         return fail("an invalid zone was accepted")
-    for name in COMMON:
+    reps = [line for line in REPS.read_text().splitlines() if line and line[0] != "#"]
+    if len(reps) != len(set(reps)):
+        return fail("a representative is listed twice")
+    if len(reps) >= len(zones):
+        return fail("the representative list is not shorter than zone.tab")
+    for name in reps:
         if name not in zones:
-            return fail("common zone %s is not canonical" % name)
-    if "Antarctica/Troll" not in zones:
-        return fail("an uncommon zone left the full list")
-    row = common_row(zones, "Antarctica/Troll")
-    if row[-1] != "Antarctica/Troll":
+            return fail("representative %s is not canonical" % name)
+    for name in ("UTC", "Europe/Berlin", "America/Phoenix", "America/Denver",
+                 "Asia/Kathmandu", "Pacific/Chatham", "Australia/Lord_Howe"):
+        if name not in reps:
+            return fail("%s is missing from the representative list" % name)
+    for name in ("Europe/Rome", "Europe/Paris", "Europe/Amsterdam"):
+        if name in reps:
+            return fail("%s is listed beside Berlin" % name)
+    row = shown(reps, zones, "Europe/Rome")
+    if row[-1] != "Europe/Rome":
         return fail("a saved uncommon zone is not offered")
-    if "Pacific/Kiritimati" not in row:
-        row = row + ["Pacific/Kiritimati"]
-    if row[-1] != "Pacific/Kiritimati":
-        return fail("a later uncommon choice left the short list")
-    if row[0] == "UTC" and row[1] != "Europe/London":
-        return fail("the later choice became the short list's first zone")
+    if "Europe/Berlin" not in row:
+        return fail("the representative left the row")
     if choose(zones, "Europe/Rome", "Not/AZone") != "Europe/Rome":
         return fail("an invalid choice replaced the saved zone")
-    if choose(zones, "Europe/Rome", "Asia/Tokyo") != "Asia/Tokyo":
-        return fail("a common choice did not save its canonical name")
-    saved = "Pacific/Kiritimati"
-    if choose(zones, saved, saved) != saved:
+    if choose(zones, "Europe/Rome", "Europe/Berlin") != "Europe/Berlin":
+        return fail("a representative choice did not save its canonical name")
+    if choose(zones, "Europe/Rome", "Europe/Rome") != "Europe/Rome":
         return fail("reopening the list changed the saved zone")
+    root = zone_root()
+    if root is None:
+        return fail("no zoneinfo tree is available")
+    target = ROOT / "output/target/usr/share/zoneinfo/Europe/Berlin"
+    if target.is_file():
+        generated, _groups = representatives(root, zones)
+        if generated != reps:
+            return fail("the representative file does not match tzdata 2026b")
+    marks = {}
+    for name in ("Europe/Berlin", "Europe/Rome", "Europe/Paris", "Europe/Amsterdam",
+                 "America/Phoenix", "America/Denver", "Asia/Kathmandu",
+                 "Pacific/Chatham", "Australia/Lord_Howe"):
+        times, which, offsets = load_zone(root / name)
+        marks[name] = fingerprint(times, which, offsets)
+    for name in ("Europe/Rome", "Europe/Paris", "Europe/Amsterdam"):
+        if marks[name] != marks["Europe/Berlin"]:
+            return fail("%s is not the Berlin civil-time pattern" % name)
+    if marks["America/Phoenix"] == marks["America/Denver"]:
+        return fail("Phoenix was treated as Denver")
+    for name in ("Asia/Kathmandu", "Pacific/Chatham", "Australia/Lord_Howe"):
+        if marks[name] == marks["Europe/Berlin"]:
+            return fail("%s collapsed into Berlin" % name)
     if "UTC" not in zones or zones[EXPECTED["UTC"]] != "UTC":
         return fail("UTC is not the canonical fallback name")
     if local_time("Europe/Rome", "2026-01-15 12:00") != "2026-01-15 13:00":

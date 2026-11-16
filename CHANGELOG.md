@@ -12,8 +12,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Changed
 
-- Nintendo DS games run in DSperate instead of DraStic. DSperate is the open-source emulator by [@beebono](https://github.com/beebono) and the [DSperate contributors](https://github.com/beebono/DSperate). Saves and settings DraStic already wrote stay on the card. DSperate does not import them, so a game starts with a new save of its own.
-- Settings → System → Time zone opens a short list of common zones and the full list. A zone you already saved stays selected. System → Reset to defaults returns the clock to UTC.
+- Nintendo DS games run in DSperate instead of DraStic. DSperate is the open-source emulator by [@beebono](https://github.com/beebono) and the [DSperate contributors](https://github.com/beebono/DSperate). MENU opens DSperate's pause menu. MENU+START still leaves the game. Saves and settings DraStic already wrote stay on the card. DSperate does not import them, so a game starts with a new save of its own.
+- Settings → System → Time zone is one row. Left and right move through representative zones. A zone you already saved stays selected, including one that is not on that list. System → Reset to defaults returns the clock to UTC.
 
 ### Fixed
 

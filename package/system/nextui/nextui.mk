@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 239b34a3b5fc5d8fcf0b479b03fa39bc7a48f036
+NEXTUI_VERSION = 94a0cc951f5ab0151017091c7ad5918aa3216019
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0
@@ -260,6 +260,8 @@ define NEXTUI_INSTALL_TARGET_CMDS
 			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
 		$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/zone.tab \
 			$(TARGET_DIR)/usr/share/zoneinfo/zone.tab; \
+		$(INSTALL) -D -m 0644 $(NEXTUI_PKGDIR)/zlyme/timezone-representatives.txt \
+			$(TARGET_DIR)/usr/share/nextui/timezone-representatives.txt; \
 	elif [ -f /usr/share/zoneinfo/zone.tab ]; then \
 		$(INSTALL) -D -m 0644 /usr/share/zoneinfo/zone.tab \
 			$(TARGET_DIR)/usr/share/nextui/zone.tab; \
