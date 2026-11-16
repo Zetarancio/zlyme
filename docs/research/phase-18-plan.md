@@ -291,6 +291,10 @@ NextUI `e49f0d791a4f91306adc01ef2c407ec4e8101a61` removes the shared `struct WIF
 
 `zlyme-my355-20261116-9d0fc4e3f12d.tar` was built from `9d0fc4e3f12d52d3b1f56fd3e0a75fc8d6a0e6ea`. SHA-256 `9159f90d0ebccf1394a9702b799968754574829b54d0c934258868c674bea784`, 766146560 bytes. The packed rootfs is SHA-256 `54c0237f71a03751b6299483fa32242f8100b46414381ca56de8963732cc72f5`, 712663040 bytes. Packed `nextui.elf` is SHA-256 `430eaaceb478c2e343bf5186d9c1b0bfd40a9ee7a53805db394fe2702eedb95c`. Packed `settings.elf` is SHA-256 `9ea566f0e4ed6caf6a17a0f972977f06653adcd97103b28cbbdb49f917f349cf` and contains `Left/right: change zone.` Packed `dsperate` remains SHA-256 `3599fd56392f9b3edfe87f275c24211be1e2dae74336e7849684ead48a5ad179`. Kernel `Image.gz` and `u-boot.itb` match the previous image. The OTA is not installed. The timezone reopen check and Phase 18C stay open.
 
+### Installed, 2026-11-16
+
+The maintainer installed `zlyme-my355-20261116-9d0fc4e3f12d.tar`. SSH to the running Flip found `/` on `/dev/loop0`, backed by `/boot/zlyme`. That file's size is 712663040 bytes and its SHA-256 is `54c0237f71a03751b6299483fa32242f8100b46414381ca56de8963732cc72f5`. `/usr/share/nextui/version.txt` is `e49f0d791a4f91306adc01ef2c407ec4e8101a61`. The live `nextui.elf`, `settings.elf`, and `dsperate` hashes match the packed image. `/etc/os-release` says `zlyme44.4 (2026-11-16)`. The kernel is 7.2.10. `apply.log` records the F3 tar and the reboot into initramfs, and there is no `FAILED` file. PipeWire's service file reads `ready` and the active sink name is `codec`. InputPlumber and `wpa_supplicant` are running. `wlan0` is associated, with signal -81 dBm. The saved zone is Europe/Berlin, `currentTimezone=316`, the bytes match `zoneinfo`, and the name is in the representative list. The screen was not observed. Phase 18E and Phase 18F stay open. Phase 18C stays separate.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
