@@ -281,6 +281,14 @@ NextUI `68c5b69c2b7de57ee55cc3350e59cddb5294d37c` replaces that bool with an `SD
 
 The Wi-Fi connection struct in `platform.c` is still written by the poll and read by `PLAT_connectionStrength()` on the draw. `settings.wifi` is still a plain bool. `PWR_quit()` still cancels the poll thread, and `runCmdTimeout()` has no cleanup handler for a child started before that cancel. Those three are recorded and not changed in this pass. The rune has not been seen on the Flip. No OTA was built. The timezone reopen check and Phase 18C stay open.
 
+### 18F3, 2026-11-16
+
+NextUI `e49f0d791a4f91306adc01ef2c407ec4e8101a61` removes the shared `struct WIFI_connection`. `PLAT_getNetworkStatus()` keeps that struct on its stack, derives online state from it, and publishes one `ConnectionStrength` category with `SDL_AtomicSet`. The stored value is the category plus one, so a zero atomic is `SIGNAL_STRENGTH_OFF`. `PLAT_connectionStrength()` loads that one value. Wi-Fi off still returns off before the next poll. The thresholds stay: invalid or RSSI -1 is off, RSSI 0 is disconnected, RSSI at least -60 is high, RSSI at least -70 is medium, and the rest are low. The draw does not call `wpa_cli` or `iw`. The five-second poll is unchanged.
+
+`settings.wifi` stays a bool. `CFG_getWifi()`, `CFG_setWifi()`, the settings file, and the debug print use relaxed `__atomic_load_n` and `__atomic_store_n`. The file line stays `wifi=%i`. `CFG_defaults()` still assigns the whole settings object, and its only caller is `CFG_init()`, before `PWR_init()`.
+
+`PWR_quit()` still cancels the poll thread. `runCmdTimeout()` forks a shell and kills that process group on its own timeout path. A cancel at `poll` or `read` skips that kill. The commands on this path are status reads. Quit then exits the frontend, so the leftover shell is reparented rather than written into settings. That path is unchanged and is the next 18F candidate. The host category test compiles `wifi_publish.h`, which is the code the poll calls. It does not run the Flip binary. The rune and the Wi-Fi symbol have not been seen on the Flip. No OTA was built. The timezone reopen check and Phase 18C stay open.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
