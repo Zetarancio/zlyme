@@ -33,6 +33,17 @@ grep -F -q '"y", "x"' "$ab" || fail "X and Y defaults were not kept"
 if grep -q 'face_fix_ = false' "$ab"; then
 	fail "the patch disables face correction"
 fi
+menu=$ROOT/package/emulators/dsperate/0003-flip-menu-pause.patch
+grep -F -q '"mod+start+back", "mod", "mod++righttrigger"' "$menu" \
+	|| fail "MENU alone is not the pause default"
+grep -F -q '# pause = mod' "$menu" || fail "the example config still says pause is mod+start"
+if grep -F -q 'kPadDefaults' "$menu"; then
+	fail "the pause patch changes A and B"
+fi
+grep -q 'BTN_MODE' "$ROOT/package/system/nextui/zlyme/hotkey_logic.h" \
+	|| fail "MENU+START no longer watches the guide button"
+grep -q 'return \*menu && \*start' "$ROOT/package/system/nextui/zlyme/hotkey_logic.h" \
+	|| fail "MENU+START no longer needs both buttons"
 grep -q 'sdl2 alsa-lib' "$mk" || fail "dependencies changed"
 grep -q -- '-DDSPERATE_JIT=ON' "$mk" || fail "JIT is off"
 grep -q -- '-DDSPERATE_NEON=ON' "$mk" || fail "NEON is off"

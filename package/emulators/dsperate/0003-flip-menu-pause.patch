@@ -1,0 +1,22 @@
+--- a/src/frontend/sdl/input.cpp
++++ b/src/frontend/sdl/input.cpp
+@@ -37,7 +37,7 @@
+ const char* const kKeyHotDefaults[static_cast<int>(Action::Count)] = {
+   "Escape", "p", "Tab", "none", "F5", "F7", "F3", "F2", "=", "-", "0", "F4", "F10", "F6", "F8", "f", "F9", "l", "m", "none"};
+ const char* const kPadHotDefaults[static_cast<int>(Action::Count)] = {
+-  "mod+start+back", "mod+start", "mod++righttrigger", "none", "mod+rightshoulder", "mod+leftshoulder", "mod+dpright", "mod+dpleft",
++  "mod+start+back", "mod", "mod++righttrigger", "none", "mod+rightshoulder", "mod+leftshoulder", "mod+dpright", "mod+dpleft",
+   "none", "none", "none", "mod+back", "mod+x", "mod+y", "none", "none", "none", "none", "leftstick", "none"};
+ 
+ // Controls that are neither a DS button nor a hotkey: hotkey modifier and
+--- a/src/frontend/sdl/config.cpp
++++ b/src/frontend/sdl/config.cpp
+@@ -598,7 +598,7 @@
+ [padhotkeys]
+ # modifier = guide
+ # quit = mod+start+back
+-# pause = mod+start
++# pause = mod
+ # fast_forward = mod++righttrigger
+ # save_state = mod+rightshoulder
+ # load_state = mod+leftshoulder
