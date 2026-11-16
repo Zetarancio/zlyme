@@ -22,7 +22,7 @@
 # That write is one-shot until Settings is opened again.
 # PAK launches are a ZLYME1 file: launch.sh and an optional ROM.
 # A rejected launch removes a leftover /tmp/next and stays in the menu.
-NEXTUI_VERSION = 3343db576640ca2ea2d54b50ad25b40003281cd7
+NEXTUI_VERSION = 68c5b69c2b7de57ee55cc3350e59cddb5294d37c
 NEXTUI_SITE = https://github.com/Zetarancio/NextUI.git
 NEXTUI_SITE_METHOD = git
 NEXTUI_LICENSE = LicenseRef-PolyForm-Noncommercial-1.0.0

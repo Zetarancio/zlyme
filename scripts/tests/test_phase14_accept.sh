@@ -41,7 +41,7 @@ need "$ROOT/board/my355/fsoverlay/usr/share/wireplumber/wireplumber.conf.d/51-zl
 	"codec match uses alsa.id"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-pipewire-launch" 'pipewire-pulse' \
 	"pipewire-pulse is started as its own argv"
-need "$ROOT/package/system/nextui/nextui.mk" '3343db576640ca2ea2d54b50ad25b40003281cd7' \
+need "$ROOT/package/system/nextui/nextui.mk" '68c5b69c2b7de57ee55cc3350e59cddb5294d37c' \
 	"NextUI pin separates a radio link from the playing sink"
 need "$ROOT/board/my355/fsoverlay/usr/sbin/zlyme-audio" '@DEFAULT_AUDIO_SINK@' \
 	"route reads the PipeWire default"

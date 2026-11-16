@@ -273,6 +273,14 @@ The two-level timezone picker is superseded. my355 has one Time zone row. Left a
 
 `GFX_blitHardwareGroup()` in NextUI `3343db576640ca2ea2d54b50ad25b40003281cd7` reads `PLAT_btIsConnected()` for the rune. That helper is the cache `PLAT_getNetworkStatus()` fills from the battery thread, and on my355 it is also false when Bluetooth is switched off. The live `/sys/class/bluetooth` scan remains `PLAT_bluetoothConnected()`, used by the poll, not by the draw. The audio glyph is still any non-default sink. The cache starts false and then follows the five-second poll, so a radio can take that long to show or hide. `bluetoothConnected` is an ordinary bool shared by the poll thread and the UI thread. This pass does not add a lock. The rune has not been checked on the Flip. No OTA was built. The timezone reopen check and Phase 18C stay open.
 
+### 18F2, 2026-11-16
+
+NextUI `68c5b69c2b7de57ee55cc3350e59cddb5294d37c` replaces that bool with an `SDL_atomic_t`. `PLAT_getNetworkStatus()` publishes 1 or 0 with `SDL_AtomicSet`. `PLAT_btIsConnected()` reads it with `SDL_AtomicGet` and still returns false when Bluetooth is off. The live scan stays in the poll. The audio glyph, the glyph positions, and the five-second interval stay as they were. A host thread-sanitizer run covers the same SDL atomic and the same relaxed flag primitive. It does not run the Flip binary.
+
+`settings.bluetooth` stays a bool inside `NextUISettings`. `CFG_getBluetooth()`, `CFG_setBluetooth()`, the settings file, and the debug print use `__atomic_load_n` and `__atomic_store_n` with relaxed order. The file line stays `bluetooth=%i`. `CFG_defaults()` still assigns the whole settings object, and the only caller is `CFG_init()`, which runs before `PWR_init()` starts the poll. A later call to `CFG_defaults()` after that thread exists would be a plain store of the same flag.
+
+The Wi-Fi connection struct in `platform.c` is still written by the poll and read by `PLAT_connectionStrength()` on the draw. `settings.wifi` is still a plain bool. `PWR_quit()` still cancels the poll thread, and `runCmdTimeout()` has no cleanup handler for a child started before that cancel. Those three are recorded and not changed in this pass. The rune has not been seen on the Flip. No OTA was built. The timezone reopen check and Phase 18C stay open.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
