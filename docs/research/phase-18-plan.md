@@ -267,6 +267,8 @@ MENU alone did not open the pause menu. The compiled default changes from `padho
 
 The two-level timezone picker is superseded. my355 has one Time zone row. Left and right move through 65 representative names from tzdata 2026b. Two zones share a name when their UTC offset matches at 2025-01-01 UTC and after every transition of either zone before 2035-01-01 UTC. Europe/Berlin stands for Rome, Paris, and Amsterdam. America/Phoenix stays separate from America/Denver. Asia/Kathmandu, Pacific/Chatham, and Australia/Lord_Howe stay separate. A saved name that is not a representative, such as Europe/Helsinki beside Europe/Athens, stays selected and is not rewritten. The stored index remains the full sorted `zone.tab` index. Drawing still uses the name read when Settings starts. This row has not been used on the Flip. The development pin is `94a0cc951f5ab0151017091c7ad5918aa3216019` on NextUI `zlyme45-phase-18e`. It is not on NextUI `zlyme`.
 
+`zlyme-my355-20261116-fc414c6ba084.tar` was built from `fc414c6ba0842b2dc805f6b670be3b3ceef1b1ee`. SHA-256 `993bbc2a735fa9e77103e51d760d34c4133b6ec7c1373703f20676ef88627937`. The packed rootfs is SHA-256 `b1c0a780f3b67fd334c0907836835ff3e5e83a5c6c8fe6c98496f3c16dcb8c3e`, 712663040 bytes. It is not installed. The next hardware check is MENU alone opening the pause menu, MENU+START still leaving the game, and one Time zone row whose choice remains after Settings is closed and opened again.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering

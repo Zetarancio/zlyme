@@ -128,7 +128,7 @@ This is the current index. Historical Phase 10 findings `(a)` through `(q)`, inc
 
 Still deferred:
 
-- The maintainer accepted `zlyme-my355-20261109-c7054ed60b08.tar` for startup, navigation, direct-KMS DSperate play, audible NDS audio, controller behavior, MENU+START returning to NextUI, storage preservation, and one other emulator. MENU alone does not open the DSperate pause menu on that image. The source default is now `mod`, and that binary is not installed. No battery save was on the card. `docs/research/phase-18d-nds-preflight.md`.
+- The maintainer accepted `zlyme-my355-20261109-c7054ed60b08.tar` for startup, navigation, direct-KMS DSperate play, audible NDS audio, controller behavior, MENU+START returning to NextUI, storage preservation, and one other emulator. MENU alone does not open the DSperate pause menu on that image. The source default is now `mod`. That binary is in the uninstalled local OTA `zlyme-my355-20261116-fc414c6ba084.tar` and is not on the Flip. No battery save was on the card. `docs/research/phase-18d-nds-preflight.md`.
 - Startup stays on the `smart` governor. One boot reached the first presented frame at 8.33 s, after `nextui-menu` at 7.62 s. The install boot's frontend interval was similar. That does not show `smart` is the limiter, so the clocks were not changed. `docs/research/phase-18-plan.md`.
 - The timezone row is one representative list. A saved name that is not on it stays. Drawing uses the name read at startup. The two-level picker was rejected. This row has not been used on the Flip. The NextUI development pin is not on NextUI `zlyme` yet.
 - Phase 18C stays on `zlyme45-phase-18c`. Its host tests do not accept GBA ZIP decoding or Wine arguments on the Flip. It is not in the installed image.
