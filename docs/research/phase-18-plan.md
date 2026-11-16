@@ -269,6 +269,10 @@ The two-level timezone picker is superseded. my355 has one Time zone row. Left a
 
 `zlyme-my355-20261116-fc414c6ba084.tar` was built from `fc414c6ba0842b2dc805f6b670be3b3ceef1b1ee`. SHA-256 `993bbc2a735fa9e77103e51d760d34c4133b6ec7c1373703f20676ef88627937`. The packed rootfs is SHA-256 `b1c0a780f3b67fd334c0907836835ff3e5e83a5c6c8fe6c98496f3c16dcb8c3e`, 712663040 bytes. The maintainer then installed that OTA. MENU alone opened the pause menu, resume returned to the game, and MENU+START returned to NextUI. Audio and the gamepad worked. A battery save appeared under the selected library's `Saves/NDS/dsperate`. Settings showed one Time zone row and no Common or All page. Those are the maintainer's observations. Phase 18D is closed for that tested scope. Closing Settings and opening it again to confirm the same zone was not recorded. The description on that image was too long. NextUI `33ae31b22360cd494d77826917ce3e5cb7093c3e` changes only that string to `Left/right: change zone.` It is not installed and was not seen on the Flip.
 
+### 18F1, 2026-11-16
+
+`GFX_blitHardwareGroup()` in NextUI `3343db576640ca2ea2d54b50ad25b40003281cd7` reads `PLAT_btIsConnected()` for the rune. That helper is the cache `PLAT_getNetworkStatus()` fills from the battery thread, and on my355 it is also false when Bluetooth is switched off. The live `/sys/class/bluetooth` scan remains `PLAT_bluetoothConnected()`, used by the poll, not by the draw. The audio glyph is still any non-default sink. The cache starts false and then follows the five-second poll, so a radio can take that long to show or hide. `bluetoothConnected` is an ordinary bool shared by the poll thread and the UI thread. This pass does not add a lock. The rune has not been checked on the Flip. No OTA was built. The timezone reopen check and Phase 18C stay open.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
