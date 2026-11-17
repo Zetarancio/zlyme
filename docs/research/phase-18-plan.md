@@ -309,6 +309,14 @@ Phase 18F4's source and host regression are accepted for the reviewed diff at Ne
 
 Phase 18C stays open and unmerged at `2525168d0a81de4f85a864f1a4559e694edb0616`. On 2026-11-17 the GBA library on the second card had no zip members and no `CN048` name. The reported archive was not opened. The host ZIP regression against RetroArch `v1.22.2` still passes and still does not identify that archive's encoding. Wine 11.6 is installed. `c_65001.nls` is absent, `c_20127.nls` and `c_936.nls` are present, NextUI has no `LANG` or `LC_*` variables, and `locale` is not installed. The production Wine prefix is absent. `/storage` is exFAT. `/tmp` is tmpfs with about 500 MiB free, and `/mnt/sd2` is ext4. Wine was not started. No launcher or RetroArch change is made. 18G has not started. `ZLYME_VERSION` stays `zlyme44.4`.
 
+### 18C6, 2026-11-17
+
+A later boot of the same F3 image read one ZIP and one `.gba`, then wrote five test archives under `Game Boy Advance (GBA)/zlyme-18c5-9d0fc4e3/`. The source file's size and mtime were unchanged after that copy. `/usr/bin/wine` was then started with `WINEPREFIX=/mnt/sd2/zlyme-18c5-wine-9d0fc4e3/prefix`. `zlyme-wine-prefix` was not used. The maintainer reports the Flip froze and needed a long power-button press. The SSH session ended with no exit status. That does not identify the cause, and it is not an F3 or F4 regression by itself. F4 is not in this image.
+
+After the forced reboot, uptime was about three minutes, NextUI was running, PipeWire was `ready` on `codec`, and Wi-Fi was associated. `/sys/fs/pstore` was empty. `system-1` keeps the early `dmesg` of the boot that later froze: ext4 recovery completed and the card mounted read-write. It does not contain the moment of the freeze. No saved log on the card contains an OOM, panic, soft lockup, or hung-task line. The current boot's `dmesg` has the normal Mali probe, including a stack printed from `kbase_mmu_as_init` while the driver was still probing. The boot continued.
+
+`builtin.out` is empty. `builtin.log` records Wine trying to create a window with no display driver, including `nodrv_CreateWindow` and a failed explorer start. The log is 4096 bytes and the rest is NUL. `ascii.out` and `ascii.log` exist and are empty, so the supervisor opened the second run's files. `ZLYME_WINE_OK` is not in those files. The disposable prefix contains `system.reg`, `user.reg`, `userdef.reg`, and `drive_c`. The production prefix is still absent. No wine, Box64, wineserver, or Weston process was running on the new boot. The five ZIP names are still present. They were not relaunched. Further writes to the second card wait for an offline check of the earlier `EIO` and superblock errors. Another on-device Wine run needs a separate authorization.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
