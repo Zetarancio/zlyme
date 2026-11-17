@@ -35,9 +35,9 @@ printf '%s\n' "$rel43" | grep -q 'SDCARD1' || fail "zlyme44.3 omits the MTP name
 printf '%s\n' "$rel43" | grep -q 'basic-data' || fail "zlyme44.3 omits the partition type"
 printf '%s\n' "$rel43" | grep -q '](docs/' && fail "zlyme44.3 uses a relative guide link"
 
-grep -q '7951a37668e3' "$ROOT/docs/ROADMAP.md" \
+grep -q '7951a37668e3' "$ROOT/docs/archive/roadmap-2026-11-17.md" \
 	|| fail "roadmap lost the MTP archive"
-grep -q 'one orange frame' "$ROOT/docs/ROADMAP.md" \
+grep -q 'one orange frame' "$ROOT/docs/archive/roadmap-2026-11-17.md" \
 	|| fail "roadmap lost the PanVK frame"
 grep -q 'one orange frame' "$ROOT/docs/LOGBOOK.md" \
 	|| fail "logbook lost the PanVK frame"

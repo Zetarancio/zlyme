@@ -2,7 +2,7 @@
 
 What changed for people who run Zlyme. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Zlyme does not use Semantic Versioning: `zlymeNN` is a baseline release, and `zlymeNN.M` is a point release on that same baseline. Writing rules are in [docs/WRITING.md](docs/WRITING.md).
 
-Earlier development builds were published as GitHub prereleases. Their history is in [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/LOGBOOK.md](docs/LOGBOOK.md), not here.
+Earlier development builds were published as GitHub prereleases. Their history is in the [2026-11-17 roadmap snapshot](docs/archive/roadmap-2026-11-17.md) and [docs/LOGBOOK.md](docs/LOGBOOK.md), not here. The current phase index is [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [Unreleased]
 

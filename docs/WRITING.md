@@ -27,7 +27,7 @@ The canonical technical docs are listed in `AGENTS.md`. `docs/README.md` is only
 
 - Present tense for current behavior. Name the owner of each mechanism (a file, a package, a command).
 - Give exact versions or SHAs when state depends on them. Don't write "latest", "current" or "now" without a subject.
-- Keep the source-of-truth model. Source is the authority for what Zlyme ships, the hardware wiki for hardware facts, and ROADMAP, LOGBOOK and `docs/research/` are history.
+- Keep the source-of-truth model. Source is the authority for what Zlyme ships, and the hardware wiki for hardware facts. `docs/ROADMAP.md` is the current sequence. `docs/LOGBOOK.md`, `docs/archive/`, and `docs/research/` are history.
 - Link to the owning document instead of copying its content. When an exact value has to be repeated, `scripts/tests/test_doc_contracts.py` can check it against source.
 - Never claim hardware validation that did not happen. Keep built, booted, launched, tested and stress-tested apart.
 
@@ -77,7 +77,7 @@ Before a phase is called closed:
 - Review the source changes and what a person can see.
 - Reconcile `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/MAINTENANCE.md`, `docs/OPERATIONS.md`, `docs/UPSTREAMS.md`, `docs/DEVICE_PORTING.md`, and `docs/USER_GUIDE.md` with that code.
 - Correct a stale version, pin, release status, or current-state claim that the code now contradicts.
-- Make `docs/ROADMAP.md` say what is implemented, host-tested, hardware-accepted, excluded, deferred, or unproven.
+- Make the phase summary say what is implemented, host-tested, hardware-accepted, excluded, deferred, or unproven. Keep `docs/ROADMAP.md` to the current sequence.
 - Add a short dated `docs/LOGBOOK.md` entry when the evidence is worth keeping. Leave older entries as written.
 - Review `CHANGELOG.md` under the rules above. Record accepted user-visible behavior only.
 - Check documentation links, the documentation contract tests, and a factual claim that a test already locks to source.

@@ -317,7 +317,7 @@ b2=$(awk '
 	/^##### B2\. / { on = 1; next }
 	on && /^##### / { exit }
 	on { print }
-' "$ROOT/docs/ROADMAP.md")
+' "$ROOT/docs/archive/roadmap-2026-11-17.md")
 printf '%s\n' "$b2" | grep -q 'Status: Host-tested' || fail "B2 is not host-tested"
 printf '%s\n' "$b2" | grep -q 'does not validate this policy' \
 	|| fail "B2 treats the old host test as the new policy"
@@ -325,7 +325,7 @@ b5=$(awk '
 	/^##### B5\. / { on = 1; next }
 	on && /^##### / { exit }
 	on { print }
-' "$ROOT/docs/ROADMAP.md")
+' "$ROOT/docs/archive/roadmap-2026-11-17.md")
 printf '%s\n' "$b5" | grep -q 'Status: Host-tested' || fail "B5 is not host-tested"
 printf '%s\n' "$b5" | grep -q 'does not validate this policy' \
 	|| fail "B5 treats the old host test as the new policy"
@@ -340,17 +340,17 @@ b7=$(awk '
 	/^##### B7\. / { on = 1; next }
 	on && /^##### / { exit }
 	on { print }
-' "$ROOT/docs/ROADMAP.md")
+' "$ROOT/docs/archive/roadmap-2026-11-17.md")
 printf '%s\n' "$b7" | grep -q 'Status: Host-tested' || fail "B7 is not host-tested"
 b6=$(awk '
 	/^##### B6\. / { on = 1; next }
 	on && /^##### / { exit }
 	on { print }
-' "$ROOT/docs/ROADMAP.md")
+' "$ROOT/docs/archive/roadmap-2026-11-17.md")
 printf '%s\n' "$b6" | grep -q 'Excluded from Phase 13' || fail "B6 is not excluded"
 printf '%s\n' "$b6" | grep -q 'Not implemented' || fail "B6 is marked implemented"
 printf '%s\n' "$b6" | grep -q '320×240' || fail "B6 lost the RGUI limit"
-grep -q 'does not block closure of Phase 13B' "$ROOT/docs/ROADMAP.md" \
+grep -q 'does not block closure of Phase 13B' "$ROOT/docs/archive/roadmap-2026-11-17.md" \
 	|| fail "B6 still blocks Phase 13B"
 
 echo "phase 13b ok"

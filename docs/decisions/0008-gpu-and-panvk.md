@@ -24,4 +24,4 @@ A Panfrost GLES result is not a Vulkan result. PanVK remains experimental. One o
 
 Rollback is writing the previous GPU value and rebooting. Do not switch the GPU from an SSH session as part of a test.
 
-Implemented support and hardware acceptance stay separate. `docs/ROADMAP.md` records which paths were accepted.
+Implemented support and hardware acceptance stay separate. The accepted paths are in `docs/phases/phase-12.md` and [Phase 12 of the 2026-11-17 snapshot](../archive/roadmap-2026-11-17.md#phase-12-zlyme443-development).

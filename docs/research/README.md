@@ -14,7 +14,7 @@ Architecture should say:
 
 Keep evidence and abandoned alternatives here so they remain available without making an agent treat every explored option as current architecture.
 
-Phase files are chronological. A later section in the same file, and the [ROADMAP](../ROADMAP.md) status for that phase, supersede earlier sections. A new file uses the phase prefix in [docs/WRITING.md](../WRITING.md). Shipped behavior is described in [docs/ARCHITECTURE.md](../ARCHITECTURE.md), [docs/OPERATIONS.md](../OPERATIONS.md), and [docs/DEVELOPMENT.md](../DEVELOPMENT.md).
+Phase files are chronological. A later section in the same file, and the phase summary in [docs/phases/](../phases/README.md), supersede earlier sections. [docs/ROADMAP.md](../ROADMAP.md) is the current sequence, not that detailed disposition. A new file uses the phase prefix in [docs/WRITING.md](../WRITING.md). Shipped behavior is described in [docs/ARCHITECTURE.md](../ARCHITECTURE.md), [docs/OPERATIONS.md](../OPERATIONS.md), and [docs/DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ## Index
 

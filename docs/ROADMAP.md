@@ -8,7 +8,16 @@ Phase 18G is active. It integrates the accepted Phase 18 implementation and one 
 
 ## Next action
 
-Wait for the unpublished candidate that is building from `8d61d33d263434de4cd4e5f5f6200becd3756908`, workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428). Do not treat that run as a release. After it exists, a separate maintainer decision is still required before publication.
+The candidate from `8d61d33d263434de4cd4e5f5f6200becd3756908`, workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428), is an unpublished integration validation build. `ZLYME_VERSION` is still `zlyme44.4`. The Build workflow names a release from that file and takes the notes from the `CHANGELOG.md` section with the same heading. This run is not a prepared `zlyme45` artifact. A completed build is not hardware acceptance and is not publication.
+
+The remaining sequence is:
+
+1. The candidate build completes successfully.
+2. Its artifacts and source identities are checked against `8d61d33d263434de4cd4e5f5f6200becd3756908`.
+3. The maintainer decides whether to install it and accept it with the proportionate final smoke test. That decision does not reopen the closed 18C investigation and does not require a full emulator matrix.
+4. The version, the release notes, and the source SHA are prepared as one set. A `zlyme45` release needs `ZLYME_VERSION` set to `zlyme45`, a `CHANGELOG.md` section headed `zlyme45`, and one source SHA.
+5. The artifact intended for public release is built from that exact source and version and checked against them.
+6. Publication needs a separate explicit maintainer authorization. `publish_release` stays false until that decision.
 
 ## Blockers and deferred work
 

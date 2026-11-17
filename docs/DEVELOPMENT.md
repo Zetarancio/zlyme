@@ -373,7 +373,7 @@ Use:
 - `OPERATIONS.md` for durable live-device/recovery facts;
 - `UPSTREAMS.md` for source selection and provenance;
 - `MAINTENANCE.md` for the maintainer index and release policy;
-- `ROADMAP.md` for which phase is active. The acceptance chronology through 2026-10-15 is `docs/archive/roadmap-2026-10-15.md`;
+- `ROADMAP.md` for which phase is active. Phase outcomes are `docs/phases/`. The roadmap text through 2026-11-17 is `docs/archive/roadmap-2026-11-17.md`. The earlier snapshot through 2026-10-15 is `docs/archive/roadmap-2026-10-15.md`;
 - `LOGBOOK.md` for chronological engineering history;
 - `research/` for alternatives and experiments;
 - ADRs in `docs/decisions/` for major choices that future maintainers might otherwise "simplify" away. Diagnostic logging ownership is `docs/decisions/0012-diagnostic-logging.md`;

@@ -42,10 +42,10 @@ Older SD2 `EIO`, `EUCLEAN`, and superblock write errors stay a separate maintena
 
 ## Candidate build
 
-One unpublished candidate is building from `8d61d33d263434de4cd4e5f5f6200becd3756908`. The workflow run is [44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428). It has no artifact name or checksum yet. It is not installed.
+One unpublished candidate is building from `8d61d33d263434de4cd4e5f5f6200becd3756908`. The workflow run is [44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428). It has no artifact name or checksum yet. It is not installed. `ZLYME_VERSION` in that source is `zlyme44.4`. The Build workflow would title a release from that file and would require a `CHANGELOG.md` section with the same heading. There is no `zlyme45` section. The run leaves `publish_release` false. It is an integration validation build, not a prepared `zlyme45` release artifact. A green result is not hardware acceptance.
 
 ## Release authorization
 
-Publication of `zlyme45` still needs an explicit maintainer decision. This summary does not authorize that release.
+The remaining sequence is in [docs/ROADMAP.md](../ROADMAP.md). A future `zlyme45` release needs `ZLYME_VERSION` set to `zlyme45`, a matching `CHANGELOG.md` section, one source SHA, a check of the artifact built from that source and version, and a separate maintainer authorization. This summary does not change the version and does not authorize publication.
 
 Records: [docs/research/phase-18-plan.md](../research/phase-18-plan.md) and [docs/research/phase-18d-nds-preflight.md](../research/phase-18d-nds-preflight.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-18-zlyme-45).

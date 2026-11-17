@@ -12,7 +12,7 @@ The portability rule is:
 
 > isolate Miyoo Flip implementation details; do not invent generic hardware implementations.
 
-This document describes the current design and who owns each subsystem. Operator procedures are in `docs/OPERATIONS.md`. Build commands are in `docs/DEVELOPMENT.md`. Release, patch, and upstream-intake policy is in `docs/MAINTENANCE.md`. `docs/ROADMAP.md` and `docs/LOGBOOK.md` record plans and history, not the current design.
+This document describes the current design and who owns each subsystem. Operator procedures are in `docs/OPERATIONS.md`. Build commands are in `docs/DEVELOPMENT.md`. Release, patch, and upstream-intake policy is in `docs/MAINTENANCE.md`. `docs/ROADMAP.md` is the current sequence. `docs/phases/`, `docs/archive/`, and `docs/LOGBOOK.md` record history. None of them is the current design.
 
 ## 2. Major layers
 

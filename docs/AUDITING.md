@@ -147,7 +147,7 @@ The third row is the high-risk set. `AGENTS.md` requires the post-change reviewe
 
 ## Boundaries that stay where they are
 
-- Zlyme source is the authority for what the OS ships. The hardware wiki named in `docs/UPSTREAMS.md` is the authority for device facts. Comparison trees are not Zlyme behavior. `docs/ROADMAP.md`, `docs/LOGBOOK.md`, and `docs/research/` are history.
+- Zlyme source is the authority for what the OS ships. The hardware wiki named in `docs/UPSTREAMS.md` is the authority for device facts. Comparison trees are not Zlyme behavior. The current sequence is `docs/ROADMAP.md`. Detailed history is `docs/phases/`, `docs/archive/`, `docs/LOGBOOK.md`, and `docs/research/`.
 - An audit reads the hardware wiki when the finding depends on a device fact. It does not edit the wiki unless the task says to.
 - Accepted behavior stays accepted inside the scope of its record. Superseded designs in `AGENTS.md` stay superseded.
 - Release, delta, and publication decisions stay in `docs/MAINTENANCE.md`.

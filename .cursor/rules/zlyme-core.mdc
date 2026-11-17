@@ -25,6 +25,6 @@ Important constraints:
 - One conceptual reason per commit. Review the paths, the scope, and the tests that belong with the change before committing.
 - Never claim real-device validation unless it actually occurred.
 
-`docs/ROADMAP.md` records phase sequencing and phase acceptance history. It is not the current architecture. Do not implement a later phase unless the task asks for it.
+`docs/ROADMAP.md` records phase sequencing. Phase acceptance history is in `docs/phases/` and `docs/archive/`. The roadmap is not the current architecture. Do not implement a later phase unless the task asks for it.
 
 For major migrations, read `docs/ROADMAP.md` and work on only the requested phase.
