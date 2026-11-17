@@ -4,24 +4,23 @@ This is the sequencing map. It is not the architecture. A phase outcome is [docs
 
 ## Current status
 
-Phase 18G is active. It integrates the accepted Phase 18 implementation and one unpublished candidate. 18A and 18B are closed. 18C is closed as an investigation: GBA ZIP names and Wine Unicode paths stay unresolved, and the Wine-probe freeze is unexplained. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is source and host-tested, is in the integrated source, and is not in the previously installed F3 image. `ZLYME_VERSION` remains `zlyme44.4`. `zlyme45` is not published.
+Phase 18G is active. The accepted implementation is in source. The pending release is unpublished `zlyme44.5`. Published `zlyme44.4` remains the public release. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C is closed as an investigation: GBA ZIP names and Wine Unicode paths stay unresolved, and the Wine-probe freeze is unexplained. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is source and host-tested, is in the integrated source, and is not in the previously installed F3 image.
 
 ## Next action
 
-The candidate from `8d61d33d263434de4cd4e5f5f6200becd3756908`, workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428), is an unpublished integration validation build. `ZLYME_VERSION` is still `zlyme44.4`. The Build workflow names a release from that file and takes the notes from the `CHANGELOG.md` section with the same heading. This run is not a prepared `zlyme45` artifact. A completed build is not hardware acceptance and is not publication.
+Cancellation of workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) was requested. That build is `8d61d33d263434de4cd4e5f5f6200becd3756908`, where `ZLYME_VERSION` is `zlyme44.4`. It is not a `zlyme44.5` artifact. No replacement candidate has been built. A completed build is not hardware acceptance and is not publication.
 
 The remaining sequence is:
 
-1. The candidate build completes successfully.
-2. Its artifacts and source identities are checked against `8d61d33d263434de4cd4e5f5f6200becd3756908`.
-3. The maintainer decides whether to install it and accept it with the proportionate final smoke test. That decision does not reopen the closed 18C investigation and does not require a full emulator matrix.
-4. The version, the release notes, and the source SHA are prepared as one set. A `zlyme45` release needs `ZLYME_VERSION` set to `zlyme45`, a `CHANGELOG.md` section headed `zlyme45`, and one source SHA.
-5. The artifact intended for public release is built from that exact source and version and checked against them.
-6. Publication needs a separate explicit maintainer authorization. `publish_release` stays false until that decision.
+1. The maintainer may compare ASCII GBA and Wine launches on the installed F3 image. Those results are not in yet.
+2. A `zlyme44.5` candidate is built from the source that contains this version and its changelog section. `publish_release` stays false.
+3. Its artifacts are checked against that source SHA.
+4. The maintainer decides whether to install it and accept it with the proportionate final smoke test. That decision does not reopen the closed 18C investigation and does not require a full emulator matrix.
+5. Publication needs a separate explicit maintainer authorization.
 
 ## Blockers and deferred work
 
-Publication of `zlyme45` is not authorized. The candidate has no artifact name or checksum yet.
+Publication of `zlyme44.5` is not authorized. No `zlyme44.5` image exists. ASCII GBA and Wine results have not been reported.
 
 These are accepted limitations, not a new release gate:
 
@@ -59,7 +58,7 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 | 15 | Closed, 2026-10-27. `zlyme44.4` published separately. | [Phase 15](phases/phase-15.md) |
 | 16 | Closed, 2026-11-02. Local logging audit. Not a public release. | [Phase 16](phases/phase-16.md) |
 | 17 | Closed, 2026-11-04. Documentation and local agents. Not firmware. | [Phase 17](phases/phase-17.md) |
-| 18 | 18G active. Candidate unpublished. | [Phase 18](phases/phase-18.md) |
+| 18 | 18G active. `zlyme44.5` prepared, not built. | [Phase 18](phases/phase-18.md) |
 
 ## Historical records
 

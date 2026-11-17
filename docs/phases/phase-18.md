@@ -2,7 +2,7 @@
 
 Objective: prepare the next product release after `zlyme44.4`. The order is 18A community and CI, 18B ARMHF compiler cache, 18C Unicode paths, 18D Nintendo DS, 18E startup governor and timezones, 18F NextUI engineering, and 18G review. This feature plan was Phase 17 earlier on 2026-11-02.
 
-Disposition: 18G integration is active. `ZLYME_VERSION` stays `zlyme44.4`. `zlyme45` is not published.
+Disposition: 18G integration is active. This source prepares unpublished `zlyme44.5`. Published `zlyme44.4` remains the public release. The original plan named `zlyme45`, and that name was not used.
 
 ## Implementation
 
@@ -42,10 +42,10 @@ Older SD2 `EIO`, `EUCLEAN`, and superblock write errors stay a separate maintena
 
 ## Candidate build
 
-One unpublished candidate is building from `8d61d33d263434de4cd4e5f5f6200becd3756908`. The workflow run is [44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428). It has no artifact name or checksum yet. It is not installed. `ZLYME_VERSION` in that source is `zlyme44.4`. The Build workflow would title a release from that file and would require a `CHANGELOG.md` section with the same heading. There is no `zlyme45` section. The run leaves `publish_release` false. It is an integration validation build, not a prepared `zlyme45` release artifact. A green result is not hardware acceptance.
+Cancellation of workflow [44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) was requested. That run is `8d61d33d263434de4cd4e5f5f6200becd3756908`, where `ZLYME_VERSION` is `zlyme44.4`. It was not installed. It is not a `zlyme44.5` artifact, and no replacement candidate has been built. A green result is not hardware acceptance.
 
 ## Release authorization
 
-The remaining sequence is in [docs/ROADMAP.md](../ROADMAP.md). A future `zlyme45` release needs `ZLYME_VERSION` set to `zlyme45`, a matching `CHANGELOG.md` section, one source SHA, a check of the artifact built from that source and version, and a separate maintainer authorization. This summary does not change the version and does not authorize publication.
+The remaining sequence is in [docs/ROADMAP.md](../ROADMAP.md). `zlyme44.5` is a point release on the published `zlyme44` series. It needs `ZLYME_VERSION` set to `zlyme44.5`, the matching changelog section, one source SHA, a build of that source, a check of that artifact, and a separate maintainer authorization. `publish_release` stays false until that decision. The original `zlyme45` name stays in the historical plan. This summary does not authorize publication.
 
 Records: [docs/research/phase-18-plan.md](../research/phase-18-plan.md) and [docs/research/phase-18d-nds-preflight.md](../research/phase-18d-nds-preflight.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-18-zlyme-45).
