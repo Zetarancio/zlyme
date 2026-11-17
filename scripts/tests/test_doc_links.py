@@ -58,6 +58,20 @@ def archive_docs():
 
 
 ARCHIVE = archive_docs()
+
+
+def phase_docs():
+    found = []
+    root = os.path.join(ROOT, "docs", "phases")
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            if name.endswith(".md"):
+                full = os.path.join(dirpath, name)
+                found.append(os.path.relpath(full, ROOT).replace(os.sep, "/"))
+    return tuple(sorted(found))
+
+
+PHASES = phase_docs()
 # Logbook, roadmap, and the audit record name old paths, file:line
 # citations, and the hardware wiki. Link targets in this repository are
 # still checked. Backtick paths are checked only in the current-contract
@@ -115,7 +129,7 @@ def anchors(path):
 
 def main():
     bad = []
-    for rel in DOCS + ARCHIVE:
+    for rel in DOCS + ARCHIVE + PHASES:
         full = os.path.join(ROOT, rel)
         text = open(full, encoding="utf-8").read()
         base = os.path.dirname(rel)

@@ -79,6 +79,8 @@ For sequencing project work, read:
 
 `ROADMAP.md` is non-normative: it records where the work is, what is closed, what is next, and what blocks it. It is not the current architecture. How to write it is in `docs/WRITING.md`. Do not implement a later roadmap phase unless the active task asks for it.
 
+Read the matching summary in `docs/phases/` when the task is that phase. Historical phase summaries and `docs/research/` are optional context, not a startup reading list. When the task depends on a measurement, a checksum, a rejected alternative, or a dated acceptance, read the underlying research, logbook, or archived roadmap. Current architecture stays in the owning technical document.
+
 Architecture documents state what the system is and why. This file states how changes should be made.
 
 ## Current architecture invariants
