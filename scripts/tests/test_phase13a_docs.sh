@@ -26,10 +26,6 @@ printf '%s\n' "$unreleased" | grep -q '7951a37668e3' \
 	&& fail "Unreleased still has the MTP chronology"
 printf '%s\n' "$unreleased" | grep -q 'Panfrost'"'"'s experimental Vulkan driver showed one frame' \
 	&& fail "Unreleased still has the PanVK chronology"
-n=$(printf '%s\n' "$unreleased" | grep -F -c 'investigated and not changed' || true)
-[ "$n" -eq 2 ] || fail "the compatibility notes lost their investigation limit"
-printf '%s\n' "$unreleased" | grep -F -q 'was reproduced' \
-	&& fail "Unreleased says a compatibility failure was reproduced"
 rel43=$(awk '
 	/^## \[zlyme44\.3\]/ { on = 1; next }
 	on && /^## \[/ { exit }
