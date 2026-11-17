@@ -19,6 +19,11 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - Updates with an invalid SquashFS system-image header are rejected before installation.
 
+### Known limitations
+
+- A name inside a GBA ZIP can still display incorrectly when that name is not UTF-8. That was investigated and not changed.
+- A Windows program in a folder whose name is not plain ASCII can still fail to open. That was investigated and not changed.
+
 ## [zlyme44.4] - 2026-10-27
 
 ### Added

@@ -317,6 +317,20 @@ After the forced reboot, uptime was about three minutes, NextUI was running, Pip
 
 `builtin.out` is empty. `builtin.log` records Wine trying to create a window with no display driver, including `nodrv_CreateWindow` and a failed explorer start. The log is 4096 bytes and the rest is NUL. `ascii.out` and `ascii.log` exist and are empty, so the supervisor opened the second run's files. `ZLYME_WINE_OK` is not in those files. The disposable prefix contains `system.reg`, `user.reg`, `userdef.reg`, and `drive_c`. The production prefix is still absent. No wine, Box64, wineserver, or Weston process was running on the new boot. The five ZIP names are still present. They were not relaunched. Further writes to the second card wait for an offline check of the earlier `EIO` and superblock errors. Another on-device Wine run needs a separate authorization.
 
+### 18C closed as an investigation, 2026-11-17
+
+The maintainer stopped further hardware tests for the Unicode cases. This is not acceptance that those paths work.
+
+The GBA ZIP reader in RetroArch 1.22.2 returns raw member-name bytes. The original failing archive was not available. Five test ZIPs on the second card were not launched. No decoder change was made. Legacy-encoded names stay unverified.
+
+The Wine host test shows the launcher keeps UTF-8 arguments. No path fix was made. A disposable Wine start tried to open a window without a display, and the Flip then froze. The cause is unknown. The production prefix was not used. No further device Wine test is authorized.
+
+Older `EIO`, `EUCLEAN`, and superblock write errors on the second card stay a separate maintenance concern. They are not a condition for this closure, and they were not repaired. Branch `zlyme45-phase-18c` stays intact and is not merged.
+
+### 18G, 2026-11-17
+
+18A through the accepted F3 checklist are the integration body. 18F4 is included as source. `ZLYME_VERSION` stays `zlyme44.4`. Publication of `zlyme45` still needs an explicit decision. One remote build leaves `publish_release` false.
+
 Depends on: nothing earlier, except that a settings-screen change in 18F should not land before this selector if both edit the same screen.
 
 ## 18F. NextUI engineering
