@@ -16,6 +16,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 - Nintendo DS games run in DSperate instead of DraStic. DSperate is the open-source emulator by [@beebono](https://github.com/beebono) and the [DSperate contributors](https://github.com/beebono/DSperate). MENU opens DSperate's pause menu. MENU+START still leaves the game. Saves and settings DraStic already wrote stay on the card. DSperate does not import them, so a game starts with a new save of its own.
 - Settings → System → Time zone is one row. Left and right move through representative zones. A zone you already saved stays selected, including one that is not on that list. System → Reset to defaults returns the clock to UTC.
+- The Wi-Fi and Bluetooth marks in the status pill follow those radios. Turning a radio off hides its mark.
 
 ### Fixed
 
@@ -23,8 +24,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- A name inside a GBA ZIP can still display incorrectly when that name is not UTF-8. That was investigated and not changed.
-- A Windows program in a folder whose name is not plain ASCII can still fail to open. That was investigated and not changed.
+- Game Boy Advance games in the ZIP files that were tried still start. A name that is not plain text can still look wrong, and the menu font does not include the Chinese characters that were tried.
+- Windows programs whose filenames or folder names contain non-ASCII characters may fail to start. Ordinary ASCII paths continue to work. A ZIP is not a Windows program.
 
 ## [zlyme44.4] - 2026-10-27
 

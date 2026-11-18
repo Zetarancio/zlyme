@@ -32,6 +32,14 @@ if "inputs.publish_release == true" not in header:
 body = text[rel:]
 if "prerelease: false" not in body or "make_latest: true" not in body:
     sys.exit("publication no longer keeps a stable latest release")
+if "fail_on_unmatched_files: true" not in body:
+    sys.exit("publication can upload a partial asset list")
+if "scripts/check-release-assets.py" not in body:
+    sys.exit("publication lost the artifact gate")
+gate = body.find("scripts/check-release-assets.py")
+publish = body.find("softprops/action-gh-release")
+if gate < 0 or publish < 0 or gate > publish:
+    sys.exit("the artifact gate does not run before publication")
 for name in ("zlyme.img\n", "zlyme.img.sha256\n"):
     if name not in body:
         sys.exit("release assets omit %s" % name.strip())

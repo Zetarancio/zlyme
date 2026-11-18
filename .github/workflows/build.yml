@@ -251,6 +251,15 @@ jobs:
             > release-notes.md
           test -s release-notes.md
 
+      - name: Check release assets
+        run: |
+          set -euo pipefail
+          python3 scripts/check-release-assets.py \
+            --images-dir output/images \
+            --version-file ZLYME_VERSION \
+            --source-sha "${{ github.sha }}" \
+            --notes release-notes.md
+
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
@@ -260,6 +269,7 @@ jobs:
           body_path: release-notes.md
           prerelease: false
           make_latest: true
+          fail_on_unmatched_files: true
           files: |
             output/images/zlyme-my355-*.tar
             output/images/zlyme-my355-*.sha256

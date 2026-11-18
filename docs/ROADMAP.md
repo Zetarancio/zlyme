@@ -4,28 +4,20 @@ This is the sequencing map. It is not the architecture. A phase outcome is [docs
 
 ## Current status
 
-Phase 18G is active. The accepted implementation is in source. The pending release is unpublished `zlyme44.5`. Published `zlyme44.4` remains the public release. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C is closed as an investigation: GBA ZIP names and Wine Unicode paths stay unresolved, and the Wine-probe freeze is unexplained. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is source and host-tested, is in the integrated source, and is not in the previously installed F3 image.
+Phase 18G is active. `zlyme44.5` is authorized for direct publication and is not yet published. Published `zlyme44.4` remains the public release until that publication succeeds. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C remains closed as an investigation. The 2026-11-18 launches are later evidence: the five GBA ZIPs started, an ASCII Windows program started, and a non-ASCII Windows filename did not. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is source and host-tested and is not in the installed F3 image.
 
 ## Next action
 
-Cancellation of workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) was requested. That build is `8d61d33d263434de4cd4e5f5f6200becd3756908`, where `ZLYME_VERSION` is `zlyme44.4`. It is not a `zlyme44.5` artifact. No replacement candidate has been built. A completed build is not hardware acceptance and is not publication.
-
-The remaining sequence is:
-
-1. On 2026-11-18 the maintainer launched five GBA ZIP fixtures and one ASCII PuTTY executable successfully. A UTF-8 PuTTY filename failed inside Wine. Those notes are in [Phase 18](phases/phase-18.md). No source change has been made for that failure.
-2. A `zlyme44.5` candidate is built from the source that contains this version and its changelog section. `publish_release` stays false.
-3. Its artifacts are checked against that source SHA.
-4. The maintainer decides whether to install it and accept it with the proportionate final smoke test. That decision does not reopen the closed 18C investigation and does not require a full emulator matrix.
-5. Publication needs a separate explicit maintainer authorization.
+Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. The maintainer authorized one Build of this source with `publish_release` true. That run publishes only after the image, the artifact check, the manifest, and the release notes succeed. It is not a published release until GitHub shows it.
 
 ## Blockers and deferred work
 
-Publication of `zlyme44.5` is not authorized. No `zlyme44.5` image exists.
+`zlyme44.5` is not published until the authorized build confirms the release.
 
 These are accepted limitations, not a new release gate:
 
-- The five tested GBA ZIPs launched. Correct decoding of a legacy member name is not proven, and NextUI does not draw 测 or 试 with the shipped fonts.
-- An ASCII Windows executable launched. A UTF-8 executable filename did not. Wine does not extract ZIP files. The earlier Wine-probe freeze is a separate event.
+- The five tested GBA ZIPs launched. Correct display of a non-UTF-8 name is not proven, and the shipped fonts do not contain the Chinese characters that were tried.
+- An ASCII Windows program launched. A non-ASCII executable filename did not. A non-ASCII folder name was not the case that failed. Wine does not run a ZIP. The earlier Wine-probe freeze is a separate event.
 - The Wine-probe freeze has no identified cause. No further device Wine test is authorized by the 18C closure.
 - 18F4 was not run on the Flip. An exceptional `setpgid()` failure remains an integration review item.
 - The F3 sign-off does not record individual screen text, a before/after timezone name, or a headset. A headset check is not required for that pill change.
@@ -59,7 +51,7 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 | 15 | Closed, 2026-10-27. `zlyme44.4` published separately. | [Phase 15](phases/phase-15.md) |
 | 16 | Closed, 2026-11-02. Local logging audit. Not a public release. | [Phase 16](phases/phase-16.md) |
 | 17 | Closed, 2026-11-04. Documentation and local agents. Not firmware. | [Phase 17](phases/phase-17.md) |
-| 18 | 18G active. `zlyme44.5` prepared, not built. | [Phase 18](phases/phase-18.md) |
+| 18 | 18G active. `zlyme44.5` authorized, not yet published. | [Phase 18](phases/phase-18.md) |
 
 ## Historical records
 
