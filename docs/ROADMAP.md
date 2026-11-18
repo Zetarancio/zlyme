@@ -12,7 +12,7 @@ Cancellation of workflow [run 44055637428](https://github.com/Zetarancio/zlyme/a
 
 The remaining sequence is:
 
-1. The maintainer may compare ASCII GBA and Wine launches on the installed F3 image. Those results are not in yet.
+1. On 2026-11-18 the maintainer launched five GBA ZIP fixtures and one ASCII PuTTY executable successfully. A UTF-8 PuTTY filename failed inside Wine. Those notes are in [Phase 18](phases/phase-18.md). No source change has been made for that failure.
 2. A `zlyme44.5` candidate is built from the source that contains this version and its changelog section. `publish_release` stays false.
 3. Its artifacts are checked against that source SHA.
 4. The maintainer decides whether to install it and accept it with the proportionate final smoke test. That decision does not reopen the closed 18C investigation and does not require a full emulator matrix.
@@ -20,11 +20,12 @@ The remaining sequence is:
 
 ## Blockers and deferred work
 
-Publication of `zlyme44.5` is not authorized. No `zlyme44.5` image exists. ASCII GBA and Wine results have not been reported.
+Publication of `zlyme44.5` is not authorized. No `zlyme44.5` image exists.
 
 These are accepted limitations, not a new release gate:
 
-- GBA ZIP display and Wine non-ASCII folders are not fixed.
+- The five tested GBA ZIPs launched. Correct decoding of a legacy member name is not proven, and NextUI does not draw 测 or 试 with the shipped fonts.
+- An ASCII Windows executable launched. A UTF-8 executable filename did not. Wine does not extract ZIP files. The earlier Wine-probe freeze is a separate event.
 - The Wine-probe freeze has no identified cause. No further device Wine test is authorized by the 18C closure.
 - 18F4 was not run on the Flip. An exceptional `setpgid()` failure remains an integration review item.
 - The F3 sign-off does not record individual screen text, a before/after timezone name, or a headset. A headset check is not required for that pill change.

@@ -36,6 +36,10 @@ The dated paragraphs in the snapshot keep every intermediate image name, size, a
 
 Older SD2 `EIO`, `EUCLEAN`, and superblock write errors stay a separate maintenance concern. They are not a Phase 18 release gate.
 
+2026-11-18, after that closure. The maintainer launched five GBA ZIP fixtures through NextUI. All five used the same payload. A was an ASCII ZIP and member. B had 测试 in the ZIP name and an ASCII member. C had 测试 in the member and the UTF-8 ZIP flag. D and E had GBK member bytes. The E log extracted to a path containing the raw bytes `\xb2\xe2\xca\xd4`, then ran the game. All five loaded. That does not prove the legacy member name was decoded as text. RetroArch's ZIP reader was not changed.
+
+The same day, `putty.exe` launched through NextUI. `putty-测试.exe` did not. Wine reported `failed to open` for that path and escaped the UTF-8 bytes of 测试. The launcher passes the path through quoted arguments. ZIP files handed to the Wine launcher are not a path-encoding result: the launcher does not extract archives, and ZIP execution is out of scope. NextUI's shipped `font1.ttf` and `font2.ttf` do not contain 测 or 试, so the list can omit those characters even when the stored path is intact. The draft `zlyme44.5` limitations stay until the corresponding behavior is fixed.
+
 ## Integration
 
 18G is the integration of the accepted implementation through 18F. NextUI `zlyme` is `3aff9c42777bf69ff476601b7011b05f753ba8cd`. The installed F3 sign-off is not repeated as a new hardware result.
