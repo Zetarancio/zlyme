@@ -9,6 +9,8 @@ import argparse
 import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -16,6 +18,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import zlyme_release as rel  # noqa: E402
 
+OTA_NAME = re.compile(r"^zlyme-my355-(\d{8})-(.+)\.tar$")
 DTB = "rk3566-miyoo-flip.dtb"
 OTA_FILES = ("zlyme", "Image.gz", DTB, "idbloader.img", "u-boot.itb", "VERSION")
 IMAGES = (
@@ -89,7 +92,76 @@ def member_size(archive, name):
     return info.size
 
 
-def check(images_dir, version, source_sha, notes_path):
+def git_text(repo, args):
+    result = subprocess.run(
+        ["git", "-C", repo, *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        fail("git %s" % " ".join(args))
+    return result.stdout.strip()
+
+
+def names_this_commit(repo, described, head):
+    """True when a describe result, including tag-N-gABBREV, is this commit."""
+    if described.endswith("-dirty") or described == "unknown":
+        return False
+    probe = subprocess.run(
+        ["git", "-C", repo, "rev-parse", "--verify", described + "^{commit}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode == 0 and probe.stdout.strip() == head:
+        return True
+    marker = described.rfind("-g")
+    if marker < 0:
+        return False
+    abbrev = described[marker + 2 :]
+    if len(abbrev) < 12 or any(ch not in "0123456789abcdef" for ch in abbrev.lower()):
+        return False
+    if not head.lower().startswith(abbrev.lower()):
+        return False
+    probe = subprocess.run(
+        ["git", "-C", repo, "rev-parse", "--verify", abbrev + "^{commit}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return probe.returncode == 0 and probe.stdout.strip() == head
+
+
+def packed_source(filename, version_text):
+    """VERSION is the packer's describe line, then the image-date stamp."""
+    if version_text.count(b"\n") != 2 or not version_text.endswith(b"\n"):
+        fail("VERSION member is not two lines")
+    described, stamp = version_text.decode("utf-8").splitlines()
+    if not described or not stamp:
+        fail("VERSION member is empty")
+    if described == "unknown" or described.endswith("-dirty"):
+        fail("OTA source is unknown or dirty")
+    if not re.fullmatch(r"\d{8}", stamp):
+        fail("VERSION image date")
+    match = OTA_NAME.fullmatch(os.path.basename(filename))
+    if not match or match.group(1) != stamp or match.group(2) != described:
+        fail("OTA filename does not match VERSION")
+    return described
+
+
+def matches_checkout(repo, described, source_sha):
+    head = git_text(repo, ["rev-parse", "HEAD"])
+    if head.lower() != source_sha.lower():
+        fail("checkout is not the release source")
+    current = git_text(repo, ["describe", "--always", "--dirty", "--abbrev=12"])
+    if current != described:
+        fail("OTA git description is not this checkout")
+    if not names_this_commit(repo, described, head):
+        fail("OTA git description does not name this commit")
+
+
+def check(images_dir, version, source_sha, notes_path, repo):
     rel.parse_version(version)
     if len(source_sha) != 40 or any(ch not in "0123456789abcdef" for ch in source_sha.lower()):
         fail("source sha")
@@ -104,9 +176,8 @@ def check(images_dir, version, source_sha, notes_path):
             member_size(archive, name)
         version_info = archive.extractfile(archive.getmember("VERSION"))
         version_text = version_info.read() if version_info is not None else b""
-    lines = [line for line in version_text.decode("utf-8", "replace").splitlines() if line.strip()]
-    if len(lines) < 2:
-        fail("VERSION member is not the source identity and image date")
+    described = packed_source(full, version_text)
+    matches_checkout(repo, described, source_sha)
     for name in IMAGES:
         require_file(os.path.join(images_dir, name))
     manifest_path = os.path.join(images_dir, "release-manifest.json")
@@ -155,10 +226,11 @@ def main():
     parser.add_argument("--version-file", required=True)
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--notes", required=True)
+    parser.add_argument("--repo", required=True)
     args = parser.parse_args()
     version = open(args.version_file, encoding="utf-8").read().strip()
     try:
-        check(args.images_dir, version, args.source_sha, args.notes)
+        check(args.images_dir, version, args.source_sha, args.notes, args.repo)
     except rel.ReleaseError as exc:
         fail(str(exc))
     return 0

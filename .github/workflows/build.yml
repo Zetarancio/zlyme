@@ -258,7 +258,8 @@ jobs:
             --images-dir output/images \
             --version-file ZLYME_VERSION \
             --source-sha "${{ github.sha }}" \
-            --notes release-notes.md
+            --notes release-notes.md \
+            --repo .
 
       - name: Release
         uses: softprops/action-gh-release@v3

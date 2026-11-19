@@ -24,8 +24,8 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ### Known limitations
 
-- Game Boy Advance games in the ZIP files that were tried still start. A name that is not plain text can still look wrong, and the menu font does not include the Chinese characters that were tried.
-- Windows programs whose filenames or folder names contain non-ASCII characters may fail to start. Ordinary ASCII paths continue to work. A ZIP is not a Windows program.
+- The Game Boy Advance ZIP games that were tried still start. Some Chinese characters may not appear in the game list, and a name stored in an older character encoding may be shown incorrectly.
+- A Windows program whose filename contains a non-ASCII character may fail to start. A folder name with those characters may fail too. An ordinary ASCII path continues to work.
 
 ## [zlyme44.4] - 2026-10-27
 
