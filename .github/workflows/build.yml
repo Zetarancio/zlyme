@@ -1,7 +1,12 @@
 # Full my355 image (zlyme_my355_defconfig). Hosted runners cap a single job
 # at 360 minutes; a cold build is longer than that (cancelled at the cap:
 # 34801512689, 34828905859). Sequential stages each compile for ~310 minutes,
-# then pack ccache. Later stages skip if an earlier one already has the tar.
+# then pack ccache. Later stages skip if an earlier one already has the image.
+# A stage whose window closes with no image still succeeds so the next stage
+# can run. require-image fails the workflow when every stage lacks an image.
+# Run 44429282687 did that and was reported as success. Do not add a stage:
+# the later stages rebuilt packages the first stage had already installed.
+# docs/DEVELOPMENT.md records why the compiler cache did not carry the build.
 #
 # Manual only: no push trigger, no daily cron. A private-repo cold build
 # is ~930 runner-minutes (3×310). Public standard ubuntu-24.04 is free and
@@ -168,10 +173,27 @@ jobs:
       stage: c
     secrets: inherit
 
-  release:
+  require-image:
     needs: [stage-a, stage-b, stage-c]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Require a product image
+        env:
+          STAGE_A_HAVE_IMAGE: ${{ needs.stage-a.outputs.have_image }}
+          STAGE_B_HAVE_IMAGE: ${{ needs.stage-b.outputs.have_image }}
+          STAGE_C_HAVE_IMAGE: ${{ needs.stage-c.outputs.have_image }}
+        run: sh scripts/ci/require-product-image.sh
+
+  release:
+    needs: [stage-a, stage-b, stage-c, require-image]
     if: >-
-      always() && !cancelled() && inputs.publish_release == true &&
+      always() && !cancelled() &&
+      needs.require-image.result == 'success' &&
+      inputs.publish_release == true &&
       (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 90

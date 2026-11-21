@@ -123,7 +123,7 @@ jobs:
             echo "ScreenScraper developer credentials are required for this build" >&2
             exit 1
           fi
-          chmod +x ./build.sh scripts/ci/stream-build-log.sh
+          chmod +x ./build.sh scripts/ci/stream-build-log.sh scripts/ci/product-image-present.sh
           set +e
           mkdir -p output
           start_epoch=$(date +%s)
@@ -135,7 +135,7 @@ jobs:
           elapsed=$(( $(date +%s) - start_epoch ))
           echo "source=${{ github.sha }}"
           echo "elapsed_s=${elapsed}"
-          if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+          if ./scripts/ci/product-image-present.sh output/images; then
             echo "image=produced"
           else
             echo "image=absent"
@@ -144,7 +144,7 @@ jobs:
           if command -v ccache >/dev/null 2>&1; then
             CCACHE_DIR="${GITHUB_WORKSPACE:-$PWD}/.ccache" ccache -s || true
           fi
-          if ! compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+          if ! ./scripts/ci/product-image-present.sh output/images; then
             case "$rc" in
               124|137|143) ;;
               *) tail -n 40 output/zlyme-build.log || true ;;
@@ -152,7 +152,7 @@ jobs:
           fi
           docker ps -aq | xargs -r docker stop || true
           docker ps -aq | xargs -r docker rm -f || true
-          if compgen -G "output/images/zlyme-my355-*.tar" >/dev/null; then
+          if ./scripts/ci/product-image-present.sh output/images; then
             echo "have_image=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -227,6 +227,10 @@ jobs:
             echo "no .ccache"
             exit 0
           fi
+          # 1.5G is the cross-run cap, not a guess at the compiler output.
+          # Run 44429282687 packed 1.27–1.29 GiB into a 1.20–1.23 GiB zstd
+          # asset. A GitHub release file stops at 2 GB, and this setting is
+          # what the next restore inherits. It is not the Buildroot output.
           CCACHE_DIR="$PWD/.ccache" ccache -M 1.5G -c || true
           tar --exclude='.ccache/tmp' -C . -cf - .ccache | zstd -T0 -3 -o ccache-my355.tar.zst
           ls -lh ccache-my355.tar.zst

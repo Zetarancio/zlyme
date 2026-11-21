@@ -37,6 +37,8 @@ jobs:
           python3 scripts/tests/test_timezone_selector.py
           python3 scripts/tests/test_zlyme_release.py
           sh scripts/tests/test_build_publish_gate.sh
+          sh scripts/tests/test_build_completion.sh
+          python3 scripts/tests/test_release_assets.py
           sh scripts/tests/test_ci_container_image.sh
           sh scripts/tests/test_changelog_release_notes.sh
           sh scripts/tests/test_release_tag_target.sh

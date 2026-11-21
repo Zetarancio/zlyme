@@ -8,11 +8,11 @@ Phase 18G is active. `zlyme44.5` is authorized for direct publication and is not
 
 ## Next action
 
-Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. The maintainer authorized one Build of this source with `publish_release` true. That run publishes only after the image, the artifact check, the manifest, and the release notes succeed. It is not a published release until GitHub shows it.
+Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. Workflow [run 44429282687](https://github.com/Zetarancio/zlyme/actions/runs/44429282687) finished with conclusion success and produced no firmware image. Its release job was skipped. That status is not `zlyme44.5`. The workflow now fails when the last stage still has no image. Another hosted build was not dispatched: the later stages rebuilt packages the first stage had already installed, and neither the 2 GB release-file cache nor the 10 GB Actions cache has a measured size that would finish the image. The procedure is in [docs/DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Blockers and deferred work
 
-`zlyme44.5` is not published until the authorized build confirms the release.
+`zlyme44.5` is not published. Run `44429282687` did not produce the image, and no replacement build is running.
 
 These are accepted limitations, not a new release gate:
 
