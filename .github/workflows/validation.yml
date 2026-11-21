@@ -30,6 +30,7 @@ jobs:
           set -eu
           python3 scripts/tests/test_doc_links.py
           python3 scripts/tests/test_doc_contracts.py
+          python3 scripts/tests/test_logbook_order.py
           if ! python3 -c 'from zoneinfo import ZoneInfo; ZoneInfo("Europe/Rome")' >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y tzdata

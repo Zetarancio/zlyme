@@ -2,8 +2,8 @@
 37775846d30eb6356a6f6bd4b376344ada7263d191c0004338d7982727ba76fe  ## 2026-10-14 — Roadmap index, Phase 3C log moved
 f67340f87cfebc2a66780fce3c69cbb6e58db740a432334948ac54e28d627170  ## 2026-10-14 — Phase 12 closed after the correction
 0114080587de5bfacbe25a40db16297a1a34c5e11c1a4d68f0e9e567532570bc  ## 2026-10-14 — Phase 12 closed for development
-a9ea60f30650ddfe099fc5bceb3413d47908e159e4acc5aaae7535e9b399508f  ## 2026-10-13 — Phase 12D Linux 7.2.10 host build
-8c89f59271d4c294e3520f63f11da4ef9b3d2593d49c653ca5fa1af075caeb1e  ## 2026-10-13 — Phase 12D documentation and kernel preflight
+679f94112d1d67745c7317d1c285569d4a4c2406aa0a47304407e99632fd05fc  ## 2026-10-13 — Phase 12D Linux 7.2.10 host build
+31b88691c53a5411d8ef299ea51ac08d533b5e67b7adcbcc0b1d77dd635ceb41  ## 2026-10-13 — Phase 12D documentation and kernel preflight
 44f2c79e006b0f2cf5cedac94fbb576227db4200b48b1fa06ac73ec8f2530c20  ## 2026-10-12 — USB enumeration failed on both staged tests
 7f53a270df2b63f884a98ea06b6dc98dc0a049ce28cc2920ce20fa2e7fcd3d2c  ## 2026-10-12 — Phase 12C MTP, then ext4
 1979298f97c0f6a4b697245286a763b2c034383173b09bd3910a74f52ee313a9  ## 2026-10-12 — Phase 12B2 kernel test drivers
@@ -16,7 +16,7 @@ d66c435f431ad96a8ee8a2f6220368838bf22b18636db87b4e26f4a92749b6ac  ## 2026-10-11 
 269d20ed415e03c8b141e74840a78b64fd24fbd189d6ebe11847e8fbd858fe33  ## 2026-10-04 — Phase 10 final review corrections
 144b25337e98bb5d5767f16f3124261bca363376ae2231584e5fea4a0040c63c  ## 2026-10-04 — Hardware wiki synchronized to zlyme44
 0af652e1f7154972092440ea112be511e61ffd4dfdf420c195a5778c3d6c37d5  ## 2026-10-04 — zlyme44 is the first stable release
-de716bba8738df02551932ddd6f71901a5a539f19d4eab07068e66692c1246f7  ## 2026-10-04 — Phase 10 full-history documentation audit
+68e55de072af854caccad05bd5f5dc04e05f5b4b0d92fce962c9880564dbc12a  ## 2026-10-04 — Phase 10 full-history documentation audit
 ae43acdfc4ebb715a3fd71b210b90418f2761a9b573a001730b40fa16f520c00  ## 2026-10-04 — Phase 9 accepted, Phase 10 started
 035149855ac82f99afa645f8f578b150c68f257e66a5876a901517b3f1d2c831  ## 2026-09-30 — Phase 9 is planned, not started
 bccbe6bd071116a3f8b74c9cf4aaaf122cfa100cef046b4bbc4f392488b0b72c  ## 2026-09-30 — Phase 8 closed
@@ -42,7 +42,7 @@ e5549ccfb928668f3f6b7e5e5433d97f5ed0dc5ebb3fc1d9444a3e1ed2bb4b53  ## 2026-09-29 
 978d31d25a282fbbd044c90692245444c752d27897ecf276642d4fe2e8a48e21  ## 2026-09-28 — Phase 6D vdd_logic-off image built
 f99bb8480dee747ffede8810916c8759410b27ae276e922b10992e8aebf18ce7  ## 2026-09-28 — Phase 6C normal suspend path passed
 c6c05f876787de8748f8f1438a9a59e0e5ad61b145cda484d67952bab08781ad  ## 2026-09-28 — Phase 6B suspend firmware driver built
-18e591e973a4bd50957a6427448be3eac7ba2ffd23275ea24d9c5ad5c066a4ac  ## 2026-09-28 — Phase 6A deep-suspend research
+528f6da3c0b9d915e1d49cd304e0a93b6c5e3fa8c463f4cff0dbe81b1cc82f7a  ## 2026-09-28 — Phase 6A deep-suspend research
 036e34304ec87065d16e036f0b185f26ba651de418e7ef7ca3d5ddb88afc283e  ## 2026-09-28 — post-Phase-5 correction image accepted
 37c17b596ec4930dcd21e8bc8ec4daa7f0c2b61333bc45250934f64e6b7fbe6f  ## 2026-09-28 — post-Phase-5 kernel dispositions corrected
 f7928a3f6f214f8e005f36a2656e89241f43177001493bc1d87d7b98bd27e0e6  ## 2026-09-28 — Phase 5 complete
@@ -51,7 +51,7 @@ f7928a3f6f214f8e005f36a2656e89241f43177001493bc1d87d7b98bd27e0e6  ## 2026-09-28 
 1988efd22763b845d2934fdfed9e51c0e3b8b9fa9966110fc50cd8655de86841  ## 2026-09-28 — RK817 long power-off did not set OFF_CNT
 7ae98e01e6b5b20a7b9de3563ac42e96b1721e160fefe17426b6a2e047cd8712  ## 2026-09-28 — Phase 5A accepted; RK817 gauge read only
 50f930f312109336cb8efd4a62c7b6be50e01be735c7a7d53c863e4ac4fe11a8  ## 2026-09-28 — Phase 5A dead kernel delta removed
-6062132e234388be7b6271da9545212a67f510a383bc75a758a174f20589a78d  ## 2026-09-28 — Phase 5 kernel-patch research started
+66b6894e675bd1d8df9feafcc07268e87bc86b3948be389a47e14d05fb55174c  ## 2026-09-28 — Phase 5 kernel-patch research started
 04cfb882ae6513d19aeefbeab45495b8dd348bc1fdf2c1dcf81d377aa7289fd1  ## 2026-09-28 — Phase 4D and Phase 4 complete
 37e493315f3315f7aee1894169c4d1fdfcc8df487dfdaaf23599cea6ed1bddb5  ## 2026-09-28 — PPSSPP presents through SDL
 ebb617f48b7475b7bafea99df6ae46c22e4c5b3d517974cbf0ff671dd1560753  ## 2026-09-27 — Phase 4D build and packed-image correction
@@ -77,19 +77,19 @@ bd2a5c21abc04c7fea194284b9da7d34a48c3e315b8610463eba62251eb05f65  ## 2026-09-24 
 8aa7a9e727d2d8c0a2c221bce8091f7b86ae7e358b82d6469ad86a3eff6ea5bb  ## 2026-09-24 — Phase 3C2a gamepad calibration
 177894d3a14e395c4069e0f80d65a60b582b34195158cc30db3beb8807bce88c  ## 2026-09-23 — Phase 3C1 gamepad input power audit
 de58a4be2e0b9877e0ed13ec95d868ec6cde1381dc94a554b7d8a8fc563e6a45  ## 2026-09-23 — Phase 3B gamepad tracer
-e3109d748b00e397137549e4af7f210367f8621ea3aa1c96932a69b2bf37956d  ## 2026-09-23 — Phase 3A gamepad research
+b47e380286aa24ee17ffad1b3d93971400a067089b78bb0a3e4ca8e5323a1e1b  ## 2026-09-23 — Phase 3A gamepad research
 4404fee1c036a39a9af2b99da9f4baff19aaf55df2b7acd15245bf40b9b72a2f  ## 2026-09-23 — Phase 2C OTP candidate
 c4f8777aaaec42409a77f441f46d964d6545c0da5c5ee096118a0fc1f35bee17  ## 2026-09-23 — Phase 2C inert initramfs warning patch
 72d2a8b92609a748ddf12547f245a05137091fde9f27e78e39c7ca9c1761a433  ## 2026-09-23 — Phase 2C Group 3 perf Rust target patch
 46abdbcd90eacdd7b64b2f9d68e40a1bb1606b03a0a782712ad171c582406d82  ## 2026-09-23 — Phase 2C Group 2B foreign driver patches
 2cd071a3c14f71840f136a2211beea203b089c269d78dbb2c779171e246bc122  ## 2026-09-23 — Phase 2C Group 2A unused non-my355 patches
 ce1546b7760241d475ee949d64aaa458a14bfc6d681ccbb24f35afad48e8fde9  ## 2026-09-23 — Phase 2C Group 1 foreign DTS patches
-3ea634fd01f44c23107827b4c873f97fbc59bf935838d84e9409909d8b19cd8e  ## 2026-09-23 — Phase 2B kernel patch classification
-fd5d6ef23b95ed169313995643471744af6998943b10f20afa2c68cf05bc11dd  ## 2026-09-23 — Phase 2A kernel evidence
+901c5d42a5de81486044f5ad3c6af2ec57fd3f882b752a08e102558730b0b50a  ## 2026-09-23 — Phase 2B kernel patch classification
+5ca9cf9926a8822a26b9d2b1fcf15ac42b9d0482c96a0e50e05caa35f23126e5  ## 2026-09-23 — Phase 2A kernel evidence
 d05998f0c95c19a29f22d451defbba7455f8ef172220db48a5a73638676ba062  ## 2026-09-23 — Phase 1 Weston compatibility
 6774999771d1a1d2f25bbf229aad454a2699a0ed548dbbef915b3308456b15a8  ## 2026-09-22 — Wine graphical smoke on native Weston
 5ba92fc746c7c6dc076ea17b0a522fdaded604120750f729438561a97738a482  ## 2026-09-22 — PortMaster ESUDO prefix for the Panfrost Weston path
-75d822e3e623792185b568d8ba776c13e51f544cf32af8631cae5ef5cbb4014b  ## 2026-09-22 — Phase 1 Weston tracer built, not yet run on the Flip
+4e1823d44318a18b763ad8ccbf2c2a1e6d67aa651af39434611084e5a1e86ee4  ## 2026-09-22 — Phase 1 Weston tracer built, not yet run on the Flip
 7fff0a3fc962c9dd15f242b1ca32247373b1029285df541a980af28a4f516e8a  ## 2026-09-22 — Weston tracer corrections after the first Flip run
 df995549f979961760cac47efc94d95fbd41a0411135d0b93c1eaeb66c2434ab  ## 2026-09-22 — PortMaster WestonPack cleanup is owned by the session
 786ab1cdb5628546f5d1cac53c3bf5ae0331121d031a74019001a6872afade40  ## 2026-09-22 — PortMaster runtime store for unmodified ports
