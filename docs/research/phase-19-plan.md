@@ -74,7 +74,7 @@ Allowed: retirements that pass the seven checks, in batches. Each batch lists fi
 
 Excluded: the protected documents in `docs/WRITING.md`; ADRs; licensing, provenance, and recovery evidence; vendored package documentation; a new archive or history file; weakening a test to let a file go. The logbook and its checksum manifest are excluded from 19B1. Their later treatment is a separate high-risk decision.
 
-19B1 removed the Phase 15 audit. 19B2 removes the Phase 10 audit, the Phase 17 inventory, and the Phase 17B preservation record. 19B stays open. Not this batch: the Phase 18 plan, the DSperate preflight, and archived roadmaps. 17C waits for 19C. `docs/research/phase-12d-usb-mtp.md` and early kernel, boot, suspend, and recovery research stay MANUAL REVIEW.
+19B1 removed the Phase 15 audit. 19B2 removed the Phase 10 audit, the Phase 17 inventory, and the Phase 17B preservation record. 19B3 removes the preliminary emulator and performance notes, the original plan, and the archived changelog wording. The Phase 18 plan and the DSperate preflight stay. 19B stays open. Not this batch: archived roadmaps. 17C waits for 19C. `docs/research/phase-12d-usb-mtp.md` and early kernel, boot, suspend, and recovery research stay MANUAL REVIEW.
 
 Preconditions: original bytes in a recorded commit and a verified backup; record the batch baseline; compare blobs with the pre-Phase-19 tree on `archive/pre-phase-19-docs`; extend the backup before retiring newer bytes it lacks; no extra full bundle when recovery is already shown; never replace the original backup.
 
