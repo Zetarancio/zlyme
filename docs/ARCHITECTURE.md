@@ -784,8 +784,8 @@ Functionality validation and modularization should be separate experiments.
 - generic runtime callers use stable interfaces rather than hardware details;
 - performance changes are measured;
 - hardware protection is never disabled for benchmark numbers;
-- sections 5–7 stay together: boot, storage, and update are one failure path;
-- section 11 stays with graphics and audio, because it is the session a PAK returns to;
-- graphics stays in this file until a move names the references and the session boundary;
-- the audio body was moved unchanged to `docs/architecture/audio.md`; the heading remains here;
-- `docs/OPERATIONS.md` stays one runbook for that boot, storage, and shutdown behavior.
+- sections 5–7 are one boot, storage, and update failure path and stay in this file;
+- section 11 is the frontend and PAK session that graphics and audio return to, and it stays with them;
+- those boundaries stay until a separate contract migration is authorized and reviewed;
+- the audio body already lives in `docs/architecture/audio.md`; that move left the heading here and did not change the contract;
+- `docs/OPERATIONS.md` stays the runbook for that boot, storage, and shutdown behavior, not a second architecture.
