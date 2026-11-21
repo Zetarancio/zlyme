@@ -8,4 +8,4 @@ Accepted behavior: accepted source `6a398b311310246ef6a5515ed72805c6f58d787d`. R
 
 Limitations: `zlyme44.1` was not published. Deferred findings `(i)`, `(m)`, `(n)`, and `(q)` were not Phase 10 blockers. `(i)` later changed in Phase 12A1.
 
-Records: [docs/MAINTENANCE.md](../MAINTENANCE.md) and [docs/research/phase-10-documentation-audit.md](../research/phase-10-documentation-audit.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-10-documentation).
+Records: [docs/MAINTENANCE.md](../MAINTENANCE.md) and [docs/research/phase-10-documentation-audit.md](https://github.com/Zetarancio/zlyme/blob/07a7e80e24371117f2e709ce18054899ac24fffc/docs/research/phase-10-documentation-audit.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-10-documentation).
