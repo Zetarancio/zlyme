@@ -8,7 +8,7 @@ Phase 18 is closed, 2026-11-21, after `zlyme44.5` was published and this documen
 
 ## Next action
 
-The next phase is not defined. It awaits the maintainer's direction. Publication evidence for `zlyme44.5` is in [Phase 18](phases/phase-18.md).
+The next phase is not defined. It awaits the maintainer's direction. A documentation integrity preflight is recorded with this closure and does not open an implementation phase. Publication evidence for `zlyme44.5` is in [Phase 18](phases/phase-18.md).
 
 ## Blockers and deferred work
 

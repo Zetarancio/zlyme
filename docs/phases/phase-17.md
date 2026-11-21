@@ -4,7 +4,7 @@ Objective: record documentation ownership, preserve the agent instructions, and 
 
 Disposition: Closed, 2026-11-04, and integrated into main. This is not a firmware acceptance.
 
-Accepted behavior: documentation ownership, the lossless audio move, preserved agent instructions, the documented skill and agent-test limits, the document reconciliation, and the five upstream and kernel-planning skills. `AGENTS.md` was not shortened. `ZLYME_VERSION` stays `zlyme44.4`.
+Accepted behavior: documentation ownership, the lossless audio move, preserved agent instructions, the documented skill and agent-test limits, the document reconciliation, and the five upstream and kernel-planning skills. `AGENTS.md` was not shortened. At this closure, `ZLYME_VERSION` stayed `zlyme44.4`. That is not the current product version.
 
 Limitations: the Linux pin stays 7.2.10. Reviewed-through stays unknown for every watched upstream. Cursor automatic skill selection remains unverified. OpenCode runtime testing remains deferred. The 17E4 reviewer returned HTTP 403.
 

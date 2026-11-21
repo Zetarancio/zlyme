@@ -10,7 +10,7 @@ Disposition: closed, 2026-11-21. `zlyme44.5` is the published stable release, ta
 
 18B is closed, 2026-11-04, on `zlyme45-phase-18b`. The ARMHF sysroot build enabled ccache, and a repeat bzip2 compile hit the cache.
 
-18D replaced DraStic with DSperate in the product source after a DraStic diagnostic image showed a black screen. A source patch binds DS A and B to the virtual pad's A and B. The maintainer waived another hardware run for that narrow change. The corrected binary of that patch was not in the first installed DSperate image.
+18D replaced DraStic with DSperate in the product source after a DraStic diagnostic image showed a black screen. A source patch binds DS A and B to the virtual pad's A and B. The maintainer waived another hardware run for that narrow change. The corrected binary was not in the first installed image, `zlyme-my355-20261108-fd0bf6e6f21a.tar`. `zlyme-my355-20261109-c7054ed60b08.tar` and the accepted `zlyme-my355-20261116-fc414c6ba084.tar` contain `0002-flip-ab-defaults.patch`. The accepted image also contains `0003-flip-menu-pause.patch`. The recorded acceptance does not add a separate A/B hardware result.
 
 18E left the governor at `smart`. The timezone selector is one representative row. The short description is `Left/right: change zone.`
 
