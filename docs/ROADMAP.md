@@ -4,17 +4,15 @@ This is the sequencing map. It is not the architecture. A phase outcome is [docs
 
 ## Current status
 
-Phase 18G is active. `zlyme44.5` is authorized for direct publication and is not yet published. Published `zlyme44.4` remains the public release until that publication succeeds. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C remains closed as an investigation. The 2026-11-18 launches are later evidence: the five GBA ZIPs started, an ASCII Windows program started, and a non-ASCII Windows filename did not. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is source and host-tested and is not in the installed F3 image.
+Phase 18 is closed, 2026-11-21, after `zlyme44.5` was published and this documentation was reconciled. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C remains closed as an investigation. The 2026-11-18 launches are later evidence: the five GBA ZIPs started, an ASCII Windows program started, and a non-ASCII Windows filename did not. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is in the published source, is source and host-tested, and is not hardware-accepted. The published image has not been installed. The outcome is [Phase 18](phases/phase-18.md).
 
 ## Next action
 
-Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. Workflow [run 44429282687](https://github.com/Zetarancio/zlyme/actions/runs/44429282687) finished with conclusion success and produced no firmware image. Its release job was skipped. The restored compiler cache was capped at 1.5G and the later stages rebuilt the same packages. This source keeps the image assertion and sets the Actions compiler cache to 8GiB after restore. That size is an experiment, not a measured working set. The direct release is a Build of this source with `publish_release` true. It is not published until GitHub shows the release. The procedure is in [docs/DEVELOPMENT.md](DEVELOPMENT.md).
+The next phase is not defined. It awaits the maintainer's direction. Publication evidence for `zlyme44.5` is in [Phase 18](phases/phase-18.md).
 
 ## Blockers and deferred work
 
-`zlyme44.5` is not published. Run `44429282687` did not produce the image, and no replacement build is running.
-
-These are accepted limitations, not a new release gate:
+These limitations remain. They are not open release blockers:
 
 - The five tested GBA ZIPs launched. Correct display of a non-UTF-8 name is not proven, and the shipped fonts do not contain the Chinese characters that were tried.
 - An ASCII Windows program launched. A non-ASCII executable filename did not. A non-ASCII folder name was not the case that failed. Wine does not run a ZIP. The earlier Wine-probe freeze is a separate event.
@@ -27,7 +25,7 @@ These are accepted limitations, not a new release gate:
 
 ## Latest installed acceptance
 
-The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `9159f90d0ebccf1394a9702b799968754574829b54d0c934258868c674bea784`, from `9d0fc4e3f12d52d3b1f56fd3e0a75fc8d6a0e6ea`. The maintainer accepted the applicable F3 checklist on 2026-11-17. Phase 18D's tested scope stays the earlier image `zlyme-my355-20261116-fc414c6ba084.tar`. The published release remains `zlyme44.4`.
+The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `9159f90d0ebccf1394a9702b799968754574829b54d0c934258868c674bea784`, from `9d0fc4e3f12d52d3b1f56fd3e0a75fc8d6a0e6ea`. The maintainer accepted the applicable F3 checklist on 2026-11-17. Phase 18D's tested scope stays the earlier image `zlyme-my355-20261116-fc414c6ba084.tar`. That installed image is not the published `zlyme44.5` release.
 
 ## Phase index
 
@@ -51,7 +49,7 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 | 15 | Closed, 2026-10-27. `zlyme44.4` published separately. | [Phase 15](phases/phase-15.md) |
 | 16 | Closed, 2026-11-02. Local logging audit. Not a public release. | [Phase 16](phases/phase-16.md) |
 | 17 | Closed, 2026-11-04. Documentation and local agents. Not firmware. | [Phase 17](phases/phase-17.md) |
-| 18 | 18G active. `zlyme44.5` authorized, not yet published. | [Phase 18](phases/phase-18.md) |
+| 18 | Closed, 2026-11-21. Published `zlyme44.5`. | [Phase 18](phases/phase-18.md) |
 
 ## Historical records
 

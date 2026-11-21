@@ -6,7 +6,7 @@ Earlier development builds were published as GitHub prereleases. Their history i
 
 ## [Unreleased]
 
-## [zlyme44.5]
+## [zlyme44.5] - 2026-11-21
 
 ### Added
 
