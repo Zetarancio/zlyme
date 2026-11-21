@@ -64,7 +64,7 @@ Risks: an inventory that copies documents, or that calls a rule redundant withou
 
 Exclusions: no file moves. No firmware change. This planning note is not 17A.
 
-The read-only inventory for that review is [phase-17-documentation-inventory.md](phase-17-documentation-inventory.md). It is not approval and not 17A closure. The first 17B retain decision is [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). Extraction has not started.
+The read-only inventory for that review is [phase-17-documentation-inventory.md](https://github.com/Zetarancio/zlyme/blob/07a7e80e24371117f2e709ce18054899ac24fffc/docs/research/phase-17-documentation-inventory.md). It is not approval and not 17A closure. The first 17B retain decision is [phase-17b-preservation-decisions.md](https://github.com/Zetarancio/zlyme/blob/07a7e80e24371117f2e709ce18054899ac24fffc/docs/research/phase-17b-preservation-decisions.md). Extraction has not started.
 
 That last sentence is the planning note. 17B later closed on the retain decisions and one unchanged audio move, recorded in the preservation file. No other extraction is authorized.
 
@@ -74,7 +74,7 @@ Depends on: nothing else in this phase.
 
 ## 17B. Canonical document restructuring
 
-Closed, 2026-11-02. The result is the retain decisions and one lossless audio move in [phase-17b-preservation-decisions.md](phase-17b-preservation-decisions.md). The link check includes that record and `docs/architecture/audio.md`. The contract scan includes `docs/architecture/audio.md`. It does not include the preservation record. No other extraction is authorized. The plan text below stays as written.
+Closed, 2026-11-02. The result is the retain decisions and one lossless audio move in [phase-17b-preservation-decisions.md](https://github.com/Zetarancio/zlyme/blob/07a7e80e24371117f2e709ce18054899ac24fffc/docs/research/phase-17b-preservation-decisions.md). The link check includes that record and `docs/architecture/audio.md`. The contract scan includes `docs/architecture/audio.md`. It does not include the preservation record. No other extraction is authorized. The plan text below stays as written.
 
 Purpose: move a section only when the new file is a clearer owner, and only under the preservation contract.
 

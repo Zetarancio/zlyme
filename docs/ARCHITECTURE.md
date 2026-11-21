@@ -783,4 +783,9 @@ Functionality validation and modularization should be separate experiments.
 - update artifacts are device-specific;
 - generic runtime callers use stable interfaces rather than hardware details;
 - performance changes are measured;
-- hardware protection is never disabled for benchmark numbers.
+- hardware protection is never disabled for benchmark numbers;
+- sections 5–7 are one boot, storage, and update failure path and stay in this file;
+- section 11 is the frontend and PAK session that graphics and audio return to, and it stays with them;
+- those boundaries stay until a separate contract migration is authorized and reviewed;
+- the audio body already lives in `docs/architecture/audio.md`; that move left the heading here and did not change the contract;
+- `docs/OPERATIONS.md` stays the runbook for that boot, storage, and shutdown behavior, not a second architecture.

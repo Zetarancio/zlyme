@@ -32,10 +32,7 @@ DOCS = (
     "docs/decisions/0011-context-sensitive-button-layouts.md",
     "docs/decisions/0012-diagnostic-logging.md",
     "docs/research/README.md",
-    "docs/research/phase-10-documentation-audit.md",
     "docs/research/phase-17-plan.md",
-    "docs/research/phase-17-documentation-inventory.md",
-    "docs/research/phase-17b-preservation-decisions.md",
     "docs/research/phase-17c-agent-instruction-map.md",
     "docs/research/phase-17c-agent-clause-ledger.md",
     "docs/research/phase-17-upstream-monitor.md",
@@ -73,16 +70,14 @@ def phase_docs():
 
 
 PHASES = phase_docs()
-# Logbook, roadmap, and the audit record name old paths, file:line
-# citations, and the hardware wiki. The Phase 19 plan names retired
-# branch tips, files that are not on main, and proposed files that do
-# not exist yet. Link targets
+# Logbook and roadmap name old paths, file:line citations, and the
+# hardware wiki. The Phase 19 plan names retired branch tips, files that
+# are not on main, and proposed files that do not exist yet. Link targets
 # in this repository are still checked. Backtick paths are checked only
 # in the current-contract documents.
 PATH_DOCS = set(DOCS) - {
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
-    "docs/research/phase-10-documentation-audit.md",
     "docs/research/phase-17-upstream-monitor.md",
     "docs/research/phase-17g5-kernel-upgrade-preflight.md",
     "docs/research/phase-19-plan.md",

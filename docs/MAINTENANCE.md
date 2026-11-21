@@ -117,7 +117,7 @@ This section owns the release and delta policy. The code is `scripts/zlyme_relea
 
 Published `zlyme44.5` keeps the two unknown-license exceptions that published `zlyme44.4` already carried. The provenance files are unchanged from `cb9770424011c1ccfc32cd99457364ca97ac19ea`. The exceptions are `preloader-stock.img` and the 41 ROCKNIX compatibility files named in `package/system/portmaster-rocknix-compat/PROVENANCE`. Each provenance record says maintainer-approved as-is. Redistribution rights remain unverified. The records are not license grants, and they do not cover any other file. `docs/UPSTREAMS.md` names both.
 
-Published `zlyme44` is `zlyme-37164297221`, built by run `37164297221` from `337ccbce2587393463a4b49c551f94e33e318e44`, with zero deltas. Its root differs from the locally accepted image because the build dates differ (`docs/DEVELOPMENT.md`, Release artifacts).
+Published `zlyme44` is `zlyme-37164297221`, built by run `37164297221` from `337ccbce2587393463a4b49c551f94e33e318e44`, with zero deltas. Its root differs from the locally accepted image because the build dates differ (`docs/DEVELOPMENT.md`, Release artifacts). The published root SHA-256 is `a831ad6aa8e2543a44fd8810ec4d76a18b317deebaf8dfcdaaec23b7011f650b`. The locally accepted root is `9462f77f78bb750680b36f1ab720ef22e6954be6d76f7caab5127b7010288213`. A delta matches the installed root, not the version string.
 
 Published `zlyme44.2` is `zlyme-38098037074`, built by run `38098037074` from `9b7d91d5ce6e36764aa663748a92ef7e7be6f3f3`. Documentation commits after that SHA do not replace the published firmware. `zlyme44.1` was not published as its own release.
 
@@ -125,7 +125,7 @@ The installer is a separate repository, `Zetarancio/zlymeOS-Installer`, branch `
 
 ## Open validation debt
 
-This is the current index. Historical Phase 10 findings `(a)` through `(q)`, including the ones later accepted, are in `docs/research/phase-10-documentation-audit.md`. When a finding is fixed, accepted, superseded, or deferred, update this index in the same change. `docs/WRITING.md` owns that rule.
+This is the current index. Historical Phase 10 findings `(a)` through `(q)`, including the ones later accepted, are in the [Phase 10 audit](https://github.com/Zetarancio/zlyme/blob/07a7e80e24371117f2e709ce18054899ac24fffc/docs/research/phase-10-documentation-audit.md). When a finding is fixed, accepted, superseded, or deferred, update this index in the same change. `docs/WRITING.md` owns that rule.
 
 Accepted, with the limits recorded here:
 
