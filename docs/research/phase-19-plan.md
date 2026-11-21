@@ -74,9 +74,9 @@ Allowed: retirements that pass the seven checks, in batches. Each batch lists fi
 
 Excluded: the protected documents in `docs/WRITING.md`; ADRs; licensing, provenance, and recovery evidence; vendored package documentation; a new archive or history file; weakening a test to let a file go. The logbook and its checksum manifest are excluded from 19B1. Their later treatment is a separate high-risk decision.
 
-The first batch, 19B1, considers only `docs/research/phase-15-documentation-audit.md` and `docs/research/phase-10-documentation-audit.md`. It is a separate change after 19A is on `main`, and a failed check keeps the file. Later candidates, not authorized by 19B1, include the Phase 17 documentation inventory and preservation-decision record, the closed Phase 18 plan and DSperate preflight, and the archived roadmap snapshots. The Phase 17C instruction map and clause ledger wait for 19C. `docs/research/phase-12d-usb-mtp.md` and early kernel, boot, suspend, and recovery research stay MANUAL REVIEW until a later batch.
+19B1 removes the Phase 15 audit and keeps the Phase 10 audit. 19B stays open. Not this batch: the Phase 17 inventory and preservation record, the Phase 18 plan, the DSperate preflight, and archived roadmaps. 17C waits for 19C. `docs/research/phase-12d-usb-mtp.md` and early kernel, boot, suspend, and recovery research stay MANUAL REVIEW.
 
-Preconditions: 19A merged; the commit being changed is reachable from `archive/pre-phase-19-docs` and from the verified bundle.
+Preconditions: original bytes in a recorded commit and a verified backup; record the batch baseline; compare blobs with the pre-Phase-19 tree on `archive/pre-phase-19-docs`; extend the backup before retiring newer bytes it lacks; no extra full bundle when recovery is already shown; never replace the original backup.
 
 Acceptance: the documentation tests pass; `test_doc_links.py` loses entries only for retired files; added bytes stay within the budget the maintainer sets; no open item exists only in a retired file; a reviewer reads the diff.
 

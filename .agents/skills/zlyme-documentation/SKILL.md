@@ -21,3 +21,4 @@ Before changing documentation:
 10. A host test is not Miyoo Flip acceptance. `AGENTS.md` keeps those results separate.
 11. A firmware image, a release, or a dangerous device operation still needs the authorization `AGENTS.md` already requires.
 12. Do not change an unrelated document in the same edit.
+13. A relative-link change in an ordinary archived roadmap or closed research document follows Historical link repair in `docs/WRITING.md`.
