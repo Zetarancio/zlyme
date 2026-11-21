@@ -1,6 +1,6 @@
 # Documentation
 
-This is a map. The fact lives in the linked document, and `AGENTS.md` remains the reading list for an agent.
+This is a map. The fact lives in the linked document, and `AGENTS.md` remains the reading list for an agent. Current behavior is in the contracts below. An active phase plan sequences unfinished work: it is not architecture, and it is not closed history. A phase summary records that phase's outcome and is read when the task is that phase. The logbook and closed research are history. An archive snapshot is a superseded roadmap. Indispensable evidence stays in the document that owns it. Retired narrative leaves the tree under [Writing](WRITING.md#documentation-retention) and stays in Git history. Do not load those records as default context.
 
 | Document | What it owns |
 | --- | --- |

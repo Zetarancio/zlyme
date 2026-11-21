@@ -4,11 +4,13 @@ This is the sequencing map. It is not the architecture. A phase outcome is [docs
 
 ## Current status
 
+Phase 19 has started: development infrastructure and maintainability. It does not change firmware. 19A is complete once this change is on `main`. It records the retention policy in [docs/WRITING.md](WRITING.md#documentation-retention), the pre-Phase-19 tree as annotated tag `archive/pre-phase-19-docs` at `0dd8b86e26c69c55b691ea5b6824aa7b77f0385d`, and the Phase 18C investigation commits as annotated tag `archive/phase-18c-investigation` at `2525168d0a81de4f85a864f1a4559e694edb0616`. Neither tag is a firmware release or a protected ref. 19B through 19F have not started. The plan is [Phase 19](phases/phase-19.md).
+
 Phase 18 is closed, 2026-11-21, after `zlyme44.5` was published and this documentation was reconciled. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C remains closed as an investigation. The 2026-11-18 launches are later evidence: the five GBA ZIPs started, an ASCII Windows program started, and a non-ASCII Windows filename did not. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is in the published source, is source and host-tested, and is not hardware-accepted. The published image has not been installed. The outcome is [Phase 18](phases/phase-18.md).
 
 ## Next action
 
-The next phase is not defined. It awaits the maintainer's direction. A documentation integrity preflight is recorded with this closure and does not open an implementation phase. Publication evidence for `zlyme44.5` is in [Phase 18](phases/phase-18.md).
+19B reviews historical records one batch at a time, after this change is on main. The first batch considers only the Phase 10 and Phase 15 documentation audits. No record is retired in 19A. The logbook stays unchanged. No GitHub setting changes in 19A or that first batch. Publication evidence for `zlyme44.5` is in [Phase 18](phases/phase-18.md).
 
 ## Blockers and deferred work
 
@@ -50,6 +52,7 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 | 16 | Closed, 2026-11-02. Local logging audit. Not a public release. | [Phase 16](phases/phase-16.md) |
 | 17 | Closed, 2026-11-04. Documentation and local agents. Not firmware. | [Phase 17](phases/phase-17.md) |
 | 18 | Closed, 2026-11-21. Published `zlyme44.5`. | [Phase 18](phases/phase-18.md) |
+| 19 | Active. 19A complete once this change is on main. 19B not started. Not firmware. | [Phase 19](phases/phase-19.md) |
 
 ## Historical records
 
