@@ -1,6 +1,6 @@
 # Phase 19 plan
 
-Status: active-phase planning, from 2026-11-21. Temporary. When Phase 19 closes, its surviving facts go to their owners and this file is retired under [Documentation retention](../WRITING.md#documentation-retention). It is not a contract. The phase summary is [docs/phases/phase-19.md](../phases/phase-19.md).
+Status: active-phase planning, from 2026-11-21. Temporary. When Phase 19 closes, its surviving facts go to their owners and this file becomes a retirement candidate under [Documentation retention](../WRITING.md#documentation-retention). Closing the phase does not itself delete it. It is not a contract. The phase summary is [docs/phases/phase-19.md](../phases/phase-19.md).
 
 Phase 19 is development infrastructure and maintainability. It has two separate goals. Repository reduction removes records that no longer belong in the tree. Context reduction cuts what an agent loads by default. Deleting a file does not shrink the always-applied context, and shortening `AGENTS.md` does not shrink the tree. Each is measured on its own.
 
@@ -35,30 +35,30 @@ GitHub state, read on 2026-11-21 and not changed: the repository is public. `mai
 
 ## 19A recovery baseline
 
-A Git bundle of every ref was made on 2026-11-21 at 12:48:54 UTC, before any branch was deleted. SHA-256 `b8f784b1c5e071ab0733e9f541607f447162275fcec465a063bfdb98a657589a`. `git bundle verify` passed. A mirror clone of it contained `0dd8b86e`, `803664a9`, the four Phase 18C commits, all 14 branch heads, and 11 tags. It is kept outside the repository, with the branch inventory. The 19A pull request names the path.
+A Git bundle of every ref was made on 2026-11-21 at 12:48:54 UTC, before any branch was deleted. SHA-256 `b8f784b1c5e071ab0733e9f541607f447162275fcec465a063bfdb98a657589a`. `git bundle verify` passed. A mirror clone of it contained `0dd8b86e`, `803664a9`, the four Phase 18C commits, all 14 branch heads then present, and the original release tags. The bundle and its inventory stay outside the repository. This plan records the hash and the time.
 
 Twelve remote and local branches whose tips were ancestors of `main` were deleted after a second SHA check: `ci/ccache-8gib`, `ci/require-product-image`, `docs/18c5-gba-wine-status`, `docs/phase-18g-roadmap-restructure`, `docs/phase-19-preflight`, `release/zlyme44.5-direct`, `release/zlyme44.5-prepare`, and `zlyme45-phase-18a`, `-18b`, `-18d`, `-18e`, `-18f`. The only pull request, #4 from `zlyme45-phase-18a`, was already merged. Their commits stay in `main`. Older documents still name those branches, and the commits they recorded are in `main`.
 
-`zlyme45-phase-18c` stays at `2525168d0a81de4f85a864f1a4559e694edb0616`. It forks from `d4159da87570d8ddb60e31e7fe8968a2d078a472` and has four commits not in `main` or any tag:
+The Phase 18C investigation tip is annotated tag `archive/phase-18c-investigation`, peeled commit `2525168d0a81de4f85a864f1a4559e694edb0616`. The pre-Phase-19 documentation tree is annotated tag `archive/pre-phase-19-docs`, peeled commit `0dd8b86e26c69c55b691ea5b6824aa7b77f0385d`. Neither tag is a firmware release. Neither is protected, and neither is immutable; tag protection is 19D. The branch name `zlyme45-phase-18c` was removed after the investigation tag was verified locally and on GitHub. The investigation forks from `d4159da87570d8ddb60e31e7fe8968a2d078a472` and has four commits not in `main`:
 
 - `71fc0f835aa90f00f8b63791573743b84643f798`, 2026-11-05, test: record how RetroArch reads GBA ZIP names. Adds `scripts/tests/gba_zip_parse.c` and `scripts/tests/test_gba_zip_names.sh`, and edits `docs/ROADMAP.md` and `docs/research/phase-18-plan.md`.
 - `02ab6223c1174abc985c959752802e69cbd4c448`, 2026-11-07, test: give the GBA ZIP fixtures a readable local header. Edits that test and the plan.
 - `fcc100c77997b776737cc606f9cfc37990451b6b`, 2026-11-07, test: record Wine UTF-8 argument preservation. Adds `scripts/tests/test_wine_utf8_args.sh`, and edits the roadmap and the plan.
 - `2525168d0a81de4f85a864f1a4559e694edb0616`, 2026-11-07, docs: record the unread Flip locale and the missing GBA archive. Edits the roadmap and the plan.
 
-`main` records the 18C closure in [phase-18.md](../phases/phase-18.md). Those branch tests and plan sections are not on `main`. The branch is not merged.
+`main` records the 18C closure in [phase-18.md](../phases/phase-18.md). Those investigation tests and plan sections are not on `main`. They remain reachable from `archive/phase-18c-investigation`. They are not merged.
 
 ## 19A. Retention policy and recoverable baseline
 
 Objective: a verified backup, removal of branches already contained in `main`, the retention policy, this plan, and an end to the instruction to load all of `docs/` into an AI tool.
 
-Allowed: the policy section in `docs/WRITING.md`; routing sentences in `README.md`, `docs/README.md`, `docs/research/README.md`, and the documentation skill that point to it; this plan, the Phase 19 summary, the roadmap row; adding this plan to the link check.
+Allowed: the policy section in `docs/WRITING.md`, including the correction that a closed phase does not automatically relocate its planning into `docs/archive/` or `docs/research/`; the safeguards for changing an authoritative contract; routing sentences in `README.md`, `docs/README.md`, `docs/research/README.md`, and the documentation skill, which now cites `docs/WRITING.md` rather than the Phase 17 plan; this plan, the Phase 19 summary, and the roadmap row; the two archival tags; the current-state sentences that name those tags instead of the removed branch.
 
-Excluded: deleting or rewriting any existing record; `AGENTS.md`; the logbook and its checksum manifest; GitHub settings; Dependabot; firmware, build, release, and runtime files; the NextUI pin; tags.
+Excluded: deleting a historical research, archive, logbook, or ADR file; rewriting a technical contract beyond those current-state sentences; changing the Phase 17 plan; `AGENTS.md`; the logbook and its checksum manifest; GitHub settings; Dependabot; firmware, build, release, and runtime files; the NextUI pin; existing release tags.
 
 Preconditions: the baseline above, a verified bundle, and a clean worktree apart from the untracked ARMHF compiler cache.
 
-Acceptance: the link, contract, logbook-order, changelog-notes, and Phase 13A documentation tests pass; `git diff --check` is clean; the diff deletes no file; blob IDs of the archive, research bodies other than the index, the logbook, the ADRs, `AGENTS.md`, and package provenance records match the baseline; one reviewer reads the diff; the maintainer reviews the draft pull request.
+Acceptance: the link, contract, logbook-order, changelog-notes, and Phase 13A documentation tests pass; `git diff --check` is clean; the diff deletes no file; blob IDs of the archive, research bodies other than this plan and the research index, the logbook, the ADRs, `AGENTS.md`, and package provenance records match the baseline, except the authorized writing-policy edits and the two current-state sentences; one reviewer reads the diff against `0dd8b86e`; the maintainer integrates the pull request. 19A is complete when that integration is on `main`.
 
 Rollback: close the pull request unmerged, or revert its merge. A deleted branch is restored from the bundle with `git fetch <bundle> refs/heads/<name>:refs/heads/<name>` and a normal push.
 
@@ -70,13 +70,13 @@ Firmware build: no. Hardware: no. Maintainer approval: yes, the pull request.
 
 Objective: a measured fall in historical bytes in the tree, with each surviving fact moved to its existing owner.
 
-Allowed: retirements that pass the seven checks, in batches. Each batch lists files, dispositions, the check record, bytes removed and added, link and test-list repairs, and any open debt moved into the Open validation debt index in `docs/MAINTENANCE.md`.
+Allowed: retirements that pass the seven checks, in batches. Each batch lists files, dispositions, the check record, bytes removed and added, link and test-list repairs, and any open debt moved into the Open validation debt index in `docs/MAINTENANCE.md`. An ordinary batch stays within the 0.20 addition budget in `docs/WRITING.md`.
 
-Excluded: the protected documents in `docs/WRITING.md`; ADRs; licensing, provenance, and recovery evidence; vendored package documentation; a new archive or history file; weakening a test to let a file go.
+Excluded: the protected documents in `docs/WRITING.md`; ADRs; licensing, provenance, and recovery evidence; vendored package documentation; a new archive or history file; weakening a test to let a file go. The logbook and its checksum manifest are excluded from 19B1. Their later treatment is a separate high-risk decision.
 
-Candidates the maintainer is asked to rule on first: the Phase 10 and Phase 15 documentation audits, the Phase 17 documentation inventory and preservation-decision record, the closed Phase 18 plan and DSperate preflight, and the archived roadmap snapshots. The Phase 17C instruction map and clause ledger wait for 19C. `docs/research/phase-12d-usb-mtp.md`, the logbook, and early kernel, boot, suspend, and recovery research are MANUAL REVIEW.
+The first batch, 19B1, considers only `docs/research/phase-15-documentation-audit.md` and `docs/research/phase-10-documentation-audit.md`. It is a separate change after 19A is on `main`, and a failed check keeps the file. Later candidates, not authorized by 19B1, include the Phase 17 documentation inventory and preservation-decision record, the closed Phase 18 plan and DSperate preflight, and the archived roadmap snapshots. The Phase 17C instruction map and clause ledger wait for 19C. `docs/research/phase-12d-usb-mtp.md` and early kernel, boot, suspend, and recovery research stay MANUAL REVIEW until a later batch.
 
-Preconditions: 19A merged; the commit being changed is in a verified backup; for the logbook, a maintainer decision on how the checksum manifest treats a retired entry.
+Preconditions: 19A merged; the commit being changed is reachable from `archive/pre-phase-19-docs` and from the verified bundle.
 
 Acceptance: the documentation tests pass; `test_doc_links.py` loses entries only for retired files; added bytes stay within the budget the maintainer sets; no open item exists only in a retired file; a reviewer reads the diff.
 
@@ -106,11 +106,11 @@ Firmware build: no. Hardware: no. Maintainer approval: yes.
 
 ## 19D. GitHub governance, required checks, and CI security
 
-Objective: protect `main` with the Validation checks, keep token permissions minimal, and decide on action SHA pinning, `CODEOWNERS`, secret scanning, and push protection.
+Objective: required lightweight pull-request validation; `main` protection that still suits one primary maintainer; protection for release tags and for the archival tags; least-privilege workflow permissions; immutable Action commit pins. Secret scanning and push protection are included when the account offers them.
 
-Allowed: a ruleset or branch protection, workflow permission changes, action pins, `CODEOWNERS`, and security settings the maintainer selects after reading the current state above.
+Allowed, after a separate maintainer approval, and not during 19A or 19B1: a ruleset or branch protection; release-tag and archival-tag protection; workflow permission reductions; pinning each external Action to a commit SHA; secret scanning and push protection. The Build workflow stays manually dispatched. Publishing firmware still requires `publish_release` true on that dispatch. This subphase does not change that authorization and does not run a Build.
 
-Excluded: release semantics, secrets, self-hosted runners, paid features, and anything that dispatches the Build workflow without separate authorization.
+Excluded: changing release semantics, secrets, self-hosted runners, paid features, and anything that dispatches the Build workflow without separate authorization. The archival tags from 19A are not immutable until this protection exists.
 
 Preconditions: the maintainer decides whether `main` becomes pull-request-only. Today documentation and release fixes are pushed to `main` directly.
 
@@ -124,11 +124,11 @@ Firmware build: only if `build.yml` or `build-stage.yml` change, then one author
 
 ## 19E. Dependency updates and upstream visibility
 
-Objective: update notices for GitHub Actions and the Docker base image, and a readable inventory of Buildroot package pins.
+Objective: Dependabot for the ecosystems it supports, a Buildroot-native inventory of package versions, licenses, and hashes, and continued use of the existing upstream watchers.
 
-Allowed: a `.github/dependabot.yml` for the `github-actions` and `docker` ecosystems; a script and test that list package versions, sources, and hashes from the `.mk` and `.hash` files.
+Allowed: a `.github/dependabot.yml` for the `github-actions` and `docker` ecosystems; a script and test that list package versions, sources, licenses, and hashes from the `.mk` and `.hash` files, including custom packages, the ARMHF runtime, and the two unknown-license exceptions. The existing watch skills stay the review path for Buildroot, the kernel, U-Boot, and NextUI.
 
-Excluded: auto-merge; silent upgrades; the NextUI pin, which follows `docs/MAINTENANCE.md`; Buildroot, kernel, and U-Boot bumps. Buildroot packages are not a Dependabot ecosystem. The existing watch skills stay the review path for them.
+Excluded: auto-merge; silent upgrades; treating Buildroot packages as a Dependabot ecosystem; relabeling an unknown license. The NextUI pin follows `docs/MAINTENANCE.md`. Vulnerability matching and an SBOM belong to 19F, and only where the exact Buildroot pin provides them.
 
 Preconditions: 19D required checks in place.
 
@@ -142,11 +142,11 @@ Firmware build: one authorized `publish_release` false Build before merging an u
 
 ## 19F. SBOM, provenance, and supply-chain checks
 
-Objective: an SBOM and build provenance for each published release, from the exact release source.
+Objective: evaluate Buildroot-native licensing, vulnerability, and SBOM output at the exact pin; evaluate dependency submission, dependency review, and release-artifact attestations; cover custom packages, the ARMHF runtime, and the license exceptions accurately.
 
-Allowed: evaluate Buildroot's own `show-info` and `legal-info` output, and whether this Buildroot release includes an SBOM generator; build attestations for the OTA and card image if the account supports them; dependency-graph submission.
+Allowed: evaluate `show-info`, `legal-info`, and any SBOM or vulnerability output this Buildroot release actually has; evaluate GitHub dependency submission, dependency review, and artifact attestations. Adopt one only after that evaluation and a separate approval.
 
-Excluded: relabeling the two unknown-license exceptions; a release-asset change without maintainer approval; firmware content changes.
+Excluded: relabeling the two unknown-license exceptions; a release-asset change without maintainer approval; firmware content changes; claiming a facility the pin does not have.
 
 Preconditions: 19D and 19E accepted. Adding an asset changes `scripts/check-release-assets.py` and the `fail_on_unmatched_files` asset list, which is a release-contract change.
 
@@ -158,11 +158,14 @@ Evidence to keep: the SBOM and attestation of the first release that carries the
 
 Firmware build: yes, one authorized `publish_release` false Build. Hardware: no. Maintainer approval: yes.
 
-## Decisions for the maintainer
+## Decisions, 2026-11-21
 
-- Keep `zlyme45-phase-18c`, or replace it with an annotated tag after verifying the tag reaches all four commits.
-- The 19B budget: the ratio of added to removed bytes. The report proposed at most 10 to 20 KB added for every 100 KB removed.
-- How a retired logbook entry is treated by `scripts/tests/logbook_entries.sha256`.
-- Whether `docs/archive/` is retired as a whole. The Roadmap section of `docs/WRITING.md` still sends long closed-phase planning to `docs/archive/` or `docs/research/`. 19A left that rule unchanged. Under the new retention rule that move is relocation, so the maintainer decides whether it stays.
-- Whether `main` becomes pull-request-only, and which security settings are turned on.
-- The Phase 17 preservation contract in [phase-17-plan.md](phase-17-plan.md) says research, the archive, the logbook, and ADRs are not deleted. That was Phase 17's working rule. If 19A is accepted, `docs/WRITING.md` is the current owner of retention and that sentence stays as Phase 17 history.
+These are decided. They are not a second copy of the policy.
+
+- `docs/WRITING.md` is the current retention policy. It supersedes the Phase 17 sentence that research, the archive, the logbook, and the ADRs are not deleted. It does not supersede technical architecture, engineering principles, the source-of-truth hierarchy, hardware safety, licensing and attribution, reproducibility, evidence requirements, authorization boundaries, or the safeguards for relocating or shortening a current contract. Those safeguards are under Changing an authoritative contract in `docs/WRITING.md`. [phase-17-plan.md](phase-17-plan.md) stays unchanged as the record of what Phase 17 authorized.
+- An ordinary retirement adds at most 0.20 bytes of documentation for each gross byte removed from the retired files. The ratio is a maximum. Reference repair is counted and reported on its own line. Safety evidence is not discarded to meet it.
+- `docs/archive/` is not deleted as a directory in one step. Each file still needs the seven checks. Closing a phase does not require a new or permanent in-tree archive.
+- The logbook, its existing dated entries, its introduction, and `scripts/tests/logbook_entries.sha256` stay unchanged through 19B1. How a later retirement would treat that checksum is a separate high-risk decision.
+- MANUAL REVIEW means automated classification cannot establish a safe disposition. Incomplete evidence is retention. A review is not maintainer approval.
+- `archive/pre-phase-19-docs` peels to `0dd8b86e26c69c55b691ea5b6824aa7b77f0385d`. `archive/phase-18c-investigation` peels to `2525168d0a81de4f85a864f1a4559e694edb0616` and still reaches the four investigation commits. The branch name was removed. Neither tag is a firmware release, and neither is immutable until 19D. The recovery bundle SHA-256 is `b8f784b1c5e071ab0733e9f541607f447162275fcec465a063bfdb98a657589a`, taken 2026-11-21 at 12:48:54 UTC, and the bundle stays outside the repository.
+- Whether `main` becomes pull-request-only, and which security settings are turned on, remains 19D. That choice is not open inside 19A. GitHub settings, Dependabot, Action pins, and SBOM work stay in 19D, 19E, and 19F.

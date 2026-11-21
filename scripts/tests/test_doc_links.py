@@ -74,9 +74,9 @@ def phase_docs():
 
 PHASES = phase_docs()
 # Logbook, roadmap, and the audit record name old paths, file:line
-# citations, and the hardware wiki. The Phase 19 plan names deleted
-# branches, files that exist only on zlyme45-phase-18c, and proposed
-# files that do not exist yet. Link targets
+# citations, and the hardware wiki. The Phase 19 plan names retired
+# branch tips, files that are not on main, and proposed files that do
+# not exist yet. Link targets
 # in this repository are still checked. Backtick paths are checked only
 # in the current-contract documents.
 PATH_DOCS = set(DOCS) - {
