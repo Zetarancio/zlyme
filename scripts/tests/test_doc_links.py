@@ -42,6 +42,7 @@ DOCS = (
     "docs/research/phase-17g5-kernel-upgrade-preflight.md",
     "docs/research/phase-18-plan.md",
     "docs/research/phase-18d-nds-preflight.md",
+    "docs/research/phase-19-plan.md",
 )
 
 # Archived notes keep historical backtick paths. Their Markdown links
@@ -73,15 +74,18 @@ def phase_docs():
 
 PHASES = phase_docs()
 # Logbook, roadmap, and the audit record name old paths, file:line
-# citations, and the hardware wiki. Link targets in this repository are
-# still checked. Backtick paths are checked only in the current-contract
-# documents.
+# citations, and the hardware wiki. The Phase 19 plan names deleted
+# branches, files that exist only on zlyme45-phase-18c, and proposed
+# files that do not exist yet. Link targets
+# in this repository are still checked. Backtick paths are checked only
+# in the current-contract documents.
 PATH_DOCS = set(DOCS) - {
     "docs/ROADMAP.md",
     "docs/LOGBOOK.md",
     "docs/research/phase-10-documentation-audit.md",
     "docs/research/phase-17-upstream-monitor.md",
     "docs/research/phase-17g5-kernel-upgrade-preflight.md",
+    "docs/research/phase-19-plan.md",
 }
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 TICK = re.compile(r"`([^`\n]+)`")

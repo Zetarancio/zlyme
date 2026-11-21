@@ -33,9 +33,51 @@ The canonical technical docs are listed in `AGENTS.md`. `docs/README.md` is only
 
 ## Research and history
 
-`docs/research/`, `docs/LOGBOOK.md`, and `docs/archive/` record what was tried, measured, and decided. New logbook entries go at the top, newest date first. Entries from the same day keep the order they were written. `docs/ROADMAP.md` is the short sequencing map. How to write it is below. Don't rewrite a failure out of a historical file. When a later phase supersedes an early statement, add a short dated status note that links to the current document. Leave the old text in place.
+`docs/research/`, `docs/LOGBOOK.md`, and `docs/archive/` record what was tried, measured, and decided. New logbook entries go at the top, newest date first. Entries from the same day keep the order they were written. `docs/ROADMAP.md` is the short sequencing map. How to write it is below. Don't rewrite a failure out of a historical file. When a later phase supersedes an early statement, add a short dated status note that links to the current document. Leave the old text in place. That applies while the record stays in the tree. Removing a record, or a section of one, is a retirement under [Documentation retention](#documentation-retention), not an edit.
 
 A new research file is named for the phase that first needs it: `preliminary-<topic>.md` before Phase 0, `phase-09-<topic>.md` for a numbered phase, and `phase-12d-<topic>.md` or `phase-15c-<topic>.md` for a subphase. A later phase adds a dated section to that file. It does not get a second filename. USB evidence captures and vendored files are not research documents and do not use this prefix.
+
+## Documentation retention
+
+The tree keeps what a maintainer needs to understand, change, build, reproduce, test, and maintain Zlyme as it is now. Git history is where a retired record is kept. This rule is prospective. It permits a later change, approved by the maintainer, to retire a record. A reviewer's pass is not that approval. The rule does not by itself delete, move, or rewrite any existing record, and until the maintainer approves such a change every existing record stays as written.
+
+Every candidate gets one disposition. Each has a test that a reviewer can check:
+
+- KEEP. The file is the current owner of behavior, a safety constraint, a build, release, or maintenance procedure, or a user contract. Test: removing it would leave that fact with no current owner.
+- KEEP ON DEMAND. The file is durable but specialized: an ADR, a licensing or provenance record, or hardware evidence. Test: losing it could plausibly cause unsafe hardware work, a licensing or provenance error, an irreproducible build, or repetition of a costly or destructive experiment. It is never default agent context.
+- EXTRACT MINIMUM THEN DELETE. Most of the file is history, and one or more of its facts still affect current work. Test: each surviving fact is named, and fits in an existing owner in a small fraction of the original size.
+- DELETE FROM CURRENT TREE. The file is a completed plan, an obsolete inventory, a finished audit, or abandoned work with no surviving consequence. Test: every claim in it is already owned elsewhere, derivable from source or tests, or no longer needed.
+- GIT HISTORY ONLY. The file is narrative with no current consumer. Test: no current document, test, script, or agent instruction needs it, and no named future decision depends on reading it.
+- MANUAL REVIEW. The file may hold unique hardware, destructive-operation, recovery, provenance, licensing, or reproducibility evidence, or open validation debt. Test: none. The maintainer decides.
+
+Age, size, and location under `docs/research/` are not reasons for any disposition.
+
+A retirement passes all seven checks, and its change record shows each one:
+
+1. Current owner. Each surviving fact has an authoritative destination, or is recorded as no longer needed.
+2. References. Incoming links, path mentions, test lists, scripts, and agent instructions are found and repaired or removed.
+3. Source. Where the record describes shipped behavior, the surviving statement agrees with the source.
+4. Debt. No open defect, hardware limitation, or validation obligation exists only in that record.
+5. Evidence. Licensing, provenance, recovery, binary identity, and hard-to-repeat device evidence survive in a KEEP or KEEP ON DEMAND file.
+6. Decision. Rationale a future change still needs is in an ADR or in the owner's short explanation.
+7. Recovery. The original is committed, reachable from a named Git ref, and included in a verified backup.
+
+Check 7 does not replace checks 1 through 6.
+
+These are not retirement candidates without a separate, clause-level review: `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md`, `docs/ARCHITECTURE.md`, `docs/architecture/audio.md`, `docs/OPERATIONS.md`, `docs/DEVICE_PORTING.md`, `docs/DEVELOPMENT.md`, `docs/UPSTREAMS.md`, `docs/MAINTENANCE.md`, `docs/AUDITING.md`, this file, the current ADRs, package provenance records, licensing and attribution notices, hardware recovery instructions, and unique destructive-operation evidence. A later change may improve one of them. That change keeps every invariant discoverable and enforced.
+
+Retirement removes. It does not relocate:
+
+- Do not copy retired prose wholesale into another file.
+- Do not create a new archive, legacy, history, summary, or catch-all directory or file to hold it.
+- Put an extracted fact in an existing owner, in its shortest form: the conclusion, constraint, identifier, or open debt.
+- A skill holds a repeatable procedure. It is not a place to keep retired history.
+- A current document does not depend on reading a retired plan.
+- A retirement change reports the bytes it removed and the bytes it added. A change that moves an equivalent amount of text elsewhere does not meet this rule.
+
+The exception is evidence that check 5 protects. Safety, reproducibility, licensing, and provenance evidence that has no shorter safe form stays, as KEEP ON DEMAND or MANUAL REVIEW.
+
+Existing logbook entries keep their text and their checksums in `scripts/tests/logbook_entries.sha256`. Retiring logbook text is its own maintainer-approved change, and it does not weaken that test.
 
 ## Roadmap
 
@@ -84,6 +126,7 @@ Before a phase is called closed:
 - Keep licenses, attribution, and provenance.
 - Name a remaining limitation. Do not write that support is complete when it is not.
 - When a validation finding is fixed, accepted, superseded, or deferred, reconcile the Open validation debt index in `docs/MAINTENANCE.md` in the same change. Do not carry a finished finding forward as open debt. The history stays in the research file or the logbook.
+- Give the phase's own planning file a disposition under [Documentation retention](#documentation-retention). A plan marked temporary is retired when its phase closes, once its surviving facts have an owner.
 - The Systems and emulators table in `docs/USER_GUIDE.md` is alphabetically sorted by the displayed System name.
 
 Do not rewrite every document after every commit, copy the same explanation into each file, or invent a test result.
@@ -92,7 +135,7 @@ Do not rewrite every document after every commit, copy the same explanation into
 
 The goal is good documentation that also gives an AI tool enough coherent context to help a contributor, not documentation written for a model. Stable terminology, explicit owners, concrete paths and interfaces, explicit supersession, and evidence kept apart from inference all serve both readers. Don't rely on private chat history. If it matters, it is written down here.
 
-When starting AI-assisted work on Zlyme, give the tool the repository and the `docs/` folder as context. Review generated text against this file and against the source before committing it.
+When starting AI-assisted work on Zlyme, give the tool the repository. `AGENTS.md` names the documents each kind of task needs. Do not load all of `docs/` as context. The logbook, research, and archive are history: read one for a specific historical question. A phase summary and that phase's active plan are read when the task is that phase. Review generated text against this file and against the source before committing it.
 
 ## References
 

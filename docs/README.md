@@ -1,6 +1,6 @@
 # Documentation
 
-This is a map. The fact lives in the linked document, and `AGENTS.md` remains the reading list for an agent.
+This is a map. The fact lives in the linked document, and `AGENTS.md` remains the reading list for an agent. The logbook, research, and archive are history. Read one for a specific historical question, not as default context. A phase summary and that phase's active plan are read when the task is that phase. Their retention is in [Writing](WRITING.md#documentation-retention).
 
 | Document | What it owns |
 | --- | --- |

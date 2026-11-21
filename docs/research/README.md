@@ -12,7 +12,7 @@ Architecture should say:
 
 > Zlyme currently uses A because ...
 
-Keep evidence and abandoned alternatives here so they remain available without making an agent treat every explored option as current architecture.
+Keep evidence and abandoned alternatives here so they remain available without making an agent treat every explored option as current architecture. A record stays until a change under [Documentation retention](../WRITING.md#documentation-retention) retires it. Git history keeps the retired version.
 
 Phase files are chronological. A later section in the same file, and the phase summary in [docs/phases/](../phases/README.md), supersede earlier sections. [docs/ROADMAP.md](../ROADMAP.md) is the current sequence, not that detailed disposition. A new file uses the phase prefix in [docs/WRITING.md](../WRITING.md). Shipped behavior is described in [docs/ARCHITECTURE.md](../ARCHITECTURE.md), [docs/OPERATIONS.md](../OPERATIONS.md), and [docs/DEVELOPMENT.md](../DEVELOPMENT.md).
 
@@ -47,6 +47,7 @@ Phase files are chronological. A later section in the same file, and the phase s
 | [phase-17c-agent-clause-ledger.md](phase-17c-agent-clause-ledger.md) | 17C2A, 2026-11-02 | Clause-level preservation ledger. Not a reduction of `AGENTS.md`. |
 | [phase-17-upstream-monitor.md](phase-17-upstream-monitor.md) | 17G1, 2026-11-03 | Shared upstream checkpoint. 17G5 compared Linux 7.2.10 with tag v7.2.15. Reviewed-through was not advanced. Not a pin. |
 | [phase-17g5-kernel-upgrade-preflight.md](phase-17g5-kernel-upgrade-preflight.md) | 17G5, 2026-11-04 | Kernel identity, patch classes, and a deferred 7.2.15 plan. No build and no pin change. |
+| [phase-19-plan.md](phase-19-plan.md) | 19, from 2026-11-21 | Active Phase 19 work plan. Temporary. It is retired from the tree when Phase 19 closes, once its surviving facts have an owner. |
 | [phase-18-plan.md](phase-18-plan.md) | 18, from 2026-11-02 | The original Zlyme 45 proposal, then the 18A–18G record. Phase 18 is closed. The summary is [docs/phases/phase-18.md](../phases/phase-18.md). The proposal sections are not the current status. The sequence is [docs/ROADMAP.md](../ROADMAP.md). |
 | [phase-15c-retroarch-input-audio.md](phase-15c-retroarch-input-audio.md) | 15C1, 2026-10-26 | Read-only investigation of GitHub issues #2 and #3. Not an implementation and not a new hardware measurement of gameplay. |
 | [phase-14-audio.md](phase-14-audio.md) | 14, 2026-10-20 | Phase 14 audio experiments. Its PulseAudio and BlueALSA paragraphs are the superseded candidate. The current detailed contract is [docs/architecture/audio.md](../architecture/audio.md). [docs/ARCHITECTURE.md](../ARCHITECTURE.md) section 9 is the entry heading. |
