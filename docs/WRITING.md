@@ -107,6 +107,12 @@ Three operations stay separate:
 
 Relocation and a contract change are not mixed. An authorization to relocate a contract is not permission to change its meaning. Dates, source identities, SHA values, test limits, and accepted dispositions stay with the fact they belong to.
 
+A contract migration starts from a recorded clean commit on a dedicated branch. It changes one coherent unit, reviews the whole diff, checks references and the contract tests, and stops on an unresolved semantic discrepancy. The next major contract waits for acceptance. No script rewrites the canonical documents in one pass. No AI summary replaces a measurement or an architectural decision.
+
+## Historical link repair
+
+An approved retirement may replace one relative Markdown link in an ordinary archived roadmap or closed research document with a commit-pinned GitHub link to that file. The file and anchor exist at that commit. The label stays, and no date, SHA, command, measurement, result, limitation, or other byte changes. The original stays in that commit and a verified backup. Record both destinations; restoring only them reproduces the file byte for byte. Excluded: `docs/LOGBOOK.md` and its entries, `scripts/tests/logbook_entries.sha256`, `scripts/tests/test_logbook_order.py`, raw hardware evidence, license and provenance records, and third-party documents. They stay in the link check and are not edited to match current source. No allowed repair keeps the candidate. Do not move `archive/pre-phase-19-docs`.
+
 ## Roadmap
 
 `docs/ROADMAP.md` is non-normative. Current architecture stays in `docs/ARCHITECTURE.md` and the other owning technical documents. The roadmap answers five questions:
