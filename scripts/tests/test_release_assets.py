@@ -220,7 +220,7 @@ class GateTests(unittest.TestCase):
         os.makedirs(stage)
         with tarfile.open(self.tar_path, "r") as archive:
             archive.extractall(stage)
-        blob(os.path.join(stage, "VERSION"), "%s\n19990101\n" % self.described)
+        blob(os.path.join(stage, "VERSION"), "%s\n20261118\n" % self.described)
         os.remove(self.tar_path)
         os.remove(self.tar_path + ".sha256")
         path = os.path.join(self.images, os.path.basename(self.tar_path))
