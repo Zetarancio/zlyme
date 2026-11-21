@@ -15,14 +15,26 @@ mkdir -p "$(dirname "$log")"
 
 filter='>>> .*(Downloading|Extracting|Patching|Configuring|Building|Installing)|(error:|Error:|ERROR:|make: \*\*\*|collect2: error|undefined reference|Killed|No space left)'
 
+# Optional UTC prefixes so a later summary can time package steps.
+# The build command remains PIPESTATUS 0.
+stamp() {
+	if [ "${ZLYME_LOG_TIMESTAMPS:-}" != 1 ]; then
+		cat
+		return
+	fi
+	perl -MPOSIX -ne 'BEGIN{$|=1} print strftime("%Y-%m-%dT%H:%M:%SZ ", gmtime), $_'
+}
+
 set +e
 set +o pipefail
 if command -v stdbuf >/dev/null 2>&1; then
 	stdbuf -oL -eL "$@" 2>&1 |
+		stamp |
 		tee "$log" |
 		{ stdbuf -oL grep -E --line-buffered "$filter" || true; }
 else
 	"$@" 2>&1 |
+		stamp |
 		tee "$log" |
 		{ grep -E "$filter" || true; }
 fi

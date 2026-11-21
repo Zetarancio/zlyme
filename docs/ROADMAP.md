@@ -8,7 +8,7 @@ Phase 18G is active. `zlyme44.5` is authorized for direct publication and is not
 
 ## Next action
 
-Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. Workflow [run 44429282687](https://github.com/Zetarancio/zlyme/actions/runs/44429282687) finished with conclusion success and produced no firmware image. Its release job was skipped. That status is not `zlyme44.5`. The workflow now fails when the last stage still has no image. Another hosted build was not dispatched: the later stages rebuilt packages the first stage had already installed, and neither the 2 GB release-file cache nor the 10 GB Actions cache has a measured size that would finish the image. The procedure is in [docs/DEVELOPMENT.md](DEVELOPMENT.md).
+Workflow [run 44055637428](https://github.com/Zetarancio/zlyme/actions/runs/44055637428) is cancelled. It was the old `zlyme44.4` integration build, not this release. Workflow [run 44429282687](https://github.com/Zetarancio/zlyme/actions/runs/44429282687) finished with conclusion success and produced no firmware image. Its release job was skipped. The restored compiler cache was capped at 1.5G and the later stages rebuilt the same packages. This source keeps the image assertion and sets the Actions compiler cache to 8GiB after restore. That size is an experiment, not a measured working set. The direct release is a Build of this source with `publish_release` true. It is not published until GitHub shows the release. The procedure is in [docs/DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Blockers and deferred work
 

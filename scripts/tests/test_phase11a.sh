@@ -226,7 +226,7 @@ set -e
 
 stage=$ROOT/.github/workflows/build-stage.yml
 grep -q 'scripts/ci/stream-build-log.sh' "$stage" || fail "workflow does not stream"
-grep -q 'path: output/zlyme-build.log' "$stage" || fail "full log artifact removed"
+grep -q 'output/zlyme-build.log' "$stage" || fail "full log artifact removed"
 grep -q '124|137|143' "$stage" || fail "timeout continue removed"
 # Host tests are not packaged.
 if grep -RIn 'scripts/tests' "$ROOT/package" "$ROOT/board" >/dev/null 2>&1; then

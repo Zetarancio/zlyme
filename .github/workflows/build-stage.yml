@@ -2,7 +2,9 @@
 # 34801512689 and 34828905859 were cancelled there during a cold image).
 # Stop compile ~50 minutes early so ccache can be packed while the job
 # is still allowed to run. The next stage starts a fresh output/ and
-# relies on ccache hits; the 51G output tree cannot be an artifact.
+# relies on ccache hits. The output tree is not an artifact. The Actions
+# cache is the primary compiler store. The zlyme-cache release file is only
+# a fallback seed, and it is not allowed to shrink the Actions cache.
 
 name: Build stage
 
@@ -87,6 +89,11 @@ jobs:
             echo "no ccache yet"
           fi
 
+      # The restored ccache.conf still says 1.5G until this runs. -M writes
+      # that file and does not delete objects. 8GiB is the experiment size.
+      - name: Raise ccache limit
+        run: sh scripts/ci/ccache-raise-limit.sh .ccache 8GiB
+
       - name: Pull or build zlyme-build
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -98,6 +105,25 @@ jobs:
           else
             docker tag "$img" zlyme-build
           fi
+
+      # Debian ccache in this image reads CCACHE_DIR. Buildroot's later
+      # host ccache reads the same directory through BR_CACHE_DIR. Both
+      # use .ccache/ccache.conf, which the previous step just wrote.
+      - name: Check ccache limit inside the build container
+        run: |
+          set -euo pipefail
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e CCACHE_DIR=/zlyme/ccache \
+            -v "$PWD/.ccache:/zlyme/ccache" \
+            zlyme-build \
+            sh -c 'grep -n max_size /zlyme/ccache/ccache.conf; ccache -p'
+          seen=$(docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e CCACHE_DIR=/zlyme/ccache \
+            -v "$PWD/.ccache:/zlyme/ccache" \
+            zlyme-build \
+            ccache -k max_size)
+          sh scripts/ci/ccache-limit-matches.sh 8GiB "$seen"
+          grep -Eq '^max_size = 8GiB$' .ccache/ccache.conf
 
       - name: ARMHF runtime
         uses: actions/download-artifact@v8
@@ -111,6 +137,9 @@ jobs:
           chmod +x ./scripts/armhf-runtime-unpack.sh
           ./scripts/armhf-runtime-unpack.sh armhf-artifact/zlyme-armhf-runtime.tar output-armhf
 
+      - name: Record restored ccache stats
+        run: sh scripts/ci/ccache-stage-stats.sh begin .ccache output/ccache-stage-begin.txt
+
       - name: Build image
         id: build
         env:
@@ -123,28 +152,26 @@ jobs:
             echo "ScreenScraper developer credentials are required for this build" >&2
             exit 1
           fi
-          chmod +x ./build.sh scripts/ci/stream-build-log.sh scripts/ci/product-image-present.sh
+          chmod +x ./build.sh scripts/ci/stream-build-log.sh scripts/ci/product-image-present.sh scripts/ci/stage-outcome.sh
           set +e
           mkdir -p output
           start_epoch=$(date +%s)
           # Full log is the artifact. The console streams lifecycle lines.
           # stream-build-log.sh returns the build status, not grep's.
-          bash scripts/ci/stream-build-log.sh output/zlyme-build.log \
+          ZLYME_LOG_TIMESTAMPS=1 bash scripts/ci/stream-build-log.sh output/zlyme-build.log \
             timeout --signal=TERM -k 3m "${BUILD_WINDOW}" ./build.sh --config "${ZLYME_DEFCONFIG}"
           rc=$?
           elapsed=$(( $(date +%s) - start_epoch ))
           echo "source=${{ github.sha }}"
           echo "elapsed_s=${elapsed}"
+          echo "build_rc=${rc}"
           if ./scripts/ci/product-image-present.sh output/images; then
-            echo "image=produced"
+            echo "files=complete"
           else
-            echo "image=absent"
+            echo "files=incomplete"
           fi
           ls -l output/images/zlyme-my355-*.tar output/images/zlyme-my355-*.sha256 output/images/zlyme.img output/images/zlyme.img.sha256 2>/dev/null || true
-          if command -v ccache >/dev/null 2>&1; then
-            CCACHE_DIR="${GITHUB_WORKSPACE:-$PWD}/.ccache" ccache -s || true
-          fi
-          if ! ./scripts/ci/product-image-present.sh output/images; then
+          if [ "$rc" != 0 ]; then
             case "$rc" in
               124|137|143) ;;
               *) tail -n 40 output/zlyme-build.log || true ;;
@@ -152,18 +179,8 @@ jobs:
           fi
           docker ps -aq | xargs -r docker stop || true
           docker ps -aq | xargs -r docker rm -f || true
-          if ./scripts/ci/product-image-present.sh output/images; then
-            echo "have_image=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # 124 = GNU timeout, 137 = SIGKILL, 143 = SIGTERM
-          case "$rc" in
-            124|137|143)
-              echo "Build window closed without an image; next stage continues from ccache."
-              exit 0
-              ;;
-          esac
-          exit "$rc"
+          sh scripts/ci/stage-outcome.sh "$rc" output/images >> "$GITHUB_OUTPUT"
+          exit $?
 
       - name: Assert OTA tar includes U-Boot
         if: steps.build.outputs.have_image == 'true'
@@ -179,13 +196,26 @@ jobs:
           echo "$names" | grep -qx idbloader.img
           echo "$names" | grep -qx u-boot.itb
 
+      - name: Record stage ccache stats
+        if: always()
+        run: |
+          sh scripts/ci/ccache-stage-stats.sh end .ccache output/ccache-stage-end.txt
+          python3 scripts/ci/summarize_build_durations.py output/zlyme-build.log |
+            tee output/build-durations.txt
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: zlyme-build-log-${{ github.run_id }}-${{ inputs.stage }}
           retention-days: 7
-          path: output/zlyme-build.log
+          path: |
+            output/zlyme-build.log
+            output/ccache-stage-begin.txt
+            output/ccache-stage-begin.txt.raw
+            output/ccache-stage-end.txt
+            output/ccache-stage-end.txt.raw
+            output/build-durations.txt
           if-no-files-found: ignore
 
       - name: Upload artifacts
@@ -209,7 +239,10 @@ jobs:
             output/images/miyoo355_fw-restore.img.sha256
           if-no-files-found: error
 
-      # Save before prune so the next stage of this run keeps the full cache.
+      # One 8GiB cache plus the ARMHF caches fits in the included 10 GB.
+      # Saving another 8GiB does not. GitHub deletes the oldest accessed
+      # caches, so the cache saved here is the one the next stage restores.
+      # Do not prune it to fit the 2 GiB release-file fallback.
       - name: Save ccache (Actions cache)
         if: always()
         continue-on-error: true
@@ -218,25 +251,16 @@ jobs:
           path: .ccache
           key: ccache-my355-${{ github.run_id }}-${{ inputs.stage }}
 
-      - name: Pack ccache
+      - name: Pack ccache fallback
+        id: fallback
         if: always()
         continue-on-error: true
         run: |
           docker ps -aq | xargs -r docker rm -f || true
-          if [ ! -d .ccache ]; then
-            echo "no .ccache"
-            exit 0
-          fi
-          # 1.5G is the cross-run cap, not a guess at the compiler output.
-          # Run 44429282687 packed 1.27–1.29 GiB into a 1.20–1.23 GiB zstd
-          # asset. A GitHub release file stops at 2 GB, and this setting is
-          # what the next restore inherits. It is not the Buildroot output.
-          CCACHE_DIR="$PWD/.ccache" ccache -M 1.5G -c || true
-          tar --exclude='.ccache/tmp' -C . -cf - .ccache | zstd -T0 -3 -o ccache-my355.tar.zst
-          ls -lh ccache-my355.tar.zst
+          sh scripts/ci/pack-ccache-fallback.sh .ccache ccache-my355.tar.zst >> "$GITHUB_OUTPUT"
 
       - name: Save ccache (zlyme-cache release)
-        if: always()
+        if: always() && steps.fallback.outputs.upload == 'true'
         continue-on-error: true
         uses: softprops/action-gh-release@v3
         with:

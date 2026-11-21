@@ -5,8 +5,10 @@
 # A stage whose window closes with no image still succeeds so the next stage
 # can run. require-image fails the workflow when every stage lacks an image.
 # Run 44429282687 did that and was reported as success. Do not add a stage:
-# the later stages rebuilt packages the first stage had already installed.
-# docs/DEVELOPMENT.md records why the compiler cache did not carry the build.
+# the later stages rebuilt packages the first stage had already installed,
+# because the restored ccache.conf kept the cache at 1.5G. This source
+# raises that limit to 8GiB in the Actions cache after restore. That size
+# is an experiment, not a measured working set. docs/DEVELOPMENT.md.
 #
 # Manual only: no push trigger, no daily cron. A private-repo cold build
 # is ~930 runner-minutes (3×310). Public standard ubuntu-24.04 is free and
