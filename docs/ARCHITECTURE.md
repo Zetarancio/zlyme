@@ -743,7 +743,7 @@ There is no `modules-load.d` entry or init script for it. It loads from the `roc
 
 Runtime policy belongs to `zlyme-governor`. The `smart` and `idle` profiles hold DMC at `powersave` 324 MHz. The `play` and `heavy` profiles use `simple_ondemand` from 528 to 1056 MHz. After resume, `zlyme-radios resume` reopens the DMC range once and restores the previous profile.
 
-The Phase 7 hardware acceptance record is in `docs/phases/phase-07.md`.
+The Phase 7 outcome is in `docs/phases/phase-07.md`. The detailed hardware acceptance, including the accepted image and module identities and the later host-only correction, is in `docs/LOGBOOK.md`.
 
 ## Kernel extension policy
 
