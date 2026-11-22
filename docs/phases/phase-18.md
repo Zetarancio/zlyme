@@ -12,6 +12,8 @@ Disposition: closed, 2026-11-21. `zlyme44.5` is the published stable release, ta
 
 18D replaced DraStic with DSperate in the product source after a DraStic diagnostic image showed a black screen. A source patch binds DS A and B to the virtual pad's A and B. The maintainer waived another hardware run for that narrow change. The corrected binary was not in the first installed image, `zlyme-my355-20261108-fd0bf6e6f21a.tar`. `zlyme-my355-20261109-c7054ed60b08.tar` and the accepted `zlyme-my355-20261116-fc414c6ba084.tar` contain `0002-flip-ab-defaults.patch`. The accepted image also contains `0003-flip-menu-pause.patch`. The recorded acceptance does not add a separate A/B hardware result.
 
+The diagnostic image was built from `29e84c8d65278820b7763dd904f298048654734c`. DraStic had KMSDRM selected and `/dev/dri/card0` open, and its maps had no EGL or GLES. The log stayed at the header. That launch does not establish the cause of the black screen. MENU+START returned to NextUI and left the launch lock and both save binds. On the inspected DSperate configuration, the face bindings were comments, so they did not override the corrected defaults. An uncommented binding still wins, and that file was not rewritten.
+
 18E left the governor at `smart`. The timezone selector is one representative row. The short description is `Left/right: change zone.`
 
 18F1 reads `PLAT_btIsConnected()` for the status pill. 18F2 publishes the my355 Bluetooth cache with `SDL_atomic_t` and keeps `settings.bluetooth` a lock-free bool. 18F3 publishes one Wi-Fi signal category and keeps `settings.wifi` a lock-free bool. 18F4 makes `runCmdTimeout()` reap the shell it forked if the calling thread is cancelled.
@@ -20,7 +22,7 @@ Disposition: closed, 2026-11-21. `zlyme44.5` is the published stable release, ta
 
 18F4 is accepted as source and a host test. NextUI `3aff9c42777bf69ff476601b7011b05f753ba8cd` contains that helper. It is included in the integrated source. It is not in the previously installed F3 image, and it was not run on the Flip. An exceptional `setpgid()` failure remains an integration review item, not a new cleanup.
 
-The host regression and the earlier host tests are recorded in [docs/research/phase-18-plan.md](../research/phase-18-plan.md).
+The host regression and the earlier host tests are recorded in [docs/research/phase-18-plan.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-18-plan.md).
 
 ## Hardware acceptance
 
@@ -28,11 +30,15 @@ The host regression and the earlier host tests are recorded in [docs/research/ph
 
 18E and the installed F3 checklist are accepted for the maintainer's 2026-11-17 sign-off on `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `9159f90d0ebccf1394a9702b799968754574829b54d0c934258868c674bea784`, built from `9d0fc4e3f12d52d3b1f56fd3e0a75fc8d6a0e6ea`. The maintainer reported no regressions. A Bluetooth controller was used. No headset audio check was performed, and that check is not required for this pill change. The normal reboot was reported visually fast. The recorded `nextui-first-flip` of 12.05 s stays next to the older 8.33 s sample, and neither sample proves a startup regression. The sign-off does not record individual screen text, a before/after timezone name, or a headset. SSH before the sign-off read Europe/Berlin at index 316. The NextUI pin inside that image is `e49f0d791a4f91306adc01ef2c407ec4e8101a61`, not the later F4 pin.
 
+The 8.33 s mark is `nextui-first-flip`, the first presented frame. It is not menu initialization, the library scan, graphics initialization, or the first accepted input. That log does not separate the library scan from graphics initialization, and there was no second boot on another clock profile. The 12.05 s mark is a later normal boot. The install boot's 72.25 s first flip is the OTA commit, not that normal boot. Neither sample shows `smart` limiting the first frame. The governor stays `smart`.
+
 The dated paragraphs in the snapshot keep every intermediate image name, size, and checksum. Those paragraphs also keep sentences that were true on the day they were written, including sentences that said a later-closed item was still open.
 
 ## Deferred compatibility
 
 18C is closed as an investigation, 2026-11-17. It is not a fix. The pinned RetroArch 1.22.2 ZIP reader returns raw member-name bytes. The original failing archive was not available. Five test ZIPs were written on the second card and were not launched. No decoder change was made. Legacy-encoded GBA ZIP names stay unverified. The Wine launcher keeps UTF-8 arguments in a host test. No Unicode-path fix was made. A disposable Wine start tried to open a window without a display, and the Flip then froze. The cause is unknown. The production Wine prefix was not used. No further device Wine test is authorized by that closure. The four investigation commits that are not in main are on the annotated tag `archive/phase-18c-investigation`, which peels to `2525168d0a81de4f85a864f1a4559e694edb0616`. That tag is historical evidence. It is not a firmware release, and it is not protected. The branch name `zlyme45-phase-18c` was removed after that tag was verified. Those commits are not merged.
+
+That Wine start used a disposable prefix, not `zlyme-wine-prefix` and not the production prefix. The maintainer reported a forced reboot. The SSH session ended with no exit status. Afterward pstore was empty. The retained early dmesg does not include the freeze. The saved logs contain no OOM, panic, soft-lockup, or hung-task line, and that absence does not show the freeze did not happen. A Mali probe stack on the following boot was printed while the driver was still probing, and that boot continued. It is not a demonstrated cause.
 
 Older SD2 `EIO`, `EUCLEAN`, and superblock write errors stay a separate maintenance concern. They are not a Phase 18 release gate.
 
@@ -68,4 +74,4 @@ Stage A restored Actions cache `ccache-my355-44429282687-c`. Host and container 
 
 The full OTA is `zlyme-my355-20261121-803664a98875.tar`, 766,126,080 bytes, SHA-256 `f068e62d841b5e4a994754838da39b377f3317e1012d305c6d9b2ec2253f9828`. The manifest root is 712,646,656 bytes, SHA-256 `cd004e8c2543abab7bee798cce6b948a833dd23338f42efd72bc8791826d416d`. The card image `zlyme.img` is 1,409,306,624 bytes, SHA-256 `605f8e245b42f7c3a63c6a6c3bf1c46f5251cba55062660b131dcb6f42afd31e`. Deltas were published from `zlyme44.2`, `zlyme44.3`, and `zlyme44.4`. The `zlyme44` baseline delta was omitted: 556,093,440 bytes is at least 70% of the full OTA.
 
-Records: [docs/research/phase-18-plan.md](../research/phase-18-plan.md) and [docs/research/phase-18d-nds-preflight.md](../research/phase-18d-nds-preflight.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-18-zlyme-45).
+Records: [docs/research/phase-18-plan.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-18-plan.md) and [docs/research/phase-18d-nds-preflight.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-18d-nds-preflight.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-18-zlyme-45).

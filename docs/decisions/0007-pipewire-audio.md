@@ -26,4 +26,4 @@ A second audio server, a systemd unit, or a per-application daemon is a new desi
 
 PipeWire does not change the panel pixel clock. An audio symptom that follows the display clock still has to be measured on this graph.
 
-The rejected PulseAudio and BlueALSA details stay in `docs/research/phase-14-audio.md`. The running contract is `docs/ARCHITECTURE.md`.
+The rejected PulseAudio and BlueALSA details stay in [docs/research/phase-14-audio.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-14-audio.md). The running contract is `docs/ARCHITECTURE.md`.

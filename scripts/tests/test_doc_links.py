@@ -37,8 +37,6 @@ DOCS = (
     "docs/research/phase-17c-agent-clause-ledger.md",
     "docs/research/phase-17-upstream-monitor.md",
     "docs/research/phase-17g5-kernel-upgrade-preflight.md",
-    "docs/research/phase-18-plan.md",
-    "docs/research/phase-18d-nds-preflight.md",
     "docs/research/phase-19-plan.md",
 )
 
@@ -95,16 +93,14 @@ REPO_PREFIXES = (
     "configs/",
 )
 
-# Former DraStic paths stay in these historical notes. A current
-# contract document that names one of them is still a broken path.
-HISTORICAL_DRASTIC_DOCS = {
-    "docs/research/phase-18-plan.md",
-    "docs/research/phase-18d-nds-preflight.md",
+# phase-17-plan records which filename the checker omitted when that
+# plan was written. The sentence stays. Every other backtick in that
+# file still has to name a file that exists.
+HISTORICAL_PATH_MENTIONS = {
+    "docs/research/phase-17-plan.md": {
+        "docs/research/phase-18-plan.md",
+    },
 }
-RETIRED_PREFIXES = (
-    "package/emulators/drastic/",
-    "scripts/tests/test_drastic_workdir.sh",
-)
 
 
 def exists(path):
@@ -158,7 +154,7 @@ def main():
                 if any(ch in token for ch in "*$?<>|"):
                     continue
                 path = token.split()[0].rstrip(".,:;")
-                if rel in HISTORICAL_DRASTIC_DOCS and path.startswith(RETIRED_PREFIXES):
+                if path in HISTORICAL_PATH_MENTIONS.get(rel, ()):
                     continue
                 if not exists(path):
                     bad.append("%s:%s `%s`" % (rel, lineno, token))
