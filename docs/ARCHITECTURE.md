@@ -448,6 +448,8 @@ The Miyoo Flip uses board-specific input integration:
 - `zlyme-keylidmon` while another application owns the screen. It is Class A because it hosts NextUI's msettings shared memory. Its MENU state comes from the virtual Guide button. Volume, power, and the lid stay on their own devices;
 - `zlyme-pak-hotkey` exits a pak on MENU+START from one virtual controller. It does not combine those buttons across two controllers. It reads only InputPlumber `xb360` targets, so the MENU+START exit needs InputPlumber running.
 
+The physical driver leaves Linux `flat` and `fuzz` at 0. A nonzero `flat` would add a second deadzone in a consumer that honors it, and a nonzero `fuzz` filters axis changes in the input core.
+
 These are board/platform responsibilities.
 
 Frontend and emulator launch code should consume normal Linux input/SDL interfaces rather than Miyoo-specific sysfs or GPIO knowledge whenever possible.
@@ -731,7 +733,7 @@ The hardware wiki owns the BL31 suspend interface, the meaning of each mask bit,
 - In mem suspend the DTS turns off `vdd_logic` (RK817 DCDC1), `vdd_gpu`, `vcc_3v3`, `vdda_0v9`, `vccio_acodec`, `vcc_1v8`, `vcc1v8_dvp`, `vcc2v8_dvp`, BOOST, `otg_switch`, `vdd_cpu` (RK8600), `vcc5v0_host`, and `vcc3v3_lcd0_n`. `vcc_ddr`, `vcca1v8_pmu`, `vdda0v9_pmu`, `vccio_sd` (at 3.3 V), and `vcc3v3_pmu` stay on. The SD card power switches have no suspend state.
 - Wake sources are the RK817 power key, the volume keys, and lid open. Lid close does not wake.
 
-The Phase 6 hardware acceptance record is in `docs/archive/roadmap-2026-10-15.md` and `docs/research/phase-06-deep-suspend.md`.
+The Phase 6 hardware acceptance record is in `docs/research/phase-06-deep-suspend.md`.
 
 ### DDR frequency scaling (DMC)
 
@@ -741,7 +743,7 @@ There is no `modules-load.d` entry or init script for it. It loads from the `roc
 
 Runtime policy belongs to `zlyme-governor`. The `smart` and `idle` profiles hold DMC at `powersave` 324 MHz. The `play` and `heavy` profiles use `simple_ondemand` from 528 to 1056 MHz. After resume, `zlyme-radios resume` reopens the DMC range once and restores the previous profile.
 
-The Phase 7 hardware acceptance record is in `docs/archive/roadmap-2026-10-15.md`.
+The Phase 7 hardware acceptance record is in `docs/phases/phase-07.md`.
 
 ## Kernel extension policy
 

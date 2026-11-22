@@ -14,8 +14,4 @@
 
 `TODO.md` stays gitignored under `NOTES/`.
 
-`roadmap-phase-3c.md` is the Phase 3C integration log, moved unchanged from `docs/ROADMAP.md` on 2026-10-14. The acceptance note is in `docs/phases/phase-03.md`.
-
-`roadmap-2026-10-15.md` is the active roadmap as it stood at `b926b9976c12ccdb3de20b629f8a550e574f8e51`, moved on 2026-10-15. The body was not rewritten except four relative links retargeted for `docs/archive/`.
-
-`roadmap-2026-11-17.md` is the active roadmap as it stood at `8d61d33d263434de4cd4e5f5f6200becd3756908`. That source file is Git blob `bafdc503836eac0b4355b53691bf024162a1d340`, SHA-256 `2a0758db17af6876d63c409e26d4cdfa0b997aa2331fe92fe5de48f6a911b4b7`. At the move, relative links were retargeted for `docs/archive/`. Three later reference-only repairs point at retired records by commit. It is not current policy. The current sequence is `docs/ROADMAP.md`.
+`roadmap-2026-11-17.md` is the active roadmap as it stood at `8d61d33d263434de4cd4e5f5f6200becd3756908`. That source file is Git blob `bafdc503836eac0b4355b53691bf024162a1d340`, SHA-256 `2a0758db17af6876d63c409e26d4cdfa0b997aa2331fe92fe5de48f6a911b4b7`. At the move, relative links were retargeted for `docs/archive/`. Later reference-only repairs point at retired records by commit. It is not current policy. The current sequence is `docs/ROADMAP.md`.

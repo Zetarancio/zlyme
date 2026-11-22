@@ -307,7 +307,7 @@ glibc and Mesa/Panfrost userspace, explicit runners, and no binfmt
 registration. Detailed evidence is in
 `docs/research/phase-14-portmaster-capability.md`.
 
-The gpSP comparison is in `docs/research/phase-09-product.md`. The RK817 dispositions are in `docs/research/phase-05-kernel-patch-audit.md` and `docs/research/phase-06-deep-suspend.md`. ZcrapeGoat's import is recorded below.
+Zlyme uses the ROCKNIX-carried gpSP revision, the newer of the two pins compared above, and does not follow current libretro gpSP HEAD. The recipe records that pin's default sound rate. The RK817 dispositions are in `docs/research/phase-05-kernel-patch-audit.md` and `docs/research/phase-06-deep-suspend.md`. ZcrapeGoat's import is recorded below.
 
 ### Phase 12B1 emulator source pins
 
