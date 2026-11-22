@@ -1,6 +1,6 @@
 # Migration from `NOTES/`
 
-Applied. The moves below have landed. `NOTES/NOTES.md` and `NOTES/PLAN.md` were not deleted: they still mix live-session status, workstation paths, and measurements, so they live in `docs/archive/`. Canonical behavior is `docs/ARCHITECTURE.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`. Do not treat the archive "still open" list as current.
+Applied. The moves below have landed. `NOTES/NOTES.md` and `NOTES/PLAN.md` were not deleted: they still mix live-session status, workstation paths, and measurements, so they were placed in `docs/archive/`. `docs/archive/NOTES.md` remains. The original plan is not in this tree. Canonical behavior is `docs/ARCHITECTURE.md`, `docs/OPERATIONS.md`, and `docs/DEVELOPMENT.md`. Do not treat the archive "still open" list as current.
 
 ## Goal
 
