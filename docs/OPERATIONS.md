@@ -341,3 +341,5 @@ dmesg | grep -E 'ON_SOURCE|OFF_SOURCE'
 ```
 
 That line is only a read of those registers. It helps distinguish boot and shutdown histories. No runtime policy parses it. It does not write a PMIC register, and it does not change shutdown or `SYS_CAN_SD`. Treat the register values as diagnostic evidence. They do not replace a direct physical-current measurement.
+
+ROCKNIX RK817 `002`, `005`, and `008` stay unapplied. `005` needs code added by `002`. `008` needs `002`'s counter-first boot and treats a loaded terminal voltage as an OCV bound. The mainline charger driver does not read `factory-internal-resistance-micro-ohms`; 0.1 Ω at 1 A is 100 mV on the Flip curve. The 5% relax threshold in `002` is from other handhelds, not a Flip measurement. A coherent `OFF_CNT` OCV reseed, in `docs/LOGBOOK.md`, does not justify those algorithms. The sleep-gauge samples are in `docs/research/phase-06-deep-suspend.md`. Factory reset does not clear gauge NVRAM or set `BAT_CON`. Do not set `BAT_CON` or clear gauge NVRAM to force a gauge test. That write reinitializes the gauge on the next power-on.

@@ -21,10 +21,8 @@ Phase files are chronological. A later section in the same file, and the phase s
 | File | Phase, dates | Contents |
 | --- | --- | --- |
 | [phase-01-weston.md](phase-01-weston.md) | 1, 2026-09-22 | Why Zlyme ships Buildroot Weston for application-scoped Wayland and leaves WestonPack to PortMaster. Tracer findings on the Flip. |
-| [phase-02-kernel-patch-audit.md](phase-02-kernel-patch-audit.md) | 2, 2026-09-23 | Upstream evidence pins (2A), A–F classification of the 45 inherited Linux patches (2B), and the 2C removals down to 18. |
 | [phase-03-joypad-driver.md](phase-03-joypad-driver.md) | 3, 2026-09-23 to 2026-09-25 | Flip pad hardware and UART protocol, the `miyoo-flip-gamepad` design, calibration, rumble, 3B to 3C3 results, and the 3D cutover. |
 | [phase-04-inputplumber.md](phase-04-inputplumber.md) | 4, 2026-09-14 to 2026-09-28 | The superseded Switch Pro study, InputPlumber packaging, latency, the NextUI handoff, and the application cutover. |
-| [phase-05-kernel-patch-audit.md](phase-05-kernel-patch-audit.md) | 5, 2026-09-28 | Second reduction pass, RK817 gauge patches, `SYS_CAN_SD`, and the 16-patch correction. |
 | [phase-06-deep-suspend.md](phase-06-deep-suspend.md) | 6, 2026-09-28 to 2026-09-29 | RK3568 BL31 deep suspend against the BSP and stock firmware, 6B to 6D results, `vdd_logic` off, and the RK817 `005` disposition. |
 | (none) | 7, 2026-09-29 to 2026-09-30 | Phase 7 DMC work has no research file. Its evidence is `package/drivers/rk3568-dmc/README.md` and [docs/LOGBOOK.md](../LOGBOOK.md). |
 | [phase-08-frontend-source.md](phase-08-frontend-source.md) | 8, 2026-09-30 | NextUI delta and fork, the pinned fetch, minui helper vendoring, read-only ZLYMEBOOT, the `/storage` unmount, and the frontend profile. |
