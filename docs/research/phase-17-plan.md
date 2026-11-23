@@ -4,7 +4,7 @@ Status, as first written on 2026-11-02: proposed and not started. This file does
 
 Current status: 17A is accepted. 17B is closed after the accepted audio move. 17C is closed, 2026-11-02, for instruction preservation and the discovery that was actually traced. That closure does not accept complete Cursor OTA recovery routing. The earlier recovery session did not open `docs/DEVICE_PORTING.md`. The 17E1 OTA preflight did, once, from an agent that could edit and did not. That pass is not universal reliability. 17D is closed, 2026-11-02, for the documented skill and the decision to keep the package rule always applied. Cursor automatic selection remains unverified. 17E is closed, 2026-11-03, with the limitations in the disposition below. OpenCode runtime testing is deferred to the maintainer. 17F reconciliation, 2026-11-03, found no missing Phase 17 contract. Phase 17 is not merged and is not a firmware acceptance. 17G is accepted, 2026-11-04, for the five watch and planning skills and the monitoring record. Reviewed-through stays unknown. Phase 17 is closed and integrated into main within that documentation and tooling scope. It is not a firmware acceptance. Phase 18 remains proposed and has not started.
 
-Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
+Phase 16 is closed. Phase 18 holds the postponed Zlyme 45 feature plan, in [phase-18-plan.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-18-plan.md). `ZLYME_VERSION` stays `zlyme44.4`. The local tools named for this work are Ollama, a Qwen3.8-27B GGUF IQ4_XS model, a 128K context, and OpenCode, alongside Cursor. This plan does not add speed, token, or model benchmarks.
 
 `AGENTS.md` is shortened only after the destination documents and their owners are stable. That is why 17B precedes 17C.
 
@@ -348,7 +348,7 @@ Depends on: 17C and 17D.
 
 Purpose: accept the documentation and agent-tooling result. This phase does not ship firmware.
 
-Check one owner per contract, no missing safety rule, no second copy of a mutable status line, valid links, the documentation tests, research and logbook still present, both tools still pointed at `AGENTS.md`, and both reviewer adapters still constrained as each tool allows. The README and user guide still make sense to a person. [phase-18-plan.md](phase-18-plan.md) still contains the postponed feature work. The diff has no runtime or packaging change.
+Check one owner per contract, no missing safety rule, no second copy of a mutable status line, valid links, the documentation tests, research and logbook still present, both tools still pointed at `AGENTS.md`, and both reviewer adapters still constrained as each tool allows. The README and user guide still make sense to a person. [phase-18-plan.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-18-plan.md) still contains the postponed feature work. The diff has no runtime or packaging change.
 
 Phase 17 closes on that documentation and tooling acceptance. It does not need an OTA or a Flip run only because pages moved. It does not publish a release.
 

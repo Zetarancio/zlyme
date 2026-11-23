@@ -10,7 +10,7 @@ Earlier scoped acceptances remain evidence: volume, mute, Wi-Fi service return, 
 
 Limitations: the exclusions named in the snapshot stay exclusions. Publication of `zlyme44.4` is the separate release operation recorded with Phase 15.
 
-Records: [architecture proposal](../research/phase-14-portmaster-architecture-proposal.md), [capability inventory](../research/phase-14-portmaster-capability.md), [acceptance matrix](../research/phase-14-portmaster-matrix.md), [ROCKNIX compatibility coverage](../research/phase-14-rocknix-compat-coverage.md), [Art Book research](../research/phase-14-nextui-theme-manager.md), and [docs/LOGBOOK.md](../LOGBOOK.md) entries dated 2026-10-19 through 2026-10-26. Each 14A–14P heading remains in the snapshot.
+Records: [architecture proposal](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-14-portmaster-architecture-proposal.md), [capability inventory](../research/phase-14-portmaster-capability.md), [acceptance matrix](../research/phase-14-portmaster-matrix.md), [ROCKNIX compatibility coverage](../research/phase-14-rocknix-compat-coverage.md), [Art Book research](../research/phase-14-nextui-theme-manager.md), and [docs/LOGBOOK.md](../LOGBOOK.md) entries dated 2026-10-19 through 2026-10-26. Each 14A–14P heading remains in the snapshot.
 
 ## Headings in the 2026-11-17 snapshot
 

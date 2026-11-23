@@ -10,7 +10,7 @@ installed image is source `da7eb2128294`, squashfs
 `f08c3fa8795565e4195f307ca194b7c16fb8429a1c3b0bde0b960236dc1b1fd1`,
 GPU `libmali`. The format=4 validator archive is uninstalled and is
 not an acceptance tool. The architecture review is
-[phase-14-portmaster-architecture-proposal.md](phase-14-portmaster-architecture-proposal.md).
+[phase-14-portmaster-architecture-proposal.md](https://github.com/Zetarancio/zlyme/blob/67a8245796b8c6ae80f70bcbf06f2febd88ab1ea/docs/research/phase-14-portmaster-architecture-proposal.md).
 It is not approved and it is not current architecture. Sentences
 below that still say the final candidate is uninstalled describe the
 state before that install. They are left in place.
