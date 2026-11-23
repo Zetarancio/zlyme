@@ -93,14 +93,24 @@ REPO_PREFIXES = (
     "configs/",
 )
 
-# phase-17-plan records which filename the checker omitted when that
-# plan was written. The sentence stays. Every other backtick in that
-# file still has to name a file that exists.
-HISTORICAL_PATH_MENTIONS = {
-    "docs/research/phase-17-plan.md": {
-        "docs/research/phase-18-plan.md",
-    },
-}
+# One sentence in the Phase 17 plan records which filename this checker
+# omitted when that plan was written. Only that exact line may name the
+# retired file. A later occurrence, including one in the same file, is
+# still a missing path.
+HISTORICAL_OMITTED_DOC = "docs/research/phase-17-plan.md"
+HISTORICAL_OMITTED_PATH = "docs/research/phase-18-plan.md"
+HISTORICAL_OMITTED_LINE = (
+    "`scripts/tests/test_doc_links.py` checks an explicit list. That list "
+    "includes `docs/ROADMAP.md`, `docs/README.md`, and "
+    "`docs/research/README.md`. When this plan was written, it did not "
+    "include `docs/research/phase-17-plan.md` or "
+    "`docs/research/phase-18-plan.md`. 17B1 added those two files, the "
+    "17A inventory, and the 17B decision record. Most other research "
+    "files are still outside the list. Inside the listed files it checks "
+    "Markdown links and heading anchors. Backtick paths are checked only "
+    "outside the roadmap, the logbook, and the Phase 10 audit. A new "
+    "subdocument is invisible to this test until the list names it."
+)
 
 
 def exists(path):
@@ -154,7 +164,11 @@ def main():
                 if any(ch in token for ch in "*$?<>|"):
                     continue
                 path = token.split()[0].rstrip(".,:;")
-                if path in HISTORICAL_PATH_MENTIONS.get(rel, ()):
+                if (
+                    rel == HISTORICAL_OMITTED_DOC
+                    and line == HISTORICAL_OMITTED_LINE
+                    and path == HISTORICAL_OMITTED_PATH
+                ):
                     continue
                 if not exists(path):
                     bad.append("%s:%s `%s`" % (rel, lineno, token))
