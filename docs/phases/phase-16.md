@@ -8,7 +8,7 @@ Accepted behavior: local OTA `zlyme-my355-20261031-4d1f74efea54.tar`, source `4d
 
 Limitations: two `rc.late` copies still run with logs off. The other 16B launchers were not each run. A failed `/storage` unmount still continues into the forced shutdown. Status 125 recovery is deferred. A direct `reboot` without `-f` was not run on the Flip. The prelaunch window is unverified. Root replacement stays non-atomic under [ADR 0006](../decisions/0006-root-image-lifecycle.md). An unmounted `fsck.exfat -n` reported the volume clean and did not repair it. The dirty-bit origin is unknown. All 63 stock launchers are covered by source and host tests. That is not a Flip run of each one. Ruffle was not launched. None of the deferred items is a fix.
 
-Records: [docs/LOGBOOK.md](../LOGBOOK.md), [docs/MAINTENANCE.md](../MAINTENANCE.md), [docs/research/phase-16-logging-inventory.md](../research/phase-16-logging-inventory.md), [ADR 0012](../decisions/0012-diagnostic-logging.md), [docs/AUDITING.md](../AUDITING.md), and [ADR 0006](../decisions/0006-root-image-lifecycle.md). Each 16A–16D heading remains in the snapshot.
+Records: [docs/LOGBOOK.md](../LOGBOOK.md), [docs/MAINTENANCE.md](../MAINTENANCE.md), [docs/research/phase-16-logging-inventory.md](https://github.com/Zetarancio/zlyme/blob/391508499a077efeb5e24ca966abab09cd635f5f/docs/research/phase-16-logging-inventory.md), [ADR 0012](../decisions/0012-diagnostic-logging.md), [docs/AUDITING.md](../AUDITING.md), and [ADR 0006](../decisions/0006-root-image-lifecycle.md). Each 16A–16D heading remains in the snapshot.
 
 ## Headings in the 2026-11-17 snapshot
 

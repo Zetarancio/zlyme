@@ -8,4 +8,4 @@ Accepted behavior: image `zlyme-my355-20260927-0b139e9099ee.tar` from `0b139e909
 
 Limitations: external controllers were not part of that acceptance.
 
-Records: [docs/research/phase-04-inputplumber.md](../research/phase-04-inputplumber.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-4-inputplumber).
+Records: [docs/research/phase-04-inputplumber.md](https://github.com/Zetarancio/zlyme/blob/391508499a077efeb5e24ca966abab09cd635f5f/docs/research/phase-04-inputplumber.md). The phase heading is in the [2026-11-17 roadmap snapshot](../archive/roadmap-2026-11-17.md#phase-4-inputplumber).
