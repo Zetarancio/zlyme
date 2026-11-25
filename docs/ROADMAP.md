@@ -4,13 +4,13 @@ This is the sequencing map. It is not the architecture. A phase outcome is [docs
 
 ## Current status
 
-Phase 19 is active and does not change firmware. 19B6 retired the Phase 18 plan, the DSperate preflight, the Phase 10 outline, the Phase 14 PortMaster proposal, the two Phase 14 audio records, and the Phase 15C investigation. 19B7 retires the Phase 1 Weston note, the Phase 4 InputPlumber record, the Phase 8 frontend record, and the Phase 16 logging inventory. The Phase 14 stability note stays. 19B stays open. The plan is [Phase 19](phases/phase-19.md).
+Phase 19 is active and does not change firmware. 19B1 through 19B7 are merged; each batch's files and check record stay in its pull request, #6 through #12. 19B8 keeps the Theme Manager note, the PortMaster capability inventory, the Phase 14 device log, and the button-layout audit. The Phase 14 stability note stays. 19B stays open. The plan is [Phase 19](phases/phase-19.md).
 
 Phase 18 is closed, 2026-11-21, after `zlyme44.5` was published and this documentation was reconciled. The original plan named `zlyme45`, and that name was not used. 18A and 18B are closed. 18C remains closed as an investigation. The 2026-11-18 launches are later evidence: the five GBA ZIPs started, an ASCII Windows program started, and a non-ASCII Windows filename did not. 18D is closed for the accepted DSperate scope. 18E is accepted by the maintainer. 18F3 is hardware-accepted. 18F4 is in the published source, is source and host-tested, and is not hardware-accepted. The published image has not been installed. The outcome is [Phase 18](phases/phase-18.md).
 
 ## Next action
 
-19B continues. This batch does not close it.
+19B8 kept those four records. Closing 19B is a maintainer decision. 19C has not started.
 
 ## Blockers and deferred work
 
@@ -52,7 +52,7 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 | 16 | Closed, 2026-11-02. Local logging audit. Not a public release. | [Phase 16](phases/phase-16.md) |
 | 17 | Closed, 2026-11-04. Documentation and local agents. Not firmware. | [Phase 17](phases/phase-17.md) |
 | 18 | Closed, 2026-11-21. Published `zlyme44.5`. | [Phase 18](phases/phase-18.md) |
-| 19 | Active. 19B7 is this batch. Not firmware. | [Phase 19](phases/phase-19.md) |
+| 19 | Active. 19B8 keeps the remaining evidence. Not firmware. | [Phase 19](phases/phase-19.md) |
 
 ## Historical records
 
