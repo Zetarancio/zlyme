@@ -74,7 +74,7 @@ Allowed: retirements that pass the seven checks, in batches. Each batch lists fi
 
 Excluded: the protected documents in `docs/WRITING.md`; ADRs; licensing, provenance, and recovery evidence; vendored package documentation; a new archive or history file; weakening a test to let a file go. The logbook and its checksum manifest are excluded from 19B1. Their later treatment is a separate high-risk decision.
 
-19B1 through 19B7 are merged. Each batch's files, blobs, and seven-check record stay in its pull request, #6 through #12. 19B8 keeps the Theme Manager note, the PortMaster capability inventory, the Phase 14 device log, and the button-layout audit. The Phase 14 stability note stays. 19B stays open. 17C waits for 19C. `docs/research/phase-12d-usb-mtp.md`, deep-suspend research, the Linux 7.2.10 records, and the Phase 17 kernel-upgrade preflight stay.
+Phase 19B is closed. Its files, blobs, and seven-check records stay in pull requests #6 through #13. The Theme Manager note, the PortMaster capability inventory, the Phase 14 device log, the button-layout audit, and the Phase 14 stability note stay. Recovery stays `archive/pre-phase-19-docs` and the verified Phase 19 backups. 17C waits for 19C. `docs/research/phase-12d-usb-mtp.md`, deep-suspend research, the Linux 7.2.10 records, and the Phase 17 kernel-upgrade preflight stay.
 
 Preconditions: original bytes in a recorded commit and a verified backup; record the batch baseline; compare blobs with the pre-Phase-19 tree on `archive/pre-phase-19-docs`; extend the backup before retiring newer bytes it lacks; no extra full bundle when recovery is already shown; never replace the original backup.
 
@@ -87,6 +87,8 @@ Evidence to keep: each batch's check record in its pull request.
 Firmware build: no. Hardware: no. Maintainer approval: yes, per batch, and per MANUAL REVIEW file.
 
 ## 19C. Root agent context
+
+19C1 is the instruction-routing preflight. It records the clause proposal and what Cursor and OpenCode actually load. It does not edit `AGENTS.md` or the always-applied rules. A reduction is 19C2, and only after that proposal is accepted.
 
 Objective: less always-applied context with the same safety.
 
