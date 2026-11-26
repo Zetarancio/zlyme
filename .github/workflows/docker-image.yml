@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Build
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -32,7 +32,7 @@ jobs:
           docker build --label "zlyme.dockerfile=${id}" -t zlyme-build - < Dockerfile
           have=$(docker image inspect -f '{{ index .Config.Labels "zlyme.dockerfile" }}' zlyme-build)
           test "$have" = "$id"
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         if: github.ref == 'refs/heads/main'
         with:
           registry: ghcr.io
