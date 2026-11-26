@@ -46,6 +46,7 @@ jobs:
           sh scripts/tests/test_release_tag_target.sh
           sh scripts/tests/test_armhf_defconfig.sh
           sh scripts/tests/test_dsperate_launch.sh
+          python3 scripts/tests/test_package_inventory.py
 
   artbook-changes:
     runs-on: ubuntu-24.04
