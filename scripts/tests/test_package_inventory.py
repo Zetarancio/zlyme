@@ -85,6 +85,38 @@ def _fixture():
         "$(eval $(generic-package))\n",
     )
     _write(
+        root / "package/licensed/licensed.mk",
+        "LICENSED_VERSION = 1.4\n"
+        "LICENSED_SOURCE = licensed-1.4.tar.gz\n"
+        "LICENSED_LICENSE = MIT\n"
+        "LICENSED_LICENSE_FILES = LICENSE COPYING\n"
+        "$(eval $(generic-package))\n",
+    )
+    _write(
+        root / "package/licensed/licensed.hash",
+        "sha256  1111111111111111111111111111111111111111111111111111111111111111  licensed-1.4.tar.gz\n"
+        "sha256  2222222222222222222222222222222222222222222222222222222222222222  LICENSE\n"
+        "sha256  3333333333333333333333333333333333333333333333333333333333333333  COPYING\n"
+        "sha256  4444444444444444444444444444444444444444444444444444444444444444  README\n"
+        "this is not a hash line\n",
+    )
+    _write(
+        root / "package/brokenhash/brokenhash.mk",
+        "BROKENHASH_VERSION = 1\n"
+        "BROKENHASH_LICENSE = MIT\n"
+        "$(eval $(generic-package))\n",
+    )
+    _write(
+        root / "package/brokenhash/brokenhash.hash",
+        "sha256  abc\n",
+    )
+    _write(
+        root / "package/deferred/deferred.mk",
+        "DEFERRED_VERSION := 9.9.9\n"
+        "DEFERRED_LICENSE = MIT\n"
+        "$(eval $(generic-package))\n",
+    )
+    _write(
         root / "package/unknownlic/unknownlic.mk",
         "UNKNOWNLIC_VERSION = 1\n"
         "UNKNOWNLIC_SITE_METHOD = local\n"
@@ -158,8 +190,10 @@ class FixtureTests(unittest.TestCase):
         item = self.by_name["releasepkg"]
         self.assertEqual(item["version"], {"kind": "release", "value": "1.2.3"})
         self.assertEqual(item["hash_status"], "present")
-        self.assertEqual(item["archive_hashes"][0]["value"], "aaaa")
-        self.assertEqual(item["archive_hashes"][0]["filename"], "releasepkg-1.2.3.tar.gz")
+        self.assertEqual(item["hashes"][0]["value"], "aaaa")
+        self.assertEqual(item["hashes"][0]["filename"], "releasepkg-1.2.3.tar.gz")
+        self.assertEqual(item["hashes"][0]["role"], "source-archive")
+        self.assertEqual(item["unparsed_hash_lines"], [])
         self.assertEqual(item["license"]["status"], "declared")
         self.assertEqual(item["direct_defconfig_selection"], ["product"])
         self.assertEqual(item["shipped"], "not-established")
@@ -172,26 +206,44 @@ class FixtureTests(unittest.TestCase):
             "0123456789abcdef0123456789abcdef01234567",
         )
         self.assertEqual(item["hash_status"], "absent")
-        self.assertEqual(item["archive_hashes"], [])
+        self.assertEqual(item["hashes"], [])
         self.assertEqual(item["version_authority"], "pinned-commit")
 
     def test_archive_hash_stays_distinct_from_the_commit(self):
         item = self.by_name["archivepkg"]
         self.assertEqual(item["version"]["kind"], "git-commit")
         self.assertEqual(item["source"]["status"], "unresolved")
-        self.assertNotEqual(
-            item["archive_hashes"][0]["value"], item["version"]["value"]
-        )
-        self.assertEqual(len(item["archive_hashes"][0]["value"]), 64)
+        self.assertNotEqual(item["hashes"][0]["value"], item["version"]["value"])
+        self.assertEqual(item["hashes"][0]["role"], "source-archive")
+        self.assertEqual(len(item["hashes"][0]["value"]), 64)
 
     def test_local_patch_is_recorded(self):
         item = self.by_name["patched"]
         self.assertEqual(item["patches"], ["0001-local.patch"])
 
+    def test_hash_roles_and_malformed_lines(self):
+        item = self.by_name["licensed"]
+        roles = {row["filename"]: row["role"] for row in item["hashes"]}
+        self.assertEqual(roles["licensed-1.4.tar.gz"], "source-archive")
+        self.assertEqual(roles["LICENSE"], "license-file")
+        self.assertEqual(roles["COPYING"], "license-file")
+        self.assertEqual(roles["README"], "unclassified")
+        self.assertEqual(item["hash_status"], "present")
+        self.assertEqual(item["unparsed_hash_lines"], [{"line": 5, "text": "this is not a hash line"}])
+        self.assertTrue(item["hashes"][0]["evidence"].endswith("licensed.hash"))
+        broken = self.by_name["brokenhash"]
+        self.assertEqual(broken["hash_status"], "unparsed")
+        self.assertEqual(broken["hashes"], [])
+        self.assertEqual(broken["unparsed_hash_lines"][0]["line"], 1)
+
+    def test_alternate_assignment_is_not_invented(self):
+        item = self.by_name["deferred"]
+        self.assertEqual(item["version"]["kind"], "absent")
+
     def test_missing_hash_stays_absent(self):
         item = self.by_name["nohash"]
         self.assertEqual(item["hash_status"], "absent")
-        self.assertEqual(item["archive_hashes"], [])
+        self.assertEqual(item["hashes"], [])
 
     def test_unknown_license_is_not_replaced(self):
         item = self.by_name["unknownlic"]
@@ -270,7 +322,11 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(item["version"]["kind"], "git-commit")
         self.assertEqual(item["site"]["value"], "https://github.com/apommel/FlipBase/archive")
         digest = "49d103c5f6ff8c56d234f51553bad00c5b204ed74f3044e36f56b3c5b9b0871e"
-        self.assertIn(digest, [row["value"] for row in item["archive_hashes"]])
+        self.assertIn(digest, [row["value"] for row in item["hashes"]])
+        self.assertEqual(
+            [row["role"] for row in item["hashes"] if row["value"] == digest],
+            ["source-archive"],
+        )
         self.assertNotEqual(digest, item["version"]["value"])
         self.assertEqual(item["license"]["declared"], "MIT")
         self.assertEqual(item["license"]["status"], "declared")
@@ -317,13 +373,43 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(
             self.by_name["aethersx2"]["version_authority"], "floating-branch"
         )
+        theora = self.by_name["portmaster-theora-compat"]
+        theora_roles = {row["filename"]: row["role"] for row in theora["hashes"]}
+        self.assertEqual(theora_roles["libtheora-1.1.1.tar.xz"], "source-archive")
+        self.assertEqual(theora_roles["COPYING"], "license-file")
+        self.assertEqual(theora_roles["LICENSE"], "license-file")
+        self.assertNotEqual(
+            theora["version"]["value"],
+            theora_roles and next(
+                row["value"]
+                for row in theora["hashes"]
+                if row["role"] == "source-archive"
+            ),
+        )
         self.assertIn(
             "474bf47f4f03d40f0c664578c9eee90f29eaf3d25f5d86ffe4e50c603a44eaa6",
             [
                 row["value"]
-                for row in box["archive_hashes"]
-                if row["filename"].endswith(".tar.gz")
+                for row in box["hashes"]
+                if row["role"] == "source-archive"
             ],
+        )
+        self.assertEqual(
+            [
+                row["role"]
+                for row in box["hashes"]
+                if row["filename"] == "LICENSE"
+            ],
+            ["license-file"],
+        )
+        plumber = self.by_name["inputplumber"]
+        self.assertEqual(
+            [
+                row["role"]
+                for row in plumber["hashes"]
+                if row["filename"].endswith("-git4-cargo6.tar.gz")
+            ],
+            ["source-archive"],
         )
 
     def test_upstream_buildroot_package_is_not_invented(self):

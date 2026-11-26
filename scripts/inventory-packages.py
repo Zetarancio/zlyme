@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-SCHEMA = "zlyme-package-inventory/1"
+SCHEMA = "zlyme-package-inventory/2"
 DECONFIGS = (
     ("product", "configs/zlyme_my355_defconfig"),
     ("minimal", "configs/zlyme_my355_minimal_defconfig"),
@@ -44,6 +44,11 @@ LIMITATIONS = (
     "A forty-character hex version is a commit pin, separate from any archive hash.",
     "A literal version does not pin a site that contains /raw/main, /raw/master, or /refs/heads/.",
     "An absent .hash file is recorded as absent. It is not rewritten into a hash.",
+    "A hash is a source archive only when its filename equals the recipe source name.",
+    "That name is a literal SOURCE, SOURCE after substituting a literal $(<package>_VERSION), Buildroot's default <name>-<version>.tar.gz when SOURCE is unset and the site method is wget or absent, <name>-<version>-git4.tar.gz when SITE_METHOD is git, or <name>-<version>-git4-cargo6.tar.gz when that git package is also a cargo package.",
+    "A hash is a license file only when its filename equals a literal *_LICENSE_FILES entry. Extensions are not used as proof.",
+    "Any other parsed hash stays unclassified. A non-comment line that is not a hash is reported and does not count as an empty hash file.",
+    "Column-0 '=' assignments are read. This tree does not use ':=', '?=', or '+=' for version, site, source, or license, so those operators are not interpreted.",
     "License text is copied from the recipe. An unspecified LicenseRef stays unknown.",
 )
 
@@ -136,26 +141,77 @@ def _license(declared, files):
     return {"declared": declared, "files": names, "status": status}
 
 
-def _hashes(path):
+def _source_filename(name, prefix, version, source, site_method, cargo):
+    """Return the download filename when the recipe establishes it."""
+    literal = None
+    if version["kind"] not in ("absent", "unresolved"):
+        literal = version["value"]
+    if source is None:
+        if literal is None or site_method == "local":
+            return None
+        if site_method in (None, "wget"):
+            return "%s-%s.tar.gz" % (name, literal)
+        if site_method == "git":
+            suffix = "-git4-cargo6.tar.gz" if cargo else "-git4.tar.gz"
+            return "%s-%s%s" % (name, literal, suffix)
+        return None
+    token = "$(%s_VERSION)" % prefix
+    if "$(" not in source and "${" not in source:
+        return source
+    if literal is None or token not in source:
+        return None
+    remainder = source.replace(token, "")
+    if "$(" in remainder or "${" in remainder:
+        return None
+    return source.replace(token, literal)
+
+
+def _hash_role(filename, source_name, license_files):
+    literal_files = [
+        item for item in license_files if "$(" not in item and "${" not in item
+    ]
+    is_license = filename in literal_files
+    is_source = source_name is not None and filename == source_name
+    if is_license and is_source:
+        return "unclassified"
+    if is_license:
+        return "license-file"
+    if is_source:
+        return "source-archive"
+    return "unclassified"
+
+
+def _hashes(path, evidence, source_name, license_files):
     if path is None or not path.is_file():
-        return [], "absent"
+        return [], "absent", []
     found = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    unparsed = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
         match = HASH_LINE.match(stripped)
         if not match:
+            unparsed.append({"line": number, "text": stripped})
             continue
+        filename = match.group(3)
         found.append(
             {
                 "algorithm": match.group(1),
-                "filename": match.group(3),
+                "evidence": evidence,
+                "filename": filename,
+                "role": _hash_role(filename, source_name, license_files),
                 "value": match.group(2),
             }
         )
     found.sort(key=lambda item: (item["filename"], item["algorithm"], item["value"]))
-    return found, ("present" if found else "absent")
+    if found:
+        status = "present"
+    elif unparsed:
+        status = "unparsed"
+    else:
+        status = "empty"
+    return found, status, unparsed
 
 
 def _symbols(package_dir):
@@ -240,7 +296,27 @@ def _packages(root):
             if path.is_file() and path.suffix == ".patch"
         )
         hash_path = makefile.parent / (makefile.stem + ".hash")
-        hashes, hash_status = _hashes(hash_path if hash_path.is_file() else None)
+        license = _license(
+            assigned.get(prefix + "_LICENSE"),
+            assigned.get(prefix + "_LICENSE_FILES"),
+        )
+        hash_evidence = None
+        if hash_path.is_file():
+            hash_evidence = hash_path.relative_to(root).as_posix()
+        hashes, hash_status, unparsed_hashes = _hashes(
+            hash_path if hash_path.is_file() else None,
+            hash_evidence,
+            _source_filename(
+                makefile.parent.name,
+                prefix,
+                version,
+                source,
+                site_method,
+                "$(eval $(cargo-package))" in text
+                or "$(eval $(host-cargo-package))" in text,
+            ),
+            license["files"],
+        )
         evidence = [makefile.relative_to(root).as_posix()]
         for extra in ("Config.in", "Config.in.host", makefile.stem + ".hash"):
             extra_path = makefile.parent / extra
@@ -255,17 +331,14 @@ def _packages(root):
             category = makefile.parent.name
         records.append(
             {
-                "archive_hashes": hashes,
                 "category": category,
                 "config_symbols": symbols,
                 "dependency_closure": "not-computed",
                 "direct_defconfig_selection": [],
                 "evidence": evidence,
                 "hash_status": hash_status,
-                "license": _license(
-                    assigned.get(prefix + "_LICENSE"),
-                    assigned.get(prefix + "_LICENSE_FILES"),
-                ),
+                "hashes": hashes,
+                "license": license,
                 "name": makefile.parent.name,
                 "patches": patches,
                 "provides": _provides(text),
@@ -274,6 +347,7 @@ def _packages(root):
                 "site_method": site_method,
                 "site_pin": _site_pin(site),
                 "source": _status_value(source),
+                "unparsed_hash_lines": unparsed_hashes,
                 "version": version,
                 "version_authority": _authority(
                     version["kind"], site_method, _site_pin(site)
