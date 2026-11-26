@@ -67,13 +67,15 @@ jobs:
           sudo apt-get install -y zstd ccache
           docker version
 
+      # Dockerfile and the applied SDL2 patches change exported bytes.
+      # The same key is used to save the export.
       - name: Restore ARMHF runtime export
         id: armhf-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**') }}
 
       - name: Use cached ARMHF runtime
         id: cached
@@ -136,7 +138,7 @@ jobs:
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**') }}
 
       - name: Pack ARMHF runtime tar
         run: |
