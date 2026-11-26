@@ -59,3 +59,4 @@ The latest installed image is `zlyme-my355-20261116-9d0fc4e3f12d.tar`, SHA-256 `
 - [Roadmap snapshot, 2026-11-17](archive/roadmap-2026-11-17.md), including [Where we are](archive/roadmap-2026-11-17.md#where-we-are) and [Closed phases](archive/roadmap-2026-11-17.md#closed-phases)
 - [Research index](research/README.md)
 - [Logbook](LOGBOOK.md)
+- [Phase 19D3 missing target](no-such-phase-19d3-target.md)
