@@ -35,7 +35,7 @@ The gory details, register by register, live in the [Miyoo Flip hardware wiki](h
 
 ### 1. Let the Flip boot from SD
 
-Out of the box the Flip boots stock firmware from internal storage and ignores the card. A fresh `zlyme.img` carries `miyoo355_fw.img` on the boot partition. That file is [apommel](https://github.com/apommel)'s installer from [baseos-my355](https://github.com/apommel/baseos-my355), built from a pinned commit. It is not a replacement preloader.
+Out of the box the Flip boots stock firmware from internal storage and ignores the card. A fresh `zlyme.img` carries `miyoo355_fw.img` on the boot partition. That file is [apommel](https://github.com/apommel)'s installer from [FlipBase](https://github.com/apommel/FlipBase), built from a pinned commit. It is not a replacement preloader.
 
 1. Write `zlyme.img` to the card (the next section).
 2. Put the card in the **right** slot, next to power. Stock looks for `miyoo355_fw.img` on a card it can see. The installer reboots into the card when that card is in the right-hand slot.
@@ -168,7 +168,7 @@ The image and the update tar land in `output/images/`. `./build.sh --help` lists
 ## Thanks
 
 - [Sundownersport](https://github.com/Sundownersport) and the community behind [SpruceOS](https://spruceui.github.io/) for their continuing work and support, for the original Zlyme Installer, and for hosting Zlyme's corner of the SpruceOS Discord.
-- The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [baseos-my355](https://github.com/apommel/baseos-my355).
+- The frontend is based on [NextUI](https://github.com/LoveRetro/NextUI), a fork of [MinUI](https://github.com/shauninman/MinUI) by [Shaun Inman](https://github.com/shauninman). SD multiboot (repaired preloader) is derived from [apommel](https://github.com/apommel)’s work in [FlipBase](https://github.com/apommel/FlipBase).
 - The joystick calibration workflow is based in part on Joe's Calibrage by Kevin Vranken, MIT.
 - A huge debt to the other bigs in the biz [Knulli](https://github.com/knulli-cfw/knulli-linux), [Rocknix](https://github.com/ROCKNIX/distribution) and [Batocera](https://github.com/batocera-linux/).
 - [Anthony Caccese](https://github.com/anthonycaccese) and the contributors to [Art Book Next](https://github.com/anthonycaccese/art-book-next-es-de) for the artwork and visual inspiration used in Zlyme's system and Tools backgrounds.

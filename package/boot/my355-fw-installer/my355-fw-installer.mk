@@ -2,7 +2,8 @@
 #
 # my355-fw-installer
 #
-# Pinned apommel/baseos-my355 source. mkfwimg.py packs the stock-side
+# Pinned apommel/FlipBase source. The old name apommel/baseos-my355
+# redirects there. mkfwimg.py packs the stock-side
 # multiboot installer. pack-fwimg.py packs the recovery and restore
 # helpers from that same container format. All three are image artifacts,
 # not preloaders and not rootfs files. Only miyoo355_fw.img is placed
@@ -11,7 +12,7 @@
 ################################################################################
 
 MY355_FW_INSTALLER_VERSION = e09d37bb0f03c34e564d61bd02164f332d8515a8
-MY355_FW_INSTALLER_SITE = https://github.com/apommel/baseos-my355/archive
+MY355_FW_INSTALLER_SITE = https://github.com/apommel/FlipBase/archive
 MY355_FW_INSTALLER_SOURCE = $(MY355_FW_INSTALLER_VERSION).tar.gz
 MY355_FW_INSTALLER_LICENSE = MIT
 MY355_FW_INSTALLER_LICENSE_FILES = LICENSE

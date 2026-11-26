@@ -43,7 +43,15 @@ fi
 # --- installer bytes, when the pinned tree is available ---
 tree=${ZLYME_APOMMEL_TREE:-}
 if [ -z "$tree" ] && [ -d /tmp/apommel-tree ]; then
-	tree=$(echo /tmp/apommel-tree/baseos-my355-e09d37bb0f03c34e564d61bd02164f332d8515a8)
+	for candidate in \
+		/tmp/apommel-tree/FlipBase-e09d37bb0f03c34e564d61bd02164f332d8515a8 \
+		/tmp/apommel-tree/baseos-my355-e09d37bb0f03c34e564d61bd02164f332d8515a8
+	do
+		if [ -f "$candidate/tools/preloader-installer/mkfwimg.py" ]; then
+			tree=$candidate
+			break
+		fi
+	done
 fi
 if [ -n "$tree" ] && [ -f "$tree/tools/preloader-installer/mkfwimg.py" ]; then
 	a=$(mktemp)
