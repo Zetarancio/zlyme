@@ -12,9 +12,11 @@ installed root filesystem. install_target true means the recipe asks
 Buildroot to copy files into the target directory. It does not prove
 that a file remains after image assembly. A host package is a build
 tool. Product, minimal, and ARMHF graphs are recorded separately.
-Configuration compiles Buildroot's Kconfig conf program into the
-temporary output directory. It does not compile packages or a
-toolchain, and it does not download package sources.
+Configuration compiles Buildroot's Kconfig conf program into a
+temporary directory created by tempfile.mkdtemp. The tool deletes
+only that directory, and only after checking it is still inside the
+system temporary area. It does not compile packages or a toolchain,
+and it does not download package sources.
 
 The ARMHF runtime's installed version is the hash of its compiled
 manifest. A show-info value of "missing" is not that version.
@@ -36,6 +38,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 SCHEMA = "zlyme-configured-package-inventory/1"
@@ -345,6 +348,14 @@ def normalize_package(
 def _recognized_manifest(path):
     import hashlib
 
+    if path.is_symlink():
+        return {
+            "buildroot": None,
+            "defconfig_sha256": None,
+            "digest": None,
+            "path": str(path),
+            "status": "symlink",
+        }
     if not path.is_file():
         return {
             "buildroot": None,
@@ -510,36 +521,39 @@ def _pinned_version(root):
     raise IncompatibleBuildroot("build.sh does not pin BUILDROOT_VERSION")
 
 
-def _refuse_work(work, root):
-    work = Path(work).resolve()
-    root = Path(root).resolve()
-    if work == root or root in work.parents:
-        raise SystemExit("work directory must be outside the repository")
-    forbidden = (
-        root / "output",
-        root / "output-armhf",
-        root / ".ccache",
-        root / ".ccache-armhf",
-    )
-    for path in forbidden:
-        if work == path or path in work.parents:
-            raise SystemExit("work directory overlaps an existing build cache")
-    return work
+def _owned_temp_dir():
+    """Create the only directory this tool is allowed to delete."""
+    return Path(tempfile.mkdtemp(prefix="zlyme-configured-"))
 
 
-def collect_graphs(root, buildroot, work):
-    work = _refuse_work(work, root)
-    if work.exists():
-        raise SystemExit("work directory already exists: %s" % work)
-    work.mkdir(parents=True)
+def _remove_owned_temp(path):
+    """Delete a directory this process created under the system temp root.
+
+    The path is normalized before the prefix check. A symlink is refused
+    instead of followed. The temp root itself is refused.
+    """
+    root = os.path.realpath(tempfile.gettempdir())
+    supplied = os.fspath(path)
+    if os.path.islink(supplied):
+        raise SystemExit("refusing to delete a symbolic link")
+    candidate = os.path.realpath(supplied)
+    if candidate == root or not candidate.startswith(root + os.sep):
+        raise SystemExit("refusing to delete a directory outside the temporary area")
+    if os.path.islink(candidate) or not os.path.isdir(candidate):
+        raise SystemExit("refusing to delete a path that is not a directory")
+    shutil.rmtree(candidate)
+
+
+def collect_graphs(root, buildroot):
+    work = _owned_temp_dir()
     env = os.environ.copy()
     env["DL_DIR"] = str(work / "dl")
     env["CCACHE_DIR"] = str(work / "ccache")
     env["CCACHE_DISABLE"] = "1"
-    (work / "dl").mkdir()
-    (work / "ccache").mkdir()
     graphs = {}
     try:
+        (work / "dl").mkdir()
+        (work / "ccache").mkdir()
         for configuration, defconfig in CONFIGS:
             output = work / configuration
             common = [
@@ -564,7 +578,7 @@ def collect_graphs(root, buildroot, work):
             )
             graphs[configuration] = parse_show_info(result.stdout)
     finally:
-        shutil.rmtree(work, ignore_errors=True)
+        _remove_owned_temp(work)
     return graphs
 
 
@@ -572,14 +586,13 @@ def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--buildroot", type=Path, default=None)
-    parser.add_argument("--work", type=Path, required=True)
     args = parser.parse_args(argv)
     root = args.root.resolve()
     buildroot = (args.buildroot or (root / "buildroot")).resolve()
     pinned = _pinned_version(root)
     identity = buildroot_identity(buildroot, pinned)
     static_document = load_static(root)
-    graphs = collect_graphs(root, buildroot, args.work)
+    graphs = collect_graphs(root, buildroot)
     document = assemble(graphs, static_document, identity, root)
     for name in sorted(document["graphs"]):
         graph = document["graphs"][name]

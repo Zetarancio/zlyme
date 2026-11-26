@@ -7,6 +7,8 @@ local Buildroot checkout.
 
 import importlib.util
 import json
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -390,11 +392,50 @@ class ConfiguredInventoryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             inv.parse_show_info("make: *** No rule to make target 'show-info'.\n")
 
-    def test_work_directory_cannot_overlap_existing_caches(self):
+    def test_cleanup_cannot_delete_existing_project_data(self):
+        kept = Path(__file__).resolve().parent
         with self.assertRaises(SystemExit):
-            inv._refuse_work(Path("/repo/output/tmp"), Path("/repo"))
+            inv._remove_owned_temp(kept)
+        self.assertTrue(kept.is_dir())
         with self.assertRaises(SystemExit):
-            inv._refuse_work(Path("/repo/.ccache-armhf"), Path("/repo"))
+            inv._remove_owned_temp(Path("/"))
+        parent = Path(tempfile.mkdtemp(prefix="zlyme-cleanup-parent-"))
+        try:
+            real = parent / "real"
+            real.mkdir()
+            link = parent / "link"
+            link.symlink_to(real, target_is_directory=True)
+            with self.assertRaises(SystemExit):
+                inv._remove_owned_temp(link)
+            self.assertTrue(real.is_dir())
+            self.assertTrue(link.is_symlink())
+        finally:
+            shutil.rmtree(parent)
+
+    def test_cleanup_removes_only_its_temporary_directory(self):
+        created = inv._owned_temp_dir()
+        sibling = created.parent
+        (created / "marker").write_text("x", encoding="utf-8")
+        inv._remove_owned_temp(created)
+        self.assertFalse(created.exists())
+        self.assertTrue(sibling.is_dir())
+
+    def test_symlink_manifest_is_not_installed_evidence(self):
+        parent = Path(tempfile.mkdtemp(prefix="zlyme-manifest-"))
+        try:
+            target = parent / "real.manifest"
+            target.write_text(
+                "format=1\ndefconfig=zlyme_my355_armhf_defconfig\n",
+                encoding="utf-8",
+            )
+            link = parent / "zlyme-armhf-runtime.manifest"
+            link.symlink_to(target)
+            record = inv._recognized_manifest(link)
+            self.assertEqual(record["status"], "symlink")
+            self.assertIsNone(record["digest"])
+            self.assertTrue(target.is_file())
+        finally:
+            shutil.rmtree(parent)
 
 
 if __name__ == "__main__":
