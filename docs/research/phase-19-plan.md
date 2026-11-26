@@ -106,7 +106,11 @@ Evidence to keep: the clause map and the before-and-after load results, in the p
 
 Firmware build: no. Hardware: no. Maintainer approval: yes.
 
+19C is closed with limitations. No safe instruction reduction was accepted. 19C1 recorded the clause proposal and what Cursor and OpenCode load. 19C2 rejected conditional loading of the package checklist. 19C3 did not validate a consolidated `AGENTS.md` in a fresh Cursor instruction context, and that work was restored without a commit. No original clause was removed, no rule was routed, and mandatory context was not reduced. Cursor's always-applied files remain 24,783 bytes. OpenCode's observed core instructions remain `AGENTS.md` at 22,009 bytes, and OpenCode does not load the Cursor package rule. Another routing experiment waits for a new loading mechanism or another concrete benefit.
+
 ## 19D. GitHub governance, required checks, and CI security
+
+19D0 is the read-only preflight. It does not change GitHub settings. A ruleset, a required check, tag protection, a workflow permission change, or an Action pin waits for a separate maintainer approval.
 
 Objective: required lightweight pull-request validation; `main` protection that still suits one primary maintainer; protection for release tags and for the archival tags; least-privilege workflow permissions; immutable Action commit pins. Secret scanning and push protection are included when the account offers them.
 
