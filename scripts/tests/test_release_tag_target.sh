@@ -11,8 +11,9 @@ if start < 0:
     sys.exit("product Release step not found")
 end = text.find("\n        env:\n", start)
 block = text[start:end if end > start else None]
-if "softprops/action-gh-release@v3" not in block:
-    sys.exit("product release is not action-gh-release v3")
+pin = "softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3"
+if pin not in block:
+    sys.exit("product release is not the verified action-gh-release v3 commit")
 if "target_commitish: ${{ github.sha }}" not in block:
     sys.exit("product release tag is not pinned to github.sha")
 if "tag_name:" not in block:
