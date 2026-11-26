@@ -128,6 +128,8 @@ Evidence to keep: the before and after setting state.
 
 Firmware build: only if `build.yml` or `build-stage.yml` change, then one authorized `publish_release` false Build. Hardware: no. Maintainer approval: yes.
 
+On 2026-11-26 the maintainer activated ruleset `zlyme-main-pr-validation` (`28153345`). It targets only `refs/heads/main`. Enforcement is active. A pull request is required, required approving reviews are 0, and merge commits remain allowed. The required check is `source` from Validation, GitHub Actions app `15368`. The strict up-to-date policy is off. Non-fast-forward updates and deletion of `main` are restricted, and the bypass list is empty. Release tags, archival tags, Action pins, and workflow permissions are outside this ruleset. Rollback sets that ruleset's enforcement back to disabled. 19D4 is the separate tag-protection decision.
+
 ## 19E. Dependency updates and upstream visibility
 
 Objective: Dependabot for the ecosystems it supports, a Buildroot-native inventory of package versions, licenses, and hashes, and continued use of the existing upstream watchers.
