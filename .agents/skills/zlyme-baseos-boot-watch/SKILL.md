@@ -11,7 +11,7 @@ The default operation is read-only. Do not edit source, compile U-Boot, build an
 
 These identities are different. Read each one.
 
-- `apommel/baseos-my355` branch `main` is the live tip.
+- `apommel/FlipBase` branch `main` is the live tip. `apommel/baseos-my355` redirects to that repository.
 - The BaseOS row in [phase-17-upstream-monitor.md](../../../docs/research/phase-17-upstream-monitor.md) holds the last observed HEAD and the reviewed-through cursor. An observed HEAD is not a review.
 - `MY355_FW_INSTALLER_VERSION` is the stock-installer pin. It is not that cursor.
 - Zlyme's U-Boot pin is `BR2_TARGET_UBOOT_CUSTOM_VERSION_VALUE` in `configs/zlyme_my355_defconfig`, with the hash in `board/my355/uboot/patches/uboot/uboot.hash`.
