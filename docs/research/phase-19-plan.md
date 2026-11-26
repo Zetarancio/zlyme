@@ -128,7 +128,9 @@ Evidence to keep: the before and after setting state.
 
 Firmware build: only if `build.yml` or `build-stage.yml` change, then one authorized `publish_release` false Build. Hardware: no. Maintainer approval: yes.
 
-On 2026-11-26 the maintainer activated ruleset `zlyme-main-pr-validation` (`28153345`). It targets only `refs/heads/main`. Enforcement is active. A pull request is required, required approving reviews are 0, and merge commits remain allowed. The required check is `source` from Validation, GitHub Actions app `15368`. The strict up-to-date policy is off. Non-fast-forward updates and deletion of `main` are restricted, and the bypass list is empty. Release tags, archival tags, Action pins, and workflow permissions are outside this ruleset. Rollback sets that ruleset's enforcement back to disabled. 19D4 is the separate tag-protection decision.
+On 2026-11-26 the maintainer activated ruleset `zlyme-main-pr-validation` (`28153345`). It targets only `refs/heads/main`. Enforcement is active. A pull request is required, required approving reviews are 0, and merge commits remain allowed. The required check is `source` from Validation, GitHub Actions app `15368`. The strict up-to-date policy is off. Non-fast-forward updates and deletion of `main` are restricted, and the bypass list is empty. Release tags, archival tags, Action pins, and workflow permissions are outside this ruleset. Rollback sets that ruleset's enforcement back to disabled.
+
+On 2026-11-26 the maintainer activated ruleset `zlyme-release-and-archive-tags` (`28158867`). It includes `refs/tags/zlyme-*`, `refs/tags/archive/pre-phase-19-docs`, and `refs/tags/archive/phase-18c-investigation`. Enforcement is active. The rules are update and deletion. There is no creation rule and no bypass actor. Creating a GitHub Release while this ruleset is active has not been tested. Release `zlyme-44857224770` reports `immutable: false`. The tag ruleset does not make Release assets immutable. Action SHA pins and workflow permissions remain open. Rollback sets this ruleset's enforcement back to disabled.
 
 ## 19E. Dependency updates and upstream visibility
 
