@@ -41,12 +41,12 @@ concurrency:
   group: zlyme-build
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  packages: read
-
 jobs:
   armhf:
+    # Checkout, Actions cache, and same-repo artifacts. The GHCR pull in
+    # this job is anonymous and falls back to a local image build.
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -154,6 +154,10 @@ jobs:
 
   stage-a:
     needs: armhf
+    # The called workflow can keep these scopes or ask for less. It cannot ask for more.
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/build-stage.yml
     with:
       stage: a
@@ -162,6 +166,9 @@ jobs:
   stage-b:
     needs: stage-a
     if: needs.stage-a.result == 'success' && needs.stage-a.outputs.have_image != 'true'
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/build-stage.yml
     with:
       stage: b
@@ -170,6 +177,9 @@ jobs:
   stage-c:
     needs: stage-b
     if: needs.stage-b.result == 'success' && needs.stage-b.outputs.have_image != 'true'
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/build-stage.yml
     with:
       stage: c
@@ -178,6 +188,8 @@ jobs:
   require-image:
     needs: [stage-a, stage-b, stage-c]
     if: always() && !cancelled()
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -197,6 +209,8 @@ jobs:
       needs.require-image.result == 'success' &&
       inputs.publish_release == true &&
       (needs.stage-a.outputs.have_image == 'true' || needs.stage-b.outputs.have_image == 'true' || needs.stage-c.outputs.have_image == 'true')
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
