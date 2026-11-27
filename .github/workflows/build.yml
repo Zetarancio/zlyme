@@ -113,6 +113,7 @@ jobs:
           fi
 
       - name: Build ARMHF sysroot
+        id: armhf_compile
         if: steps.cached.outputs.hit != 'true'
         env:
           ZLYME_CCACHE: ${{ github.workspace }}/.ccache-armhf
@@ -122,8 +123,14 @@ jobs:
           timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh
           ./scripts/armhf-runtime-export.sh output-armhf-export
 
+      # timeout(1) exit 124 is a failed step, not workflow cancellation.
+      # cancelled() suppresses the implicit success() check, so this save
+      # still runs after that failure. A skipped compile (validated export
+      # or an earlier prerequisite failure) has outcome skipped and is not
+      # saved. continue-on-error does not clear the compile failure.
+      # The runtime export save below keeps the implicit success() check.
       - name: Save ARMHF ccache
-        if: steps.cached.outputs.hit != 'true'
+        if: ${{ !cancelled() && steps.cached.outputs.hit != 'true' && steps.armhf_compile.outcome != 'skipped' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         continue-on-error: true
         with:
