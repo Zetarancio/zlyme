@@ -38,7 +38,7 @@ jobs:
       have_image: ${{ steps.build.outputs.have_image }}
     steps:
       # Default max profile deletes docker-engine. This job needs it.
-      - uses: justinthelaw/maximize-github-runner-space@ab8cbab7abef3d8a2565cc7827c22ffd462202be # v0.12.2
+      - uses: justinthelaw/maximize-github-runner-space@bbaad53e5c844645ef54d9309adf96be46ab159e # v0.12.4
         continue-on-error: true
         with:
           skip-components: docker-engine
