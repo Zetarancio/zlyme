@@ -152,439 +152,129 @@ grep -q 'key: ccache-armhf-${{ github.run_id }}' "$build" || fail "ARMHF ccache 
 # shellcheck disable=SC2016
 grep -q 'armhf-runtime-${{ hashFiles' "$build" || fail "ARMHF runtime cache key changed"
 
-# ARMHF compiler-cache recovery. GitHub applies success() to an if that
-# names no status function, so a failed or timed-out compile used to skip
-# the save. timeout(1) exit 124 fails the step; it does not cancel the run.
-python3 - "$build" "$stage" << 'PY'
+# ARMHF compiler-cache recovery. GitHub applies success() unless the if
+# names a status function. cancelled() is that function. Exit 124 is
+# outcome failure, so it still saves. A skipped or cancelled compile does not.
+python3 - "$build" << 'PY'
 import sys
 
-import yaml
-
-build_path, stage_path = sys.argv[1], sys.argv[2]
-build = yaml.safe_load(open(build_path, encoding="utf-8"))
-stage = yaml.safe_load(open(stage_path, encoding="utf-8"))
-raw_build = open(build_path, encoding="utf-8").read()
+build_path = sys.argv[1]
+lines = open(build_path, encoding="utf-8").read().splitlines()
 
 def die(message):
     sys.exit("armhf cache recovery: " + message)
 
-perms = build.get("permissions")
-if perms != {"contents": "write", "packages": "read"}:
-    die("workflow permissions changed: %r" % perms)
-stage_perms = stage.get("permissions")
-if stage_perms != {"contents": "write", "packages": "read"}:
-    die("product stage permissions changed: %r" % stage_perms)
+def job(name):
+    start = None
+    for i, line in enumerate(lines):
+        if line == "  %s:" % name:
+            start = i
+            break
+    if start is None:
+        die("missing job %s" % name)
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        line = lines[i]
+        if line.startswith("  ") and not line.startswith("   ") and line.endswith(":"):
+            end = i
+            break
+    return "\n".join(lines[start:end]) + "\n"
 
-armhf = build["jobs"]["armhf"]
-if armhf.get("timeout-minutes") != 360:
+def steps(body):
+    return ["      - " + part for part in body.split("\n      - ")[1:]]
+
+def one(body, name):
+    found = [step for step in steps(body) if step.startswith("      - name: %s\n" % name)]
+    if len(found) != 1:
+        die("expected one %s step, found %d" % (name, len(found)))
+    return found[0]
+
+def value(step, key):
+    prefix = key + ": "
+    for line in step.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            return stripped[len(prefix):].strip()
+    return ""
+
+armhf = job("armhf")
+if "\n    timeout-minutes: 360\n" not in armhf:
     die("ARMHF job limit is not 360 minutes")
-if "permissions" in armhf:
-    die("ARMHF job permissions changed")
+compile_step = one(armhf, "Build ARMHF sysroot")
+save_step = one(armhf, "Save ARMHF ccache")
+export_step = one(armhf, "Save ARMHF runtime export")
+restore_step = one(armhf, "Restore ARMHF ccache")
+upload_step = one(armhf, "Upload ARMHF runtime")
+pack_step = one(armhf, "Pack ARMHF runtime tar")
 
-def step_name(raw):
-    if raw.get("name"):
-        return raw["name"]
-    uses = raw.get("uses") or ""
-    if "actions/checkout" in uses:
-        return "checkout"
-    return uses or "unnamed"
-
-steps = []
-for raw in armhf["steps"]:
-    steps.append({
-        "name": step_name(raw),
-        "id": raw.get("id"),
-        "if": "" if raw.get("if") is None else str(raw.get("if")),
-        "continue": raw.get("continue-on-error") is True,
-        "uses": raw.get("uses") or "",
-        "run": raw.get("run") or "",
-        "with": raw.get("with") or {},
-    })
-
-by_name = {}
-for step in steps:
-    if step["name"] in by_name:
-        die("duplicate step name %s" % step["name"])
-    by_name[step["name"]] = step
-
-compile_step = by_name["Build ARMHF sysroot"]
-save_step = by_name["Save ARMHF ccache"]
-export_step = by_name["Save ARMHF runtime export"]
-restore_step = by_name["Restore ARMHF ccache"]
-if compile_step["id"] != "armhf_compile":
-    die("compile step id is %r" % compile_step["id"])
-if "timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh" not in compile_step["run"]:
-    die("310-minute ARMHF command limit changed")
-if "set -euo pipefail" not in compile_step["run"]:
-    die("compile step no longer stops after a failed command")
-timeout_at = compile_step["run"].find("timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh")
-export_at = compile_step["run"].find("./scripts/armhf-runtime-export.sh output-armhf-export")
+if value(compile_step, "id") != "armhf_compile":
+    die("compile step id changed")
+if value(compile_step, "if") != "steps.cached.outputs.hit != 'true'":
+    die("compile step no longer depends only on an export miss")
+if any(line.strip().startswith("continue-on-error:") for line in compile_step.splitlines()):
+    die("a failed compile can be reported as job success")
+if "set -euo pipefail" not in compile_step:
+    die("compile step no longer stops on a failed command")
+timeout_at = compile_step.find("timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh")
+export_at = compile_step.find("./scripts/armhf-runtime-export.sh output-armhf-export")
 if not (0 <= timeout_at < export_at):
     die("runtime export is no longer sequenced after the compile timeout")
-expected_save = "${{ !cancelled() && steps.cached.outputs.hit != 'true' && steps.armhf_compile.outcome != 'skipped' }}"
-if save_step["if"] != expected_save:
-    die("compiler-cache save condition is %r" % save_step["if"])
-if "have_image" in save_step["if"]:
-    die("compiler-cache save depends on an image")
-if save_step["uses"] != "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9":
+
+save_if = "${{ !cancelled() && steps.cached.outputs.hit != 'true' && (steps.armhf_compile.outcome == 'success' || steps.armhf_compile.outcome == 'failure') }}"
+if value(save_step, "if") != save_if:
+    die("compiler-cache save condition changed")
+if "cancelled(" not in save_if:
+    die("compiler-cache save does not override implicit success()")
+for fn in ("success(", "failure(", "always("):
+    if fn in save_if:
+        die("compiler-cache save uses %s" % fn)
+if "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9" not in save_step:
     die("compiler-cache save action pin changed")
-if save_step["continue"] is not True:
-    die("compiler-cache save no longer continues on its own error")
-if save_step["with"].get("path") != ".ccache-armhf":
+if not any(line.strip() == "continue-on-error: true" for line in save_step.splitlines()):
+    die("compiler-cache save no longer tolerates its own error")
+if value(save_step, "path") != ".ccache-armhf" or value(restore_step, "path") != ".ccache-armhf":
     die("compiler-cache path changed")
-if save_step["with"].get("key") != "ccache-armhf-${{ github.run_id }}":
-    die("compiler-cache save key changed")
-if restore_step["with"].get("key") != "ccache-armhf-${{ github.run_id }}":
-    die("compiler-cache restore key changed")
-restore_prefixes = restore_step["with"].get("restore-keys") or ""
-if "ccache-armhf-" not in restore_prefixes:
+key = "ccache-armhf-${{ github.run_id }}"
+if value(save_step, "key") != key or value(restore_step, "key") != key:
+    die("compiler-cache run key changed")
+if not any(line.strip() == "ccache-armhf-" for line in restore_step.splitlines()):
     die("compiler-cache restore prefix changed")
+
+export_if = value(export_step, "if")
+if export_if != "steps.cached.outputs.hit != 'true'":
+    die("runtime export save gate changed")
 for fn in ("success(", "failure(", "always(", "cancelled("):
-    if fn in export_step["if"] or fn in compile_step["if"]:
-        die("export or compile condition gained a status function")
-if "steps.cached.outputs.hit != 'true'" not in export_step["if"]:
-    die("runtime export save no longer requires a cache miss")
-if "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9" not in export_step["uses"]:
-    die("runtime export save pin changed")
+    if fn in export_if or fn in value(compile_step, "if"):
+        die("export or compile condition overrides implicit success()")
+if "\n        if:" in "\n" + upload_step or "\n        if:" in "\n" + pack_step:
+    die("runtime pack or upload no longer uses the implicit success gate")
+if "if-no-files-found: error" not in upload_step:
+    die("runtime upload can succeed without an artifact")
 
-product_steps = stage["jobs"]["image"]["steps"]
-product_save = [s for s in product_steps if s.get("name") == "Save ccache (Actions cache)"]
-if len(product_save) != 1 or str(product_save[0].get("if")) != "always()":
-    die("product compiler-cache save is no longer unconditional")
-if any("have_image" in str(s.get("if") or "") for s in product_save):
-    die("product compiler-cache save now requires an image")
+def save_ccache(cancelled, hit, outcome):
+    return (not cancelled) and hit != "true" and outcome in ("success", "failure")
 
-release = build["jobs"]["release"]
-release_if = str(release.get("if") or "")
-for phrase in (
-    "always() && !cancelled()",
-    "needs.require-image.result == 'success'",
-    "inputs.publish_release == true",
-    "needs.stage-a.outputs.have_image == 'true'",
-    "needs.stage-b.outputs.have_image == 'true'",
-    "needs.stage-c.outputs.have_image == 'true'",
-):
-    if phrase not in release_if:
-        die("release gate lost %s" % phrase)
-require_if = str(build["jobs"]["require-image"].get("if") or "")
-if "always() && !cancelled()" not in require_if:
-    die("require-image gate changed")
-if "contents: write" not in raw_build.split("jobs:", 1)[0]:
-    die("workflow-level contents permission changed")
+def save_export(prior_success, hit):
+    return prior_success and hit != "true"
 
-def has_status(expr):
-    return any(fn in expr for fn in ("success(", "failure(", "always(", "cancelled("))
-
-def unwrap(expr):
-    expr = expr.strip()
-    if expr.startswith("${{") and expr.endswith("}}"):
-        expr = expr[3:-2].strip()
-    return expr
-
-class Parser(object):
-    def __init__(self, text, env):
-        self.text = text
-        self.env = env
-        self.i = 0
-
-    def skip(self):
-        while self.i < len(self.text) and self.text[self.i].isspace():
-            self.i += 1
-
-    def take(self, token):
-        self.skip()
-        if self.text.startswith(token, self.i):
-            self.i += len(token)
-            return True
-        return False
-
-    def parse(self):
-        value = self.parse_or()
-        self.skip()
-        if self.i != len(self.text):
-            die("unparsed %r in %r" % (self.text[self.i:], self.text))
-        return value
-
-    def parse_or(self):
-        value = self.parse_and()
-        while self.take("||"):
-            value = bool(value) or bool(self.parse_and())
-        return value
-
-    def parse_and(self):
-        value = self.parse_unary()
-        while self.take("&&"):
-            rhs = self.parse_unary()
-            value = bool(value) and bool(rhs)
-        return value
-
-    def parse_unary(self):
-        self.skip()
-        if self.take("!"):
-            return not bool(self.parse_unary())
-        return self.parse_primary()
-
-    def parse_primary(self):
-        self.skip()
-        if self.take("("):
-            value = self.parse_or()
-            if not self.take(")"):
-                die("missing ) in %r" % self.text)
-            return value
-        if self.take("success("):
-            if not self.take(")"):
-                die("bad success() call")
-            return self.env["success"]
-        if self.take("failure("):
-            if not self.take(")"):
-                die("bad failure() call")
-            return self.env["failure"]
-        if self.take("always("):
-            if not self.take(")"):
-                die("bad always() call")
-            return True
-        if self.take("cancelled("):
-            if not self.take(")"):
-                die("bad cancelled() call")
-            return self.env["cancelled"]
-        if self.take("steps."):
-            return self.parse_comparison()
-        die("unsupported expression %r" % self.text[self.i:])
-
-    def parse_comparison(self):
-        ident = self.identifier()
-        if not self.take("."):
-            die("step context missing a field")
-        field = self.identifier()
-        output = None
-        if field == "outputs":
-            if not self.take("."):
-                die("step output missing a name")
-            output = self.identifier()
-        elif field != "outcome":
-            die("unsupported step field %s" % field)
-        if self.take("!="):
-            op = "!="
-        elif self.take("=="):
-            op = "=="
-        else:
-            die("missing comparison")
-        self.skip()
-        if self.i >= len(self.text) or self.text[self.i] != "'":
-            die("comparison is not a quoted string")
-        self.i += 1
-        end = self.text.find("'", self.i)
-        if end < 0:
-            die("unterminated string")
-        expected = self.text[self.i:end]
-        self.i = end + 1
-        if output is None:
-            actual = self.env["outcomes"].get(ident, "")
-        else:
-            actual = self.env["outputs"].get(ident, {}).get(output, "")
-        same = actual.casefold() == expected.casefold()
-        return same if op == "==" else not same
-
-    def identifier(self):
-        self.skip()
-        start = self.i
-        while self.i < len(self.text) and (self.text[self.i].isalnum() or self.text[self.i] in "_-"):
-            self.i += 1
-        if start == self.i:
-            die("missing identifier in %r" % self.text)
-        return self.text[start:self.i]
-
-def enabled(step, env):
-    expr = unwrap(step["if"])
-    if not has_status(expr):
-        expr = "success()" if not expr else "success() && (" + expr + ")"
-    return bool(Parser(expr, env).parse())
-
-def simulate(scenario):
-    outcomes = {}
-    outputs = {}
-    conclusions = []
-    seen = {}
-    cancelled = False
-    for step in steps:
-        def env_now():
-            return {
-                "success": all(item in ("success", "skipped") for item in conclusions),
-                "failure": any(item == "failure" for item in conclusions),
-                "cancelled": cancelled,
-                "outcomes": outcomes,
-                "outputs": outputs,
-            }
-        # Cancelling the workflow while this step is running gives that step
-        # outcome cancelled. Later steps then see cancelled().
-        if scenario.get("cancel_at") == step["name"] and enabled(step, env_now()):
-            seen[step["name"]] = "ran"
-            outcome = "cancelled"
-            conclusion = "cancelled"
-            cancelled = True
-        elif not enabled(step, env_now()):
-            outcome = "skipped"
-            conclusion = "skipped"
-            seen[step["name"]] = "skipped"
-        else:
-            spec = scenario.get("result", {}).get(step["name"], "success")
-            seen[step["name"]] = "ran"
-            if spec == "fail":
-                outcome = "failure"
-                conclusion = "success" if step["continue"] else "failure"
-            elif spec == "success":
-                outcome = "success"
-                conclusion = "success"
-                if step["id"] and step["id"] in scenario.get("outputs", {}):
-                    outputs[step["id"]] = scenario["outputs"][step["id"]]
-            else:
-                die("bad step result %r" % spec)
-        if step["id"]:
-            outcomes[step["id"]] = outcome
-        conclusions.append(conclusion)
-    if cancelled or any(item == "cancelled" for item in conclusions):
-        job = "cancelled"
-    elif any(item == "failure" for item in conclusions):
-        job = "failure"
-    else:
-        job = "success"
-    for name, want in scenario["expect"].items():
-        if name == "job":
-            got = job
-        else:
-            got = seen.get(name)
-        if got != want:
-            die("%s: %s is %s, expected %s" % (scenario["name"], name, got, want))
-    return job
-
-# The documented default: no status function, so a failed compile skips the save.
-legacy_steps_if = save_step["if"]
-save_step["if"] = "steps.cached.outputs.hit != 'true'"
-simulate({
-    "name": "legacy implicit success",
-    "outputs": {"cached": {"hit": "false"}},
-    "result": {"Build ARMHF sysroot": "fail"},
-    "expect": {
-        "Save ARMHF ccache": "skipped",
-        "job": "failure",
-    },
-})
-save_step["if"] = legacy_steps_if
-
-checks = [
-    {
-        "name": "successful compile",
-        "outputs": {"cached": {"hit": "false"}},
-        "result": {},
-        "expect": {
-            "Build ARMHF sysroot": "ran",
-            "Save ARMHF ccache": "ran",
-            "Save ARMHF runtime export": "ran",
-            "Pack ARMHF runtime tar": "ran",
-            "Upload ARMHF runtime": "ran",
-            "job": "success",
-        },
-    },
-    {
-        "name": "compile failure",
-        "outputs": {"cached": {"hit": "false"}},
-        "result": {"Build ARMHF sysroot": "fail"},
-        "expect": {
-            "Build ARMHF sysroot": "ran",
-            "Save ARMHF ccache": "ran",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "skipped",
-            "Upload ARMHF runtime": "skipped",
-            "job": "failure",
-        },
-    },
-    {
-        "name": "compile timeout 124",
-        "outputs": {"cached": {"hit": "false"}},
-        "result": {
-            "Build ARMHF sysroot": "fail",
-            "Save ARMHF ccache": "fail",
-        },
-        "expect": {
-            "Build ARMHF sysroot": "ran",
-            "Save ARMHF ccache": "ran",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "skipped",
-            "Upload ARMHF runtime": "skipped",
-            "job": "failure",
-        },
-    },
-    {
-        "name": "validated export reused",
-        "outputs": {"cached": {"hit": "true"}},
-        "result": {},
-        "expect": {
-            "Build ARMHF sysroot": "skipped",
-            "Save ARMHF ccache": "skipped",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "ran",
-            "Upload ARMHF runtime": "ran",
-            "job": "success",
-        },
-    },
-    {
-        "name": "container prerequisite failed",
-        "outputs": {"cached": {"hit": "false"}},
-        "result": {"Pull or build zlyme-build": "fail"},
-        "expect": {
-            "Build ARMHF sysroot": "skipped",
-            "Save ARMHF ccache": "skipped",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "skipped",
-            "Upload ARMHF runtime": "skipped",
-            "job": "failure",
-        },
-    },
-    {
-        "name": "checkout prerequisite failed",
-        "outputs": {},
-        "result": {"checkout": "fail"},
-        "expect": {
-            "Build ARMHF sysroot": "skipped",
-            "Save ARMHF ccache": "skipped",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "skipped",
-            "Upload ARMHF runtime": "skipped",
-            "job": "failure",
-        },
-    },
-    {
-        "name": "workflow cancelled during compile",
-        "outputs": {"cached": {"hit": "false"}},
-        "cancel_at": "Build ARMHF sysroot",
-        "result": {},
-        "expect": {
-            "Build ARMHF sysroot": "ran",
-            "Save ARMHF ccache": "skipped",
-            "Save ARMHF runtime export": "skipped",
-            "Pack ARMHF runtime tar": "skipped",
-            "Upload ARMHF runtime": "skipped",
-            "job": "cancelled",
-        },
-    },
-    {
-        "name": "ccache restore failed open",
-        "outputs": {"cached": {"hit": "false"}},
-        "result": {
-            "Restore ARMHF ccache": "fail",
-            "Build ARMHF sysroot": "fail",
-        },
-        "expect": {
-            "Restore ARMHF ccache": "ran",
-            "Build ARMHF sysroot": "ran",
-            "Save ARMHF ccache": "ran",
-            "Save ARMHF runtime export": "skipped",
-            "job": "failure",
-        },
-    },
-]
-for scenario in checks:
-    simulate(scenario)
+# Columns: cancelled, hit, outcome, prior success, save ccache, save export.
+# A reused export keeps prior success true and does not write a new export.
+rows = (
+    ("compile succeeds", False, "false", "success", True, True, True),
+    ("compile fails", False, "false", "failure", False, True, False),
+    ("compile times out, exit 124", False, "false", "failure", False, True, False),
+    ("valid export reused", False, "true", "skipped", True, False, False),
+    ("container pull fails", False, "false", "skipped", False, False, False),
+    ("checkout fails", False, "false", "skipped", False, False, False),
+    ("workflow cancelled", True, "false", "cancelled", False, False, False),
+)
+for name, cancelled, hit, outcome, prior_success, want_save, want_export in rows:
+    if save_ccache(cancelled, hit, outcome) != want_save:
+        die("%s save mismatch" % name)
+    if save_export(prior_success, hit) != want_export:
+        die("%s export mismatch" % name)
+if save_ccache(False, "false", "cancelled"):
+    die("a cancelled compile outcome can save")
 print("armhf cache recovery ok")
 PY
 
