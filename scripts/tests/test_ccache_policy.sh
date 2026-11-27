@@ -152,4 +152,130 @@ grep -q 'key: ccache-armhf-${{ github.run_id }}' "$build" || fail "ARMHF ccache 
 # shellcheck disable=SC2016
 grep -q 'armhf-runtime-${{ hashFiles' "$build" || fail "ARMHF runtime cache key changed"
 
+# ARMHF compiler-cache recovery. GitHub applies success() unless the if
+# names a status function. cancelled() is that function. Exit 124 is
+# outcome failure, so it still saves. A skipped or cancelled compile does not.
+python3 - "$build" << 'PY'
+import sys
+
+build_path = sys.argv[1]
+lines = open(build_path, encoding="utf-8").read().splitlines()
+
+def die(message):
+    sys.exit("armhf cache recovery: " + message)
+
+def job(name):
+    start = None
+    for i, line in enumerate(lines):
+        if line == "  %s:" % name:
+            start = i
+            break
+    if start is None:
+        die("missing job %s" % name)
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        line = lines[i]
+        if line.startswith("  ") and not line.startswith("   ") and line.endswith(":"):
+            end = i
+            break
+    return "\n".join(lines[start:end]) + "\n"
+
+def steps(body):
+    return ["      - " + part for part in body.split("\n      - ")[1:]]
+
+def one(body, name):
+    found = [step for step in steps(body) if step.startswith("      - name: %s\n" % name)]
+    if len(found) != 1:
+        die("expected one %s step, found %d" % (name, len(found)))
+    return found[0]
+
+def value(step, key):
+    prefix = key + ": "
+    for line in step.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            return stripped[len(prefix):].strip()
+    return ""
+
+armhf = job("armhf")
+if "\n    timeout-minutes: 360\n" not in armhf:
+    die("ARMHF job limit is not 360 minutes")
+compile_step = one(armhf, "Build ARMHF sysroot")
+save_step = one(armhf, "Save ARMHF ccache")
+export_step = one(armhf, "Save ARMHF runtime export")
+restore_step = one(armhf, "Restore ARMHF ccache")
+upload_step = one(armhf, "Upload ARMHF runtime")
+pack_step = one(armhf, "Pack ARMHF runtime tar")
+
+if value(compile_step, "id") != "armhf_compile":
+    die("compile step id changed")
+if value(compile_step, "if") != "steps.cached.outputs.hit != 'true'":
+    die("compile step no longer depends only on an export miss")
+if any(line.strip().startswith("continue-on-error:") for line in compile_step.splitlines()):
+    die("a failed compile can be reported as job success")
+if "set -euo pipefail" not in compile_step:
+    die("compile step no longer stops on a failed command")
+timeout_at = compile_step.find("timeout --signal=TERM -k 3m 310m ./scripts/build-armhf-sysroot.sh")
+export_at = compile_step.find("./scripts/armhf-runtime-export.sh output-armhf-export")
+if not (0 <= timeout_at < export_at):
+    die("runtime export is no longer sequenced after the compile timeout")
+
+save_if = "${{ !cancelled() && steps.cached.outputs.hit != 'true' && (steps.armhf_compile.outcome == 'success' || steps.armhf_compile.outcome == 'failure') }}"
+if value(save_step, "if") != save_if:
+    die("compiler-cache save condition changed")
+if "cancelled(" not in save_if:
+    die("compiler-cache save does not override implicit success()")
+for fn in ("success(", "failure(", "always("):
+    if fn in save_if:
+        die("compiler-cache save uses %s" % fn)
+if "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9" not in save_step:
+    die("compiler-cache save action pin changed")
+if not any(line.strip() == "continue-on-error: true" for line in save_step.splitlines()):
+    die("compiler-cache save no longer tolerates its own error")
+if value(save_step, "path") != ".ccache-armhf" or value(restore_step, "path") != ".ccache-armhf":
+    die("compiler-cache path changed")
+key = "ccache-armhf-${{ github.run_id }}"
+if value(save_step, "key") != key or value(restore_step, "key") != key:
+    die("compiler-cache run key changed")
+if not any(line.strip() == "ccache-armhf-" for line in restore_step.splitlines()):
+    die("compiler-cache restore prefix changed")
+
+export_if = value(export_step, "if")
+if export_if != "steps.cached.outputs.hit != 'true'":
+    die("runtime export save gate changed")
+for fn in ("success(", "failure(", "always(", "cancelled("):
+    if fn in export_if or fn in value(compile_step, "if"):
+        die("export or compile condition overrides implicit success()")
+if "\n        if:" in "\n" + upload_step or "\n        if:" in "\n" + pack_step:
+    die("runtime pack or upload no longer uses the implicit success gate")
+if "if-no-files-found: error" not in upload_step:
+    die("runtime upload can succeed without an artifact")
+
+def save_ccache(cancelled, hit, outcome):
+    return (not cancelled) and hit != "true" and outcome in ("success", "failure")
+
+def save_export(prior_success, hit):
+    return prior_success and hit != "true"
+
+# Columns: cancelled, hit, outcome, prior success, save ccache, save export.
+# A reused export keeps prior success true and does not write a new export.
+rows = (
+    ("compile succeeds", False, "false", "success", True, True, True),
+    ("compile fails", False, "false", "failure", False, True, False),
+    ("compile times out, exit 124", False, "false", "failure", False, True, False),
+    ("valid export reused", False, "true", "skipped", True, False, False),
+    ("container pull fails", False, "false", "skipped", False, False, False),
+    ("checkout fails", False, "false", "skipped", False, False, False),
+    ("workflow cancelled", True, "false", "cancelled", False, False, False),
+)
+for name, cancelled, hit, outcome, prior_success, want_save, want_export in rows:
+    if save_ccache(cancelled, hit, outcome) != want_save:
+        die("%s save mismatch" % name)
+    if save_export(prior_success, hit) != want_export:
+        die("%s export mismatch" % name)
+if save_ccache(False, "false", "cancelled"):
+    die("a cancelled compile outcome can save")
+print("armhf cache recovery ok")
+PY
+
 echo "ccache policy ok"
