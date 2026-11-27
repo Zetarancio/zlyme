@@ -44,7 +44,7 @@ concurrency:
 jobs:
   armhf:
     # Checkout, Actions cache, and same-repo artifacts. The GHCR pull in
-    # this job is anonymous and falls back to a local image build.
+    # this job is anonymous. A missing approved image fails the job.
     permissions:
       contents: read
     runs-on: ubuntu-24.04
@@ -67,15 +67,15 @@ jobs:
           sudo apt-get install -y zstd ccache
           docker version
 
-      # Dockerfile and the applied SDL2 patches change exported bytes.
-      # The same key is used to save the export.
+      # The approved image digest, the Dockerfile, and the applied SDL2
+      # patches change exported bytes. The same key is used to save the export.
       - name: Restore ARMHF runtime export
         id: armhf-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**', 'scripts/ci/build-container.digest') }}
 
       - name: Use cached ARMHF runtime
         id: cached
@@ -101,18 +101,11 @@ jobs:
           restore-keys: |
             ccache-armhf-
 
-      - name: Pull or build zlyme-build
+      - name: Pull approved build container
         if: steps.cached.outputs.hit != 'true'
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          img="ghcr.io/${owner}/zlyme-build:latest"
-          if ! docker pull "$img"; then
-            docker build -t zlyme-build - < Dockerfile
-          else
-            docker tag "$img" zlyme-build
-          fi
+        run: sh scripts/ci/pull-approved-build-container.sh
 
       - name: Build ARMHF sysroot
         if: steps.cached.outputs.hit != 'true'
@@ -138,7 +131,7 @@ jobs:
         continue-on-error: true
         with:
           path: output-armhf-export
-          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**') }}
+          key: armhf-runtime-${{ hashFiles('configs/zlyme_my355_armhf_defconfig', 'package/system/box86-armhf/**', 'package/system/gl4es-armhf/**', 'package/system/zlyme-armhf-runtime/**', 'package/system/zlyme-armhf-probe/**', 'package/system/zlyme-box86/**', 'scripts/build-armhf-sysroot.sh', 'scripts/armhf-runtime-manifest.sh', 'scripts/armhf-box86-manifest.sh', 'scripts/armhf-runtime-export.sh', 'external.mk', 'build.sh', 'Dockerfile', 'board/my355/patches/sdl2/**', 'scripts/ci/build-container.digest') }}
 
       - name: Pack ARMHF runtime tar
         run: |

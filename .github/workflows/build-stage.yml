@@ -94,17 +94,10 @@ jobs:
       - name: Raise ccache limit
         run: sh scripts/ci/ccache-raise-limit.sh .ccache 8GiB
 
-      - name: Pull or build zlyme-build
+      - name: Pull approved build container
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          img="ghcr.io/${owner}/zlyme-build:latest"
-          if ! docker pull "$img"; then
-            docker build -t zlyme-build - < Dockerfile
-          else
-            docker tag "$img" zlyme-build
-          fi
+        run: sh scripts/ci/pull-approved-build-container.sh
 
       # Debian ccache in this image reads CCACHE_DIR. Buildroot's later
       # host ccache reads the same directory through BR_CACHE_DIR. Both

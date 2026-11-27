@@ -22,7 +22,7 @@ if len(keys) != 2:
 if keys[0] != keys[1]:
     fail("ARMHF export restore and save keys differ")
 key = keys[0]
-for required in ("'Dockerfile'", "'board/my355/patches/sdl2/**'"):
+for required in ("'Dockerfile'", "'board/my355/patches/sdl2/**'", "'scripts/ci/build-container.digest'"):
     if required not in key:
         fail("ARMHF export key omits %s" % required)
 if "board.mk" in key or "board/my355/linux" in key or "board/my355/uboot" in key:
