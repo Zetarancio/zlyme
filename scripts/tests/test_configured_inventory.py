@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 def _load():
@@ -392,33 +393,109 @@ class ConfiguredInventoryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             inv.parse_show_info("make: *** No rule to make target 'show-info'.\n")
 
-    def test_cleanup_cannot_delete_existing_project_data(self):
-        kept = Path(__file__).resolve().parent
-        with self.assertRaises(SystemExit):
-            inv._remove_owned_temp(kept)
-        self.assertTrue(kept.is_dir())
-        with self.assertRaises(SystemExit):
-            inv._remove_owned_temp(Path("/"))
-        parent = Path(tempfile.mkdtemp(prefix="zlyme-cleanup-parent-"))
-        try:
-            real = parent / "real"
-            real.mkdir()
-            link = parent / "link"
-            link.symlink_to(real, target_is_directory=True)
-            with self.assertRaises(SystemExit):
-                inv._remove_owned_temp(link)
-            self.assertTrue(real.is_dir())
-            self.assertTrue(link.is_symlink())
-        finally:
-            shutil.rmtree(parent)
+    def _assert_disposable(self, path):
+        repo = Path(__file__).resolve().parents[2]
+        resolved = path.resolve()
+        self.assertFalse(resolved.is_relative_to(repo.resolve()))
+        self.assertTrue(Path(__file__).is_file())
+        return repo
 
-    def test_cleanup_removes_only_its_temporary_directory(self):
-        created = inv._owned_temp_dir()
-        sibling = created.parent
-        (created / "marker").write_text("x", encoding="utf-8")
-        inv._remove_owned_temp(created)
-        self.assertFalse(created.exists())
-        self.assertTrue(sibling.is_dir())
+    def test_configuration_removes_only_its_directory(self):
+        sandbox = Path(tempfile.mkdtemp(prefix="zlyme-cleanup-sandbox-"))
+        self._assert_disposable(sandbox)
+        owned = []
+        kept = []
+
+        def fake_run(cmd, **kwargs):
+            output = next(Path(arg[2:]) for arg in cmd if str(arg).startswith("O="))
+            work = output.parent
+            if not owned:
+                owned.append(work)
+                (work / "escape").symlink_to(sandbox / "outside", target_is_directory=True)
+                sibling = work.parent / ("%s-sibling" % work.name)
+                sibling.mkdir()
+                (sibling / "sentinel").write_text("keep", encoding="utf-8")
+                decoy = work.parent / ("zlyme-configured-decoy-%s" % work.name)
+                decoy.mkdir()
+                (decoy / "sentinel").write_text("keep", encoding="utf-8")
+                kept.extend((sibling, decoy))
+            if str(cmd[-1]).endswith("_defconfig"):
+                return inv.subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            self.assertEqual(cmd[-1], "show-info")
+            return inv.subprocess.CompletedProcess(
+                cmd, 0, stdout='{"busybox": {"type": "target"}}\n', stderr=""
+            )
+
+        try:
+            unrelated = sandbox / "unrelated"
+            unrelated.mkdir()
+            (unrelated / "sentinel").write_text("keep", encoding="utf-8")
+            outside = sandbox / "outside"
+            outside.mkdir()
+            (outside / "sentinel").write_text("keep", encoding="utf-8")
+            with mock.patch.object(inv.subprocess, "run", side_effect=fake_run):
+                graphs = inv.collect_graphs(Path("/fixture/zlyme"), Path("/fixture/buildroot"))
+            self.assertEqual(set(graphs), {"armhf", "minimal", "product"})
+            self.assertEqual(len(owned), 1)
+            work = owned[0]
+            self.assertFalse(work.exists())
+            self.assertTrue((unrelated / "sentinel").is_file())
+            self.assertTrue((outside / "sentinel").is_file())
+            self.assertEqual(len(kept), 2)
+            for path in kept:
+                self.assertTrue((path / "sentinel").is_file())
+                self._assert_disposable(path)
+            repo = Path(__file__).resolve().parents[2]
+            self.assertFalse(repo.resolve() in work.parents)
+            self.assertTrue(Path(__file__).is_file())
+        finally:
+            shutil.rmtree(sandbox)
+            for path in kept:
+                if path.exists():
+                    shutil.rmtree(path)
+
+    def test_configuration_cleans_up_after_failure(self):
+        sandbox = Path(tempfile.mkdtemp(prefix="zlyme-cleanup-sandbox-"))
+        self._assert_disposable(sandbox)
+        owned = []
+
+        def fake_run(cmd, **kwargs):
+            output = next(Path(arg[2:]) for arg in cmd if str(arg).startswith("O="))
+            work = output.parent
+            owned.append(work)
+            decoy = work.parent / ("zlyme-configured-decoy-%s" % work.name)
+            if not decoy.exists():
+                decoy.mkdir()
+                (decoy / "sentinel").write_text("keep", encoding="utf-8")
+            sibling = work.parent / ("%s-sibling" % work.name)
+            if not sibling.exists():
+                sibling.mkdir()
+                (sibling / "sentinel").write_text("keep", encoding="utf-8")
+            raise inv.subprocess.CalledProcessError(1, cmd)
+
+        try:
+            with self.assertRaises(inv.subprocess.CalledProcessError):
+                with mock.patch.object(inv.subprocess, "run", side_effect=fake_run):
+                    inv.collect_graphs(Path("/fixture/zlyme"), Path("/fixture/buildroot"))
+            self.assertEqual(len(owned), 1)
+            work = owned[0]
+            self.assertFalse(work.exists())
+            decoy = work.parent / ("zlyme-configured-decoy-%s" % work.name)
+            sibling = work.parent / ("%s-sibling" % work.name)
+            self.assertTrue((decoy / "sentinel").is_file())
+            self.assertTrue((sibling / "sentinel").is_file())
+            self.assertTrue(Path(__file__).is_file())
+        finally:
+            if sandbox.exists():
+                shutil.rmtree(sandbox)
+            if owned:
+                work = owned[0]
+                for path in (
+                    work.parent / ("zlyme-configured-decoy-%s" % work.name),
+                    work.parent / ("%s-sibling" % work.name),
+                ):
+                    if path.exists():
+                        shutil.rmtree(path)
 
     def test_symlink_manifest_is_not_installed_evidence(self):
         parent = Path(tempfile.mkdtemp(prefix="zlyme-manifest-"))

@@ -12,11 +12,12 @@ installed root filesystem. install_target true means the recipe asks
 Buildroot to copy files into the target directory. It does not prove
 that a file remains after image assembly. A host package is a build
 tool. Product, minimal, and ARMHF graphs are recorded separately.
-Configuration compiles Buildroot's Kconfig conf program into a
-temporary directory created by tempfile.mkdtemp. The tool deletes
-only that directory, and only after checking it is still inside the
-system temporary area. It does not compile packages or a toolchain,
-and it does not download package sources.
+Configuration compiles Buildroot's Kconfig conf program inside a
+temporary directory created by tempfile.TemporaryDirectory. That
+context manager removes that directory when the operation finishes,
+including when configuration fails. No other path is deleted. It
+does not compile packages or a toolchain, and it does not download
+package sources.
 
 The ARMHF runtime's installed version is the hash of its compiled
 manifest. A show-info value of "missing" is not that version.
@@ -35,7 +36,6 @@ import argparse
 import importlib.util
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -521,37 +521,14 @@ def _pinned_version(root):
     raise IncompatibleBuildroot("build.sh does not pin BUILDROOT_VERSION")
 
 
-def _owned_temp_dir():
-    """Create the only directory this tool is allowed to delete."""
-    return Path(tempfile.mkdtemp(prefix="zlyme-configured-"))
-
-
-def _remove_owned_temp(path):
-    """Delete a directory this process created under the system temp root.
-
-    The path is normalized before the prefix check. A symlink is refused
-    instead of followed. The temp root itself is refused.
-    """
-    root = os.path.realpath(tempfile.gettempdir())
-    supplied = os.fspath(path)
-    if os.path.islink(supplied):
-        raise SystemExit("refusing to delete a symbolic link")
-    candidate = os.path.realpath(supplied)
-    if candidate == root or not candidate.startswith(root + os.sep):
-        raise SystemExit("refusing to delete a directory outside the temporary area")
-    if os.path.islink(candidate) or not os.path.isdir(candidate):
-        raise SystemExit("refusing to delete a path that is not a directory")
-    shutil.rmtree(candidate)
-
-
 def collect_graphs(root, buildroot):
-    work = _owned_temp_dir()
     env = os.environ.copy()
-    env["DL_DIR"] = str(work / "dl")
-    env["CCACHE_DIR"] = str(work / "ccache")
     env["CCACHE_DISABLE"] = "1"
     graphs = {}
-    try:
+    with tempfile.TemporaryDirectory(prefix="zlyme-configured-") as work_name:
+        work = Path(work_name)
+        env["DL_DIR"] = str(work / "dl")
+        env["CCACHE_DIR"] = str(work / "ccache")
         (work / "dl").mkdir()
         (work / "ccache").mkdir()
         for configuration, defconfig in CONFIGS:
@@ -577,8 +554,6 @@ def collect_graphs(root, buildroot):
                 text=True,
             )
             graphs[configuration] = parse_show_info(result.stdout)
-    finally:
-        _remove_owned_temp(work)
     return graphs
 
 
