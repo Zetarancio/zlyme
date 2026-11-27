@@ -50,6 +50,7 @@ jobs:
           sh scripts/tests/test_dsperate_launch.sh
           python3 scripts/tests/test_package_inventory.py
           python3 scripts/tests/test_configured_inventory.py
+          sh scripts/tests/test_dependabot_config.sh
 
   artbook-changes:
     runs-on: ubuntu-24.04
