@@ -521,16 +521,23 @@ def _pinned_version(root):
     raise IncompatibleBuildroot("build.sh does not pin BUILDROOT_VERSION")
 
 
+_OWNED_TEMPS = set()
+
+
 def _owned_temp_dir():
     """Create the only directory this tool is allowed to delete."""
-    return Path(tempfile.mkdtemp(prefix="zlyme-configured-"))
+    path = Path(tempfile.mkdtemp(prefix="zlyme-configured-"))
+    _OWNED_TEMPS.add(os.path.realpath(path))
+    return path
 
 
 def _remove_owned_temp(path):
     """Delete a directory this process created under the system temp root.
 
     The path is normalized before the prefix check. A symlink is refused
-    instead of followed. The temp root itself is refused.
+    instead of followed. The temp root itself is refused. A directory
+    under the temp root that this process did not create is refused,
+    including a checkout that happens to live there.
     """
     root = os.path.realpath(tempfile.gettempdir())
     supplied = os.fspath(path)
@@ -539,9 +546,12 @@ def _remove_owned_temp(path):
     candidate = os.path.realpath(supplied)
     if candidate == root or not candidate.startswith(root + os.sep):
         raise SystemExit("refusing to delete a directory outside the temporary area")
+    if candidate not in _OWNED_TEMPS:
+        raise SystemExit("refusing to delete a directory this process did not create")
     if os.path.islink(candidate) or not os.path.isdir(candidate):
         raise SystemExit("refusing to delete a path that is not a directory")
     shutil.rmtree(candidate)
+    _OWNED_TEMPS.discard(candidate)
 
 
 def collect_graphs(root, buildroot):

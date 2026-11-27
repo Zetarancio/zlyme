@@ -397,6 +397,13 @@ class ConfiguredInventoryTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             inv._remove_owned_temp(kept)
         self.assertTrue(kept.is_dir())
+        other = Path(tempfile.mkdtemp(prefix="zlyme-not-owned-"))
+        try:
+            with self.assertRaises(SystemExit):
+                inv._remove_owned_temp(other)
+            self.assertTrue(other.is_dir())
+        finally:
+            shutil.rmtree(other)
         with self.assertRaises(SystemExit):
             inv._remove_owned_temp(Path("/"))
         parent = Path(tempfile.mkdtemp(prefix="zlyme-cleanup-parent-"))
