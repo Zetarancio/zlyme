@@ -37,13 +37,25 @@ for banned in ("buildroot", "auto-merge", "automerge", "npm", "pip", "gitsubmodu
         fail("dependabot.yml contains %s" % banned)
 
 workflows = (root / ".github" / "workflows")
+# Owner plus one or more path segments, so actions/cache/restore is included.
 sha_use = re.compile(
-    r"uses:\s+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}\b"
+    r"uses:\s+[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+@[0-9a-f]{40}\b"
 )
+comment = re.compile(r"#\s+v\d")
+cache_pins = 0
 for path in sorted(workflows.glob("*.yml")):
     for line in path.read_text(encoding="utf-8").splitlines():
-        if sha_use.search(line) and not re.search(r"#\s+v\d", line):
+        if not sha_use.search(line):
+            continue
+        if not comment.search(line):
             fail("SHA pin has no version comment: %s: %s" % (path.name, line.strip()))
+        if "actions/cache/" in line:
+            cache_pins += 1
+            bare = re.sub(r"\s+#.*$", "", line)
+            if not sha_use.search(bare) or comment.search(bare):
+                fail("cache pin is outside the comment check: %s" % line.strip())
+if cache_pins != 6:
+    fail("expected 6 actions/cache SHA pins, found %d" % cache_pins)
 
 docker = (root / ".github" / "workflows" / "docker-image.yml").read_text(encoding="utf-8")
 if "if: github.ref == 'refs/heads/main'" not in docker:
