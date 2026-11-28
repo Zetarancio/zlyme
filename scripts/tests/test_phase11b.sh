@@ -278,6 +278,13 @@ grep -q '  wasi-sdk-30.0-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no wasi has
 grep -q '  wasi-sdk-30.0-arm64-linux.tar.gz$' "$MKXP_HASH" || fail "no arm64 wasi hash"
 grep -q '  binaryen-version_123-x86_64-linux.tar.gz$' "$MKXP_HASH" || fail "no binaryen hash"
 grep -q '  binaryen-version_123-aarch64-linux.tar.gz$' "$MKXP_HASH" || fail "no aarch64 binaryen hash"
+# libiconv is the GNU release, once for the target list and once for the host list.
+iconv_urls=$(grep -c 'https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz' "$MKXP_MK" || true)
+[ "$iconv_urls" -eq 2 ] || fail "libiconv URL is not declared for host and target"
+if grep -q 'mirrors.kernel.org/gnu/libiconv' "$MKXP_MK"; then
+	fail "libiconv still uses the kernel.org mirror"
+fi
+grep -q '  3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8  libiconv-1.18.tar.gz$' "$MKXP_HASH" || fail "libiconv hash changed"
 # mkxp reads RUBY_REVISION as 40 hex digits: uint8_t ruby_revision[20].
 rev=$(sed -n 's/^RUBY_TAG_COMMIT = "\([0-9a-f]*\)"$/\1/p' \
 	"$ROOT/package/emulators/libretro-mkxp-z/stage-offline.py")
