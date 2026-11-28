@@ -54,7 +54,7 @@ LIBRETRO_MKXP_Z_EXTRA_DOWNLOADS = \
 	https://github.com/libretro/libretro-common/archive/7caf0cd9448d5d745924c7e64e7365fb61ecda55.tar.gz \
 	https://deb.debian.org/debian/pool/main/u/uchardet/uchardet_0.0.8.orig.tar.xz \
 	https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz \
-	https://mirrors.kernel.org/gnu/libidn/libidn-1.43.tar.gz \
+	https://ftp.gnu.org/gnu/libidn/libidn-1.43.tar.gz \
 	https://github.com/boostorg/asio/archive/8b22ca054c15f32b5aea8649c0189f48f8ad874e.tar.gz \
 	https://github.com/boostorg/assert/archive/e107bd7b556d72ef5273c17f4099198a28edaa4d.tar.gz \
 	https://github.com/boostorg/config/archive/a7d5a9b05d70c9cfea980dc3539ca3d3461411b3.tar.gz \
@@ -117,7 +117,7 @@ HOST_LIBRETRO_MKXP_Z_EXTRA_DOWNLOADS = \
 	https://github.com/libretro/libretro-common/archive/7caf0cd9448d5d745924c7e64e7365fb61ecda55.tar.gz \
 	https://deb.debian.org/debian/pool/main/u/uchardet/uchardet_0.0.8.orig.tar.xz \
 	https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz \
-	https://mirrors.kernel.org/gnu/libidn/libidn-1.43.tar.gz \
+	https://ftp.gnu.org/gnu/libidn/libidn-1.43.tar.gz \
 	https://github.com/boostorg/asio/archive/8b22ca054c15f32b5aea8649c0189f48f8ad874e.tar.gz \
 	https://github.com/boostorg/assert/archive/e107bd7b556d72ef5273c17f4099198a28edaa4d.tar.gz \
 	https://github.com/boostorg/config/archive/a7d5a9b05d70c9cfea980dc3539ca3d3461411b3.tar.gz \
